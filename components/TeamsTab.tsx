@@ -38,13 +38,11 @@ export default function TeamsTab() {
   const [loading, setLoading] = useState(false);
   const [courts, setCourts] = useState<CourtAssignment[]>([]);
   const [error, setError] = useState('');
-  const [rawOutput, setRawOutput] = useState('');
 
   async function generateTeams() {
     setLoading(true);
     setError('');
     setCourts([]);
-    setRawOutput('');
 
     try {
       const [pRes, sRes] = await Promise.all([
@@ -102,18 +100,16 @@ Respond with ONLY valid JSON, no markdown, no extra text:
         return;
       }
 
-      setRawOutput(text);
-
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
           const parsed = JSON.parse(jsonMatch[0]);
           setCourts(parsed.courts ?? []);
         } catch {
-          setError('Could not parse AI response. Raw output shown below.');
+          setError('Could not parse AI response. Please try again.');
         }
       } else {
-        setError('Unexpected AI response format. Raw output shown below.');
+        setError('Unexpected AI response format. Please try again.');
       }
     } catch (e) {
       console.error(e);
@@ -177,11 +173,6 @@ Respond with ONLY valid JSON, no markdown, no extra text:
           style={{ borderColor: 'rgba(239, 68, 68, 0.3)' }}
         >
           <p className="text-sm text-red-400">{error}</p>
-          {rawOutput && (
-            <pre className="mt-2 text-xs text-gray-500 whitespace-pre-wrap overflow-auto max-h-48">
-              {rawOutput}
-            </pre>
-          )}
         </div>
       )}
 

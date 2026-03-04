@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, SESSION_ID } from '@/lib/cosmos';
+import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { randomBytes } from 'crypto';
 
 export async function GET() {
   try {
@@ -19,15 +21,21 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isAdminAuthed(req)) return unauthorized();
+
   try {
     const { text } = await req.json();
-    if (!text?.trim()) {
+    const trimmed = typeof text === 'string' ? text.trim() : '';
+    if (!trimmed) {
       return NextResponse.json({ error: 'Text required' }, { status: 400 });
+    }
+    if (trimmed.length > 500) {
+      return NextResponse.json({ error: 'Announcement too long (max 500 chars)' }, { status: 400 });
     }
 
     const announcement = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-      text: text.trim(),
+      id: randomBytes(12).toString('hex'),
+      text: trimmed,
       time: new Date().toISOString(),
       sessionId: SESSION_ID,
     };

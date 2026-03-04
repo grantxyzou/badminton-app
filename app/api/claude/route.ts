@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`claude:${ip}`, 10, 60 * 1000)) {
+    return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
+  }
+
   try {
     const { prompt } = await req.json();
-    if (!prompt) {
+    if (typeof prompt !== 'string' || !prompt.trim()) {
       return NextResponse.json({ error: 'Prompt required' }, { status: 400 });
+    }
+    if (prompt.length > 4000) {
+      return NextResponse.json({ error: 'Prompt too long' }, { status: 400 });
     }
 
     const message = await anthropic.messages.create({

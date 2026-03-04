@@ -3,18 +3,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Session, Announcement } from '@/lib/types';
 
-const ADMIN_KEY = 'badminton_admin';
-
 /* ─────────────────────────── PIN Gate ─────────────────────────── */
 
 export default function AdminTab() {
-  const [isAuthed, setIsAuthed] = useState(false);
+  const [isAuthed, setIsAuthed] = useState<boolean | null>(null); // null = loading
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState('');
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
-    if (sessionStorage.getItem(ADMIN_KEY) === 'true') setIsAuthed(true);
+    fetch('/api/admin')
+      .then((r) => r.json())
+      .then((d) => setIsAuthed(d.authed === true))
+      .catch(() => setIsAuthed(false));
   }, []);
 
   async function handlePinSubmit(e: React.FormEvent) {
@@ -28,10 +29,12 @@ export default function AdminTab() {
         body: JSON.stringify({ pin }),
       });
       if (res.ok) {
-        sessionStorage.setItem(ADMIN_KEY, 'true');
         setIsAuthed(true);
       } else {
-        setPinError('Incorrect PIN. Please try again.');
+        const data = await res.json();
+        setPinError(data.error === 'Too many attempts. Try again later.'
+          ? data.error
+          : 'Incorrect PIN. Please try again.');
         setPin('');
       }
     } catch {
@@ -41,10 +44,18 @@ export default function AdminTab() {
     }
   }
 
-  function handleLogout() {
-    sessionStorage.removeItem(ADMIN_KEY);
+  async function handleLogout() {
+    await fetch('/api/admin', { method: 'DELETE' });
     setIsAuthed(false);
     setPin('');
+  }
+
+  if (isAuthed === null) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <span className="material-icons animate-spin text-green-400" style={{ fontSize: 32 }}>refresh</span>
+      </div>
+    );
   }
 
   if (!isAuthed) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, SESSION_ID, DEFAULT_SESSION } from '@/lib/cosmos';
+import { isAdminAuthed, unauthorized } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -11,15 +12,28 @@ export async function GET() {
     if (cosmosError?.code === 404) {
       return NextResponse.json(DEFAULT_SESSION);
     }
-    // DB not configured or other error — return defaults so UI still works
     return NextResponse.json(DEFAULT_SESSION);
   }
 }
 
 export async function PUT(req: NextRequest) {
+  if (!isAdminAuthed(req)) return unauthorized();
+
   try {
     const body = await req.json();
-    const session = { ...body, id: SESSION_ID };
+
+    // Sanitise: only allow known fields, enforce lengths
+    const session = {
+      id: SESSION_ID,
+      title: String(body.title ?? '').slice(0, 100),
+      location: String(body.location ?? '').slice(0, 200),
+      datetime: String(body.datetime ?? '').slice(0, 30),
+      deadline: String(body.deadline ?? '').slice(0, 30),
+      cost: String(body.cost ?? '').slice(0, 50),
+      courts: Math.max(1, Math.min(20, parseInt(body.courts) || 2)),
+      maxPlayers: Math.max(1, Math.min(100, parseInt(body.maxPlayers) || 12)),
+    };
+
     const container = getContainer('sessions');
     const { resource } = await container.items.upsert(session);
     return NextResponse.json(resource);
