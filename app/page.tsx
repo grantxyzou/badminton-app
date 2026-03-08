@@ -4,10 +4,9 @@ import { useState } from 'react';
 import BottomNav from '@/components/BottomNav';
 import HomeTab from '@/components/HomeTab';
 import PlayersTab from '@/components/PlayersTab';
-import TeamsTab from '@/components/TeamsTab';
 import AdminTab from '@/components/AdminTab';
 
-export type Tab = 'home' | 'players' | 'teams' | 'admin';
+export type Tab = 'home' | 'players' | 'admin';
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState<Tab>('home');
@@ -17,7 +16,6 @@ export default function Page() {
       <div className="max-w-lg mx-auto px-4 pt-6">
         {activeTab === 'home' && <HomeTab />}
         {activeTab === 'players' && <PlayersTab />}
-        {activeTab === 'teams' && <TeamsTab />}
         {activeTab === 'admin' && <AdminTab />}
       </div>
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />

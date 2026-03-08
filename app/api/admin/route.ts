@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { setAdminCookie, clearAdminCookie, isAdminAuthed } from '@/lib/auth';
+import { setAdminCookie, clearAdminCookie, isAdminAuthed, getAdminPin } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 // Check if already authenticated
@@ -16,10 +16,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const { pin } = await req.json();
-    const adminPin = process.env.ADMIN_PIN;
-    if (!adminPin) {
-      return NextResponse.json({ error: 'Admin PIN not configured' }, { status: 500 });
-    }
+    const adminPin = getAdminPin();
     if (typeof pin !== 'string' || pin !== adminPin) {
       return NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
     }

@@ -5,11 +5,6 @@ import type { Player } from '@/lib/types';
 
 const STORAGE_KEY = 'badminton_username';
 
-const SKILL_STYLE: Record<Player['skill'], string> = {
-  Beginner: 'text-green-400 bg-green-400/10',
-  Intermediate: 'text-blue-400 bg-blue-400/10',
-  Advanced: 'text-orange-400 bg-orange-400/10',
-};
 
 export default function PlayersTab() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -117,11 +112,6 @@ export default function PlayersTab() {
                         (you)
                       </span>
                     )}
-                  </span>
-                  <span
-                    className={`text-xs font-semibold px-2 py-0.5 rounded-full ${SKILL_STYLE[player.skill]}`}
-                  >
-                    {player.skill}
                   </span>
                   {isMe && (
                     <button

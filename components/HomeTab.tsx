@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Session, Player, Announcement } from '@/lib/types';
+import type { Session, Announcement, Player } from '@/lib/types';
 
 const STORAGE_KEY = 'badminton_username';
 
@@ -33,13 +33,18 @@ function fmtDeadline(iso: string) {
   }
 }
 
+const ICON_COLORS: Record<string, string> = {
+  location_on: '#ef4444',
+  event: '#60a5fa',
+  sports_tennis: '#a78bfa',
+  payments: '#4ade80',
+};
+
 function InfoRow({ icon, text }: { icon: string; text: string }) {
   return (
-    <div className="flex items-center gap-2.5 text-sm">
-      <span className="material-icons text-green-400" style={{ fontSize: 18 }}>
-        {icon}
-      </span>
-      <span className="text-gray-300">{text}</span>
+    <div className="flex items-start gap-2.5 text-sm">
+      <span className="material-icons icon-pin shrink-0" style={{ color: ICON_COLORS[icon] ?? 'inherit' }}>{icon}</span>
+      <span className="text-gray-300 leading-snug">{text}</span>
     </div>
   );
 }
@@ -50,7 +55,6 @@ export default function HomeTab() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [name, setName] = useState('');
-  const [skill, setSkill] = useState<Player['skill']>('Intermediate');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -86,6 +90,7 @@ export default function HomeTab() {
     : false;
 
   const isFull = players.length >= (session?.maxPlayers ?? maxPlayers);
+  const spotsTotal = session?.maxPlayers ?? maxPlayers;
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
@@ -96,7 +101,7 @@ export default function HomeTab() {
       const res = await fetch('/api/players', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), skill }),
+        body: JSON.stringify({ name: name.trim() }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -139,51 +144,61 @@ export default function HomeTab() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-48">
-        <span className="material-icons animate-spin text-green-400" style={{ fontSize: 32 }}>
-          refresh
-        </span>
+        <span className="material-icons icon-spin-lg animate-spin text-green-400">refresh</span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Session Info Card */}
-      <div className="glass-card p-5">
-        <h1 className="text-base font-bold text-green-400 mb-4">
-          {session?.title ?? 'Weekly Badminton Session'}
-        </h1>
-        <div className="space-y-2.5">
-          <InfoRow icon="location_on" text={session?.location ?? '—'} />
-          <InfoRow icon="event" text={session ? fmtDateTime(session.datetime) : '—'} />
-          <InfoRow icon="attach_money" text={session?.cost ?? '—'} />
-          <InfoRow
-            icon="sports_tennis"
-            text={`${session?.courts ?? '—'} court${(session?.courts ?? 0) !== 1 ? 's' : ''}`}
-          />
-          <InfoRow
-            icon="people"
-            text={`${players.length} / ${session?.maxPlayers ?? maxPlayers} signed up`}
-          />
+    <div className="space-y-5">
+      {/* Page title */}
+      <h1 className="text-2xl font-bold text-white">Announcement</h1>
+
+      {/* Hero card: date/time + courts */}
+      <div className="glass-card p-5 space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="material-icons icon-pin-lg shrink-0" style={{ color: '#60a5fa' }}>event</span>
+          <span className="text-xl font-bold text-white leading-tight">
+            {session ? fmtDateTime(session.datetime) : '—'}
+          </span>
         </div>
-        {session?.deadline && (
-          <p className="mt-3 text-xs text-gray-500">
-            Sign up by {fmtDeadline(session.deadline)}
-          </p>
-        )}
+        <div className="flex items-center gap-3">
+          <span className="material-icons icon-pin-lg shrink-0" style={{ color: '#a78bfa' }}>sports_tennis</span>
+          <span className="text-xl font-bold text-white">
+            {session?.courts ?? '—'} Court{(session?.courts ?? 0) !== 1 ? 's' : ''}
+          </span>
+        </div>
+      </div>
+
+      {/* Two-column: Event info | Cost info */}
+      <div className="grid grid-cols-2 gap-3 items-start">
+        <div>
+          <p className="text-sm font-semibold text-white mb-2">Event info</p>
+          <div className="glass-card p-4 space-y-2.5">
+            <InfoRow icon="location_on" text={session?.location ?? '—'} />
+            <InfoRow icon="event" text={session ? fmtDateTime(session.datetime) : '—'} />
+            <InfoRow icon="sports_tennis" text={`${session?.courts ?? '—'} Court${(session?.courts ?? 0) !== 1 ? 's' : ''}`} />
+          </div>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-white mb-2">Cost info</p>
+          <div className="glass-card p-4">
+            <InfoRow icon="payments" text={session?.cost ?? 'TBD'} />
+          </div>
+        </div>
       </div>
 
       {/* Announcements */}
       {announcements.length > 0 && (
         <div className="glass-card p-5">
           <h2 className="text-xs font-bold tracking-widest text-green-400 mb-3 flex items-center gap-1.5">
-            <span className="material-icons" style={{ fontSize: 16 }}>campaign</span>
+            <span className="material-icons icon-sm">campaign</span>
             ANNOUNCEMENTS
           </h2>
           <div className="space-y-3">
             {announcements.map((a) => (
               <div key={a.id} className="border-l-2 border-green-400/30 pl-3">
-                <p className="text-sm text-gray-200">{a.text}</p>
+                <p className="text-sm text-gray-200 break-words">{a.text}</p>
                 <p className="text-xs text-gray-500 mt-0.5">
                   {new Date(a.time).toLocaleDateString(undefined, {
                     month: 'short',
@@ -199,60 +214,78 @@ export default function HomeTab() {
       {/* Sign-Up Card */}
       <div className="glass-card p-5">
         {isSignedUp ? (
-          <div className="text-center space-y-3">
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center mx-auto"
-              style={{ background: 'rgba(74, 222, 128, 0.15)' }}
-            >
-              <span className="material-icons text-green-400" style={{ fontSize: 28 }}>
-                check_circle
-              </span>
+          <div className="space-y-4">
+            <div className="flex items-start justify-between">
+              <p className="text-xl font-bold text-white">Sign up</p>
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Spots left</p>
+                <p className="text-2xl font-bold text-white leading-none mt-0.5">
+                  {players.length}/{spotsTotal}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="font-semibold text-green-400">You&apos;re in!</p>
-              <p className="text-sm text-gray-400 mt-0.5">Signed up as {currentUser}</p>
+            <div className="status-banner-green">
+              <span className="material-icons icon-status text-green-400">check_circle</span>
+              <div>
+                <p className="font-semibold text-green-400 text-sm">You&apos;re in!</p>
+                <p className="text-xs text-gray-400 mt-0.5">Signed up as {currentUser}</p>
+              </div>
             </div>
             {error && <p className="text-red-400 text-xs">{error}</p>}
-            <button
-              onClick={handleCancel}
-              disabled={isSubmitting}
-              className="btn-ghost w-full"
-            >
+            <button type="button" onClick={handleCancel} disabled={isSubmitting} className="btn-ghost w-full">
               {isSubmitting ? 'Cancelling…' : 'Cancel My Spot'}
             </button>
           </div>
         ) : isFull ? (
-          <div className="text-center space-y-2 py-2">
-            <span className="material-icons text-orange-400" style={{ fontSize: 36 }}>lock</span>
-            <p className="font-semibold text-orange-300">Session Full</p>
-            <p className="text-sm text-gray-400">
-              All {session?.maxPlayers ?? maxPlayers} spots are taken.
-            </p>
+          <div className="space-y-4">
+            <div className="flex items-start justify-between">
+              <p className="text-xl font-bold text-white">Sign up</p>
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Spots left</p>
+                <p className="text-2xl font-bold text-orange-400 leading-none mt-0.5">
+                  {players.length}/{spotsTotal}
+                </p>
+              </div>
+            </div>
+            <div className="status-banner-orange">
+              <span className="material-icons icon-status text-orange-400">lock</span>
+              <div>
+                <p className="font-semibold text-orange-300 text-sm">Session Full</p>
+                <p className="text-xs text-gray-400 mt-0.5">All {spotsTotal} spots are taken.</p>
+              </div>
+            </div>
           </div>
         ) : (
-          <form onSubmit={handleSignUp} className="space-y-3">
-            <h2 className="text-xs font-bold tracking-widest text-green-400">SIGN UP</h2>
-            <input
-              type="text"
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              maxLength={50}
-            />
-            <select
-              value={skill}
-              onChange={(e) => setSkill(e.target.value as Player['skill'])}
-            >
-              <option value="Beginner">Beginner</option>
-              <option value="Intermediate">Intermediate</option>
-              <option value="Advanced">Advanced</option>
-            </select>
-            {error && <p className="text-red-400 text-xs">{error}</p>}
-            <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
-              {isSubmitting ? 'Signing up…' : 'Sign Up'}
-            </button>
-          </form>
+          <div className="space-y-4">
+            <div className="flex items-start justify-between">
+              <p className="text-xl font-bold text-white">Sign up</p>
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Spots left</p>
+                <p className="text-2xl font-bold text-white leading-none mt-0.5">
+                  {players.length}/{spotsTotal}
+                </p>
+              </div>
+            </div>
+            <form onSubmit={handleSignUp} className="space-y-3">
+              <input
+                type="text"
+                placeholder="Who is playing?"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                maxLength={50}
+              />
+              {error && <p className="text-red-400 text-xs">{error}</p>}
+              {session?.deadline && (
+                <p className="text-center text-xs text-gray-400">
+                  Sign up by {fmtDeadline(session.deadline)}
+                </p>
+              )}
+              <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
+                {isSubmitting ? 'Signing up…' : 'Sign Up'}
+              </button>
+            </form>
+          </div>
         )}
       </div>
     </div>

@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, SESSION_ID } from '@/lib/cosmos';
-import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { randomBytes } from 'crypto';
-
-const VALID_SKILLS = ['Beginner', 'Intermediate', 'Advanced'] as const;
 
 export async function GET() {
   try {
@@ -24,7 +21,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, skill } = await req.json();
+    const { name } = await req.json();
 
     const trimmedName = typeof name === 'string' ? name.trim() : '';
     if (!trimmedName) {
@@ -33,11 +30,17 @@ export async function POST(req: NextRequest) {
     if (trimmedName.length > 50) {
       return NextResponse.json({ error: 'Name too long (max 50 chars)' }, { status: 400 });
     }
-    if (!VALID_SKILLS.includes(skill)) {
-      return NextResponse.json({ error: 'Invalid skill level' }, { status: 400 });
-    }
 
-    const maxPlayers = parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12');
+    const sessionContainer = getContainer('sessions');
+    const { resources: sessions } = await sessionContainer.items
+      .query({
+        query: 'SELECT * FROM c WHERE c.id = @id',
+        parameters: [{ name: '@id', value: SESSION_ID }],
+      })
+      .fetchAll();
+    const maxPlayers =
+      sessions[0]?.maxPlayers ?? parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12');
+
     const container = getContainer('players');
 
     // Duplicate check
@@ -71,7 +74,6 @@ export async function POST(req: NextRequest) {
     const player = {
       id: randomBytes(12).toString('hex'),
       name: trimmedName,
-      skill,
       sessionId: SESSION_ID,
       timestamp: new Date().toISOString(),
     };
@@ -85,8 +87,6 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!isAdminAuthed(req)) return unauthorized();
-
   try {
     const { name } = await req.json();
     if (!name) {

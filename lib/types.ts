@@ -12,7 +12,6 @@ export interface Session {
 export interface Player {
   id: string;
   name: string;
-  skill: 'Beginner' | 'Intermediate' | 'Advanced';
   sessionId: string;
   timestamp: string;
 }

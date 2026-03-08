@@ -5,13 +5,15 @@ import { isAdminAuthed, unauthorized } from '@/lib/auth';
 export async function GET() {
   try {
     const container = getContainer('sessions');
-    const { resource } = await container.item(SESSION_ID, SESSION_ID).read();
-    return NextResponse.json(resource ?? DEFAULT_SESSION);
-  } catch (error: unknown) {
-    const cosmosError = error as { code?: number };
-    if (cosmosError?.code === 404) {
-      return NextResponse.json(DEFAULT_SESSION);
-    }
+    const { resources } = await container.items
+      .query({
+        query: 'SELECT * FROM c WHERE c.id = @id',
+        parameters: [{ name: '@id', value: SESSION_ID }],
+      })
+      .fetchAll();
+    return NextResponse.json(resources[0] ?? DEFAULT_SESSION);
+  } catch (error) {
+    console.error('GET session error:', error);
     return NextResponse.json(DEFAULT_SESSION);
   }
 }
@@ -25,6 +27,7 @@ export async function PUT(req: NextRequest) {
     // Sanitise: only allow known fields, enforce lengths
     const session = {
       id: SESSION_ID,
+      sessionId: SESSION_ID,
       title: String(body.title ?? '').slice(0, 100),
       location: String(body.location ?? '').slice(0, 200),
       datetime: String(body.datetime ?? '').slice(0, 30),

@@ -21,38 +21,151 @@ body {
 }
 
 body {
-  background-color: var(--forest-900);
-  /* Court grid lines layered over the gradient */
-  background-image:
-    linear-gradient(rgba(74, 222, 128, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(74, 222, 128, 0.03) 1px, transparent 1px),
-    linear-gradient(135deg, var(--forest-900) 0%, var(--forest-800) 100%);
-  background-size: 40px 40px, 40px 40px, 100% 100%;
-  background-attachment: fixed;
+  background: #100F0F;
   color: #e2e8f0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* ── Glassmorphism card ── */
+/* ── Aurora background ── */
+.court-bg {
+  background: #100F0F;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.court-bg svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  transform: scale(1.7);
+  transform-origin: center center;
+}
+
+@media (min-width: 768px) {
+  .court-bg svg {
+    transform: none;
+  }
+}
+
+.aurora-blob-1 {
+  position: absolute;
+  width: 150vw;
+  height: 800px;
+  left: -25vw;
+  top: 280px;
+  opacity: 0.5;
+  background: linear-gradient(180deg, #8FA2B0 0%, #1B324D 56%);
+  filter: blur(100px);
+  animation: breathe-gentle 6s ease-in-out infinite;
+  will-change: transform, opacity, filter;
+}
+
+.aurora-blob-2 {
+  position: absolute;
+  width: 150vw;
+  height: 700px;
+  left: -25vw;
+  top: 340px;
+  mix-blend-mode: darken;
+  background: linear-gradient(180deg, #BEB293 0%, black 67%);
+  filter: blur(100px);
+  animation: exhale-drift 7s ease-in-out infinite;
+  will-change: transform, opacity, filter;
+}
+
+.aurora-blob-3 {
+  position: absolute;
+  width: 500px;
+  height: 900px;
+  left: 40%;
+  top: 380px;
+  transform: rotate(-58deg);
+  transform-origin: top left;
+  opacity: 0.6;
+  mix-blend-mode: hard-light;
+  background: linear-gradient(180deg, #8FA2B0 0%, #1B324D 56%);
+  filter: blur(100px);
+  animation: inhale-pulse 5.5s ease-in-out infinite;
+  will-change: transform, opacity, filter;
+}
+
+@keyframes breathe-gentle {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+    opacity: 0.45;
+    filter: blur(95px) hue-rotate(0deg);
+  }
+  50% {
+    transform: translate(-25px, 40px) scale(1.08);
+    opacity: 0.65;
+    filter: blur(110px) hue-rotate(15deg);
+  }
+}
+
+@keyframes exhale-drift {
+  0%, 100% {
+    transform: translate(0px, 0px) rotate(0deg) scale(1);
+    opacity: 0.95;
+    filter: blur(95px) hue-rotate(0deg);
+  }
+  50% {
+    transform: translate(-35px, -20px) rotate(1.5deg) scale(1.05);
+    opacity: 0.85;
+    filter: blur(105px) hue-rotate(-10deg);
+  }
+}
+
+@keyframes inhale-pulse {
+  0%, 100% {
+    transform: rotate(-58deg) translate(0px, 0px) scale(1);
+    opacity: 0.55;
+    filter: blur(95px) hue-rotate(0deg);
+  }
+  50% {
+    transform: rotate(-55deg) translate(30px, -40px) scale(1.12);
+    opacity: 0.75;
+    filter: blur(115px) hue-rotate(20deg);
+  }
+}
+
+/* ── Liquid Glass card ── */
 .glass-card {
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(74, 222, 128, 0.12);
-  border-radius: 12px;
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.10) 0%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 24px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 8px 40px rgba(0, 0, 0, 0.3),
+    0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* ── Buttons ── */
 .btn-primary {
-  background: linear-gradient(135deg, #16a34a, #15803d);
+  background: linear-gradient(160deg, rgba(74, 222, 128, 0.55) 0%, rgba(22, 163, 74, 0.4) 100%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(74, 222, 128, 0.45);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 4px 20px rgba(22, 163, 74, 0.2),
+    0 1px 4px rgba(0, 0, 0, 0.2);
   color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
+  padding: 11px 20px;
   font-weight: 600;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: opacity 0.15s, transform 0.1s;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -63,21 +176,30 @@ body {
   opacity: 0.9;
 }
 
+.btn-primary:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
 .btn-primary:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
 .btn-ghost {
-  background: transparent;
-  border: 1px solid rgba(74, 222, 128, 0.3);
-  color: var(--court-green);
-  border-radius: 8px;
-  padding: 8px 16px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 2px 8px rgba(0, 0, 0, 0.15);
+  color: rgba(255, 255, 255, 0.85);
+  padding: 10px 16px;
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.15s, transform 0.1s;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -85,12 +207,32 @@ body {
 }
 
 .btn-ghost:hover:not(:disabled) {
-  background: rgba(74, 222, 128, 0.08);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%);
+}
+
+.btn-ghost:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .btn-ghost:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
+}
+
+/* ── Liquid Glass nav bar ── */
+.nav-glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(16, 15, 15, 0.75) 100%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  backdrop-filter: blur(40px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10), 0 -4px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Active nav tab pill ── */
+.nav-tab-active {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.06) 100%);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* ── Material Icons alignment ── */
@@ -104,21 +246,27 @@ body {
 input,
 select,
 textarea {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(74, 222, 128, 0.15);
-  border-radius: 8px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
   color: #e2e8f0;
-  padding: 10px 12px;
+  padding: 11px 14px;
   width: 100%;
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   font-size: 0.875rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
 }
 
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: rgba(74, 222, 128, 0.5);
+  border-color: rgba(74, 222, 128, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    0 0 0 3px rgba(74, 222, 128, 0.10);
 }
 
 input::placeholder,
@@ -156,4 +304,49 @@ textarea {
 
 .animate-spin {
   animation: spin 1s linear infinite;
+}
+
+/* ── Icon sizes ── */
+.icon-spin-lg {
+  font-size: 32px;
+}
+
+.icon-pin {
+  font-size: 16px;
+  color: #ef4444;
+  margin-top: 1px;
+}
+
+.icon-pin-lg {
+  font-size: 20px;
+  color: #ef4444;
+}
+
+.icon-sm {
+  font-size: 16px;
+}
+
+.icon-status {
+  font-size: 22px;
+}
+
+/* ── Status banners ── */
+.status-banner-green {
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-banner-orange {
+  background: rgba(251, 146, 60, 0.08);
+  border: 1px solid rgba(251, 146, 60, 0.2);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
