@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, SESSION_ID } from '@/lib/cosmos';
 import { randomBytes } from 'crypto';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 export async function GET() {
   try {
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
       })
       .fetchAll();
     const maxPlayers =
-      sessions[0]?.maxPlayers ?? parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12');
+      sessions[0]?.maxPlayers ?? parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12', 10);
 
     const container = getContainer('players');
 
@@ -87,10 +88,19 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`delete:${ip}`, 10, 60 * 1000)) {
+    return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
+  }
+
   try {
     const { name } = await req.json();
-    if (!name) {
+    const trimmedName = typeof name === 'string' ? name.trim() : '';
+    if (!trimmedName) {
       return NextResponse.json({ error: 'Name required' }, { status: 400 });
+    }
+    if (trimmedName.length > 50) {
+      return NextResponse.json({ error: 'Name too long' }, { status: 400 });
     }
 
     const container = getContainer('players');
@@ -100,7 +110,7 @@ export async function DELETE(req: NextRequest) {
           'SELECT * FROM c WHERE c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name)',
         parameters: [
           { name: '@sessionId', value: SESSION_ID },
-          { name: '@name', value: name },
+          { name: '@name', value: trimmedName },
         ],
       })
       .fetchAll();

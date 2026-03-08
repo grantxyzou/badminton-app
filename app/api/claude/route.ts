@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { isAdminAuthed, unauthorized } from '@/lib/auth';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(req: NextRequest) {
+  if (!isAdminAuthed(req)) return unauthorized();
+
   const ip = getClientIp(req);
   if (!checkRateLimit(`claude:${ip}`, 10, 60 * 1000)) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });

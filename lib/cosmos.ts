@@ -48,7 +48,11 @@ let client: CosmosClient | null = null;
 
 function getClient(): CosmosClient {
   if (!client) {
-    client = new CosmosClient(process.env.COSMOS_CONNECTION_STRING!);
+    const connectionString = process.env.COSMOS_CONNECTION_STRING;
+    if (!connectionString) {
+      throw new Error('COSMOS_CONNECTION_STRING environment variable is not set');
+    }
+    client = new CosmosClient(connectionString);
   }
   return client;
 }

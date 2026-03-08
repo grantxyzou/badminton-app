@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { setAdminCookie, clearAdminCookie, isAdminAuthed, getAdminPin } from '@/lib/auth';
+import { setAdminCookie, clearAdminCookie, isAdminAuthed, getAdminPin, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 // Check if already authenticated
@@ -16,8 +16,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const { pin } = await req.json();
+    if (typeof pin !== 'string' || pin.length === 0 || pin.length > 20) {
+      return NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
+    }
     const adminPin = getAdminPin();
-    if (typeof pin !== 'string' || pin !== adminPin) {
+    if (pin !== adminPin) {
       return NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
     }
     const res = NextResponse.json({ success: true });
@@ -29,7 +32,8 @@ export async function POST(req: NextRequest) {
 }
 
 // Logout — clear admin cookie
-export async function DELETE() {
+export async function DELETE(req: NextRequest) {
+  if (!isAdminAuthed(req)) return unauthorized();
   const res = NextResponse.json({ success: true });
   clearAdminCookie(res);
   return res;

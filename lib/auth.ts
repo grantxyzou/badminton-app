@@ -3,14 +3,16 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const COOKIE_NAME = 'admin_session';
 
-const DEV_PIN = '1234';
-
 function getPin(): string {
-  if (!process.env.ADMIN_PIN && process.env.NODE_ENV !== 'production') {
-    console.warn('[dev] ADMIN_PIN not set — using default PIN: ' + DEV_PIN);
-    return DEV_PIN;
+  const pin = process.env.ADMIN_PIN;
+  if (!pin) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('ADMIN_PIN environment variable is not set');
+    }
+    console.warn('[dev] ADMIN_PIN not set — admin login will fail. Set ADMIN_PIN in .env.local');
+    return '';
   }
-  return process.env.ADMIN_PIN ?? '';
+  return pin;
 }
 
 function expectedValue(): string {
@@ -38,8 +40,15 @@ export function isAdminAuthed(req: NextRequest): boolean {
   const expected = expectedValue();
   if (!cookie) return false;
   try {
-    return timingSafeEqual(Buffer.from(cookie, 'hex'), Buffer.from(expected, 'hex'));
+    const cookieBuf = Buffer.from(cookie, 'hex');
+    const expectedBuf = Buffer.from(expected, 'hex');
+    if (cookieBuf.length !== expectedBuf.length) {
+      console.warn('[auth] Cookie length mismatch — possible tampering');
+      return false;
+    }
+    return timingSafeEqual(cookieBuf, expectedBuf);
   } catch {
+    console.warn('[auth] Cookie comparison failed — invalid format');
     return false;
   }
 }

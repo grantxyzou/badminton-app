@@ -18,6 +18,11 @@ export async function GET() {
   }
 }
 
+function toValidIso(val: unknown): string {
+  const s = String(val ?? '').slice(0, 30);
+  return s && !isNaN(Date.parse(s)) ? s : '';
+}
+
 export async function PUT(req: NextRequest) {
   if (!isAdminAuthed(req)) return unauthorized();
 
@@ -28,13 +33,13 @@ export async function PUT(req: NextRequest) {
     const session = {
       id: SESSION_ID,
       sessionId: SESSION_ID,
-      title: String(body.title ?? '').slice(0, 100),
-      location: String(body.location ?? '').slice(0, 200),
-      datetime: String(body.datetime ?? '').slice(0, 30),
-      deadline: String(body.deadline ?? '').slice(0, 30),
-      cost: String(body.cost ?? '').slice(0, 50),
-      courts: Math.max(1, Math.min(20, parseInt(body.courts) || 2)),
-      maxPlayers: Math.max(1, Math.min(100, parseInt(body.maxPlayers) || 12)),
+      title: String(body.title ?? '').trim().slice(0, 100),
+      location: String(body.location ?? '').trim().slice(0, 200),
+      datetime: toValidIso(body.datetime),
+      deadline: toValidIso(body.deadline),
+      cost: String(body.cost ?? '').trim().slice(0, 50),
+      courts: Math.max(1, Math.min(20, parseInt(body.courts, 10) || 2)),
+      maxPlayers: Math.max(1, Math.min(100, parseInt(body.maxPlayers, 10) || 12)),
     };
 
     const container = getContainer('sessions');

@@ -22,5 +22,11 @@ export function checkRateLimit(key: string, maxRequests: number, windowMs: numbe
 
 export function getClientIp(req: Request): string {
   const forwarded = (req.headers as Headers).get('x-forwarded-for');
-  return forwarded?.split(',')[0].trim() ?? 'unknown';
+  if (forwarded) {
+    // Use the last IP — added by the trusted edge proxy, not spoofable by clients
+    const ips = forwarded.split(',').map((s) => s.trim()).filter(Boolean);
+    if (ips.length > 0) return ips[ips.length - 1];
+  }
+  // Fall back to a single shared bucket so unknown IPs are still rate-limited
+  return 'unknown';
 }
