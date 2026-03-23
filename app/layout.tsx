@@ -43,9 +43,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <line x1="195" y1="172" x2="195" y2="338" />
               <line x1="195" y1="506" x2="195" y2="672" />
             </g>
-            {/* Net — dashed */}
+            {/* Net — dashed, bounded by outer court lines */}
             <line
-              x1="0" y1="422" x2="390" y2="422"
+              x1="68" y1="422" x2="322" y2="422"
               stroke="rgba(255,255,255,0.35)"
               strokeWidth="1.5"
               strokeDasharray="7 5"
