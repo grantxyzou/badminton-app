@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, SESSION_ID } from '@/lib/cosmos';
 import { randomBytes } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { isAdminAuthed, unauthorized } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -21,6 +22,11 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`signup:${ip}`, 10, 60 * 1000)) {
+    return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
+  }
+
   try {
     const { name } = await req.json();
 
@@ -88,6 +94,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  if (!isAdminAuthed(req)) return unauthorized();
+
   const ip = getClientIp(req);
   if (!checkRateLimit(`delete:${ip}`, 10, 60 * 1000)) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });

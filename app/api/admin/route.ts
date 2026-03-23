@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { setAdminCookie, clearAdminCookie, isAdminAuthed, getAdminPin, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
@@ -20,7 +21,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
     }
     const adminPin = getAdminPin();
-    if (pin !== adminPin) {
+    const pinMatch =
+      pin.length === adminPin.length &&
+      timingSafeEqual(Buffer.from(pin), Buffer.from(adminPin));
+    if (!pinMatch) {
       return NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
     }
     const res = NextResponse.json({ success: true });
