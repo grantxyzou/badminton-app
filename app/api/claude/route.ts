@@ -9,7 +9,6 @@ export async function POST(req: NextRequest) {
   if (!isAdminAuthed(req)) return unauthorized();
 
   const ip = getClientIp(req);
-  if (!ip) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (!checkRateLimit(`claude:${ip}`, 10, 60 * 1000)) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
   }

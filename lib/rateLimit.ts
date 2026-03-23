@@ -20,15 +20,17 @@ export function checkRateLimit(key: string, maxRequests: number, windowMs: numbe
   return true;
 }
 
-export function getClientIp(req: Request): string | null {
-  const forwarded = (req.headers as Headers).get('x-forwarded-for');
+export function getClientIp(req: Request): string {
+  const headers = req.headers as Headers;
+  const forwarded = headers.get('x-forwarded-for');
   if (forwarded) {
     // Use the last IP — added by the trusted edge proxy, not spoofable by clients
     const ips = forwarded.split(',').map((s) => s.trim()).filter(Boolean);
     if (ips.length > 0) return ips[ips.length - 1];
   }
-  // In production (behind Azure Front Door) every request has x-forwarded-for.
-  // A missing header in production indicates a suspicious direct request.
-  if (process.env.NODE_ENV === 'production') return null;
+  // Azure App Service sets X-Client-IP when x-forwarded-for is absent
+  const clientIp = headers.get('x-client-ip');
+  if (clientIp) return clientIp;
+  // Fall back to shared bucket — still rate-limited, just not per-IP
   return 'unknown';
 }

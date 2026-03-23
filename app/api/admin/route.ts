@@ -11,7 +11,6 @@ export async function GET(req: NextRequest) {
 // Verify PIN and set admin cookie
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
-  if (!ip) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   if (!checkRateLimit(`admin:${ip}`, 5, 15 * 60 * 1000)) {
     return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
   }
