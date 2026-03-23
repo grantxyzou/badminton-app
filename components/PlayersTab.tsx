@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Player } from '@/lib/types';
 
 const STORAGE_KEY = 'badminton_username';
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 
 export default function PlayersTab() {
@@ -14,7 +15,7 @@ export default function PlayersTab() {
   const loadPlayers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/players');
+      const res = await fetch(`${BASE}/api/players`);
       if (res.ok) setPlayers(await res.json());
     } catch {
       // silent
@@ -30,7 +31,7 @@ export default function PlayersTab() {
 
   async function handleCancel() {
     if (!currentUser) return;
-    const res = await fetch('/api/players', {
+    const res = await fetch(`${BASE}/api/players`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: currentUser }),

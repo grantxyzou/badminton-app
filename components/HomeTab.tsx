@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Session, Announcement, Player } from '@/lib/types';
 
 const STORAGE_KEY = 'badminton_username';
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 function fmtDateTime(iso: string) {
   if (!iso) return '—';
@@ -65,9 +66,9 @@ export default function HomeTab() {
     setLoading(true);
     try {
       const [sRes, pRes, aRes] = await Promise.all([
-        fetch('/api/session'),
-        fetch('/api/players'),
-        fetch('/api/announcements'),
+        fetch(`${BASE}/api/session`),
+        fetch(`${BASE}/api/players`),
+        fetch(`${BASE}/api/announcements`),
       ]);
       if (sRes.ok) setSession(await sRes.json());
       if (pRes.ok) setPlayers(await pRes.json());
@@ -98,7 +99,7 @@ export default function HomeTab() {
     setIsSubmitting(true);
     setError('');
     try {
-      const res = await fetch('/api/players', {
+      const res = await fetch(`${BASE}/api/players`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim() }),
@@ -123,7 +124,7 @@ export default function HomeTab() {
     setIsSubmitting(true);
     setError('');
     try {
-      const res = await fetch('/api/players', {
+      const res = await fetch(`${BASE}/api/players`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: currentUser }),

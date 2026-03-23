@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 import type { Session, Announcement } from '@/lib/types';
 
 /* ─────────────────────────── PIN Gate ─────────────────────────── */
@@ -12,7 +14,7 @@ export default function AdminTab() {
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
-    fetch('/api/admin')
+    fetch(`${BASE}/api/admin`)
       .then((r) => r.json())
       .then((d) => setIsAuthed(d.authed === true))
       .catch(() => setIsAuthed(false));
@@ -23,7 +25,7 @@ export default function AdminTab() {
     setChecking(true);
     setPinError('');
     try {
-      const res = await fetch('/api/admin', {
+      const res = await fetch(`${BASE}/api/admin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pin }),
@@ -45,7 +47,7 @@ export default function AdminTab() {
   }
 
   async function handleLogout() {
-    await fetch('/api/admin', { method: 'DELETE' });
+    await fetch(`${BASE}/api/admin`, { method: 'DELETE' });
     setIsAuthed(false);
     setPin('');
   }
@@ -167,7 +169,7 @@ function SessionEditor() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    fetch('/api/session')
+    fetch(`${BASE}/api/session`)
       .then((r) => r.json())
       .then((data: Session) => {
         setForm({
@@ -188,7 +190,7 @@ function SessionEditor() {
     setSaving(true);
     setSaved(false);
     try {
-      const res = await fetch('/api/session', {
+      const res = await fetch(`${BASE}/api/session`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -262,7 +264,7 @@ function AnnouncementsPanel() {
   const [posting, setPosting] = useState(false);
 
   const loadAnnouncements = useCallback(async () => {
-    const res = await fetch('/api/announcements');
+    const res = await fetch(`${BASE}/api/announcements`);
     if (res.ok) setAnnouncements(await res.json());
   }, []);
 
@@ -275,7 +277,7 @@ function AnnouncementsPanel() {
     setPolishing(true);
     setPolished('');
     try {
-      const res = await fetch('/api/claude', {
+      const res = await fetch(`${BASE}/api/claude`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -293,7 +295,7 @@ function AnnouncementsPanel() {
     if (!text.trim()) return;
     setPosting(true);
     try {
-      const res = await fetch('/api/announcements', {
+      const res = await fetch(`${BASE}/api/announcements`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
