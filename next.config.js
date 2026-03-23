@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   basePath: '/badminton',
+  output: 'standalone',
   async headers() {
     return [
       {
