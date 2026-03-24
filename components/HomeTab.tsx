@@ -1,18 +1,28 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Session, Announcement, Player } from '@/lib/types';
+import type { Session, Player } from '@/lib/types';
 
 const STORAGE_KEY = 'badminton_username';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
-function fmtDateTime(iso: string) {
+function fmtDate(iso: string) {
   if (!iso) return '—';
   try {
-    return new Date(iso).toLocaleString(undefined, {
-      weekday: 'short',
-      month: 'short',
+    return new Date(iso).toLocaleDateString(undefined, {
+      weekday: 'long',
+      month: 'long',
       day: 'numeric',
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function fmtTime(iso: string) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleTimeString(undefined, {
       hour: '2-digit',
       minute: '2-digit',
     });
@@ -34,26 +44,10 @@ function fmtDeadline(iso: string) {
   }
 }
 
-const ICON_COLORS: Record<string, string> = {
-  location_on: '#ef4444',
-  event: '#60a5fa',
-  sports_tennis: '#a78bfa',
-  payments: '#4ade80',
-};
-
-function InfoRow({ icon, text }: { icon: string; text: string }) {
-  return (
-    <div className="flex items-start gap-2.5 text-sm">
-      <span className="material-icons icon-pin shrink-0" style={{ color: ICON_COLORS[icon] ?? 'inherit' }}>{icon}</span>
-      <span className="text-gray-300 leading-snug">{text}</span>
-    </div>
-  );
-}
 
 export default function HomeTab() {
   const [session, setSession] = useState<Session | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -65,14 +59,12 @@ export default function HomeTab() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [sRes, pRes, aRes] = await Promise.all([
+      const [sRes, pRes] = await Promise.all([
         fetch(`${BASE}/api/session`),
         fetch(`${BASE}/api/players`),
-        fetch(`${BASE}/api/announcements`),
       ]);
       if (sRes.ok) setSession(await sRes.json());
       if (pRes.ok) setPlayers(await pRes.json());
-      if (aRes.ok) setAnnouncements(await aRes.json());
     } catch (e) {
       console.error('Load error:', e);
     } finally {
@@ -150,67 +142,58 @@ export default function HomeTab() {
     );
   }
 
+  const mapsUrl = session?.locationAddress
+    ? `https://maps.google.com/?q=${encodeURIComponent(session.locationAddress)}`
+    : null;
+
   return (
     <div className="space-y-5">
-      {/* Page title */}
-      <h1 className="text-2xl font-bold text-white">Announcement</h1>
+      {/* BPM Badminton header card */}
+      <div className="glass-card p-5">
+        <p className="text-xs font-bold tracking-widest text-green-400 mb-1">WELCOME TO</p>
+        <h1 className="text-2xl font-bold text-white">BPM Badminton</h1>
+      </div>
 
-      {/* Hero card: date/time + courts */}
+      {/* Location card */}
+      <div className="glass-card p-5 space-y-1.5">
+        <p className="text-xs font-bold tracking-widest text-green-400 mb-2">LOCATION</p>
+        {session?.locationName ? (
+          <p className="text-base font-semibold text-white">{session.locationName}</p>
+        ) : null}
+        {session?.locationAddress ? (
+          mapsUrl ? (
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-400 underline underline-offset-2 break-words"
+            >
+              {session.locationAddress}
+            </a>
+          ) : (
+            <p className="text-sm text-gray-300">{session.locationAddress}</p>
+          )
+        ) : (
+          <p className="text-sm text-gray-500">—</p>
+        )}
+      </div>
+
+      {/* Date & Time card */}
       <div className="glass-card p-5 space-y-3">
+        <p className="text-xs font-bold tracking-widest text-green-400">DATE & TIME</p>
         <div className="flex items-center gap-3">
-          <span className="material-icons icon-pin-lg shrink-0" style={{ color: '#60a5fa' }}>event</span>
-          <span className="text-xl font-bold text-white leading-tight">
-            {session ? fmtDateTime(session.datetime) : '—'}
+          <span className="material-icons icon-pin-lg shrink-0" style={{ color: '#60a5fa' }}>calendar_today</span>
+          <span className="text-base font-semibold text-white">
+            {session ? fmtDate(session.datetime) : '—'}
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="material-icons icon-pin-lg shrink-0" style={{ color: '#a78bfa' }}>sports_tennis</span>
-          <span className="text-xl font-bold text-white">
-            {session?.courts ?? '—'} Court{(session?.courts ?? 0) !== 1 ? 's' : ''}
+          <span className="material-icons icon-pin-lg shrink-0" style={{ color: '#a78bfa' }}>schedule</span>
+          <span className="text-base font-semibold text-white">
+            {session ? fmtTime(session.datetime) : '—'}
           </span>
         </div>
       </div>
-
-      {/* Two-column: Event info | Cost info */}
-      <div className="grid grid-cols-2 gap-3 items-start">
-        <div>
-          <p className="text-sm font-semibold text-white mb-2">Event info</p>
-          <div className="glass-card p-4 space-y-2.5">
-            <InfoRow icon="location_on" text={session?.location ?? '—'} />
-            <InfoRow icon="event" text={session ? fmtDateTime(session.datetime) : '—'} />
-            <InfoRow icon="sports_tennis" text={`${session?.courts ?? '—'} Court${(session?.courts ?? 0) !== 1 ? 's' : ''}`} />
-          </div>
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-white mb-2">Cost info</p>
-          <div className="glass-card p-4">
-            <InfoRow icon="payments" text={session?.cost ?? 'TBD'} />
-          </div>
-        </div>
-      </div>
-
-      {/* Announcements */}
-      {announcements.length > 0 && (
-        <div className="glass-card p-5">
-          <h2 className="text-xs font-bold tracking-widest text-green-400 mb-3 flex items-center gap-1.5">
-            <span className="material-icons icon-sm">campaign</span>
-            ANNOUNCEMENTS
-          </h2>
-          <div className="space-y-3">
-            {announcements.map((a) => (
-              <div key={a.id} className="border-l-2 border-green-400/30 pl-3">
-                <p className="text-sm text-gray-200 break-words">{a.text}</p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {new Date(a.time).toLocaleDateString(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                  })}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Sign-Up Card */}
       <div className="glass-card p-5">
@@ -277,14 +260,14 @@ export default function HomeTab() {
                 maxLength={50}
               />
               {error && <p className="text-red-400 text-xs">{error}</p>}
+              <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
+                {isSubmitting ? 'Signing up…' : 'Sign Up'}
+              </button>
               {session?.deadline && (
                 <p className="text-center text-xs text-gray-400">
                   Sign up by {fmtDeadline(session.deadline)}
                 </p>
               )}
-              <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
-                {isSubmitting ? 'Signing up…' : 'Sign Up'}
-              </button>
             </form>
           </div>
         )}

@@ -34,10 +34,10 @@ export async function PUT(req: NextRequest) {
       id: SESSION_ID,
       sessionId: SESSION_ID,
       title: String(body.title ?? '').trim().slice(0, 100),
-      location: String(body.location ?? '').trim().slice(0, 200),
+      locationName: String(body.locationName ?? '').trim().slice(0, 200),
+      locationAddress: String(body.locationAddress ?? '').trim().slice(0, 300),
       datetime: toValidIso(body.datetime),
       deadline: toValidIso(body.deadline),
-      cost: String(body.cost ?? '').trim().slice(0, 50),
       courts: Math.max(1, Math.min(20, parseInt(body.courts, 10) || 2)),
       maxPlayers: Math.max(1, Math.min(100, parseInt(body.maxPlayers, 10) || 12)),
     };

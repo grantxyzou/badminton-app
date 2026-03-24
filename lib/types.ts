@@ -1,10 +1,10 @@
 export interface Session {
   id: string;
   title: string;
-  location: string;
+  locationName?: string;
+  locationAddress?: string;
   datetime: string;
   deadline: string;
-  cost: string;
   courts: number;
   maxPlayers: number;
 }

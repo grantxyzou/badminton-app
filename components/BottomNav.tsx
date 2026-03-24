@@ -15,8 +15,9 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 
 export default function BottomNav({ activeTab, onTabChange }: Props) {
   return (
-    <nav className="nav-glass fixed bottom-0 left-0 right-0 z-50">
-      <div className="max-w-lg mx-auto flex px-2 py-1.5">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 pb-5">
+      <div className="max-w-lg mx-auto px-4">
+      <div className="nav-glass flex px-2 py-1.5">
         {TABS.map((tab) => {
           const active = activeTab === tab.id;
           return (
@@ -33,6 +34,7 @@ export default function BottomNav({ activeTab, onTabChange }: Props) {
             </button>
           );
         })}
+      </div>
       </div>
     </nav>
   );

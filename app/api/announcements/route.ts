@@ -20,6 +20,38 @@ export async function GET() {
   }
 }
 
+export async function DELETE(req: NextRequest) {
+  if (!isAdminAuthed(req)) return unauthorized();
+
+  try {
+    const { id } = await req.json();
+    if (!id || typeof id !== 'string') {
+      return NextResponse.json({ error: 'ID required' }, { status: 400 });
+    }
+
+    const container = getContainer('announcements');
+    const { resources } = await container.items
+      .query({
+        query: 'SELECT * FROM c WHERE c.id = @id AND c.sessionId = @sessionId',
+        parameters: [
+          { name: '@id', value: id },
+          { name: '@sessionId', value: SESSION_ID },
+        ],
+      })
+      .fetchAll();
+
+    if (resources.length === 0) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    await container.item(id, SESSION_ID).delete();
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('DELETE announcement error:', error);
+    return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   if (!isAdminAuthed(req)) return unauthorized();
 

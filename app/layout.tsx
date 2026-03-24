@@ -27,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             preserveAspectRatio="xMidYMid slice"
           >
             {/* Court lines */}
-            <g stroke="rgba(255,255,255,0.22)" strokeWidth="1.2" fill="none">
+            <g stroke="rgba(255,255,255,0.18)" strokeWidth="0.5" fill="none">
               {/* Outer boundary */}
               <rect x="68" y="140" width="254" height="564" />
               {/* Singles sidelines */}
@@ -46,8 +46,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {/* Net — dashed, bounded by outer court lines */}
             <line
               x1="68" y1="422" x2="322" y2="422"
-              stroke="rgba(255,255,255,0.35)"
-              strokeWidth="1.5"
+              stroke="rgba(255,255,255,0.22)"
+              strokeWidth="1"
               strokeDasharray="7 5"
             />
           </svg>

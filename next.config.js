@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  basePath: '/badminton',
+  basePath: '/bpm',
   output: 'standalone',
   async headers() {
     return [
@@ -19,8 +19,9 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              // Next.js dev mode requires unsafe-inline + unsafe-eval (HMR, __NEXT_DATA__)
-              "script-src 'self' 'unsafe-inline'",
+              process.env.NODE_ENV === 'development'
+                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+                : "script-src 'self' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com",
               "img-src 'self' data:",
