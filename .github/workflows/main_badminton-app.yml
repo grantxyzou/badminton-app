@@ -7,7 +7,6 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   build_and_deploy:
@@ -17,10 +16,10 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '20'
           cache: 'npm'
@@ -41,14 +40,14 @@ jobs:
           zip -r ../../standalone-deploy.zip .
 
       - name: Login to Azure
-        uses: azure/login@v2
+        uses: azure/login@1384c340ab2dda50fed2bee3041d1d87018aa5e8 # v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_E2B5E408FEE24616B834E1FC172037C8 }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_6F585B86C87D45EEBF9008D7A05C2A77 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_42B7F596180540CB94EFE1DF90C7489B }}
 
       - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
+        uses: azure/webapps-deploy@2e64e04aaaeeec4396edcb982544dbd30f8e9ddf # v3
         with:
           app-name: 'badminton-app'
           slot-name: 'Production'

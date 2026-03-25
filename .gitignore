@@ -20,3 +20,6 @@ tsconfig.tsbuildinfo
 # misc
 .DS_Store
 *.pem
+
+# deployment artifacts
+*.zip
