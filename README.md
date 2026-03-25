@@ -111,18 +111,23 @@ When `COSMOS_CONNECTION_STRING` is not set, the app uses an in-memory mock store
 
 See `AZURE.md` for the full architecture and environment setup.
 
+Deployment is automatic via GitHub Actions — every push to `main` builds and deploys.
+
+```
+git push  →  GitHub Actions builds standalone →  deploys to Azure App Service
+```
+
+The workflow lives at `.github/workflows/main_badminton-app.yml`. It uses OIDC (federated credentials) — no long-lived secrets. All action SHAs are pinned for supply chain safety.
+
+### Manual deploy (fallback only)
+
 ```bash
-# Always clean build first — stale .next cache causes silent wrong deployments
 rm -rf .next
 npm run build
-
-# Copy static assets, then zip FROM INSIDE standalone (server.js must be at zip root)
 cp -r .next/static .next/standalone/.next/static
 cd .next/standalone
 zip -r ../../standalone-deploy.zip .
 cd ../..
-
-# Deploy
 az webapp deploy \
   --resource-group grantzou \
   --name badminton-app \

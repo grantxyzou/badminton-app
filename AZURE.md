@@ -47,7 +47,20 @@ Node.js server under `.next/standalone/`. The deployment zip bundles:
 - `.next/standalone/` — server and all required `node_modules`
 - `.next/static/` — hashed client assets
 
-### Deployment steps
+### Deployment — GitHub Actions (primary)
+
+Every push to `main` triggers the workflow at `.github/workflows/main_badminton-app.yml`:
+
+1. `npm ci` — install from lockfile
+2. `npm run build` — with `NEXT_PUBLIC_BASE_PATH=/bpm`
+3. `cp -r .next/static .next/standalone/.next/static` — merge static assets
+4. `cd .next/standalone && zip -r ../../standalone-deploy.zip .` — package with `server.js` at zip root
+5. OIDC login to Azure (short-lived token, no stored secret)
+6. `azure/webapps-deploy@v3` — uploads zip to App Service
+
+All GitHub Actions SHAs are pinned (not floating tags) for supply chain safety.
+
+### Manual deploy (fallback only)
 
 > **Critical**: always `cd` into `.next/standalone` before zipping so that
 > `server.js` sits at the zip root. If you zip from the project root the path
@@ -55,19 +68,12 @@ Node.js server under `.next/standalone/`. The deployment zip bundles:
 > command won't find it — the old deployment keeps running silently.
 
 ```bash
-# 1. Clean build (always delete .next first to avoid stale cache)
 rm -rf .next
 npm run build
-
-# 2. Copy hashed static assets into standalone output
 cp -r .next/static .next/standalone/.next/static
-
-# 3. Package — cd INTO standalone so server.js is at the zip root
 cd .next/standalone
 zip -r ../../standalone-deploy.zip .
 cd ../..
-
-# 4. Deploy
 az webapp deploy \
   --resource-group grantzou \
   --name badminton-app \
@@ -75,7 +81,7 @@ az webapp deploy \
   --type zip
 ```
 
-Deployment takes ~30 seconds. Watch for `Status: Site started successfully.`
+Verify zip structure before deploying: `zipinfo standalone-deploy.zip | grep "server.js"` — `server.js` must appear at the root, not under a subdirectory.
 
 ### Required Application Settings (env vars)
 
