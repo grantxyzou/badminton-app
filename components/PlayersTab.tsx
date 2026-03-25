@@ -99,17 +99,13 @@ export default function PlayersTab() {
       <div className="glass-card overflow-hidden">
         {/* Game date header */}
         <div
-          className="px-4 py-2 text-xs font-bold tracking-widest"
-          style={{
-            background: 'rgba(74, 222, 128, 0.06)',
-            color: 'rgba(74, 222, 128, 0.65)',
-            borderBottom: '1px solid rgba(74, 222, 128, 0.1)',
-          }}
+          className="px-4 pt-3 pb-2 text-xs font-bold tracking-widest"
+          style={{ color: 'rgba(74, 222, 128, 0.55)' }}
         >
           {gameDate || 'UPCOMING SESSION'}
         </div>
 
-        <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+        <div className="px-2 pb-2 space-y-0.5">
           {players.map((player, i) => {
             const isMe =
               !!currentUser &&
@@ -118,7 +114,7 @@ export default function PlayersTab() {
             return (
               <div
                 key={player.id}
-                className="flex items-center px-4 py-3 gap-3"
+                className="flex items-center px-3 py-2.5 gap-3 rounded-xl"
                 style={isMe ? { background: 'rgba(74, 222, 128, 0.07)' } : undefined}
               >
                 <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">
