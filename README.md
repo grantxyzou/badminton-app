@@ -1,160 +1,168 @@
-# Badminton Sign-Up App
+# Badminton Session Manager
 
-> Next.js 14 · Tailwind CSS · Azure Cosmos DB · Anthropic Claude AI · Azure Static Web Apps
+A Next.js 14 app for managing casual badminton sessions — sign-ups, team generation via Claude AI, and session announcements.
+
+Deployed to **Azure App Service** (Canada Central, Free tier).
+Live URL: `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm`
+
+---
+
+## Features
+
+| Tab | Description |
+|-----|-------------|
+| **Home** | Session info (date, location, deadline), sign up or view the sign-up list, announcements |
+| **Players** | Full sign-up list with the game date as the card header |
+| **Teams** | Generate balanced doubles teams using Claude AI (admin only) |
+| **Admin** | PIN-gated panel — edit session details, manage players, post AI-polished announcements |
+
+---
+
+## Tech Stack
+
+- **Next.js 14** (App Router), TypeScript, Tailwind CSS
+- **Azure Cosmos DB** (NoSQL) — database: `badminton`, 3 containers at 400 RU/s shared throughput
+- **Anthropic Claude API** (`claude-sonnet-4-20250514`) — team generation and announcement polishing
+- **Azure App Service** — Canada Central, Free tier, `output: standalone`
+
+---
+
+## Project Structure
 
 ```
-badminton-app/
-├── app/
-│   ├── api/
-│   │   ├── admin/route.ts          POST  – PIN verification
-│   │   ├── announcements/route.ts  GET / POST
-│   │   ├── claude/route.ts         POST  – AI proxy (claude-sonnet-4-20250514)
-│   │   ├── players/route.ts        GET / POST / DELETE
-│   │   └── session/route.ts        GET / PUT
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx                    Tab router
-├── components/
-│   ├── AdminTab.tsx
-│   ├── BottomNav.tsx
-│   ├── HomeTab.tsx
-│   ├── PlayersTab.tsx
-│   └── TeamsTab.tsx
-├── lib/
-│   ├── cosmos.ts                   Cosmos DB client + helpers
-│   └── types.ts                    Shared TypeScript interfaces
-├── .env.local                      Local secrets (never commit)
-├── .env.local.example              Key template
-├── .github/workflows/
-│   └── azure-static-web-apps.yml  CI/CD
-├── staticwebapp.config.json
-└── README.md
+app/
+  api/
+    admin/route.ts          GET (auth check) · POST (PIN verify) · DELETE (logout)
+    announcements/route.ts  GET · POST · DELETE
+    claude/route.ts         POST (AI proxy, admin only, rate-limited)
+    players/route.ts        GET · POST · DELETE (self-cancel with token, or admin cookie)
+    session/route.ts        GET · PUT (admin only)
+  globals.css
+  layout.tsx
+  page.tsx
+components/
+  AdminTab.tsx
+  BottomNav.tsx
+  DatePicker.tsx
+  HomeTab.tsx
+  PlayersTab.tsx
+  TeamsTab.tsx
+lib/
+  auth.ts          HTTP-only cookie auth helpers
+  cosmos.ts        DB connection + SESSION_ID + in-memory mock for local dev
+  rateLimit.ts     In-memory rate limiter (per client IP)
+  types.ts         Shared TypeScript interfaces
 ```
+
+---
+
+## Auth Model
+
+- Admin PIN stored in `ADMIN_PIN` env var (use 8+ chars with letters and numbers)
+- Login: `POST /api/admin` verifies with `timingSafeEqual`, sets HTTP-only cookie (SHA-256 of `badminton-admin:<PIN>`)
+- Cookie: `HttpOnly`, `SameSite=Strict`, `Secure` in production, 8-hour TTL
+- Protected routes check cookie via `isAdminAuthed(req)`
+- Rate limit on login: 5 attempts / 15 min per **client** IP (reads `X-Client-IP` first — the real client IP on Azure, not the proxy IP)
+
+### Self-cancellation auth
+
+Players get a random `deleteToken` on sign-up (returned once, stored in `localStorage`). Cancellation requires the token OR an admin cookie. Prevents anyone who knows a player's name from removing them.
+
+---
+
+## Rate Limits
+
+| Endpoint | Limit |
+|----------|-------|
+| `POST /api/admin` | 5 req / 15 min per IP |
+| `POST /api/claude` | 10 req / min per IP |
+| `POST /api/players` | 10 req / min per IP |
+| `DELETE /api/players` | 10 req / min per IP |
 
 ---
 
 ## Environment Variables
 
-| Variable | Description | Example |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | Anthropic API key | `sk-ant-...` |
-| `COSMOS_CONNECTION_STRING` | Azure Cosmos DB connection string | `AccountEndpoint=...` |
-| `COSMOS_DB_NAME` | Cosmos database name | `badminton` |
-| `ADMIN_PIN` | PIN to access the Admin tab | `1234` |
-| `NEXT_PUBLIC_MAX_PLAYERS` | Max sign-ups per session | `12` |
-
-Copy `.env.local.example` to `.env.local` and fill in the values.
+| Variable | Description |
+|----------|-------------|
+| `ADMIN_PIN` | Admin PIN for protected routes |
+| `ANTHROPIC_API_KEY` | Anthropic API key |
+| `COSMOS_CONNECTION_STRING` | Azure Cosmos DB connection string |
+| `COSMOS_DB_NAME` | Database name (default: `badminton`) |
+| `NEXT_PUBLIC_MAX_PLAYERS` | Max players per session (default: `12`) |
+| `NEXT_PUBLIC_BASE_PATH` | Base path prefix — must match `basePath` in `next.config.js` (currently `/bpm`) |
 
 ---
 
 ## Local Development
 
 ```bash
-# 1. Install dependencies
 npm install
-
-# 2. Add your secrets
-cp .env.local.example .env.local
-# Edit .env.local with your actual values
-
-# 3. Run the dev server
+# Create .env.local with the required env vars above
 npm run dev
-# → http://localhost:3000
+# → http://localhost:3000/bpm
 ```
 
-The app works without a Cosmos DB connection during development — all API routes return safe fallback data (empty arrays / default session info).
+When `COSMOS_CONNECTION_STRING` is not set, the app uses an in-memory mock store so all routes work offline.
 
 ---
 
-## Azure Cosmos DB Setup (Azure Portal GUI)
+## Deployment (Azure App Service)
 
-### 1. Create a Cosmos DB Account
-1. Go to **portal.azure.com** → **Create a resource** → search **Azure Cosmos DB**
-2. Choose **Azure Cosmos DB for NoSQL** → **Create**
-3. Fill in:
-   - **Resource Group**: create new or use existing
-   - **Account Name**: e.g. `badminton-db`
-   - **Region**: choose closest to your users
-4. Leave defaults for Capacity mode (**Serverless** is cheapest for low traffic) → **Review + Create**
+See `AZURE.md` for the full architecture and environment setup.
 
-### 2. Create the Database
-1. Open your Cosmos DB account → **Data Explorer** → **New Database**
-2. **Database id**: `badminton`
-3. Click **OK**
+```bash
+# Always clean build first — stale .next cache causes silent wrong deployments
+rm -rf .next
+npm run build
 
-### 3. Create the Three Containers
+# Copy static assets, then zip FROM INSIDE standalone (server.js must be at zip root)
+cp -r .next/static .next/standalone/.next/static
+cd .next/standalone
+zip -r ../../standalone-deploy.zip .
+cd ../..
 
-Repeat for each container:
-
-| Container id | Partition key |
-|---|---|
-| `sessions` | `/id` |
-| `players` | `/sessionId` |
-| `announcements` | `/sessionId` |
-
-Steps per container:
-1. In Data Explorer → select database `badminton` → **New Container**
-2. Set **Container id** and **Partition key** from the table above
-3. Click **OK**
-
-### 4. Get the Connection String
-1. Cosmos DB account → **Keys** (left sidebar)
-2. Copy **PRIMARY CONNECTION STRING**
-3. Paste it as `COSMOS_CONNECTION_STRING` in `.env.local` and in Azure Static Web Apps settings
+# Deploy
+az webapp deploy \
+  --resource-group grantzou \
+  --name badminton-app \
+  --src-path standalone-deploy.zip \
+  --type zip
+```
 
 ---
 
-## Azure Static Web Apps Setup (Azure Portal GUI)
+## API Routes
 
-### 1. Push Code to GitHub
-Make sure your code is in a GitHub repository with a `main` branch.
-
-### 2. Create the Static Web App
-1. **portal.azure.com** → **Create a resource** → search **Static Web App** → **Create**
-2. Fill in:
-   - **Resource Group**: same as Cosmos DB
-   - **Name**: e.g. `badminton-app`
-   - **Plan type**: Free
-   - **Region**: closest to users
-   - **Deployment source**: GitHub
-3. Click **Sign in with GitHub** → authorise → select your **Organisation**, **Repository**, and **Branch** (`main`)
-4. **Build Details**:
-   - **Build Preset**: Next.js
-   - **App location**: `/`
-   - **Output location**: `.next`
-5. **Review + Create** → **Create**
-
-Azure will add a GitHub Actions workflow file to your repo automatically. You can delete it and use the one already in `.github/workflows/`.
-
-### 3. Add Environment Variables
-1. Open the Static Web App → **Configuration** (left sidebar)
-2. Under **Application settings**, click **+ Add** for each variable:
-
-| Name | Value |
-|---|---|
-| `ANTHROPIC_API_KEY` | your Anthropic key |
-| `COSMOS_CONNECTION_STRING` | your Cosmos connection string |
-| `COSMOS_DB_NAME` | `badminton` |
-| `ADMIN_PIN` | your chosen PIN |
-| `NEXT_PUBLIC_MAX_PLAYERS` | `12` |
-
-3. Click **Save**
-
-### 4. Get the Deploy Token (for GitHub Actions)
-1. Static Web App → **Overview** → **Manage deployment token**
-2. Copy the token
-3. In GitHub → your repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
-   - Name: `AZURE_STATIC_WEB_APPS_API_TOKEN`
-   - Value: paste the token
-4. Push to `main` — the GitHub Action will build and deploy automatically
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| `GET` | `/api/session` | — | Get current session info |
+| `PUT` | `/api/session` | Admin | Update session details |
+| `GET` | `/api/players` | — | List all players (deleteToken stripped) |
+| `POST` | `/api/players` | — | Sign up; returns deleteToken once |
+| `DELETE` | `/api/players` | Token or Admin | Remove a player |
+| `GET` | `/api/admin` | — | Check auth cookie status |
+| `POST` | `/api/admin` | — | Verify PIN, set cookie |
+| `DELETE` | `/api/admin` | Admin | Logout, clear cookie |
+| `GET` | `/api/announcements` | — | Get all announcements (newest first) |
+| `POST` | `/api/announcements` | Admin | Post an announcement |
+| `DELETE` | `/api/announcements` | Admin | Delete an announcement by ID |
+| `POST` | `/api/claude` | Admin | Proxy to Claude AI |
 
 ---
 
-## Features
+## Security Notes
 
-| Tab | What it does |
-|---|---|
-| **Home** | Session info, announcements, sign-up / cancel |
-| **Players** | Numbered list grouped into GAME courts, skill colour labels |
-| **Teams** | AI-generated balanced doubles teams via Claude |
-| **Admin** | PIN-gated session editor + AI-polished announcement composer |
+- All datetimes stored with the admin's local timezone offset so they display correctly for all users
+- `DELETE /api/players` requires either the player's own `deleteToken` or an admin cookie — not just a name
+- Rate limiter reads `X-Client-IP` (Azure's real client header) — limits are per-person, not global
+- Cookie cleared on logout with all security attributes (`HttpOnly`, `Secure`, `SameSite`)
+- `NEXT_PUBLIC_BASE_PATH` is baked into the client bundle at build time — set it in `.env.local` for local dev and in Azure App Settings for production
+
+---
+
+## Known Limitations
+
+- **Race condition on signup**: capacity check and insert are not atomic — concurrent signups can exceed `maxPlayers` by 1-2 spots (needs Cosmos DB optimistic concurrency to fix properly)
+- **Rate limiter is in-memory**: resets on server restart; not shared across multiple instances (would need Redis for multi-instance)
+- **Free tier cold starts**: first request after ~20 min idle takes 10–20 s to wake up

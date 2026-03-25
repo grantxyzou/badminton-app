@@ -30,7 +30,13 @@ export function setAdminCookie(res: NextResponse): void {
 }
 
 export function clearAdminCookie(res: NextResponse): void {
-  res.cookies.set(COOKIE_NAME, '', { maxAge: 0, path: '/' });
+  res.cookies.set(COOKIE_NAME, '', {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 0,
+    path: '/',
+  });
 }
 
 export { getPin as getAdminPin };

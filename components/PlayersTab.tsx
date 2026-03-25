@@ -1,22 +1,41 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Player } from '@/lib/types';
+import type { Player, Session } from '@/lib/types';
 
 const STORAGE_KEY = 'badminton_username';
+const STORAGE_KEY_TOKEN = 'badminton_deletetoken';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
+function fmtDate(iso: string) {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleDateString(undefined, {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    });
+  } catch {
+    return '';
+  }
+}
 
 export default function PlayersTab() {
   const [players, setPlayers] = useState<Player[]>([]);
+  const [session, setSession] = useState<Session | null>(null);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cancelError, setCancelError] = useState('');
 
   const loadPlayers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${BASE}/api/players`);
-      if (res.ok) setPlayers(await res.json());
+      const [pRes, sRes] = await Promise.all([
+        fetch(`${BASE}/api/players`, { cache: 'no-store' }),
+        fetch(`${BASE}/api/session`, { cache: 'no-store' }),
+      ]);
+      if (pRes.ok) setPlayers(await pRes.json());
+      if (sRes.ok) setSession(await sRes.json());
     } catch {
       // silent
     } finally {
@@ -31,15 +50,20 @@ export default function PlayersTab() {
 
   async function handleCancel() {
     if (!currentUser) return;
+    const deleteToken = localStorage.getItem(STORAGE_KEY_TOKEN);
     const res = await fetch(`${BASE}/api/players`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: currentUser }),
+      body: JSON.stringify({ name: currentUser, deleteToken }),
     });
     if (res.ok) {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(STORAGE_KEY_TOKEN);
       setCurrentUser(null);
+      setCancelError('');
       loadPlayers();
+    } else {
+      setCancelError('Failed to cancel. Please try again.');
     }
   }
 
@@ -64,11 +88,7 @@ export default function PlayersTab() {
     );
   }
 
-  // Group players into courts of 4
-  const games: Player[][] = [];
-  for (let i = 0; i < players.length; i += 4) {
-    games.push(players.slice(i, i + 4));
-  }
+  const gameDate = session?.datetime ? fmtDate(session.datetime) : '';
 
   return (
     <div className="space-y-4">
@@ -76,58 +96,60 @@ export default function PlayersTab() {
         {players.length} PLAYER{players.length !== 1 ? 'S' : ''} SIGNED UP
       </p>
 
-      {games.map((game, gi) => (
-        <div key={gi} className="glass-card overflow-hidden">
-          {/* Game header */}
-          <div
-            className="px-4 py-2 text-xs font-bold tracking-widest"
-            style={{
-              background: 'rgba(74, 222, 128, 0.06)',
-              color: 'rgba(74, 222, 128, 0.65)',
-              borderBottom: '1px solid rgba(74, 222, 128, 0.1)',
-            }}
-          >
-            GAME {gi + 1}
-          </div>
+      <div className="glass-card overflow-hidden">
+        {/* Game date header */}
+        <div
+          className="px-4 py-2 text-xs font-bold tracking-widest"
+          style={{
+            background: 'rgba(74, 222, 128, 0.06)',
+            color: 'rgba(74, 222, 128, 0.65)',
+            borderBottom: '1px solid rgba(74, 222, 128, 0.1)',
+          }}
+        >
+          {gameDate || 'UPCOMING SESSION'}
+        </div>
 
-          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-            {game.map((player, pi) => {
-              const num = gi * 4 + pi + 1;
-              const isMe =
-                !!currentUser &&
-                player.name.toLowerCase() === currentUser.toLowerCase();
+        <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          {players.map((player, i) => {
+            const isMe =
+              !!currentUser &&
+              player.name.toLowerCase() === currentUser.toLowerCase();
 
-              return (
-                <div
-                  key={player.id}
-                  className="flex items-center px-4 py-3 gap-3"
-                  style={isMe ? { background: 'rgba(74, 222, 128, 0.07)' } : undefined}
-                >
-                  <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">
-                    {num}
-                  </span>
-                  <span className="flex-1 text-sm text-gray-200 font-medium">
-                    {player.name}
-                    {isMe && (
-                      <span className="ml-1.5 text-xs text-green-400 font-normal">
-                        (you)
-                      </span>
-                    )}
-                  </span>
+            return (
+              <div
+                key={player.id}
+                className="flex items-center px-4 py-3 gap-3"
+                style={isMe ? { background: 'rgba(74, 222, 128, 0.07)' } : undefined}
+              >
+                <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">
+                  {i + 1}
+                </span>
+                <span className="flex-1 text-sm text-gray-200 font-medium">
+                  {player.name}
                   {isMe && (
+                    <span className="ml-1.5 text-xs text-green-400 font-normal">
+                      (you)
+                    </span>
+                  )}
+                </span>
+                {isMe && (
+                  <div className="flex flex-col items-end gap-0.5">
                     <button
                       onClick={handleCancel}
                       className="text-xs text-red-400 hover:text-red-300 transition-colors ml-1"
                     >
                       Cancel
                     </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    {cancelError && (
+                      <span className="text-xs text-red-400">{cancelError}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-      ))}
+      </div>
     </div>
   );
 }

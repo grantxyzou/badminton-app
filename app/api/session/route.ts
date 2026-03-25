@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, SESSION_ID, DEFAULT_SESSION } from '@/lib/cosmos';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const container = getContainer('sessions');

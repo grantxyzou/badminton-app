@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Session, Player } from '@/lib/types';
+import type { Session, Player, Announcement } from '@/lib/types';
 
 const STORAGE_KEY = 'badminton_username';
+const STORAGE_KEY_TOKEN = 'badminton_deletetoken';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 function fmtDate(iso: string) {
@@ -45,9 +46,10 @@ function fmtDeadline(iso: string) {
 }
 
 
-export default function HomeTab() {
+export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 'players' | 'admin') => void }) {
   const [session, setSession] = useState<Session | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,12 +61,17 @@ export default function HomeTab() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [sRes, pRes] = await Promise.all([
-        fetch(`${BASE}/api/session`),
-        fetch(`${BASE}/api/players`),
+      const [sRes, pRes, aRes] = await Promise.all([
+        fetch(`${BASE}/api/session`, { cache: 'no-store' }),
+        fetch(`${BASE}/api/players`, { cache: 'no-store' }),
+        fetch(`${BASE}/api/announcements`, { cache: 'no-store' }),
       ]);
       if (sRes.ok) setSession(await sRes.json());
       if (pRes.ok) setPlayers(await pRes.json());
+      if (aRes.ok) {
+        const list: Announcement[] = await aRes.json();
+        setAnnouncement(list.length > 0 ? list[0] : null);
+      }
     } catch (e) {
       console.error('Load error:', e);
     } finally {
@@ -101,30 +108,8 @@ export default function HomeTab() {
         setError(data.error ?? 'Failed to sign up');
       } else {
         localStorage.setItem(STORAGE_KEY, name.trim());
+        if (data.deleteToken) localStorage.setItem(STORAGE_KEY_TOKEN, data.deleteToken);
         setCurrentUser(name.trim());
-        await loadData();
-      }
-    } catch {
-      setError('Network error. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleCancel() {
-    if (!currentUser) return;
-    setIsSubmitting(true);
-    setError('');
-    try {
-      const res = await fetch(`${BASE}/api/players`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: currentUser }),
-      });
-      if (res.ok) {
-        localStorage.removeItem(STORAGE_KEY);
-        setCurrentUser(null);
-        setName('');
         await loadData();
       }
     } catch {
@@ -195,6 +180,14 @@ export default function HomeTab() {
         </div>
       </div>
 
+      {/* Announcement card */}
+      {announcement && (
+        <div className="glass-card p-5 space-y-2">
+          <p className="text-xs font-bold tracking-widest text-green-400">ANNOUNCEMENT</p>
+          <p className="text-sm text-gray-200 leading-relaxed">{announcement.text}</p>
+        </div>
+      )}
+
       {/* Sign-Up Card */}
       <div className="glass-card p-5">
         {isSignedUp ? (
@@ -215,9 +208,8 @@ export default function HomeTab() {
                 <p className="text-xs text-gray-400 mt-0.5">Signed up as {currentUser}</p>
               </div>
             </div>
-            {error && <p className="text-red-400 text-xs">{error}</p>}
-            <button type="button" onClick={handleCancel} disabled={isSubmitting} className="btn-ghost w-full">
-              {isSubmitting ? 'Cancelling…' : 'Cancel My Spot'}
+            <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
+              View Sign Up List
             </button>
           </div>
         ) : isFull ? (

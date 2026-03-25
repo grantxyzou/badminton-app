@@ -109,8 +109,8 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
   ] as const;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 w-full">
+      <div className="flex items-center justify-between px-1">
         <h2 className="font-semibold text-green-400">Admin</h2>
         <button
           onClick={onLogout}
@@ -123,7 +123,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
 
       {/* Segment control */}
       <div
-        className="flex rounded-lg p-1 gap-1"
+        className="flex w-full rounded-lg p-1 gap-1 overflow-hidden"
         style={{
           background: 'rgba(255,255,255,0.04)',
           border: '1px solid rgba(74, 222, 128, 0.1)',
@@ -133,7 +133,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
           <button
             key={s.id}
             onClick={() => setSection(s.id)}
-            className="flex-1 py-2 text-sm font-medium rounded-md transition-all"
+            className="flex-1 min-w-0 py-2 text-sm font-medium rounded-md transition-all truncate"
             style={
               section === s.id
                 ? { background: 'rgba(74, 222, 128, 0.15)', color: '#4ade80' }
@@ -201,15 +201,23 @@ function SessionEditor() {
       .catch(() => {});
   }, []);
 
+  function withLocalTz(date: string, time: string): string {
+    if (!date || !time) return '';
+    const offset = new Date().getTimezoneOffset();
+    const sign = offset <= 0 ? '+' : '-';
+    const abs = Math.abs(offset);
+    const hh = String(Math.floor(abs / 60)).padStart(2, '0');
+    const mm = String(abs % 60).padStart(2, '0');
+    return `${date}T${time}:00${sign}${hh}:${mm}`;
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setSaved(false);
     try {
-      const datetime = form.date && form.time ? `${form.date}T${form.time}` : '';
-      const deadline = form.deadlineDate && form.deadlineTime
-        ? `${form.deadlineDate}T${form.deadlineTime}`
-        : '';
+      const datetime = withLocalTz(form.date, form.time);
+      const deadline = withLocalTz(form.deadlineDate, form.deadlineTime);
       const res = await fetch(`${BASE}/api/session`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -238,36 +246,54 @@ function SessionEditor() {
   }
 
   return (
-    <form onSubmit={handleSave} className="glass-card p-5 space-y-3">
-      <Label text="Title">
-        <input type="text" value={form.title} onChange={setStr('title')} />
-      </Label>
-      <Label text="Establishment Name">
-        <input type="text" value={form.locationName} onChange={setStr('locationName')} placeholder="e.g. Smash Sports Centre" />
-      </Label>
-      <Label text="Address">
-        <input type="text" value={form.locationAddress} onChange={setStr('locationAddress')} placeholder="e.g. 123 Main St, City" />
-      </Label>
-      <Label text="Date & Time">
-        <div className="grid grid-cols-2 gap-2">
-          <DatePicker value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} placeholder="Date" />
-          <input type="time" value={form.time} onChange={setStr('time')} />
-        </div>
-      </Label>
-      <Label text="Sign-up Deadline">
-        <div className="grid grid-cols-2 gap-2">
-          <DatePicker value={form.deadlineDate} onChange={v => setForm(f => ({ ...f, deadlineDate: v }))} placeholder="Date" />
-          <input type="time" value={form.deadlineTime} onChange={setStr('deadlineTime')} />
-        </div>
-      </Label>
-      <div className="grid grid-cols-2 gap-3">
-        <Label text="Courts">
-          <input type="number" min={1} value={form.courts} onChange={setNum('courts')} />
+    <form onSubmit={handleSave} className="space-y-3">
+      {/* Card 1: Session identity */}
+      <div className="glass-card p-5 space-y-3">
+        <p className="text-xs font-bold tracking-widest text-green-400">SESSION INFO</p>
+        <Label text="Title">
+          <input type="text" value={form.title} onChange={setStr('title')} />
         </Label>
-        <Label text="Max Players">
-          <input type="number" min={1} value={form.maxPlayers} onChange={setNum('maxPlayers')} />
+        <Label text="Establishment Name">
+          <input type="text" value={form.locationName} onChange={setStr('locationName')} placeholder="e.g. Smash Sports Centre" />
+        </Label>
+        <Label text="Address">
+          <input type="text" value={form.locationAddress} onChange={setStr('locationAddress')} placeholder="e.g. 123 Main St, City" />
+        </Label>
+        <div className="grid grid-cols-2 gap-3">
+          <Label text="Courts">
+            <input type="number" min={1} value={form.courts} onChange={setNum('courts')} />
+          </Label>
+          <Label text="Max Players">
+            <input type="number" min={1} value={form.maxPlayers} onChange={setNum('maxPlayers')} />
+          </Label>
+        </div>
+      </div>
+
+      {/* Card 2: Date & Time */}
+      <div className="glass-card p-5 space-y-3">
+        <p className="text-xs font-bold tracking-widest text-green-400">DATE & TIME</p>
+        <Label text="Date & Time">
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <DatePicker value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} placeholder="Date" />
+            </div>
+            <div className="flex-1">
+              <input type="time" value={form.time} onChange={setStr('time')} style={{ height: '42px' }} />
+            </div>
+          </div>
+        </Label>
+        <Label text="Sign-up Deadline">
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <DatePicker value={form.deadlineDate} onChange={v => setForm(f => ({ ...f, deadlineDate: v }))} placeholder="Date" />
+            </div>
+            <div className="flex-1">
+              <input type="time" value={form.deadlineTime} onChange={setStr('deadlineTime')} style={{ height: '42px' }} />
+            </div>
+          </div>
         </Label>
       </div>
+
       <button type="submit" disabled={saving} className="btn-primary w-full">
         {saving ? 'Saving…' : saved ? '✓ Saved!' : 'Save Session'}
       </button>
@@ -335,12 +361,16 @@ function AdminPlayersPanel() {
   async function handleRemove(player: Player) {
     setRemovingId(player.id);
     try {
-      await fetch(`${BASE}/api/players`, {
+      const res = await fetch(`${BASE}/api/players`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: player.name }),
       });
-      loadPlayers();
+      if (res.ok) {
+        loadPlayers();
+      } else {
+        setAddError('Failed to remove player. Please try again.');
+      }
     } finally {
       setRemovingId(null);
     }
@@ -427,6 +457,7 @@ function AnnouncementsPanel() {
     if (!draft.trim()) return;
     setPolishing(true);
     setPolished('');
+    setPostError('');
     try {
       const res = await fetch(`${BASE}/api/claude`, {
         method: 'POST',
@@ -435,8 +466,14 @@ function AnnouncementsPanel() {
           prompt: `Polish this badminton club announcement. Keep it concise, friendly, and clear. Return only the improved text with no explanation:\n\n${draft}`,
         }),
       });
-      const { text } = await res.json();
-      setPolished(text ?? '');
+      const data = await res.json();
+      if (!res.ok) {
+        setPostError(data.error ?? 'AI polish failed. Please try again.');
+      } else {
+        setPolished(data.text ?? '');
+      }
+    } catch {
+      setPostError('Network error. Please try again.');
     } finally {
       setPolishing(false);
     }
@@ -475,7 +512,9 @@ function AnnouncementsPanel() {
           placeholder="Type your announcement…"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          maxLength={500}
         />
+        <p className="text-right text-xs text-gray-500">{draft.length}/500</p>
         <button
           onClick={handlePolish}
           disabled={polishing || !draft.trim()}

@@ -16,7 +16,7 @@ export default function Page() {
     <div className="min-h-screen pb-32">
       <GlassPhysics />
       <div className="max-w-lg mx-auto px-4 pt-6">
-        {activeTab === 'home' && <HomeTab />}
+        {activeTab === 'home' && <HomeTab onTabChange={setActiveTab} />}
         {activeTab === 'players' && <PlayersTab />}
         {activeTab === 'admin' && <AdminTab />}
       </div>
