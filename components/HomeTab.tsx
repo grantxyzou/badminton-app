@@ -2,23 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Session, Player, Announcement } from '@/lib/types';
+import { fmtDate } from '@/lib/formatters';
 
 const STORAGE_KEY = 'badminton_username';
 const STORAGE_KEY_TOKEN = 'badminton_deletetoken';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-
-function fmtDate(iso: string) {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch {
-    return iso;
-  }
-}
 
 function fmtTime(iso: string) {
   if (!iso) return '—';
@@ -85,12 +73,23 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
     loadData();
   }, [loadData]);
 
+  const activePlayers = players.filter(p => !p.waitlisted);
+  const waitlistPlayers = players.filter(p => p.waitlisted);
+
   const isSignedUp = currentUser
-    ? players.some((p) => p.name.toLowerCase() === currentUser.toLowerCase())
+    ? activePlayers.some((p) => p.name.toLowerCase() === currentUser.toLowerCase())
     : false;
 
-  const isFull = players.length >= (session?.maxPlayers ?? maxPlayers);
+  const isWaitlisted = currentUser
+    ? waitlistPlayers.some((p) => p.name.toLowerCase() === currentUser.toLowerCase())
+    : false;
+
+  const isFull = activePlayers.length >= (session?.maxPlayers ?? maxPlayers);
   const spotsTotal = session?.maxPlayers ?? maxPlayers;
+
+  const waitlistPosition = isWaitlisted && currentUser
+    ? waitlistPlayers.findIndex(p => p.name.toLowerCase() === currentUser.toLowerCase()) + 1
+    : 0;
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
@@ -106,6 +105,34 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? 'Failed to sign up');
+        if (res.status === 409) loadData();
+      } else {
+        localStorage.setItem(STORAGE_KEY, name.trim());
+        if (data.deleteToken) localStorage.setItem(STORAGE_KEY_TOKEN, data.deleteToken);
+        setCurrentUser(name.trim());
+        await loadData();
+      }
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleJoinWaitlist(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setIsSubmitting(true);
+    setError('');
+    try {
+      const res = await fetch(`${BASE}/api/players`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), waitlist: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? 'Failed to join waitlist');
       } else {
         localStorage.setItem(STORAGE_KEY, name.trim());
         if (data.deleteToken) localStorage.setItem(STORAGE_KEY_TOKEN, data.deleteToken);
@@ -121,8 +148,8 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-48">
-        <span className="material-icons icon-spin-lg animate-spin text-green-400">refresh</span>
+      <div className="flex items-center justify-center h-48" role="status" aria-label="Loading">
+        <span className="material-icons icon-spin-lg animate-spin text-green-400" aria-hidden="true">refresh</span>
       </div>
     );
   }
@@ -133,47 +160,47 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
 
   return (
     <div className="space-y-5">
-      {/* BPM Badminton header card */}
-      <div className="glass-card p-5">
-        <p className="text-xs font-bold tracking-widest text-green-400 mb-1">WELCOME TO</p>
-        <h1 className="text-2xl font-bold text-white">BPM Badminton</h1>
-      </div>
-
-      {/* Location card */}
-      <div className="glass-card p-5 space-y-1.5">
-        <p className="text-xs font-bold tracking-widest text-green-400 mb-2">LOCATION</p>
-        {session?.locationName ? (
-          <p className="text-base font-semibold text-white">{session.locationName}</p>
-        ) : null}
-        {session?.locationAddress ? (
-          mapsUrl ? (
-            <a
-              href={mapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-blue-400 underline underline-offset-2 break-words"
-            >
-              {session.locationAddress}
-            </a>
+      {/* BPM Badminton header + Location combined card */}
+      <div className="glass-card p-5 space-y-3">
+        <div>
+          <p className="section-label mb-1">WELCOME TO</p>
+          <h1 className="text-2xl font-bold text-white">BPM Badminton</h1>
+        </div>
+        <div className="border-t border-white/10 pt-3 space-y-1.5">
+          <p className="section-label mb-2">LOCATION</p>
+          {session?.locationName ? (
+            <p className="text-base font-semibold text-white">{session.locationName}</p>
+          ) : null}
+          {session?.locationAddress ? (
+            mapsUrl ? (
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-400 underline underline-offset-2 break-words"
+              >
+                {session.locationAddress}
+              </a>
+            ) : (
+              <p className="text-sm text-gray-300">{session.locationAddress}</p>
+            )
           ) : (
-            <p className="text-sm text-gray-300">{session.locationAddress}</p>
-          )
-        ) : (
-          <p className="text-sm text-gray-500">—</p>
-        )}
+            <p className="text-sm text-gray-500">—</p>
+          )}
+        </div>
       </div>
 
       {/* Date & Time card */}
       <div className="glass-card p-5 space-y-3">
-        <p className="text-xs font-bold tracking-widest text-green-400">DATE & TIME</p>
+        <p className="section-label">DATE & TIME</p>
         <div className="flex items-center gap-3">
-          <span className="material-icons icon-pin-lg shrink-0" style={{ color: '#60a5fa' }}>calendar_today</span>
+          <span className="material-icons icon-pin-lg shrink-0 text-blue-400">calendar_today</span>
           <span className="text-base font-semibold text-white">
             {session ? fmtDate(session.datetime) : '—'}
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="material-icons icon-pin-lg shrink-0" style={{ color: '#a78bfa' }}>schedule</span>
+          <span className="material-icons icon-pin-lg shrink-0 text-violet-400">schedule</span>
           <span className="text-base font-semibold text-white">
             {session ? fmtTime(session.datetime) : '—'}
           </span>
@@ -183,7 +210,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
       {/* Announcement card */}
       {announcement && (
         <div className="glass-card p-5 space-y-2">
-          <p className="text-xs font-bold tracking-widest text-green-400">ANNOUNCEMENT</p>
+          <p className="section-label">ANNOUNCEMENT</p>
           <p className="text-sm text-gray-200 leading-relaxed">{announcement.text}</p>
         </div>
       )}
@@ -191,13 +218,14 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
       {/* Sign-Up Card */}
       <div className="glass-card p-5">
         {isSignedUp ? (
+          /* ── State 1: Active sign-up ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="text-xl font-bold text-white">Sign up</p>
               <div className="text-right">
                 <p className="text-xs text-gray-400">Spots left</p>
                 <p className="text-2xl font-bold text-white leading-none mt-0.5">
-                  {players.length}/{spotsTotal}
+                  {activePlayers.length}/{spotsTotal}
                 </p>
               </div>
             </div>
@@ -212,14 +240,38 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
               View Sign Up List
             </button>
           </div>
+        ) : isWaitlisted ? (
+          /* ── State 2: On waitlist ── */
+          <div className="space-y-4">
+            <div className="flex items-start justify-between">
+              <p className="text-xl font-bold text-white">Sign up</p>
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Waitlist</p>
+                <p className="text-2xl font-bold text-amber-400 leading-none mt-0.5">
+                  #{waitlistPosition}
+                </p>
+              </div>
+            </div>
+            <div className="status-banner-orange">
+              <span className="material-icons icon-status text-amber-400">schedule</span>
+              <div>
+                <p className="font-semibold text-amber-400 text-sm">You&apos;re on the waitlist</p>
+                <p className="text-xs text-gray-400 mt-0.5">Position #{waitlistPosition} · Signed up as {currentUser}</p>
+              </div>
+            </div>
+            <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
+              View Sign Up List
+            </button>
+          </div>
         ) : isFull ? (
+          /* ── State 3: Full — join waitlist form ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="text-xl font-bold text-white">Sign up</p>
               <div className="text-right">
                 <p className="text-xs text-gray-400">Spots left</p>
                 <p className="text-2xl font-bold text-orange-400 leading-none mt-0.5">
-                  {players.length}/{spotsTotal}
+                  {activePlayers.length}/{spotsTotal}
                 </p>
               </div>
             </div>
@@ -230,15 +282,32 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
                 <p className="text-xs text-gray-400 mt-0.5">All {spotsTotal} spots are taken.</p>
               </div>
             </div>
+            <form onSubmit={handleJoinWaitlist} className="space-y-3">
+              <input
+                type="text"
+                placeholder="Who is playing?"
+                aria-label="Your name"
+                aria-describedby={error ? 'signup-error' : undefined}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                maxLength={50}
+              />
+              {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
+              <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
+                {isSubmitting ? 'Joining…' : 'Join Waitlist'}
+              </button>
+            </form>
           </div>
         ) : (
+          /* ── State 4: Open — normal sign-up ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="text-xl font-bold text-white">Sign up</p>
               <div className="text-right">
                 <p className="text-xs text-gray-400">Spots left</p>
                 <p className="text-2xl font-bold text-white leading-none mt-0.5">
-                  {players.length}/{spotsTotal}
+                  {activePlayers.length}/{spotsTotal}
                 </p>
               </div>
             </div>
@@ -246,19 +315,22 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
               <input
                 type="text"
                 placeholder="Who is playing?"
+                aria-label="Your name"
+                aria-describedby={error ? 'signup-error' : undefined}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
                 maxLength={50}
               />
-              {error && <p className="text-red-400 text-xs">{error}</p>}
+              {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
               <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
                 {isSubmitting ? 'Signing up…' : 'Sign Up'}
               </button>
               {session?.deadline && (
-                <p className="text-center text-xs text-gray-400">
-                  Sign up by {fmtDeadline(session.deadline)}
-                </p>
+                <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-amber-400">
+                  <span className="material-icons" aria-hidden="true" style={{ fontSize: 13 }}>schedule</span>
+                  <span>Closes {fmtDeadline(session.deadline)}</span>
+                </div>
               )}
             </form>
           </div>

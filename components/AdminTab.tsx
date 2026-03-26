@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 import type { Session, Announcement, Player } from '@/lib/types';
@@ -34,9 +35,8 @@ export default function AdminTab() {
       if (res.ok) {
         setIsAuthed(true);
       } else {
-        const data = await res.json();
-        setPinError(data.error === 'Too many attempts. Try again later.'
-          ? data.error
+        setPinError(res.status === 429
+          ? 'Too many attempts. Try again in 15 minutes.'
           : 'Incorrect PIN. Please try again.');
         setPin('');
       }
@@ -55,8 +55,8 @@ export default function AdminTab() {
 
   if (isAuthed === null) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <span className="material-icons animate-spin text-green-400" style={{ fontSize: 32 }}>refresh</span>
+      <div className="flex items-center justify-center min-h-[60vh]" role="status" aria-label="Loading">
+        <span className="material-icons animate-spin text-green-400" aria-hidden="true" style={{ fontSize: 32 }}>refresh</span>
       </div>
     );
   }
@@ -74,13 +74,15 @@ export default function AdminTab() {
             <input
               type="password"
               placeholder="PIN"
+              aria-label="Admin PIN"
+              aria-describedby={pinError ? 'pin-error' : undefined}
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               maxLength={10}
               inputMode="numeric"
               autoFocus
             />
-            {pinError && <p className="text-xs text-red-400">{pinError}</p>}
+            {pinError && <p id="pin-error" role="alert" className="text-xs text-red-400">{pinError}</p>}
             <button
               type="submit"
               disabled={checking || !pin}
@@ -249,10 +251,7 @@ function SessionEditor() {
     <form onSubmit={handleSave} className="space-y-3">
       {/* Card 1: Session identity */}
       <div className="glass-card p-5 space-y-3">
-        <p className="text-xs font-bold tracking-widest text-green-400">SESSION INFO</p>
-        <Label text="Title">
-          <input type="text" value={form.title} onChange={setStr('title')} />
-        </Label>
+        <p className="section-label">SESSION INFO</p>
         <Label text="Establishment Name">
           <input type="text" value={form.locationName} onChange={setStr('locationName')} placeholder="e.g. Smash Sports Centre" />
         </Label>
@@ -271,7 +270,7 @@ function SessionEditor() {
 
       {/* Card 2: Date & Time */}
       <div className="glass-card p-5 space-y-3">
-        <p className="text-xs font-bold tracking-widest text-green-400">DATE & TIME</p>
+        <p className="section-label">DATE & TIME</p>
         <Label text="Date & Time">
           <div className="flex gap-2">
             <div className="flex-1">
@@ -313,19 +312,54 @@ function Label({ text, children }: { text: string; children: React.ReactNode }) 
 
 /* ─────────────────────────── Admin Players Panel ─────────────────────────── */
 
+function fmtSessionLabel(datetime: string | undefined): string {
+  if (!datetime) return '';
+  const d = new Date(datetime);
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const sessionStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diffDays = Math.round((sessionStart.getTime() - todayStart.getTime()) / 86_400_000);
+  if (diffDays === 0) return 'TODAY';
+  if (diffDays > 0 && diffDays <= 7)
+    return d.toLocaleDateString(undefined, { weekday: 'long' }).toUpperCase();
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }).toUpperCase();
+}
+
 function AdminPlayersPanel() {
   const [players, setPlayers] = useState<Player[]>([]);
+  const [waitlistPlayers, setWaitlistPlayers] = useState<Player[]>([]);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState('');
+  const [removedPlayers, setRemovedPlayers] = useState<Player[]>([]);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null);
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [restoreError, setRestoreError] = useState('');
+  const [confirmingClear, setConfirmingClear] = useState(false);
+  const [clearMode, setClearMode] = useState<'soft' | 'hard'>('soft');
+  const [clearError, setClearError] = useState('');
+  const [cancelledCollapsed, setCancelledCollapsed] = useState(false);
+  const [promotingId, setPromotingId] = useState<string | null>(null);
+  const [promoteError, setPromoteError] = useState('');
 
   const loadPlayers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${BASE}/api/players`);
-      if (res.ok) setPlayers(await res.json());
+      const [pRes, sRes] = await Promise.all([
+        fetch(`${BASE}/api/players?all=true`),
+        fetch(`${BASE}/api/session`),
+      ]);
+      if (pRes.ok) {
+        const all: Player[] = await pRes.json();
+        setPlayers(all.filter(p => !p.removed && !p.waitlisted));
+        setWaitlistPlayers(all.filter(p => !p.removed && !!p.waitlisted));
+        setRemovedPlayers(all.filter(p => p.removed));
+      }
+      if (sRes.ok) setSession(await sRes.json());
     } finally {
       setLoading(false);
     }
@@ -358,6 +392,24 @@ function AdminPlayersPanel() {
     }
   }
 
+  async function handleTogglePaid(player: Player) {
+    setTogglingId(player.id);
+    try {
+      const res = await fetch(`${BASE}/api/players`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: player.id, paid: !player.paid }),
+      });
+      if (res.ok) {
+        setPlayers(prev => prev.map(p => p.id === player.id ? { ...p, paid: !player.paid } : p));
+        setSavedId(player.id);
+        setTimeout(() => setSavedId(null), 1200);
+      }
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
   async function handleRemove(player: Player) {
     setRemovingId(player.id);
     try {
@@ -367,7 +419,8 @@ function AdminPlayersPanel() {
         body: JSON.stringify({ name: player.name }),
       });
       if (res.ok) {
-        loadPlayers();
+        setPlayers(prev => prev.filter(p => p.id !== player.id));
+        setRemovedPlayers(prev => [...prev, { ...player, removed: true }]);
       } else {
         setAddError('Failed to remove player. Please try again.');
       }
@@ -376,15 +429,115 @@ function AdminPlayersPanel() {
     }
   }
 
+  async function handleRestore(player: Player) {
+    setRestoreError('');
+    try {
+      const res = await fetch(`${BASE}/api/players`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: player.id, removed: false }),
+      });
+      if (res.ok) {
+        setRemovedPlayers(prev => prev.filter(p => p.id !== player.id));
+        loadPlayers();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setRestoreError(data.error === 'Session is full' ? 'Session is full — cannot restore.' : 'Failed to restore. Please try again.');
+      }
+    } catch {
+      setRestoreError('Failed to restore. Please try again.');
+    }
+  }
+
+  async function handlePromote(player: Player) {
+    setPromoteError('');
+    setPromotingId(player.id);
+    try {
+      const res = await fetch(`${BASE}/api/players`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: player.id, waitlisted: false }),
+      });
+      if (res.ok) {
+        loadPlayers();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setPromoteError(data.error === 'Session is full' ? 'Session is full — cannot promote.' : 'Failed to promote. Please try again.');
+      }
+    } catch {
+      setPromoteError('Failed to promote. Please try again.');
+    } finally {
+      setPromotingId(null);
+    }
+  }
+
+  function handleExportCSV() {
+    const rows = [
+      ['#', 'Name', 'Signed Up', 'Paid'],
+      ...players.map((p, i) => [
+        String(i + 1),
+        p.name,
+        new Date(p.timestamp).toLocaleString(),
+        p.paid ? 'Yes' : 'No',
+      ]),
+    ];
+    const csv = rows.map(r => r.map(c => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    const dateStr = session?.datetime ? session.datetime.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    a.download = `players-${dateStr}.csv`;
+    a.click();
+  }
+
+  async function handleClearSession() {
+    setClearError('');
+    try {
+      const res = await fetch(`${BASE}/api/players`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clearAll: true }),
+      });
+      if (res.ok) {
+        setConfirmingClear(false);
+        loadPlayers();
+      } else {
+        setClearError('Failed to clear. Please try again.');
+      }
+    } catch {
+      setClearError('Failed to clear. Please try again.');
+    }
+  }
+
+  async function handlePurgeAll() {
+    setClearError('');
+    try {
+      const res = await fetch(`${BASE}/api/players`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purgeAll: true }),
+      });
+      if (res.ok) {
+        setConfirmingClear(false);
+        loadPlayers();
+      } else {
+        setClearError('Failed to purge. Please try again.');
+      }
+    } catch {
+      setClearError('Failed to purge. Please try again.');
+    }
+  }
+
   return (
     <div className="space-y-3">
       {/* Add player form */}
       <form onSubmit={handleAdd} className="glass-card p-5 space-y-3">
-        <h3 className="text-xs font-bold tracking-widest text-green-400">ADD PLAYER</h3>
+        <h3 className="section-label">ADD PLAYER</h3>
         <div className="flex gap-2">
           <input
             type="text"
             placeholder="Player name"
+            aria-label="Player name"
+            aria-describedby={addError ? 'add-error' : undefined}
             value={name}
             onChange={e => setName(e.target.value)}
             maxLength={50}
@@ -393,24 +546,31 @@ function AdminPlayersPanel() {
             {adding ? '…' : 'Add'}
           </button>
         </div>
-        {addError && <p className="text-red-400 text-xs">{addError}</p>}
+        {addError && <p id="add-error" role="alert" className="text-red-400 text-xs">{addError}</p>}
       </form>
 
       {/* Player list */}
       <div className="glass-card overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center h-24">
-            <span className="material-icons animate-spin text-green-400" style={{ fontSize: 24 }}>refresh</span>
+          <div className="flex items-center justify-center h-24" role="status" aria-label="Loading">
+            <span className="material-icons animate-spin text-green-400" aria-hidden="true" style={{ fontSize: 24 }}>refresh</span>
           </div>
         ) : players.length === 0 ? (
           <p className="text-center text-gray-500 text-sm p-8">No players signed up yet.</p>
         ) : (
           <div>
-            <div
-              className="px-4 py-2 text-xs font-bold tracking-widest"
-              style={{ background: 'rgba(74,222,128,0.06)', color: 'rgba(74,222,128,0.65)', borderBottom: '1px solid rgba(74,222,128,0.1)' }}
-            >
-              {players.length} PLAYER{players.length !== 1 ? 'S' : ''}
+            <div className="list-header-green flex items-center justify-between">
+              <span>
+                {players.length} PLAYER{players.length !== 1 ? 'S' : ''}
+                {session?.datetime ? <span style={{ fontWeight: 400, opacity: 0.6 }}> · {fmtSessionLabel(session.datetime)}</span> : null}
+              </span>
+              <button
+                onClick={handleExportCSV}
+                className="text-xs hover:text-green-300 transition-colors flex items-center gap-1"
+              >
+                <span className="material-icons" style={{ fontSize: 14 }}>download</span>
+                Export CSV
+              </button>
             </div>
             <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
               {players.map((player, i) => (
@@ -418,18 +578,208 @@ function AdminPlayersPanel() {
                   <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">{i + 1}</span>
                   <span className="flex-1 text-sm text-gray-200 font-medium">{player.name}</span>
                   <button
-                    onClick={() => handleRemove(player)}
-                    disabled={removingId === player.id}
-                    className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                    onClick={() => handleTogglePaid(player)}
+                    disabled={togglingId === player.id}
+                    className="text-xs font-medium transition-colors px-2 py-0.5 rounded-full"
+                    style={player.paid
+                      ? { background: 'rgba(74,222,128,0.15)', color: '#4ade80' }
+                      : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.35)' }
+                    }
                   >
-                    {removingId === player.id ? '…' : 'Remove'}
+                    {savedId === player.id ? '✓' : togglingId === player.id ? '…' : player.paid ? 'Paid' : 'Unpaid'}
                   </button>
+                  {confirmingRemoveId === player.id ? (
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-gray-400">Remove?</span>
+                      <button onClick={() => { handleRemove(player); setConfirmingRemoveId(null); }} className="text-red-400 hover:text-red-300 transition-colors">Yes</button>
+                      <button onClick={() => setConfirmingRemoveId(null)} className="text-gray-400 hover:text-white transition-colors">No</button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmingRemoveId(player.id)}
+                      disabled={removingId === player.id}
+                      className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      {removingId === player.id ? '…' : 'Remove'}
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           </div>
         )}
       </div>
+
+      {/* Waitlisted players card */}
+      {promoteError && (
+        <p role="alert" className="text-xs text-red-400 px-1">{promoteError}</p>
+      )}
+      {waitlistPlayers.length > 0 && (
+        <div className="glass-card overflow-hidden">
+          <div className="list-header-amber">
+            {waitlistPlayers.length} WAITLISTED
+          </div>
+          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+            {waitlistPlayers.map((player, i) => (
+              <div key={player.id} className="flex items-center px-4 py-3 gap-3">
+                <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">{players.length + i + 1}</span>
+                <span className="flex-1 text-sm text-gray-300 font-medium">{player.name}</span>
+                <button
+                  onClick={() => handlePromote(player)}
+                  disabled={promotingId === player.id}
+                  className="text-xs text-amber-400 hover:text-amber-300 transition-colors py-2 px-1"
+                >
+                  {promotingId === player.id ? '…' : 'Promote'}
+                </button>
+                <button
+                  onClick={() => handleRemove(player)}
+                  disabled={removingId === player.id}
+                  className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                >
+                  {removingId === player.id ? '…' : 'Remove'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Cancelled players card */}
+      {restoreError && (
+        <p role="alert" className="text-xs text-red-400 px-1">{restoreError}</p>
+      )}
+      {removedPlayers.length > 0 && (
+        <div className="glass-card overflow-hidden">
+          <div
+            className="list-header-amber flex items-center justify-between"
+            style={cancelledCollapsed ? { borderBottom: 'none' } : undefined}
+          >
+            <span>
+              {removedPlayers.length} CANCELLED
+              {session?.datetime ? <span style={{ fontWeight: 400, opacity: 0.6 }}> · {fmtSessionLabel(session.datetime)}</span> : null}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCancelledCollapsed(c => !c)}
+              aria-label={cancelledCollapsed ? 'Expand cancelled list' : 'Collapse cancelled list'}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(251,191,36,0.65)', padding: 0, display: 'flex' }}
+            >
+              <span className="material-icons" style={{ fontSize: 18 }}>
+                {cancelledCollapsed ? 'expand_more' : 'expand_less'}
+              </span>
+            </button>
+          </div>
+          {!cancelledCollapsed && (
+          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+            {[...removedPlayers]
+              .sort((a, b) => {
+                const at = a.removedAt ? new Date(a.removedAt).getTime() : 0;
+                const bt = b.removedAt ? new Date(b.removedAt).getTime() : 0;
+                return bt - at;
+              })
+              .map((player, i) => (
+              <div key={player.id} className="flex items-center px-4 py-3 gap-3">
+                <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">{i + 1}</span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm text-gray-500 font-medium line-through">{player.name}</span>
+                  {player.removedAt && (
+                    <p className="text-xs text-yellow-600 mt-0.5">
+                      {player.cancelledBySelf ? 'Cancelled' : 'Removed'} · {new Date(player.removedAt).toLocaleString(undefined, {
+                        month: 'short', day: 'numeric',
+                        hour: '2-digit', minute: '2-digit',
+                      })}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleRestore(player)}
+                  className="text-xs text-yellow-400 hover:text-yellow-300 transition-colors py-2 px-1"
+                >
+                  Restore
+                </button>
+              </div>
+            ))}
+          </div>
+          )}
+        </div>
+      )}
+
+      {/* Clear / purge triggers */}
+      <div className="flex items-center justify-center gap-4 py-2">
+        <button
+          onClick={() => { setClearMode('soft'); setClearError(''); setConfirmingClear(true); }}
+          className="text-xs text-gray-500 hover:text-red-400 transition-colors flex items-center gap-1.5"
+        >
+          <span className="material-icons" aria-hidden="true" style={{ fontSize: 14 }}>delete_sweep</span>
+          Clear session
+        </button>
+        <span className="text-gray-700 text-xs">·</span>
+        <button
+          onClick={() => { setClearMode('hard'); setClearError(''); setConfirmingClear(true); }}
+          className="text-xs text-gray-600 hover:text-red-500 transition-colors flex items-center gap-1.5"
+        >
+          <span className="material-icons" aria-hidden="true" style={{ fontSize: 14 }}>delete_forever</span>
+          Purge all records
+        </button>
+      </div>
+
+      {/* Clear session action sheet (portal) */}
+      {confirmingClear && typeof document !== 'undefined' && createPortal(
+        <>
+          {/* Overlay */}
+          <div
+            onClick={() => { setConfirmingClear(false); setClearError(''); }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', zIndex: 100 }}
+          />
+          {/* Sheet */}
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 101, padding: '0 16px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 100px)' }}>
+            <div className="glass-card p-5 space-y-3 max-w-lg mx-auto">
+              <div className="text-center space-y-1.5">
+                <p className="font-semibold text-white">
+                  {clearMode === 'soft' ? 'Clear session for new week?' : 'Permanently delete all records?'}
+                </p>
+                <p className="text-sm text-gray-400">
+                  {clearMode === 'soft' ? (
+                    <>All <span className="text-white font-semibold">{players.length}</span> player{players.length !== 1 ? 's' : ''} will be moved to Cancelled. Data stays in the database.</>
+                  ) : (
+                    <><span className="text-white font-semibold">{players.length + waitlistPlayers.length + removedPlayers.length}</span> record{(players.length + waitlistPlayers.length + removedPlayers.length) !== 1 ? 's' : ''} will be permanently deleted — active, waitlisted, and cancelled. <span className="text-red-400">This cannot be undone.</span></>
+                  )}
+                </p>
+              </div>
+              {clearMode === 'soft' && (
+                <button
+                  onClick={() => { handleExportCSV(); }}
+                  className="btn-ghost w-full flex items-center justify-center gap-2"
+                >
+                  <span className="material-icons" aria-hidden="true" style={{ fontSize: 16 }}>download</span>
+                  Export CSV first
+                </button>
+              )}
+              <button
+                onClick={clearMode === 'soft' ? handleClearSession : handlePurgeAll}
+                className="btn-primary w-full"
+                style={clearMode === 'soft'
+                  ? { background: 'rgba(239,68,68,0.18)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }
+                  : { background: 'rgba(239,68,68,0.30)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.45)' }
+                }
+              >
+                {clearMode === 'soft'
+                  ? `Yes, clear all ${players.length} players`
+                  : `Yes, delete everything permanently`
+                }
+              </button>
+              <button
+                onClick={() => { setConfirmingClear(false); setClearError(''); }}
+                className="w-full text-sm text-gray-400 hover:text-white transition-colors py-2"
+              >
+                Cancel
+              </button>
+              {clearError && <p role="alert" className="text-xs text-red-400 text-center">{clearError}</p>}
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
     </div>
   );
 }
@@ -443,6 +793,7 @@ function AnnouncementsPanel() {
   const [polishing, setPolishing] = useState(false);
   const [posting, setPosting] = useState(false);
   const [postError, setPostError] = useState('');
+  const [deletePostError, setDeletePostError] = useState('');
 
   const loadAnnouncements = useCallback(async () => {
     const res = await fetch(`${BASE}/api/announcements`);
@@ -479,6 +830,24 @@ function AnnouncementsPanel() {
     }
   }
 
+  async function handleDeleteAnnouncement(id: string) {
+    setDeletePostError('');
+    try {
+      const res = await fetch(`${BASE}/api/announcements`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) {
+        loadAnnouncements();
+      } else {
+        setDeletePostError('Failed to delete. Please try again.');
+      }
+    } catch {
+      setDeletePostError('Failed to delete. Please try again.');
+    }
+  }
+
   async function handlePost(text: string) {
     if (!text.trim()) return;
     setPosting(true);
@@ -506,10 +875,11 @@ function AnnouncementsPanel() {
     <div className="space-y-4">
       {/* Compose */}
       <div className="glass-card p-5 space-y-3">
-        <h3 className="text-xs font-bold tracking-widest text-green-400">NEW ANNOUNCEMENT</h3>
+        <h3 className="section-label">NEW ANNOUNCEMENT</h3>
         <textarea
           rows={3}
           placeholder="Type your announcement…"
+          aria-label="Announcement text"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           maxLength={500}
@@ -521,7 +891,7 @@ function AnnouncementsPanel() {
           className="btn-ghost w-full"
         >
           <span className="material-icons" style={{ fontSize: 16 }}>auto_fix_high</span>
-          {polishing ? 'Polishing…' : 'Polish with AI'}
+          {polishing ? 'Improving…' : 'Improve wording'}
         </button>
 
         {/* AI result */}
@@ -563,6 +933,7 @@ function AnnouncementsPanel() {
         <div className="glass-card p-5 space-y-3">
           <h3 className="text-xs font-bold tracking-widest text-gray-500">POSTED</h3>
           <div className="space-y-2">
+            {deletePostError && <p className="text-xs text-red-400 mb-1">{deletePostError}</p>}
             {announcements.map((a) => (
               <div
                 key={a.id}
@@ -575,14 +946,7 @@ function AnnouncementsPanel() {
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm text-gray-200 flex-1">{a.text}</p>
                   <button
-                    onClick={async () => {
-                      await fetch(`${BASE}/api/announcements`, {
-                        method: 'DELETE',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: a.id }),
-                      });
-                      loadAnnouncements();
-                    }}
+                    onClick={() => handleDeleteAnnouncement(a.id)}
                     className="text-xs text-red-400 hover:text-red-300 transition-colors shrink-0"
                   >
                     Delete

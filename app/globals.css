@@ -290,7 +290,7 @@ textarea:focus {
 
 input::placeholder,
 textarea::placeholder {
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.5);
 }
 
 input[type="date"],
@@ -377,4 +377,24 @@ textarea {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+/* ── Shared text patterns ── */
+.section-label {
+  @apply text-xs font-bold tracking-widest uppercase text-green-400;
+}
+
+/* Tinted card row headers — active (green) and secondary (amber) variants */
+.list-header-green {
+  @apply px-4 py-2 text-xs font-bold tracking-widest;
+  background: rgba(74, 222, 128, 0.06);
+  color: rgba(74, 222, 128, 0.65);
+  border-bottom: 1px solid rgba(74, 222, 128, 0.1);
+}
+
+.list-header-amber {
+  @apply px-4 py-2 text-xs font-bold tracking-widest;
+  background: rgba(251, 191, 36, 0.06);
+  color: rgba(251, 191, 36, 0.65);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.1);
 }

@@ -1,5 +1,6 @@
 export interface Session {
   id: string;
+  sessionId?: string;
   title: string;
   locationName?: string;
   locationAddress?: string;
@@ -14,6 +15,12 @@ export interface Player {
   name: string;
   sessionId: string;
   timestamp: string;
+  paid?: boolean;
+  waitlisted?: boolean;
+  removed?: boolean;
+  removedAt?: string;
+  cancelledBySelf?: boolean;
+  deleteToken?: string; // DB-only — never sent to clients
 }
 
 export interface Announcement {

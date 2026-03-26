@@ -14,8 +14,35 @@ function getMockContainer(name: string) {
 
   return {
     items: {
-      query(_q: unknown) {
-        return { fetchAll: async () => ({ resources: [...store] }) };
+      query(q: { query: string; parameters?: { name: string; value: unknown }[] }) {
+        return {
+          fetchAll: async () => {
+            const params: Record<string, unknown> = {};
+            for (const p of q.parameters ?? []) {
+              params[p.name] = p.value;
+            }
+            let results = [...store];
+            if ('@sessionId' in params) {
+              results = results.filter((r) => r.sessionId === params['@sessionId']);
+            }
+            if (q.query.includes('c.removed != true')) {
+              results = results.filter((r) => r.removed !== true);
+            }
+            if (q.query.includes('c.waitlisted != true')) {
+              results = results.filter((r) => r.waitlisted !== true);
+            }
+            if ('@name' in params) {
+              results = results.filter(
+                (r) => typeof r.name === 'string' &&
+                  r.name.toLowerCase() === String(params['@name']).toLowerCase()
+              );
+            }
+            if ('@id' in params) {
+              results = results.filter((r) => r.id === params['@id']);
+            }
+            return { resources: results };
+          },
+        };
       },
       async create(item: Record<string, unknown>) {
         store.push(item);
@@ -74,6 +101,8 @@ export const SESSION_ID = 'current-session';
 export const DEFAULT_SESSION = {
   id: SESSION_ID,
   title: 'Weekly Badminton Session',
+  locationName: '',
+  locationAddress: '',
   datetime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
   courts: 2,

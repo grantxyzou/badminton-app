@@ -107,7 +107,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
         position: 'fixed',
         top: calPos.top,
         left: calPos.left,
-        width: calPos.width,
+        width: Math.max(calPos.width, 280),
         zIndex: 9999,
         background: 'linear-gradient(160deg, rgba(22,22,26,0.97) 0%, rgba(14,14,18,0.99) 100%)',
         backdropFilter: 'blur(40px) saturate(180%)',
@@ -152,9 +152,13 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
             <button
               key={i}
               type="button"
+              aria-label={`${MONTHS_FULL[viewMonth]} ${day}, ${viewYear}`}
+              aria-pressed={isSelected}
               onClick={() => selectDay(day)}
               style={{
                 aspectRatio: '1',
+                minHeight: 36,
+                minWidth: 36,
                 borderRadius: 6,
                 border: isToday && !isSelected ? '1px solid rgba(74,222,128,0.4)' : '1px solid transparent',
                 background: isSelected
@@ -165,7 +169,9 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
                 fontWeight: isSelected ? 700 : 400,
                 cursor: 'pointer',
                 transition: 'background 0.1s',
-                lineHeight: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
               onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.08)'; }}
               onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}

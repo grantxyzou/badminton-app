@@ -24,13 +24,15 @@ export default function BottomNav({ activeTab, onTabChange }: Props) {
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
+              aria-label={tab.label}
+              aria-current={active ? 'page' : undefined}
               className={`flex-1 flex flex-col items-center py-2.5 gap-0.5 transition-all rounded-xl ${active ? 'nav-tab-active' : ''}`}
-              style={{ color: active ? '#4ade80' : 'rgba(255,255,255,0.35)' }}
+              style={{ color: active ? '#4ade80' : 'rgba(255,255,255,0.5)' }}
             >
-              <span className="material-icons" style={{ fontSize: 24 }}>
+              <span className="material-icons" aria-hidden="true" style={{ fontSize: 24 }}>
                 {tab.icon}
               </span>
-              <span className="text-xs font-medium">{tab.label}</span>
+              <span className="text-xs font-medium" aria-hidden="true">{tab.label}</span>
             </button>
           );
         })}
