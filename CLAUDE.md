@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A mobile-first web app for managing casual weekly badminton sessions. Players sign up for a session (or join a waitlist), and an admin manages session details, player lists, announcements, and AI-generated team balancing. Built for a single recurring group ("BPM Badminton"), deployed on Azure App Service Free tier.
+A mobile-first web app for managing casual weekly badminton sessions. Players sign up for a session (or join a waitlist when full), and an admin manages session details, player lists, payment tracking, announcements, and AI-generated team balancing. Built for a single recurring group ("BPM Badminton"), deployed on Azure App Service Free tier at `/bpm`.
 
 ---
 
@@ -10,73 +10,64 @@ A mobile-first web app for managing casual weekly badminton sessions. Players si
 
 ```bash
 npm install
-cp .env.local.example .env.local   # fill in values — see Environment Variables below
+# Copy .env.local.example to .env.local and fill in values
 npm run dev
 # → http://localhost:3000/bpm
 ```
 
-When `COSMOS_CONNECTION_STRING` is not set, the app uses an in-memory mock store. All routes work offline without any Azure dependency. Mock data is wiped on process restart.
+When `COSMOS_CONNECTION_STRING` is absent, the app uses an in-memory mock store — all routes work offline without a real database.
 
 ---
 
 ## Tech Stack
 
 | Layer | Technology | Version |
-|-------|------------|---------|
+|---|---|---|
 | Framework | Next.js (App Router) | ^16.2.1 |
-| Language | TypeScript | ^5 (strict mode) |
-| Styling | Tailwind CSS + custom CSS classes | ^3.3.0 |
-| Database | Azure Cosmos DB (NoSQL/Core SQL) via `@azure/cosmos` | ^4.2.0 |
-| AI | Anthropic Claude API via `@anthropic-ai/sdk` | ^0.36.3 |
-| Runtime | Node.js 20 |  |
-| Deployment | Azure App Service Free (F1), Canada Central |  |
-| CI/CD | GitHub Actions (OIDC, SHA-pinned actions) |  |
+| Language | TypeScript (`strict: true`) | ^5 |
+| Styling | Tailwind CSS + custom CSS classes in `globals.css` | ^3.3.0 |
+| Database | Azure Cosmos DB (NoSQL) via `@azure/cosmos` | ^4.2.0 |
+| AI | Anthropic Claude (`claude-sonnet-4-20250514`) via `@anthropic-ai/sdk` | ^0.36.3 |
+| Icons | Google Material Icons (loaded via `<link>` in `<head>`) | — |
+| Deployment | Azure App Service (Canada Central, Free F1 tier) | — |
+| CI/CD | GitHub Actions with OIDC (no long-lived secrets) | — |
 
 ---
 
 ## Project Structure
 
 ```
-/
-├── app/
-│   ├── api/
-│   │   ├── admin/route.ts          GET (auth check), POST (PIN verify), DELETE (logout)
-│   │   ├── announcements/route.ts  GET, POST (admin), DELETE (admin)
-│   │   ├── claude/route.ts         POST — admin-only AI proxy, rate-limited
-│   │   ├── players/route.ts        GET, POST (sign-up), PATCH (admin), DELETE (self/admin)
-│   │   └── session/route.ts        GET, PUT (admin only)
-│   ├── globals.css                 Global styles: aurora background, glass card, buttons,
-│   │                               shared text classes (.section-label, .list-header-green,
-│   │                               .list-header-amber), form inputs, scrollbar
-│   ├── layout.tsx                  Root layout — aurora blob background, Material Icons font
-│   └── page.tsx                    Root client component — tab state, renders one tab at a time
-├── components/
-│   ├── AdminTab.tsx                PIN gate → AdminPanel → SessionEditor | AdminPlayersPanel |
-│   │                               AnnouncementsPanel; CSV export; promote/restore/purge flows
-│   ├── BottomNav.tsx               Fixed bottom nav — Home | Players | Admin tabs
-│   ├── DatePicker.tsx              Custom calendar picker, portal-rendered (escapes stacking ctx),
-│   │                               min-width 280px, value format YYYY-MM-DD
-│   ├── GlassPhysics.tsx            Headless component — tracks mouse position into CSS vars
-│   │                               --mx / --my for the glass card radial gradient effect
-│   ├── HomeTab.tsx                 4 sign-up states: open / signed-up / waitlisted / full+join-waitlist
-│   └── PlayersTab.tsx              Active player card (court SVG top half) + waitlist card
-│                                   (same SVG, scaleY(-1) = court bottom half)
-├── lib/
-│   ├── auth.ts                     HTTP-only cookie helpers: setAdminCookie, clearAdminCookie,
-│   │                               isAdminAuthed, unauthorized; cookie = SHA-256(badminton-admin:<PIN>)
-│   ├── cosmos.ts                   getContainer() — returns real Cosmos container or in-memory mock;
-│   │                               SESSION_ID constant; DEFAULT_SESSION fallback
-│   ├── formatters.ts               fmtDate(iso) — locale-formatted weekday + date string
-│   ├── rateLimit.ts                checkRateLimit(key, max, windowMs); getClientIp() reads
-│   │                               X-Client-IP first (Azure real-client header), then X-Forwarded-For
-│   └── types.ts                    Session, Player, Announcement interfaces
-├── .env.local.example              Template for required env vars
-├── .github/workflows/
-│   └── main_badminton-app.yml      Auto-deploy: push to main → build → zip standalone → Azure deploy
-├── next.config.js                  basePath: /bpm; output: standalone; security headers
-├── tailwind.config.js              Custom colors: court (#4ade80), forest-900, forest-800
-├── AZURE.md                        Full Azure architecture, Cosmos DB containers, cost info
-└── DESIGN.md                       UI design system notes
+app/
+  api/
+    admin/route.ts          GET (auth check) · POST (PIN verify) · DELETE (logout)
+    announcements/route.ts  GET · POST · DELETE
+    claude/route.ts         POST — admin-only AI proxy (rate-limited)
+    players/route.ts        GET · POST · PATCH · DELETE
+    session/route.ts        GET · PUT (admin only)
+  globals.css               All shared CSS classes and design tokens
+  layout.tsx                Root layout — aurora background blobs, Material Icons link
+  page.tsx                  Root page — tab state, renders HomeTab/PlayersTab/AdminTab
+
+components/
+  AdminTab.tsx              PIN gate → AdminPanel → SessionEditor / AdminPlayersPanel / AnnouncementsPanel
+  BottomNav.tsx             Fixed bottom nav (Home, Players, Admin)
+  DatePicker.tsx            Custom calendar date picker, portal-rendered
+  GlassPhysics.tsx          Mouse-tracking CSS var updater (--mx, --my) for glass card hover effect
+  HomeTab.tsx               6-state sign-up card + session info + announcement display
+  PlayersTab.tsx            Active player list + waitlist card; self-cancel flow
+
+lib/
+  auth.ts                   HTTP-only cookie helpers: setAdminCookie, clearAdminCookie, isAdminAuthed
+  cosmos.ts                 DB client + SESSION_ID constant + in-memory mock + DEFAULT_SESSION
+  formatters.ts             fmtDate(iso) — locale-aware long date string
+  rateLimit.ts              In-memory rate limiter + getClientIp (reads X-Client-IP for Azure)
+  types.ts                  Session, Player, Announcement interfaces
+
+next.config.js              basePath /bpm, output standalone, security headers
+tailwind.config.js          Extends colors: court (#4ade80), forest-900, forest-800
+tsconfig.json               strict mode, @/* path alias → project root
+.github/workflows/
+  main_badminton-app.yml    Build → standalone zip → OIDC login → Azure deploy
 ```
 
 ---
@@ -85,95 +76,93 @@ When `COSMOS_CONNECTION_STRING` is not set, the app uses an in-memory mock store
 
 ### Request Lifecycle
 
-The app is a **single-page application** rendered as a Next.js App Router client component. `app/page.tsx` is `'use client'` and holds tab state. The layout renders the aurora background and Material Icons. All data fetching is done client-side via `fetch()` to the API routes — there are no server-rendered pages.
+All page navigation is client-side (single-page app). `app/page.tsx` is the only route rendered by the browser — it holds tab state and conditionally renders `<HomeTab>`, `<PlayersTab>`, or `<AdminTab>`. The bottom nav switches tabs with no page reload.
 
-```
-Browser → GET /bpm → page.tsx (client) → fetch /bpm/api/* → Cosmos DB / Anthropic
-```
-
-All API routes live under `app/api/` and are Next.js Route Handlers. Every route handler imports from `lib/` and never imports from `components/`.
-
-### Base Path
-
-The app is mounted at `/bpm` (`basePath` in `next.config.js`). Every client-side `fetch()` call prepends `process.env.NEXT_PUBLIC_BASE_PATH ?? ''`. This env var is baked into the client bundle at build time — it must be set correctly at build time (CI sets it to `/bpm`).
+Data fetches hit Next.js API routes (all under `app/api/`). Every fetch uses `{ cache: 'no-store' }` to prevent stale reads.
 
 ### Auth Flow
 
+1. `AdminTab` mounts → `GET /api/admin` → server checks for `admin_session` HTTP-only cookie → returns `{ authed: true/false }`.
+2. If not authed, PIN form is shown. `POST /api/admin` with `{ pin }` → server uses `timingSafeEqual` to compare against `ADMIN_PIN` env var → on success sets cookie (SHA-256 of `badminton-admin:<PIN>`, 8-hour TTL, HttpOnly, SameSite=Strict, Secure in production).
+3. All admin API routes call `isAdminAuthed(req)` which reads the cookie and validates with `timingSafeEqual`.
+4. Logout: `DELETE /api/admin` clears the cookie.
+5. Player self-cancel uses a `deleteToken` returned once at sign-up and stored in `localStorage`. The token (random 16 bytes hex) is validated server-side on `DELETE /api/players`.
+
+### Data Flow
+
 ```
-User enters PIN
-  → POST /api/admin { pin }
-    → timingSafeEqual against env ADMIN_PIN
-    → set HttpOnly cookie admin_session = SHA-256("badminton-admin:<PIN>")
-  ← 200 { success: true }
-
-Protected route handler
-  → isAdminAuthed(req) reads cookie, recomputes SHA-256, timingSafeEqual comparison
-  → returns true / false (never throws)
+Cosmos DB (3 containers: sessions, players, announcements)
+  ↓ getContainer(name)            ← lib/cosmos.ts
+  ↓ API route handlers            ← app/api/*/route.ts
+  ↓ JSON over fetch               ← components (client)
 ```
 
-Cookie attributes: `HttpOnly`, `SameSite=Strict`, `Secure` (production only), 8-hour TTL, `path='/'`.
+`SESSION_ID = 'current-session'` is a hard-coded constant. Every Cosmos query filters by `sessionId = SESSION_ID`. The app supports exactly one active session at a time.
 
-`GET /api/admin` just returns `{ authed: bool }` — AdminTab calls this on mount to skip the PIN gate if the cookie is still valid.
+### Session Finished State
 
-### Data Model and DB Access
+If `session.endDatetime` is set and the current time is past it, `HomeTab` shows a "Thanks for coming!" state. This is a client-side time check only — no server-side enforcement.
 
-Three Cosmos DB containers, all partitioned by `/sessionId`:
+### Deadline Enforcement
 
-| Container | Partition Key | Purpose |
-|-----------|---------------|---------|
-| `players` | `/sessionId` | Player registrations |
-| `sessions` | `/sessionId` | Session config |
-| `announcements` | `/sessionId` | Admin announcements |
+`POST /api/players` checks `session.deadline` server-side and returns 403 if the deadline has passed. `HomeTab` also checks client-side to show the correct UI state, but the server check is authoritative.
 
-**Single-session pattern**: `SESSION_ID = 'current-session'` (hardcoded in `lib/cosmos.ts`). Every query filters `WHERE c.sessionId = @sessionId`. There is no multi-tenancy and no concept of historical sessions.
+### Soft Delete Pattern
 
-**`getContainer(name)`** is the only DB entry point. If `COSMOS_CONNECTION_STRING` is not set, it returns an in-memory mock that mirrors the real Cosmos API surface. Never import `CosmosClient` directly — always use `getContainer`.
+Players are never hard-deleted by default. `DELETE /api/players` (individual) upserts the record with `{ removed: true, removedAt, cancelledBySelf }`. GET queries exclude `removed = true` records by default; `?all=true` (admin cookie required) includes them. Admins can restore removed players via `PATCH { id, removed: false }` — capacity-checked.
 
-### Key Design Decisions
+### Waitlist Pattern
 
-- **Soft delete over hard delete**: Players are marked `{ removed: true, removedAt, cancelledBySelf }` rather than deleted. This allows the admin to restore them, see who cancelled, and prevent duplicate name sign-ups from creating orphan records (re-signup restores the existing record).
-- **Hard purge is a separate explicit action**: `DELETE { purgeAll: true }` permanently removes all records. This is irreversible and intended for clearing between seasons, not weekly resets.
-- **deleteToken for self-cancellation**: Players receive a `randomBytes(16).toString('hex')` token on sign-up (the only time it is returned). They store it in `localStorage`. The server stores it in Cosmos. `DELETE /api/players` requires either the token or an admin cookie. This prevents anonymous cancellation of other players.
-- **Datetime includes local timezone offset**: Session datetimes are stored with the admin's local timezone offset so they display correctly for all users regardless of timezone. The `withLocalTz(date, time)` function in AdminTab builds the ISO string with offset.
-- **In-memory rate limiter**: Uses a `Map` on the server process. Resets on restart. Not shared across multiple instances (acceptable for Free tier single-instance deployment).
+When the session is full and the client sends `POST { waitlist: true }`, the player is created with `waitlisted: true`. Waitlisted players do not count toward `maxPlayers`. Admins promote via `PATCH { id, waitlisted: false }` — capacity-checked. Self-cancel works identically for waitlisted players.
 
 ---
 
 ## Data Models
 
+### `Session` (`lib/types.ts`)
+
 ```typescript
-// lib/types.ts
-
 interface Session {
-  id: string;           // always 'current-session'
-  sessionId?: string;   // also 'current-session' (set on PUT for Cosmos partition)
-  title: string;        // session name, max 100 chars
-  locationName?: string;  // venue name, max 200 chars
-  locationAddress?: string; // street address, max 300 chars — linked to Google Maps if set
-  datetime: string;     // ISO 8601 with local TZ offset, e.g. "2026-03-29T10:00:00+11:00"
-  deadline: string;     // sign-up deadline, same format
-  courts: number;       // number of courts, 1–20
-  maxPlayers: number;   // capacity, 1–100; waitlisted players do NOT count toward this
+  id: string;            // always 'current-session'
+  sessionId?: string;    // same as id, set by PUT handler for Cosmos partition key
+  title: string;         // display title, max 100 chars
+  locationName?: string; // venue name, max 200 chars
+  locationAddress?: string; // street address, max 300 chars — rendered as Google Maps link
+  datetime: string;      // ISO 8601 with local timezone offset (set by admin's browser)
+  endDatetime?: string;  // optional — when past this, HomeTab shows "Thanks for coming!"
+  deadline: string;      // ISO 8601 — after this, POST /api/players returns 403
+  courts: number;        // 1–20
+  maxPlayers: number;    // 1–100 (default 12)
 }
+```
 
+`DEFAULT_SESSION` in `lib/cosmos.ts` is returned when no session record exists in the DB. It sets `datetime` to +7 days and `endDatetime` to +7 days + 2 hours.
+
+### `Player` (`lib/types.ts`)
+
+```typescript
 interface Player {
-  id: string;           // randomBytes(12).toString('hex') — 24 hex chars
-  name: string;         // trimmed, max 50 chars, case-insensitive duplicate check
-  sessionId: string;    // always SESSION_ID ('current-session')
-  timestamp: string;    // ISO 8601, sign-up time (reset on restore)
-  paid?: boolean;       // false by default; toggled by admin only
-  waitlisted?: boolean; // true = on waitlist; active when false or undefined
-  removed?: boolean;    // true = soft-deleted
-  removedAt?: string;   // ISO 8601 timestamp of removal
+  id: string;              // randomBytes(12).toString('hex')
+  name: string;            // trimmed, max 50 chars, case-insensitive dedup
+  sessionId: string;       // always 'current-session'
+  timestamp: string;       // ISO 8601 sign-up time (updated on restore)
+  paid?: boolean;          // false by default; toggled by admin
+  waitlisted?: boolean;    // true = on waitlist; absent/false = active
+  removed?: boolean;       // true = soft-deleted
+  removedAt?: string;      // ISO 8601 time of removal
   cancelledBySelf?: boolean; // true = player cancelled; false = admin removed
-  deleteToken?: string; // NEVER sent to clients — stripped in GET /api/players response
+  deleteToken?: string;    // DB-only — NEVER sent to clients (stripped in all GETs)
 }
+```
 
+### `Announcement` (`lib/types.ts`)
+
+```typescript
 interface Announcement {
-  id: string;           // randomBytes(12).toString('hex')
-  text: string;         // max 500 chars
-  time: string;         // ISO 8601, creation time
-  sessionId: string;    // always SESSION_ID
+  id: string;        // randomBytes(12).toString('hex')
+  text: string;      // max 500 chars
+  time: string;      // ISO 8601 creation time
+  sessionId: string; // always 'current-session'
 }
 ```
 
@@ -181,256 +170,237 @@ interface Announcement {
 
 ## API Routes
 
-All routes are under `/bpm/api/` (due to `basePath`).
-
 ### `GET /api/session`
 - Auth: none
-- Returns the current session document, or `DEFAULT_SESSION` if not found
-- `export const dynamic = 'force-dynamic'` prevents caching
+- Response: `Session` object (or `DEFAULT_SESSION` if no DB record)
 
 ### `PUT /api/session`
 - Auth: admin cookie required
-- Body: `{ title, locationName, locationAddress, datetime, deadline, courts, maxPlayers }`
-- Server sanitises: strings trimmed/sliced, courts clamped 1–20, maxPlayers clamped 1–100, datetimes validated with `Date.parse()`
-- Upserts the session document with `id = SESSION_ID`
+- Body: `{ title, locationName, locationAddress, datetime, endDatetime, deadline, courts, maxPlayers }`
+- Notes: `datetime`, `endDatetime`, `deadline` must be valid ISO strings (validated via `Date.parse`). Admin's browser encodes local timezone offset into the ISO string via `withLocalTz()`. `endDatetime` is optional — omit or send `''` to clear it.
+- Response: saved `Session` object
 
 ### `GET /api/players`
-- Auth: none (public); `?all=true` + admin cookie includes soft-deleted records
-- Returns players array with `deleteToken` stripped from every item
-- Default query excludes `removed = true` records
-- Order: ascending by `timestamp`
+- Auth: none (admin cookie enables `?all=true`)
+- Query: `?all=true` — includes soft-deleted records (admin only, otherwise ignored)
+- Response: `Player[]` with `deleteToken` stripped from every record, ordered by `timestamp ASC`
+- Notes: returns both active (`waitlisted` false/absent) and waitlisted players; clients split by `p.waitlisted`
 
 ### `POST /api/players`
-- Auth: none; rate-limited 10 req/min per IP
+- Auth: none (rate-limited: 10 req/min/IP)
 - Body: `{ name: string, waitlist?: boolean }`
-- Validation: name required, trimmed, max 50 chars; duplicate name (case-insensitive) returns 409
-- Capacity: checks active (non-waitlisted, non-removed) count against `maxPlayers`
-- If full and `waitlist: true`: creates with `waitlisted: true`
-- If full and no `waitlist: true`: returns 409
-- Re-signup: if a soft-deleted record exists with that name, restores it (upsert) instead of creating new
-- Returns: `{ ...player, deleteToken }` — the only time `deleteToken` is sent to the client (status 201)
+- Returns 400 if name empty or >50 chars
+- Returns 403 if current time is past `session.deadline`
+- Returns 409 if name already active (`Already signed up`) or session full without `waitlist: true`
+- If a soft-deleted record with the same name exists, it is restored (new `deleteToken`, `paid` reset to false)
+- Response: `Player` object + `deleteToken` (one-time)
+- Status 201 on success
 
 ### `PATCH /api/players`
 - Auth: admin cookie required
 - Body: `{ id: string, paid?: boolean, removed?: boolean, waitlisted?: boolean }`
-- Accepts multiple update fields at once; only known boolean fields are applied
-- Capacity check when `removed: false` (restore) or `waitlisted: false` (promote): verifies active count < maxPlayers excluding self
-- Returns updated player with `deleteToken` stripped
+- Capacity-checked when `removed: false` (restore) or `waitlisted: false` (promote) — returns 409 if full
+- `deleteToken` is stripped from the response
+- Use cases: toggle paid, restore removed player, promote waitlisted player
 
 ### `DELETE /api/players`
-- Auth: rate-limited 10 req/min per IP; then either admin cookie or valid `deleteToken`
-- Three modes (checked in order):
-  1. `{ purgeAll: true }` — admin only; hard-deletes ALL records for the session (irreversible)
-  2. `{ clearAll: true }` — admin only; soft-deletes all non-removed players (weekly reset)
-  3. `{ name, deleteToken? }` — soft-deletes a single named player; requires token OR admin cookie
+- Auth: admin cookie OR `deleteToken` for individual cancel (rate-limited: 10 req/min/IP)
+- Body variants:
+  - `{ name, deleteToken? }` — soft-delete one player; requires admin OR matching `deleteToken`
+  - `{ clearAll: true }` — admin: soft-delete all active players (preserves data)
+  - `{ purgeAll: true }` — admin: hard-delete every record in the session (irreversible)
 
 ### `GET /api/admin`
 - Auth: none
-- Returns `{ authed: boolean }` — used by AdminTab on mount to check cookie status
+- Response: `{ authed: boolean }`
 
 ### `POST /api/admin`
-- Auth: none; rate-limited 5 req/15 min per IP
+- Auth: none (rate-limited: 5 req/15 min/IP)
 - Body: `{ pin: string }` (max 20 chars)
-- Compares with `timingSafeEqual` against `ADMIN_PIN` env var
-- On success: sets `admin_session` HTTP-only cookie; returns `{ success: true }`
+- Sets `admin_session` HTTP-only cookie on success
+- Response: `{ success: true }` or 401
 
 ### `DELETE /api/admin`
 - Auth: admin cookie required
-- Clears the `admin_session` cookie; returns `{ success: true }`
+- Clears the `admin_session` cookie
 
 ### `GET /api/announcements`
 - Auth: none
-- Returns all announcements for the session, ordered newest first
+- Response: `Announcement[]` ordered by `time DESC`
 
 ### `POST /api/announcements`
 - Auth: admin cookie required
-- Body: `{ text: string }` (max 500 chars, trimmed)
-- Creates announcement with `randomBytes(12)` ID; returns 201
+- Body: `{ text: string }` (max 500 chars)
+- Status 201 on success
 
 ### `DELETE /api/announcements`
 - Auth: admin cookie required
 - Body: `{ id: string }`
-- Verifies the announcement belongs to the current session before deleting
 
 ### `POST /api/claude`
-- Auth: admin cookie required; rate-limited 10 req/min per IP
+- Auth: admin cookie required (rate-limited: 10 req/min/IP)
 - Body: `{ prompt: string }` (max 4000 chars)
 - Proxies to Anthropic `claude-sonnet-4-20250514`, max_tokens 1024
-- Returns `{ text: string }`
-- Used for team generation and announcement polishing — the browser never calls Anthropic directly
+- Response: `{ text: string }`
 
 ---
 
 ## Component Guide
 
-### `app/page.tsx`
-Root page, `'use client'`. Holds `activeTab` state (`'home' | 'players' | 'admin'`). Renders `GlassPhysics` (always), then the active tab component, then `BottomNav`. Tab switching is handled here and passed down as `onTabChange` prop.
+### `page.tsx`
+Root client component. Holds `activeTab: 'home' | 'players' | 'admin'` state. Renders one tab at a time. Also renders `<GlassPhysics />` (mouse tracker) and `<BottomNav />`.
 
-### `components/GlassPhysics.tsx`
-Headless client component. Listens to `mousemove` and updates CSS custom properties `--mx` / `--my` on `:root` via `requestAnimationFrame`. These drive the radial gradient highlight on `.glass-card` elements. Renders `null`.
+### `HomeTab.tsx`
+Fetches session, players, and announcements in parallel on mount. Reads `badminton_username` and `badminton_deletetoken` from `localStorage` to identify the current user.
 
-### `components/BottomNav.tsx`
-Fixed bottom navigation bar. Receives `activeTab` and `onTabChange`. Uses Material Icons. Active tab gets `.nav-tab-active` class and green color. Three tabs: Home, Players, Admin.
+**Six sign-up states** rendered inside the "Sign up" glass card:
 
-### `components/HomeTab.tsx`
-Fetches session, players, and announcements in parallel on mount. Reads `localStorage` for `badminton_username` and `badminton_deletetoken`.
+| State | Condition | UI |
+|---|---|---|
+| Session finished | `endDatetime` set and past | "Thanks for coming!" green banner |
+| Deadline passed | `deadline` past AND not signed up/waitlisted | Orange "Sign-ups closed" banner |
+| Signed up (active) | Name matches active player | Green "You're in!" banner + spot counter + "View Sign Up List" button |
+| Waitlisted | Name matches waitlisted player | Orange "You're on the waitlist" banner + position number |
+| Full (join waitlist) | Active count >= maxPlayers AND deadline not past | Orange "Session Full" banner + "Join Waitlist" form |
+| Open | Default | Sign-up form + spot counter + deadline reminder |
 
-Four mutually exclusive sign-up states:
-1. **Open** — normal sign-up form; `POST /api/players { name }`
-2. **Signed up** — green banner, "View Sign Up List" button
-3. **Waitlisted** — amber banner with waitlist position; "View Sign Up List" button
-4. **Full** — orange "Session Full" banner + "Join Waitlist" form; `POST /api/players { name, waitlist: true }`
+Priority order: session finished → deadline passed (unauthenticated) → signed up → waitlisted → full → open.
 
-On successful sign-up, stores name and deleteToken in `localStorage`. On 409 conflict, reloads data (handles race conditions gracefully).
+The address link is rendered as `text-gray-300` with `decoration-dotted underline` (not blue) linking to Google Maps.
 
-### `components/PlayersTab.tsx`
-Fetches players and session in parallel. Splits players into `activePlayers` (not waitlisted) and `waitlistPlayers` (waitlisted). Self-cancel flow: shows "Cancel" button for the current user's row → confirm prompt → `DELETE /api/players { name, deleteToken }` → clears localStorage.
+### `PlayersTab.tsx`
+Lists active players in one `glass-card` (header = game date from session), waitlisted players in a second card with `list-header-amber`. No court SVG in either card. Current user row highlighted with `.player-highlight-green` (active) or `.player-highlight-amber` (waitlist). Self-cancel requires `deleteToken` from `localStorage`.
 
-Court SVG decoration: active card shows court top half; waitlist card shows same SVG with `transform: scaleY(-1)` (court bottom half, visually continuing the court across cards).
+### `AdminTab.tsx`
+Three sub-components behind a PIN gate:
 
-### `components/AdminTab.tsx`
-Three-phase component:
-1. **PIN gate** (`AdminTab` default export) — checks auth on mount, shows PIN form if not authed
-2. **AdminPanel** — segment control switching between three sub-panels
-3. Sub-panels: `SessionEditor`, `AdminPlayersPanel`, `AnnouncementsPanel`
+- **`SessionEditor`**: three fields per date row (start, deadline, end) each using `<DatePicker>` + `<input type="time">`. Encodes timezone offset into ISO string before PUT. The "Session End" row sets `endDatetime`.
 
-`AdminPlayersPanel` features:
-- Add player (POST, same endpoint as self-signup)
-- Toggle paid status (PATCH `{ id, paid }`)
-- Remove player with confirm prompt (DELETE `{ name }` — admin auth via cookie)
-- Promote waitlisted player (PATCH `{ id, waitlisted: false }`) — capacity-checked
-- Restore soft-deleted player (PATCH `{ id, removed: false }`) — capacity-checked
-- Collapsed "Cancelled" section showing soft-deleted players
-- Soft-clear (clearAll) vs hard-purge (purgeAll) with mode toggle and confirm prompt
-- CSV export of active players: columns `#, Name, Signed Up, Paid`
+- **`AdminPlayersPanel`**: Loads `?all=true` to get active + waitlisted + removed players. Features: add player, paid/unpaid pill toggle (`.pill-paid` / `.pill-unpaid`), confirm-before-remove, promote from waitlist, restore from cancelled, CSV export (active players only), clear session (soft) and purge all (hard) via an action sheet portal. `fmtSessionLabel()` produces smart date labels: "TODAY" / weekday name / "MAR 29".
 
-`SessionEditor` features:
-- Custom `DatePicker` component for date fields (avoids browser native date input inconsistency)
-- `withLocalTz(date, time)` builds datetime string with local timezone offset before PUT
+- **`AnnouncementsPanel`**: Draft → Polish with AI (`POST /api/claude`) → Post to Home (`POST /api/announcements`). Also lists and deletes existing announcements.
 
-`fmtSessionLabel(datetime)` (AdminTab-local, not exported) formats the session date header as "TODAY" / weekday name / "MAR 29" depending on how far away it is.
+The segment control (Session / Players / Posts) follows **Apple HIG spec**: `role="tablist"` / `role="tab"` / `aria-selected`, pill shape (`border-radius: 100px`), 32px height, 2px padding, font size `13.333px`, active weight `590`, inactive weight `510`. Uses `.segment-control`, `.segment-tab-active`, `.segment-tab-inactive` CSS classes.
 
-### `components/DatePicker.tsx`
-Custom calendar picker. Props: `value: string` (YYYY-MM-DD), `onChange: (v: string) => void`, `placeholder?: string`. Renders a trigger button and a calendar dropdown portal-ed to `document.body` (`createPortal`) to escape all CSS stacking contexts. Min width 280px. Repositions on scroll while open.
+### `BottomNav.tsx`
+Fixed bottom nav with three tabs: Home (`home`), Players (`group`), Admin (`admin_panel_settings`). Active tab uses `.nav-tab-active` and inline `color: #4ade80`.
+
+### `DatePicker.tsx`
+Custom calendar picker. Portal-rendered at `document.body` (escapes `backdrop-filter` stacking contexts). Minimum calendar width 280px. Positions via `getBoundingClientRect()` and repositions on scroll. Accepts and returns `YYYY-MM-DD` strings. The trigger button matches global `input` height (42px).
+
+### `GlassPhysics.tsx`
+Renders nothing. On mount, listens to `mousemove` and updates CSS custom properties `--mx` and `--my` on `:root` (0.0–1.0 normalized coordinates). These drive the radial gradient in `.glass-card` for a physics-like highlight effect. Uses `requestAnimationFrame` throttling.
 
 ---
 
 ## Coding Conventions
 
-### File Naming
-- Route handlers: `app/api/<resource>/route.ts`
-- Components: PascalCase `.tsx` in `components/`
-- Utilities: camelCase `.ts` in `lib/`
-
-### Component Structure
-- All components and pages are `'use client'` — there are no React Server Components in this project
-- Components manage their own data fetching via `useEffect` + `fetch()`
-- All `fetch()` calls prepend `const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? ''` (defined at top of each file)
-- Loading states show an animated `refresh` Material Icon
-
-### API Route Patterns
-- Import `isAdminAuthed` and call it at the top of the handler for protected routes
-- Import `checkRateLimit` and `getClientIp` for rate-limited routes; return 429 before any other logic
-- Always validate and sanitise request body fields before using them
-- Use `NextResponse.json(data, { status })` for all responses
-- Wrap all DB operations in try/catch; log with `console.error('<route> error:', error)` and return appropriate status
-- Strip `deleteToken` from all GET responses: `const { deleteToken: _dt, ...safe } = player`
-
-### ID Generation
-Always use `randomBytes` from Node.js `crypto` module — never `Math.random()`:
-- Player/Announcement IDs: `randomBytes(12).toString('hex')` → 24-char hex string
-- deleteToken: `randomBytes(16).toString('hex')` → 32-char hex string
+### File and Component Naming
+- Files: PascalCase for components (`AdminTab.tsx`), camelCase for lib (`cosmos.ts`, `formatters.ts`)
+- Components: default export, named after file
+- API routes: `export async function GET/POST/PATCH/DELETE(req: NextRequest)`
 
 ### CSS / Styling Rules
-Use the shared CSS classes from `globals.css` — do not recreate these inline:
-- `.glass-card` — the standard card container with backdrop blur and border
-- `.btn-primary` — green gradient action button
-- `.btn-ghost` — neutral/white ghost button
-- `.section-label` — `text-xs font-bold tracking-widest uppercase text-green-400`
-- `.list-header-green` — tinted card row header, active/green variant
-- `.list-header-amber` — tinted card row header, secondary/amber variant
-- `.status-banner-green` / `.status-banner-orange` — alert banners
-- `.nav-glass` — bottom nav container
-- `.nav-tab-active` — active nav tab pill
-- Material Icons are loaded from Google Fonts CDN; use `<span className="material-icons">icon_name</span>`
+- Use named CSS classes from `globals.css` rather than inline styles for shared patterns
+- Inline styles are acceptable only for one-off values (e.g., `fontSize: '13.333px'` on segment tabs)
+- Do NOT add hard divider lines between list items — use `divide-y` with `borderColor: rgba(255,255,255,0.05)` or no divider at all (glass design principle)
+- New shared patterns belong in `globals.css`, not duplicated inline across components
 
-Custom Tailwind colors available:
-- `court` = `#4ade80` (the court green)
-- `forest-900` = `#050f07`
-- `forest-800` = `#0a1f0e`
+**Key CSS classes to know:**
 
-CSS custom properties available:
-- `--court-green: #4ade80`
-- `--forest-900: #050f07`
-- `--forest-800: #0a1f0e`
-- `--mx`, `--my` — mouse position (0.0–1.0), updated by GlassPhysics for glass highlight
+| Class | Purpose |
+|---|---|
+| `.glass-card` | Primary surface; use for all cards. Has mouse-reactive radial gradient via `--mx`/`--my` |
+| `.btn-primary` | Green CTA button |
+| `.btn-ghost` | Secondary/outline button |
+| `.section-label` | `text-xs font-bold tracking-widest uppercase text-green-400` |
+| `.section-label-muted` | Same but `text-gray-500` — for less prominent labels |
+| `.list-header-green` | Tinted row header for active lists |
+| `.list-header-amber` | Tinted row header for waitlist/cancelled lists |
+| `.segment-control` | Apple HIG pill segment wrapper (32px height, border-radius 100px, 2px padding) |
+| `.segment-tab-active` | Active segment tab (green tint, font-weight 590) |
+| `.segment-tab-inactive` | Inactive segment tab (font-weight 510) |
+| `.player-highlight-green` | Subtle green row background for current user (active) |
+| `.player-highlight-amber` | Subtle amber row background for current user (waitlist) |
+| `.pill-paid` | Green payment pill |
+| `.pill-unpaid` | Muted unpaid pill |
+| `.inner-card` | Nested content block (white tint) |
+| `.inner-card-green` | Nested content block (green tint) — used for AI output |
+| `.icon-xs/sm/md/lg/xl` | 13/16/18/24/40px icon sizes |
+| `.status-banner-green` | "You're in" / success banner |
+| `.status-banner-orange` | "Session Full" / warning banner |
 
-### Design Language
-- Dark background: `#100F0F`
-- Text: `#e2e8f0` (default), `rgba(255,255,255,0.5)` (muted)
-- No hard divider lines between sections — use spacing and background tints
-- All interactive elements should have `transition` animations
-- Confirm prompts for destructive actions (remove, cancel, purge) are always inline, not modal dialogs
+### ID Generation
+All IDs use `randomBytes` from Node.js `crypto`:
+- Player IDs: `randomBytes(12).toString('hex')` (24 hex chars)
+- Delete tokens: `randomBytes(16).toString('hex')` (32 hex chars)
+- Announcement IDs: `randomBytes(12).toString('hex')` (24 hex chars)
 
-### TypeScript
-- `strict: true` is set in `tsconfig.json`; all code must type-check cleanly
-- `tsconfig.json` path alias: `@/*` maps to project root (e.g. `@/lib/auth`)
-- Use explicit type annotations for function parameters and return types in `lib/` files
+### Datetime Handling
+- All datetimes stored as ISO 8601 strings with the admin's local timezone offset embedded (e.g. `2025-04-05T14:00:00+11:00`). This ensures correct display for all users regardless of server timezone.
+- `withLocalTz(date, time)` in `SessionEditor` builds the timezone-aware string from the form's date+time inputs.
+- `fmtDate(iso)` in `lib/formatters.ts` formats using `toLocaleDateString` with `weekday: 'long', month: 'long', day: 'numeric'`.
+- `fmtSessionLabel(datetime)` in `AdminTab.tsx` returns `'TODAY'`, weekday name, or `'MAR 29'` format.
 
-### Cosmos DB Queries
-- All queries must include `WHERE c.sessionId = @sessionId` — never query without session scoping
-- Use parameterised queries (`parameters: [{ name: '@field', value }]`) — never string-interpolate
-- Capacity checks always use a query that explicitly excludes `removed = true` AND `waitlisted = true`
+### Cosmos DB Access
+- Always use `getContainer(name)` from `lib/cosmos.ts` — never instantiate `CosmosClient` directly
+- Always filter by `sessionId = SESSION_ID` in every query
+- Partition key on the `players` container is `SESSION_ID` (used in `container.item(id, SESSION_ID)`)
+
+### Error Handling
+- API routes: always return `NextResponse.json({ error: string }, { status: NNN })`
+- Client components: inline error text as `<p className="text-red-400 text-xs">` immediately below the relevant control
+- ARIA: error paragraphs have `role="alert"` and `id` matching `aria-describedby` on the input
+
+### localStorage Keys
+- `badminton_username` — player's display name
+- `badminton_deletetoken` — player's self-cancel token (cleared on cancel)
 
 ---
 
 ## Security Rules
 
-1. **Never expose `deleteToken` to clients.** GET `/api/players` strips it. PATCH responses strip it. The only moment it is sent is the POST 201 response when a player first signs up.
-2. **Never bypass `isAdminAuthed(req)` on protected routes.** Protected routes: `PUT /api/session`, `POST /api/announcements`, `DELETE /api/announcements`, `PATCH /api/players`, `POST /api/claude`, `DELETE /api/admin`.
-3. **Never use `Math.random()` for security-sensitive values.** Use `randomBytes` from `crypto`.
-4. **Always use `timingSafeEqual` for secret comparisons.** Both PIN verification and cookie verification use it. Length must be checked first (different lengths → short-circuit false, not `timingSafeEqual`).
-5. **Admin PIN must be set in production.** `lib/auth.ts` throws if `ADMIN_PIN` is unset in production.
-6. **All API inputs must be validated and sanitised server-side.** Name ≤ 50 chars, announcement ≤ 500 chars, prompt ≤ 4000 chars, courts 1–20, maxPlayers 1–100, datetimes validated with `Date.parse()`.
-7. **Do not add new external origins to the CSP.** The current policy allows `fonts.googleapis.com` and `fonts.gstatic.com` only. Any new external dependency requires a CSP update in `next.config.js`.
-8. **Rate limits protect all mutating public endpoints.** If adding a new public POST/DELETE endpoint, add `checkRateLimit` before any business logic.
-9. **Cosmos queries must always filter by `sessionId`.** Without this filter, a query returns data for all sessions (currently there is only one, but the pattern must be maintained).
-10. **The Anthropic API key is never sent to the browser.** All Claude calls route through `/api/claude`, which verifies admin auth.
+1. **`deleteToken` must never appear in GET responses.** It is stripped in `GET /api/players` before returning. Never add it back.
+2. **Admin cookie comparison must use `timingSafeEqual`.** Never use `===` to compare PINs or cookie values.
+3. **All admin-mutating routes must call `isAdminAuthed(req)` before any DB access.** If the check is skipped, any caller can modify data.
+4. **`POST /api/claude` must remain admin-only.** It proxies directly to the Anthropic API — an unauthenticated endpoint would expose the API key's usage budget.
+5. **Rate limiting must be applied at the top of the handler, before any logic.** If moved after auth checks, rate limiting can be bypassed.
+6. **IP extraction must use `getClientIp(req)`** (reads `X-Client-IP` first, then `X-Forwarded-For`). Do not use `req.ip` — it returns the Azure proxy IP, making rate limits global rather than per-user.
+7. **`ADMIN_PIN` must not be set to an empty string in production.** `lib/auth.ts` throws if it is absent in production.
+8. **Session fields are sanitised server-side.** `PUT /api/session` allows only known fields and enforces length caps. Do not add fields without sanitising them.
+9. **`purgeAll: true` is irreversible.** The action permanently deletes every DB record for the session including soft-deleted ones. The UI shows a confirmation sheet with explicit record counts before executing.
 
 ---
 
 ## Environment Variables
 
 | Variable | Required | Description |
-|----------|----------|-------------|
-| `ADMIN_PIN` | Yes (production) | Admin PIN; use 8+ chars with letters and numbers. App throws on startup in production if unset. |
-| `ANTHROPIC_API_KEY` | Yes for AI features | Anthropic API key for Claude calls |
-| `COSMOS_CONNECTION_STRING` | Yes for persistence | Azure Cosmos DB connection string. If unset, app uses in-memory mock (data lost on restart). |
-| `COSMOS_DB_NAME` | No | Cosmos database name. Defaults to `badminton`. |
+|---|---|---|
+| `ADMIN_PIN` | Yes (prod) | PIN for admin access. Must be non-empty in production. Use 8+ chars with letters and numbers. |
+| `ANTHROPIC_API_KEY` | Yes | Anthropic API key for `claude-sonnet-4-20250514`. |
+| `COSMOS_CONNECTION_STRING` | Yes (prod) | Azure Cosmos DB connection string. If absent, in-memory mock store is used. |
+| `COSMOS_DB_NAME` | No | Cosmos database name. Defaults to `'badminton'`. |
 | `NEXT_PUBLIC_MAX_PLAYERS` | No | Default max players per session. Defaults to `12`. Baked into client bundle at build time. |
-| `NEXT_PUBLIC_BASE_PATH` | Yes | Must match `basePath` in `next.config.js`. Currently `/bpm`. Baked into client bundle at build time — must be set at build time, not just at runtime. |
+| `NEXT_PUBLIC_BASE_PATH` | No | URL base path prefix. Must match `basePath` in `next.config.js`. Currently `/bpm`. Baked into client bundle at build time — set in `.env.local` for dev and in Azure App Settings for production. |
 
-`NEXT_PUBLIC_*` variables are baked into the client bundle at build time. Changing them in Azure App Settings does NOT take effect without a new deployment.
+`NEXT_PUBLIC_*` variables are baked into the client bundle at build time. Changing them requires a rebuild.
 
 ---
 
 ## Deployment
 
-### Primary (Automatic)
-
+### Automatic (primary path)
 Every push to `main` triggers `.github/workflows/main_badminton-app.yml`:
-
-1. Checkout, Node 20, `npm ci`
+1. Checkout → Node 20 setup → `npm ci`
 2. `npm run build` with `NEXT_PUBLIC_BASE_PATH=/bpm` and `NEXT_PUBLIC_MAX_PLAYERS=12`
-3. `cp -r .next/static .next/standalone/.next/static` — merge static assets into standalone bundle
-4. `cd .next/standalone && zip -r ../../standalone-deploy.zip .` — zip with `server.js` at root
-5. OIDC login to Azure (no stored secrets, uses federated credentials)
-6. `azure/webapps-deploy` uploads the zip to the `Production` slot
+3. Copy static assets into standalone: `cp -r .next/static .next/standalone/.next/static`
+4. Zip the standalone directory → `standalone-deploy.zip`
+5. OIDC login to Azure (no long-lived secrets; uses federated credentials)
+6. Deploy zip to Azure App Service `badminton-app`, Production slot
 
-All action SHAs are pinned (not floating tags) for supply chain safety.
+All action SHAs are pinned to specific commits for supply chain safety. `workflow_dispatch` trigger is intentionally absent.
 
-### Manual Deploy (Fallback Only)
-
+### Manual (fallback only)
 ```bash
 rm -rf .next
 npm run build
@@ -445,65 +415,75 @@ az webapp deploy \
   --type zip
 ```
 
-**Critical**: `server.js` must be at the zip root. Always zip from inside `.next/standalone/`, not from the project root. Verify: `zipinfo standalone-deploy.zip | grep "server.js"` — must show `server.js`, not `.next/standalone/server.js`.
+### Azure Configuration
+- App Service: `badminton-app`, resource group `grantzou`, Canada Central, Free F1 tier
+- Live URL: `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm`
+- Cosmos DB: database `badminton`, 3 containers (`sessions`, `players`, `announcements`) at 400 RU/s shared throughput
+- Runtime env vars (`ADMIN_PIN`, `ANTHROPIC_API_KEY`, `COSMOS_CONNECTION_STRING`, etc.) are set in Azure App Service Application Settings — not in the workflow file.
 
-### Azure Resources
-
-| Resource | Value |
-|----------|-------|
-| App Service name | `badminton-app` |
-| Resource group | `grantzou` |
-| Region | Canada Central |
-| Tier | Free (F1) — 60 CPU-min/day, no Always On |
-| Live URL | `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm` |
-| Cosmos DB account | `cosmos-bd` (NoSQL/Core SQL) |
-| Cosmos DB | Database `badminton`, 400 RU/s shared throughput |
-| Claude model | `claude-sonnet-4-20250514` |
+### Security Headers (applied to all routes via `next.config.js`)
+- `X-Frame-Options: DENY`
+- `X-Content-Type-Options: nosniff`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy: camera=(), microphone=(), geolocation=()`
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains`
+- CSP: `default-src 'self'`; scripts allow `'unsafe-inline'`; styles also allow `fonts.googleapis.com`; fonts also allow `fonts.gstatic.com`
 
 ---
 
 ## Known Constraints and Gotchas
 
 ### Race Condition on Signup
-The capacity check (`SELECT count`) and insert are not atomic. Under concurrent load, 1–2 players can exceed `maxPlayers`. Fixing this properly requires Cosmos DB optimistic concurrency (ETags) or a stored procedure — not currently implemented.
+Capacity check and insert in `POST /api/players` are not atomic. Concurrent signups can exceed `maxPlayers` by 1–2 spots. Fixing properly requires Cosmos DB optimistic concurrency (ETags). This is a known limitation on the Free tier where throughput is limited.
 
-### In-Memory Rate Limiter
-The `Map`-based rate limiter in `lib/rateLimit.ts` is per-process and resets on server restart. It is not shared across multiple instances. Acceptable for the Free tier (single instance) but would need Redis for multi-instance deployments.
+### Rate Limiter is In-Memory
+`lib/rateLimit.ts` uses a module-level `Map`. It resets on every cold start and is not shared across multiple server instances. On Free tier Azure (single instance), this is acceptable. Would need Redis for multi-instance.
 
-### Cold Starts
-The Free (F1) tier idles after ~20 min of inactivity. First request after idle takes 10–20 seconds to wake up. There is no mitigation — this is a free tier constraint.
+### Free Tier Cold Starts
+First request after ~20 minutes of idle takes 10–20 seconds to wake up. This is an Azure App Service Free tier characteristic — not a bug.
 
-### No Test Suite
-There are currently no unit or integration tests. `npm run lint` (ESLint with `next/core-web-vitals`) is the only automated quality check.
+### Single Session Model
+`SESSION_ID = 'current-session'` is hard-coded. The app supports exactly one active session at a time. There is no concept of past sessions being visible to players. Admin "Clear session" soft-deletes all players for the week; "Purge all" hard-deletes everything.
 
-### `NEXT_PUBLIC_*` Variables Are Build-Time Only
-Changing `NEXT_PUBLIC_BASE_PATH` or `NEXT_PUBLIC_MAX_PLAYERS` in Azure App Settings does not take effect without a new build and deploy. The GitHub Actions workflow hardcodes these values at build time.
+### `NEXT_PUBLIC_BASE_PATH` Must Match `basePath`
+`next.config.js` has `basePath: '/bpm'` hard-coded. `NEXT_PUBLIC_BASE_PATH` must be set to `/bpm` in both local `.env.local` and Azure App Settings, or all API fetches will 404. If the base path ever changes, update both places.
 
-### Single Session Design
-`SESSION_ID = 'current-session'` is hardcoded. There is no concept of multiple simultaneous sessions or session history. "Clearing" a session for a new week is done via soft-delete (clearAll) or hard-purge (purgeAll), not by creating a new session record.
+### `endDatetime` Is Optional
+`Session.endDatetime` may be absent in DB records written before this field was added. All client checks must guard with `session?.endDatetime ? ... : false`. The `DEFAULT_SESSION` in `lib/cosmos.ts` includes `endDatetime`.
 
-### Stale Deployment Cache
-If Azure reports success but changes are not visible: always run `rm -rf .next` before building locally, and verify the zip structure before uploading. Check in a private/incognito window to rule out browser cache.
+### TeamsTab Removed
+The Teams tab (AI team generation) was present in earlier versions and is referenced in `README.md`, but the component no longer exists in the current codebase. `app/page.tsx` only renders `HomeTab`, `PlayersTab`, and `AdminTab`. The `Tab` type is `'home' | 'players' | 'admin'`.
 
 ### DatePicker Is a Custom Component
-The native `<input type="date">` was replaced with a custom calendar (`components/DatePicker.tsx`) to achieve consistent styling with the glass design. It portal-renders to `document.body` — any changes must account for this and the fact it repositions on scroll.
+The native `<input type="date">` was replaced with a custom `DatePicker` component because the native picker renders inconsistently across mobile browsers and doesn't match the glass design. The `DatePicker` uses `createPortal` to escape `backdrop-filter` stacking contexts — if it were rendered inline, the calendar dropdown would be clipped or invisible behind other blurred elements.
 
-### Cosmos Firewall
-Cosmos DB network access is restricted to Azure datacenters (not public internet). Local dev must use the in-memory mock or configure a VPN/firewall exception.
+### `.azure/` Is Gitignored
+The `.azure/config` file (local Azure CLI context) is gitignored and should never be committed.
 
 ---
 
 ## Rules Before Making Any Change
 
-1. **Read the relevant route handler and any `lib/` files it imports before touching API code.** The auth, rate-limit, and Cosmos patterns are load-bearing — an error in any of them is a security or data-integrity issue.
-2. **Check if a shared CSS class already exists in `globals.css` before adding inline styles.** `.section-label`, `.list-header-green`, `.list-header-amber`, `.glass-card`, `.btn-primary`, `.btn-ghost`, `.status-banner-green`, `.status-banner-orange` must be used, not duplicated.
-3. **Do not expose `deleteToken` to clients.** Any new query, serialisation path, or API response that includes Player data must strip `deleteToken`.
-4. **Capacity checks must exclude both `removed = true` AND `waitlisted = true` records.** The active player count for capacity purposes is: non-removed AND non-waitlisted.
-5. **Never hardcode `SESSION_ID`.** Always import it from `lib/cosmos.ts`. Never use a literal string `'current-session'` in queries.
-6. **Always use `getContainer(name)` for DB access.** Direct `CosmosClient` usage bypasses the in-memory mock and will break local development.
-7. **Do not add `'use server'` or server components.** The entire app is client-side rendered with client components. API routes are the server boundary.
-8. **Rate-limit any new public mutating endpoint** (POST, DELETE, PATCH accessible without admin auth) using `checkRateLimit` + `getClientIp`.
-9. **New admin-only routes must call `isAdminAuthed(req)` as the first check** and return `unauthorized()` immediately if false.
-10. **Test with `npm run lint` before committing.** There is no test suite — lint is the only automated check.
-11. **Deployment changes require updating `AZURE.md`** and verifying the GitHub Actions workflow builds correctly with the new change.
-12. **Do not add new domains to the CSP** (`next.config.js`) without explicit review — the current policy is intentionally restrictive.
+1. **Check `SESSION_ID` scope.** Every Cosmos query must filter by `c.sessionId = @sessionId` with value `SESSION_ID`. Queries missing this filter will return or modify records from all sessions (though currently there is only one).
+
+2. **Never expose `deleteToken` in a response.** After any PATCH or GET that touches the `players` container, destructure out `deleteToken` before returning: `const { deleteToken: _dt, ...safe } = updated`.
+
+3. **Auth before DB.** Any route that mutates data must call `isAdminAuthed(req)` at the very top, before parsing the body or touching the DB.
+
+4. **Rate limit before auth.** Rate limiting must come before auth checks in the handler so it cannot be bypassed.
+
+5. **Capacity-check promotions and restores.** Any PATCH that sets `removed: false` or `waitlisted: false` must query active player count first and return 409 if at capacity — excluding the player being changed from the count.
+
+6. **Use `.segment-control` / `.segment-tab-active` / `.segment-tab-inactive` classes for any new segment controls.** Do not recreate the Apple HIG spec inline — the spec is already codified in `globals.css`.
+
+7. **Do not add CSS divider lines between glass card sections.** The design intentionally omits hard dividers. Use `space-y-*`, padding, and `.list-header-green` / `.list-header-amber` for visual separation.
+
+8. **Use `randomBytes` for all IDs and tokens.** Never use `Math.random()`.
+
+9. **Datetimes must carry timezone offset.** When storing any datetime entered by the admin, run it through `withLocalTz(date, time)` before sending to the API. Plain `YYYY-MM-DDThh:mm:00` strings without a timezone offset are ambiguous and will display incorrectly for users in different timezones.
+
+10. **Test with in-memory mock before touching DB logic.** Remove `COSMOS_CONNECTION_STRING` from `.env.local` to use the mock store. Verify the mock query filters (`@sessionId`, `c.removed != true`, `c.waitlisted != true`, `@name`, `@id`) match the real Cosmos query strings in the route handlers.
+
+11. **`NEXT_PUBLIC_*` changes require a rebuild.** These are baked into the client bundle. A runtime change to Azure App Settings alone will not take effect without redeployment.
+
+12. **No TeamsTab.** Do not re-introduce a Teams tab or reference it from `BottomNav` without also adding it back to the `Tab` type in `app/page.tsx` and implementing the component.
