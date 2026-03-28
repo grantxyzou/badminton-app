@@ -179,7 +179,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
                 href={mapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-blue-400 underline underline-offset-2 break-words"
+                className="text-sm text-gray-300 break-words underline underline-offset-2 decoration-dotted"
               >
                 {session.locationAddress}
               </a>
@@ -354,7 +354,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
               </button>
               {session?.deadline && (
                 <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-amber-400">
-                  <span className="material-icons" aria-hidden="true" style={{ fontSize: 13 }}>schedule</span>
+                  <span className="material-icons icon-xs" aria-hidden="true">schedule</span>
                   <span>Closes {fmtDeadline(session.deadline)}</span>
                 </div>
               )}

@@ -66,7 +66,7 @@ export default function AdminTab() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="glass-card p-6 w-full max-w-xs space-y-5">
           <div className="text-center">
-            <span className="material-icons text-green-400" style={{ fontSize: 40 }}>lock</span>
+            <span className="material-icons icon-xl text-green-400">lock</span>
             <h2 className="text-lg font-bold text-green-400 mt-2">Admin Access</h2>
             <p className="text-sm text-gray-400 mt-0.5">Enter your PIN to continue</p>
           </div>
@@ -125,22 +125,18 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
 
       {/* Segment control */}
       <div
-        className="flex w-full rounded-lg p-1 gap-1 overflow-hidden"
-        style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(74, 222, 128, 0.1)',
-        }}
+        role="tablist"
+        aria-label="Admin sections"
+        className="flex w-full segment-control"
       >
         {SECTIONS.map((s) => (
           <button
             key={s.id}
+            role="tab"
+            aria-selected={section === s.id}
             onClick={() => setSection(s.id)}
-            className="flex-1 min-w-0 py-2 text-sm font-medium rounded-md transition-all truncate"
-            style={
-              section === s.id
-                ? { background: 'rgba(74, 222, 128, 0.15)', color: '#4ade80' }
-                : { color: 'rgba(255,255,255,0.4)' }
-            }
+            className={`flex-1 min-w-0 px-1.5 transition-all truncate ${section === s.id ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+            style={{ fontSize: '13.333px', letterSpacing: '-0.08px', lineHeight: '18px' }}
           >
             {s.label}
           </button>
@@ -570,7 +566,7 @@ function AdminPlayersPanel() {
       <div className="glass-card overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-24" role="status" aria-label="Loading">
-            <span className="material-icons animate-spin text-green-400" aria-hidden="true" style={{ fontSize: 24 }}>refresh</span>
+            <span className="material-icons icon-lg animate-spin text-green-400" aria-hidden="true">refresh</span>
           </div>
         ) : players.length === 0 ? (
           <p className="text-center text-gray-500 text-sm p-8">No players signed up yet.</p>
@@ -585,7 +581,7 @@ function AdminPlayersPanel() {
                 onClick={handleExportCSV}
                 className="text-xs hover:text-green-300 transition-colors flex items-center gap-1"
               >
-                <span className="material-icons" style={{ fontSize: 14 }}>download</span>
+                <span className="material-icons icon-sm">download</span>
                 Export CSV
               </button>
             </div>
@@ -597,11 +593,7 @@ function AdminPlayersPanel() {
                   <button
                     onClick={() => handleTogglePaid(player)}
                     disabled={togglingId === player.id}
-                    className="text-xs font-medium transition-colors px-2 py-0.5 rounded-full"
-                    style={player.paid
-                      ? { background: 'rgba(74,222,128,0.15)', color: '#4ade80' }
-                      : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.35)' }
-                    }
+                    className={`text-xs font-medium transition-colors px-2 py-0.5 rounded-full ${player.paid ? 'pill-paid' : 'pill-unpaid'}`}
                   >
                     {savedId === player.id ? '✓' : togglingId === player.id ? '…' : player.paid ? 'Paid' : 'Unpaid'}
                   </button>
@@ -679,9 +671,9 @@ function AdminPlayersPanel() {
               type="button"
               onClick={() => setCancelledCollapsed(c => !c)}
               aria-label={cancelledCollapsed ? 'Expand cancelled list' : 'Collapse cancelled list'}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(251,191,36,0.65)', padding: 0, display: 'flex' }}
+              className="bg-transparent border-0 cursor-pointer text-amber-400/65 p-0 flex items-center"
             >
-              <span className="material-icons" style={{ fontSize: 18 }}>
+              <span className="material-icons icon-md">
                 {cancelledCollapsed ? 'expand_more' : 'expand_less'}
               </span>
             </button>
@@ -700,7 +692,7 @@ function AdminPlayersPanel() {
                 <div className="flex-1 min-w-0">
                   <span className="text-sm text-gray-500 font-medium line-through">{player.name}</span>
                   {player.removedAt && (
-                    <p className="text-xs text-yellow-600 mt-0.5">
+                    <p className="text-xs text-gray-500 mt-0.5">
                       {player.cancelledBySelf ? 'Cancelled' : 'Removed'} · {new Date(player.removedAt).toLocaleString(undefined, {
                         month: 'short', day: 'numeric',
                         hour: '2-digit', minute: '2-digit',
@@ -710,7 +702,7 @@ function AdminPlayersPanel() {
                 </div>
                 <button
                   onClick={() => handleRestore(player)}
-                  className="text-xs text-yellow-400 hover:text-yellow-300 transition-colors py-2 px-1"
+                  className="text-xs text-amber-400 hover:text-amber-300 transition-colors py-2 px-1"
                 >
                   Restore
                 </button>
@@ -727,7 +719,7 @@ function AdminPlayersPanel() {
           onClick={() => { setClearMode('soft'); setClearError(''); setConfirmingClear(true); }}
           className="text-xs text-gray-500 hover:text-red-400 transition-colors flex items-center gap-1.5"
         >
-          <span className="material-icons" aria-hidden="true" style={{ fontSize: 14 }}>delete_sweep</span>
+          <span className="material-icons icon-sm" aria-hidden="true">delete_sweep</span>
           Clear session
         </button>
         <span className="text-gray-700 text-xs">·</span>
@@ -735,7 +727,7 @@ function AdminPlayersPanel() {
           onClick={() => { setClearMode('hard'); setClearError(''); setConfirmingClear(true); }}
           className="text-xs text-gray-600 hover:text-red-500 transition-colors flex items-center gap-1.5"
         >
-          <span className="material-icons" aria-hidden="true" style={{ fontSize: 14 }}>delete_forever</span>
+          <span className="material-icons icon-sm" aria-hidden="true">delete_forever</span>
           Purge all records
         </button>
       </div>
@@ -768,7 +760,7 @@ function AdminPlayersPanel() {
                   onClick={() => { handleExportCSV(); }}
                   className="btn-ghost w-full flex items-center justify-center gap-2"
                 >
-                  <span className="material-icons" aria-hidden="true" style={{ fontSize: 16 }}>download</span>
+                  <span className="material-icons icon-sm" aria-hidden="true">download</span>
                   Export CSV first
                 </button>
               )}
@@ -907,19 +899,13 @@ function AnnouncementsPanel() {
           disabled={polishing || !draft.trim()}
           className="btn-ghost w-full"
         >
-          <span className="material-icons" style={{ fontSize: 16 }}>auto_fix_high</span>
+          <span className="material-icons icon-sm">auto_fix_high</span>
           {polishing ? 'Improving…' : 'Improve wording'}
         </button>
 
         {/* AI result */}
         {polished && (
-          <div
-            className="rounded-lg p-3 space-y-2"
-            style={{
-              background: 'rgba(74, 222, 128, 0.06)',
-              border: '1px solid rgba(74, 222, 128, 0.15)',
-            }}
-          >
+          <div className="inner-card-green p-3 space-y-2">
             <p className="text-xs font-semibold text-green-400">AI Result</p>
             <p className="text-sm text-gray-200 leading-relaxed">{polished}</p>
             <button
@@ -948,18 +934,11 @@ function AnnouncementsPanel() {
       {/* Posted announcements */}
       {announcements.length > 0 && (
         <div className="glass-card p-5 space-y-3">
-          <h3 className="text-xs font-bold tracking-widest text-gray-500">POSTED</h3>
+          <h3 className="section-label-muted">POSTED</h3>
           <div className="space-y-2">
             {deletePostError && <p className="text-xs text-red-400 mb-1">{deletePostError}</p>}
             {announcements.map((a) => (
-              <div
-                key={a.id}
-                className="rounded-lg p-3"
-                style={{
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                }}
-              >
+              <div key={a.id} className="inner-card p-3">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm text-gray-200 flex-1">{a.text}</p>
                   <button

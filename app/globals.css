@@ -350,9 +350,11 @@ textarea {
   color: #ef4444;
 }
 
-.icon-sm {
-  font-size: 16px;
-}
+.icon-xs  { font-size: 13px; }
+.icon-sm  { font-size: 16px; }
+.icon-md  { font-size: 18px; }
+.icon-lg  { font-size: 24px; }
+.icon-xl  { font-size: 40px; }
 
 .icon-status {
   font-size: 22px;
@@ -382,6 +384,52 @@ textarea {
 /* ── Shared text patterns ── */
 .section-label {
   @apply text-xs font-bold tracking-widest uppercase text-green-400;
+}
+
+.section-label-muted {
+  @apply text-xs font-bold tracking-widest uppercase text-gray-500;
+}
+
+/* ── Admin segment control (Apple HIG spec) ── */
+.segment-control {
+  background: rgba(118, 118, 128, 0.12);
+  border-radius: 100px;
+  padding: 2px;
+  height: 32px;
+  gap: 4px;
+}
+
+.segment-tab-active {
+  background: rgba(74, 222, 128, 0.2);
+  color: #4ade80;
+  border-radius: 20px;
+  font-weight: 590;
+}
+
+.segment-tab-inactive {
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 510;
+}
+
+/* ── Player self-highlight rows ── */
+.player-highlight-green { background: rgba(74, 222, 128, 0.07); }
+.player-highlight-amber  { background: rgba(251, 191, 36, 0.07); }
+
+/* ── Paid / unpaid pill ── */
+.pill-paid   { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+.pill-unpaid { background: rgba(255, 255, 255, 0.06); color: rgba(255, 255, 255, 0.35); }
+
+/* ── Inner mini-card (nested content blocks) ── */
+.inner-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+}
+
+.inner-card-green {
+  background: rgba(74, 222, 128, 0.06);
+  border: 1px solid rgba(74, 222, 128, 0.15);
+  border-radius: 12px;
 }
 
 /* Tinted card row headers — active (green) and secondary (amber) variants */
