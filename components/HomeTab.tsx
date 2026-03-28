@@ -86,6 +86,8 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
 
   const isFull = activePlayers.length >= (session?.maxPlayers ?? maxPlayers);
   const spotsTotal = session?.maxPlayers ?? maxPlayers;
+  const isDeadlinePast = session ? new Date() > new Date(session.deadline) : false;
+  const isSessionFinished = session?.endDatetime ? new Date() > new Date(session.endDatetime) : false;
 
   const waitlistPosition = isWaitlisted && currentUser
     ? waitlistPlayers.findIndex(p => p.name.toLowerCase() === currentUser.toLowerCase()) + 1
@@ -217,7 +219,31 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
 
       {/* Sign-Up Card */}
       <div className="glass-card p-5">
-        {isSignedUp ? (
+        {isSessionFinished ? (
+          /* ── State: Session finished ── */
+          <div className="space-y-4">
+            <p className="text-xl font-bold text-white">Sign up</p>
+            <div className="status-banner-green">
+              <span className="material-icons icon-status text-green-400">celebration</span>
+              <div>
+                <p className="font-semibold text-green-400 text-sm">Thanks for coming!</p>
+                <p className="text-xs text-gray-400 mt-0.5">Sign up for next week will be announced soon.</p>
+              </div>
+            </div>
+          </div>
+        ) : isDeadlinePast && !isSignedUp && !isWaitlisted ? (
+          /* ── State: Deadline passed ── */
+          <div className="space-y-4">
+            <p className="text-xl font-bold text-white">Sign up</p>
+            <div className="status-banner-orange">
+              <span className="material-icons icon-status text-amber-400">lock_clock</span>
+              <div>
+                <p className="font-semibold text-amber-300 text-sm">Sign-ups closed</p>
+                <p className="text-xs text-gray-400 mt-0.5">Deadline passed {fmtDeadline(session!.deadline)}</p>
+              </div>
+            </div>
+          </div>
+        ) : isSignedUp ? (
           /* ── State 1: Active sign-up ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">
@@ -263,7 +289,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
               View Sign Up List
             </button>
           </div>
-        ) : isFull ? (
+        ) : isFull && !isDeadlinePast ? (
           /* ── State 3: Full — join waitlist form ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">

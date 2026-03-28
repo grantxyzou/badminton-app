@@ -104,6 +104,7 @@ export const DEFAULT_SESSION = {
   locationName: '',
   locationAddress: '',
   datetime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  endDatetime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000).toISOString(),
   deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
   courts: 2,
   maxPlayers: parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12', 10) || 12,

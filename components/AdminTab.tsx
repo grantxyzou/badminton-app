@@ -162,6 +162,8 @@ type SessionForm = {
   locationAddress: string;
   date: string;
   time: string;
+  endDate: string;
+  endTime: string;
   deadlineDate: string;
   deadlineTime: string;
   courts: number;
@@ -175,6 +177,8 @@ function SessionEditor() {
     locationAddress: '',
     date: '',
     time: '',
+    endDate: '',
+    endTime: '',
     deadlineDate: '',
     deadlineTime: '',
     courts: 2,
@@ -194,6 +198,8 @@ function SessionEditor() {
           locationAddress: data.locationAddress ?? '',
           date: data.datetime ? data.datetime.slice(0, 10) : '',
           time: data.datetime ? data.datetime.slice(11, 16) : '',
+          endDate: data.endDatetime ? data.endDatetime.slice(0, 10) : '',
+          endTime: data.endDatetime ? data.endDatetime.slice(11, 16) : '',
           deadlineDate: data.deadline ? data.deadline.slice(0, 10) : '',
           deadlineTime: data.deadline ? data.deadline.slice(11, 16) : '',
           courts: data.courts ?? 2,
@@ -219,11 +225,12 @@ function SessionEditor() {
     setSaved(false);
     try {
       const datetime = withLocalTz(form.date, form.time);
+      const endDatetime = withLocalTz(form.endDate, form.endTime);
       const deadline = withLocalTz(form.deadlineDate, form.deadlineTime);
       const res = await fetch(`${BASE}/api/session`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, datetime, deadline }),
+        body: JSON.stringify({ ...form, datetime, endDatetime, deadline }),
       });
       if (res.ok) {
         setSaved(true);
@@ -288,6 +295,16 @@ function SessionEditor() {
             </div>
             <div className="flex-1">
               <input type="time" value={form.deadlineTime} onChange={setStr('deadlineTime')} style={{ height: '42px' }} />
+            </div>
+          </div>
+        </Label>
+        <Label text="Session End">
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <DatePicker value={form.endDate} onChange={v => setForm(f => ({ ...f, endDate: v }))} placeholder="Date" />
+            </div>
+            <div className="flex-1">
+              <input type="time" value={form.endTime} onChange={setStr('endTime')} style={{ height: '42px' }} />
             </div>
           </div>
         </Label>

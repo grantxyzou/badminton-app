@@ -5,6 +5,7 @@ export interface Session {
   locationName?: string;
   locationAddress?: string;
   datetime: string;
+  endDatetime?: string;
   deadline: string;
   courts: number;
   maxPlayers: number;

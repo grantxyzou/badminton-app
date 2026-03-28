@@ -39,6 +39,7 @@ export async function PUT(req: NextRequest) {
       locationName: String(body.locationName ?? '').trim().slice(0, 200),
       locationAddress: String(body.locationAddress ?? '').trim().slice(0, 300),
       datetime: toValidIso(body.datetime),
+      endDatetime: toValidIso(body.endDatetime),
       deadline: toValidIso(body.deadline),
       courts: Math.max(1, Math.min(20, parseInt(body.courts, 10) || 2)),
       maxPlayers: Math.max(1, Math.min(100, parseInt(body.maxPlayers, 10) || 12)),

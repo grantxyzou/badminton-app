@@ -50,8 +50,13 @@ export async function POST(req: NextRequest) {
         parameters: [{ name: '@id', value: SESSION_ID }],
       })
       .fetchAll();
+    const sessionData = sessions[0];
     const maxPlayers =
-      sessions[0]?.maxPlayers ?? parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12', 10);
+      sessionData?.maxPlayers ?? parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12', 10);
+
+    if (sessionData?.deadline && new Date() > new Date(sessionData.deadline)) {
+      return NextResponse.json({ error: 'Sign-up deadline has passed' }, { status: 403 });
+    }
 
     const container = getContainer('players');
 
