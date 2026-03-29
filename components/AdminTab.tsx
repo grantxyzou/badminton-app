@@ -210,6 +210,7 @@ function SessionEditor() {
     courts: 2,
     maxPlayers: 12,
     signupOpen: true,
+    approvedNames: [],
   });
   const [advancing, setAdvancing] = useState(false);
   const [advanceError, setAdvanceError] = useState('');
