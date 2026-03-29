@@ -250,6 +250,7 @@ function SessionEditor() {
           courts: data.courts ?? 2,
           maxPlayers: data.maxPlayers ?? 12,
           signupOpen: true,
+          approvedNames: [],
         });
       })
       .catch(() => {});
