@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, SESSION_ID } from '@/lib/cosmos';
+import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { randomBytes } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isAdminAuthed } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   try {
+    const sessionId = await getActiveSessionId();
     const includeRemoved = new URL(req.url).searchParams.get('all') === 'true' && isAdminAuthed(req);
     const container = getContainer('players');
     const { resources } = await container.items
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
         query: includeRemoved
           ? 'SELECT * FROM c WHERE c.sessionId = @sessionId ORDER BY c.timestamp ASC'
           : 'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) ORDER BY c.timestamp ASC',
-        parameters: [{ name: '@sessionId', value: SESSION_ID }],
+        parameters: [{ name: '@sessionId', value: sessionId }],
       })
       .fetchAll();
     // Strip deleteToken — it must never be exposed to other clients
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const sessionId = await getActiveSessionId();
     const body = await req.json();
     const { name } = body;
     const joinWaitlist = body.waitlist === true;
@@ -47,15 +49,27 @@ export async function POST(req: NextRequest) {
     const { resources: sessions } = await sessionContainer.items
       .query({
         query: 'SELECT * FROM c WHERE c.id = @id',
-        parameters: [{ name: '@id', value: SESSION_ID }],
+        parameters: [{ name: '@id', value: sessionId }],
       })
       .fetchAll();
     const sessionData = sessions[0];
     const maxPlayers =
       sessionData?.maxPlayers ?? parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12', 10);
 
+    if (sessionData?.signupOpen === false && !isAdminAuthed(req)) {
+      return NextResponse.json({ error: 'Sign-ups are not open yet' }, { status: 403 });
+    }
+
     if (sessionData?.deadline && new Date() > new Date(sessionData.deadline) && !isAdminAuthed(req)) {
       return NextResponse.json({ error: 'Sign-up deadline has passed' }, { status: 403 });
+    }
+
+    const approvedNames: string[] = Array.isArray(sessionData?.approvedNames) ? sessionData.approvedNames : [];
+    if (approvedNames.length > 0 && !isAdminAuthed(req)) {
+      const normalised = approvedNames.map((n: string) => n.toLowerCase());
+      if (!normalised.includes(trimmedName.toLowerCase())) {
+        return NextResponse.json({ error: 'hmmmm... please use the name we know you by' }, { status: 403 });
+      }
     }
 
     const container = getContainer('players');
@@ -66,7 +80,7 @@ export async function POST(req: NextRequest) {
         query:
           'SELECT * FROM c WHERE c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name)',
         parameters: [
-          { name: '@sessionId', value: SESSION_ID },
+          { name: '@sessionId', value: sessionId },
           { name: '@name', value: trimmedName },
         ],
       })
@@ -83,7 +97,7 @@ export async function POST(req: NextRequest) {
     const { resources: activePlayers } = await container.items
       .query({
         query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
-        parameters: [{ name: '@sessionId', value: SESSION_ID }],
+        parameters: [{ name: '@sessionId', value: sessionId }],
       })
       .fetchAll();
 
@@ -114,7 +128,7 @@ export async function POST(req: NextRequest) {
     const player = {
       id: randomBytes(12).toString('hex'),
       name: trimmedName,
-      sessionId: SESSION_ID,
+      sessionId,
       timestamp: new Date().toISOString(),
       deleteToken,
       paid: false,
@@ -136,13 +150,14 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   try {
+    const sessionId = await getActiveSessionId();
     const body = await req.json();
     const { id } = body;
     if (typeof id !== 'string') {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
     const container = getContainer('players');
-    const { resource: existing } = await container.item(id, SESSION_ID).read();
+    const { resource: existing } = await container.item(id, sessionId).read();
     if (!existing) {
       return NextResponse.json({ error: 'Player not found' }, { status: 404 });
     }
@@ -155,7 +170,7 @@ export async function PATCH(req: NextRequest) {
     const { resources: sessions } = await sessionContainer.items
       .query({
         query: 'SELECT * FROM c WHERE c.id = @id',
-        parameters: [{ name: '@id', value: SESSION_ID }],
+        parameters: [{ name: '@id', value: sessionId }],
       })
       .fetchAll();
     const maxPlayers =
@@ -166,7 +181,7 @@ export async function PATCH(req: NextRequest) {
       const { resources: active } = await container.items
         .query({
           query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
-          parameters: [{ name: '@sessionId', value: SESSION_ID }],
+          parameters: [{ name: '@sessionId', value: sessionId }],
         })
         .fetchAll();
       // Exclude the player being promoted from the count (they're currently in the list as waitlisted/removed)
@@ -194,6 +209,7 @@ export async function DELETE(req: NextRequest) {
   const isAdmin = isAdminAuthed(req);
 
   try {
+    const sessionId = await getActiveSessionId();
     const body = await req.json();
 
     // Admin hard purge — permanently delete every record for this session
@@ -202,10 +218,10 @@ export async function DELETE(req: NextRequest) {
       const { resources: all } = await container.items
         .query({
           query: 'SELECT * FROM c WHERE c.sessionId = @sessionId',
-          parameters: [{ name: '@sessionId', value: SESSION_ID }],
+          parameters: [{ name: '@sessionId', value: sessionId }],
         })
         .fetchAll();
-      await Promise.all(all.map((p) => container.item(p.id, SESSION_ID).delete()));
+      await Promise.all(all.map((p) => container.item(p.id, sessionId).delete()));
       return NextResponse.json({ success: true, count: all.length });
     }
 
@@ -215,7 +231,7 @@ export async function DELETE(req: NextRequest) {
       const { resources: active } = await container.items
         .query({
           query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true)',
-          parameters: [{ name: '@sessionId', value: SESSION_ID }],
+          parameters: [{ name: '@sessionId', value: sessionId }],
         })
         .fetchAll();
       const now = new Date().toISOString();
@@ -247,7 +263,7 @@ export async function DELETE(req: NextRequest) {
         query:
           'SELECT * FROM c WHERE c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name) AND (NOT IS_DEFINED(c.removed) OR c.removed != true)',
         parameters: [
-          { name: '@sessionId', value: SESSION_ID },
+          { name: '@sessionId', value: sessionId },
           { name: '@name', value: trimmedName },
         ],
       })

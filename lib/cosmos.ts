@@ -40,6 +40,9 @@ function getMockContainer(name: string) {
             if ('@id' in params) {
               results = results.filter((r) => r.id === params['@id']);
             }
+            if ('@pointerId' in params) {
+              results = results.filter((r) => r.id !== params['@pointerId']);
+            }
             return { resources: results };
           },
         };
@@ -66,6 +69,17 @@ function getMockContainer(name: string) {
       };
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Active session pointer helpers
+// ---------------------------------------------------------------------------
+
+export const POINTER_ID = 'active-session-pointer';
+
+// Derives a session ID from an ISO datetime string.
+export function sessionIdFromDate(isoDatetime: string): string {
+  return `session-${isoDatetime.slice(0, 10)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -96,6 +110,26 @@ export function getContainer(name: string): Container {
   return getDatabase().container(name);
 }
 
+// Resolves the currently active session ID via the pointer document.
+// Falls back to 'current-session' for backward compatibility with existing
+// production data until the admin performs the first "Advance" action.
+export async function getActiveSessionId(): Promise<string> {
+  try {
+    const container = getContainer('sessions');
+    const { resource } = await container.item(POINTER_ID, POINTER_ID).read();
+    return (resource as { activeSessionId?: string } | undefined)?.activeSessionId ?? 'current-session';
+  } catch {
+    return 'current-session';
+  }
+}
+
+// Writes the pointer to a new session ID.
+export async function setActiveSessionId(id: string): Promise<void> {
+  const container = getContainer('sessions');
+  await container.items.upsert({ id: POINTER_ID, sessionId: POINTER_ID, activeSessionId: id });
+}
+
+// Keep for any remaining references during migration
 export const SESSION_ID = 'current-session';
 
 export const DEFAULT_SESSION = {

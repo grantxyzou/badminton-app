@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, SESSION_ID } from '@/lib/cosmos';
+import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { randomBytes } from 'crypto';
 
 export async function GET() {
   try {
+    const sessionId = await getActiveSessionId();
     const container = getContainer('announcements');
     const { resources } = await container.items
       .query({
-        query:
-          'SELECT * FROM c WHERE c.sessionId = @sessionId ORDER BY c.time DESC',
-        parameters: [{ name: '@sessionId', value: SESSION_ID }],
+        query: 'SELECT * FROM c WHERE c.sessionId = @sessionId ORDER BY c.time DESC',
+        parameters: [{ name: '@sessionId', value: sessionId }],
       })
       .fetchAll();
     return NextResponse.json(resources);
@@ -24,6 +24,7 @@ export async function DELETE(req: NextRequest) {
   if (!isAdminAuthed(req)) return unauthorized();
 
   try {
+    const sessionId = await getActiveSessionId();
     const { id } = await req.json();
     if (!id || typeof id !== 'string') {
       return NextResponse.json({ error: 'ID required' }, { status: 400 });
@@ -35,7 +36,7 @@ export async function DELETE(req: NextRequest) {
         query: 'SELECT * FROM c WHERE c.id = @id AND c.sessionId = @sessionId',
         parameters: [
           { name: '@id', value: id },
-          { name: '@sessionId', value: SESSION_ID },
+          { name: '@sessionId', value: sessionId },
         ],
       })
       .fetchAll();
@@ -44,7 +45,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    await container.item(id, SESSION_ID).delete();
+    await container.item(id, sessionId).delete();
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE announcement error:', error);
@@ -56,6 +57,7 @@ export async function PATCH(req: NextRequest) {
   if (!isAdminAuthed(req)) return unauthorized();
 
   try {
+    const sessionId = await getActiveSessionId();
     const { id, text } = await req.json();
     if (!id || typeof id !== 'string') {
       return NextResponse.json({ error: 'ID required' }, { status: 400 });
@@ -74,7 +76,7 @@ export async function PATCH(req: NextRequest) {
         query: 'SELECT * FROM c WHERE c.id = @id AND c.sessionId = @sessionId',
         parameters: [
           { name: '@id', value: id },
-          { name: '@sessionId', value: SESSION_ID },
+          { name: '@sessionId', value: sessionId },
         ],
       })
       .fetchAll();
@@ -99,6 +101,7 @@ export async function POST(req: NextRequest) {
   if (!isAdminAuthed(req)) return unauthorized();
 
   try {
+    const sessionId = await getActiveSessionId();
     const { text } = await req.json();
     const trimmed = typeof text === 'string' ? text.trim() : '';
     if (!trimmed) {
@@ -112,7 +115,7 @@ export async function POST(req: NextRequest) {
       id: randomBytes(12).toString('hex'),
       text: trimmed,
       time: new Date().toISOString(),
-      sessionId: SESSION_ID,
+      sessionId,
     };
 
     const container = getContainer('announcements');

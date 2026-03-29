@@ -43,6 +43,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const maxPlayers = parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12');
 
@@ -85,9 +86,17 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
     : false;
 
   const isFull = activePlayers.length >= (session?.maxPlayers ?? maxPlayers);
+  const suggestions = name.trim().length > 0
+    ? (session?.approvedNames ?? []).filter(n => n.toLowerCase().includes(name.toLowerCase().trim()))
+    : [];
   const spotsTotal = session?.maxPlayers ?? maxPlayers;
   const isDeadlinePast = session ? new Date() > new Date(session.deadline) : false;
   const isSessionFinished = session?.endDatetime ? new Date() > new Date(session.endDatetime) : false;
+  const isSignupClosed = session ? session.signupOpen === false : false;
+
+  const isDeadlineApproaching = session?.deadline
+    ? (() => { const diff = new Date(session.deadline).getTime() - Date.now(); return diff > 0 && diff <= 24 * 60 * 60 * 1000; })()
+    : false;
 
   const waitlistPosition = isWaitlisted && currentUser
     ? waitlistPlayers.findIndex(p => p.name.toLowerCase() === currentUser.toLowerCase()) + 1
@@ -95,7 +104,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim()) { setError('Please enter your name.'); return; }
     setIsSubmitting(true);
     setError('');
     try {
@@ -123,7 +132,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
 
   async function handleJoinWaitlist(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim()) { setError('Please enter your name.'); return; }
     setIsSubmitting(true);
     setError('');
     try {
@@ -196,13 +205,13 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
       <div className="glass-card p-5 space-y-3">
         <p className="section-label">DATE & TIME</p>
         <div className="flex items-center gap-3">
-          <span className="material-icons icon-pin-lg shrink-0 text-blue-400">calendar_today</span>
+          <span className="material-icons icon-pin-lg shrink-0 text-white">&#xe878;</span>
           <span className="text-base font-semibold text-white">
             {session ? fmtDate(session.datetime) : '—'}
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="material-icons icon-pin-lg shrink-0 text-violet-400">schedule</span>
+          <span className="material-icons icon-pin-lg shrink-0 text-white">&#xe8b5;</span>
           <span className="text-base font-semibold text-white">
             {session ? fmtTime(session.datetime) : '—'}
           </span>
@@ -222,7 +231,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
         {isSessionFinished ? (
           /* ── State: Session finished ── */
           <div className="space-y-4">
-            <p className="text-xl font-bold text-white">Sign up</p>
+            <p className="text-xl font-bold text-green-400">Sign up</p>
             <div className="status-banner-green">
               <span className="material-icons icon-status text-green-400">celebration</span>
               <div>
@@ -231,10 +240,22 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
               </div>
             </div>
           </div>
+        ) : isSignupClosed && !isSignedUp && !isWaitlisted ? (
+          /* ── State: Sign-ups not open yet ── */
+          <div className="space-y-4">
+            <p className="text-xl font-bold text-green-400">Sign up</p>
+            <div className="status-banner-orange">
+              <span className="material-icons icon-status text-amber-400">hourglass_top</span>
+              <div>
+                <p className="font-semibold text-amber-300 text-sm">Sign-ups not open yet</p>
+                <p className="text-xs text-gray-400 mt-0.5">Check back soon.</p>
+              </div>
+            </div>
+          </div>
         ) : isDeadlinePast && !isSignedUp && !isWaitlisted ? (
           /* ── State: Deadline passed ── */
           <div className="space-y-4">
-            <p className="text-xl font-bold text-white">Sign up</p>
+            <p className="text-xl font-bold text-green-400">Sign up</p>
             <div className="status-banner-orange">
               <span className="material-icons icon-status text-amber-400">lock_clock</span>
               <div>
@@ -247,9 +268,9 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
           /* ── State 1: Active sign-up ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">
-              <p className="text-xl font-bold text-white">Sign up</p>
+              <p className="text-xl font-bold text-green-400">Sign up</p>
               <div className="text-right">
-                <p className="text-xs text-gray-400">Spots left</p>
+                <p className="text-xs text-gray-400">Spots available</p>
                 <p className="text-2xl font-bold text-white leading-none mt-0.5">
                   {activePlayers.length}/{spotsTotal}
                 </p>
@@ -258,8 +279,8 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
             <div className="status-banner-green">
               <span className="material-icons icon-status text-green-400">check_circle</span>
               <div>
-                <p className="font-semibold text-green-400 text-sm">You&apos;re in!</p>
-                <p className="text-xs text-gray-400 mt-0.5">Signed up as {currentUser}</p>
+                <p className="font-semibold text-green-400 text-sm">{currentUser}, thank you for signing up!</p>
+                <p className="text-xs text-gray-400 mt-0.5">See you soon!</p>
               </div>
             </div>
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
@@ -270,7 +291,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
           /* ── State 2: On waitlist ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">
-              <p className="text-xl font-bold text-white">Sign up</p>
+              <p className="text-xl font-bold text-green-400">Sign up</p>
               <div className="text-right">
                 <p className="text-xs text-gray-400">Waitlist</p>
                 <p className="text-2xl font-bold text-amber-400 leading-none mt-0.5">
@@ -293,9 +314,9 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
           /* ── State 3: Full — join waitlist form ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">
-              <p className="text-xl font-bold text-white">Sign up</p>
+              <p className="text-xl font-bold text-green-400">Sign up</p>
               <div className="text-right">
-                <p className="text-xs text-gray-400">Spots left</p>
+                <p className="text-xs text-gray-400">Spots available</p>
                 <p className="text-2xl font-bold text-orange-400 leading-none mt-0.5">
                   {activePlayers.length}/{spotsTotal}
                 </p>
@@ -309,16 +330,35 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
               </div>
             </div>
             <form onSubmit={handleJoinWaitlist} className="space-y-3">
-              <input
-                type="text"
-                placeholder="Who is playing?"
-                aria-label="Your name"
-                aria-describedby={error ? 'signup-error' : undefined}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                maxLength={50}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Who is playing?"
+                  aria-label="Your name"
+                  aria-describedby={error ? 'signup-error' : undefined}
+                  value={name}
+                  onChange={(e) => { setName(e.target.value); setError(''); setShowSuggestions(true); }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 100)}
+                  maxLength={50}
+                  autoComplete="off"
+                />
+                {showSuggestions && suggestions.length > 0 && (
+                  <ul className="absolute left-0 right-0 top-full mt-1 z-10 rounded-xl overflow-hidden border border-white/10" style={{ background: 'rgba(30,40,30,0.97)', backdropFilter: 'blur(12px)' }}>
+                    {suggestions.map((s) => (
+                      <li key={s}>
+                        <button
+                          type="button"
+                          onMouseDown={() => { setName(s); setShowSuggestions(false); setError(''); }}
+                          className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors"
+                        >
+                          {s}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
               <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
                 {isSubmitting ? 'Joining…' : 'Join Waitlist'}
@@ -329,34 +369,53 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
           /* ── State 4: Open — normal sign-up ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">
-              <p className="text-xl font-bold text-white">Sign up</p>
+              <p className="text-xl font-bold text-green-400">Sign up</p>
               <div className="text-right">
-                <p className="text-xs text-gray-400">Spots left</p>
+                <p className="text-xs text-gray-400">Spots available</p>
                 <p className="text-2xl font-bold text-white leading-none mt-0.5">
                   {activePlayers.length}/{spotsTotal}
                 </p>
               </div>
             </div>
             <form onSubmit={handleSignUp} className="space-y-3">
-              <input
-                type="text"
-                placeholder="Who is playing?"
-                aria-label="Your name"
-                aria-describedby={error ? 'signup-error' : undefined}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                maxLength={50}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Who is playing?"
+                  aria-label="Your name"
+                  aria-describedby={error ? 'signup-error' : undefined}
+                  value={name}
+                  onChange={(e) => { setName(e.target.value); setError(''); setShowSuggestions(true); }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 100)}
+                  maxLength={50}
+                  autoComplete="off"
+                />
+                {showSuggestions && suggestions.length > 0 && (
+                  <ul className="absolute left-0 right-0 top-full mt-1 z-10 rounded-xl overflow-hidden border border-white/10" style={{ background: 'rgba(30,40,30,0.97)', backdropFilter: 'blur(12px)' }}>
+                    {suggestions.map((s) => (
+                      <li key={s}>
+                        <button
+                          type="button"
+                          onMouseDown={() => { setName(s); setShowSuggestions(false); setError(''); }}
+                          className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors"
+                        >
+                          {s}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
               <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
+                {!isSubmitting && <span className="material-icons icon-sm" aria-hidden="true">how_to_reg</span>}
                 {isSubmitting ? 'Signing up…' : 'Sign Up'}
               </button>
               {session?.deadline && (
-                <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-amber-400">
-                  <span className="material-icons icon-xs" aria-hidden="true">schedule</span>
-                  <span>Closes {fmtDeadline(session.deadline)}</span>
-                </div>
+                <p className={`text-center text-xs font-medium ${isDeadlineApproaching ? 'text-red-400' : 'text-gray-400'}`}>
+                  Sign up closes on {fmtDeadline(session.deadline)}
+                </p>
               )}
             </form>
           </div>

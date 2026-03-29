@@ -9,6 +9,8 @@ export interface Session {
   deadline: string;
   courts: number;
   maxPlayers: number;
+  signupOpen?: boolean;
+  approvedNames?: string[];
 }
 
 export interface Player {

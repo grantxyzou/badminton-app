@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -166,6 +166,8 @@ type SessionForm = {
   deadlineTime: string;
   courts: number;
   maxPlayers: number;
+  signupOpen: boolean;
+  approvedNames: string[];
 };
 
 function SessionEditor() {
@@ -181,16 +183,43 @@ function SessionEditor() {
     deadlineTime: '',
     courts: 2,
     maxPlayers: 12,
+    signupOpen: true,
+    approvedNames: [],
   });
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [saveError, setSaveError] = useState('');
+  const initialForm = useRef<SessionForm | null>(null);
+  const [nameInput, setNameInput] = useState('');
+  const [savingNames, setSavingNames] = useState(false);
+  const [savedNames, setSavedNames] = useState(false);
+  const [saveNamesError, setSaveNamesError] = useState('');
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [savedDetails, setSavedDetails] = useState(false);
+  const [saveDetailsError, setSaveDetailsError] = useState('');
+  const [savingDates, setSavingDates] = useState(false);
+  const [savedDates, setSavedDates] = useState(false);
+  const [saveDatesError, setSaveDatesError] = useState('');
+  const [advanceForm, setAdvanceForm] = useState<SessionForm>({
+    title: '',
+    locationName: '',
+    locationAddress: '',
+    date: '',
+    time: '',
+    endDate: '',
+    endTime: '',
+    deadlineDate: '',
+    deadlineTime: '',
+    courts: 2,
+    maxPlayers: 12,
+    signupOpen: true,
+  });
+  const [advancing, setAdvancing] = useState(false);
+  const [advanceError, setAdvanceError] = useState('');
+  const [advanceDone, setAdvanceDone] = useState(false);
 
   useEffect(() => {
     fetch(`${BASE}/api/session`)
       .then((r) => r.json())
       .then((data: Session) => {
-        setForm({
+        const loaded: SessionForm = {
           title: data.title ?? '',
           locationName: data.locationName ?? '',
           locationAddress: data.locationAddress ?? '',
@@ -202,6 +231,24 @@ function SessionEditor() {
           deadlineTime: data.deadline ? data.deadline.slice(11, 16) : '',
           courts: data.courts ?? 2,
           maxPlayers: data.maxPlayers ?? 12,
+          signupOpen: data.signupOpen !== false,
+          approvedNames: Array.isArray(data.approvedNames) ? data.approvedNames : [],
+        };
+        setForm(loaded);
+        initialForm.current = loaded;
+        setAdvanceForm({
+          title: data.title ?? '',
+          locationName: data.locationName ?? '',
+          locationAddress: data.locationAddress ?? '',
+          date: '',
+          time: data.datetime ? data.datetime.slice(11, 16) : '',
+          endDate: '',
+          endTime: data.endDatetime ? data.endDatetime.slice(11, 16) : '',
+          deadlineDate: '',
+          deadlineTime: data.deadline ? data.deadline.slice(11, 16) : '',
+          courts: data.courts ?? 2,
+          maxPlayers: data.maxPlayers ?? 12,
+          signupOpen: true,
         });
       })
       .catch(() => {});
@@ -217,10 +264,8 @@ function SessionEditor() {
     return `${date}T${time}:00${sign}${hh}:${mm}`;
   }
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setSaved(false);
+  async function saveSession(onStart: () => void, onSuccess: () => void, onError: (msg: string) => void, onFinally: () => void) {
+    onStart();
     try {
       const datetime = withLocalTz(form.date, form.time);
       const endDatetime = withLocalTz(form.endDate, form.endTime);
@@ -231,17 +276,110 @@ function SessionEditor() {
         body: JSON.stringify({ ...form, datetime, endDatetime, deadline }),
       });
       if (res.ok) {
-        setSaved(true);
-        setSaveError('');
-        setTimeout(() => setSaved(false), 3000);
+        initialForm.current = { ...form };
+        onSuccess();
       } else {
         const data = await res.json().catch(() => ({}));
-        setSaveError(data.error ?? 'Failed to save. Please try again.');
+        onError(data.error ?? 'Failed to save. Please try again.');
       }
     } finally {
-      setSaving(false);
+      onFinally();
     }
   }
+
+  async function handleSaveDetails(e: React.FormEvent) {
+    e.preventDefault();
+    await saveSession(
+      () => { setSavingDetails(true); setSavedDetails(false); setSaveDetailsError(''); },
+      () => { setSavedDetails(true); setTimeout(() => setSavedDetails(false), 3000); },
+      (msg) => setSaveDetailsError(msg),
+      () => setSavingDetails(false),
+    );
+  }
+
+  async function handleSaveDates(e: React.FormEvent) {
+    e.preventDefault();
+    await saveSession(
+      () => { setSavingDates(true); setSavedDates(false); setSaveDatesError(''); },
+      () => { setSavedDates(true); setTimeout(() => setSavedDates(false), 3000); },
+      (msg) => setSaveDatesError(msg),
+      () => setSavingDates(false),
+    );
+  }
+
+  async function handleSaveNames() {
+    await saveSession(
+      () => { setSavingNames(true); setSavedNames(false); setSaveNamesError(''); },
+      () => { setSavedNames(true); setTimeout(() => setSavedNames(false), 3000); },
+      (msg) => setSaveNamesError(msg),
+      () => setSavingNames(false),
+    );
+  }
+
+  async function handleAdvance(e: React.FormEvent) {
+    e.preventDefault();
+    setAdvancing(true);
+    setAdvanceError('');
+    setAdvanceDone(false);
+    try {
+      const datetime = withLocalTz(advanceForm.date, advanceForm.time);
+      const endDatetime = withLocalTz(advanceForm.endDate, advanceForm.endTime);
+      const deadline = withLocalTz(advanceForm.deadlineDate, advanceForm.deadlineTime);
+      const res = await fetch(`${BASE}/api/session/advance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...advanceForm, datetime, endDatetime, deadline }),
+      });
+      if (res.ok) {
+        setAdvanceDone(true);
+        const sRes = await fetch(`${BASE}/api/session`);
+        if (sRes.ok) {
+          const data: Session = await sRes.json();
+          const loaded: SessionForm = {
+            title: data.title ?? '',
+            locationName: data.locationName ?? '',
+            locationAddress: data.locationAddress ?? '',
+            date: data.datetime ? data.datetime.slice(0, 10) : '',
+            time: data.datetime ? data.datetime.slice(11, 16) : '',
+            endDate: data.endDatetime ? data.endDatetime.slice(0, 10) : '',
+            endTime: data.endDatetime ? data.endDatetime.slice(11, 16) : '',
+            deadlineDate: data.deadline ? data.deadline.slice(0, 10) : '',
+            deadlineTime: data.deadline ? data.deadline.slice(11, 16) : '',
+            courts: data.courts ?? 2,
+            maxPlayers: data.maxPlayers ?? 12,
+            signupOpen: data.signupOpen !== false,
+            approvedNames: Array.isArray(data.approvedNames) ? data.approvedNames : [],
+          };
+          setForm(loaded);
+          initialForm.current = loaded;
+          setAdvanceForm(f => ({ ...f, date: '', endDate: '', deadlineDate: '' }));
+        }
+        setTimeout(() => setAdvanceDone(false), 4000);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setAdvanceError(data.error ?? 'Failed to advance. Please try again.');
+      }
+    } finally {
+      setAdvancing(false);
+    }
+  }
+
+  const init = initialForm.current;
+  const detailsDirty = init !== null && (
+    form.locationName !== init.locationName ||
+    form.locationAddress !== init.locationAddress ||
+    form.courts !== init.courts ||
+    form.maxPlayers !== init.maxPlayers ||
+    form.signupOpen !== init.signupOpen
+  );
+  const datesDirty = init !== null && (
+    form.date !== init.date ||
+    form.time !== init.time ||
+    form.deadlineDate !== init.deadlineDate ||
+    form.deadlineTime !== init.deadlineTime ||
+    form.endDate !== init.endDate ||
+    form.endTime !== init.endTime
+  );
 
   function setStr(key: keyof SessionForm) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -251,68 +389,212 @@ function SessionEditor() {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((f) => ({ ...f, [key]: parseInt(e.target.value) || 0 }));
   }
+  function setAdvStr(key: keyof SessionForm) {
+    return (e: React.ChangeEvent<HTMLInputElement>) =>
+      setAdvanceForm((f) => ({ ...f, [key]: e.target.value }));
+  }
+  function setAdvNum(key: keyof SessionForm) {
+    return (e: React.ChangeEvent<HTMLInputElement>) =>
+      setAdvanceForm((f) => ({ ...f, [key]: parseInt(e.target.value) || 0 }));
+  }
 
   return (
-    <form onSubmit={handleSave} className="space-y-3">
-      {/* Card 1: Session identity */}
-      <div className="glass-card p-5 space-y-3">
-        <p className="section-label">SESSION INFO</p>
-        <Label text="Establishment Name">
-          <input type="text" value={form.locationName} onChange={setStr('locationName')} placeholder="e.g. Smash Sports Centre" />
-        </Label>
-        <Label text="Address">
-          <input type="text" value={form.locationAddress} onChange={setStr('locationAddress')} placeholder="e.g. 123 Main St, City" />
-        </Label>
-        <div className="grid grid-cols-2 gap-3">
-          <Label text="Courts">
-            <input type="number" min={1} value={form.courts} onChange={setNum('courts')} />
+    <div className="space-y-3">
+      {/* Card 1: Badminton Details */}
+      <form onSubmit={handleSaveDetails}>
+        <div className="glass-card p-5 space-y-3">
+          <p className="section-label">BADMINTON DETAILS</p>
+          <Label text="Establishment Name">
+            <input type="text" value={form.locationName} onChange={setStr('locationName')} placeholder="e.g. Smash Sports Centre" />
           </Label>
-          <Label text="Max Players">
-            <input type="number" min={1} value={form.maxPlayers} onChange={setNum('maxPlayers')} />
+          <Label text="Address">
+            <input type="text" value={form.locationAddress} onChange={setStr('locationAddress')} placeholder="e.g. 123 Main St, City" />
           </Label>
+          <div className="grid grid-cols-2 gap-3">
+            <Label text="Courts">
+              <input type="number" min={1} value={form.courts} onChange={setNum('courts')} />
+            </Label>
+            <Label text="Max Players">
+              <input type="number" min={1} value={form.maxPlayers} onChange={setNum('maxPlayers')} />
+            </Label>
+          </div>
+          <div className="flex items-center justify-between pt-1">
+            <div>
+              <p className="text-sm font-medium text-white">Sign-ups</p>
+              <p className="text-xs text-gray-400">{form.signupOpen ? 'Open — players can sign up' : 'Closed — players cannot sign up'}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setForm(f => ({ ...f, signupOpen: !f.signupOpen }))}
+              className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${form.signupOpen ? 'bg-green-500' : 'bg-white/20'}`}
+              role="switch"
+              aria-checked={form.signupOpen}
+            >
+              <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200 ${form.signupOpen ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          {saveDetailsError && <p className="text-red-400 text-xs">{saveDetailsError}</p>}
+          <button type="submit" disabled={savingDetails || !detailsDirty} className="btn-ghost w-full">
+            {savingDetails ? 'Saving…' : savedDetails ? '✓ Updated!' : 'Update'}
+          </button>
         </div>
-      </div>
+      </form>
 
       {/* Card 2: Date & Time */}
+      <form onSubmit={handleSaveDates}>
+        <div className="glass-card p-5 space-y-3">
+          <p className="section-label">DATE & TIME</p>
+          <Label text="Date & Time">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <DatePicker value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} placeholder="Date" />
+              </div>
+              <div className="flex-1">
+                <input type="time" value={form.time} onChange={setStr('time')} style={{ height: '42px' }} />
+              </div>
+            </div>
+          </Label>
+          <Label text="Sign-up Deadline">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <DatePicker value={form.deadlineDate} onChange={v => setForm(f => ({ ...f, deadlineDate: v }))} placeholder="Date" />
+              </div>
+              <div className="flex-1">
+                <input type="time" value={form.deadlineTime} onChange={setStr('deadlineTime')} style={{ height: '42px' }} />
+              </div>
+            </div>
+          </Label>
+          <Label text="Session End">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <DatePicker value={form.endDate} onChange={v => setForm(f => ({ ...f, endDate: v }))} placeholder="Date" />
+              </div>
+              <div className="flex-1">
+                <input type="time" value={form.endTime} onChange={setStr('endTime')} style={{ height: '42px' }} />
+              </div>
+            </div>
+          </Label>
+          {saveDatesError && <p className="text-red-400 text-xs">{saveDatesError}</p>}
+          <button type="submit" disabled={savingDates || !datesDirty} className="btn-ghost w-full">
+            {savingDates ? 'Saving…' : savedDates ? '✓ Updated!' : 'Update'}
+          </button>
+        </div>
+      </form>
+
+      {/* Card 3: Approved Names */}
       <div className="glass-card p-5 space-y-3">
-        <p className="section-label">DATE & TIME</p>
-        <Label text="Date & Time">
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <DatePicker value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} placeholder="Date" />
-            </div>
-            <div className="flex-1">
-              <input type="time" value={form.time} onChange={setStr('time')} style={{ height: '42px' }} />
-            </div>
+        <p className="section-label">APPROVED NAMES</p>
+        <p className="text-xs text-gray-400">Only these names can sign up. Leave empty to allow anyone.</p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Add a name…"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                const trimmed = nameInput.trim();
+                if (trimmed && !form.approvedNames.some(n => n.toLowerCase() === trimmed.toLowerCase())) {
+                  setForm(f => ({ ...f, approvedNames: [...f.approvedNames, trimmed] }));
+                  setNameInput('');
+                }
+              }
+            }}
+            maxLength={50}
+            className="flex-1"
+          />
+          <button
+            type="button"
+            className="btn-ghost px-4 shrink-0"
+            onClick={() => {
+              const trimmed = nameInput.trim();
+              if (trimmed && !form.approvedNames.some(n => n.toLowerCase() === trimmed.toLowerCase())) {
+                setForm(f => ({ ...f, approvedNames: [...f.approvedNames, trimmed] }));
+                setNameInput('');
+              }
+            }}
+          >
+            Add
+          </button>
+        </div>
+        {form.approvedNames.length > 0 && (
+          <div className="space-y-1">
+            {form.approvedNames.map((name) => (
+              <div key={name} className="flex items-center justify-between py-1.5 px-3 rounded-xl bg-white/5">
+                <span className="text-sm text-white">{name}</span>
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, approvedNames: f.approvedNames.filter(n => n !== name) }))}
+                  className="text-gray-500 hover:text-red-400 transition-colors"
+                  aria-label={`Remove ${name}`}
+                >
+                  <span className="material-icons" style={{ fontSize: 16 }}>close</span>
+                </button>
+              </div>
+            ))}
           </div>
-        </Label>
-        <Label text="Sign-up Deadline">
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <DatePicker value={form.deadlineDate} onChange={v => setForm(f => ({ ...f, deadlineDate: v }))} placeholder="Date" />
-            </div>
-            <div className="flex-1">
-              <input type="time" value={form.deadlineTime} onChange={setStr('deadlineTime')} style={{ height: '42px' }} />
-            </div>
-          </div>
-        </Label>
-        <Label text="Session End">
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <DatePicker value={form.endDate} onChange={v => setForm(f => ({ ...f, endDate: v }))} placeholder="Date" />
-            </div>
-            <div className="flex-1">
-              <input type="time" value={form.endTime} onChange={setStr('endTime')} style={{ height: '42px' }} />
-            </div>
-          </div>
-        </Label>
+        )}
+        {saveNamesError && <p className="text-red-400 text-xs">{saveNamesError}</p>}
+        <button type="button" onClick={handleSaveNames} disabled={savingNames} className="btn-ghost w-full">
+          {savingNames ? 'Saving…' : savedNames ? '✓ Saved!' : 'Save Members'}
+        </button>
       </div>
 
-      <button type="submit" disabled={saving} className="btn-primary w-full">
-        {saving ? 'Saving…' : saved ? '✓ Saved!' : 'Save Session'}
-      </button>
-      {saveError && <p className="text-red-400 text-xs">{saveError}</p>}
-    </form>
+      {/* Card 4: Create Session for Next Week */}
+      <form onSubmit={handleAdvance}>
+        <div className="glass-card p-5 space-y-3">
+          <p className="section-label">CREATE SESSION FOR NEXT WEEK</p>
+          <p className="text-xs text-gray-400">Creates a new session and makes it the active one. Current session data is preserved.</p>
+          <Label text="Date & Time">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <DatePicker value={advanceForm.date} onChange={v => setAdvanceForm(f => ({ ...f, date: v }))} placeholder="Date" />
+              </div>
+              <div className="flex-1">
+                <input type="time" value={advanceForm.time} onChange={setAdvStr('time')} style={{ height: '42px' }} />
+              </div>
+            </div>
+          </Label>
+          <Label text="Sign-up Deadline">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <DatePicker value={advanceForm.deadlineDate} onChange={v => setAdvanceForm(f => ({ ...f, deadlineDate: v }))} placeholder="Date" />
+              </div>
+              <div className="flex-1">
+                <input type="time" value={advanceForm.deadlineTime} onChange={setAdvStr('deadlineTime')} style={{ height: '42px' }} />
+              </div>
+            </div>
+          </Label>
+          <Label text="Session End">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <DatePicker value={advanceForm.endDate} onChange={v => setAdvanceForm(f => ({ ...f, endDate: v }))} placeholder="Date" />
+              </div>
+              <div className="flex-1">
+                <input type="time" value={advanceForm.endTime} onChange={setAdvStr('endTime')} style={{ height: '42px' }} />
+              </div>
+            </div>
+          </Label>
+          <div className="grid grid-cols-2 gap-3">
+            <Label text="Courts">
+              <input type="number" min={1} value={advanceForm.courts} onChange={setAdvNum('courts')} />
+            </Label>
+            <Label text="Max Players">
+              <input type="number" min={1} value={advanceForm.maxPlayers} onChange={setAdvNum('maxPlayers')} />
+            </Label>
+          </div>
+          {advanceError && <p className="text-red-400 text-xs">{advanceError}</p>}
+          <button
+            type="submit"
+            disabled={advancing || !advanceForm.date || !advanceForm.time || !advanceForm.deadlineDate}
+            className="btn-primary w-full"
+          >
+            {advancing ? 'Advancing…' : advanceDone ? '✓ Advanced!' : 'Advance to Next Week →'}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 
@@ -344,6 +626,7 @@ function AdminPlayersPanel() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [waitlistPlayers, setWaitlistPlayers] = useState<Player[]>([]);
   const [session, setSession] = useState<Session | null>(null);
+  const [aliases, setAliases] = useState<Alias[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [adding, setAdding] = useState(false);
@@ -364,9 +647,10 @@ function AdminPlayersPanel() {
   const loadPlayers = useCallback(async () => {
     setLoading(true);
     try {
-      const [pRes, sRes] = await Promise.all([
+      const [pRes, sRes, aRes] = await Promise.all([
         fetch(`${BASE}/api/players?all=true`),
         fetch(`${BASE}/api/session`),
+        fetch(`${BASE}/api/aliases`, { cache: 'no-store' }),
       ]);
       if (pRes.ok) {
         const all: Player[] = await pRes.json();
@@ -375,6 +659,7 @@ function AdminPlayersPanel() {
         setRemovedPlayers(all.filter(p => p.removed));
       }
       if (sRes.ok) setSession(await sRes.json());
+      if (aRes.ok) setAliases(await aRes.json());
     } finally {
       setLoading(false);
     }
@@ -487,11 +772,18 @@ function AdminPlayersPanel() {
   }
 
   function handleExportCSV() {
+    const aliasMap = new Map(aliases.map(a => [a.appName.toLowerCase(), a.etransferName]));
+    const allForExport = [
+      ...players.map(p => ({ ...p, onWaitlist: false })),
+      ...waitlistPlayers.map(p => ({ ...p, onWaitlist: true })),
+    ];
     const rows = [
-      ['#', 'Name', 'Signed Up', 'Paid'],
-      ...players.map((p, i) => [
+      ['#', 'Name', 'E-Transfer Name', 'Waitlisted', 'Signed Up', 'Paid'],
+      ...allForExport.map((p, i) => [
         String(i + 1),
         p.name,
+        aliasMap.get(p.name.toLowerCase()) ?? '',
+        p.onWaitlist ? 'Yes' : 'No',
         new Date(p.timestamp).toLocaleString(),
         p.paid ? 'Yes' : 'No',
       ]),
