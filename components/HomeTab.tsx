@@ -269,12 +269,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="text-xl font-bold text-green-400">Sign up</p>
-              <div className="text-right">
-                <p className="text-xs text-gray-400">Spots available</p>
-                <p className="text-2xl font-bold text-white leading-none mt-0.5">
-                  {activePlayers.length}/{spotsTotal}
-                </p>
-              </div>
+              <p className="text-sm text-gray-400">{activePlayers.length} players · {spotsTotal - activePlayers.length} spots left</p>
             </div>
             <div className="status-banner-green">
               <span className="material-icons icon-status text-green-400">check_circle</span>
@@ -315,12 +310,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="text-xl font-bold text-green-400">Sign up</p>
-              <div className="text-right">
-                <p className="text-xs text-gray-400">Spots available</p>
-                <p className="text-2xl font-bold text-orange-400 leading-none mt-0.5">
-                  {activePlayers.length}/{spotsTotal}
-                </p>
-              </div>
+              <p className="text-sm text-gray-400">{activePlayers.length} players · Full</p>
             </div>
             <div className="status-banner-orange">
               <span className="material-icons icon-status text-orange-400">lock</span>
@@ -370,12 +360,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="text-xl font-bold text-green-400">Sign up</p>
-              <div className="text-right">
-                <p className="text-xs text-gray-400">Spots available</p>
-                <p className="text-2xl font-bold text-white leading-none mt-0.5">
-                  {activePlayers.length}/{spotsTotal}
-                </p>
-              </div>
+              <p className="text-sm text-gray-400">{activePlayers.length} players · {spotsTotal - activePlayers.length} spots left</p>
             </div>
             <form onSubmit={handleSignUp} className="space-y-3">
               <div className="relative">
