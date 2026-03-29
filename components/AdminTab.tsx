@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-import type { Session, Announcement, Player } from '@/lib/types';
+import type { Session, Announcement, Player, Alias } from '@/lib/types';
 import DatePicker from './DatePicker';
 
 /* ─────────────────────────── PIN Gate ─────────────────────────── */
@@ -102,12 +102,13 @@ export default function AdminTab() {
 /* ─────────────────────────── Admin Panel ─────────────────────────── */
 
 function AdminPanel({ onLogout }: { onLogout: () => void }) {
-  const [section, setSection] = useState<'session' | 'players' | 'announcements'>('session');
+  const [section, setSection] = useState<'session' | 'players' | 'announcements' | 'aliases'>('session');
 
   const SECTIONS = [
     { id: 'session', label: 'Session' },
     { id: 'players', label: 'Players' },
     { id: 'announcements', label: 'Posts' },
+    { id: 'aliases', label: 'Aliases' },
   ] as const;
 
   return (
@@ -146,6 +147,7 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
       {section === 'session' && <SessionEditor />}
       {section === 'players' && <AdminPlayersPanel />}
       {section === 'announcements' && <AnnouncementsPanel />}
+      {section === 'aliases' && <AliasesPanel />}
     </div>
   );
 }
@@ -960,6 +962,205 @@ function AnnouncementsPanel() {
             ))}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────── Aliases Panel ─────────────────────────── */
+
+function AliasesPanel() {
+  const [aliases, setAliases] = useState<Alias[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [appName, setAppName] = useState('');
+  const [etransferName, setEtransferName] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAppName, setEditAppName] = useState('');
+  const [editEtransferName, setEditEtransferName] = useState('');
+  const [editError, setEditError] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const loadAliases = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${BASE}/api/aliases`, { cache: 'no-store' });
+      if (res.ok) setAliases(await res.json());
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadAliases(); }, [loadAliases]);
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    if (!appName.trim() || !etransferName.trim()) return;
+    setAdding(true);
+    setAddError('');
+    try {
+      const res = await fetch(`${BASE}/api/aliases`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appName: appName.trim(), etransferName: etransferName.trim() }),
+      });
+      if (res.ok) {
+        setAppName('');
+        setEtransferName('');
+        await loadAliases();
+      } else {
+        const d = await res.json();
+        setAddError(d.error ?? 'Failed to add alias');
+      }
+    } catch {
+      setAddError('Network error');
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  function startEdit(alias: Alias) {
+    setEditingId(alias.id);
+    setEditAppName(alias.appName);
+    setEditEtransferName(alias.etransferName);
+    setEditError('');
+  }
+
+  async function handleSaveEdit(id: string) {
+    setEditError('');
+    try {
+      const res = await fetch(`${BASE}/api/aliases`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, appName: editAppName.trim(), etransferName: editEtransferName.trim() }),
+      });
+      if (res.ok) {
+        setEditingId(null);
+        await loadAliases();
+      } else {
+        const d = await res.json();
+        setEditError(d.error ?? 'Failed to save');
+      }
+    } catch {
+      setEditError('Network error');
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    try {
+      await fetch(`${BASE}/api/aliases`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      await loadAliases();
+    } catch {
+      /* ignore */
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-24">
+        <span className="material-icons icon-spin-lg animate-spin text-green-400">refresh</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Add form */}
+      <div className="glass-card p-5 space-y-3">
+        <p className="section-label">ADD ALIAS</p>
+        <p className="text-xs text-gray-400">Map an e-transfer name to the name used in this app.</p>
+        <form onSubmit={handleAdd} className="space-y-3">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="App name (e.g. Jon)"
+              value={appName}
+              onChange={(e) => setAppName(e.target.value)}
+              maxLength={50}
+              required
+              className="flex-1"
+            />
+            <input
+              type="text"
+              placeholder="E-transfer name (e.g. Jonathan Smith)"
+              value={etransferName}
+              onChange={(e) => setEtransferName(e.target.value)}
+              maxLength={50}
+              required
+              className="flex-1"
+            />
+          </div>
+          {addError && <p className="text-red-400 text-xs">{addError}</p>}
+          <button type="submit" disabled={adding} className="btn-primary w-full">
+            {adding ? 'Adding…' : 'Add Alias'}
+          </button>
+        </form>
+      </div>
+
+      {/* Alias list */}
+      {aliases.length > 0 && (
+        <div className="glass-card overflow-hidden">
+          <div className="list-header-green px-4 pt-3 pb-2">
+            {aliases.length} alias{aliases.length !== 1 ? 'es' : ''}
+          </div>
+          <div className="divide-y divide-white/5">
+            {aliases.map((alias) =>
+              editingId === alias.id ? (
+                <div key={alias.id} className="px-4 py-3 space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={editAppName}
+                      onChange={(e) => setEditAppName(e.target.value)}
+                      maxLength={50}
+                      className="flex-1 text-sm"
+                    />
+                    <input
+                      type="text"
+                      value={editEtransferName}
+                      onChange={(e) => setEditEtransferName(e.target.value)}
+                      maxLength={50}
+                      className="flex-1 text-sm"
+                    />
+                  </div>
+                  {editError && <p className="text-red-400 text-xs">{editError}</p>}
+                  <div className="flex gap-2">
+                    <button onClick={() => handleSaveEdit(alias.id)} className="btn-primary text-xs px-3 py-1.5">Save</button>
+                    <button onClick={() => setEditingId(null)} className="btn-ghost text-xs px-3 py-1.5">Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <div key={alias.id} className="flex items-center gap-3 px-4 py-3">
+                  <span className="text-sm font-medium text-white flex-1">{alias.appName}</span>
+                  <span className="material-icons icon-sm text-gray-500">arrow_back</span>
+                  <span className="text-sm text-gray-300 flex-1">{alias.etransferName}</span>
+                  <button onClick={() => startEdit(alias)} className="text-xs text-blue-400 hover:text-blue-300 transition-colors">Edit</button>
+                  <button
+                    onClick={() => handleDelete(alias.id)}
+                    disabled={deletingId === alias.id}
+                    className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    {deletingId === alias.id ? '…' : 'Delete'}
+                  </button>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      )}
+
+      {aliases.length === 0 && (
+        <p className="text-sm text-gray-500 text-center py-4">No aliases yet.</p>
       )}
     </div>
   );

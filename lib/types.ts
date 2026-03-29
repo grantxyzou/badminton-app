@@ -24,6 +24,12 @@ export interface Player {
   deleteToken?: string; // DB-only — never sent to clients
 }
 
+export interface Alias {
+  id: string;
+  appName: string;
+  etransferName: string;
+}
+
 export interface Announcement {
   id: string;
   text: string;

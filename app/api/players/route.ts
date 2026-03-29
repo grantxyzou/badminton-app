@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     const maxPlayers =
       sessionData?.maxPlayers ?? parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12', 10);
 
-    if (sessionData?.deadline && new Date() > new Date(sessionData.deadline)) {
+    if (sessionData?.deadline && new Date() > new Date(sessionData.deadline) && !isAdminAuthed(req)) {
       return NextResponse.json({ error: 'Sign-up deadline has passed' }, { status: 403 });
     }
 
