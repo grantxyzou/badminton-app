@@ -52,6 +52,49 @@ export async function DELETE(req: NextRequest) {
   }
 }
 
+export async function PATCH(req: NextRequest) {
+  if (!isAdminAuthed(req)) return unauthorized();
+
+  try {
+    const { id, text } = await req.json();
+    if (!id || typeof id !== 'string') {
+      return NextResponse.json({ error: 'ID required' }, { status: 400 });
+    }
+    const trimmed = typeof text === 'string' ? text.trim() : '';
+    if (!trimmed) {
+      return NextResponse.json({ error: 'Text required' }, { status: 400 });
+    }
+    if (trimmed.length > 500) {
+      return NextResponse.json({ error: 'Announcement too long (max 500 chars)' }, { status: 400 });
+    }
+
+    const container = getContainer('announcements');
+    const { resources } = await container.items
+      .query({
+        query: 'SELECT * FROM c WHERE c.id = @id AND c.sessionId = @sessionId',
+        parameters: [
+          { name: '@id', value: id },
+          { name: '@sessionId', value: SESSION_ID },
+        ],
+      })
+      .fetchAll();
+
+    if (resources.length === 0) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
+    const { resource: updated } = await container.items.upsert({
+      ...resources[0],
+      text: trimmed,
+      editedAt: new Date().toISOString(),
+    });
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error('PATCH announcement error:', error);
+    return NextResponse.json({ error: 'Failed to update' }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   if (!isAdminAuthed(req)) return unauthorized();
 

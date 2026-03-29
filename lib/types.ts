@@ -34,5 +34,6 @@ export interface Announcement {
   id: string;
   text: string;
   time: string;
+  editedAt?: string;
   sessionId: string;
 }

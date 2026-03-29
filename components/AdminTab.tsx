@@ -805,6 +805,10 @@ function AnnouncementsPanel() {
   const [posting, setPosting] = useState(false);
   const [postError, setPostError] = useState('');
   const [deletePostError, setDeletePostError] = useState('');
+  const [editingAnnoId, setEditingAnnoId] = useState<string | null>(null);
+  const [editAnnoText, setEditAnnoText] = useState('');
+  const [editAnnoError, setEditAnnoError] = useState('');
+  const [savingAnno, setSavingAnno] = useState(false);
 
   const loadAnnouncements = useCallback(async () => {
     const res = await fetch(`${BASE}/api/announcements`);
@@ -856,6 +860,35 @@ function AnnouncementsPanel() {
       }
     } catch {
       setDeletePostError('Failed to delete. Please try again.');
+    }
+  }
+
+  function startEditAnno(a: Announcement) {
+    setEditingAnnoId(a.id);
+    setEditAnnoText(a.text);
+    setEditAnnoError('');
+  }
+
+  async function handleSaveAnno(id: string) {
+    setSavingAnno(true);
+    setEditAnnoError('');
+    try {
+      const res = await fetch(`${BASE}/api/announcements`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, text: editAnnoText }),
+      });
+      if (res.ok) {
+        setEditingAnnoId(null);
+        loadAnnouncements();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        setEditAnnoError(d.error ?? 'Failed to save');
+      }
+    } catch {
+      setEditAnnoError('Network error');
+    } finally {
+      setSavingAnno(false);
     }
   }
 
@@ -939,27 +972,66 @@ function AnnouncementsPanel() {
           <h3 className="section-label-muted">POSTED</h3>
           <div className="space-y-2">
             {deletePostError && <p className="text-xs text-red-400 mb-1">{deletePostError}</p>}
-            {announcements.map((a) => (
-              <div key={a.id} className="inner-card p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm text-gray-200 flex-1">{a.text}</p>
-                  <button
-                    onClick={() => handleDeleteAnnouncement(a.id)}
-                    className="text-xs text-red-400 hover:text-red-300 transition-colors shrink-0"
-                  >
-                    Delete
-                  </button>
+            {announcements.map((a) =>
+              editingAnnoId === a.id ? (
+                <div key={a.id} className="inner-card p-3 space-y-2">
+                  <textarea
+                    rows={3}
+                    value={editAnnoText}
+                    onChange={(e) => setEditAnnoText(e.target.value)}
+                    maxLength={500}
+                    className="w-full text-sm"
+                  />
+                  <p className="text-right text-xs text-gray-500">{editAnnoText.length}/500</p>
+                  {editAnnoError && <p className="text-red-400 text-xs">{editAnnoError}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSaveAnno(a.id)}
+                      disabled={savingAnno || !editAnnoText.trim()}
+                      className="btn-primary text-xs px-3 py-1.5"
+                    >
+                      {savingAnno ? 'Saving…' : 'Save'}
+                    </button>
+                    <button onClick={() => setEditingAnnoId(null)} className="btn-ghost text-xs px-3 py-1.5">
+                      Cancel
+                    </button>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {new Date(a.time).toLocaleString(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </p>
-              </div>
-            ))}
+              ) : (
+                <div key={a.id} className="inner-card p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm text-gray-200 flex-1">{a.text}</p>
+                    <div className="flex gap-3 shrink-0">
+                      <button
+                        onClick={() => startEditAnno(a)}
+                        className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAnnouncement(a.id)}
+                        className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
+                    <span>
+                      {new Date(a.time).toLocaleString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                    {a.editedAt && (
+                      <span className="text-gray-600">· edited</span>
+                    )}
+                  </p>
+                </div>
+              )
+            )}
           </div>
         </div>
       )}
