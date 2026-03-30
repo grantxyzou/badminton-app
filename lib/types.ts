@@ -23,7 +23,18 @@ export interface Player {
   removed?: boolean;
   removedAt?: string;
   cancelledBySelf?: boolean;
+  memberId?: string;    // links to Member.id for persistent identity
   deleteToken?: string; // DB-only — never sent to clients
+}
+
+export interface Member {
+  id: string;
+  name: string;
+  stage?: number;        // 1-4 skill stage (P1)
+  sessionCount: number;
+  lastSeen?: string;
+  createdAt: string;
+  active: boolean;
 }
 
 export interface Alias {

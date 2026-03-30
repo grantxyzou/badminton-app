@@ -46,9 +46,6 @@ export async function PUT(req: NextRequest) {
       courts: Math.max(1, Math.min(20, parseInt(body.courts, 10) || 2)),
       maxPlayers: Math.max(1, Math.min(100, parseInt(body.maxPlayers, 10) || 12)),
       signupOpen: typeof body.signupOpen === 'boolean' ? body.signupOpen : undefined,
-      approvedNames: Array.isArray(body.approvedNames)
-        ? body.approvedNames.map((n: unknown) => String(n).trim().slice(0, 50)).filter(Boolean).slice(0, 500)
-        : [],
     };
 
     const container = getContainer('sessions');

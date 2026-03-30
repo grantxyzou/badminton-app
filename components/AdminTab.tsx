@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-import type { Session, Announcement, Player, Alias } from '@/lib/types';
+import type { Session, Announcement, Player, Alias, Member } from '@/lib/types';
 import DatePicker from './DatePicker';
 
 /* ─────────────────────────── PIN Gate ─────────────────────────── */
@@ -167,7 +167,7 @@ type SessionForm = {
   courts: number;
   maxPlayers: number;
   signupOpen: boolean;
-  approvedNames: string[];
+
 };
 
 function SessionEditor() {
@@ -184,7 +184,6 @@ function SessionEditor() {
     courts: 2,
     maxPlayers: 12,
     signupOpen: true,
-    approvedNames: [],
   });
   const initialForm = useRef<SessionForm | null>(null);
   const [savingDetails, setSavingDetails] = useState(false);
@@ -206,7 +205,6 @@ function SessionEditor() {
     courts: 2,
     maxPlayers: 12,
     signupOpen: true,
-    approvedNames: [],
   });
   const [advancing, setAdvancing] = useState(false);
   const [advanceError, setAdvanceError] = useState('');
@@ -229,7 +227,6 @@ function SessionEditor() {
           courts: data.courts ?? 2,
           maxPlayers: data.maxPlayers ?? 12,
           signupOpen: data.signupOpen !== false,
-          approvedNames: Array.isArray(data.approvedNames) ? data.approvedNames : [],
         };
         setForm(loaded);
         initialForm.current = loaded;
@@ -246,8 +243,7 @@ function SessionEditor() {
           courts: data.courts ?? 2,
           maxPlayers: data.maxPlayers ?? 12,
           signupOpen: true,
-          approvedNames: [],
-        });
+              });
       })
       .catch(() => {});
   }, []);
@@ -337,8 +333,7 @@ function SessionEditor() {
             courts: data.courts ?? 2,
             maxPlayers: data.maxPlayers ?? 12,
             signupOpen: data.signupOpen !== false,
-            approvedNames: Array.isArray(data.approvedNames) ? data.approvedNames : [],
-          };
+            };
           setForm(loaded);
           initialForm.current = loaded;
           setAdvanceForm(f => ({ ...f, date: '', endDate: '', deadlineDate: '' }));
@@ -1376,47 +1371,54 @@ function AnnouncementsPanel() {
 /* ─────────────────────────── Members Panel ─────────────────────────── */
 
 function MembersPanel() {
-  const [approvedNames, setApprovedNames] = useState<string[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [nameInput, setNameInput] = useState('');
-  const [savingNames, setSavingNames] = useState(false);
-  const [savedNames, setSavedNames] = useState(false);
-  const [saveNamesError, setSaveNamesError] = useState('');
-  const [sessionData, setSessionData] = useState<Session | null>(null);
+  const [addError, setAddError] = useState('');
+  const [adding, setAdding] = useState(false);
   const [inviteCollapsed, setInviteCollapsed] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch(`${BASE}/api/session`)
-      .then((r) => r.json())
-      .then((data: Session) => {
-        setSessionData(data);
-        setApprovedNames(Array.isArray(data.approvedNames) ? data.approvedNames : []);
-      })
-      .catch(() => {});
+  const loadMembers = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE}/api/members`);
+      if (res.ok) setMembers(await res.json());
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  async function handleSaveNames() {
-    if (!sessionData) return;
-    setSavingNames(true);
-    setSavedNames(false);
-    setSaveNamesError('');
+  useEffect(() => { loadMembers(); }, [loadMembers]);
+
+  async function handleAdd() {
+    const trimmed = nameInput.trim();
+    if (!trimmed) return;
+    setAdding(true);
+    setAddError('');
     try {
-      const res = await fetch(`${BASE}/api/session`, {
-        method: 'PUT',
+      const res = await fetch(`${BASE}/api/members`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...sessionData, approvedNames }),
+        body: JSON.stringify({ name: trimmed }),
       });
       if (res.ok) {
-        const updated = await res.json();
-        setSessionData(updated);
-        setSavedNames(true);
-        setTimeout(() => setSavedNames(false), 3000);
+        setNameInput('');
+        loadMembers();
       } else {
         const data = await res.json().catch(() => ({}));
-        setSaveNamesError(data.error ?? 'Failed to save');
+        setAddError(data.error ?? 'Failed to add');
       }
     } finally {
-      setSavingNames(false);
+      setAdding(false);
     }
+  }
+
+  async function handleRemoveMember(member: Member) {
+    await fetch(`${BASE}/api/members`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: member.id }),
+    });
+    loadMembers();
   }
 
   return (
@@ -1426,7 +1428,7 @@ function MembersPanel() {
         <div className="flex items-center justify-between">
           <div>
             <p className="section-label">INVITE LIST</p>
-            {inviteCollapsed && <p className="text-xs text-gray-500 mt-0.5">{approvedNames.length} name{approvedNames.length !== 1 ? 's' : ''}</p>}
+            {inviteCollapsed && <p className="text-xs text-gray-500 mt-0.5">{members.length} member{members.length !== 1 ? 's' : ''}</p>}
           </div>
           <button
             type="button"
@@ -1444,55 +1446,40 @@ function MembersPanel() {
             type="text"
             placeholder="Add a name…"
             value={nameInput}
-            onChange={(e) => setNameInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                const trimmed = nameInput.trim();
-                if (trimmed && !approvedNames.some(n => n.toLowerCase() === trimmed.toLowerCase())) {
-                  setApprovedNames(prev => [...prev, trimmed]);
-                  setNameInput('');
-                }
-              }
-            }}
+            onChange={(e) => { setNameInput(e.target.value); setAddError(''); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd(); } }}
             maxLength={50}
             className="flex-1"
           />
-          <button
-            type="button"
-            className="btn-ghost px-4 shrink-0"
-            onClick={() => {
-              const trimmed = nameInput.trim();
-              if (trimmed && !approvedNames.some(n => n.toLowerCase() === trimmed.toLowerCase())) {
-                setApprovedNames(prev => [...prev, trimmed]);
-                setNameInput('');
-              }
-            }}
-          >
-            Add
+          <button type="button" className="btn-ghost px-4 shrink-0" onClick={handleAdd} disabled={adding}>
+            {adding ? '…' : 'Add'}
           </button>
         </div>
-        {approvedNames.length > 0 && (
+        {addError && <p className="text-red-400 text-xs">{addError}</p>}
+        {loading ? (
+          <p className="text-center text-gray-500 text-xs py-2">Loading…</p>
+        ) : members.length > 0 ? (
           <div className="space-y-1">
-            {approvedNames.map((name) => (
-              <div key={name} className="flex items-center justify-between py-1.5 px-3 rounded-xl bg-white/5">
-                <span className="text-sm text-white">{name}</span>
+            {members.map((member) => (
+              <div key={member.id} className="flex items-center justify-between py-1.5 px-3 rounded-xl bg-white/5">
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm text-white">{member.name}</span>
+                  {member.sessionCount > 0 && (
+                    <span className="text-xs text-gray-500 ml-2">{member.sessionCount} session{member.sessionCount !== 1 ? 's' : ''}</span>
+                  )}
+                </div>
                 <button
                   type="button"
-                  onClick={() => setApprovedNames(prev => prev.filter(n => n !== name))}
+                  onClick={() => handleRemoveMember(member)}
                   className="text-gray-500 hover:text-red-400 transition-colors"
-                  aria-label={`Remove ${name}`}
+                  aria-label={`Remove ${member.name}`}
                 >
                   <span className="material-icons" style={{ fontSize: 16 }}>close</span>
                 </button>
               </div>
             ))}
           </div>
-        )}
-        {saveNamesError && <p className="text-red-400 text-xs">{saveNamesError}</p>}
-        <button type="button" onClick={handleSaveNames} disabled={savingNames} className="btn-ghost w-full">
-          {savingNames ? 'Saving…' : savedNames ? '✓ Saved!' : 'Save Members'}
-        </button>
+        ) : null}
         </>)}
       </div>
 

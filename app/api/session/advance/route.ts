@@ -40,7 +40,6 @@ export async function POST(req: NextRequest) {
       courts: Math.max(1, Math.min(20, parseInt(body.courts, 10) || 2)),
       maxPlayers: Math.max(1, Math.min(100, parseInt(body.maxPlayers, 10) || 12)),
       signupOpen: false,
-      approvedNames: Array.isArray(currentSession?.approvedNames) ? currentSession.approvedNames : [],
     };
 
     await container.items.upsert(newSession);

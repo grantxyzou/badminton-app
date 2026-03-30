@@ -66,10 +66,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Sign-up deadline has passed' }, { status: 403 });
     }
 
-    const approvedNames: string[] = Array.isArray(sessionData?.approvedNames) ? sessionData.approvedNames : [];
-    if (approvedNames.length > 0 && !isAdminAuthed(req)) {
-      const normalised = approvedNames.map((n: string) => n.toLowerCase());
-      if (!normalised.includes(trimmedName.toLowerCase())) {
+    // Members-based identity check (replaces approvedNames)
+    const membersContainer = getContainer('members');
+    const { resources: allMembers } = await membersContainer.items
+      .query({ query: 'SELECT * FROM c WHERE c.active = true' })
+      .fetchAll();
+
+    let matchedMember: { id: string; name: string; sessionCount: number; [key: string]: unknown } | null = null;
+    if (allMembers.length > 0) {
+      matchedMember = allMembers.find(
+        (m: { name: string }) => m.name.toLowerCase() === trimmedName.toLowerCase()
+      ) ?? null;
+      if (!matchedMember && !isAdminAuthed(req)) {
         return NextResponse.json({ error: 'hmmmm... please use the name we know you by' }, { status: 403 });
       }
     }
@@ -122,8 +130,19 @@ export async function POST(req: NextRequest) {
         removedAt: undefined,
         cancelledBySelf: undefined,
         waitlisted: isFull && joinWaitlist ? true : false,
+        ...(matchedMember ? { memberId: matchedMember.id } : {}),
       };
       const { resource } = await container.items.upsert(restored);
+
+      // Update member stats
+      if (matchedMember) {
+        await membersContainer.items.upsert({
+          ...matchedMember,
+          sessionCount: (matchedMember.sessionCount ?? 0) + 1,
+          lastSeen: new Date().toISOString(),
+        });
+      }
+
       return NextResponse.json({ ...resource, deleteToken }, { status: 201 });
     }
 
@@ -136,9 +155,20 @@ export async function POST(req: NextRequest) {
       paid: false,
       removed: false,
       waitlisted: isFull && joinWaitlist ? true : false,
+      ...(matchedMember ? { memberId: matchedMember.id } : {}),
     };
 
     const { resource } = await container.items.create(player);
+
+    // Update member stats
+    if (matchedMember) {
+      await membersContainer.items.upsert({
+        ...matchedMember,
+        sessionCount: (matchedMember.sessionCount ?? 0) + 1,
+        lastSeen: new Date().toISOString(),
+      });
+    }
+
     // Return the deleteToken once so the client can store it for self-cancellation
     return NextResponse.json({ ...resource, deleteToken }, { status: 201 });
   } catch (error) {

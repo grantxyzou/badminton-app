@@ -44,22 +44,28 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [memberNames, setMemberNames] = useState<string[]>([]);
 
   const maxPlayers = parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12');
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [sRes, pRes, aRes] = await Promise.all([
+      const [sRes, pRes, aRes, mRes] = await Promise.all([
         fetch(`${BASE}/api/session`, { cache: 'no-store' }),
         fetch(`${BASE}/api/players`, { cache: 'no-store' }),
         fetch(`${BASE}/api/announcements`, { cache: 'no-store' }),
+        fetch(`${BASE}/api/members`, { cache: 'no-store' }).catch(() => null),
       ]);
       if (sRes.ok) setSession(await sRes.json());
       if (pRes.ok) setPlayers(await pRes.json());
       if (aRes.ok) {
         const list: Announcement[] = await aRes.json();
         setAnnouncement(list.length > 0 ? list[0] : null);
+      }
+      if (mRes?.ok) {
+        const memberList: { name: string; active: boolean }[] = await mRes.json();
+        setMemberNames(memberList.filter(m => m.active).map(m => m.name));
       }
     } catch (e) {
       console.error('Load error:', e);
@@ -87,7 +93,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
 
   const isFull = activePlayers.length >= (session?.maxPlayers ?? maxPlayers);
   const suggestions = name.trim().length > 0
-    ? (session?.approvedNames ?? []).filter(n => n.toLowerCase().includes(name.toLowerCase().trim()))
+    ? memberNames.filter(n => n.toLowerCase().includes(name.toLowerCase().trim()))
     : [];
   const spotsTotal = session?.maxPlayers ?? maxPlayers;
   const isDeadlinePast = session ? new Date() > new Date(session.deadline) : false;
