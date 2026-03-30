@@ -80,7 +80,7 @@ export default function PlayersTab() {
         <span className="material-icons icon-xl block mb-2 opacity-30">
           group_off
         </span>
-        No players signed up yet.
+        No one's signed up yet — be the first!
       </div>
     );
   }
@@ -121,7 +121,7 @@ export default function PlayersTab() {
                     <div className="flex flex-col items-end gap-0.5">
                       {confirmingCancel ? (
                         <div className="flex items-center gap-2 text-xs">
-                          <span className="text-gray-400">Cancel spot?</span>
+                          <span className="text-gray-400">Cancel your spot?</span>
                           <button onClick={handleCancel} className="text-red-400 hover:text-red-300 transition-colors">Yes</button>
                           <button onClick={() => setConfirmingCancel(false)} className="text-gray-400 hover:text-white transition-colors">No</button>
                         </div>
@@ -148,7 +148,7 @@ export default function PlayersTab() {
       {waitlistPlayers.length > 0 && (
         <div className="glass-card overflow-hidden">
           <div className="list-header-amber px-4 pt-3 pb-2">
-            WAITLISTED
+            WAITLIST
           </div>
             <div className="px-2 pb-2 space-y-0.5">
               {waitlistPlayers.map((player, i) => {
@@ -176,7 +176,7 @@ export default function PlayersTab() {
                       <div className="flex flex-col items-end gap-0.5">
                         {confirmingCancel ? (
                           <div className="flex items-center gap-2 text-xs">
-                            <span className="text-gray-400">Leave waitlist?</span>
+                            <span className="text-gray-400">Cancel your spot?</span>
                             <button onClick={handleCancel} className="text-red-400 hover:text-red-300 transition-colors">Yes</button>
                             <button onClick={() => setConfirmingCancel(false)} className="text-gray-400 hover:text-white transition-colors">No</button>
                           </div>

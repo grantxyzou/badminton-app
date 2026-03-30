@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
-import { randomBytes } from 'crypto';
+import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isAdminAuthed } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   try {
-    const sessionId = await getActiveSessionId();
-    const includeRemoved = new URL(req.url).searchParams.get('all') === 'true' && isAdminAuthed(req);
+    const params = new URL(req.url).searchParams;
+    const overrideSessionId = params.get('sessionId');
+    const sessionId = overrideSessionId && isAdminAuthed(req) ? overrideSessionId : await getActiveSessionId();
+    const includeRemoved = params.get('all') === 'true' && isAdminAuthed(req);
     const container = getContainer('players');
     const { resources } = await container.items
       .query({
@@ -32,8 +34,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const sessionId = await getActiveSessionId();
     const body = await req.json();
+    const sessionId = isAdminAuthed(req) && typeof body.sessionId === 'string' ? body.sessionId : await getActiveSessionId();
     const { name } = body;
     const joinWaitlist = body.waitlist === true;
 
@@ -150,8 +152,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   try {
-    const sessionId = await getActiveSessionId();
     const body = await req.json();
+    const sessionId = typeof body.sessionId === 'string' ? body.sessionId : await getActiveSessionId();
     const { id } = body;
     if (typeof id !== 'string') {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
@@ -209,8 +211,8 @@ export async function DELETE(req: NextRequest) {
   const isAdmin = isAdminAuthed(req);
 
   try {
-    const sessionId = await getActiveSessionId();
     const body = await req.json();
+    const sessionId = isAdmin && typeof body.sessionId === 'string' ? body.sessionId : await getActiveSessionId();
 
     // Admin hard purge — permanently delete every record for this session
     if (isAdmin && body.purgeAll === true) {
@@ -223,6 +225,13 @@ export async function DELETE(req: NextRequest) {
         .fetchAll();
       await Promise.all(all.map((p) => container.item(p.id, sessionId).delete()));
       return NextResponse.json({ success: true, count: all.length });
+    }
+
+    // Admin single purge — permanently delete one record
+    if (isAdmin && typeof body.purgeOne === 'string') {
+      const container = getContainer('players');
+      await container.item(body.purgeOne, sessionId).delete();
+      return NextResponse.json({ success: true });
     }
 
     // Admin bulk clear — soft-delete all active players for a new week
@@ -277,7 +286,7 @@ export async function DELETE(req: NextRequest) {
 
     // Non-admin must supply a token that matches the stored token
     if (!isAdmin) {
-      if (!player.deleteToken || player.deleteToken !== deleteToken) {
+      if (!player.deleteToken || !deleteToken || player.deleteToken.length !== deleteToken.length || !timingSafeEqual(Buffer.from(player.deleteToken), Buffer.from(deleteToken))) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
     }

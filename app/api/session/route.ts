@@ -47,7 +47,7 @@ export async function PUT(req: NextRequest) {
       maxPlayers: Math.max(1, Math.min(100, parseInt(body.maxPlayers, 10) || 12)),
       signupOpen: typeof body.signupOpen === 'boolean' ? body.signupOpen : undefined,
       approvedNames: Array.isArray(body.approvedNames)
-        ? body.approvedNames.map((n: unknown) => String(n).trim()).filter(Boolean).slice(0, 500)
+        ? body.approvedNames.map((n: unknown) => String(n).trim().slice(0, 50)).filter(Boolean).slice(0, 500)
         : [],
     };
 

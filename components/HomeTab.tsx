@@ -104,7 +104,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) { setError('Please enter your name.'); return; }
+    if (!name.trim()) { setError('Enter your name to sign up'); return; }
     setIsSubmitting(true);
     setError('');
     try {
@@ -132,7 +132,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
 
   async function handleJoinWaitlist(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) { setError('Please enter your name.'); return; }
+    if (!name.trim()) { setError('Enter your name to sign up'); return; }
     setIsSubmitting(true);
     setError('');
     try {
@@ -235,19 +235,19 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
             <div className="status-banner-green">
               <span className="material-icons icon-status text-green-400">celebration</span>
               <div>
-                <p className="font-semibold text-green-400 text-sm">Thanks for coming!</p>
+                <p className="font-semibold text-green-400 text-sm">Thanks for playing!</p>
                 <p className="text-xs text-gray-400 mt-0.5">Sign up for next week will be announced soon.</p>
               </div>
             </div>
           </div>
         ) : isSignupClosed && !isSignedUp && !isWaitlisted ? (
-          /* ── State: Sign-ups not open yet ── */
+          /* ── State: Sign-ups opening soon ── */
           <div className="space-y-4">
             <p className="text-xl font-bold text-green-400">Sign up</p>
             <div className="status-banner-orange">
               <span className="material-icons icon-status text-amber-400">hourglass_top</span>
               <div>
-                <p className="font-semibold text-amber-300 text-sm">Sign-ups not open yet</p>
+                <p className="font-semibold text-amber-300 text-sm">Sign-ups opening soon</p>
                 <p className="text-xs text-gray-400 mt-0.5">Check back soon.</p>
               </div>
             </div>
@@ -260,7 +260,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
               <span className="material-icons icon-status text-amber-400">lock_clock</span>
               <div>
                 <p className="font-semibold text-amber-300 text-sm">Sign-ups closed</p>
-                <p className="text-xs text-gray-400 mt-0.5">Deadline passed {fmtDeadline(session!.deadline)}</p>
+                <p className="text-xs text-gray-400 mt-0.5">Sign-ups closed on {fmtDeadline(session!.deadline)}</p>
               </div>
             </div>
           </div>
@@ -298,7 +298,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
               <span className="material-icons icon-status text-amber-400">schedule</span>
               <div>
                 <p className="font-semibold text-amber-400 text-sm">You&apos;re on the waitlist</p>
-                <p className="text-xs text-gray-400 mt-0.5">Position #{waitlistPosition} · Signed up as {currentUser}</p>
+                <p className="text-xs text-gray-400 mt-0.5">Position #{waitlistPosition} of {waitlistPlayers.length} · Signed up as {currentUser}</p>
               </div>
             </div>
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
@@ -323,7 +323,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Who is playing?"
+                  placeholder="Enter your name"
                   aria-label="Your name"
                   aria-describedby={error ? 'signup-error' : undefined}
                   value={name}
@@ -366,7 +366,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Who is playing?"
+                  placeholder="Enter your name"
                   aria-label="Your name"
                   aria-describedby={error ? 'signup-error' : undefined}
                   value={name}

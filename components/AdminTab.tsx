@@ -102,13 +102,13 @@ export default function AdminTab() {
 /* ─────────────────────────── Admin Panel ─────────────────────────── */
 
 function AdminPanel({ onLogout }: { onLogout: () => void }) {
-  const [section, setSection] = useState<'session' | 'players' | 'announcements' | 'aliases'>('session');
+  const [section, setSection] = useState<'session' | 'members' | 'signup' | 'announcements'>('session');
 
   const SECTIONS = [
     { id: 'session', label: 'Session' },
-    { id: 'players', label: 'Players' },
+    { id: 'members', label: 'Members' },
+    { id: 'signup', label: 'Sign Up' },
     { id: 'announcements', label: 'Posts' },
-    { id: 'aliases', label: 'Aliases' },
   ] as const;
 
   return (
@@ -145,9 +145,9 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
       </div>
 
       {section === 'session' && <SessionEditor />}
-      {section === 'players' && <AdminPlayersPanel />}
+      {section === 'members' && <MembersPanel />}
+      {section === 'signup' && <AdminPlayersPanel />}
       {section === 'announcements' && <AnnouncementsPanel />}
-      {section === 'aliases' && <AliasesPanel />}
     </div>
   );
 }
@@ -187,10 +187,6 @@ function SessionEditor() {
     approvedNames: [],
   });
   const initialForm = useRef<SessionForm | null>(null);
-  const [nameInput, setNameInput] = useState('');
-  const [savingNames, setSavingNames] = useState(false);
-  const [savedNames, setSavedNames] = useState(false);
-  const [saveNamesError, setSaveNamesError] = useState('');
   const [savingDetails, setSavingDetails] = useState(false);
   const [savedDetails, setSavedDetails] = useState(false);
   const [saveDetailsError, setSaveDetailsError] = useState('');
@@ -309,15 +305,6 @@ function SessionEditor() {
     );
   }
 
-  async function handleSaveNames() {
-    await saveSession(
-      () => { setSavingNames(true); setSavedNames(false); setSaveNamesError(''); },
-      () => { setSavedNames(true); setTimeout(() => setSavedNames(false), 3000); },
-      (msg) => setSaveNamesError(msg),
-      () => setSavingNames(false),
-    );
-  }
-
   async function handleAdvance(e: React.FormEvent) {
     e.preventDefault();
     setAdvancing(true);
@@ -406,7 +393,7 @@ function SessionEditor() {
       <form onSubmit={handleSaveDetails}>
         <div className="glass-card p-5 space-y-3">
           <p className="section-label">BADMINTON DETAILS</p>
-          <Label text="Establishment Name">
+          <Label text="Venue Name">
             <input type="text" value={form.locationName} onChange={setStr('locationName')} placeholder="e.g. Smash Sports Centre" />
           </Label>
           <Label text="Address">
@@ -437,7 +424,7 @@ function SessionEditor() {
           </div>
           {saveDetailsError && <p className="text-red-400 text-xs">{saveDetailsError}</p>}
           <button type="submit" disabled={savingDetails || !detailsDirty} className="btn-ghost w-full">
-            {savingDetails ? 'Saving…' : savedDetails ? '✓ Updated!' : 'Update'}
+            {savingDetails ? 'Updating…' : savedDetails ? '✓ Updated!' : 'Update'}
           </button>
         </div>
       </form>
@@ -478,76 +465,16 @@ function SessionEditor() {
           </Label>
           {saveDatesError && <p className="text-red-400 text-xs">{saveDatesError}</p>}
           <button type="submit" disabled={savingDates || !datesDirty} className="btn-ghost w-full">
-            {savingDates ? 'Saving…' : savedDates ? '✓ Updated!' : 'Update'}
+            {savingDates ? 'Updating…' : savedDates ? '✓ Updated!' : 'Update'}
           </button>
         </div>
       </form>
 
-      {/* Card 3: Approved Names */}
-      <div className="glass-card p-5 space-y-3">
-        <p className="section-label">APPROVED NAMES</p>
-        <p className="text-xs text-gray-400">Only these names can sign up. Leave empty to allow anyone.</p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Add a name…"
-            value={nameInput}
-            onChange={(e) => setNameInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                const trimmed = nameInput.trim();
-                if (trimmed && !form.approvedNames.some(n => n.toLowerCase() === trimmed.toLowerCase())) {
-                  setForm(f => ({ ...f, approvedNames: [...f.approvedNames, trimmed] }));
-                  setNameInput('');
-                }
-              }
-            }}
-            maxLength={50}
-            className="flex-1"
-          />
-          <button
-            type="button"
-            className="btn-ghost px-4 shrink-0"
-            onClick={() => {
-              const trimmed = nameInput.trim();
-              if (trimmed && !form.approvedNames.some(n => n.toLowerCase() === trimmed.toLowerCase())) {
-                setForm(f => ({ ...f, approvedNames: [...f.approvedNames, trimmed] }));
-                setNameInput('');
-              }
-            }}
-          >
-            Add
-          </button>
-        </div>
-        {form.approvedNames.length > 0 && (
-          <div className="space-y-1">
-            {form.approvedNames.map((name) => (
-              <div key={name} className="flex items-center justify-between py-1.5 px-3 rounded-xl bg-white/5">
-                <span className="text-sm text-white">{name}</span>
-                <button
-                  type="button"
-                  onClick={() => setForm(f => ({ ...f, approvedNames: f.approvedNames.filter(n => n !== name) }))}
-                  className="text-gray-500 hover:text-red-400 transition-colors"
-                  aria-label={`Remove ${name}`}
-                >
-                  <span className="material-icons" style={{ fontSize: 16 }}>close</span>
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-        {saveNamesError && <p className="text-red-400 text-xs">{saveNamesError}</p>}
-        <button type="button" onClick={handleSaveNames} disabled={savingNames} className="btn-ghost w-full">
-          {savingNames ? 'Saving…' : savedNames ? '✓ Saved!' : 'Save Members'}
-        </button>
-      </div>
-
-      {/* Card 4: Create Session for Next Week */}
+      {/* Card 3: Create Session for Next Week */}
       <form onSubmit={handleAdvance}>
         <div className="glass-card p-5 space-y-3">
-          <p className="section-label">CREATE SESSION FOR NEXT WEEK</p>
-          <p className="text-xs text-gray-400">Creates a new session and makes it the active one. Current session data is preserved.</p>
+          <p className="section-label">NEXT WEEK'S SESSION</p>
+          <p className="text-xs text-gray-400">Creates a new session. The current session will be archived.</p>
           <Label text="Date & Time">
             <div className="flex gap-2">
               <div className="flex-1">
@@ -592,7 +519,7 @@ function SessionEditor() {
             disabled={advancing || !advanceForm.date || !advanceForm.time || !advanceForm.deadlineDate}
             className="btn-primary w-full"
           >
-            {advancing ? 'Advancing…' : advanceDone ? '✓ Advanced!' : 'Advance to Next Week →'}
+            {advancing ? 'Creating…' : advanceDone ? '✓ Created!' : 'Create Next Session →'}
           </button>
         </div>
       </form>
@@ -636,8 +563,9 @@ function AdminPlayersPanel() {
   const [removedPlayers, setRemovedPlayers] = useState<Player[]>([]);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [confirmingPurgeId, setConfirmingPurgeId] = useState<string | null>(null);
   const [restoreError, setRestoreError] = useState('');
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [clearMode, setClearMode] = useState<'soft' | 'hard'>('soft');
@@ -646,13 +574,34 @@ function AdminPlayersPanel() {
   const [promotingId, setPromotingId] = useState<string | null>(null);
   const [promoteError, setPromoteError] = useState('');
 
-  const loadPlayers = useCallback(async () => {
+  // Session history navigation
+  const [allSessions, setAllSessions] = useState<Session[]>([]);
+  const [viewedSessionId, setViewedSessionId] = useState<string | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+
+  const isViewingActive = !viewedSessionId || viewedSessionId === activeSessionId;
+  const viewedIndex = allSessions.findIndex(s => s.id === (viewedSessionId ?? activeSessionId));
+  const canGoPrev = viewedIndex < allSessions.length - 1;
+  const canGoNext = viewedIndex > 0;
+
+  const viewedSession = allSessions.find(s => s.id === (viewedSessionId ?? activeSessionId));
+
+  function fmtSessionNav(datetime: string) {
+    if (!datetime) return '—';
+    try {
+      return new Date(datetime).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    } catch { return datetime; }
+  }
+
+  const loadPlayers = useCallback(async (sessionIdOverride?: string) => {
     setLoading(true);
     try {
-      const [pRes, sRes, aRes] = await Promise.all([
-        fetch(`${BASE}/api/players?all=true`),
+      const sessionParam = sessionIdOverride ? `&sessionId=${encodeURIComponent(sessionIdOverride)}` : '';
+      const [pRes, sRes, aRes, sessionsRes] = await Promise.all([
+        fetch(`${BASE}/api/players?all=true${sessionParam}`),
         fetch(`${BASE}/api/session`),
         fetch(`${BASE}/api/aliases`, { cache: 'no-store' }),
+        fetch(`${BASE}/api/sessions`, { cache: 'no-store' }),
       ]);
       if (pRes.ok) {
         const all: Player[] = await pRes.json();
@@ -660,14 +609,32 @@ function AdminPlayersPanel() {
         setWaitlistPlayers(all.filter(p => !p.removed && !!p.waitlisted));
         setRemovedPlayers(all.filter(p => p.removed));
       }
-      if (sRes.ok) setSession(await sRes.json());
+      if (sRes.ok) {
+        const activeSession: Session = await sRes.json();
+        setSession(activeSession);
+        if (!sessionIdOverride) setActiveSessionId(activeSession.id);
+      }
       if (aRes.ok) setAliases(await aRes.json());
+      if (sessionsRes.ok) {
+        const sessions: Session[] = await sessionsRes.json();
+        setAllSessions(sessions.sort((a, b) => b.datetime.localeCompare(a.datetime)));
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => { loadPlayers(); }, [loadPlayers]);
+
+  function navigateSession(direction: 'prev' | 'next') {
+    const idx = viewedIndex;
+    const newIdx = direction === 'prev' ? idx + 1 : idx - 1;
+    if (newIdx >= 0 && newIdx < allSessions.length) {
+      const newSession = allSessions[newIdx];
+      setViewedSessionId(newSession.id);
+      loadPlayers(newSession.id === activeSessionId ? undefined : newSession.id);
+    }
+  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -678,14 +645,14 @@ function AdminPlayersPanel() {
       const res = await fetch(`${BASE}/api/players`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name: name.trim(), ...(!isViewingActive && viewedSessionId ? { sessionId: viewedSessionId } : {}) }),
       });
       const data = await res.json();
       if (!res.ok) {
         setAddError(data.error ?? 'Failed to add player.');
       } else {
         setName('');
-        loadPlayers();
+        loadPlayers(!isViewingActive && viewedSessionId ? viewedSessionId : undefined);
       }
     } catch {
       setAddError('Network error.');
@@ -700,7 +667,7 @@ function AdminPlayersPanel() {
       const res = await fetch(`${BASE}/api/players`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: player.id, paid: !player.paid }),
+        body: JSON.stringify({ id: player.id, paid: !player.paid, ...(!isViewingActive && viewedSessionId ? { sessionId: viewedSessionId } : {}) }),
       });
       if (res.ok) {
         setPlayers(prev => prev.map(p => p.id === player.id ? { ...p, paid: !player.paid } : p));
@@ -718,7 +685,7 @@ function AdminPlayersPanel() {
       const res = await fetch(`${BASE}/api/players`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: player.name }),
+        body: JSON.stringify({ name: player.name, ...(!isViewingActive && viewedSessionId ? { sessionId: viewedSessionId } : {}) }),
       });
       if (res.ok) {
         setPlayers(prev => prev.filter(p => p.id !== player.id));
@@ -737,7 +704,7 @@ function AdminPlayersPanel() {
       const res = await fetch(`${BASE}/api/players`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: player.id, removed: false }),
+        body: JSON.stringify({ id: player.id, removed: false, ...(!isViewingActive && viewedSessionId ? { sessionId: viewedSessionId } : {}) }),
       });
       if (res.ok) {
         setRemovedPlayers(prev => prev.filter(p => p.id !== player.id));
@@ -758,7 +725,7 @@ function AdminPlayersPanel() {
       const res = await fetch(`${BASE}/api/players`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: player.id, waitlisted: false }),
+        body: JSON.stringify({ id: player.id, waitlisted: false, ...(!isViewingActive && viewedSessionId ? { sessionId: viewedSessionId } : {}) }),
       });
       if (res.ok) {
         loadPlayers();
@@ -771,6 +738,19 @@ function AdminPlayersPanel() {
     } finally {
       setPromotingId(null);
     }
+  }
+
+  async function handlePurgeSingle(player: Player) {
+    try {
+      const res = await fetch(`${BASE}/api/players`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purgeOne: player.id, name: player.name, ...(!isViewingActive && viewedSessionId ? { sessionId: viewedSessionId } : {}) }),
+      });
+      if (res.ok) {
+        setRemovedPlayers(prev => prev.filter(p => p.id !== player.id));
+      }
+    } catch { /* silent */ }
   }
 
   function handleExportCSV() {
@@ -838,6 +818,40 @@ function AdminPlayersPanel() {
 
   return (
     <div className="space-y-3">
+      {/* Session navigator */}
+      {allSessions.length > 1 && (
+        <div className="glass-card p-4 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => navigateSession('prev')}
+            disabled={!canGoPrev}
+            className="text-white disabled:opacity-20 transition-opacity p-1"
+            aria-label="Previous session"
+          >
+            <span className="material-icons" style={{ fontSize: 24 }}>chevron_left</span>
+          </button>
+          <div className="text-center">
+            <p className="text-sm font-semibold text-white">
+              {viewedSession ? fmtSessionNav(viewedSession.datetime) : '—'}
+            </p>
+            {isViewingActive ? (
+              <p className="text-xs text-green-400 font-medium">Current session</p>
+            ) : (
+              <p className="text-xs text-gray-400">Past session</p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => navigateSession('next')}
+            disabled={!canGoNext}
+            className="text-white disabled:opacity-20 transition-opacity p-1"
+            aria-label="Next session"
+          >
+            <span className="material-icons" style={{ fontSize: 24 }}>chevron_right</span>
+          </button>
+        </div>
+      )}
+
       {/* Add player form */}
       <form onSubmit={handleAdd} className="glass-card p-5 space-y-3">
         <h3 className="section-label">ADD PLAYER</h3>
@@ -871,15 +885,46 @@ function AdminPlayersPanel() {
             <div className="list-header-green flex items-center justify-between">
               <span>
                 {players.length} PLAYER{players.length !== 1 ? 'S' : ''}
-                {session?.datetime ? <span style={{ fontWeight: 400, opacity: 0.6 }}> · {fmtSessionLabel(session.datetime)}</span> : null}
               </span>
-              <button
-                onClick={handleExportCSV}
-                className="text-xs hover:text-green-300 transition-colors flex items-center gap-1"
-              >
-                <span className="material-icons icon-sm">download</span>
-                Export CSV
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleExportCSV}
+                  className="text-xs font-normal hover:text-green-300 transition-colors flex items-center gap-1"
+                >
+                  <span className="material-icons" style={{ fontSize: 13 }}>download</span>
+                  Export CSV
+                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setMoreMenuOpen(o => !o)}
+                    className="hover:text-green-300 transition-colors p-0.5"
+                    aria-label="More actions"
+                  >
+                    <span className="material-icons" style={{ fontSize: 18 }}>more_vert</span>
+                  </button>
+                  {moreMenuOpen && (
+                    <>
+                      <div onClick={() => setMoreMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 50 }} />
+                      <div className="absolute right-0 top-full mt-1 z-50 w-52 rounded-xl overflow-hidden border border-white/10" style={{ background: 'rgba(30,40,30,0.97)', backdropFilter: 'blur(12px)' }}>
+                        <button
+                          onClick={() => { setMoreMenuOpen(false); setClearMode('soft'); setClearError(''); setConfirmingClear(true); }}
+                          className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/10 transition-colors flex items-center gap-3"
+                        >
+                          <span className="material-icons text-gray-500" style={{ fontSize: 18 }}>delete_sweep</span>
+                          Clear Session
+                        </button>
+                        <button
+                          onClick={() => { setMoreMenuOpen(false); setClearMode('hard'); setClearError(''); setConfirmingClear(true); }}
+                          className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-white/10 transition-colors flex items-center gap-3"
+                        >
+                          <span className="material-icons" style={{ fontSize: 18 }}>delete_forever</span>
+                          Purge All Records
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
             <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
               {players.map((player, i) => (
@@ -891,23 +936,17 @@ function AdminPlayersPanel() {
                     disabled={togglingId === player.id}
                     className={`text-xs font-medium transition-colors px-2 py-0.5 rounded-full ${player.paid ? 'pill-paid' : 'pill-unpaid'}`}
                   >
-                    {savedId === player.id ? '✓' : togglingId === player.id ? '…' : player.paid ? 'Paid' : 'Unpaid'}
+                    {savedId === player.id ? '✓' : togglingId === player.id ? '…' : player.paid ? 'Paid' : 'Pending'}
                   </button>
-                  {confirmingRemoveId === player.id ? (
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="text-gray-400">Remove?</span>
-                      <button onClick={() => { handleRemove(player); setConfirmingRemoveId(null); }} className="text-red-400 hover:text-red-300 transition-colors">Yes</button>
-                      <button onClick={() => setConfirmingRemoveId(null)} className="text-gray-400 hover:text-white transition-colors">No</button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setConfirmingRemoveId(player.id)}
-                      disabled={removingId === player.id}
-                      className="text-xs text-red-400 hover:text-red-300 transition-colors"
-                    >
-                      {removingId === player.id ? '…' : 'Remove'}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleRemove(player)}
+                    disabled={removingId === player.id}
+                    className="text-xs text-gray-500 hover:text-amber-400 transition-colors p-1 flex items-center gap-1"
+                    title={`Remove ${player.name}`}
+                  >
+                    <span className="material-icons" style={{ fontSize: 16 }}>person_remove</span>
+                    <span className="hidden sm:inline">Remove</span>
+                  </button>
                 </div>
               ))}
             </div>
@@ -939,9 +978,11 @@ function AdminPlayersPanel() {
                 <button
                   onClick={() => handleRemove(player)}
                   disabled={removingId === player.id}
-                  className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                  className="text-xs text-gray-500 hover:text-red-400 transition-colors p-1 flex items-center gap-1"
+                  title={`Remove ${player.name}`}
                 >
-                  {removingId === player.id ? '…' : 'Remove'}
+                  <span className="material-icons" style={{ fontSize: 16 }}>person_remove</span>
+                  <span className="hidden sm:inline">Remove</span>
                 </button>
               </div>
             ))}
@@ -960,7 +1001,7 @@ function AdminPlayersPanel() {
             style={cancelledCollapsed ? { borderBottom: 'none' } : undefined}
           >
             <span>
-              {removedPlayers.length} CANCELLED
+              {removedPlayers.length} REMOVED
               {session?.datetime ? <span style={{ fontWeight: 400, opacity: 0.6 }}> · {fmtSessionLabel(session.datetime)}</span> : null}
             </span>
             <button
@@ -998,35 +1039,34 @@ function AdminPlayersPanel() {
                 </div>
                 <button
                   onClick={() => handleRestore(player)}
-                  className="text-xs text-amber-400 hover:text-amber-300 transition-colors py-2 px-1"
+                  className="text-xs text-amber-400 hover:text-amber-300 transition-colors p-1 flex items-center gap-1"
+                  title={`Restore ${player.name}`}
                 >
-                  Restore
+                  <span className="material-icons" style={{ fontSize: 16 }}>restore</span>
+                  <span className="hidden sm:inline">Restore</span>
                 </button>
+                {confirmingPurgeId === player.id ? (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-gray-400">Delete?</span>
+                    <button onClick={() => { handlePurgeSingle(player); setConfirmingPurgeId(null); }} className="text-red-400 hover:text-red-300 transition-colors">Yes</button>
+                    <button onClick={() => setConfirmingPurgeId(null)} className="text-gray-400 hover:text-white transition-colors">No</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmingPurgeId(player.id)}
+                    className="text-xs text-gray-500 hover:text-red-400 transition-colors p-1 flex items-center gap-1"
+                    title={`Permanently delete ${player.name}`}
+                  >
+                    <span className="material-icons" style={{ fontSize: 16 }}>delete_forever</span>
+                    <span className="hidden sm:inline">Delete</span>
+                  </button>
+                )}
               </div>
             ))}
           </div>
           )}
         </div>
       )}
-
-      {/* Clear / purge triggers */}
-      <div className="flex items-center justify-center gap-4 py-2">
-        <button
-          onClick={() => { setClearMode('soft'); setClearError(''); setConfirmingClear(true); }}
-          className="text-xs text-gray-500 hover:text-red-400 transition-colors flex items-center gap-1.5"
-        >
-          <span className="material-icons icon-sm" aria-hidden="true">delete_sweep</span>
-          Clear session
-        </button>
-        <span className="text-gray-700 text-xs">·</span>
-        <button
-          onClick={() => { setClearMode('hard'); setClearError(''); setConfirmingClear(true); }}
-          className="text-xs text-gray-600 hover:text-red-500 transition-colors flex items-center gap-1.5"
-        >
-          <span className="material-icons icon-sm" aria-hidden="true">delete_forever</span>
-          Purge all records
-        </button>
-      </div>
 
       {/* Clear session action sheet (portal) */}
       {confirmingClear && typeof document !== 'undefined' && createPortal(
@@ -1069,8 +1109,8 @@ function AdminPlayersPanel() {
                 }
               >
                 {clearMode === 'soft'
-                  ? `Yes, clear all ${players.length} players`
-                  : `Yes, delete everything permanently`
+                  ? 'Clear Session'
+                  : 'Delete Everything'
                 }
               </button>
               <button
@@ -1229,7 +1269,7 @@ function AnnouncementsPanel() {
           className="btn-ghost w-full"
         >
           <span className="material-icons icon-sm">auto_fix_high</span>
-          {polishing ? 'Improving…' : 'Improve wording'}
+          {polishing ? 'Improving…' : 'Improve with AI'}
         </button>
 
         {/* AI result */}
@@ -1263,7 +1303,7 @@ function AnnouncementsPanel() {
       {/* Posted announcements */}
       {announcements.length > 0 && (
         <div className="glass-card p-5 space-y-3">
-          <h3 className="section-label-muted">POSTED</h3>
+          <h3 className="section-label-muted">ACTIVE ANNOUNCEMENTS</h3>
           <div className="space-y-2">
             {deletePostError && <p className="text-xs text-red-400 mb-1">{deletePostError}</p>}
             {announcements.map((a) =>
@@ -1329,6 +1369,135 @@ function AnnouncementsPanel() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ─────────────────────────── Members Panel ─────────────────────────── */
+
+function MembersPanel() {
+  const [approvedNames, setApprovedNames] = useState<string[]>([]);
+  const [nameInput, setNameInput] = useState('');
+  const [savingNames, setSavingNames] = useState(false);
+  const [savedNames, setSavedNames] = useState(false);
+  const [saveNamesError, setSaveNamesError] = useState('');
+  const [sessionData, setSessionData] = useState<Session | null>(null);
+  const [inviteCollapsed, setInviteCollapsed] = useState(false);
+
+  useEffect(() => {
+    fetch(`${BASE}/api/session`)
+      .then((r) => r.json())
+      .then((data: Session) => {
+        setSessionData(data);
+        setApprovedNames(Array.isArray(data.approvedNames) ? data.approvedNames : []);
+      })
+      .catch(() => {});
+  }, []);
+
+  async function handleSaveNames() {
+    if (!sessionData) return;
+    setSavingNames(true);
+    setSavedNames(false);
+    setSaveNamesError('');
+    try {
+      const res = await fetch(`${BASE}/api/session`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...sessionData, approvedNames }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setSessionData(updated);
+        setSavedNames(true);
+        setTimeout(() => setSavedNames(false), 3000);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setSaveNamesError(data.error ?? 'Failed to save');
+      }
+    } finally {
+      setSavingNames(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Invite List */}
+      <div className="glass-card p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="section-label">INVITE LIST</p>
+            {inviteCollapsed && <p className="text-xs text-gray-500 mt-0.5">{approvedNames.length} name{approvedNames.length !== 1 ? 's' : ''}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={() => setInviteCollapsed(c => !c)}
+            aria-label={inviteCollapsed ? 'Expand invite list' : 'Collapse invite list'}
+            className="bg-transparent border-0 cursor-pointer text-green-400/65 p-0 flex items-center"
+          >
+            <span className="material-icons icon-md">{inviteCollapsed ? 'expand_more' : 'expand_less'}</span>
+          </button>
+        </div>
+        {!inviteCollapsed && <p className="text-xs text-gray-400">Only people on this list can sign up. Leave empty to allow anyone.</p>}
+        {!inviteCollapsed && (<>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Add a name…"
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                const trimmed = nameInput.trim();
+                if (trimmed && !approvedNames.some(n => n.toLowerCase() === trimmed.toLowerCase())) {
+                  setApprovedNames(prev => [...prev, trimmed]);
+                  setNameInput('');
+                }
+              }
+            }}
+            maxLength={50}
+            className="flex-1"
+          />
+          <button
+            type="button"
+            className="btn-ghost px-4 shrink-0"
+            onClick={() => {
+              const trimmed = nameInput.trim();
+              if (trimmed && !approvedNames.some(n => n.toLowerCase() === trimmed.toLowerCase())) {
+                setApprovedNames(prev => [...prev, trimmed]);
+                setNameInput('');
+              }
+            }}
+          >
+            Add
+          </button>
+        </div>
+        {approvedNames.length > 0 && (
+          <div className="space-y-1">
+            {approvedNames.map((name) => (
+              <div key={name} className="flex items-center justify-between py-1.5 px-3 rounded-xl bg-white/5">
+                <span className="text-sm text-white">{name}</span>
+                <button
+                  type="button"
+                  onClick={() => setApprovedNames(prev => prev.filter(n => n !== name))}
+                  className="text-gray-500 hover:text-red-400 transition-colors"
+                  aria-label={`Remove ${name}`}
+                >
+                  <span className="material-icons" style={{ fontSize: 16 }}>close</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {saveNamesError && <p className="text-red-400 text-xs">{saveNamesError}</p>}
+        <button type="button" onClick={handleSaveNames} disabled={savingNames} className="btn-ghost w-full">
+          {savingNames ? 'Saving…' : savedNames ? '✓ Saved!' : 'Save Members'}
+        </button>
+        </>)}
+      </div>
+
+      {/* Aliases */}
+      <AliasesPanel />
     </div>
   );
 }
@@ -1444,7 +1613,7 @@ function AliasesPanel() {
       {/* Add form */}
       <div className="glass-card p-5 space-y-3">
         <p className="section-label">ADD ALIAS</p>
-        <p className="text-xs text-gray-400">Map an e-transfer name to the name used in this app.</p>
+        <p className="text-xs text-gray-400">Link each player's app name to their e-transfer name for payment tracking.</p>
         <form onSubmit={handleAdd} className="space-y-3">
           <div className="flex gap-2">
             <input
