@@ -15,6 +15,26 @@ npm run dev
 # → http://localhost:3000/bpm
 ```
 
+### `.env.local` reference
+
+```
+# Required in production; omit to use in-memory mock store
+COSMOS_CONNECTION_STRING=
+
+# Required for AI announcement polishing
+ANTHROPIC_API_KEY=
+
+# Optional overrides
+COSMOS_DB_NAME=badminton
+NEXT_PUBLIC_MAX_PLAYERS=12
+NEXT_PUBLIC_BASE_PATH=/bpm
+
+# Set in Azure App Settings in production — do not commit
+ADMIN_PIN=
+```
+
+For local development without a real database, omit `COSMOS_CONNECTION_STRING` entirely. The mock store supports all routes including sign-up, waitlist, admin actions, and session advance.
+
 When `COSMOS_CONNECTION_STRING` is absent, the app uses an in-memory mock store — all routes work offline without a real database.
 
 ---
@@ -43,6 +63,7 @@ app/
     aliases/route.ts          GET · POST · PATCH · DELETE — admin-only e-transfer alias management
     announcements/route.ts    GET · POST · PATCH · DELETE
     claude/route.ts           POST — admin-only AI proxy (rate-limited)
+    members/route.ts          GET · POST · PATCH · DELETE — persistent player identity
     players/route.ts          GET · POST · PATCH · DELETE — supports sessionId param for history
     session/route.ts          GET · PUT (admin only)
     session/advance/route.ts  POST (admin only) — create next session and archive current
@@ -109,7 +130,7 @@ The constant `SESSION_ID = 'current-session'` remains in `lib/cosmos.ts` for leg
 ### Data Flow
 
 ```
-Cosmos DB (4 containers: sessions, players, announcements, aliases)
+Cosmos DB (5 containers: sessions, players, announcements, aliases, members)
   ↓ getContainer(name)              ← lib/cosmos.ts
   ↓ API route handlers              ← app/api/*/route.ts
   ↓ JSON over fetch                 ← components (client)
@@ -179,9 +200,26 @@ interface Player {
   removed?: boolean;         // true = soft-deleted
   removedAt?: string;        // ISO 8601 time of removal
   cancelledBySelf?: boolean; // true = player cancelled; false = admin removed
+  memberId?: string;         // links to Member.id for persistent identity
   deleteToken?: string;      // DB-only — NEVER sent to clients (stripped in all GETs)
 }
 ```
+
+### `Member` (`lib/types.ts`)
+
+```typescript
+interface Member {
+  id: string;            // randomBytes(12).toString('hex')
+  name: string;          // trimmed, max 50 chars, case-insensitive dedup
+  stage?: number;        // 1-4 skill stage (future P1 feature)
+  sessionCount: number;  // how many sessions this member has attended
+  lastSeen?: string;     // ISO 8601 — last session date
+  createdAt: string;     // ISO 8601 — when member was added
+  active: boolean;       // false = soft-deleted
+}
+```
+
+Members live in their own `members` container (partition key `/id`). They represent persistent player identity across sessions — separate from per-session `Player` records. Non-admin GET returns only `{ name, active }` for each member.
 
 ### `Alias` (`lib/types.ts`)
 
@@ -318,6 +356,29 @@ interface Announcement {
 ### `DELETE /api/aliases`
 - Auth: admin cookie required
 - Body: `{ id: string }`
+
+### `GET /api/members`
+- Auth: none (admin cookie enables full records)
+- Response: `Member[]` ordered by `name ASC`
+- Non-admin: returns only `{ name, active }` per member
+- Admin with `?all=true`: includes inactive members
+
+### `POST /api/members`
+- Auth: admin cookie required
+- Body: `{ name: string }` (max 50 chars)
+- Returns 409 if name already exists (case-insensitive); reactivates if inactive
+- Status 201 on success
+
+### `PATCH /api/members`
+- Auth: admin cookie required
+- Body: `{ id: string, name?: string, stage?: number, active?: boolean }`
+- `stage` clamped to 1-4; set `stage: null` to clear
+
+### `DELETE /api/members`
+- Auth: admin cookie required
+- Body: `{ id: string, hard?: boolean }`
+- Default: soft-delete (sets `active: false`)
+- `hard: true`: permanently deletes the record
 
 ### `POST /api/claude`
 - Auth: admin cookie required (rate-limited: 10 req/min/IP)
@@ -543,7 +604,7 @@ az webapp deploy \
 ### Azure Configuration
 - App Service: `badminton-app`, resource group `grantzou`, Canada Central, Free F1 tier
 - Live URL: `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm`
-- Cosmos DB: database `badminton`, 4 containers (`sessions`, `players`, `announcements`, `aliases`) at 400 RU/s shared throughput
+- Cosmos DB: database `badminton`, 5 containers (`sessions`, `players`, `announcements`, `aliases`, `members`) at 400 RU/s shared throughput
 - Runtime env vars (`ADMIN_PIN`, `ANTHROPIC_API_KEY`, `COSMOS_CONNECTION_STRING`, etc.) are set in Azure App Service Application Settings — not in the workflow file.
 
 ### Security Headers (applied to all routes via `next.config.js`)

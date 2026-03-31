@@ -1,6 +1,6 @@
 # Badminton Session Manager
 
-A Next.js 14 app for managing casual badminton sessions — sign-ups, team generation via Claude AI, and session announcements.
+A Next.js 16 app for managing casual weekly badminton sessions — sign-ups (with invite-list gating), waitlist, payment tracking, session history, and AI-polished announcements.
 
 Deployed to **Azure App Service** (Canada Central, Free tier).
 Live URL: `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm`
@@ -11,18 +11,17 @@ Live URL: `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites
 
 | Tab | Description |
 |-----|-------------|
-| **Home** | Session info (date, location, deadline), sign up or view the sign-up list, announcements |
-| **Players** | Full sign-up list with the game date as the card header |
-| **Teams** | Generate balanced doubles teams using Claude AI (admin only) |
-| **Admin** | PIN-gated panel — edit session details, manage players, post AI-polished announcements |
+| **Home** | Session info (date, location, deadline), sign up (with autocomplete from invite list), waitlist join, announcements |
+| **Sign-Ups** | Full player list + waitlist card; self-cancel flow with delete token |
+| **Admin** | PIN-gated panel — session editor, member/alias management, player admin (paid toggle, promote, restore, history), AI-polished announcements |
 
 ---
 
 ## Tech Stack
 
-- **Next.js 14** (App Router), TypeScript, Tailwind CSS
-- **Azure Cosmos DB** (NoSQL) — database: `badminton`, 3 containers at 400 RU/s shared throughput
-- **Anthropic Claude API** (`claude-sonnet-4-20250514`) — team generation and announcement polishing
+- **Next.js 16** (App Router), TypeScript, Tailwind CSS
+- **Azure Cosmos DB** (NoSQL) — database: `badminton`, 5 containers at 400 RU/s shared throughput
+- **Anthropic Claude API** (`claude-sonnet-4-20250514`) — announcement polishing
 - **Azure App Service** — Canada Central, Free tier, `output: standalone`
 
 ---
@@ -32,26 +31,31 @@ Live URL: `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites
 ```
 app/
   api/
-    admin/route.ts          GET (auth check) · POST (PIN verify) · DELETE (logout)
-    announcements/route.ts  GET · POST · DELETE
-    claude/route.ts         POST (AI proxy, admin only, rate-limited)
-    players/route.ts        GET · POST · DELETE (self-cancel with token, or admin cookie)
-    session/route.ts        GET · PUT (admin only)
+    admin/route.ts            GET (auth check) · POST (PIN verify) · DELETE (logout)
+    aliases/route.ts          GET · POST · PATCH · DELETE — admin-only e-transfer alias management
+    announcements/route.ts    GET · POST · PATCH · DELETE
+    claude/route.ts           POST (AI proxy, admin only, rate-limited)
+    members/route.ts          GET · POST · PATCH · DELETE — persistent player identity
+    players/route.ts          GET · POST · PATCH · DELETE — per-session sign-ups
+    session/route.ts          GET · PUT (admin only)
+    session/advance/route.ts  POST (admin only) — create next session and archive current
+    sessions/route.ts         GET (admin only) — list all archived sessions
   globals.css
   layout.tsx
   page.tsx
 components/
-  AdminTab.tsx
-  BottomNav.tsx
-  DatePicker.tsx
-  HomeTab.tsx
-  PlayersTab.tsx
-  TeamsTab.tsx
+  AdminTab.tsx           4 sub-panels: Session | Members | Sign Up | Posts
+  BottomNav.tsx          Fixed bottom nav (Home, Sign-Ups, Admin)
+  DatePicker.tsx         Custom calendar picker, portal-rendered
+  GlassPhysics.tsx       Mouse-tracking CSS var updater for glass card hover effect
+  HomeTab.tsx            7-state sign-up card + session info + announcements
+  PlayersTab.tsx         Active player list + waitlist card; self-cancel flow
 lib/
   auth.ts          HTTP-only cookie auth helpers
-  cosmos.ts        DB connection + SESSION_ID + in-memory mock for local dev
+  cosmos.ts        DB connection + session pointer helpers + in-memory mock
+  formatters.ts    Shared fmtDate utility
   rateLimit.ts     In-memory rate limiter (per client IP)
-  types.ts         Shared TypeScript interfaces
+  types.ts         Session, Player, Member, Alias, Announcement interfaces
 ```
 
 ---
@@ -141,18 +145,30 @@ az webapp deploy \
 
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
-| `GET` | `/api/session` | — | Get current session info |
+| `GET` | `/api/session` | — | Get active session info |
 | `PUT` | `/api/session` | Admin | Update session details |
-| `GET` | `/api/players` | — | List all players (deleteToken stripped) |
-| `POST` | `/api/players` | — | Sign up; returns deleteToken once |
-| `DELETE` | `/api/players` | Token or Admin | Remove a player |
+| `POST` | `/api/session/advance` | Admin | Create next session, archive current |
+| `GET` | `/api/sessions` | Admin | List all archived sessions |
+| `GET` | `/api/players` | — | List players (deleteToken stripped); `?all=true` and `?sessionId=` admin-only |
+| `POST` | `/api/players` | — | Sign up (rate-limited); returns deleteToken once |
+| `PATCH` | `/api/players` | Admin | Toggle paid, promote from waitlist, restore |
+| `DELETE` | `/api/players` | Token or Admin | Soft-delete player, clearAll, or purgeAll |
+| `GET` | `/api/members` | — | List members (admin sees full records, public sees names only) |
+| `POST` | `/api/members` | Admin | Create persistent member |
+| `PATCH` | `/api/members` | Admin | Update member (name, stage, active) |
+| `DELETE` | `/api/members` | Admin | Soft-delete (or hard-delete with `hard: true`) |
+| `GET` | `/api/aliases` | Admin | List e-transfer aliases |
+| `POST` | `/api/aliases` | Admin | Create alias |
+| `PATCH` | `/api/aliases` | Admin | Update alias |
+| `DELETE` | `/api/aliases` | Admin | Delete alias |
+| `GET` | `/api/announcements` | — | Get announcements (newest first, session-scoped) |
+| `POST` | `/api/announcements` | Admin | Post an announcement |
+| `PATCH` | `/api/announcements` | Admin | Edit an announcement (sets editedAt) |
+| `DELETE` | `/api/announcements` | Admin | Delete an announcement |
 | `GET` | `/api/admin` | — | Check auth cookie status |
 | `POST` | `/api/admin` | — | Verify PIN, set cookie |
 | `DELETE` | `/api/admin` | Admin | Logout, clear cookie |
-| `GET` | `/api/announcements` | — | Get all announcements (newest first) |
-| `POST` | `/api/announcements` | Admin | Post an announcement |
-| `DELETE` | `/api/announcements` | Admin | Delete an announcement by ID |
-| `POST` | `/api/claude` | Admin | Proxy to Claude AI |
+| `POST` | `/api/claude` | Admin | Proxy to Claude AI (rate-limited) |
 
 ---
 
@@ -163,6 +179,11 @@ az webapp deploy \
 - Rate limiter reads `X-Client-IP` (Azure's real client header) — limits are per-person, not global
 - Cookie cleared on logout with all security attributes (`HttpOnly`, `Secure`, `SameSite`)
 - `NEXT_PUBLIC_BASE_PATH` is baked into the client bundle at build time — set it in `.env.local` for local dev and in Azure App Settings for production
+- `approvedNames` gating prevents unknown users from signing up when the invite list is active
+- `signupOpen` toggle lets admin control when sign-ups are accepted
+- Security headers set in `next.config.js`: CSP, X-Frame-Options, HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy
+- All API routes return structured JSON errors — no stack traces or DB schema leaked in production
+- Same-origin architecture (no CORS headers needed) — frontend and API share the same App Service
 
 ---
 
@@ -170,4 +191,5 @@ az webapp deploy \
 
 - **Race condition on signup**: capacity check and insert are not atomic — concurrent signups can exceed `maxPlayers` by 1-2 spots (needs Cosmos DB optimistic concurrency to fix properly)
 - **Rate limiter is in-memory**: resets on server restart; not shared across multiple instances (would need Redis for multi-instance)
-- **Free tier cold starts**: first request after ~20 min idle takes 10–20 s to wake up
+- **Free tier cold starts**: first request after ~20 min idle takes 10-20 s to wake up
+- **Cosmos DB firewall**: Free tier App Service has no static outbound IP — "Allow access from Azure datacenters" is used instead of IP-restricted access

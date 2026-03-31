@@ -142,14 +142,22 @@ not provide a static outbound IP, so the datacenter option is typically used.
 
 | Container | Partition Key | Purpose |
 |-----------|---------------|---------|
-| `players` | `/sessionId` | Player registrations (includes `deleteToken` for self-cancellation auth) |
-| `sessions` | `/sessionId` | Session config (title, location, datetime, deadline, courts, maxPlayers) |
-| `announcements` | `/sessionId` | Admin announcements |
+| `sessions` | `/sessionId` | Session config + active-session pointer document |
+| `players` | `/sessionId` | Per-session player registrations (includes `deleteToken` for self-cancellation auth) |
+| `announcements` | `/sessionId` | Admin announcements (session-scoped) |
+| `aliases` | `/id` | E-transfer name mappings (global, not session-scoped) |
+| `members` | `/id` | Persistent player identity (name, stage, sessionCount, lastSeen) |
 
-### Single-session pattern
+### Session pointer architecture
 
-All documents carry `sessionId = 'current-session'` (the constant `SESSION_ID`
-from `lib/cosmos.ts`). Every query filters on this value.
+Sessions are date-keyed (`session-YYYY-MM-DD`) instead of a single hard-coded ID.
+A pointer document (`id = 'active-session-pointer'`) in the `sessions` container
+tracks the currently active session. `getActiveSessionId()` reads the pointer and
+falls back to `'current-session'` for backward compatibility with legacy data.
+
+`POST /api/session/advance` creates a new date-keyed session, copies `approvedNames`,
+sets `signupOpen: false`, and atomically updates the pointer. Old sessions are
+archived (not deleted) and queryable via `GET /api/sessions` (admin only).
 
 ### Local development fallback
 
@@ -175,8 +183,7 @@ Network access restricted to Azure datacenters. Public internet access is not en
 
 ### Usage
 
-Claude is used for two admin-only features:
-- **Team generation** — builds balanced court groupings from the player list
+Claude is used for one admin-only feature:
 - **Announcement polishing** — rewrites draft text into a cleaner message
 
 The browser never calls Anthropic directly. All requests proxy through
@@ -216,17 +223,20 @@ stored value. Admin cookie bypasses the token check.
 
 ```
 Browser
-  POST /api/players  { name }
+  POST /api/players  { name, waitlist?: boolean }
     → rate-limit check (10 req/min per IP)
-    → duplicate name check (Cosmos)
-    → capacity check against sessions.maxPlayers
-    → create { id, name, sessionId, timestamp, deleteToken }
+    → signupOpen check (403 if closed, admin bypasses)
+    → deadline check (403 if past, admin bypasses)
+    → approvedNames check (403 if name not in list, admin bypasses)
+    → duplicate name check (restores soft-deleted record if exists)
+    → capacity check (if full and no waitlist flag → 409)
+    → create { id, name, sessionId, timestamp, deleteToken, waitlisted? }
     → Cosmos DB players container
   ← 201 { id, name, sessionId, timestamp, deleteToken }
   (client stores deleteToken in localStorage — only time it is sent)
 ```
 
-### Player self-cancellation
+### Player self-cancellation (soft delete)
 
 ```
 Browser
@@ -234,7 +244,7 @@ Browser
     → rate-limit check
     → find player by name
     → verify deleteToken matches stored value
-    → delete document
+    → upsert with { removed: true, removedAt, cancelledBySelf: true }
   ← 200 { success: true }
 ```
 

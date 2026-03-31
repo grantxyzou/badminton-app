@@ -158,11 +158,57 @@ Loading spinner utility applied to a Material Icon (`refresh`).
 
 | Class | `font-size` | Notes |
 |---|---|---|
+| `.icon-xs` | `13px` | Smallest icons |
+| `.icon-sm` | `16px` | Small inline icons (e.g. campaign icon in announcements) |
+| `.icon-md` | `18px` | Medium icons |
+| `.icon-lg` | `24px` | Standard-size icons |
+| `.icon-xl` | `40px` | Large display icons |
 | `.icon-spin-lg` | `32px` | Large loading spinner |
+| `.icon-status` | `22px` | Status banner icons (check_circle, lock) |
 | `.icon-pin` | `16px` | Small pin/info row icons; `color: #ef4444` |
 | `.icon-pin-lg` | `20px` | Hero card icons; `color: #ef4444` (overridden inline in components) |
-| `.icon-sm` | `16px` | Small inline icons (e.g. campaign icon in announcements) |
-| `.icon-status` | `22px` | Status banner icons (check_circle, lock) |
+
+### `.segment-control`
+
+Apple HIG-style pill segment control used in the AdminTab for tab switching.
+
+- `background: rgba(118, 118, 128, 0.12)`
+- `border-radius: 100px`
+- `padding: 2px`
+- `height: 32px; gap: 4px`
+
+### `.segment-tab-active`
+
+- `background: rgba(74, 222, 128, 0.2)`
+- `color: #4ade80`
+- `border-radius: 20px`
+- `font-weight: 590`
+
+### `.segment-tab-inactive`
+
+- `color: rgba(255, 255, 255, 0.6)`
+- `font-weight: 510`
+
+### `.player-highlight-green` / `.player-highlight-amber`
+
+Subtle row background highlight for the current user.
+
+- Green: `background: rgba(74, 222, 128, 0.07)` — active player
+- Amber: `background: rgba(251, 191, 36, 0.07)` — waitlisted player
+
+### `.pill-paid` / `.pill-unpaid`
+
+Payment status pills used in AdminPlayersPanel.
+
+- Paid: `background: rgba(74, 222, 128, 0.15); color: #4ade80`
+- Unpaid: `background: rgba(255, 255, 255, 0.06); color: rgba(255, 255, 255, 0.35)`
+
+### `.inner-card` / `.inner-card-green`
+
+Nested content blocks inside glass cards.
+
+- `.inner-card`: `background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px`
+- `.inner-card-green`: `background: rgba(74, 222, 128, 0.06); border: 1px solid rgba(74, 222, 128, 0.15); border-radius: 12px` — used for AI output
 
 ### `.material-icons` (global override)
 
@@ -302,6 +348,8 @@ Used on the `refresh` Material Icon during data-load states in HomeTab, PlayersT
 
 ### AdminTab (`components/AdminTab.tsx`)
 
+Four sub-panels behind a PIN gate, selected via an Apple HIG segment control with tabs: **Session | Members | Sign Up | Posts**.
+
 | Element | CSS Classes / Styles |
 |---|---|
 | Loading spinner (auth check) | `flex items-center justify-center min-h-[60vh]` + `material-icons animate-spin text-green-400` |
@@ -313,41 +361,76 @@ Used on the `refresh` Material Icon during data-load states in HomeTab, PlayersT
 | PIN submit | `btn-primary w-full` |
 | PIN error | `text-xs text-red-400` |
 | Admin panel heading + sign-out | `flex items-center justify-between px-1`; heading `font-semibold text-green-400` |
-| Segment control wrapper | `flex w-full rounded-lg p-1 gap-1 overflow-hidden`; inline bg + green border |
-| Active segment button | `flex-1 min-w-0 py-2 text-sm font-medium rounded-md truncate`; inline `background: rgba(74,222,128,0.15); color: #4ade80` |
-| Inactive segment button | Same; inline `color: rgba(255,255,255,0.4)` |
-| Session editor — Card 1 | `glass-card p-5 space-y-3` — SESSION INFO label, Title, Establishment Name, Address, Courts + Max Players |
-| Session editor — Card 2 | `glass-card p-5 space-y-3` — DATE & TIME label, Date & Time row, Sign-up Deadline row |
-| Date/Time row | `flex gap-2` with two `flex-1` children — DatePicker + `<input type="time" style={{ height: '42px' }}>` |
-| Save button | `btn-primary w-full` (below both cards, outside them) |
-| Field labels | `text-xs text-gray-400` |
-| Announcements compose card | `glass-card p-5 space-y-3` |
-| NEW ANNOUNCEMENT heading | `text-xs font-bold tracking-widest text-green-400` |
-| Textarea | Global `textarea` styles; `maxLength={500}`; live `X/500` counter below |
-| "Polish with AI" button | `btn-ghost w-full` + `material-icons` at 16px |
-| AI result container | `rounded-lg p-3`; inline `background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.15)` |
-| "Post to Home" button | `btn-primary w-full` |
-| Posted announcements card | `glass-card p-5 space-y-3` |
-| POSTED heading | `text-xs font-bold tracking-widest text-gray-500` |
-| Individual posted item | `rounded-lg p-3`; inline faint white bg + border |
+| Segment control | `.segment-control` wrapper + `.segment-tab-active` / `.segment-tab-inactive` buttons |
 
-### PlayersTab (`components/PlayersTab.tsx`)
-
-Single flat list — no game grouping. Header shows the actual game date fetched from the session.
+**Session tab (SessionEditor):**
 
 | Element | CSS Classes / Styles |
 |---|---|
-| Loading spinner | `flex items-center justify-center h-48` + `material-icons animate-spin text-green-400` at 32px |
+| Card 1 — Badminton Details | `glass-card p-5 space-y-3` — Venue Name, Address, Courts, Max Players, Sign-ups toggle (iOS-style switch) |
+| Card 2 — Date & Time | `glass-card p-5 space-y-3` — Session start, Deadline, Session End (each DatePicker + time input) |
+| Card 3 — Next Week's Session | `glass-card p-5 space-y-3` — Full form for advance; posts to `POST /api/session/advance` |
+| Date/Time row | `flex gap-2` with two `flex-1` children — DatePicker + `<input type="time" style={{ height: '42px' }}>` |
+| Save button | `btn-primary w-full` |
+| Field labels | `text-xs text-gray-400` |
+
+**Members tab (MembersPanel):**
+
+| Element | CSS Classes / Styles |
+|---|---|
+| Approved Names card | `glass-card p-5 space-y-3` — add/remove invite list entries |
+| AliasesPanel card | `glass-card p-5 space-y-3` — CRUD for e-transfer name mappings |
+
+**Sign Up tab (AdminPlayersPanel):**
+
+| Element | CSS Classes / Styles |
+|---|---|
+| Session history navigator | Prev/next arrows, session date label, "Current session" / "Past session" indicator |
+| Add player form | `glass-card p-5` — admin bypass of signupOpen/deadline/approvedNames |
+| Active players list | `glass-card overflow-hidden` with `.list-header-green`, `.pill-paid` / `.pill-unpaid` toggle, confirm-before-remove |
+| Waitlisted players card | `glass-card overflow-hidden` with `.list-header-amber`, Promote button (capacity-checked) |
+| Removed players card | Collapsible; shows "Cancelled" vs "Removed" via `cancelledBySelf`, Restore button |
+| Download Spreadsheet | `btn-ghost` — CSV export with alias resolution |
+| Clear / Purge triggers | Confirmation action-sheet portal with explicit record counts |
+
+**Posts tab (AnnouncementsPanel):**
+
+| Element | CSS Classes / Styles |
+|---|---|
+| Compose card | `glass-card p-5 space-y-3` |
+| NEW ANNOUNCEMENT heading | `.section-label` |
+| Textarea | Global `textarea` styles; `maxLength={500}`; live `X/500` counter below |
+| "Improve with AI" button | `btn-ghost w-full` + `material-icons` at 16px |
+| AI result container | `.inner-card-green` with `p-3` |
+| "Post to Home" button | `btn-primary w-full` |
+| Posted announcements card | `glass-card p-5 space-y-3` |
+| POSTED heading | `.section-label-muted` |
+| Individual posted item | `.inner-card` with `p-3`; inline edit + delete; "· edited" indicator |
+
+### PlayersTab (`components/PlayersTab.tsx`)
+
+Active players in one glass card, waitlisted players in a second card. Header shows the game date. Current user row highlighted.
+
+| Element | CSS Classes / Styles |
+|---|---|
+| Loading spinner | `flex items-center justify-center h-48` + `material-icons icon-spin-lg animate-spin text-green-400` |
 | Empty state card | `glass-card p-10 text-center text-gray-500` + `material-icons block mb-2 opacity-30` at 40px |
-| Player count label | `text-xs font-bold tracking-widest text-green-400` |
-| Single list card | `glass-card overflow-hidden` |
-| Game date header | `px-4 py-2 text-xs font-bold tracking-widest`; inline `background: rgba(74,222,128,0.06); color: rgba(74,222,128,0.65); borderBottom: 1px solid rgba(74,222,128,0.1)` — shows e.g. "Sunday, March 30" or "UPCOMING SESSION" |
+| Player count label | `.section-label` |
+| Active players card | `glass-card overflow-hidden` |
+| Game date header | `.list-header-green` — shows e.g. "Sunday, March 30" or "UPCOMING SESSION" |
+| Waitlist card | `glass-card overflow-hidden` with `.list-header-amber` |
 | Player list divider | `divide-y`; inline `borderColor: rgba(255,255,255,0.05)` |
-| Player row | `flex items-center px-4 py-3 gap-3`; current user highlighted with inline `background: rgba(74,222,128,0.07)` |
+| Player row (active) | `flex items-center px-4 py-3 gap-3`; current user: `.player-highlight-green` |
+| Player row (waitlisted) | Same layout; current user: `.player-highlight-amber` |
 | Player number | `text-xs text-gray-500 w-5 text-right font-mono tabular-nums` |
 | Player name | `flex-1 text-sm text-gray-200 font-medium` |
 | "(you)" label | `ml-1.5 text-xs text-green-400 font-normal` |
-| Cancel button | `text-xs text-red-400 hover:text-red-300 transition-colors ml-1` — requires deleteToken in localStorage |
+| Cancel button (active) | `text-xs text-red-400 hover:text-red-300 transition-colors ml-1` — says "Cancel" |
+| Leave button (waitlist) | Same styles — says "Leave" |
+
+### GlassPhysics (`components/GlassPhysics.tsx`)
+
+Renders nothing visible. On mount, listens to `mousemove` and updates CSS custom properties `--mx` and `--my` on `:root` (0.0-1.0 normalized coordinates). These drive the radial gradient in `.glass-card` for a physics-like highlight effect. Uses `requestAnimationFrame` throttling.
 
 ### DatePicker (`components/DatePicker.tsx`)
 
@@ -405,7 +488,7 @@ A minimal custom scrollbar is applied globally:
 
 **Mobile-first, single-column layout.** All tab content renders in a single scrollable column with `space-y` gaps. The `max-w-lg` constraint on BottomNav centers content naturally on wider screens while remaining full-bleed on mobile.
 
-**Bottom navigation for thumb reach.** The four-tab nav (`Home`, `Players`, `Teams`, `Admin`) is pinned to the bottom of the viewport (`fixed bottom-0`) so primary actions are reachable with a thumb. The nav is constrained to `max-w-lg` and centered.
+**Bottom navigation for thumb reach.** The three-tab nav (`Home`, `Sign-Ups`, `Admin`) is pinned to the bottom of the viewport (`fixed bottom-0`) so primary actions are reachable with a thumb. The nav is constrained to `max-w-lg` and centered.
 
 **High-contrast green on dark for accessibility.** The court-green accent (`#4ade80`) is used for all interactive feedback — active tab, focus rings, status banners, section headings, and the current-user highlight row — against a near-black background (`#100F0F`), providing strong luminance contrast.
 
