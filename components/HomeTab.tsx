@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Session, Player, Announcement } from '@/lib/types';
 import { fmtDate } from '@/lib/formatters';
+import ShuttleLoader from '@/components/ShuttleLoader';
 
 const STORAGE_KEY = 'badminton_username';
 const STORAGE_KEY_TOKEN = 'badminton_deletetoken';
@@ -34,7 +35,7 @@ function fmtDeadline(iso: string) {
 }
 
 
-export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 'players' | 'admin') => void }) {
+export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (tab: 'home' | 'players' | 'admin') => void; onTitleTap?: () => void }) {
   const [session, setSession] = useState<Session | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
@@ -50,6 +51,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    const minDelay = new Promise(r => setTimeout(r, 1500));
     try {
       const [sRes, pRes, aRes, mRes] = await Promise.all([
         fetch(`${BASE}/api/session`, { cache: 'no-store' }),
@@ -67,6 +69,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
         const memberList: { name: string; active: boolean }[] = await mRes.json();
         setMemberNames(memberList.filter(m => m.active).map(m => m.name));
       }
+      await minDelay;
     } catch (e) {
       console.error('Load error:', e);
     } finally {
@@ -164,11 +167,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-48" role="status" aria-label="Loading">
-        <span className="material-icons icon-spin-lg animate-spin text-green-400" aria-hidden="true">refresh</span>
-      </div>
-    );
+    return <ShuttleLoader text="Loading session..." />;
   }
 
   const mapsUrl = session?.locationAddress
@@ -181,7 +180,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
       <div className="glass-card p-5 space-y-3">
         <div>
           <p className="section-label mb-1">WELCOME TO</p>
-          <h1 className="text-2xl font-bold text-white">BPM Badminton</h1>
+          <h1 className="text-2xl font-bold text-white" onClick={onTitleTap} style={{ cursor: 'default', userSelect: 'none' }}>BPM Badminton</h1>
         </div>
         <div className="border-t border-white/10 pt-3 space-y-1.5">
           <p className="section-label mb-2">LOCATION</p>
@@ -340,7 +339,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
                   autoComplete="off"
                 />
                 {showSuggestions && suggestions.length > 0 && (
-                  <ul className="absolute left-0 right-0 top-full mt-1 z-10 rounded-xl overflow-hidden border border-white/10" style={{ background: 'rgba(30,40,30,0.97)', backdropFilter: 'blur(12px)' }}>
+                  <ul className="absolute left-0 right-0 top-full mt-1 z-10 rounded-xl overflow-hidden border border-white/10" style={{ background: 'var(--dropdown-bg)', backdropFilter: 'blur(12px)' }}>
                     {suggestions.map((s) => (
                       <li key={s}>
                         <button
@@ -383,7 +382,7 @@ export default function HomeTab({ onTabChange }: { onTabChange?: (tab: 'home' | 
                   autoComplete="off"
                 />
                 {showSuggestions && suggestions.length > 0 && (
-                  <ul className="absolute left-0 right-0 top-full mt-1 z-10 rounded-xl overflow-hidden border border-white/10" style={{ background: 'rgba(30,40,30,0.97)', backdropFilter: 'blur(12px)' }}>
+                  <ul className="absolute left-0 right-0 top-full mt-1 z-10 rounded-xl overflow-hidden border border-white/10" style={{ background: 'var(--dropdown-bg)', backdropFilter: 'blur(12px)' }}>
                     {suggestions.map((s) => (
                       <li key={s}>
                         <button

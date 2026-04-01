@@ -1,26 +1,66 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import BottomNav from '@/components/BottomNav';
 import HomeTab from '@/components/HomeTab';
 import PlayersTab from '@/components/PlayersTab';
 import AdminTab from '@/components/AdminTab';
 import GlassPhysics from '@/components/GlassPhysics';
+import ThemeToggle from '@/components/ThemeToggle';
+
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
 export type Tab = 'home' | 'players' | 'admin';
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState<Tab>('home');
+  const [showAdmin, setShowAdmin] = useState(false);
+
+  useEffect(() => {
+    // Show admin tab if user has admin role OR already has a valid admin cookie
+    Promise.all([
+      fetch(`${BASE}/api/admin`).then(r => r.json()).catch(() => ({ authed: false })),
+      (() => {
+        const name = localStorage.getItem('badminton_username');
+        if (!name) return Promise.resolve({ role: 'member' });
+        return fetch(`${BASE}/api/members/me?name=${encodeURIComponent(name)}`)
+          .then(r => r.json()).catch(() => ({ role: 'member' }));
+      })(),
+    ]).then(([auth, member]) => {
+      setShowAdmin(auth.authed === true || member.role === 'admin');
+    });
+  }, []);
+
+  // 5-tap easter egg on title to reveal admin tab
+  const tapCount = useRef(0);
+  const tapTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleTitleTap = useCallback(() => {
+    tapCount.current += 1;
+    clearTimeout(tapTimer.current);
+    if (tapCount.current >= 5) {
+      tapCount.current = 0;
+      setShowAdmin(true);
+    } else {
+      tapTimer.current = setTimeout(() => { tapCount.current = 0; }, 2000);
+    }
+  }, []);
+
+  // Reset tab if admin access is revoked
+  useEffect(() => {
+    if (activeTab === 'admin' && !showAdmin) setActiveTab('home');
+  }, [showAdmin, activeTab]);
 
   return (
     <div className="min-h-screen pb-32">
       <GlassPhysics />
+      <ThemeToggle />
       <div className="max-w-lg mx-auto px-4 pt-6">
-        {activeTab === 'home' && <HomeTab onTabChange={setActiveTab} />}
+        {activeTab === 'home' && <HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} />}
         {activeTab === 'players' && <PlayersTab />}
-        {activeTab === 'admin' && <AdminTab />}
+        {activeTab === 'admin' && showAdmin && <AdminTab />}
       </div>
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} showAdmin={showAdmin} />
     </div>
   );
 }

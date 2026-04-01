@@ -27,9 +27,12 @@ export interface Player {
   deleteToken?: string; // DB-only — never sent to clients
 }
 
+export type Role = 'admin' | 'member';
+
 export interface Member {
   id: string;
   name: string;
+  role: Role;
   stage?: number;        // 1-4 skill stage (P1)
   sessionCount: number;
   lastSeen?: string;

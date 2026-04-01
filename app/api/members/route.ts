@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
     const member = {
       id: randomBytes(12).toString('hex'),
       name: trimmedName,
+      role: 'member' as const,
       stage: undefined,
       sessionCount: 0,
       lastSeen: undefined,
@@ -97,6 +98,7 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.stage === 'number') updates.stage = Math.max(1, Math.min(4, body.stage));
     if (body.stage === null) updates.stage = undefined;
     if (typeof body.active === 'boolean') updates.active = body.active;
+    if (typeof body.role === 'string' && ['admin', 'member'].includes(body.role)) updates.role = body.role;
 
     const { resource: updated } = await container.items.upsert({ ...existing, ...updates });
     return NextResponse.json(updated);

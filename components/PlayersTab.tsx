@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Player, Session } from '@/lib/types';
 import { fmtDate } from '@/lib/formatters';
+import ShuttleLoader from '@/components/ShuttleLoader';
 
 const STORAGE_KEY = 'badminton_username';
 const STORAGE_KEY_TOKEN = 'badminton_deletetoken';
@@ -18,6 +19,7 @@ export default function PlayersTab() {
 
   const loadPlayers = useCallback(async () => {
     setLoading(true);
+    const minDelay = new Promise(r => setTimeout(r, 1500));
     try {
       const [pRes, sRes] = await Promise.all([
         fetch(`${BASE}/api/players`, { cache: 'no-store' }),
@@ -25,6 +27,7 @@ export default function PlayersTab() {
       ]);
       if (pRes.ok) setPlayers(await pRes.json());
       if (sRes.ok) setSession(await sRes.json());
+      await minDelay;
     } catch {
       // silent
     } finally {
@@ -62,13 +65,7 @@ export default function PlayersTab() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-48" role="status" aria-label="Loading">
-        <span className="material-icons icon-spin-lg animate-spin text-green-400" aria-hidden="true">
-          refresh
-        </span>
-      </div>
-    );
+    return <ShuttleLoader text="Loading players..." />;
   }
 
   const activePlayers = players.filter(p => !p.waitlisted);
@@ -76,11 +73,9 @@ export default function PlayersTab() {
 
   if (activePlayers.length === 0 && waitlistPlayers.length === 0) {
     return (
-      <div className="glass-card p-10 text-center text-gray-500">
-        <span className="material-icons icon-xl block mb-2 opacity-30">
-          group_off
-        </span>
-        No one's signed up yet — be the first!
+      <div className="glass-card p-10 text-center">
+        <span className="material-icons block mb-2 text-gray-500" style={{ fontSize: 36, opacity: 0.25 }}>sports_tennis</span>
+        <p className="text-gray-500 text-sm">No one&apos;s signed up yet — be the first!</p>
       </div>
     );
   }

@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 import type { Session, Announcement, Player, Alias, Member } from '@/lib/types';
 import DatePicker from './DatePicker';
+import ShuttleLoader, { ShimmerLoader } from './ShuttleLoader';
 
 /* ─────────────────────────── PIN Gate ─────────────────────────── */
 
@@ -16,9 +17,11 @@ export default function AdminTab() {
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
-    fetch(`${BASE}/api/admin`)
-      .then((r) => r.json())
-      .then((d) => setIsAuthed(d.authed === true))
+    const minDelay = new Promise(r => setTimeout(r, 1500));
+    Promise.all([
+      fetch(`${BASE}/api/admin`).then(r => r.json()).catch(() => ({ authed: false })),
+      minDelay,
+    ]).then(([d]) => setIsAuthed(d.authed === true))
       .catch(() => setIsAuthed(false));
   }, []);
 
@@ -30,7 +33,7 @@ export default function AdminTab() {
       const res = await fetch(`${BASE}/api/admin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin }),
+        body: JSON.stringify({ pin, name: localStorage.getItem('badminton_username') ?? '' }),
       });
       if (res.ok) {
         setIsAuthed(true);
@@ -54,11 +57,7 @@ export default function AdminTab() {
   }
 
   if (isAuthed === null) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]" role="status" aria-label="Loading">
-        <span className="material-icons animate-spin text-green-400" aria-hidden="true" style={{ fontSize: 32 }}>refresh</span>
-      </div>
-    );
+    return <ShuttleLoader />;
   }
 
   if (!isAuthed) {
@@ -870,9 +869,7 @@ function AdminPlayersPanel() {
       {/* Player list */}
       <div className="glass-card overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center h-24" role="status" aria-label="Loading">
-            <span className="material-icons icon-lg animate-spin text-green-400" aria-hidden="true">refresh</span>
-          </div>
+          <div className="px-4"><ShimmerLoader lines={4} /></div>
         ) : players.length === 0 ? (
           <p className="text-center text-gray-500 text-sm p-8">No players signed up yet.</p>
         ) : (
@@ -900,7 +897,7 @@ function AdminPlayersPanel() {
                   {moreMenuOpen && (
                     <>
                       <div onClick={() => setMoreMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 50 }} />
-                      <div className="absolute right-0 top-full mt-1 z-50 w-52 rounded-xl overflow-hidden border border-white/10" style={{ background: 'rgba(30,40,30,0.97)', backdropFilter: 'blur(12px)' }}>
+                      <div className="absolute right-0 top-full mt-1 z-50 w-52 rounded-xl overflow-hidden border border-white/10" style={{ background: 'var(--dropdown-bg)', backdropFilter: 'blur(12px)' }}>
                         <button
                           onClick={() => { setMoreMenuOpen(false); setClearMode('soft'); setClearError(''); setConfirmingClear(true); }}
                           className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/10 transition-colors flex items-center gap-3"
@@ -921,7 +918,7 @@ function AdminPlayersPanel() {
                 </div>
               </div>
             </div>
-            <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+            <div className="divide-y" style={{ borderColor: 'var(--divider)' }}>
               {players.map((player, i) => (
                 <div key={player.id} className="flex items-center px-4 py-3 gap-3">
                   <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">{i + 1}</span>
@@ -958,7 +955,7 @@ function AdminPlayersPanel() {
           <div className="list-header-amber">
             {waitlistPlayers.length} WAITLISTED
           </div>
-          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          <div className="divide-y" style={{ borderColor: 'var(--divider)' }}>
             {waitlistPlayers.map((player, i) => (
               <div key={player.id} className="flex items-center px-4 py-3 gap-3">
                 <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">{players.length + i + 1}</span>
@@ -1011,7 +1008,7 @@ function AdminPlayersPanel() {
             </button>
           </div>
           {!cancelledCollapsed && (
-          <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          <div className="divide-y" style={{ borderColor: 'var(--divider)' }}>
             {[...removedPlayers]
               .sort((a, b) => {
                 const at = a.removedAt ? new Date(a.removedAt).getTime() : 0;
@@ -1069,7 +1066,7 @@ function AdminPlayersPanel() {
           {/* Overlay */}
           <div
             onClick={() => { setConfirmingClear(false); setClearError(''); }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)', zIndex: 100 }}
+            style={{ position: 'fixed', inset: 0, background: 'var(--overlay-bg)', backdropFilter: 'blur(4px)', zIndex: 100 }}
           />
           {/* Sheet */}
           <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 101, padding: '0 16px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 100px)' }}>
@@ -1421,6 +1418,16 @@ function MembersPanel() {
     loadMembers();
   }
 
+  async function handleToggleRole(member: Member) {
+    const newRole = (member.role ?? 'member') === 'admin' ? 'member' : 'admin';
+    await fetch(`${BASE}/api/members`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: member.id, role: newRole }),
+    });
+    loadMembers();
+  }
+
   return (
     <div className="space-y-3">
       {/* Invite List */}
@@ -1457,7 +1464,7 @@ function MembersPanel() {
         </div>
         {addError && <p className="text-red-400 text-xs">{addError}</p>}
         {loading ? (
-          <p className="text-center text-gray-500 text-xs py-2">Loading…</p>
+          <ShimmerLoader lines={3} />
         ) : members.length > 0 ? (
           <div className="space-y-1">
             {members.map((member) => (
@@ -1468,6 +1475,16 @@ function MembersPanel() {
                     <span className="text-xs text-gray-500 ml-2">{member.sessionCount} session{member.sessionCount !== 1 ? 's' : ''}</span>
                   )}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => handleToggleRole(member)}
+                  className="transition-colors mr-1"
+                  style={{ color: (member.role ?? 'member') === 'admin' ? 'var(--accent)' : 'var(--text-muted)' }}
+                  aria-label={`${(member.role ?? 'member') === 'admin' ? 'Remove admin role from' : 'Make admin'} ${member.name}`}
+                  title={(member.role ?? 'member') === 'admin' ? 'Admin' : 'Make admin'}
+                >
+                  <span className="material-icons" style={{ fontSize: 16 }}>shield</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => handleRemoveMember(member)}
@@ -1588,11 +1605,7 @@ function AliasesPanel() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-24">
-        <span className="material-icons icon-spin-lg animate-spin text-green-400">refresh</span>
-      </div>
-    );
+    return <ShimmerLoader lines={3} />;
   }
 
   return (
@@ -1682,7 +1695,7 @@ function AliasesPanel() {
       )}
 
       {aliases.length === 0 && (
-        <p className="text-sm text-gray-500 text-center py-4">No aliases yet.</p>
+        <p className="text-sm text-gray-500 text-center py-4">No aliases yet — add one to map names for e-transfer.</p>
       )}
     </div>
   );
