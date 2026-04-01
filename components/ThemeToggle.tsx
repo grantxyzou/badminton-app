@@ -7,9 +7,22 @@ export default function ThemeToggle() {
 
   useEffect(() => {
     const saved = localStorage.getItem('badminton_theme') as 'dark' | 'light' | null;
-    const initial = saved ?? 'dark';
+    const systemPref = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    const initial = saved ?? systemPref;
     setTheme(initial);
     document.documentElement.setAttribute('data-theme', initial);
+
+    // Listen for system theme changes (only applies when user hasn't manually chosen)
+    const mq = window.matchMedia('(prefers-color-scheme: light)');
+    const handler = (e: MediaQueryListEvent) => {
+      if (!localStorage.getItem('badminton_theme')) {
+        const next = e.matches ? 'light' : 'dark';
+        setTheme(next);
+        document.documentElement.setAttribute('data-theme', next);
+      }
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
   }, []);
 
   function toggle() {
