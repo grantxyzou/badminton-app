@@ -13,7 +13,15 @@ Live URL: `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites
 |-----|-------------|
 | **Home** | Session info (date, location, deadline), sign up (with autocomplete from invite list), waitlist join, announcements |
 | **Sign-Ups** | Full player list + waitlist card; self-cancel flow with delete token |
-| **Admin** | PIN-gated panel — session editor, member/alias management, player admin (paid toggle, promote, restore, history), AI-polished announcements |
+| **Admin** | PIN-gated panel — session editor, member/alias management, player admin (paid toggle, promote, restore, history), AI-polished announcements. Hidden by default; revealed via member role or 5-tap easter egg. |
+
+### Additional Features
+
+- **Theme system** — light/dark mode with system preference auto-follow (`ThemeToggle`)
+- **Persistent member identity** — `members` collection with admin/member roles
+- **Consolidated localStorage identity** — `{ name, token, sessionId }` with stale session detection
+- **Dynamic OG image** — branded preview for link sharing (session title, date, player count)
+- **ShuttleLoader** — BPM-branded waveform loading animation
 
 ---
 
@@ -50,10 +58,13 @@ components/
   GlassPhysics.tsx       Mouse-tracking CSS var updater for glass card hover effect
   HomeTab.tsx            7-state sign-up card + session info + announcements
   PlayersTab.tsx         Active player list + waitlist card; self-cancel flow
+  ShuttleLoader.tsx      BPM waveform loading animation
+  ThemeToggle.tsx        Light/dark theme toggle (system preference + localStorage)
 lib/
   auth.ts          HTTP-only cookie auth helpers
   cosmos.ts        DB connection + session pointer helpers + in-memory mock
   formatters.ts    Shared fmtDate utility
+  identity.ts      Consolidated localStorage identity (getIdentity/setIdentity/clearIdentity)
   rateLimit.ts     In-memory rate limiter (per client IP)
   types.ts         Session, Player, Member, Alias, Announcement interfaces
 ```
@@ -70,7 +81,7 @@ lib/
 
 ### Self-cancellation auth
 
-Players get a random `deleteToken` on sign-up (returned once, stored in `localStorage`). Cancellation requires the token OR an admin cookie. Prevents anyone who knows a player's name from removing them.
+Players get a random `deleteToken` on sign-up (returned once, stored in `localStorage` as part of `badminton_identity`). Cancellation requires the token OR an admin cookie. Prevents anyone who knows a player's name from removing them.
 
 ---
 

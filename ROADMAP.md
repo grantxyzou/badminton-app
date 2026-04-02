@@ -1,128 +1,73 @@
 # BPM Badminton — Roadmap
 
-> Live at: `grantzou.com/bpm`
+> Live at: `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm`
 > Stack: Next.js 16 · Azure App Service · Cosmos DB · Anthropic API
-> Last updated: March 31, 2026
+> Last updated: April 2, 2026
 
 ---
 
-## Shipped
+## P0 — Immediate ✅ Complete
 
-### Core App
-- [x] Name-based sign-up (no account)
-- [x] Player list with self-cancel only (deleteToken auth)
+- [x] Name-based sign-up with invite-list gating (approved names)
+- [x] Autocomplete from approved names on sign-up form
+- [x] Player list with self-cancel (deleteToken auth)
+- [x] Waitlist — auto when session full, admin promote (capacity-checked)
+- [x] Soft delete + admin restore (capacity-checked)
 - [x] Admin announcements (create, edit, delete, AI polish)
-- [x] Session info (location, date, time, courts)
-- [x] PIN-gated admin panel (HTTP-only cookie, SHA-256 hash, timingSafeEqual, rate limited 5/15min, 8hr TTL)
+- [x] PIN-gated admin panel (HTTP-only cookie, timingSafeEqual, rate-limited)
+- [x] Session editor (title, location, date/time, courts, max players)
+- [x] Session advance — date-keyed sessions with pointer architecture
+- [x] Session history navigator (admin)
+- [x] Sign-up open/closed toggle + deadline enforcement
+- [x] Paid/unpaid toggle, e-transfer alias mapping, CSV export
+- [x] Persistent member identity (`members` collection with role system)
+- [x] Admin tab hidden by default (revealed via member role or 5-tap easter egg)
+- [x] `GET /api/members/me` — public role lookup for admin tab visibility
+- [x] Dynamic OG image for link preview thumbnails
+- [x] Theme system (light/dark with system preference auto-follow)
+- [x] ShuttleLoader branded loading animation
+- [x] Consolidated localStorage identity (`{ name, token, sessionId }`) with stale session detection
 - [x] Security headers (CSP, HSTS, X-Frame-Options, etc.)
 - [x] Rate limiting on all public-facing endpoints
 
-### Session Management
-- [x] In-app session editor (title, location, date/time, courts, max players)
-- [x] Session advance — create next week's session, archive current
-- [x] Session history navigator — admin can view player lists from past sessions
-- [x] Date-keyed sessions (`session-YYYY-MM-DD`) with pointer architecture
-- [x] Sign-up open/closed toggle (`signupOpen` boolean)
-- [x] Sign-up deadline enforcement (server-side + client-side)
-- [x] Session end time — "Thanks for playing!" state
+---
 
-### Identity & Access
-- [x] Invite-only identity — admin adds names to approved list, sign-up gated by case-insensitive match
-- [x] Autocomplete from approved names on sign-up form
-- [x] Persistent member identity — `members` collection (name, stage, sessionCount, lastSeen)
-- [x] Player-to-member linking (`memberId` on Player)
+## P1 — Skill Framework (Read-Only)
 
-### Waitlist & Capacity
-- [x] Waitlist — auto when session full, join via "Join Waitlist" form
-- [x] Admin promote from waitlist (capacity-checked)
-- [x] Soft delete — players marked `removed: true` instead of hard-deleted
-- [x] Admin restore of removed players (capacity-checked)
-- [x] Clear session (soft-delete all) and purge all records (hard-delete, irreversible)
-
-### Payment & Admin
-- [x] Paid/unpaid toggle per player (admin only)
-- [x] E-transfer alias mapping (aliases collection — appName to etransferName)
-- [x] CSV export with alias resolution
-- [x] Roster management via MembersPanel (add/remove/deactivate members)
-- [x] Smart announcements — AI polishes draft, posts to Home
+- [ ] **New tab** *(name TBD — "Coming Soon", disabled for regular users, admin-only access)*: ACE Badminton Club Skills Matrix presented as a read/learn experience — 6 dimensions, stage descriptions, progression guidance
+- [ ] **Per-session URL** — shareable link for admin ease of life (single active session; not multi-session architecture yet)
 
 ---
 
-## P0 — Immediate (not yet shipped)
+## P2 — Self-Assessment & Radar
 
-### Identity
-- [ ] Name picker grid on Home replaces text input (currently text input with autocomplete)
-
----
-
-## P1 — Next meaningful version
-
-### Skills Radar
-
-A player skill profiling system. Design decisions are locked — implementation has not started.
-
-**Framework:** React component using `recharts` (RadarChart). Add `recharts` to `package.json` when integrating.
-
-**Rating system:** ACE Badminton Club Skills Matrix — 7 categories, each rated 1-6 using named level bands (Beginner, Recreational, Intramural, Varsity, Provincial, National). Not a 1-10 continuous scale.
-
-**Categories (ACE):** Grip & Stroke · Movement · Serve & Return · Offense · Defense · Strategy · Knowledge
-
-**Data model addition — `Player` document:**
-```typescript
-scores?: {
-  [subSkill: string]: number; // 1-6, keyed by sub-skill name
-};
-```
-Optional field, absent on legacy records. All reads must guard with `player.scores ?? {}`.
-
-**Placement:**
-- Skill profile lives on a player's profile view (not yet built)
-- Players self-rate during an onboarding flow when they first join
-- Stage badges (Beginner to National) are public by default
-- Admin can see an aggregated group view (P2/P3 — do not build yet)
-
-**API:** Scores stored on the player document, updated via `PATCH /api/players` with `{ id, scores }`. Gate with admin auth or separate token — no unauthenticated score writes.
-
-### Matchmaking
-- [ ] Smart Matchmaking — AI balanced courts using stage + skill data
+- [ ] Player self-assessment — rate yourself across ACE 6 dimensions
+- [ ] Spider graph intro — visualise your profile, understand where you are
+- [ ] Stage badge on player card — derived from ACE matrix stages
+- [ ] Full radar chart public by default
+- [ ] Attendance history, cost splitting, WhatsApp share
 
 ---
 
-## P2 — Depth and engagement
+## P3 — Identity & Social Depth
 
-### Identity
-- [ ] Emoji PIN — player picks 4 emojis on first session, stored server-side (fixes localStorage fragility)
-- [ ] Return visit flow — "Welcome back [name]?" with emoji confirm, one-tap sign-up
-
-### Skill System
-- [ ] Peer assessment request — opt-in, player asks 1-2 group members
-- [ ] AI reconciliation — warm message when self vs peer differ
-- [ ] AI pre-session coaching tip — 1 specific focus based on stage
-- [ ] AI training suggestions — what to practise between sessions
-
-### Sessions
-- [ ] Per-session URL — e.g. `/bpm/session/apr-3` for WhatsApp sharing
-- [ ] Session recap — AI post-session summary, admin triggers
+- [ ] Emoji PIN identity (replaces localStorage fragility)
+- [ ] Return visit flow — "Welcome back [name]?" with emoji confirm
+- [ ] Peer assessment, AI reconciliation, coaching tips
+- [ ] Smart Matchmaking — AI balanced courts using skill profile data
+- [ ] Player grouping / game dividers every 4 players
+- [ ] Guest limit, optional profile upgrade (e-transfer, email)
 
 ---
 
-## P3 — Polish, depth & community
+## P4 — Polish & Community
 
-### Skill System
-- [ ] Stage progression celebration — moment when admin bumps you to next stage
-- [ ] Full 6-dimension skill profile per player (Grip & Stroke · Movement · Serve & Return · Offense · Defence · Strategy)
-- [ ] Privacy controls — player sets own stage visibility
-
-### Community
-- [ ] Attendance history — who showed up across sessions
-- [ ] Cost splitting — auto per-person based on sign-ups
-- [ ] WhatsApp share button
-- [ ] Guest limit — cap guests per member
-- [ ] Optional profile upgrade — e-transfer name, email, linked to history
-
-### Infrastructure
-- [ ] Subdomain — `badminton.grantzou.com`
-- [ ] Multi-admin / RBAC if needed
+- [ ] Stage progression celebration
+- [ ] Admin override — silently nudge any player's skill stage
+- [ ] Multi-session support
+- [ ] Session recap — AI post-session summary
+- [ ] Subdomain: `badminton.grantzou.com`
+- [ ] Multi-admin / RBAC
 
 ---
 
@@ -131,20 +76,11 @@ Optional field, absent on legacy records. All reads must guard with `player.scor
 | Decision | Value |
 |---|---|
 | Brand colour | `#4ade80` court green |
-| Admin PIN auth | Server-side only, HTTP-only cookie |
-| Identity model | Invite-only: admin adds names to approved list, autocomplete on sign-up |
-| Persistent identity | `members` collection with stage, sessionCount, lastSeen |
-| Stage visibility | Public by default (P1) |
-| Identity continuity | Name matching (shipped) → Emoji PIN (P2) → Optional full profile (P3) |
+| Identity model | invite-only → emoji PIN (P3) → optional full profile (P4) |
+| Skill model | ACE Badminton Club Skills Matrix — 6 dimensions (Grip, Movement, Serve, Offense, Defence, Strategy) |
+| Skill visibility | Full spider graph public by default |
+| Skill tab (P1) | Read-only ACE framework explainer; Coming Soon for regular users; admin-accessible |
 | Session architecture | Date-keyed (`session-YYYY-MM-DD`) with pointer document |
 | DB tier | Cosmos DB, 400 RU/s shared, 5 containers |
-| Skills rating | ACE framework, 7 categories, 1-6 scale (not 1-10) |
-| Skills visualization | recharts RadarChart |
-
----
-
-## Open Questions
-
-- Peer assessor eligibility — anyone in group, or court-mates only?
-- How does peer request get delivered — in-app, WhatsApp, or both?
-- Does admin see self vs peer disagreements?
+| Admin auth | Server-side PIN, HTTP-only cookie (until real accounts in P4) |
+| Admin tab visibility | Hidden by default, revealed via member role OR 5-tap easter egg |
