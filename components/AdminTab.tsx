@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 import type { Session, Announcement, Player, Alias, Member } from '@/lib/types';
+import { getIdentity } from '@/lib/identity';
 import DatePicker from './DatePicker';
 import ShuttleLoader, { ShimmerLoader } from './ShuttleLoader';
 
@@ -33,7 +34,7 @@ export default function AdminTab() {
       const res = await fetch(`${BASE}/api/admin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin, name: localStorage.getItem('badminton_username') ?? '' }),
+        body: JSON.stringify({ pin, name: getIdentity()?.name ?? '' }),
       });
       if (res.ok) {
         setIsAuthed(true);

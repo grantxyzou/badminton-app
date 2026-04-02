@@ -3,10 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Session, Player, Announcement } from '@/lib/types';
 import { fmtDate } from '@/lib/formatters';
+import { getIdentity, setIdentity, clearIdentity } from '@/lib/identity';
 import ShuttleLoader from '@/components/ShuttleLoader';
 
-const STORAGE_KEY = 'badminton_username';
-const STORAGE_KEY_TOKEN = 'badminton_deletetoken';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 function fmtTime(iso: string) {
@@ -59,7 +58,16 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
         fetch(`${BASE}/api/announcements`, { cache: 'no-store' }),
         fetch(`${BASE}/api/members`, { cache: 'no-store' }).catch(() => null),
       ]);
-      if (sRes.ok) setSession(await sRes.json());
+      if (sRes.ok) {
+        const s: Session = await sRes.json();
+        setSession(s);
+        // Clear stale identity from a previous session
+        const id = getIdentity();
+        if (id && id.sessionId && id.sessionId !== s.id) {
+          clearIdentity();
+          setCurrentUser(null);
+        }
+      }
       if (pRes.ok) setPlayers(await pRes.json());
       if (aRes.ok) {
         const list: Announcement[] = await aRes.json();
@@ -78,8 +86,8 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
   }, []);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) setCurrentUser(stored);
+    const id = getIdentity();
+    if (id) setCurrentUser(id.name);
     loadData();
   }, [loadData]);
 
@@ -127,8 +135,7 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
         setError(data.error ?? 'Failed to sign up');
         if (res.status === 409) loadData();
       } else {
-        localStorage.setItem(STORAGE_KEY, name.trim());
-        if (data.deleteToken) localStorage.setItem(STORAGE_KEY_TOKEN, data.deleteToken);
+        setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session?.id ?? '' });
         setCurrentUser(name.trim());
         await loadData();
       }
@@ -154,8 +161,7 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
       if (!res.ok) {
         setError(data.error ?? 'Failed to join waitlist');
       } else {
-        localStorage.setItem(STORAGE_KEY, name.trim());
-        if (data.deleteToken) localStorage.setItem(STORAGE_KEY_TOKEN, data.deleteToken);
+        setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session?.id ?? '' });
         setCurrentUser(name.trim());
         await loadData();
       }

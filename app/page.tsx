@@ -7,6 +7,7 @@ import PlayersTab from '@/components/PlayersTab';
 import AdminTab from '@/components/AdminTab';
 import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
+import { getIdentity } from '@/lib/identity';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
@@ -21,7 +22,7 @@ export default function Page() {
     Promise.all([
       fetch(`${BASE}/api/admin`).then(r => r.json()).catch(() => ({ authed: false })),
       (() => {
-        const name = localStorage.getItem('badminton_username');
+        const name = getIdentity()?.name ?? null;
         if (!name) return Promise.resolve({ role: 'member' });
         return fetch(`${BASE}/api/members/me?name=${encodeURIComponent(name)}`)
           .then(r => r.json()).catch(() => ({ role: 'member' }));

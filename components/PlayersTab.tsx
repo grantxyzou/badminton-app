@@ -3,10 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Player, Session } from '@/lib/types';
 import { fmtDate } from '@/lib/formatters';
+import { getIdentity, clearIdentity } from '@/lib/identity';
 import ShuttleLoader from '@/components/ShuttleLoader';
 
-const STORAGE_KEY = 'badminton_username';
-const STORAGE_KEY_TOKEN = 'badminton_deletetoken';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 export default function PlayersTab() {
@@ -36,22 +35,22 @@ export default function PlayersTab() {
   }, []);
 
   useEffect(() => {
-    setCurrentUser(localStorage.getItem(STORAGE_KEY));
+    const id = getIdentity();
+    if (id) setCurrentUser(id.name);
     loadPlayers();
   }, [loadPlayers]);
 
   async function handleCancel() {
     if (!currentUser) return;
-    const deleteToken = localStorage.getItem(STORAGE_KEY_TOKEN);
+    const id = getIdentity();
     try {
       const res = await fetch(`${BASE}/api/players`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: currentUser, deleteToken }),
+        body: JSON.stringify({ name: currentUser, deleteToken: id?.token }),
       });
       if (res.ok) {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(STORAGE_KEY_TOKEN);
+        clearIdentity();
         setCurrentUser(null);
         setCancelError('');
         setConfirmingCancel(false);
