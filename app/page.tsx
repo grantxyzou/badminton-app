@@ -5,6 +5,7 @@ import BottomNav from '@/components/BottomNav';
 import HomeTab from '@/components/HomeTab';
 import PlayersTab from '@/components/PlayersTab';
 import AdminTab from '@/components/AdminTab';
+import SkillsTab from '@/components/SkillsTab';
 import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
 import { getIdentity } from '@/lib/identity';
@@ -59,6 +60,7 @@ export default function Page() {
       <div className="max-w-lg mx-auto px-4 pt-6">
         {activeTab === 'home' && <HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} />}
         {activeTab === 'players' && <PlayersTab />}
+        {activeTab === 'skills' && <SkillsTab />}
         {activeTab === 'admin' && showAdmin && <AdminTab />}
       </div>
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} showAdmin={showAdmin} />
