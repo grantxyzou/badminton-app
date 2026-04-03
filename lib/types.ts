@@ -33,7 +33,7 @@ export interface Member {
   id: string;
   name: string;
   role: Role;
-  stage?: number;        // 1-4 skill stage (P1)
+  stage?: number;        // 1-5 ACE skill level
   sessionCount: number;
   lastSeen?: string;
   createdAt: string;
