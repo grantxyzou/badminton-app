@@ -72,6 +72,8 @@ export default function AdminTab() {
           </div>
           <form onSubmit={handlePinSubmit} className="space-y-3">
             <input
+              id="admin-pin"
+              name="pin"
               type="password"
               placeholder="PIN"
               aria-label="Admin PIN"

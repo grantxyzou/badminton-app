@@ -419,6 +419,8 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
             <form onSubmit={handleJoinWaitlist} className="space-y-3">
               <div className="relative">
                 <input
+                  id="waitlist-name"
+                  name="name"
                   type="text"
                   placeholder="Enter your name"
                   aria-label="Your name"
@@ -462,6 +464,8 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
             <form onSubmit={handleSignUp} className="space-y-3">
               <div className="relative">
                 <input
+                  id="signup-name"
+                  name="name"
                   type="text"
                   placeholder="Enter your name"
                   aria-label="Your name"
