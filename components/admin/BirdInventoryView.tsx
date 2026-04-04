@@ -25,7 +25,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
   const [totalCost, setTotalCost] = useState(0);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [speed, setSpeed] = useState<number | ''>('');
-  const [groupRating, setGroupRating] = useState<number>(0);
+  const [qualityRating, setGroupRating] = useState<number>(0);
   const [birdNotes, setBirdNotes] = useState('');
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState('');
@@ -57,7 +57,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
     try {
       const payload: Record<string, unknown> = { name: shuttleName.trim(), tubes, totalCost, date };
       if (speed !== '' && speed > 0) payload.speed = speed;
-      if (groupRating > 0) payload.groupRating = groupRating;
+      if (qualityRating > 0) payload.qualityRating = qualityRating;
       if (birdNotes.trim()) payload.notes = birdNotes.trim();
       const res = await fetch(`${BASE}/api/birds`, {
         method: 'POST',
@@ -178,13 +178,13 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                   <button
                     key={n}
                     type="button"
-                    onClick={() => setGroupRating(groupRating === n ? 0 : n)}
+                    onClick={() => setGroupRating(qualityRating === n ? 0 : n)}
                     className="flex items-center justify-center transition-all"
                     style={{
                       width: 36, height: 36, borderRadius: 8,
-                      background: n <= groupRating ? 'var(--inner-card-green-bg)' : 'var(--inner-card-bg)',
-                      border: `1px solid ${n <= groupRating ? 'var(--inner-card-green-border)' : 'var(--inner-card-border)'}`,
-                      color: n <= groupRating ? 'var(--accent)' : 'var(--text-muted)',
+                      background: n <= qualityRating ? 'var(--inner-card-green-bg)' : 'var(--inner-card-bg)',
+                      border: `1px solid ${n <= qualityRating ? 'var(--inner-card-green-border)' : 'var(--inner-card-border)'}`,
+                      color: n <= qualityRating ? 'var(--accent)' : 'var(--text-muted)',
                       fontSize: 13, fontWeight: 600,
                     }}
                   >
@@ -235,7 +235,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                     {p.tubes} tube{p.tubes !== 1 ? 's' : ''}
                     {p.costPerTube > 0 && ` · $${p.costPerTube.toFixed(2)}/tube`}
                     {p.speed && ` · Spd ${p.speed}`}
-                    {p.groupRating && ` · ${p.groupRating}/5`}
+                    {p.qualityRating && ` · ${p.qualityRating}/5`}
                   </p>
                   {p.notes && (
                     <p className="text-xs mt-0.5 italic" style={{ color: 'var(--text-muted)' }}>{p.notes}</p>
