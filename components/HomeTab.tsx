@@ -124,9 +124,17 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
   const currentPlayerRecord = currentUser
     ? players.find(p => p.name.toLowerCase() === currentUser.toLowerCase())
     : null;
-  const perPersonCost = session?.costPerCourt && session.courts && activePlayers.length > 0
-    ? (session.costPerCourt * session.courts) / activePlayers.length
-    : null;
+  const courtTotal = session?.costPerCourt && session.courts
+    ? session.costPerCourt * session.courts : 0;
+  const birdTotal = session?.showCostBreakdown && session?.birdUsage?.totalBirdCost
+    ? session.birdUsage.totalBirdCost : 0;
+  const totalCost = courtTotal + birdTotal;
+  const perPersonCost = totalCost > 0 && activePlayers.length > 0
+    ? totalCost / activePlayers.length : null;
+  const perPersonCourt = courtTotal > 0 && activePlayers.length > 0
+    ? courtTotal / activePlayers.length : null;
+  const perPersonBird = birdTotal > 0 && activePlayers.length > 0
+    ? birdTotal / activePlayers.length : null;
   const etransferEmail = process.env.NEXT_PUBLIC_ETRANSFER_EMAIL || null;
 
   async function handleReportPaid() {
@@ -317,10 +325,27 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
             {/* Payment card */}
             {perPersonCost !== null && perPersonCost > 0 && (
               <div className="inner-card p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Cost per person</p>
-                  <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>${perPersonCost.toFixed(2)}</p>
-                </div>
+                {perPersonCourt !== null && perPersonBird !== null ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Courts</p>
+                      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>${perPersonCourt.toFixed(2)}</p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Birds</p>
+                      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>${perPersonBird.toFixed(2)}</p>
+                    </div>
+                    <div className="flex items-center justify-between pt-1" style={{ borderTop: '1px solid var(--glass-border)' }}>
+                      <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Total per person</p>
+                      <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>${perPersonCost!.toFixed(2)}</p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Cost per person</p>
+                    <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>${perPersonCost!.toFixed(2)}</p>
+                  </div>
+                )}
                 {etransferEmail && (
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                     E-transfer to: <span style={{ color: 'var(--text-secondary)' }}>{etransferEmail}</span>

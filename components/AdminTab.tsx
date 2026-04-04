@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-import type { Session, Announcement, Player, Alias, Member } from '@/lib/types';
+import type { Session, Announcement, Player, Alias, Member, BirdPurchase } from '@/lib/types';
 import { getIdentity } from '@/lib/identity';
 import DatePicker from './DatePicker';
 import ShuttleLoader, { ShimmerLoader } from './ShuttleLoader';
@@ -103,6 +103,7 @@ export default function AdminTab() {
 
 function AdminPanel({ onLogout }: { onLogout: () => void }) {
   const [section, setSection] = useState<'session' | 'members' | 'signup' | 'announcements'>('session');
+  const [showInventory, setShowInventory] = useState(false);
 
   const SECTIONS = [
     { id: 'session', label: 'Session' },
@@ -144,10 +145,21 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
         ))}
       </div>
 
+      <button
+        onClick={() => setShowInventory(true)}
+        className="btn-ghost w-full flex items-center justify-center gap-2"
+        style={{ minHeight: 44 }}
+      >
+        <span className="material-icons" style={{ fontSize: 18 }}>inventory_2</span>
+        <span className="text-sm font-medium">Bird Inventory</span>
+      </button>
+
       {section === 'session' && <SessionEditor />}
       {section === 'members' && <MembersPanel />}
       {section === 'signup' && <AdminPlayersPanel />}
       {section === 'announcements' && <AnnouncementsPanel />}
+
+      {showInventory && <BirdInventorySheet onClose={() => setShowInventory(false)} />}
     </div>
   );
 }
@@ -168,6 +180,8 @@ type SessionForm = {
   maxPlayers: number;
   signupOpen: boolean;
   costPerCourt: number;
+  birdTubesUsed: number;
+  showCostBreakdown: boolean;
 };
 
 function SessionEditor() {
@@ -185,6 +199,8 @@ function SessionEditor() {
     maxPlayers: 12,
     signupOpen: true,
     costPerCourt: 0,
+    birdTubesUsed: 0,
+    showCostBreakdown: false,
   });
   const initialForm = useRef<SessionForm | null>(null);
   const [savingDetails, setSavingDetails] = useState(false);
@@ -207,6 +223,8 @@ function SessionEditor() {
     maxPlayers: 12,
     signupOpen: true,
     costPerCourt: 0,
+    birdTubesUsed: 0,
+    showCostBreakdown: false,
   });
   const [advancing, setAdvancing] = useState(false);
   const [advanceError, setAdvanceError] = useState('');
@@ -230,6 +248,8 @@ function SessionEditor() {
           maxPlayers: data.maxPlayers ?? 12,
           signupOpen: data.signupOpen !== false,
           costPerCourt: data.costPerCourt ?? 0,
+          birdTubesUsed: data.birdUsage?.tubes ?? 0,
+          showCostBreakdown: data.showCostBreakdown ?? false,
         };
         setForm(loaded);
         initialForm.current = loaded;
@@ -247,6 +267,8 @@ function SessionEditor() {
           maxPlayers: data.maxPlayers ?? 12,
           signupOpen: true,
           costPerCourt: data.costPerCourt ?? 0,
+          birdTubesUsed: 0,
+          showCostBreakdown: false,
               });
       })
       .catch(() => {});
@@ -271,7 +293,14 @@ function SessionEditor() {
       const res = await fetch(`${BASE}/api/session`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, datetime, endDatetime, deadline }),
+        body: JSON.stringify({
+          ...form,
+          datetime,
+          endDatetime,
+          deadline,
+          birdUsage: form.birdTubesUsed > 0 ? { tubes: form.birdTubesUsed } : null,
+          showCostBreakdown: form.showCostBreakdown,
+        }),
       });
       if (res.ok) {
         initialForm.current = { ...form };
@@ -338,6 +367,8 @@ function SessionEditor() {
             maxPlayers: data.maxPlayers ?? 12,
             signupOpen: data.signupOpen !== false,
             costPerCourt: data.costPerCourt ?? 0,
+            birdTubesUsed: data.birdUsage?.tubes ?? 0,
+            showCostBreakdown: data.showCostBreakdown ?? false,
             };
           setForm(loaded);
           initialForm.current = loaded;
@@ -359,7 +390,9 @@ function SessionEditor() {
     form.locationAddress !== init.locationAddress ||
     form.courts !== init.courts ||
     form.maxPlayers !== init.maxPlayers ||
-    form.signupOpen !== init.signupOpen
+    form.signupOpen !== init.signupOpen ||
+    form.birdTubesUsed !== init.birdTubesUsed ||
+    form.showCostBreakdown !== init.showCostBreakdown
   );
   const datesDirty = init !== null && (
     form.date !== init.date ||
@@ -408,6 +441,20 @@ function SessionEditor() {
             </Label>
             <Label text="$/Court">
               <input type="number" min={0} step={0.5} value={form.costPerCourt} onChange={setNum('costPerCourt')} />
+            </Label>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Label text="Bird Tubes Used">
+              <input type="number" min={0} step={0.5} value={form.birdTubesUsed} onChange={setNum('birdTubesUsed')} />
+            </Label>
+            <Label text="Show Cost">
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, showCostBreakdown: !f.showCostBreakdown }))}
+                className={`w-full text-sm font-medium py-1.5 rounded-lg transition-all ${form.showCostBreakdown ? 'pill-paid' : 'pill-unpaid'}`}
+              >
+                {form.showCostBreakdown ? 'Visible' : 'Hidden'}
+              </button>
             </Label>
           </div>
           <div className="flex items-center justify-between pt-1">
@@ -1712,5 +1759,237 @@ function AliasesPanel() {
         <p className="text-sm text-gray-500 text-center py-4">No aliases yet — add one to map names for e-transfer.</p>
       )}
     </div>
+  );
+}
+
+/* ─────────────────────────── Bird Inventory Sheet ─────────────────────────── */
+
+function BirdInventorySheet({ onClose }: { onClose: () => void }) {
+  const [purchases, setPurchases] = useState<BirdPurchase[]>([]);
+  const [currentStock, setCurrentStock] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [brand, setBrand] = useState('');
+  const [tubes, setTubes] = useState(0);
+  const [totalCost, setTotalCost] = useState(0);
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const loadPurchases = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${BASE}/api/birds`, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        setPurchases(data.purchases ?? []);
+        setCurrentStock(data.currentStock ?? 0);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadPurchases(); }, [loadPurchases]);
+
+  async function handleAddPurchase(e: React.FormEvent) {
+    e.preventDefault();
+    if (!brand.trim() || tubes <= 0) return;
+    setAdding(true);
+    setAddError('');
+    try {
+      const res = await fetch(`${BASE}/api/birds`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brand: brand.trim(), tubes, totalCost, date }),
+      });
+      if (res.ok) {
+        setBrand('');
+        setTubes(0);
+        setTotalCost(0);
+        setDate(new Date().toISOString().slice(0, 10));
+        loadPurchases();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setAddError(data.error ?? 'Failed to add purchase.');
+      }
+    } catch {
+      setAddError('Network error.');
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    try {
+      await fetch(`${BASE}/api/birds`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      loadPurchases();
+    } catch {
+      /* ignore */
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, background: 'var(--overlay-bg)', backdropFilter: 'blur(4px)', zIndex: 100 }}
+      />
+      {/* Sheet */}
+      <div style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 101,
+        maxHeight: '85vh',
+        overflowY: 'auto',
+        padding: '0 16px',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
+      }}>
+        <div className="glass-card max-w-lg mx-auto overflow-hidden">
+          {/* Drag handle */}
+          <div className="flex justify-center pt-3 pb-1">
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)' }} />
+          </div>
+
+          <div className="p-5 space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-white">Bird Inventory</h3>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-white transition-colors"
+                aria-label="Close inventory"
+                style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <span className="material-icons" style={{ fontSize: 20 }}>close</span>
+              </button>
+            </div>
+
+            {/* Stock indicator */}
+            {!loading && (
+              <div className="inner-card p-3 flex items-center gap-3">
+                <span
+                  className="material-icons"
+                  style={{ fontSize: 20, color: currentStock >= 2 ? '#4ade80' : '#fbbf24' }}
+                >
+                  inventory_2
+                </span>
+                <p className="text-sm font-medium" style={{ color: currentStock >= 2 ? '#4ade80' : '#fbbf24' }}>
+                  {currentStock} tube{currentStock !== 1 ? 's' : ''} remaining
+                </p>
+              </div>
+            )}
+
+            {/* Add purchase form */}
+            <form onSubmit={handleAddPurchase} className="space-y-3">
+              <p className="section-label">ADD PURCHASE</p>
+              <Label text="Brand">
+                <input
+                  type="text"
+                  placeholder="e.g. RSL, Yonex"
+                  value={brand}
+                  onChange={(e) => setBrand(e.target.value)}
+                  maxLength={50}
+                />
+              </Label>
+              <div className="grid grid-cols-2 gap-3">
+                <Label text="Tubes">
+                  <input
+                    type="number"
+                    min={1}
+                    value={tubes || ''}
+                    onChange={(e) => setTubes(parseInt(e.target.value) || 0)}
+                    placeholder="0"
+                  />
+                </Label>
+                <Label text="Total Cost ($)">
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={totalCost || ''}
+                    onChange={(e) => setTotalCost(parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                  />
+                </Label>
+              </div>
+              <Label text="Date">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              </Label>
+              {addError && <p className="text-red-400 text-xs" role="alert">{addError}</p>}
+              <button
+                type="submit"
+                disabled={adding || !brand.trim() || tubes <= 0}
+                className="btn-primary w-full"
+                style={{ minHeight: 44 }}
+              >
+                {adding ? 'Adding…' : 'Add Purchase'}
+              </button>
+            </form>
+
+            {/* Purchase list */}
+            {loading ? (
+              <ShimmerLoader lines={3} />
+            ) : purchases.length > 0 ? (
+              <div className="space-y-2">
+                <p className="section-label">PURCHASE HISTORY</p>
+                {purchases.map((p) => (
+                  <div key={p.id} className="inner-card p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white">{p.brand}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {' · '}
+                          {p.tubes} tube{p.tubes !== 1 ? 's' : ''}
+                          {p.costPerTube > 0 && ` · $${p.costPerTube.toFixed(2)}/tube`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        {p.totalCost > 0 && (
+                          <span className="text-sm font-medium text-gray-300">${p.totalCost.toFixed(2)}</span>
+                        )}
+                        <button
+                          onClick={() => handleDelete(p.id)}
+                          disabled={deletingId === p.id}
+                          className="text-gray-500 hover:text-red-400 transition-colors"
+                          aria-label={`Delete purchase of ${p.brand}`}
+                          style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <span className="material-icons" style={{ fontSize: 16 }}>
+                            {deletingId === p.id ? 'hourglass_empty' : 'delete'}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-2">No purchases recorded yet.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </>,
+    document.body
   );
 }
