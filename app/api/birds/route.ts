@@ -41,24 +41,35 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const brand = typeof body.brand === 'string' ? body.brand.trim().slice(0, 100) : '';
+    const name = typeof body.name === 'string' ? body.name.trim().slice(0, 100) : '';
     const tubes = typeof body.tubes === 'number' ? body.tubes : 0;
     const totalCost = typeof body.totalCost === 'number' ? body.totalCost : 0;
     const date = typeof body.date === 'string' ? body.date.slice(0, 10) : new Date().toISOString().slice(0, 10);
 
-    if (!brand) return NextResponse.json({ error: 'Brand required' }, { status: 400 });
+    if (!name) return NextResponse.json({ error: 'Shuttle name required' }, { status: 400 });
     if (tubes <= 0) return NextResponse.json({ error: 'Tubes must be greater than 0' }, { status: 400 });
     if (totalCost <= 0) return NextResponse.json({ error: 'Cost must be greater than 0' }, { status: 400 });
 
-    const purchase = {
+    const purchase: Record<string, unknown> = {
       id: randomBytes(12).toString('hex'),
-      brand,
+      name,
       tubes,
       totalCost: Math.round(totalCost * 100) / 100,
       costPerTube: Math.round((totalCost / tubes) * 100) / 100,
       date,
       createdAt: new Date().toISOString(),
     };
+
+    // Optional fields
+    if (typeof body.speed === 'number' && body.speed > 0) {
+      purchase.speed = body.speed;
+    }
+    if (typeof body.groupRating === 'number' && body.groupRating >= 1 && body.groupRating <= 5) {
+      purchase.groupRating = Math.round(body.groupRating);
+    }
+    if (typeof body.notes === 'string' && body.notes.trim()) {
+      purchase.notes = body.notes.trim().slice(0, 500);
+    }
 
     const container = getContainer('birds');
     const { resource } = await container.items.create(purchase);

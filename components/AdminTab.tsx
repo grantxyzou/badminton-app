@@ -1768,10 +1768,13 @@ function BirdInventorySheet({ onClose }: { onClose: () => void }) {
   const [purchases, setPurchases] = useState<BirdPurchase[]>([]);
   const [currentStock, setCurrentStock] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [brand, setBrand] = useState('');
+  const [shuttleName, setShuttleName] = useState('');
   const [tubes, setTubes] = useState(0);
   const [totalCost, setTotalCost] = useState(0);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [speed, setSpeed] = useState<number | ''>('');
+  const [groupRating, setGroupRating] = useState<number>(0);
+  const [birdNotes, setBirdNotes] = useState('');
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -1796,20 +1799,27 @@ function BirdInventorySheet({ onClose }: { onClose: () => void }) {
 
   async function handleAddPurchase(e: React.FormEvent) {
     e.preventDefault();
-    if (!brand.trim() || tubes <= 0) return;
+    if (!shuttleName.trim() || tubes <= 0) return;
     setAdding(true);
     setAddError('');
     try {
+      const payload: Record<string, unknown> = { name: shuttleName.trim(), tubes, totalCost, date };
+      if (speed !== '' && speed > 0) payload.speed = speed;
+      if (groupRating > 0) payload.groupRating = groupRating;
+      if (birdNotes.trim()) payload.notes = birdNotes.trim();
       const res = await fetch(`${BASE}/api/birds`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brand: brand.trim(), tubes, totalCost, date }),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
-        setBrand('');
+        setShuttleName('');
         setTubes(0);
         setTotalCost(0);
         setDate(new Date().toISOString().slice(0, 10));
+        setSpeed('');
+        setGroupRating(0);
+        setBirdNotes('');
         loadPurchases();
       } else {
         const data = await res.json().catch(() => ({}));
@@ -1897,16 +1907,16 @@ function BirdInventorySheet({ onClose }: { onClose: () => void }) {
             {/* Add purchase form */}
             <form onSubmit={handleAddPurchase} className="space-y-3">
               <p className="section-label">ADD PURCHASE</p>
-              <Label text="Brand">
+              <Label text="Shuttle">
                 <input
                   type="text"
-                  placeholder="e.g. RSL, Yonex"
-                  value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                  maxLength={50}
+                  placeholder="e.g. Victor Master No.3"
+                  value={shuttleName}
+                  onChange={(e) => setShuttleName(e.target.value)}
+                  maxLength={100}
                 />
               </Label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <Label text="Tubes">
                   <input
                     type="number"
@@ -1916,7 +1926,7 @@ function BirdInventorySheet({ onClose }: { onClose: () => void }) {
                     placeholder="0"
                   />
                 </Label>
-                <Label text="Total Cost ($)">
+                <Label text="Total ($)">
                   <input
                     type="number"
                     min={0}
@@ -1926,18 +1936,60 @@ function BirdInventorySheet({ onClose }: { onClose: () => void }) {
                     placeholder="0.00"
                   />
                 </Label>
+                <Label text="Speed">
+                  <input
+                    type="number"
+                    min={1}
+                    value={speed}
+                    onChange={(e) => setSpeed(e.target.value ? parseInt(e.target.value) : '')}
+                    placeholder="e.g. 77"
+                  />
+                </Label>
               </div>
-              <Label text="Date">
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
+              <div className="grid grid-cols-2 gap-3">
+                <Label text="Date">
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                  />
+                </Label>
+                <Label text="Group Rating">
+                  <div className="flex gap-1 items-center pt-1">
+                    {[1, 2, 3, 4, 5].map(n => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setGroupRating(groupRating === n ? 0 : n)}
+                        className="flex items-center justify-center transition-all"
+                        style={{
+                          width: 36, height: 36, borderRadius: 8,
+                          background: n <= groupRating ? 'var(--inner-card-green-bg)' : 'var(--inner-card-bg)',
+                          border: `1px solid ${n <= groupRating ? 'var(--inner-card-green-border)' : 'var(--inner-card-border)'}`,
+                          color: n <= groupRating ? 'var(--accent)' : 'var(--text-muted)',
+                          fontSize: 13, fontWeight: 600,
+                        }}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </Label>
+              </div>
+              <Label text="Notes (optional)">
+                <textarea
+                  value={birdNotes}
+                  onChange={(e) => setBirdNotes(e.target.value)}
+                  placeholder="e.g. Good for doubles, flies straight"
+                  maxLength={500}
+                  rows={2}
+                  style={{ resize: 'none' }}
                 />
               </Label>
               {addError && <p className="text-red-400 text-xs" role="alert">{addError}</p>}
               <button
                 type="submit"
-                disabled={adding || !brand.trim() || tubes <= 0}
+                disabled={adding || !shuttleName.trim() || tubes <= 0}
                 className="btn-primary w-full"
                 style={{ minHeight: 44 }}
               >
@@ -1955,13 +2007,18 @@ function BirdInventorySheet({ onClose }: { onClose: () => void }) {
                   <div key={p.id} className="inner-card p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white">{p.brand}</p>
+                        <p className="text-sm font-medium text-white">{p.name}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
                           {new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                           {' · '}
                           {p.tubes} tube{p.tubes !== 1 ? 's' : ''}
                           {p.costPerTube > 0 && ` · $${p.costPerTube.toFixed(2)}/tube`}
+                          {p.speed && ` · Spd ${p.speed}`}
+                          {p.groupRating && ` · ${p.groupRating}/5`}
                         </p>
+                        {p.notes && (
+                          <p className="text-xs text-gray-500 mt-0.5 italic">{p.notes}</p>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
                         {p.totalCost > 0 && (
@@ -1971,7 +2028,7 @@ function BirdInventorySheet({ onClose }: { onClose: () => void }) {
                           onClick={() => handleDelete(p.id)}
                           disabled={deletingId === p.id}
                           className="text-gray-500 hover:text-red-400 transition-colors"
-                          aria-label={`Delete purchase of ${p.brand}`}
+                          aria-label={`Delete purchase of ${p.name}`}
                           style={{ minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         >
                           <span className="material-icons" style={{ fontSize: 16 }}>

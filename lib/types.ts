@@ -56,11 +56,14 @@ export interface Alias {
 
 export interface BirdPurchase {
   id: string;
-  brand: string;
+  name: string;            // brand + model (e.g., "Victor Master No.3")
   tubes: number;
   totalCost: number;
   costPerTube: number;
   date: string;
+  speed?: number;           // shuttle speed rating
+  groupRating?: number;     // 1-5, how the group likes it
+  notes?: string;
   createdAt: string;
 }
 
