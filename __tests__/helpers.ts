@@ -136,18 +136,20 @@ export function makeRequest(
   headers?: Record<string, string>,
 ): NextRequest {
   const ip = uniqueIp();
-  const init: RequestInit & { headers: Record<string, string> } = {
+  const reqHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Client-IP': ip,
+    ...headers,
+  };
+  const init: { method: string; headers: Record<string, string>; body?: string } = {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Client-IP': ip,
-      ...headers,
-    },
+    headers: reqHeaders,
   };
   if (body && method !== 'GET') {
     init.body = JSON.stringify(body);
   }
-  return new NextRequest(url, init);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return new NextRequest(url, init as any);
 }
 
 export function makeAdminRequest(

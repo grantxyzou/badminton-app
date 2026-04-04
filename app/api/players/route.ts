@@ -178,16 +178,45 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!isAdminAuthed(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const isAdmin = isAdminAuthed(req);
+
   try {
     const body = await req.json();
-    const sessionId = typeof body.sessionId === 'string' ? body.sessionId : await getActiveSessionId();
     const { id } = body;
     if (typeof id !== 'string') {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
+
+    // Self-serve "I paid" path — player reports payment using their deleteToken
+    if (!isAdmin && body.selfReportedPaid === true && typeof body.deleteToken === 'string') {
+      const ip = getClientIp(req);
+      if (!checkRateLimit(`selfpay:${ip}`, 10, 60 * 1000)) {
+        return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+      }
+      const sessionId = await getActiveSessionId();
+      const container = getContainer('players');
+      const { resource: existing } = await container.item(id, sessionId).read();
+      if (!existing) {
+        return NextResponse.json({ error: 'Player not found' }, { status: 404 });
+      }
+      // Validate deleteToken
+      const storedToken = existing.deleteToken;
+      const providedToken = body.deleteToken;
+      if (!storedToken || !providedToken || storedToken.length !== providedToken.length ||
+          !timingSafeEqual(Buffer.from(storedToken), Buffer.from(providedToken))) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      const { resource: updated } = await container.items.upsert({ ...existing, selfReportedPaid: true });
+      const { deleteToken: _dt, ...safe } = updated as typeof existing;
+      return NextResponse.json(safe);
+    }
+
+    // Admin-only path for all other updates
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const sessionId = typeof body.sessionId === 'string' ? body.sessionId : await getActiveSessionId();
     const container = getContainer('players');
     const { resource: existing } = await container.item(id, sessionId).read();
     if (!existing) {

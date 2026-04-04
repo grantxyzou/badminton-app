@@ -11,6 +11,7 @@ export interface Session {
   maxPlayers: number;
   signupOpen?: boolean;
   approvedNames?: string[];
+  costPerCourt?: number;
 }
 
 export interface Player {
@@ -23,6 +24,7 @@ export interface Player {
   removed?: boolean;
   removedAt?: string;
   cancelledBySelf?: boolean;
+  selfReportedPaid?: boolean;
   memberId?: string;    // links to Member.id for persistent identity
   deleteToken?: string; // DB-only — never sent to clients
 }

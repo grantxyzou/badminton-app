@@ -45,6 +45,7 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
   const [loading, setLoading] = useState(true);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [memberNames, setMemberNames] = useState<string[]>([]);
+  const [reportingPaid, setReportingPaid] = useState(false);
 
   const maxPlayers = parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12');
 
@@ -118,6 +119,30 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
   const waitlistPosition = isWaitlisted && currentUser
     ? waitlistPlayers.findIndex(p => p.name.toLowerCase() === currentUser.toLowerCase()) + 1
     : 0;
+
+  // Payment calculations
+  const currentPlayerRecord = currentUser
+    ? players.find(p => p.name.toLowerCase() === currentUser.toLowerCase())
+    : null;
+  const perPersonCost = session?.costPerCourt && session.courts && activePlayers.length > 0
+    ? (session.costPerCourt * session.courts) / activePlayers.length
+    : null;
+  const etransferEmail = process.env.NEXT_PUBLIC_ETRANSFER_EMAIL || null;
+
+  async function handleReportPaid() {
+    const identity = getIdentity();
+    if (!identity?.token || !currentPlayerRecord?.id) return;
+    setReportingPaid(true);
+    try {
+      await fetch(`${BASE}/api/players`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: currentPlayerRecord.id, deleteToken: identity.token, selfReportedPaid: true }),
+      });
+      await loadData();
+    } catch { /* silent */ }
+    setReportingPaid(false);
+  }
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
@@ -289,6 +314,42 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
                 <p className="text-xs text-gray-400 mt-0.5">See you soon!</p>
               </div>
             </div>
+            {/* Payment card */}
+            {perPersonCost !== null && perPersonCost > 0 && (
+              <div className="inner-card p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Cost per person</p>
+                  <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>${perPersonCost.toFixed(2)}</p>
+                </div>
+                {etransferEmail && (
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    E-transfer to: <span style={{ color: 'var(--text-secondary)' }}>{etransferEmail}</span>
+                  </p>
+                )}
+                {currentPlayerRecord?.paid ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-icons text-green-400" style={{ fontSize: 16 }}>check_circle</span>
+                    <span className="text-xs font-medium text-green-400">Payment confirmed</span>
+                  </div>
+                ) : currentPlayerRecord?.selfReportedPaid ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-icons text-amber-400" style={{ fontSize: 16 }}>schedule</span>
+                    <span className="text-xs font-medium text-amber-400">Reported — awaiting confirmation</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleReportPaid}
+                    disabled={reportingPaid}
+                    className="btn-ghost w-full flex items-center justify-center gap-2"
+                    style={{ minHeight: 44 }}
+                  >
+                    <span className="material-icons" style={{ fontSize: 16 }}>payments</span>
+                    <span className="text-sm font-medium">{reportingPaid ? 'Reporting...' : 'I paid'}</span>
+                  </button>
+                )}
+              </div>
+            )}
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
               View Sign Up List
             </button>

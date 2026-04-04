@@ -46,6 +46,7 @@ export async function PUT(req: NextRequest) {
       courts: Math.max(1, Math.min(20, parseInt(body.courts, 10) || 2)),
       maxPlayers: Math.max(1, Math.min(100, parseInt(body.maxPlayers, 10) || 12)),
       signupOpen: typeof body.signupOpen === 'boolean' ? body.signupOpen : undefined,
+      costPerCourt: typeof body.costPerCourt === 'number' ? Math.max(0, Math.min(500, body.costPerCourt)) : undefined,
     };
 
     const container = getContainer('sessions');
