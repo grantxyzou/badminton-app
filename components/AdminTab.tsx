@@ -167,7 +167,7 @@ type SessionForm = {
   courts: number;
   maxPlayers: number;
   signupOpen: boolean;
-
+  costPerCourt: number;
 };
 
 function SessionEditor() {
@@ -184,6 +184,7 @@ function SessionEditor() {
     courts: 2,
     maxPlayers: 12,
     signupOpen: true,
+    costPerCourt: 0,
   });
   const initialForm = useRef<SessionForm | null>(null);
   const [savingDetails, setSavingDetails] = useState(false);
@@ -205,6 +206,7 @@ function SessionEditor() {
     courts: 2,
     maxPlayers: 12,
     signupOpen: true,
+    costPerCourt: 0,
   });
   const [advancing, setAdvancing] = useState(false);
   const [advanceError, setAdvanceError] = useState('');
@@ -227,6 +229,7 @@ function SessionEditor() {
           courts: data.courts ?? 2,
           maxPlayers: data.maxPlayers ?? 12,
           signupOpen: data.signupOpen !== false,
+          costPerCourt: data.costPerCourt ?? 0,
         };
         setForm(loaded);
         initialForm.current = loaded;
@@ -243,6 +246,7 @@ function SessionEditor() {
           courts: data.courts ?? 2,
           maxPlayers: data.maxPlayers ?? 12,
           signupOpen: true,
+          costPerCourt: data.costPerCourt ?? 0,
               });
       })
       .catch(() => {});
@@ -333,6 +337,7 @@ function SessionEditor() {
             courts: data.courts ?? 2,
             maxPlayers: data.maxPlayers ?? 12,
             signupOpen: data.signupOpen !== false,
+            costPerCourt: data.costPerCourt ?? 0,
             };
           setForm(loaded);
           initialForm.current = loaded;
@@ -394,12 +399,15 @@ function SessionEditor() {
           <Label text="Address">
             <input type="text" value={form.locationAddress} onChange={setStr('locationAddress')} placeholder="e.g. 123 Main St, City" />
           </Label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <Label text="Courts">
               <input type="number" min={1} value={form.courts} onChange={setNum('courts')} />
             </Label>
             <Label text="Max Players">
               <input type="number" min={1} value={form.maxPlayers} onChange={setNum('maxPlayers')} />
+            </Label>
+            <Label text="$/Court">
+              <input type="number" min={0} step={0.5} value={form.costPerCourt} onChange={setNum('costPerCourt')} />
             </Label>
           </div>
           <div className="flex items-center justify-between pt-1">
@@ -924,6 +932,11 @@ function AdminPlayersPanel() {
                 <div key={player.id} className="flex items-center px-4 py-3 gap-3">
                   <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">{i + 1}</span>
                   <span className="flex-1 text-sm text-gray-200 font-medium">{player.name}</span>
+                  {player.selfReportedPaid && !player.paid && (
+                    <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24' }}>
+                      reported
+                    </span>
+                  )}
                   <button
                     onClick={() => handleTogglePaid(player)}
                     disabled={togglingId === player.id}
