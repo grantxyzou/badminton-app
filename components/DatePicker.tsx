@@ -109,25 +109,31 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
         left: calPos.left,
         width: Math.max(calPos.width, 280),
         zIndex: 9999,
-        background: 'linear-gradient(160deg, rgba(22,22,26,0.97) 0%, rgba(14,14,18,0.99) 100%)',
-        backdropFilter: 'blur(40px) saturate(180%)',
-        border: '1px solid rgba(255,255,255,0.14)',
-        borderRadius: 16,
-        padding: '10px 8px',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.10), 0 16px 48px rgba(0,0,0,0.7)',
       }}
     >
+      <div
+        className="animate-scaleIn"
+        style={{
+          background: 'var(--glass-bg)',
+          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
+          backdropFilter: 'blur(40px) saturate(180%)',
+          border: '1px solid var(--glass-border)',
+          borderRadius: 16,
+          padding: '10px 8px',
+          boxShadow: 'var(--glass-shadow)',
+        }}
+      >
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <button type="button" onClick={prevMonth}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: '2px 4px', lineHeight: 1 }}>
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px', lineHeight: 1 }}>
           <span className="material-icons" style={{ fontSize: 16 }}>chevron_left</span>
         </button>
-        <span style={{ color: '#fff', fontWeight: 600, fontSize: '0.75rem' }}>
+        <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.75rem' }}>
           {MONTHS_FULL[viewMonth]} {viewYear}
         </span>
         <button type="button" onClick={nextMonth}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: '2px 4px', lineHeight: 1 }}>
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px', lineHeight: 1 }}>
           <span className="material-icons" style={{ fontSize: 16 }}>chevron_right</span>
         </button>
       </div>
@@ -135,7 +141,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
       {/* Day headers */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 2 }}>
         {DAYS.map((d, i) => (
-          <div key={i} style={{ textAlign: 'center', fontSize: '0.6rem', color: 'rgba(255,255,255,0.28)', fontWeight: 700, padding: '1px 0' }}>
+          <div key={i} style={{ textAlign: 'center', fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700, padding: '1px 0' }}>
             {d}
           </div>
         ))}
@@ -160,11 +166,9 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
                 minHeight: 36,
                 minWidth: 36,
                 borderRadius: 6,
-                border: isToday && !isSelected ? '1px solid rgba(74,222,128,0.4)' : '1px solid transparent',
-                background: isSelected
-                  ? 'linear-gradient(160deg, rgba(74,222,128,0.3) 0%, rgba(22,163,74,0.2) 100%)'
-                  : 'transparent',
-                color: isSelected ? '#4ade80' : 'rgba(255,255,255,0.75)',
+                border: isToday && !isSelected ? '1px solid var(--accent)' : isSelected ? '1px solid var(--inner-card-green-border)' : '1px solid transparent',
+                background: isSelected ? 'var(--inner-card-green-bg)' : 'transparent',
+                color: isSelected ? 'var(--accent)' : 'var(--text-primary)',
                 fontSize: '0.72rem',
                 fontWeight: isSelected ? 700 : 400,
                 cursor: 'pointer',
@@ -181,6 +185,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
           );
         })}
       </div>
+      </div>
     </div>
   ) : null;
 
@@ -193,16 +198,12 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
         style={{
           width: '100%',
           textAlign: 'left',
-          background: open
-            ? 'linear-gradient(160deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.06) 100%)'
-            : 'linear-gradient(160deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)',
+          background: 'var(--input-bg)',
           backdropFilter: 'blur(20px)',
-          border: open ? '1px solid rgba(74,222,128,0.45)' : '1px solid rgba(255,255,255,0.14)',
-          boxShadow: open
-            ? 'inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 3px rgba(74,222,128,0.10)'
-            : 'inset 0 1px 0 rgba(255,255,255,0.10)',
+          border: open ? '1px solid var(--input-focus-border)' : '1px solid var(--glass-border)',
+          boxShadow: open ? `0 0 0 3px var(--input-focus-ring)` : 'none',
           borderRadius: 14,
-          color: value ? '#e2e8f0' : 'rgba(255,255,255,0.3)',
+          color: value ? 'var(--text-primary)' : 'var(--text-muted)',
           padding: '0 10px',
           height: '42px',
           fontSize: '0.8rem',
@@ -218,7 +219,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {value ? formatDisplay(value) : placeholder}
         </span>
-        <span className="material-icons" style={{ fontSize: 14, flexShrink: 0, color: 'rgba(255,255,255,0.35)' }}>
+        <span className="material-icons" style={{ fontSize: 14, flexShrink: 0, color: 'var(--text-muted)' }}>
           calendar_today
         </span>
       </button>
