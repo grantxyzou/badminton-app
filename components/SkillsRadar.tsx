@@ -311,8 +311,8 @@ function BottomSheet({ dimId, type, playerName, score, onScoreChange, onClose, o
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40"
-        style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+        className="fixed inset-0 z-40 animate-fadeIn"
+        style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
         onClick={onClose}
       />
 
@@ -327,11 +327,14 @@ function BottomSheet({ dimId, type, playerName, score, onScoreChange, onClose, o
         }}
       >
         <div
-          className="rounded-t-2xl overflow-hidden"
+          className="rounded-t-2xl overflow-hidden animate-slideUp"
           style={{
-            background: 'var(--page-bg)',
+            background: 'var(--glass-bg)',
+            WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(140%)',
+            backdropFilter: 'blur(var(--glass-blur)) saturate(140%)',
             border: '1px solid var(--glass-border)',
             borderBottom: 'none',
+            boxShadow: 'var(--glass-shadow)',
           }}
         >
           {/* Drag handle */}
@@ -369,7 +372,7 @@ function BottomSheet({ dimId, type, playerName, score, onScoreChange, onClose, o
           </div>
 
           {/* Content */}
-          <div className="px-5 pb-8 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 80px)' }}>
+          <div className="px-5 pb-8 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 80px)', paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' }}>
             {type === 'detail' ? (
               <DetailContent
                 dim={dim}
