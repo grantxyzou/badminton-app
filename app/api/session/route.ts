@@ -47,10 +47,31 @@ export async function PUT(req: NextRequest) {
       maxPlayers: Math.max(1, Math.min(100, parseInt(body.maxPlayers, 10) || 12)),
       signupOpen: typeof body.signupOpen === 'boolean' ? body.signupOpen : undefined,
       costPerCourt: typeof body.costPerCourt === 'number' ? Math.max(0, Math.min(500, body.costPerCourt)) : undefined,
+      showCostBreakdown: typeof body.showCostBreakdown === 'boolean' ? body.showCostBreakdown : undefined,
     };
 
+    // Handle bird usage — look up latest purchase price
+    let birdUsage = undefined;
+    if (body.birdUsage && typeof body.birdUsage.tubes === 'number' && body.birdUsage.tubes > 0) {
+      const birdsContainer = getContainer('birds');
+      const { resources: purchases } = await birdsContainer.items
+        .query({ query: 'SELECT * FROM c ORDER BY c.date DESC' })
+        .fetchAll();
+      const latestPrice = purchases.length > 0 ? purchases[0].costPerTube : 0;
+      const tubes = Math.max(0, Math.min(100, body.birdUsage.tubes));
+      birdUsage = {
+        tubes,
+        costPerTube: latestPrice,
+        totalBirdCost: Math.round(tubes * latestPrice * 100) / 100,
+      };
+    } else if (body.birdUsage === null) {
+      birdUsage = null; // explicitly clear
+    }
+
+    const sessionData = { ...session, ...(birdUsage !== undefined ? { birdUsage } : {}) };
+
     const container = getContainer('sessions');
-    const { resource } = await container.items.upsert(session);
+    const { resource } = await container.items.upsert(sessionData);
     return NextResponse.json(resource);
   } catch (error) {
     console.error('PUT session error:', error);

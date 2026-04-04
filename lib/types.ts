@@ -12,6 +12,12 @@ export interface Session {
   signupOpen?: boolean;
   approvedNames?: string[];
   costPerCourt?: number;
+  birdUsage?: {
+    tubes: number;
+    costPerTube: number;
+    totalBirdCost: number;
+  };
+  showCostBreakdown?: boolean;
 }
 
 export interface Player {
@@ -46,6 +52,16 @@ export interface Alias {
   id: string;
   appName: string;
   etransferName: string;
+}
+
+export interface BirdPurchase {
+  id: string;
+  brand: string;
+  tubes: number;
+  totalCost: number;
+  costPerTube: number;
+  date: string;
+  createdAt: string;
 }
 
 export interface Announcement {
