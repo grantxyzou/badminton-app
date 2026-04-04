@@ -678,6 +678,17 @@ textarea {
   color: var(--text-muted);
 }
 
+/* ── Sticky level picker ── */
+.level-picker-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--page-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  padding: 8px 0 12px;
+}
+
 /* ── Admin segment control (Apple HIG spec) ── */
 .segment-control {
   background: var(--segment-bg);
@@ -734,6 +745,10 @@ textarea {
   color: var(--list-amber-text);
   border-bottom: 1px solid var(--list-amber-border);
 }
+
+/* ── Hide scrollbar ── */
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
 
 /* ── Theme toggle button ── */
 .theme-toggle {

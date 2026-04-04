@@ -60,7 +60,7 @@ export default function Page() {
       <div className="max-w-lg mx-auto px-4 pt-6">
         {activeTab === 'home' && <HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} />}
         {activeTab === 'players' && <PlayersTab />}
-        {activeTab === 'skills' && <SkillsTab />}
+        {activeTab === 'skills' && <SkillsTab isAdmin={showAdmin} />}
         {activeTab === 'admin' && showAdmin && <AdminTab />}
       </div>
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} showAdmin={showAdmin} />

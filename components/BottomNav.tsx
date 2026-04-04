@@ -29,7 +29,7 @@ export default function BottomNav({ activeTab, onTabChange, showAdmin }: Props) 
               onClick={() => onTabChange(tab.id)}
               aria-label={tab.label}
               aria-current={active ? 'page' : undefined}
-              className={`flex-1 flex flex-col items-center py-2.5 gap-0.5 transition-all rounded-xl ${active ? 'nav-tab-active' : ''}`}
+              className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-all rounded-xl ${active ? 'nav-tab-active' : ''}`}
               style={{ color: active ? 'var(--nav-active-color)' : 'var(--nav-inactive-color)' }}
             >
               {tab.icon ? (
@@ -40,7 +40,7 @@ export default function BottomNav({ activeTab, onTabChange, showAdmin }: Props) 
                   <span className="text-xs font-medium" aria-hidden="true">{tab.label}</span>
                 </>
               ) : (
-                <span className="text-[10px] font-medium leading-tight text-center" aria-hidden="true">
+                <span className="text-[9px] font-medium leading-snug text-center tracking-wide uppercase opacity-70" aria-hidden="true">
                   {tab.textLines?.map((line, i) => (
                     <span key={i} className="block">{line}</span>
                   ))}

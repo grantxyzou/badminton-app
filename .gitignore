@@ -1,6 +1,9 @@
 # dependencies
 node_modules/
 
+# superpowers brainstorm artifacts
+.superpowers/
+
 # next.js
 .next/
 out/
