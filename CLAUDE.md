@@ -18,7 +18,7 @@ Omit `COSMOS_CONNECTION_STRING` from `.env.local` to use the in-memory mock stor
 ## Key Architecture
 
 ### Single-Page App
-`app/page.tsx` is the only browser route. Tabs: Home, Sign-Ups, Admin. All data via API routes under `app/api/`. Every fetch uses `{ cache: 'no-store' }`.
+`app/page.tsx` is the only browser route. Tabs: Home, Sign-Ups, Skills (Coming Soon), Admin. All data via API routes under `app/api/`. Every fetch uses `{ cache: 'no-store' }`.
 
 ### Session Pointer
 Sessions are date-keyed (`session-YYYY-MM-DD`). A pointer document (`id: 'active-session-pointer'`) tracks the current session. **Always use `getActiveSessionId()`** — never `SESSION_ID` directly (legacy compat only). The pointer falls back to `'current-session'` if no pointer doc exists — do not remove this fallback.
@@ -76,10 +76,20 @@ Full session + `POST { waitlist: true }` → `waitlisted: true`. Promote via `PA
 - **`signupOpen` defaults to open**: Absent = open. New sessions via advance start closed.
 - **Announcements are session-scoped**: Advancing hides old announcements.
 - **DatePicker is custom**: Portal-rendered to escape `backdrop-filter` stacking. Don't replace with native.
-- **No TeamsTab**: Only Home, Sign-Ups, Admin. Don't re-introduce without updating `Tab` type + `BottomNav`.
+- **4 tabs**: Home, Sign-Ups, Skills (Coming Soon), Admin. Skills tab shows "Progress together?" for non-admins, SkillsRadar for admins.
+- **SkillsRadar uses recharts**: Imported with `dynamic(() => import(...), { ssr: false })` because recharts requires `window`.
 - **`.azure/` is gitignored**: Never commit.
 - **Mock store**: Test without DB by omitting `COSMOS_CONNECTION_STRING`. Verify mock query filters match real Cosmos queries.
 
 ## Deployment
 
-Push to `main` triggers GitHub Actions: build → standalone zip → OIDC Azure deploy. See `.github/workflows/main_badminton-app.yml`. Manual fallback in that file's comments. Runtime env vars set in Azure App Settings.
+Push to `main` triggers GitHub Actions: test → build → standalone zip → OIDC Azure deploy. Tests must pass before build proceeds. See `.github/workflows/main_badminton-app.yml`. Runtime env vars set in Azure App Settings.
+
+## Testing
+
+```bash
+npm test              # run all tests (vitest)
+npm run test:watch    # watch mode
+```
+
+37 tests across 5 suites covering API routes (admin auth, player CRUD, members, sessions). Tests use the in-memory mock store — no DB needed. Test helpers in `__tests__/helpers.ts`. Each test gets a unique IP via `X-Client-IP` to avoid rate limiter collisions.
