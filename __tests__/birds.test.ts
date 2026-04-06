@@ -37,14 +37,14 @@ describe('Birds API', () => {
         tubes: 2,
         totalCost: 50,
         speed: 77,
-        groupRating: 4,
+        qualityRating: 4,
         notes: 'Good for doubles',
       }));
       const data = await res.json();
 
       expect(res.status).toBe(201);
       expect(data.speed).toBe(77);
-      expect(data.groupRating).toBe(4);
+      expect(data.qualityRating).toBe(4);
       expect(data.notes).toBe('Good for doubles');
     });
 

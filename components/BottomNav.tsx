@@ -18,7 +18,7 @@ const TABS: { id: Tab; label: string; icon?: string; textLines?: string[] }[] = 
 export default function BottomNav({ activeTab, onTabChange, showAdmin }: Props) {
   const visibleTabs = TABS.filter(tab => tab.id !== 'admin' || showAdmin);
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 pb-5">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 nav-safe-area">
       <div className="max-w-lg mx-auto px-4">
       <div className="nav-glass flex px-2 py-1.5">
         {visibleTabs.map((tab) => {
@@ -29,7 +29,7 @@ export default function BottomNav({ activeTab, onTabChange, showAdmin }: Props) 
               onClick={() => onTabChange(tab.id)}
               aria-label={tab.label}
               aria-current={active ? 'page' : undefined}
-              className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-all rounded-xl ${active ? 'nav-tab-active' : ''}`}
+              className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-all active:scale-95 rounded-xl ${active ? 'nav-tab-active' : ''}`}
               style={{ color: active ? 'var(--nav-active-color)' : 'var(--nav-inactive-color)' }}
             >
               {tab.icon ? (
