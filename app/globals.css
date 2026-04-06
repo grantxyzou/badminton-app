@@ -16,6 +16,13 @@
   --accent-dark: #16a34a;
   --color-scheme: dark;
 
+  /* ── Motion ── */
+  --ease-glass: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+
   /* ── Aurora ── */
   --aurora-bg: #100F0F;
   --aurora-blob1: linear-gradient(180deg, #8FA2B0 0%, #1B324D 56%);
@@ -406,7 +413,7 @@ body {
   border-radius: 14px;
   box-shadow: var(--btn-primary-shadow);
   color: var(--btn-primary-text);
-  padding: 11px 20px;
+  padding: 12px 20px;
   font-weight: 600;
   font-size: 0.875rem;
   cursor: pointer;
@@ -440,7 +447,7 @@ body {
     inset 0 1px 0 var(--glass-inset),
     0 2px 8px rgba(0, 0, 0, 0.15);
   color: var(--btn-ghost-text);
-  padding: 10px 16px;
+  padding: 12px 16px;
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -472,6 +479,11 @@ body {
   border: none;
   border-radius: 24px;
   box-shadow: var(--nav-shadow);
+}
+
+/* ── Safe area bottom padding for nav ── */
+.nav-safe-area {
+  padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
 }
 
 /* ── Active nav tab pill ── */
@@ -621,6 +633,44 @@ textarea {
   100% { background-position: -200% 0; }
 }
 
+/* ── View transitions ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scaleY(0.95); }
+  to { opacity: 1; transform: scaleY(1); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn var(--duration-normal) var(--ease-glass) both;
+}
+
+.animate-slideUp {
+  animation: slideUp var(--duration-slow) var(--ease-spring) both;
+}
+
+.animate-slideInRight {
+  animation: slideInRight var(--duration-normal) var(--ease-glass) both;
+}
+
+.animate-scaleIn {
+  animation: scaleIn var(--duration-fast) var(--ease-glass) both;
+  transform-origin: top;
+}
+
 /* ── Icon sizes ── */
 .icon-spin-lg {
   font-size: 32px;
@@ -708,6 +758,11 @@ textarea {
 .segment-tab-inactive {
   color: var(--segment-inactive-text);
   font-weight: 510;
+}
+
+.segment-control button {
+  transition: background var(--duration-fast) var(--ease-glass),
+              color var(--duration-fast) var(--ease-glass);
 }
 
 /* ── Player self-highlight rows ── */

@@ -64,8 +64,8 @@ export async function POST(req: NextRequest) {
     if (typeof body.speed === 'number' && body.speed > 0) {
       purchase.speed = body.speed;
     }
-    if (typeof body.groupRating === 'number' && body.groupRating >= 1 && body.groupRating <= 5) {
-      purchase.groupRating = Math.round(body.groupRating);
+    if (typeof body.qualityRating === 'number' && body.qualityRating >= 1 && body.qualityRating <= 5) {
+      purchase.qualityRating = Math.round(body.qualityRating);
     }
     if (typeof body.notes === 'string' && body.notes.trim()) {
       purchase.notes = body.notes.trim().slice(0, 500);

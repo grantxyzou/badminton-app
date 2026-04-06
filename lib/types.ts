@@ -62,7 +62,7 @@ export interface BirdPurchase {
   costPerTube: number;
   date: string;
   speed?: number;           // shuttle speed rating
-  groupRating?: number;     // 1-5, how the group likes it
+  qualityRating?: number;    // 1-5, shuttle quality rating
   notes?: string;
   createdAt: string;
 }

@@ -433,13 +433,20 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
                   autoComplete="off"
                 />
                 {showSuggestions && suggestions.length > 0 && (
-                  <ul className="absolute left-0 right-0 top-full mt-1 z-10 rounded-xl overflow-hidden border border-white/10" style={{ background: 'var(--dropdown-bg)', backdropFilter: 'blur(12px)' }}>
+                  <ul className="absolute left-0 right-0 top-full mt-1 z-10 rounded-xl overflow-hidden animate-scaleIn"
+                      style={{
+                        background: 'var(--dropdown-bg)',
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        border: '1px solid var(--glass-border)',
+                      }}>
                     {suggestions.map((s) => (
                       <li key={s}>
                         <button
                           type="button"
                           onMouseDown={() => { setName(s); setShowSuggestions(false); setError(''); }}
-                          className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors"
+                          className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5"
+                          style={{ color: 'var(--text-primary)' }}
                         >
                           {s}
                         </button>
@@ -478,13 +485,20 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
                   autoComplete="off"
                 />
                 {showSuggestions && suggestions.length > 0 && (
-                  <ul className="absolute left-0 right-0 top-full mt-1 z-10 rounded-xl overflow-hidden border border-white/10" style={{ background: 'var(--dropdown-bg)', backdropFilter: 'blur(12px)' }}>
+                  <ul className="absolute left-0 right-0 top-full mt-1 z-10 rounded-xl overflow-hidden animate-scaleIn"
+                      style={{
+                        background: 'var(--dropdown-bg)',
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        border: '1px solid var(--glass-border)',
+                      }}>
                     {suggestions.map((s) => (
                       <li key={s}>
                         <button
                           type="button"
                           onMouseDown={() => { setName(s); setShowSuggestions(false); setError(''); }}
-                          className="w-full text-left px-4 py-2.5 text-sm text-white hover:bg-white/10 transition-colors"
+                          className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5"
+                          style={{ color: 'var(--text-primary)' }}
                         >
                           {s}
                         </button>

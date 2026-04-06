@@ -58,10 +58,10 @@ export default function Page() {
       <GlassPhysics />
       <ThemeToggle />
       <div className="max-w-lg mx-auto px-4 pt-6">
-        {activeTab === 'home' && <HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} />}
-        {activeTab === 'players' && <PlayersTab />}
-        {activeTab === 'skills' && <SkillsTab isAdmin={showAdmin} />}
-        {activeTab === 'admin' && showAdmin && <AdminTab />}
+        {activeTab === 'home' && <div key="home" className="animate-fadeIn"><HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} /></div>}
+        {activeTab === 'players' && <div key="players" className="animate-fadeIn"><PlayersTab /></div>}
+        {activeTab === 'skills' && <div key="skills" className="animate-fadeIn"><SkillsTab isAdmin={showAdmin} /></div>}
+        {activeTab === 'admin' && showAdmin && <div key="admin" className="animate-fadeIn"><AdminTab /></div>}
       </div>
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} showAdmin={showAdmin} />
     </div>
