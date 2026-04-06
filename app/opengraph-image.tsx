@@ -36,10 +36,11 @@ export default async function OGImage() {
   }
 
   const dateStr = session.datetime
-    ? new Date(session.datetime).toLocaleDateString('en-US', {
+    ? new Date(session.datetime.slice(0, 10) + 'T12:00:00Z').toLocaleDateString('en-US', {
         weekday: 'long',
         month: 'long',
         day: 'numeric',
+        timeZone: 'UTC',
       })
     : 'TBD';
 
