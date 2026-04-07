@@ -50,19 +50,25 @@ export async function PUT(req: NextRequest) {
       showCostBreakdown: typeof body.showCostBreakdown === 'boolean' ? body.showCostBreakdown : undefined,
     };
 
-    // Handle bird usage — look up latest purchase price
+    // Handle bird usage — look up specific purchase by ID
     let birdUsage = undefined;
     if (body.birdUsage && typeof body.birdUsage.tubes === 'number' && body.birdUsage.tubes > 0) {
+      const purchaseId = body.birdUsage.purchaseId;
+      if (typeof purchaseId !== 'string' || !purchaseId) {
+        return NextResponse.json({ error: 'Bird purchase must be selected' }, { status: 400 });
+      }
       const birdsContainer = getContainer('birds');
-      const { resources: purchases } = await birdsContainer.items
-        .query({ query: 'SELECT * FROM c ORDER BY c.date DESC' })
-        .fetchAll();
-      const latestPrice = purchases.length > 0 ? purchases[0].costPerTube : 0;
+      const { resource: purchase } = await birdsContainer.item(purchaseId, purchaseId).read();
+      if (!purchase) {
+        return NextResponse.json({ error: 'Selected bird purchase not found' }, { status: 404 });
+      }
       const tubes = Math.max(0, Math.min(100, body.birdUsage.tubes));
       birdUsage = {
         tubes,
-        costPerTube: latestPrice,
-        totalBirdCost: Math.round(tubes * latestPrice * 100) / 100,
+        costPerTube: purchase.costPerTube,
+        totalBirdCost: Math.round(tubes * purchase.costPerTube * 100) / 100,
+        purchaseId: purchase.id,
+        purchaseName: purchase.name,
       };
     } else if (body.birdUsage === null) {
       birdUsage = null; // explicitly clear

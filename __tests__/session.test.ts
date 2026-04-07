@@ -10,6 +10,7 @@ import {
 } from './helpers';
 import { GET, PUT } from '@/app/api/session/route';
 import { POST as ADVANCE } from '@/app/api/session/advance/route';
+import { POST as CREATE_BIRD } from '@/app/api/birds/route';
 
 setupAdminPin();
 
@@ -69,6 +70,51 @@ describe('PUT /api/session', () => {
 
     // ASSERT
     expect(res.status).toBe(401);
+  });
+
+  it('saves bird usage with specific purchase price', async () => {
+    const birdRes = await CREATE_BIRD(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+      name: 'Victor Master No.3', tubes: 4, totalCost: 80,
+    }));
+    const bird = await birdRes.json();
+
+    const req = makeAdminRequest('PUT', 'http://localhost:3000/api/session', {
+      title: 'Test',
+      courts: 2,
+      maxPlayers: 12,
+      birdUsage: { tubes: 2, purchaseId: bird.id },
+    });
+    const res = await PUT(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.birdUsage.tubes).toBe(2);
+    expect(data.birdUsage.costPerTube).toBe(20);
+    expect(data.birdUsage.totalBirdCost).toBe(40);
+    expect(data.birdUsage.purchaseId).toBe(bird.id);
+    expect(data.birdUsage.purchaseName).toBe('Victor Master No.3');
+  });
+
+  it('rejects bird usage with missing purchaseId', async () => {
+    const req = makeAdminRequest('PUT', 'http://localhost:3000/api/session', {
+      title: 'Test',
+      courts: 2,
+      maxPlayers: 12,
+      birdUsage: { tubes: 2 },
+    });
+    const res = await PUT(req);
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects bird usage with unknown purchaseId', async () => {
+    const req = makeAdminRequest('PUT', 'http://localhost:3000/api/session', {
+      title: 'Test',
+      courts: 2,
+      maxPlayers: 12,
+      birdUsage: { tubes: 2, purchaseId: 'nonexistent' },
+    });
+    const res = await PUT(req);
+    expect(res.status).toBe(404);
   });
 });
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import type { Session } from '@/lib/types';
+import type { Session, BirdPurchase } from '@/lib/types';
 import AdminBackHeader from './AdminBackHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -23,6 +23,7 @@ type DetailsForm = {
   signupOpen: boolean;
   costPerCourt: number;
   birdTubesUsed: number;
+  birdPurchaseId: string;
   showCostBreakdown: boolean;
 };
 
@@ -35,6 +36,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
     signupOpen: true,
     costPerCourt: 0,
     birdTubesUsed: 0,
+    birdPurchaseId: '',
     showCostBreakdown: false,
   });
   const [fullSession, setFullSession] = useState<Session | null>(null);
@@ -44,6 +46,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [sessionLabel, setSessionLabel] = useState('');
+  const [purchases, setPurchases] = useState<BirdPurchase[]>([]);
 
   useEffect(() => {
     fetch(`${BASE}/api/session`, { cache: 'no-store' })
@@ -57,6 +60,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
           signupOpen: data.signupOpen !== false,
           costPerCourt: data.costPerCourt ?? 0,
           birdTubesUsed: data.birdUsage?.tubes ?? 0,
+          birdPurchaseId: data.birdUsage?.purchaseId ?? '',
           showCostBreakdown: data.showCostBreakdown ?? false,
         };
         setForm(loaded);
@@ -69,6 +73,13 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetch(`${BASE}/api/birds`, { cache: 'no-store' })
+      .then((r) => r.ok ? r.json() : { purchases: [] })
+      .then((data) => setPurchases(data.purchases ?? []))
+      .catch(() => {});
   }, []);
 
   function withLocalTz(date: string, time: string): string {
@@ -110,7 +121,13 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
           deadlineDate: deadlineDateStr,
           deadlineTime: deadlineTimeStr,
           deadline: withLocalTz(deadlineDateStr, deadlineTimeStr),
-          birdUsage: form.birdTubesUsed > 0 ? { tubes: form.birdTubesUsed } : null,
+          // If purchase selected: send tubes + purchaseId. If explicitly cleared: send null.
+          // If legacy (tubes > 0 but no purchaseId): omit to preserve existing birdUsage.
+          ...(form.birdTubesUsed > 0 && form.birdPurchaseId
+            ? { birdUsage: { tubes: form.birdTubesUsed, purchaseId: form.birdPurchaseId } }
+            : form.birdTubesUsed === 0 || (!form.birdPurchaseId && !fullSession?.birdUsage)
+              ? { birdUsage: null }
+              : {}),
           showCostBreakdown: form.showCostBreakdown,
         }),
       });
@@ -136,6 +153,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
     form.signupOpen !== init.signupOpen ||
     form.costPerCourt !== init.costPerCourt ||
     form.birdTubesUsed !== init.birdTubesUsed ||
+    form.birdPurchaseId !== init.birdPurchaseId ||
     form.showCostBreakdown !== init.showCostBreakdown
   );
 
@@ -186,19 +204,47 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
               <input type="number" min={0} step={0.5} value={form.costPerCourt} onChange={setNum('costPerCourt')} />
             </Label>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Label text="Bird Tubes Used">
-              <input type="number" min={0} step={0.5} value={form.birdTubesUsed} onChange={setNum('birdTubesUsed')} />
-            </Label>
-            <Label text="Show Cost">
-              <button
-                type="button"
-                onClick={() => setForm(f => ({ ...f, showCostBreakdown: !f.showCostBreakdown }))}
-                className={`w-full text-sm font-medium py-1.5 rounded-lg transition-all ${form.showCostBreakdown ? 'pill-paid' : 'pill-unpaid'}`}
+          <div className="space-y-3">
+            <Label text="Bird Source">
+              <select
+                value={form.birdPurchaseId}
+                onChange={(e) => setForm(f => ({ ...f, birdPurchaseId: e.target.value, birdTubesUsed: e.target.value ? f.birdTubesUsed || 1 : 0 }))}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: 8, background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)', color: 'var(--text-primary)', fontSize: 14 }}
               >
-                {form.showCostBreakdown ? 'Visible' : 'Hidden'}
-              </button>
+                <option value="">None</option>
+                {purchases.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} — ${p.costPerTube.toFixed(2)}/tube ({new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})
+                  </option>
+                ))}
+              </select>
             </Label>
+            {form.birdPurchaseId && (
+              <div className="grid grid-cols-2 gap-3">
+                <Label text="Tubes Used">
+                  <input type="number" min={1} value={form.birdTubesUsed || ''} onChange={setNum('birdTubesUsed')} />
+                </Label>
+                <Label text="Show Cost">
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, showCostBreakdown: !f.showCostBreakdown }))}
+                    className={`w-full text-sm font-medium py-1.5 rounded-lg transition-all ${form.showCostBreakdown ? 'pill-paid' : 'pill-unpaid'}`}
+                  >
+                    {form.showCostBreakdown ? 'Visible' : 'Hidden'}
+                  </button>
+                </Label>
+              </div>
+            )}
+            {form.birdPurchaseId && form.birdTubesUsed > 0 && (() => {
+              const selected = purchases.find(p => p.id === form.birdPurchaseId);
+              if (!selected) return null;
+              const total = form.birdTubesUsed * selected.costPerTube;
+              return (
+                <p className="text-xs" style={{ color: 'var(--accent)' }}>
+                  {form.birdTubesUsed} × ${selected.costPerTube.toFixed(2)} = ${total.toFixed(2)}
+                </p>
+              );
+            })()}
           </div>
           <div className="flex items-center justify-between pt-1">
             <div>

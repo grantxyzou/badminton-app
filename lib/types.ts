@@ -16,6 +16,8 @@ export interface Session {
     tubes: number;
     costPerTube: number;
     totalBirdCost: number;
+    purchaseId?: string;
+    purchaseName?: string;
   };
   showCostBreakdown?: boolean;
 }

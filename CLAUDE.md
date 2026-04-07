@@ -92,4 +92,4 @@ npm test              # run all tests (vitest)
 npm run test:watch    # watch mode
 ```
 
-37 tests across 5 suites covering API routes (admin auth, player CRUD, members, sessions). Tests use the in-memory mock store — no DB needed. Test helpers in `__tests__/helpers.ts`. Each test gets a unique IP via `X-Client-IP` to avoid rate limiter collisions.
+61 tests across 7 suites covering API routes (admin auth, player CRUD, player self-pay, members, sessions, birds). Tests use the in-memory mock store — no DB needed. Test helpers in `__tests__/helpers.ts`. Each test gets a unique IP via `X-Client-IP` to avoid rate limiter collisions.
