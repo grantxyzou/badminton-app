@@ -18,6 +18,11 @@ export default function SkillsTab({ isAdmin }: { isAdmin?: boolean }) {
   const [loading, setLoading] = useState(true);
   const [players, setPlayers] = useState<PlayerSkills[]>([]);
 
+  // Add-player inline form state
+  const [name, setName] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState('');
+
   const refresh = useCallback(async () => {
     try {
       const res = await fetch(`${BASE}/api/skills`, { cache: 'no-store' });
@@ -43,18 +48,32 @@ export default function SkillsTab({ isAdmin }: { isAdmin?: boolean }) {
     };
   }, [isAdmin, refresh]);
 
-  async function handleAddPlayer() {
-    const name = window.prompt('Player name:')?.trim();
-    if (!name) return;
+  async function handleAddPlayer(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setAddError('Enter a player name');
+      return;
+    }
+    setAdding(true);
+    setAddError('');
     try {
       const res = await fetch(`${BASE}/api/skills`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, scores: {} }),
+        body: JSON.stringify({ name: trimmed, scores: {} }),
       });
-      if (res.ok) await refresh();
+      if (res.ok) {
+        setName('');
+        await refresh();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setAddError(data.error ?? `Failed to add player (${res.status})`);
+      }
     } catch {
-      /* ignore — refresh stays as-is */
+      setAddError('Network error. Please try again.');
+    } finally {
+      setAdding(false);
     }
   }
 
@@ -77,28 +96,49 @@ export default function SkillsTab({ isAdmin }: { isAdmin?: boolean }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleAddPlayer}
-          className="text-xs font-medium px-3 py-1.5 rounded-md"
-          style={{ color: 'var(--accent)', background: 'var(--inner-card-bg)', minHeight: 36 }}
-        >
-          + Add player
-        </button>
-      </div>
       {players.length === 0 ? (
         <div
           className="flex items-center justify-center"
-          style={{ minHeight: 'calc(100vh - 16rem)' }}
+          style={{ minHeight: '20vh' }}
         >
           <p className="text-sm text-center" style={{ color: 'var(--text-muted)' }}>
-            No skill profiles yet. Tap <span style={{ color: 'var(--accent)' }}>+ Add player</span> to create one.
+            No skill profiles yet. Add a player below to create one.
           </p>
         </div>
       ) : (
         <SkillsRadar players={players} onScoresChanged={refresh} />
       )}
+
+      {/* Add player form — placed at the bottom so its submit button is
+          in the thumb zone for one-handed use. */}
+      <form onSubmit={handleAddPlayer} className="glass-card p-5 space-y-3">
+        <h3 className="section-label">ADD PLAYER</h3>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Player name"
+            aria-label="Player name"
+            aria-describedby={addError ? 'skills-add-error' : undefined}
+            value={name}
+            onChange={(e) => { setName(e.target.value); setAddError(''); }}
+            maxLength={50}
+            className="flex-1"
+          />
+          <button
+            type="submit"
+            disabled={adding || !name.trim()}
+            className="btn-primary"
+            style={{ whiteSpace: 'nowrap', minHeight: 44 }}
+          >
+            {adding ? '…' : 'Add'}
+          </button>
+        </div>
+        {addError && (
+          <p id="skills-add-error" role="alert" className="text-red-400 text-xs">
+            {addError}
+          </p>
+        )}
+      </form>
     </div>
   );
 }
