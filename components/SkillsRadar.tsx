@@ -325,17 +325,21 @@ function BottomSheet({ dimId, type, playerName, score, onScoreChange, onClose, o
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — z-[55] so it covers the BottomNav (z-50) as well as the
+          main content, visually dimming the entire screen when the sheet is open. */}
       <div
-        className="fixed inset-0 z-40 animate-fadeIn"
+        className="fixed inset-0 z-[55] animate-fadeIn"
         style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
         onClick={onClose}
       />
 
-      {/* Sheet */}
+      {/* Sheet — z-[60] to sit above both the backdrop and BottomNav.
+          Without this, shared z-50 with BottomNav + later DOM order on the
+          nav meant the nav painted on top of the sheet, clipping the last
+          levels in the list. */}
       <div
         ref={sheetRef}
-        className="fixed left-0 right-0 bottom-0 z-50 max-w-lg mx-auto"
+        className="fixed left-0 right-0 bottom-0 z-[60] max-w-lg mx-auto"
         style={{
           transform: `translateY(${dragY}px)`,
           transition: dragging ? 'none' : 'transform 0.3s ease-out',
