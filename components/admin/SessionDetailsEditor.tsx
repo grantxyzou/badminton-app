@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import type { Session, BirdPurchase } from '@/lib/types';
+import type { Session, BirdPurchase, Player } from '@/lib/types';
 import { normalizeBirdUsages } from '@/lib/birdUsages';
 import AdminBackHeader from './AdminBackHeader';
 
@@ -13,6 +13,14 @@ function Label({ text, children }: { text: string; children: React.ReactNode }) 
       <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{text}</span>
       {children}
     </label>
+  );
+}
+
+function CardDescription({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+      {children}
+    </p>
   );
 }
 
@@ -56,12 +64,12 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
   const [error, setError] = useState('');
   const [sessionLabel, setSessionLabel] = useState('');
   const [purchases, setPurchases] = useState<BirdPurchase[]>([]);
+  const [activePlayerCount, setActivePlayerCount] = useState(0);
 
   useEffect(() => {
     fetch(`${BASE}/api/session`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((data: Session) => {
-        // Normalize legacy single-object birdUsage into array shape for the form state.
         const existing = normalizeBirdUsages(data).map((u) => ({
           purchaseId: u.purchaseId,
           tubes: u.tubes,
@@ -95,6 +103,18 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    // Fetch the player roster just to count active signups for the
+    // per-person preview in the Cost Details card.
+    fetch(`${BASE}/api/players`, { cache: 'no-store' })
+      .then((r) => r.ok ? r.json() : [])
+      .then((players: Player[]) => {
+        const active = players.filter((p) => !p.waitlisted && !p.removed).length;
+        setActivePlayerCount(active);
+      })
+      .catch(() => {});
+  }, []);
+
   function withLocalTz(date: string, time: string): string {
     if (!date || !time) return '';
     const offset = new Date().getTimezoneOffset();
@@ -119,7 +139,6 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
       const deadlineDateStr = s?.deadline ? s.deadline.slice(0, 10) : '';
       const deadlineTimeStr = s?.deadline ? s.deadline.slice(11, 16) : '';
 
-      // Only send valid rows: purchase selected AND tubes > 0
       const validUsages = form.birdUsages
         .filter((u) => u.purchaseId && u.tubes > 0)
         .map((u) => ({ purchaseId: u.purchaseId, tubes: u.tubes }));
@@ -176,6 +195,19 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
     return (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((f) => ({ ...f, [key]: parseInt(e.target.value) || 0 }));
   }
+  function setFloat(key: keyof DetailsForm) {
+    return (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm((f) => ({ ...f, [key]: parseFloat(e.target.value) || 0 }));
+  }
+
+  /* ── Cost computation for the preview ── */
+  const courtTotal = form.costPerCourt * form.courts;
+  const birdTotal = form.birdUsages.reduce((sum, row) => {
+    const selected = purchases.find((p) => p.id === row.purchaseId);
+    return sum + (selected ? row.tubes * selected.costPerTube : 0);
+  }, 0);
+  const totalCost = courtTotal + birdTotal;
+  const perPerson = activePlayerCount > 0 ? totalCost / activePlayerCount : null;
 
   if (loading) {
     return (
@@ -196,29 +228,76 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
     <div className="animate-slideInRight space-y-4">
       <AdminBackHeader onBack={onBack} title="Session Details" sessionLabel={sessionLabel} />
 
-      <form onSubmit={handleSave}>
-        <div className="glass-card p-5 space-y-3">
+      <form onSubmit={handleSave} className="space-y-4">
+        {/* ── Card 1: Session Details ── */}
+        <div className="glass-card p-5 space-y-4">
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+              Session Details
+            </h3>
+            <CardDescription>Venue, capacity, and sign-up controls.</CardDescription>
+          </div>
+
           <Label text="Venue Name">
             <input type="text" value={form.locationName} onChange={setStr('locationName')} placeholder="e.g. Smash Sports Centre" />
           </Label>
           <Label text="Address">
             <input type="text" value={form.locationAddress} onChange={setStr('locationAddress')} placeholder="e.g. 123 Main St, City" />
           </Label>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <Label text="Courts">
               <input type="number" min={1} value={form.courts} onChange={setNum('courts')} />
             </Label>
             <Label text="Max Players">
               <input type="number" min={1} value={form.maxPlayers} onChange={setNum('maxPlayers')} />
             </Label>
-            <Label text="$/Court">
-              <input type="number" min={0} step={0.5} value={form.costPerCourt} onChange={setNum('costPerCourt')} />
-            </Label>
           </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <div>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Sign-ups</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {form.signupOpen ? 'Open — players can sign up' : 'Closed — players cannot sign up'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setForm(f => ({ ...f, signupOpen: !f.signupOpen }))}
+              className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${form.signupOpen ? 'bg-green-500' : 'bg-white/20'}`}
+              role="switch"
+              aria-checked={form.signupOpen}
+              aria-label="Toggle sign-ups"
+            >
+              <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200 ${form.signupOpen ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* ── Card 2: Cost Details ── */}
+        <div className="glass-card p-5 space-y-4">
+          <div className="space-y-1">
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+              Cost Details
+            </h3>
+            <CardDescription>How much each player pays per session.</CardDescription>
+          </div>
+
+          <Label text="Cost per court">
+            <input
+              type="number"
+              min={0}
+              step={0.5}
+              value={form.costPerCourt}
+              onChange={setFloat('costPerCourt')}
+              placeholder="0"
+            />
+          </Label>
+
+          {/* ── Bird sources — inline rows, no nested card ── */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-                Bird Sources
+                Bird sources
               </span>
               <button
                 type="button"
@@ -241,135 +320,178 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
               </p>
             )}
 
-            {form.birdUsages.map((row, idx) => {
-              const selected = purchases.find((p) => p.id === row.purchaseId);
-              const rowTotal = selected ? row.tubes * selected.costPerTube : 0;
-              return (
-                <div key={idx} className="inner-card p-3 space-y-2">
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1 space-y-2">
-                      <select
-                        value={row.purchaseId}
-                        onChange={(e) =>
-                          setForm((f) => {
-                            const next = [...f.birdUsages];
-                            next[idx] = { ...next[idx], purchaseId: e.target.value };
-                            return { ...f, birdUsages: next };
-                          })
-                        }
-                        style={{
-                          width: '100%',
-                          padding: '8px 12px',
-                          borderRadius: 8,
-                          background: 'var(--inner-card-bg)',
-                          border: '1px solid var(--inner-card-border)',
-                          color: 'var(--text-primary)',
-                          fontSize: 14,
-                        }}
-                      >
-                        <option value="">Select purchase…</option>
-                        {purchases.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} — ${p.costPerTube.toFixed(2)}/tube (
-                            {new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.5}
-                        value={row.tubes || ''}
-                        placeholder="Tubes used"
-                        onChange={(e) =>
-                          setForm((f) => {
-                            const next = [...f.birdUsages];
-                            next[idx] = { ...next[idx], tubes: parseFloat(e.target.value) || 0 };
-                            return { ...f, birdUsages: next };
-                          })
-                        }
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      aria-label="Remove bird source"
-                      onClick={() =>
-                        setForm((f) => ({
-                          ...f,
-                          birdUsages: f.birdUsages.filter((_, i) => i !== idx),
-                        }))
+            {form.birdUsages.length > 0 && (
+              <div>
+                {form.birdUsages.map((row, idx) => {
+                  const selected = purchases.find((p) => p.id === row.purchaseId);
+                  const rowTotal = selected ? row.tubes * selected.costPerTube : 0;
+                  const isLast = idx === form.birdUsages.length - 1;
+                  return (
+                    <div
+                      key={idx}
+                      className="py-3 space-y-2"
+                      style={
+                        isLast
+                          ? undefined
+                          : { borderBottom: '1px solid var(--glass-border)' }
                       }
-                      className="text-sm px-2 py-1 rounded-md"
-                      style={{ color: 'var(--text-muted)', minHeight: 44, minWidth: 44 }}
                     >
-                      ×
-                    </button>
-                  </div>
-                  {selected && row.tubes > 0 && (
-                    <p className="text-xs" style={{ color: 'var(--accent)' }}>
-                      {row.tubes} × ${selected.costPerTube.toFixed(2)} = ${rowTotal.toFixed(2)}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-
-            {form.birdUsages.length > 0 && (() => {
-              const grandTotal = form.birdUsages.reduce((sum, row) => {
-                const selected = purchases.find((p) => p.id === row.purchaseId);
-                return sum + (selected ? row.tubes * selected.costPerTube : 0);
-              }, 0);
-              return (
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                    Total bird cost
-                  </span>
-                  <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
-                    ${grandTotal.toFixed(2)}
-                  </span>
-                </div>
-              );
-            })()}
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 space-y-2">
+                          <select
+                            value={row.purchaseId}
+                            onChange={(e) =>
+                              setForm((f) => {
+                                const next = [...f.birdUsages];
+                                next[idx] = { ...next[idx], purchaseId: e.target.value };
+                                return { ...f, birdUsages: next };
+                              })
+                            }
+                            style={{
+                              width: '100%',
+                              padding: '8px 12px',
+                              borderRadius: 8,
+                              background: 'var(--inner-card-bg)',
+                              border: '1px solid var(--inner-card-border)',
+                              color: 'var(--text-primary)',
+                              fontSize: 14,
+                            }}
+                            aria-label="Bird purchase"
+                          >
+                            <option value="">Select purchase…</option>
+                            {purchases.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} — ${p.costPerTube.toFixed(2)}/tube (
+                                {new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})
+                              </option>
+                            ))}
+                          </select>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs shrink-0" style={{ color: 'var(--text-muted)' }}>
+                              Tubes
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.5}
+                              value={row.tubes || ''}
+                              placeholder="0.5"
+                              aria-label="Tubes used"
+                              onChange={(e) =>
+                                setForm((f) => {
+                                  const next = [...f.birdUsages];
+                                  next[idx] = { ...next[idx], tubes: parseFloat(e.target.value) || 0 };
+                                  return { ...f, birdUsages: next };
+                                })
+                              }
+                              className="flex-1"
+                            />
+                          </div>
+                          {selected && row.tubes > 0 && (
+                            <p className="text-xs" style={{ color: 'var(--accent)' }}>
+                              {row.tubes} × ${selected.costPerTube.toFixed(2)} = ${rowTotal.toFixed(2)}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          aria-label="Remove bird source"
+                          onClick={() =>
+                            setForm((f) => ({
+                              ...f,
+                              birdUsages: f.birdUsages.filter((_, i) => i !== idx),
+                            }))
+                          }
+                          className="text-base rounded-md flex items-center justify-center"
+                          style={{
+                            color: 'var(--text-muted)',
+                            minHeight: 44,
+                            minWidth: 44,
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {form.birdUsages.length > 0 && (
-              <Label text="Show Cost">
-                <button
-                  type="button"
-                  onClick={() => setForm((f) => ({ ...f, showCostBreakdown: !f.showCostBreakdown }))}
-                  className={`w-full text-sm font-medium py-1.5 rounded-lg transition-all ${
-                    form.showCostBreakdown ? 'pill-paid' : 'pill-unpaid'
-                  }`}
-                >
-                  {form.showCostBreakdown ? 'Visible' : 'Hidden'}
-                </button>
-              </Label>
+              <div
+                className="flex items-center justify-between pt-3"
+                style={{ borderTop: '1px solid var(--glass-border)' }}
+              >
+                <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  Total bird cost
+                </span>
+                <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+                  ${birdTotal.toFixed(2)}
+                </span>
+              </div>
             )}
           </div>
+
+          {/* ── Show cost toggle (now a real switch) ── */}
           <div className="flex items-center justify-between pt-1">
             <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Sign-ups</p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{form.signupOpen ? 'Open — players can sign up' : 'Closed — players cannot sign up'}</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                Show cost to players
+              </p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {form.showCostBreakdown ? 'Visible on the Home announcement' : 'Hidden from players'}
+              </p>
             </div>
             <button
               type="button"
-              onClick={() => setForm(f => ({ ...f, signupOpen: !f.signupOpen }))}
-              className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${form.signupOpen ? 'bg-green-500' : 'bg-white/20'}`}
+              onClick={() => setForm((f) => ({ ...f, showCostBreakdown: !f.showCostBreakdown }))}
+              className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${form.showCostBreakdown ? 'bg-green-500' : 'bg-white/20'}`}
               role="switch"
-              aria-checked={form.signupOpen}
+              aria-checked={form.showCostBreakdown}
+              aria-label="Toggle cost visibility"
             >
-              <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200 ${form.signupOpen ? 'translate-x-5' : 'translate-x-0'}`} />
+              <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200 ${form.showCostBreakdown ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
           </div>
-          {error && <p className="text-red-400 text-xs" role="alert">{error}</p>}
-          <button
-            type="submit"
-            disabled={saving || !dirty}
-            className="btn-ghost w-full"
-            style={{ minHeight: 44 }}
-          >
-            {saving ? 'Updating...' : saved ? '✓ Updated!' : 'Update'}
-          </button>
+
+          {/* ── Per-person preview ── */}
+          {form.showCostBreakdown && totalCost > 0 && (
+            <div
+              className="pt-3 space-y-1"
+              style={{ borderTop: '1px solid var(--glass-border)' }}
+            >
+              <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                Per person preview
+              </p>
+              {activePlayerCount > 0 && perPerson !== null ? (
+                <>
+                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    (${courtTotal.toFixed(2)} courts + ${birdTotal.toFixed(2)} birds) ÷ {activePlayerCount}
+                  </p>
+                  <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+                    ${perPerson.toFixed(2)} per player
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  No players signed up yet.
+                </p>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* ── Error + Update ── */}
+        {error && <p className="text-red-400 text-xs px-1" role="alert">{error}</p>}
+        <button
+          type="submit"
+          disabled={saving || !dirty}
+          className="btn-ghost w-full"
+          style={{ minHeight: 44 }}
+        >
+          {saving ? 'Updating...' : saved ? '✓ Updated!' : 'Update'}
+        </button>
       </form>
     </div>
   );
