@@ -80,3 +80,11 @@ export interface Announcement {
   editedAt?: string;
   sessionId: string;
 }
+
+export interface PlayerSkills {
+  id: string;
+  sessionId: string;      // partition key
+  name: string;           // player roster name — 1:1 with (sessionId, name)
+  scores: Record<string, number>;  // ACE dimension id → 0..6
+  updatedAt: string;
+}
