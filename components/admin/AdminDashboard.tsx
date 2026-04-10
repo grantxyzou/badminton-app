@@ -260,26 +260,6 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
           </div>
         )}
 
-        {/* Add player form */}
-        <form onSubmit={pm.handleAddPlayer} className="glass-card p-5 space-y-3">
-          <h3 className="section-label">ADD PLAYER</h3>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Player name"
-              aria-label="Player name"
-              aria-describedby={pm.addError ? 'add-error' : undefined}
-              value={pm.name}
-              onChange={e => pm.setName(e.target.value)}
-              maxLength={50}
-            />
-            <button type="submit" disabled={pm.adding || !pm.name.trim()} className="btn-primary" style={{ whiteSpace: 'nowrap' }}>
-              {pm.adding ? '\u2026' : 'Add'}
-            </button>
-          </div>
-          {pm.addError && <p id="add-error" role="alert" className="text-red-400 text-xs">{pm.addError}</p>}
-        </form>
-
         {/* Player list */}
         <div className="glass-card overflow-hidden">
           {pm.loading ? (
@@ -364,6 +344,27 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
             </div>
           )}
         </div>
+
+        {/* Add player form — below the list so the submit button sits in
+            the thumb zone after scrolling past the active roster. */}
+        <form onSubmit={pm.handleAddPlayer} className="glass-card p-5 space-y-3">
+          <h3 className="section-label">ADD PLAYER</h3>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Player name"
+              aria-label="Player name"
+              aria-describedby={pm.addError ? 'add-error' : undefined}
+              value={pm.name}
+              onChange={e => pm.setName(e.target.value)}
+              maxLength={50}
+            />
+            <button type="submit" disabled={pm.adding || !pm.name.trim()} className="btn-primary" style={{ whiteSpace: 'nowrap' }}>
+              {pm.adding ? '\u2026' : 'Add'}
+            </button>
+          </div>
+          {pm.addError && <p id="add-error" role="alert" className="text-red-400 text-xs">{pm.addError}</p>}
+        </form>
 
         {/* Waitlisted players */}
         {pm.promoteError && (
