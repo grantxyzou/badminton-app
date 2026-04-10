@@ -213,76 +213,6 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
 
   return (
     <div className="space-y-5">
-      {/* BPM Badminton header + Location combined card */}
-      <div className="glass-card p-5 space-y-3">
-        <div>
-          <p className="section-label mb-1">WELCOME TO</p>
-          <h1 className="text-2xl font-bold text-white" onClick={onTitleTap} style={{ cursor: 'default', userSelect: 'none' }}>BPM Badminton</h1>
-        </div>
-        <div className="border-t border-white/10 pt-3 space-y-1.5">
-          <p className="section-label mb-2">LOCATION</p>
-          {session?.locationName ? (
-            <p className="text-base font-semibold text-white">{session.locationName}</p>
-          ) : null}
-          {session?.locationAddress ? (
-            mapsUrl ? (
-              <a
-                href={mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-gray-300 break-words underline underline-offset-2 decoration-dotted"
-              >
-                {session.locationAddress}
-              </a>
-            ) : (
-              <p className="text-sm text-gray-300">{session.locationAddress}</p>
-            )
-          ) : (
-            <p className="text-sm text-gray-500">—</p>
-          )}
-        </div>
-      </div>
-
-      {/* Date & Time card */}
-      <div className="glass-card p-5 space-y-3">
-        <p className="section-label">DATE & TIME</p>
-        <div className="flex items-center gap-3">
-          <span className="material-icons icon-pin-lg shrink-0 text-white">&#xe878;</span>
-          <span className="text-base font-semibold text-white">
-            {session ? fmtDate(session.datetime) : '—'}
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="material-icons icon-pin-lg shrink-0 text-white">&#xe8b5;</span>
-          <span className="text-base font-semibold text-white">
-            {session ? fmtTime(session.datetime) : '—'}
-          </span>
-        </div>
-      </div>
-
-      {/* Announcement card — also hosts the cost-per-person line when visible.
-          Intentional trade-off: if there's no announcement, the cost line is
-          hidden too. Keeps a single "club comms" surface instead of two. */}
-      {announcement && (
-        <div className="glass-card p-5 space-y-2">
-          <p className="section-label">ANNOUNCEMENT</p>
-          <p className="text-sm text-gray-200 leading-relaxed">{announcement.text}</p>
-          {perPersonCost !== null && perPersonCost > 0 && session?.datetime && (
-            <div
-              className="pt-2 mt-2 flex items-center justify-between"
-              style={{ borderTop: '1px solid var(--glass-border)' }}
-            >
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Cost per person on {fmtDate(session.datetime)}
-              </p>
-              <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
-                ${perPersonCost.toFixed(2)}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Sign-Up Card */}
       <div className="glass-card p-5">
         {isSessionFinished ? (
@@ -326,7 +256,7 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="text-xl font-bold text-green-400">Sign up</p>
-              <p className="text-sm text-gray-400">{activePlayers.length} players · {spotsTotal - activePlayers.length} spots left</p>
+              <p className="text-sm text-gray-400">Signed-up: {activePlayers.length} · {spotsTotal - activePlayers.length} spots left</p>
             </div>
             <div className="status-banner-green">
               <span className="material-icons icon-status text-green-400">check_circle</span>
@@ -401,7 +331,7 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="text-xl font-bold text-green-400">Sign up</p>
-              <p className="text-sm text-gray-400">{activePlayers.length} players · Full</p>
+              <p className="text-sm text-gray-400">Signed-up: {activePlayers.length} · Full</p>
             </div>
             <div className="status-banner-orange">
               <span className="material-icons icon-status text-orange-400">lock</span>
@@ -460,7 +390,7 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="text-xl font-bold text-green-400">Sign up</p>
-              <p className="text-sm text-gray-400">{activePlayers.length} players · {spotsTotal - activePlayers.length} spots left</p>
+              <p className="text-sm text-gray-400">Signed-up: {activePlayers.length} · {spotsTotal - activePlayers.length} spots left</p>
             </div>
             <form onSubmit={handleSignUp} className="space-y-3">
               <div className="relative">
@@ -515,6 +445,74 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
           </div>
         )}
       </div>
+
+      {/* Tile row: BPM Badminton | Date & Time */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* BPM tile */}
+        <div className="glass-card p-4 space-y-2">
+          <p className="section-label mb-1">BPM</p>
+          <h1
+            className="text-lg font-bold text-white leading-tight"
+            onClick={onTitleTap}
+            style={{ cursor: 'default', userSelect: 'none' }}
+          >
+            BPM Badminton
+          </h1>
+          {session?.locationName && (
+            <p className="text-xs font-semibold text-white line-clamp-2">
+              {session.locationName}
+            </p>
+          )}
+          {session?.locationAddress ? (
+            mapsUrl ? (
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-gray-300 underline underline-offset-2 decoration-dotted line-clamp-2 block"
+              >
+                {session.locationAddress}
+              </a>
+            ) : (
+              <p className="text-xs text-gray-300 line-clamp-2">{session.locationAddress}</p>
+            )
+          ) : null}
+        </div>
+
+        {/* Date & Time tile */}
+        <div className="glass-card p-4 space-y-2">
+          <p className="section-label mb-1">WHEN</p>
+          <p className="text-sm font-semibold text-white leading-snug">
+            {session ? fmtDate(session.datetime) : '—'}
+          </p>
+          <p className="text-sm font-semibold text-white leading-snug">
+            {session ? fmtTime(session.datetime) : '—'}
+          </p>
+        </div>
+      </div>
+
+      {/* Announcement card — also hosts the cost-per-person line when visible.
+          Intentional trade-off: if there's no announcement, the cost line is
+          hidden too. Keeps a single "club comms" surface instead of two. */}
+      {announcement && (
+        <div className="glass-card p-5 space-y-2">
+          <p className="section-label">ANNOUNCEMENT</p>
+          <p className="text-sm text-gray-200 leading-relaxed">{announcement.text}</p>
+          {perPersonCost !== null && perPersonCost > 0 && session?.datetime && (
+            <div
+              className="pt-2 mt-2 flex items-center justify-between"
+              style={{ borderTop: '1px solid var(--glass-border)' }}
+            >
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Cost per person on {fmtDate(session.datetime)}
+              </p>
+              <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+                ${perPersonCost.toFixed(2)}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
