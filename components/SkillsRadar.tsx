@@ -295,10 +295,40 @@ function BottomSheet({ dimId, type, playerName, score, onScoreChange, onClose, o
   const [dragging, setDragging] = useState(false);
   const startY = useRef(0);
 
-  // Prevent body scroll when sheet is open
+  // Lock the viewport while the sheet is open. Plain `overflow: hidden` on
+  // body is not enough on iOS — the browser still rubber-bands and fires
+  // pull-to-refresh. The "position: fixed" freeze technique below pins the
+  // body to its current scroll position so no gesture can move it.
   useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const html = document.documentElement;
+    const prev = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+      overflow: body.style.overflow,
+      overscroll: html.style.overscrollBehavior,
+    };
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.left = '0';
+    body.style.right = '0';
+    body.style.width = '100%';
+    body.style.overflow = 'hidden';
+    html.style.overscrollBehavior = 'none';
+    return () => {
+      body.style.position = prev.position;
+      body.style.top = prev.top;
+      body.style.left = prev.left;
+      body.style.right = prev.right;
+      body.style.width = prev.width;
+      body.style.overflow = prev.overflow;
+      html.style.overscrollBehavior = prev.overscroll;
+      window.scrollTo(0, scrollY);
+    };
   }, []);
 
   if (!dim) return null;
@@ -357,12 +387,16 @@ function BottomSheet({ dimId, type, playerName, score, onScoreChange, onClose, o
             boxShadow: 'var(--glass-shadow)',
           }}
         >
-          {/* Drag handle */}
+          {/* Drag handle — touch-action: none tells the browser not to
+              interpret touches here as scroll/pan/zoom. Hit area is padded
+              generously (py-4) so a thumb can land without precision. */}
           <div
-            className="flex justify-center pt-3 pb-2 cursor-grab active:cursor-grabbing"
+            className="flex justify-center py-4 cursor-grab active:cursor-grabbing"
+            style={{ touchAction: 'none' }}
             onTouchStart={(e) => handleTouchDragStart(e.touches[0].clientY)}
             onTouchMove={(e) => handleTouchDragMove(e.touches[0].clientY)}
             onTouchEnd={handleTouchDragEnd}
+            onTouchCancel={handleTouchDragEnd}
           >
             <div
               className="rounded-full"
@@ -391,8 +425,16 @@ function BottomSheet({ dimId, type, playerName, score, onScoreChange, onClose, o
             </button>
           </div>
 
-          {/* Content */}
-          <div className="px-5 pb-8 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 80px)', paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' }}>
+          {/* Content — overscroll-behavior: contain prevents the sheet's
+              inner scroll from chaining to the body when it hits its edge. */}
+          <div
+            className="px-5 pb-8 overflow-y-auto"
+            style={{
+              maxHeight: 'calc(85vh - 80px)',
+              paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))',
+              overscrollBehavior: 'contain',
+            }}
+          >
             {type === 'detail' ? (
               <DetailContent
                 dim={dim}
