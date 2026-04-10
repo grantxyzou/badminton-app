@@ -12,14 +12,18 @@ export interface Session {
   signupOpen?: boolean;
   approvedNames?: string[];
   costPerCourt?: number;
-  birdUsage?: {
-    tubes: number;
-    costPerTube: number;
-    totalBirdCost: number;
-    purchaseId?: string;
-    purchaseName?: string;
-  };
+  birdUsages?: BirdUsage[];
+  /** @deprecated Legacy single-object shape; read via normalizeBirdUsages. */
+  birdUsage?: BirdUsage;
   showCostBreakdown?: boolean;
+}
+
+export interface BirdUsage {
+  purchaseId: string;
+  purchaseName: string;
+  tubes: number;            // allows 0.5 increments
+  costPerTube: number;
+  totalBirdCost: number;
 }
 
 export interface Player {

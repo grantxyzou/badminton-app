@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { randomBytes } from 'crypto';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { normalizeBirdUsages, totalTubes } from '@/lib/birdUsages';
+import type { Session } from '@/lib/types';
 
 export async function GET(req: NextRequest) {
   if (!isAdminAuthed(req)) return unauthorized();
@@ -16,11 +18,12 @@ export async function GET(req: NextRequest) {
     const totalPurchased = resources.reduce((sum: number, p: { tubes: number }) => sum + p.tubes, 0);
 
     const sessionsContainer = getContainer('sessions');
+    // Pull both legacy and new fields so the normalizer can handle mixed shapes.
     const { resources: sessions } = await sessionsContainer.items
-      .query({ query: 'SELECT c.birdUsage FROM c WHERE IS_DEFINED(c.birdUsage)' })
+      .query({ query: 'SELECT c.birdUsage, c.birdUsages FROM c WHERE IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)' })
       .fetchAll();
-    const totalUsed = sessions.reduce(
-      (sum: number, s: { birdUsage?: { tubes: number } }) => sum + (s.birdUsage?.tubes ?? 0),
+    const totalUsed = (sessions as Pick<Session, 'birdUsage' | 'birdUsages'>[]).reduce(
+      (sum, s) => sum + totalTubes(normalizeBirdUsages(s)),
       0,
     );
 

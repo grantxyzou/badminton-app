@@ -5,6 +5,8 @@ import {
   makeAdminRequest,
   makeRequest,
   makeGetRequest,
+  seedPointer,
+  seedSession,
 } from './helpers';
 import { GET, POST, DELETE, PATCH } from '@/app/api/birds/route';
 
@@ -96,6 +98,37 @@ describe('Birds API', () => {
     it('rejects non-admin', async () => {
       const res = await GET(makeGetRequest('http://localhost:3000/api/birds'));
       expect(res.status).toBe(401);
+    });
+
+    it('currentStock deducts across array usages and legacy single-object sessions', async () => {
+      // One purchase with 10 tubes
+      const createRes = await POST(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+        name: 'Shared Tube', tubes: 10, totalCost: 100,
+      }));
+      const { id: purchaseId } = await createRes.json();
+
+      // Session A: new array shape, consumes 2 + 1.5 tubes
+      seedPointer('session-2026-04-05');
+      seedSession('session-2026-04-05', {
+        birdUsages: [
+          { purchaseId, purchaseName: 'Shared Tube', tubes: 2, costPerTube: 10, totalBirdCost: 20 },
+          { purchaseId, purchaseName: 'Shared Tube', tubes: 1.5, costPerTube: 10, totalBirdCost: 15 },
+        ],
+      });
+      // Session B: legacy single-object shape, consumes 0.5 tubes
+      seedSession('session-2026-04-12', {
+        birdUsage: {
+          purchaseId, purchaseName: 'Shared Tube', tubes: 0.5, costPerTube: 10, totalBirdCost: 5,
+        },
+      });
+
+      const res = await GET(makeAdminRequest('GET', 'http://localhost:3000/api/birds'));
+      const data = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(data.totalPurchased).toBe(10);
+      expect(data.totalUsed).toBe(4); // 2 + 1.5 + 0.5
+      expect(data.currentStock).toBe(6);
     });
   });
 
