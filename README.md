@@ -11,9 +11,10 @@ Live URL: `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites
 
 | Tab | Description |
 |-----|-------------|
-| **Home** | Session info (date, location, deadline), sign up (with autocomplete from invite list), waitlist join, announcements |
+| **Home** | BPM + date/time tile row, announcements (with dynamic cost-per-person line), sign-up card at the bottom for one-handed thumb reach. 7 sign-up states (open, closed, finished, signed-up, waitlisted, full, deadline-past). |
 | **Sign-Ups** | Full player list + waitlist card; self-cancel flow with delete token |
-| **Admin** | PIN-gated panel — session editor, member/alias management, player admin (paid toggle, promote, restore, history), AI-polished announcements. Hidden by default; revealed via member role or 5-tap easter egg. |
+| **Skills** | "Progress together?" placeholder for regular users; admin gets a persistent ACE Skills Matrix radar (7 dimensions × 6 levels), per-player score editing via drag-to-dismiss bottom sheet, and inline Add Player form |
+| **Admin** | PIN-gated panel — session/cost editors (two-card split), member/alias management, bird inventory, player admin (paid toggle, promote, restore, history), AI-polished announcements. Hidden by default; revealed via member role or 5-tap easter egg. |
 
 ### Additional Features
 
@@ -28,9 +29,11 @@ Live URL: `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites
 ## Tech Stack
 
 - **Next.js 16** (App Router), TypeScript, Tailwind CSS
-- **Azure Cosmos DB** (NoSQL) — database: `badminton`, 5 containers at 400 RU/s shared throughput
+- **Recharts** — radar chart for Skills tab
+- **Azure Cosmos DB** (NoSQL) — database: `badminton`, 7 containers at 400 RU/s shared throughput
 - **Anthropic Claude API** (`claude-sonnet-4-20250514`) — announcement polishing
-- **Azure App Service** — Canada Central, Free tier, `output: standalone`
+- **Azure App Service** — Canada Central, B1 Basic tier (Always On), `output: standalone`
+- **Vitest** — 85 tests, 8 suites, CI-gated before deploy
 
 ---
 
@@ -42,31 +45,48 @@ app/
     admin/route.ts            GET (auth check) · POST (PIN verify) · DELETE (logout)
     aliases/route.ts          GET · POST · PATCH · DELETE — admin-only e-transfer alias management
     announcements/route.ts    GET · POST · PATCH · DELETE
+    birds/route.ts            GET · POST · PATCH · DELETE — shuttle purchase inventory, stock deduction
     claude/route.ts           POST (AI proxy, admin only, rate-limited)
     members/route.ts          GET · POST · PATCH · DELETE — persistent player identity
     players/route.ts          GET · POST · PATCH · DELETE — per-session sign-ups
     session/route.ts          GET · PUT (admin only)
     session/advance/route.ts  POST (admin only) — create next session and archive current
     sessions/route.ts         GET (admin only) — list all archived sessions
+    skills/route.ts           GET · POST · PATCH · DELETE — per-session ACE skill scores (lazy container bootstrap)
   globals.css
   layout.tsx
   page.tsx
+  opengraph-image.tsx    Dynamic OG image generator
 components/
-  AdminTab.tsx           4 sub-panels: Session | Members | Sign Up | Posts
-  BottomNav.tsx          Fixed bottom nav (Home, Sign-Ups, Admin)
-  DatePicker.tsx         Custom calendar picker, portal-rendered
-  GlassPhysics.tsx       Mouse-tracking CSS var updater for glass card hover effect
-  HomeTab.tsx            7-state sign-up card + session info + announcements
-  PlayersTab.tsx         Active player list + waitlist card; self-cancel flow
-  ShuttleLoader.tsx      BPM waveform loading animation
-  ThemeToggle.tsx        Light/dark theme toggle (system preference + localStorage)
+  BottomNav.tsx            Fixed bottom nav (Home, Sign-Ups, Skills, Admin)
+  DatePicker.tsx           Custom calendar picker, portal-rendered
+  GlassPhysics.tsx         Mouse-tracking CSS var updater for glass card hover effect
+  HomeTab.tsx              7-state sign-up card (bottom, thumb zone) + tile row (BPM|Date) + announcement with cost line
+  PlayersTab.tsx           Active player list + waitlist card; self-cancel flow
+  ShuttleLoader.tsx        BPM waveform loading animation
+  SkillsTab.tsx            ACE skill radar entrypoint + add-player form (admin); "Progress together?" (non-admin)
+  SkillsRadar.tsx          Recharts radar + solo/overlay mode + drag-dismissable bottom sheet
+  ThemeToggle.tsx          Light/dark theme toggle (system preference + localStorage)
+  admin/
+    AdminDashboard.tsx     Drill-down shell with 3 custom hooks (players, announcements, session nav)
+    SessionDetailsEditor.tsx  Two-card split: Session Details + Cost Details, per-person preview
+    DateTimeEditor.tsx     Session date/time/deadline editor
+    MembersView.tsx        Invite list + e-transfer aliases
+    BirdInventoryView.tsx  Shuttle purchase CRUD with stock remaining indicator
+    AdvanceSessionForm.tsx Next-week session creation with pointer flip
+    SessionContextBar.tsx  Small "Editing · date" pill at top of admin
+    VenueSummary.tsx       Venue name + capacity/cost summary pill
+    AdminBackHeader.tsx    Consistent back button for drill-down views
+    hooks/                 usePlayerManagement, useAnnouncements, useSessionNavigation
 lib/
   auth.ts          HTTP-only cookie auth helpers
-  cosmos.ts        DB connection + session pointer helpers + in-memory mock
+  birdUsages.ts    normalizeBirdUsages shim (legacy single-object + new array shapes), totalTubes, totalBirdCost
+  cosmos.ts        DB connection + session pointer helpers + in-memory mock + ensureContainer for lazy bootstrap
   formatters.ts    Shared fmtDate utility
   identity.ts      Consolidated localStorage identity (getIdentity/setIdentity/clearIdentity)
   rateLimit.ts     In-memory rate limiter (per client IP)
-  types.ts         Session, Player, Member, Alias, Announcement interfaces
+  skills-data.ts   ACE Skills Matrix — 7 dimensions × 6 levels with descriptive text per level
+  types.ts         Session, Player, Member, Alias, Announcement, BirdUsage, BirdPurchase, PlayerSkills interfaces
 ```
 
 ---
@@ -176,6 +196,14 @@ az webapp deploy \
 | `POST` | `/api/announcements` | Admin | Post an announcement |
 | `PATCH` | `/api/announcements` | Admin | Edit an announcement (sets editedAt) |
 | `DELETE` | `/api/announcements` | Admin | Delete an announcement |
+| `GET` | `/api/birds` | Admin | List shuttle purchases + current stock (sum across all session birdUsages) |
+| `POST` | `/api/birds` | Admin | Create purchase (name, tubes, totalCost, optional speed/quality/notes) |
+| `PATCH` | `/api/birds` | Admin | Update purchase; recalculates costPerTube if cost inputs change |
+| `DELETE` | `/api/birds` | Admin | Delete purchase |
+| `GET` | `/api/skills` | Admin | List per-session skill profiles (supports `?sessionId=` override) |
+| `POST` | `/api/skills` | Admin | Upsert by `(sessionId, name)` case-insensitive; 0-6 integer scores |
+| `PATCH` | `/api/skills` | Admin | Merge scores into existing record by id |
+| `DELETE` | `/api/skills` | Admin | Remove a skill profile |
 | `GET` | `/api/admin` | — | Check auth cookie status |
 | `POST` | `/api/admin` | — | Verify PIN, set cookie |
 | `DELETE` | `/api/admin` | Admin | Logout, clear cookie |
@@ -202,5 +230,5 @@ az webapp deploy \
 
 - **Race condition on signup**: capacity check and insert are not atomic — concurrent signups can exceed `maxPlayers` by 1-2 spots (needs Cosmos DB optimistic concurrency to fix properly)
 - **Rate limiter is in-memory**: resets on server restart; not shared across multiple instances (would need Redis for multi-instance)
-- **Free tier cold starts**: first request after ~20 min idle takes 10-20 s to wake up
-- **Cosmos DB firewall**: Free tier App Service has no static outbound IP — "Allow access from Azure datacenters" is used instead of IP-restricted access
+- **Cosmos DB firewall**: App Service has no static outbound IP — "Allow access from Azure datacenters" is used instead of IP-restricted access
+- **Legacy `birdUsage` single-object docs**: still read-tolerated but never written; will migrate to array shape on next admin save per session

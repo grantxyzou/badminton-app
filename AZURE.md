@@ -4,7 +4,7 @@
 
 ```
                         ┌─────────────────────────────────────┐
-                        │      Azure App Service (F1)         │
+                        │      Azure App Service (B1)         │
   Browser  ────────────▶│  badminton-app  (Next.js standalone) │
                         │  basePath: /bpm                     │
                         └──────────┬──────────────────────────┘
@@ -33,8 +33,8 @@ exposed to the browser.
 | Resource name | `badminton-app` |
 | Resource group | `grantzou` |
 | Region | Canada Central |
-| Pricing tier | Free (F1) |
-| Runtime stack | Node.js 20 (Next.js standalone) |
+| Pricing tier | B1 Basic (~$13 USD/mo) — Always On enabled |
+| Runtime stack | Node.js 22 LTS (Next.js standalone) |
 | Startup command | `node server.js` |
 | Base path | `/bpm` (set via `basePath` in `next.config.js`) |
 | Live URL | `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm` |
@@ -145,8 +145,10 @@ not provide a static outbound IP, so the datacenter option is typically used.
 | `sessions` | `/sessionId` | Session config + active-session pointer document |
 | `players` | `/sessionId` | Per-session player registrations (includes `deleteToken` for self-cancellation auth) |
 | `announcements` | `/sessionId` | Admin announcements (session-scoped) |
+| `members` | `/id` | Persistent player identity (name, role, sessionCount, lastSeen, stage) |
 | `aliases` | `/id` | E-transfer name mappings (global, not session-scoped) |
-| `members` | `/id` | Persistent player identity (name, stage, sessionCount, lastSeen) |
+| `birds` | `/id` | Shuttle purchase inventory (name, tubes, cost, speed, quality, notes) |
+| `skills` | `/sessionId` | Per-session ACE skill scores (`name`, `scores: { dimensionId: 0..6 }`). **Bootstrapped lazily** via `ensureContainer()` on first request — see `app/api/skills/route.ts`. |
 
 ### Session pointer architecture
 
@@ -265,21 +267,18 @@ Browser
 
 | Resource | Cost |
 |----------|------|
-| App Service Free (F1) | $0/month — 60 CPU-min/day, no custom domain SSL, shared infra |
+| App Service B1 Basic | ~$13 USD/month — Always On, dedicated compute, no cold starts |
 | Cosmos DB 400 RU/s | ~$23 USD/month; serverless pricing available for low-traffic |
 | Anthropic Claude API | Pay-per-token; admin-only, low volume |
 
-### Free tier caveats
+### Previous tier (for reference)
 
-- App idles after ~20 min inactivity → **10–20 s cold start** on first request
-- 60 CPU-min/day cap
-- No custom domain SSL (HTTPS only on `*.azurewebsites.net`)
+The app ran on Free (F1) until the cold-start wake time (10–20s) became disruptive for live-session use. B1 Basic added Always On, which eliminates the cold start entirely. The upgrade is worth the ~$13/mo for any app used during time-sensitive windows.
 
-### Upgrade path
+### Alternative hosting paths
 
-- **B1 Basic (~$18 CAD/month)**: adds Always On (no cold starts), dedicated compute
 - **Vercel (free Hobby tier)**: no cold starts, native Next.js support, deploys on `git push`
-- **Cosmos DB Serverless**: eliminates ~$23/month baseline, charges per RU consumed
+- **Cosmos DB Serverless**: eliminates ~$23/month baseline, charges per RU consumed — a good option if traffic is low
 
 ---
 
