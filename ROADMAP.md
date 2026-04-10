@@ -2,7 +2,7 @@
 
 > Live at: `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm`
 > Stack: Next.js 16 · Azure App Service · Cosmos DB · Anthropic API
-> Last updated: April 2, 2026
+> Last updated: April 10, 2026
 
 ---
 
@@ -32,10 +32,22 @@
 
 ---
 
-## P1 — Skill Framework (Read-Only)
+## P1 — Skill Framework ⏳ Mostly Shipped
 
-- [ ] **New tab** *(name TBD — "Coming Soon", disabled for regular users, admin-only access)*: ACE Badminton Club Skills Matrix presented as a read/learn experience — 6 dimensions, stage descriptions, progression guidance
+- [x] **Skills tab in nav** — "Coming Soon" placeholder for regular users; functional admin-only interface
+- [x] **ACE Skills Matrix** — 7 dimensions × 6 levels in `lib/skills-data.ts`
+- [x] **SkillsRadar component** — recharts radar chart, solo/overlay mode, player pills, 2-column category grid, drag-to-dismiss bottom sheet for level detail + edit
+- [x] **Skills API persistence** — `/api/skills` (GET/POST/PATCH/DELETE), admin-only, upsert by `(sessionId, name)` case-insensitive. Lazy container bootstrap via `ensureContainer`. 15 tests.
+- [x] **Admin can add and edit player skill profiles** — inline Add Player form in the Skills tab; score edits PATCH optimistically with parent refresh.
+- [ ] **Stage 2: Read-only radar for regular users** — non-admin view of the radar (still "Coming Soon" for now)
 - [ ] **Per-session URL** — shareable link for admin ease of life (single active session; not multi-session architecture yet)
+
+### Session 12 extras (not strictly P1 but shipped together)
+
+- [x] **Multi-source bird tracking** — `session.birdUsages` array of `{purchaseId, tubes, costPerTube, totalBirdCost}`. Supports 0.5-tube increments for partial tubes. Legacy single-object docs auto-migrate on next save via `normalizeBirdUsages` shim.
+- [x] **Cost per person moves into Announcement card** — no standalone cost card; renders as a dynamic line inside the announcement when both exist. Live per-person preview in the admin Cost Details editor.
+- [x] **Session editor card split** — separate "Session Details" (venue, capacity, sign-ups) and "Cost Details" (court cost, bird sources, show-cost toggle) cards with body text descriptions.
+- [x] **One-handed mobile optimization** — Sign-up card, Add Player, Add Purchase, Add Alias all moved to the bottom of their surfaces for thumb reach. Admin announcements lifted above Players.
 
 ---
 
@@ -77,10 +89,10 @@
 |---|---|
 | Brand colour | `#4ade80` court green |
 | Identity model | invite-only → emoji PIN (P3) → optional full profile (P4) |
-| Skill model | ACE Badminton Club Skills Matrix — 6 dimensions (Grip, Movement, Serve, Offense, Defence, Strategy) |
+| Skill model | ACE Badminton Club Skills Matrix — 7 dimensions (Grip & Stroke, Movement, Serve & Return, Offense, Defense, Strategy, Knowledge) × 6 levels (Beginner → National) |
 | Skill visibility | Full spider graph public by default |
 | Skill tab (P1) | Read-only ACE framework explainer; Coming Soon for regular users; admin-accessible |
 | Session architecture | Date-keyed (`session-YYYY-MM-DD`) with pointer document |
-| DB tier | Cosmos DB, 400 RU/s shared, 5 containers |
+| DB tier | Cosmos DB, 400 RU/s shared, 7 containers (sessions, players, announcements, members, aliases, birds, skills) |
 | Admin auth | Server-side PIN, HTTP-only cookie (until real accounts in P4) |
 | Admin tab visibility | Hidden by default, revealed via member role OR 5-tap easter egg |

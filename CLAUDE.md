@@ -18,7 +18,7 @@ Omit `COSMOS_CONNECTION_STRING` from `.env.local` to use the in-memory mock stor
 ## Key Architecture
 
 ### Single-Page App
-`app/page.tsx` is the only browser route. Tabs: Home, Sign-Ups, Skills (Coming Soon), Admin. All data via API routes under `app/api/`. Every fetch uses `{ cache: 'no-store' }`.
+`app/page.tsx` is the only browser route. Tabs: Home, Sign-Ups, Skills (admin-functional, "Coming Soon" placeholder for non-admins), Admin. All data via API routes under `app/api/`. Every fetch uses `{ cache: 'no-store' }`.
 
 ### Session Pointer
 Sessions are date-keyed (`session-YYYY-MM-DD`). A pointer document (`id: 'active-session-pointer'`) tracks the current session. **Always use `getActiveSessionId()`** — never `SESSION_ID` directly (legacy compat only). The pointer falls back to `'current-session'` if no pointer doc exists — do not remove this fallback.
@@ -48,7 +48,9 @@ Full session + `POST { waitlist: true }` → `waitlisted: true`. Promote via `PA
 - **IDs**: Always `randomBytes` from `crypto` — never `Math.random()`.
 - **Datetimes**: ISO 8601 with timezone offset via `withLocalTz(date, time)`. Never store plain `YYYY-MM-DDThh:mm:00`.
 - **Session IDs**: `sessionIdFromDate(iso)` → `'session-YYYY-MM-DD'`. Legacy `'current-session'` exists in prod.
-- **Cosmos DB**: Use `getContainer(name)`. Always filter by `sessionId` on `players` and `announcements`. Partition key on `players` is `sessionId`. `aliases` are global (no sessionId). `sessions` partition key is doc `id`.
+- **Cosmos DB**: Use `getContainer(name)`. **Containers**: `sessions` (PK `/sessionId`), `players` (PK `/sessionId`), `announcements` (PK `/sessionId`), `members` (PK `/id`), `aliases` (PK `/id`), `birds` (PK `/id`), `skills` (PK `/sessionId`). Always filter by `sessionId` on `players`, `announcements`, `skills`. `aliases`, `birds`, `members` are global (no sessionId filter).
+- **New containers** must use `ensureContainer(name, partitionKeyPath)` from `lib/cosmos.ts` on first handler call — real Cosmos doesn't auto-create containers the way the mock does. See `app/api/skills/route.ts` for the lazy-promise pattern.
+- **Bird usages**: `session.birdUsages` is an array of `BirdUsage` objects. Legacy single-object `session.birdUsage` is read-tolerated via `normalizeBirdUsages()` in `lib/birdUsages.ts` but never written. Next admin save promotes legacy docs to array shape.
 - **Errors**: API returns `NextResponse.json({ error }, { status })`. Client shows `<p className="text-red-400 text-xs" role="alert">`.
 - **Theme**: `data-theme` on `<html>`, CSS custom properties in `globals.css`. Prefer existing Tailwind classes with light-mode overrides.
 - **localStorage**: `badminton_identity` (JSON: `{ name, token, sessionId }` — use `lib/identity.ts` helpers), `badminton_theme`
@@ -76,8 +78,12 @@ Full session + `POST { waitlist: true }` → `waitlisted: true`. Promote via `PA
 - **`signupOpen` defaults to open**: Absent = open. New sessions via advance start closed.
 - **Announcements are session-scoped**: Advancing hides old announcements.
 - **DatePicker is custom**: Portal-rendered to escape `backdrop-filter` stacking. Don't replace with native.
-- **4 tabs**: Home, Sign-Ups, Skills (Coming Soon), Admin. Skills tab shows "Progress together?" for non-admins, SkillsRadar for admins.
+- **4 tabs**: Home, Sign-Ups, Skills, Admin. Skills tab shows "Progress together?" for non-admins; admins get the persistent `SkillsRadar` + inline Add Player form.
 - **SkillsRadar uses recharts**: Imported with `dynamic(() => import(...), { ssr: false })` because recharts requires `window`.
+- **SkillsRadar sheet z-index**: Backdrop `z-[55]`, sheet `z-[60]` — must stay above `BottomNav` (`z-50`). Same z-index + later DOM order loses the stacking contest.
+- **Sheet drag gestures**: Use `touchAction: 'none'` on drag zones (React's `onTouchMove` is passive, so `preventDefault()` is a no-op). Body lock for modals must use the `position: fixed` freeze technique — plain `overflow: hidden` doesn't stop iOS rubber-band / pull-to-refresh.
+- **HomeTab card order** is deliberately context-on-top, action-on-bottom for one-handed thumb reach: `BPM|Date tile row → Announcement → Sign-Up card`. Don't flip this back without a reason.
+- **Cost per person** renders inside the Announcement card, not as a standalone card. If no announcement exists, cost is hidden — intentional trade-off, keeps one club-comms surface.
 - **`.azure/` is gitignored**: Never commit.
 - **Mock store**: Test without DB by omitting `COSMOS_CONNECTION_STRING`. Verify mock query filters match real Cosmos queries.
 
