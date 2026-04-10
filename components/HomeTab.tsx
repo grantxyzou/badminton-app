@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Session, Player, Announcement } from '@/lib/types';
 import { fmtDate } from '@/lib/formatters';
+import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
 import { getIdentity, setIdentity, clearIdentity } from '@/lib/identity';
 import ShuttleLoader from '@/components/ShuttleLoader';
 
@@ -126,8 +127,9 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
     : null;
   const courtTotal = session?.costPerCourt && session.courts
     ? session.costPerCourt * session.courts : 0;
-  const birdTotal = session?.showCostBreakdown && session?.birdUsage?.totalBirdCost
-    ? session.birdUsage.totalBirdCost : 0;
+  const birdTotal = session?.showCostBreakdown
+    ? totalBirdCost(normalizeBirdUsages(session))
+    : 0;
   const totalCost = courtTotal + birdTotal;
   const perPersonCost = totalCost > 0 && activePlayers.length > 0
     ? totalCost / activePlayers.length : null;

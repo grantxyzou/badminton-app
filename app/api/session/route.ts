@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId, POINTER_ID, DEFAULT_SESSION } from '@/lib/cosmos';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import type { BirdUsage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,31 +51,47 @@ export async function PUT(req: NextRequest) {
       showCostBreakdown: typeof body.showCostBreakdown === 'boolean' ? body.showCostBreakdown : undefined,
     };
 
-    // Handle bird usage — look up specific purchase by ID
-    let birdUsage = undefined;
-    if (body.birdUsage && typeof body.birdUsage.tubes === 'number' && body.birdUsage.tubes > 0) {
-      const purchaseId = body.birdUsage.purchaseId;
-      if (typeof purchaseId !== 'string' || !purchaseId) {
-        return NextResponse.json({ error: 'Bird purchase must be selected' }, { status: 400 });
-      }
+    // Handle bird usages — array of { purchaseId, tubes }. Each entry is
+    // looked up live so cost snapshots are authoritative.
+    let birdUsages: BirdUsage[] | undefined = undefined;
+    if (Array.isArray(body.birdUsages)) {
+      const entries: BirdUsage[] = [];
       const birdsContainer = getContainer('birds');
-      const { resource: purchase } = await birdsContainer.item(purchaseId, purchaseId).read();
-      if (!purchase) {
-        return NextResponse.json({ error: 'Selected bird purchase not found' }, { status: 404 });
+      for (const entry of body.birdUsages) {
+        const tubes = Number(entry?.tubes);
+        if (!Number.isFinite(tubes) || tubes <= 0 || tubes > 100) {
+          return NextResponse.json({ error: 'Bird tubes must be between 0 and 100' }, { status: 400 });
+        }
+        // Multiple of 0.5 — rejects 0.33, 1.7, etc.
+        if (Math.round(tubes * 2) !== tubes * 2) {
+          return NextResponse.json({ error: 'Bird tubes must be in 0.5 increments' }, { status: 400 });
+        }
+        const purchaseId = entry?.purchaseId;
+        if (typeof purchaseId !== 'string' || !purchaseId) {
+          return NextResponse.json({ error: 'Bird purchase must be selected' }, { status: 400 });
+        }
+        const { resource: purchase } = await birdsContainer.item(purchaseId, purchaseId).read();
+        if (!purchase) {
+          return NextResponse.json({ error: 'Selected bird purchase not found' }, { status: 404 });
+        }
+        entries.push({
+          purchaseId: purchase.id,
+          purchaseName: purchase.name,
+          tubes,
+          costPerTube: purchase.costPerTube,
+          totalBirdCost: Math.round(tubes * purchase.costPerTube * 100) / 100,
+        });
       }
-      const tubes = Math.max(0, Math.min(100, body.birdUsage.tubes));
-      birdUsage = {
-        tubes,
-        costPerTube: purchase.costPerTube,
-        totalBirdCost: Math.round(tubes * purchase.costPerTube * 100) / 100,
-        purchaseId: purchase.id,
-        purchaseName: purchase.name,
-      };
-    } else if (body.birdUsage === null) {
-      birdUsage = null; // explicitly clear
+      birdUsages = entries;
     }
 
-    const sessionData = { ...session, ...(birdUsage !== undefined ? { birdUsage } : {}) };
+    const sessionData: Record<string, unknown> = { ...session };
+    if (birdUsages !== undefined) {
+      sessionData.birdUsages = birdUsages;
+      // Drop legacy single-object field so it doesn't linger alongside the array.
+      // Cosmos upsert replaces the whole doc, so simply omitting would also work,
+      // but setting undefined makes the intent explicit.
+    }
 
     const container = getContainer('sessions');
     const { resource } = await container.items.upsert(sessionData);
