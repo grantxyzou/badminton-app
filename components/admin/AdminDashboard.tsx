@@ -102,6 +102,128 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
       <SessionContextBar session={nav.session} onEditDates={() => setView('date-time')} />
       <VenueSummary session={nav.session} onEdit={() => setView('session-details')} />
 
+      {/* ── Announcements card (grouped with session-wide controls) ── */}
+      <div className="space-y-4">
+        {/* Compose */}
+        <div className="glass-card p-5 space-y-3">
+          <h3 className="section-label">ANNOUNCEMENTS</h3>
+          <textarea
+            rows={3}
+            placeholder="Type your announcement\u2026"
+            aria-label="Announcement text"
+            value={anno.draft}
+            onChange={(e) => anno.setDraft(e.target.value)}
+            maxLength={500}
+          />
+          <p className="text-right text-xs text-gray-500">{anno.draft.length}/500</p>
+          <button
+            onClick={anno.handlePolish}
+            disabled={anno.polishing || !anno.draft.trim()}
+            className="btn-ghost w-full"
+          >
+            <span className="material-icons icon-sm">auto_fix_high</span>
+            {anno.polishing ? 'Improving\u2026' : 'Improve with AI'}
+          </button>
+
+          {/* AI result */}
+          {anno.polished && (
+            <div className="inner-card-green p-3 space-y-2">
+              <p className="text-xs font-semibold text-green-400">AI Result</p>
+              <p className="text-sm text-gray-200 leading-relaxed">{anno.polished}</p>
+              <button
+                onClick={() => anno.handlePost(anno.polished)}
+                disabled={anno.posting}
+                className="btn-primary w-full text-sm"
+              >
+                {anno.posting ? 'Posting\u2026' : 'Post to Home'}
+              </button>
+            </div>
+          )}
+
+          {/* Post draft directly if not polished */}
+          {!anno.polished && anno.draft.trim() && (
+            <button
+              onClick={() => anno.handlePost(anno.draft)}
+              disabled={anno.posting}
+              className="btn-primary w-full"
+            >
+              {anno.posting ? 'Posting\u2026' : 'Post to Home'}
+            </button>
+          )}
+          {anno.postError && <p className="text-red-400 text-xs">{anno.postError}</p>}
+        </div>
+
+        {/* Posted announcements */}
+        {anno.announcements.length > 0 && (
+          <div className="glass-card p-5 space-y-3">
+            <h3 className="section-label-muted">ACTIVE ANNOUNCEMENTS</h3>
+            <div className="space-y-2">
+              {anno.deletePostError && <p className="text-xs text-red-400 mb-1">{anno.deletePostError}</p>}
+              {anno.announcements.map((a) =>
+                anno.editingAnnoId === a.id ? (
+                  <div key={a.id} className="inner-card p-3 space-y-2">
+                    <textarea
+                      rows={3}
+                      value={anno.editAnnoText}
+                      onChange={(e) => anno.setEditAnnoText(e.target.value)}
+                      maxLength={500}
+                      className="w-full text-sm"
+                    />
+                    <p className="text-right text-xs text-gray-500">{anno.editAnnoText.length}/500</p>
+                    {anno.editAnnoError && <p className="text-red-400 text-xs">{anno.editAnnoError}</p>}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => anno.handleSaveAnno(a.id)}
+                        disabled={anno.savingAnno || !anno.editAnnoText.trim()}
+                        className="btn-primary text-xs px-3 py-1.5"
+                      >
+                        {anno.savingAnno ? 'Saving\u2026' : 'Save'}
+                      </button>
+                      <button onClick={() => anno.cancelEditAnno()} className="btn-ghost text-xs px-3 py-1.5">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div key={a.id} className="inner-card p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm text-gray-200 flex-1">{a.text}</p>
+                      <div className="flex gap-3 shrink-0">
+                        <button
+                          onClick={() => anno.startEditAnno(a)}
+                          className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => anno.handleDeleteAnnouncement(a.id)}
+                          className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
+                      <span>
+                        {new Date(a.time).toLocaleString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                      {a.editedAt && (
+                        <span className="text-gray-600">&middot; edited</span>
+                      )}
+                    </p>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* ── Players card ── */}
       <div className="space-y-3">
         {/* Session navigator */}
@@ -354,128 +476,6 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
               ))}
             </div>
             )}
-          </div>
-        )}
-      </div>
-
-      {/* ── Announcements card ── */}
-      <div className="space-y-4">
-        {/* Compose */}
-        <div className="glass-card p-5 space-y-3">
-          <h3 className="section-label">ANNOUNCEMENTS</h3>
-          <textarea
-            rows={3}
-            placeholder="Type your announcement\u2026"
-            aria-label="Announcement text"
-            value={anno.draft}
-            onChange={(e) => anno.setDraft(e.target.value)}
-            maxLength={500}
-          />
-          <p className="text-right text-xs text-gray-500">{anno.draft.length}/500</p>
-          <button
-            onClick={anno.handlePolish}
-            disabled={anno.polishing || !anno.draft.trim()}
-            className="btn-ghost w-full"
-          >
-            <span className="material-icons icon-sm">auto_fix_high</span>
-            {anno.polishing ? 'Improving\u2026' : 'Improve with AI'}
-          </button>
-
-          {/* AI result */}
-          {anno.polished && (
-            <div className="inner-card-green p-3 space-y-2">
-              <p className="text-xs font-semibold text-green-400">AI Result</p>
-              <p className="text-sm text-gray-200 leading-relaxed">{anno.polished}</p>
-              <button
-                onClick={() => anno.handlePost(anno.polished)}
-                disabled={anno.posting}
-                className="btn-primary w-full text-sm"
-              >
-                {anno.posting ? 'Posting\u2026' : 'Post to Home'}
-              </button>
-            </div>
-          )}
-
-          {/* Post draft directly if not polished */}
-          {!anno.polished && anno.draft.trim() && (
-            <button
-              onClick={() => anno.handlePost(anno.draft)}
-              disabled={anno.posting}
-              className="btn-primary w-full"
-            >
-              {anno.posting ? 'Posting\u2026' : 'Post to Home'}
-            </button>
-          )}
-          {anno.postError && <p className="text-red-400 text-xs">{anno.postError}</p>}
-        </div>
-
-        {/* Posted announcements */}
-        {anno.announcements.length > 0 && (
-          <div className="glass-card p-5 space-y-3">
-            <h3 className="section-label-muted">ACTIVE ANNOUNCEMENTS</h3>
-            <div className="space-y-2">
-              {anno.deletePostError && <p className="text-xs text-red-400 mb-1">{anno.deletePostError}</p>}
-              {anno.announcements.map((a) =>
-                anno.editingAnnoId === a.id ? (
-                  <div key={a.id} className="inner-card p-3 space-y-2">
-                    <textarea
-                      rows={3}
-                      value={anno.editAnnoText}
-                      onChange={(e) => anno.setEditAnnoText(e.target.value)}
-                      maxLength={500}
-                      className="w-full text-sm"
-                    />
-                    <p className="text-right text-xs text-gray-500">{anno.editAnnoText.length}/500</p>
-                    {anno.editAnnoError && <p className="text-red-400 text-xs">{anno.editAnnoError}</p>}
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => anno.handleSaveAnno(a.id)}
-                        disabled={anno.savingAnno || !anno.editAnnoText.trim()}
-                        className="btn-primary text-xs px-3 py-1.5"
-                      >
-                        {anno.savingAnno ? 'Saving\u2026' : 'Save'}
-                      </button>
-                      <button onClick={() => anno.cancelEditAnno()} className="btn-ghost text-xs px-3 py-1.5">
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div key={a.id} className="inner-card p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm text-gray-200 flex-1">{a.text}</p>
-                      <div className="flex gap-3 shrink-0">
-                        <button
-                          onClick={() => anno.startEditAnno(a)}
-                          className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => anno.handleDeleteAnnouncement(a.id)}
-                          className="text-xs text-red-400 hover:text-red-300 transition-colors"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
-                      <span>
-                        {new Date(a.time).toLocaleString(undefined, {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                      {a.editedAt && (
-                        <span className="text-gray-600">&middot; edited</span>
-                      )}
-                    </p>
-                  </div>
-                )
-              )}
-            </div>
           </div>
         )}
       </div>
