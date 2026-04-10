@@ -171,101 +171,6 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      {/* Add purchase form */}
-      <form onSubmit={handleAddPurchase}>
-        <div className="glass-card p-5 space-y-3">
-          <p className="section-label">ADD PURCHASE</p>
-          <Label text="Shuttle">
-            <input
-              type="text"
-              placeholder="e.g. Victor Master No.3"
-              value={shuttleName}
-              onChange={(e) => setShuttleName(e.target.value)}
-              maxLength={100}
-            />
-          </Label>
-          <div className="grid grid-cols-3 gap-3">
-            <Label text="Tubes">
-              <input
-                type="number"
-                min={1}
-                value={tubes || ''}
-                onChange={(e) => setTubes(parseInt(e.target.value) || 0)}
-                placeholder="0"
-              />
-            </Label>
-            <Label text="Total ($)">
-              <input
-                type="number"
-                min={0}
-                step={0.01}
-                value={totalCost || ''}
-                onChange={(e) => setTotalCost(parseFloat(e.target.value) || 0)}
-                placeholder="0.00"
-              />
-            </Label>
-            <Label text="Speed">
-              <input
-                type="number"
-                min={1}
-                value={speed}
-                onChange={(e) => setSpeed(e.target.value ? parseInt(e.target.value) : '')}
-                placeholder="e.g. 77"
-              />
-            </Label>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Label text="Date">
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </Label>
-            <Label text="Quality Rating">
-              <div className="flex gap-1 items-center pt-1">
-                {[1, 2, 3, 4, 5].map(n => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setGroupRating(qualityRating === n ? 0 : n)}
-                    className="flex items-center justify-center transition-all"
-                    style={{
-                      width: 36, height: 36, borderRadius: 8,
-                      background: n <= qualityRating ? 'var(--inner-card-green-bg)' : 'var(--inner-card-bg)',
-                      border: `1px solid ${n <= qualityRating ? 'var(--inner-card-green-border)' : 'var(--inner-card-border)'}`,
-                      color: n <= qualityRating ? 'var(--accent)' : 'var(--text-muted)',
-                      fontSize: 13, fontWeight: 600,
-                    }}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </Label>
-          </div>
-          <Label text="Notes (optional)">
-            <textarea
-              value={birdNotes}
-              onChange={(e) => setBirdNotes(e.target.value)}
-              placeholder="e.g. Good for doubles, flies straight"
-              maxLength={500}
-              rows={2}
-              style={{ resize: 'none' }}
-            />
-          </Label>
-          {addError && <p className="text-red-400 text-xs" role="alert">{addError}</p>}
-          <button
-            type="submit"
-            disabled={adding || !shuttleName.trim() || tubes <= 0}
-            className="btn-primary w-full"
-            style={{ minHeight: 44 }}
-          >
-            {adding ? 'Adding...' : 'Add Purchase'}
-          </button>
-        </div>
-      </form>
-
       {/* Purchase list */}
       {loading ? (
         <div className="glass-card p-5">
@@ -422,6 +327,102 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
           <p className="text-sm text-center py-2" style={{ color: 'var(--text-muted)' }}>No purchases recorded yet.</p>
         </div>
       )}
+
+      {/* Add purchase form — placed at the bottom so the submit button is
+          in the thumb zone for one-handed use. */}
+      <form onSubmit={handleAddPurchase}>
+        <div className="glass-card p-5 space-y-3">
+          <p className="section-label">ADD PURCHASE</p>
+          <Label text="Shuttle">
+            <input
+              type="text"
+              placeholder="e.g. Victor Master No.3"
+              value={shuttleName}
+              onChange={(e) => setShuttleName(e.target.value)}
+              maxLength={100}
+            />
+          </Label>
+          <div className="grid grid-cols-3 gap-3">
+            <Label text="Tubes">
+              <input
+                type="number"
+                min={1}
+                value={tubes || ''}
+                onChange={(e) => setTubes(parseInt(e.target.value) || 0)}
+                placeholder="0"
+              />
+            </Label>
+            <Label text="Total ($)">
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                value={totalCost || ''}
+                onChange={(e) => setTotalCost(parseFloat(e.target.value) || 0)}
+                placeholder="0.00"
+              />
+            </Label>
+            <Label text="Speed">
+              <input
+                type="number"
+                min={1}
+                value={speed}
+                onChange={(e) => setSpeed(e.target.value ? parseInt(e.target.value) : '')}
+                placeholder="e.g. 77"
+              />
+            </Label>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Label text="Date">
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </Label>
+            <Label text="Quality Rating">
+              <div className="flex gap-1 items-center pt-1">
+                {[1, 2, 3, 4, 5].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setGroupRating(qualityRating === n ? 0 : n)}
+                    className="flex items-center justify-center transition-all"
+                    style={{
+                      width: 36, height: 36, borderRadius: 8,
+                      background: n <= qualityRating ? 'var(--inner-card-green-bg)' : 'var(--inner-card-bg)',
+                      border: `1px solid ${n <= qualityRating ? 'var(--inner-card-green-border)' : 'var(--inner-card-border)'}`,
+                      color: n <= qualityRating ? 'var(--accent)' : 'var(--text-muted)',
+                      fontSize: 13, fontWeight: 600,
+                    }}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </Label>
+          </div>
+          <Label text="Notes (optional)">
+            <textarea
+              value={birdNotes}
+              onChange={(e) => setBirdNotes(e.target.value)}
+              placeholder="e.g. Good for doubles, flies straight"
+              maxLength={500}
+              rows={2}
+              style={{ resize: 'none' }}
+            />
+          </Label>
+          {addError && <p className="text-red-400 text-xs" role="alert">{addError}</p>}
+          <button
+            type="submit"
+            disabled={adding || !shuttleName.trim() || tubes <= 0}
+            className="btn-primary w-full"
+            style={{ minHeight: 44 }}
+          >
+            {adding ? 'Adding...' : 'Add Purchase'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
