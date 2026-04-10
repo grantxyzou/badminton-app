@@ -355,25 +355,32 @@ function BottomSheet({ dimId, type, playerName, score, onScoreChange, onClose, o
 
   return (
     <>
-      {/* Backdrop — z-[55] so it covers the BottomNav (z-50) as well as the
-          main content, visually dimming the entire screen when the sheet is open. */}
+      {/* Backdrop — zIndex 55 (inline style, not Tailwind class, so it can't
+          get stripped by JIT or overridden). Covers BottomNav (z-50) and
+          everything underneath. */}
       <div
-        className="fixed inset-0 z-[55] animate-fadeIn"
-        style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
+        className="fixed inset-0 animate-fadeIn"
+        style={{
+          background: 'rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
+          zIndex: 55,
+        }}
         onClick={onClose}
       />
 
-      {/* Sheet — z-[60] to sit above both the backdrop and BottomNav.
-          Without this, shared z-50 with BottomNav + later DOM order on the
-          nav meant the nav painted on top of the sheet, clipping the last
-          levels in the list. */}
+      {/* Sheet — zIndex 60 so it sits above both the backdrop and BottomNav.
+          maxHeight 72vh gives a clear visual gap between the top of the sheet
+          and the top of the viewport, which reads as a true "action sheet"
+          instead of a full-screen modal. */}
       <div
         ref={sheetRef}
-        className="fixed left-0 right-0 bottom-0 z-[60] max-w-lg mx-auto"
+        className="fixed left-0 right-0 bottom-0 max-w-lg mx-auto"
         style={{
           transform: `translateY(${dragY}px)`,
           transition: dragging ? 'none' : 'transform 0.3s ease-out',
-          maxHeight: '85vh',
+          maxHeight: '72vh',
+          zIndex: 60,
         }}
       >
         <div
@@ -426,13 +433,17 @@ function BottomSheet({ dimId, type, playerName, score, onScoreChange, onClose, o
           </div>
 
           {/* Content — overscroll-behavior: contain prevents the sheet's
-              inner scroll from chaining to the body when it hits its edge. */}
+              inner scroll from chaining to the body when it hits its edge.
+              WebkitOverflowScrolling: touch gives iOS momentum scroll, which
+              is important when the content is long (e.g., 6 ACE levels each
+              with a paragraph of description). */}
           <div
             className="px-5 pb-8 overflow-y-auto"
             style={{
-              maxHeight: 'calc(85vh - 80px)',
+              maxHeight: 'calc(72vh - 80px)',
               paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))',
               overscrollBehavior: 'contain',
+              WebkitOverflowScrolling: 'touch',
             }}
           >
             {type === 'detail' ? (

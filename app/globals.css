@@ -515,14 +515,31 @@ textarea {
   width: 100%;
   min-width: 0;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
   font-size: 0.875rem;
   box-shadow: inset 0 1px 0 var(--input-inset);
 }
 
+/* Inside a glass card, inputs flatten to avoid "card inside a card"
+   visual noise — the parent already provides the glass material, so the
+   input becomes a transparent outlined field. Focus state brings back the
+   full material to signal interactivity. */
+.glass-card input,
+.glass-card select,
+.glass-card textarea {
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
 input:focus,
 select:focus,
-textarea:focus {
+textarea:focus,
+.glass-card input:focus,
+.glass-card select:focus,
+.glass-card textarea:focus {
+  background: var(--input-bg);
   border-color: var(--input-focus-border);
   box-shadow:
     inset 0 1px 0 var(--input-inset),
