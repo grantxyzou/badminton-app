@@ -36,11 +36,19 @@ const SHORT_LABELS: Record<string, string> = {
   'knowledge': 'Knowledge',
 };
 
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+
 /* ══════════════════════════════════════════
    Main Component
    ══════════════════════════════════════════ */
 
-export default function SkillsRadar({ players }: { players: PlayerSkills[] }) {
+export default function SkillsRadar({
+  players,
+  onScoresChanged,
+}: {
+  players: PlayerSkills[];
+  onScoresChanged?: () => void;
+}) {
   const [mode, setMode] = useState<'solo' | 'overlay'>('solo');
   const [activePlayerId, setActivePlayerId] = useState(players[0]?.id ?? '');
   const [overlayIds, setOverlayIds] = useState<Set<string>>(new Set([players[0]?.id ?? '']));
@@ -84,12 +92,20 @@ export default function SkillsRadar({ players }: { players: PlayerSkills[] }) {
     });
   };
 
-  /* ── Edit handler ── */
+  /* ── Edit handler: optimistic local update + background PATCH ── */
   const handleScoreChange = (dimId: string, level: number) => {
-    setLocalScores(prev => ({
-      ...prev,
-      [activePlayerId]: { ...prev[activePlayerId], [dimId]: level },
-    }));
+    const nextPlayerScores = { ...localScores[activePlayerId], [dimId]: level };
+    setLocalScores(prev => ({ ...prev, [activePlayerId]: nextPlayerScores }));
+    // Fire-and-forget PATCH. If it fails the parent's next refresh will reconcile.
+    fetch(`${BASE}/api/skills`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: activePlayerId, scores: { [dimId]: level } }),
+    })
+      .then((r) => {
+        if (r.ok) onScoresChanged?.();
+      })
+      .catch(() => { /* stale local state is fine; refresh will recover */ });
   };
 
   const openSheet = useCallback((dimId: string, type: 'detail' | 'edit') => {
