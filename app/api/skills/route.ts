@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { getContainer, getActiveSessionId, ensureContainer } from '@/lib/cosmos';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import type { PlayerSkills } from '@/lib/types';
 
@@ -8,6 +8,21 @@ export const dynamic = 'force-dynamic';
 
 const SCORE_MIN = 0;
 const SCORE_MAX = 6;
+
+// Lazy container bootstrap — real Cosmos doesn't auto-create containers,
+// and 'skills' was added after the initial portal setup. Cache the
+// promise so the createIfNotExists fires at most once per server instance.
+let skillsReady: Promise<void> | null = null;
+function ensureSkillsContainer(): Promise<void> {
+  if (!skillsReady) {
+    skillsReady = ensureContainer('skills', '/sessionId').catch((err) => {
+      // If it fails, reset so the next request retries
+      skillsReady = null;
+      throw err;
+    });
+  }
+  return skillsReady;
+}
 
 function validateScores(raw: unknown): Record<string, number> | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
@@ -33,6 +48,7 @@ export async function GET(req: NextRequest) {
   if (!isAdminAuthed(req)) return unauthorized();
 
   try {
+    await ensureSkillsContainer();
     const sessionId = await resolveSessionId(req);
     const container = getContainer('skills');
     const { resources } = await container.items
@@ -52,6 +68,7 @@ export async function POST(req: NextRequest) {
   if (!isAdminAuthed(req)) return unauthorized();
 
   try {
+    await ensureSkillsContainer();
     const body = await req.json();
     const name = typeof body.name === 'string' ? body.name.trim().slice(0, 50) : '';
     if (!name) {
@@ -107,6 +124,7 @@ export async function PATCH(req: NextRequest) {
   if (!isAdminAuthed(req)) return unauthorized();
 
   try {
+    await ensureSkillsContainer();
     const body = await req.json();
     const id = typeof body.id === 'string' ? body.id : '';
     if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
@@ -139,6 +157,7 @@ export async function DELETE(req: NextRequest) {
   if (!isAdminAuthed(req)) return unauthorized();
 
   try {
+    await ensureSkillsContainer();
     const body = await req.json();
     const id = typeof body.id === 'string' ? body.id : '';
     if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });

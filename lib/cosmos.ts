@@ -110,6 +110,26 @@ export function getContainer(name: string): Container {
   return getDatabase().container(name);
 }
 
+/**
+ * Ensures a Cosmos container exists with the given partition key. No-op in
+ * mock mode (the mock auto-creates containers). Idempotent — safe to call
+ * on every request; the first call does the create, subsequent calls just
+ * verify existence via Cosmos's createIfNotExists API.
+ *
+ * Use this for containers added after the initial manual portal setup, so
+ * a deploy doesn't require a human to provision the container first.
+ */
+export async function ensureContainer(
+  name: string,
+  partitionKeyPath: string,
+): Promise<void> {
+  if (!process.env.COSMOS_CONNECTION_STRING) return;
+  await getDatabase().containers.createIfNotExists({
+    id: name,
+    partitionKey: { paths: [partitionKeyPath] },
+  });
+}
+
 // Resolves the currently active session ID via the pointer document.
 // Falls back to 'current-session' for backward compatibility with existing
 // production data until the admin performs the first "Advance" action.
