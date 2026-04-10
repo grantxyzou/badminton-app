@@ -213,7 +213,76 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
 
   return (
     <div className="space-y-5">
-      {/* Sign-Up Card */}
+      {/* Tile row: BPM Badminton | Date & Time */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* BPM tile */}
+        <div className="glass-card p-4 space-y-2">
+          <p className="section-label mb-1">BPM</p>
+          <h1
+            className="text-lg font-bold text-white leading-tight"
+            onClick={onTitleTap}
+            style={{ cursor: 'default', userSelect: 'none' }}
+          >
+            BPM Badminton
+          </h1>
+          {session?.locationName && (
+            <p className="text-xs font-semibold text-white line-clamp-2">
+              {session.locationName}
+            </p>
+          )}
+          {session?.locationAddress ? (
+            mapsUrl ? (
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-gray-300 underline underline-offset-2 decoration-dotted line-clamp-2 block"
+              >
+                {session.locationAddress}
+              </a>
+            ) : (
+              <p className="text-xs text-gray-300 line-clamp-2">{session.locationAddress}</p>
+            )
+          ) : null}
+        </div>
+
+        {/* Date & Time tile */}
+        <div className="glass-card p-4 space-y-2">
+          <p className="section-label mb-1">WHEN</p>
+          <p className="text-sm font-semibold text-white leading-snug">
+            {session ? fmtDate(session.datetime) : '—'}
+          </p>
+          <p className="text-sm font-semibold text-white leading-snug">
+            {session ? fmtTime(session.datetime) : '—'}
+          </p>
+        </div>
+      </div>
+
+      {/* Announcement card — also hosts the cost-per-person line when visible.
+          Intentional trade-off: if there's no announcement, the cost line is
+          hidden too. Keeps a single "club comms" surface instead of two. */}
+      {announcement && (
+        <div className="glass-card p-5 space-y-2">
+          <p className="section-label">ANNOUNCEMENT</p>
+          <p className="text-sm text-gray-200 leading-relaxed">{announcement.text}</p>
+          {perPersonCost !== null && perPersonCost > 0 && session?.datetime && (
+            <div
+              className="pt-2 mt-2 flex items-center justify-between"
+              style={{ borderTop: '1px solid var(--glass-border)' }}
+            >
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Cost per person on {fmtDate(session.datetime)}
+              </p>
+              <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+                ${perPersonCost.toFixed(2)}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Sign-Up Card — placed at the bottom so the submit button / payment
+          action / "I paid" button sit in the thumb zone for one-handed use. */}
       <div className="glass-card p-5">
         {isSessionFinished ? (
           /* ── State: Session finished ── */
@@ -445,74 +514,6 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
           </div>
         )}
       </div>
-
-      {/* Tile row: BPM Badminton | Date & Time */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* BPM tile */}
-        <div className="glass-card p-4 space-y-2">
-          <p className="section-label mb-1">BPM</p>
-          <h1
-            className="text-lg font-bold text-white leading-tight"
-            onClick={onTitleTap}
-            style={{ cursor: 'default', userSelect: 'none' }}
-          >
-            BPM Badminton
-          </h1>
-          {session?.locationName && (
-            <p className="text-xs font-semibold text-white line-clamp-2">
-              {session.locationName}
-            </p>
-          )}
-          {session?.locationAddress ? (
-            mapsUrl ? (
-              <a
-                href={mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-gray-300 underline underline-offset-2 decoration-dotted line-clamp-2 block"
-              >
-                {session.locationAddress}
-              </a>
-            ) : (
-              <p className="text-xs text-gray-300 line-clamp-2">{session.locationAddress}</p>
-            )
-          ) : null}
-        </div>
-
-        {/* Date & Time tile */}
-        <div className="glass-card p-4 space-y-2">
-          <p className="section-label mb-1">WHEN</p>
-          <p className="text-sm font-semibold text-white leading-snug">
-            {session ? fmtDate(session.datetime) : '—'}
-          </p>
-          <p className="text-sm font-semibold text-white leading-snug">
-            {session ? fmtTime(session.datetime) : '—'}
-          </p>
-        </div>
-      </div>
-
-      {/* Announcement card — also hosts the cost-per-person line when visible.
-          Intentional trade-off: if there's no announcement, the cost line is
-          hidden too. Keeps a single "club comms" surface instead of two. */}
-      {announcement && (
-        <div className="glass-card p-5 space-y-2">
-          <p className="section-label">ANNOUNCEMENT</p>
-          <p className="text-sm text-gray-200 leading-relaxed">{announcement.text}</p>
-          {perPersonCost !== null && perPersonCost > 0 && session?.datetime && (
-            <div
-              className="pt-2 mt-2 flex items-center justify-between"
-              style={{ borderTop: '1px solid var(--glass-border)' }}
-            >
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Cost per person on {fmtDate(session.datetime)}
-              </p>
-              <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
-                ${perPersonCost.toFixed(2)}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
