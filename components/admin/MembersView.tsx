@@ -259,38 +259,6 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
         </>)}
       </div>
 
-      {/* Aliases Section */}
-      <div className="glass-card p-5 space-y-3">
-        <p className="section-label">ADD ALIAS</p>
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Link each player's app name to their e-transfer name for payment tracking.</p>
-        <form onSubmit={handleAddAlias} className="space-y-3">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="App name (e.g. Jon)"
-              value={appName}
-              onChange={(e) => setAppName(e.target.value)}
-              maxLength={50}
-              required
-              className="flex-1"
-            />
-            <input
-              type="text"
-              placeholder="E-transfer name (e.g. Jonathan Smith)"
-              value={etransferName}
-              onChange={(e) => setEtransferName(e.target.value)}
-              maxLength={50}
-              required
-              className="flex-1"
-            />
-          </div>
-          {aliasAddError && <p className="text-red-400 text-xs" role="alert">{aliasAddError}</p>}
-          <button type="submit" disabled={aliasAdding} className="btn-primary w-full" style={{ minHeight: 44 }}>
-            {aliasAdding ? 'Adding...' : 'Add Alias'}
-          </button>
-        </form>
-      </div>
-
       {/* Alias list */}
       {aliasesLoading ? (
         <ShimmerLoader lines={3} />
@@ -347,6 +315,39 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
       ) : (
         <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>No aliases yet — add one to map names for e-transfer.</p>
       )}
+
+      {/* Add alias form — below the list so the submit button is in the
+          thumb zone for one-handed use. */}
+      <div className="glass-card p-5 space-y-3">
+        <p className="section-label">ADD ALIAS</p>
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Link each player's app name to their e-transfer name for payment tracking.</p>
+        <form onSubmit={handleAddAlias} className="space-y-3">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="App name (e.g. Jon)"
+              value={appName}
+              onChange={(e) => setAppName(e.target.value)}
+              maxLength={50}
+              required
+              className="flex-1"
+            />
+            <input
+              type="text"
+              placeholder="E-transfer name (e.g. Jonathan Smith)"
+              value={etransferName}
+              onChange={(e) => setEtransferName(e.target.value)}
+              maxLength={50}
+              required
+              className="flex-1"
+            />
+          </div>
+          {aliasAddError && <p className="text-red-400 text-xs" role="alert">{aliasAddError}</p>}
+          <button type="submit" disabled={aliasAdding} className="btn-primary w-full" style={{ minHeight: 44 }}>
+            {aliasAdding ? 'Adding...' : 'Add Alias'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
