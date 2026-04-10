@@ -133,10 +133,6 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
   const totalCost = courtTotal + birdTotal;
   const perPersonCost = totalCost > 0 && activePlayers.length > 0
     ? totalCost / activePlayers.length : null;
-  const perPersonCourt = courtTotal > 0 && activePlayers.length > 0
-    ? courtTotal / activePlayers.length : null;
-  const perPersonBird = birdTotal > 0 && activePlayers.length > 0
-    ? birdTotal / activePlayers.length : null;
   const etransferEmail = process.env.NEXT_PUBLIC_ETRANSFER_EMAIL || null;
 
   async function handleReportPaid() {
@@ -264,11 +260,26 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
         </div>
       </div>
 
-      {/* Announcement card */}
+      {/* Announcement card — also hosts the cost-per-person line when visible.
+          Intentional trade-off: if there's no announcement, the cost line is
+          hidden too. Keeps a single "club comms" surface instead of two. */}
       {announcement && (
         <div className="glass-card p-5 space-y-2">
           <p className="section-label">ANNOUNCEMENT</p>
           <p className="text-sm text-gray-200 leading-relaxed">{announcement.text}</p>
+          {perPersonCost !== null && perPersonCost > 0 && session?.datetime && (
+            <div
+              className="pt-2 mt-2 flex items-center justify-between"
+              style={{ borderTop: '1px solid var(--glass-border)' }}
+            >
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Cost per person on {fmtDate(session.datetime)}
+              </p>
+              <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+                ${perPersonCost.toFixed(2)}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -324,30 +335,11 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
                 <p className="text-xs text-gray-400 mt-0.5">See you soon!</p>
               </div>
             </div>
-            {/* Payment card */}
+            {/* Payment card — cost-per-person itself moved into the announcement
+                card above. This block now only hosts the e-transfer target and
+                the self-report-paid action. */}
             {perPersonCost !== null && perPersonCost > 0 && (
               <div className="inner-card p-3 space-y-2">
-                {perPersonCourt !== null && perPersonBird !== null ? (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Courts</p>
-                      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>${perPersonCourt.toFixed(2)}</p>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Birds</p>
-                      <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>${perPersonBird.toFixed(2)}</p>
-                    </div>
-                    <div className="flex items-center justify-between pt-1" style={{ borderTop: '1px solid var(--glass-border)' }}>
-                      <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Total per person</p>
-                      <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>${perPersonCost!.toFixed(2)}</p>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>Cost per person</p>
-                    <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>${perPersonCost!.toFixed(2)}</p>
-                  </div>
-                )}
                 {etransferEmail && (
                   <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                     E-transfer to: <span style={{ color: 'var(--text-secondary)' }}>{etransferEmail}</span>
