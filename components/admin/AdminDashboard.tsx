@@ -325,7 +325,8 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
                     <button
                       onClick={() => pm.handleTogglePaid(player)}
                       disabled={pm.togglingId === player.id}
-                      className={`text-xs font-medium transition-colors px-2 py-0.5 rounded-full ${player.paid ? 'pill-paid' : 'pill-unpaid'}`}
+                      className={`text-xs font-medium transition-colors px-3 py-1.5 rounded-full ${player.paid ? 'pill-paid' : 'pill-unpaid'}`}
+                      style={{ minHeight: 32 }}
                     >
                       {pm.savedId === player.id ? '\u2713' : pm.togglingId === player.id ? '\u2026' : player.paid ? 'Paid' : 'Pending'}
                     </button>
@@ -507,11 +508,17 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
           <div
             onClick={() => { pm.setConfirmingClear(false); pm.setClearError(''); }}
             style={{ position: 'fixed', inset: 0, background: 'var(--overlay-bg)', backdropFilter: 'blur(4px)', zIndex: 100 }}
+            aria-hidden="true"
           />
-          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 101, padding: '0 16px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 100px)' }}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="clear-dialog-title"
+            style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 101, padding: '0 16px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 100px)' }}
+          >
             <div className="glass-card p-5 space-y-3 max-w-lg mx-auto">
               <div className="text-center space-y-1.5">
-                <p className="font-semibold text-white">
+                <p id="clear-dialog-title" className="font-semibold text-white">
                   {pm.clearMode === 'soft' ? 'Clear session for new week?' : 'Permanently delete all records?'}
                 </p>
                 <p className="text-sm text-gray-400">

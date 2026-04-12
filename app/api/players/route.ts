@@ -48,13 +48,32 @@ export async function POST(req: NextRequest) {
     }
 
     const sessionContainer = getContainer('sessions');
-    const { resources: sessions } = await sessionContainer.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.id = @id',
-        parameters: [{ name: '@id', value: sessionId }],
-      })
-      .fetchAll();
-    const sessionData = sessions[0];
+    const membersContainer = getContainer('members');
+    const container = getContainer('players');
+
+    // Parallelize all 4 queries — session, members, existing player, active count
+    const [sessionsRes, membersRes, existingRes, activeRes] = await Promise.all([
+      sessionContainer.items
+        .query({ query: 'SELECT * FROM c WHERE c.id = @id', parameters: [{ name: '@id', value: sessionId }] })
+        .fetchAll(),
+      membersContainer.items
+        .query({ query: 'SELECT * FROM c WHERE c.active = true' })
+        .fetchAll(),
+      container.items
+        .query({
+          query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name)',
+          parameters: [{ name: '@sessionId', value: sessionId }, { name: '@name', value: trimmedName }],
+        })
+        .fetchAll(),
+      container.items
+        .query({
+          query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
+          parameters: [{ name: '@sessionId', value: sessionId }],
+        })
+        .fetchAll(),
+    ]);
+
+    const sessionData = sessionsRes.resources[0];
     const maxPlayers =
       sessionData?.maxPlayers ?? parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12', 10);
 
@@ -66,12 +85,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Sign-up deadline has passed' }, { status: 403 });
     }
 
-    // Members-based identity check (replaces approvedNames)
-    const membersContainer = getContainer('members');
-    const { resources: allMembers } = await membersContainer.items
-      .query({ query: 'SELECT * FROM c WHERE c.active = true' })
-      .fetchAll();
-
+    // Members-based identity check
+    const allMembers = membersRes.resources;
     let matchedMember: { id: string; name: string; sessionCount: number; [key: string]: unknown } | null = null;
     if (allMembers.length > 0) {
       matchedMember = allMembers.find(
@@ -82,20 +97,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const container = getContainer('players');
-
-    // Check for any existing record with this name (active, waitlisted, or soft-deleted)
-    const { resources: anyExisting } = await container.items
-      .query({
-        query:
-          'SELECT * FROM c WHERE c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name)',
-        parameters: [
-          { name: '@sessionId', value: sessionId },
-          { name: '@name', value: trimmedName },
-        ],
-      })
-      .fetchAll();
-
+    const anyExisting = existingRes.resources;
     const activeRecord = anyExisting.find((p: { removed?: boolean }) => !p.removed);
     const removedRecord = anyExisting.find((p: { removed?: boolean }) => p.removed);
 
@@ -103,14 +105,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Already signed up' }, { status: 409 });
     }
 
-    // Active capacity check — excludes waitlisted players
-    const { resources: activePlayers } = await container.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
-        parameters: [{ name: '@sessionId', value: sessionId }],
-      })
-      .fetchAll();
-
+    const activePlayers = activeRes.resources;
     const isFull = activePlayers.length >= maxPlayers;
 
     if (isFull && !joinWaitlist) {
