@@ -114,8 +114,8 @@ export default function PlayersTab() {
                       {confirmingCancel ? (
                         <div className="flex items-center gap-2 text-xs">
                           <span className="text-gray-400">Cancel your spot?</span>
-                          <button onClick={handleCancel} className="text-red-400 hover:text-red-300 transition-colors">Yes</button>
-                          <button onClick={() => setConfirmingCancel(false)} className="text-gray-400 hover:text-white transition-colors">No</button>
+                          <button onClick={handleCancel} className="text-red-400 hover:text-red-300 transition-colors px-2 py-1" style={{ minHeight: 32 }}>Yes</button>
+                          <button onClick={() => setConfirmingCancel(false)} className="text-gray-400 hover:text-white transition-colors px-2 py-1" style={{ minHeight: 32 }}>No</button>
                         </div>
                       ) : (
                         <button
