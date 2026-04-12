@@ -32,7 +32,7 @@ type DetailsForm = {
   courts: number;
   maxPlayers: number;
   signupOpen: boolean;
-  costPerCourt: number;
+  costPerCourt: number | null;
   birdUsages: BirdUsageRow[];
   showCostBreakdown: boolean;
 };
@@ -52,7 +52,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
     courts: 2,
     maxPlayers: 12,
     signupOpen: true,
-    costPerCourt: 0,
+    costPerCourt: null,
     birdUsages: [],
     showCostBreakdown: false,
   });
@@ -80,7 +80,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
           courts: data.courts ?? 2,
           maxPlayers: data.maxPlayers ?? 12,
           signupOpen: data.signupOpen !== false,
-          costPerCourt: data.costPerCourt ?? 0,
+          costPerCourt: data.costPerCourt ?? null,
           birdUsages: existing,
           showCostBreakdown: data.showCostBreakdown ?? false,
         };
@@ -149,6 +149,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
         body: JSON.stringify({
           title: s?.title ?? '',
           ...form,
+          costPerCourt: form.costPerCourt ?? 0,
           date: dateStr,
           time: timeStr,
           datetime: withLocalTz(dateStr, timeStr),
@@ -197,11 +198,11 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
   }
   function setFloat(key: keyof DetailsForm) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
-      setForm((f) => ({ ...f, [key]: parseFloat(e.target.value) || 0 }));
+      setForm((f) => ({ ...f, [key]: e.target.value === '' ? null : (parseFloat(e.target.value) || 0) }));
   }
 
   /* ── Cost computation for the preview ── */
-  const courtTotal = form.costPerCourt * form.courts;
+  const courtTotal = (form.costPerCourt ?? 0) * form.courts;
   const birdTotal = form.birdUsages.reduce((sum, row) => {
     const selected = purchases.find((p) => p.id === row.purchaseId);
     return sum + (selected ? row.tubes * selected.costPerTube : 0);
@@ -283,14 +284,20 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
           </div>
 
           <Label text="Cost per court">
-            <input
-              type="number"
-              min={0}
-              step={0.5}
-              value={form.costPerCourt}
-              onChange={setFloat('costPerCourt')}
-              placeholder="0"
-            />
+            <div className="relative">
+              {form.costPerCourt !== null && form.costPerCourt > 0 && (
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: 'var(--text-muted)' }}>$</span>
+              )}
+              <input
+                type="number"
+                min={0}
+                step={0.5}
+                value={form.costPerCourt ?? ''}
+                onChange={setFloat('costPerCourt')}
+                placeholder="None"
+                style={form.costPerCourt !== null && form.costPerCourt > 0 ? { paddingLeft: '1.5rem' } : undefined}
+              />
+            </div>
           </Label>
 
           {/* ── Bird sources — inline rows, no nested card ── */}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Session, Player, Announcement } from '@/lib/types';
+import type { DevOverrides } from '@/components/DevPanel';
 import { fmtDate } from '@/lib/formatters';
 import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
 import { getIdentity, setIdentity, clearIdentity } from '@/lib/identity';
@@ -35,7 +36,7 @@ function fmtDeadline(iso: string) {
 }
 
 
-export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (tab: 'home' | 'players' | 'admin') => void; onTitleTap?: () => void }) {
+export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onTabChange?: (tab: 'home' | 'players' | 'admin') => void; onTitleTap?: () => void; devOverrides?: DevOverrides }) {
   const [session, setSession] = useState<Session | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
@@ -46,13 +47,11 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
   const [loading, setLoading] = useState(true);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [memberNames, setMemberNames] = useState<string[]>([]);
-  const [reportingPaid, setReportingPaid] = useState(false);
 
   const maxPlayers = parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12');
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const minDelay = new Promise(r => setTimeout(r, 1500));
     try {
       const [sRes, pRes, aRes, mRes] = await Promise.all([
         fetch(`${BASE}/api/session`, { cache: 'no-store' }),
@@ -79,7 +78,6 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
         const memberList: { name: string; active: boolean }[] = await mRes.json();
         setMemberNames(memberList.filter(m => m.active).map(m => m.name));
       }
-      await minDelay;
     } catch (e) {
       console.error('Load error:', e);
     } finally {
@@ -121,34 +119,37 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
     ? waitlistPlayers.findIndex(p => p.name.toLowerCase() === currentUser.toLowerCase()) + 1
     : 0;
 
-  // Payment calculations
+  // Payment calculations — dev overrides let the DevPanel control these values
+  const dv = devOverrides;
+  const effectiveSession = dv && session ? {
+    ...session,
+    ...(dv.showCostBreakdown !== undefined ? { showCostBreakdown: dv.showCostBreakdown } : {}),
+    ...(dv.costPerCourt !== undefined ? { costPerCourt: dv.costPerCourt ?? 0 } : {}),
+    ...(dv.courts !== undefined ? { courts: dv.courts } : {}),
+    ...(dv.prevCostPerPerson !== undefined ? { prevCostPerPerson: dv.prevCostPerPerson ?? undefined } : {}),
+    ...(dv.prevCostPerPerson !== undefined && !session.prevSessionDate ? { prevSessionDate: new Date(Date.now() - 7 * 86400000).toISOString() } : {}),
+  } : session;
+  const effectivePlayerCount = dv?.activePlayerCount ?? activePlayers.length;
+
   const currentPlayerRecord = currentUser
     ? players.find(p => p.name.toLowerCase() === currentUser.toLowerCase())
     : null;
-  const courtTotal = session?.costPerCourt && session.courts
-    ? session.costPerCourt * session.courts : 0;
-  const birdTotal = session?.showCostBreakdown
-    ? totalBirdCost(normalizeBirdUsages(session))
+
+  const courtTotal = effectiveSession?.costPerCourt && effectiveSession.courts
+    ? effectiveSession.costPerCourt * effectiveSession.courts : 0;
+  const birdTotal = effectiveSession?.showCostBreakdown
+    ? totalBirdCost(normalizeBirdUsages(effectiveSession))
     : 0;
   const totalCost = courtTotal + birdTotal;
-  const perPersonCost = totalCost > 0 && activePlayers.length > 0
-    ? totalCost / activePlayers.length : null;
+  const perPersonCost = totalCost > 0 && effectivePlayerCount > 0
+    ? totalCost / effectivePlayerCount : null;
   const etransferEmail = process.env.NEXT_PUBLIC_ETRANSFER_EMAIL || null;
 
-  async function handleReportPaid() {
-    const identity = getIdentity();
-    if (!identity?.token || !currentPlayerRecord?.id) return;
-    setReportingPaid(true);
-    try {
-      await fetch(`${BASE}/api/players`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: currentPlayerRecord.id, deleteToken: identity.token, selfReportedPaid: true }),
-      });
-      await loadData();
-    } catch { /* silent */ }
-    setReportingPaid(false);
-  }
+  // Dev overrides for announcement visibility and signed-up state
+  const effectiveAnnouncement = dv?.hasAnnouncement === false ? null
+    : dv?.hasAnnouncement === true && !announcement ? { id: 'dev', text: 'Dev mode announcement — testing cost visibility.', time: new Date().toISOString(), sessionId: '' } as Announcement
+    : announcement;
+  const effectiveIsSignedUp = dv?.isSignedUp !== undefined ? dv.isSignedUp : isSignedUp;
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
@@ -261,17 +262,17 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
       {/* Announcement card — also hosts the cost-per-person line when visible.
           Intentional trade-off: if there's no announcement, the cost line is
           hidden too. Keeps a single "club comms" surface instead of two. */}
-      {announcement && (
+      {effectiveAnnouncement && (
         <div className="glass-card p-5 space-y-2">
           <p className="section-label">ANNOUNCEMENT</p>
-          <p className="text-sm text-gray-200 leading-relaxed">{announcement.text}</p>
-          {perPersonCost !== null && perPersonCost > 0 && session?.datetime && (
+          <p className="text-sm text-gray-200 leading-relaxed">{effectiveAnnouncement.text}</p>
+          {effectiveSession?.showCostBreakdown && perPersonCost !== null && perPersonCost > 0 && effectiveSession?.datetime && (
             <div
               className="pt-2 mt-2 flex items-center justify-between"
               style={{ borderTop: '1px solid var(--glass-border)' }}
             >
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Cost per person on {fmtDate(session.datetime)}
+                Cost per person on {fmtDate(effectiveSession!.datetime)}
               </p>
               <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
                 ${perPersonCost.toFixed(2)}
@@ -296,7 +297,7 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
               </div>
             </div>
           </div>
-        ) : isSignupClosed && !isSignedUp && !isWaitlisted ? (
+        ) : isSignupClosed && !effectiveIsSignedUp && !isWaitlisted ? (
           /* ── State: Sign-ups opening soon ── */
           <div className="space-y-4">
             <p className="text-xl font-bold text-green-400">Sign up</p>
@@ -308,7 +309,7 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
               </div>
             </div>
           </div>
-        ) : isDeadlinePast && !isSignedUp && !isWaitlisted ? (
+        ) : isDeadlinePast && !effectiveIsSignedUp && !isWaitlisted ? (
           /* ── State: Deadline passed ── */
           <div className="space-y-4">
             <p className="text-xl font-bold text-green-400">Sign up</p>
@@ -320,7 +321,7 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
               </div>
             </div>
           </div>
-        ) : isSignedUp ? (
+        ) : effectiveIsSignedUp ? (
           /* ── State 1: Active sign-up ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">
@@ -334,40 +335,6 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
                 <p className="text-xs text-gray-400 mt-0.5">See you soon!</p>
               </div>
             </div>
-            {/* Payment card — cost-per-person itself moved into the announcement
-                card above. This block now only hosts the e-transfer target and
-                the self-report-paid action. */}
-            {perPersonCost !== null && perPersonCost > 0 && (
-              <div className="inner-card p-3 space-y-2">
-                {etransferEmail && (
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                    E-transfer to: <span style={{ color: 'var(--text-secondary)' }}>{etransferEmail}</span>
-                  </p>
-                )}
-                {currentPlayerRecord?.paid ? (
-                  <div className="flex items-center gap-1.5">
-                    <span className="material-icons text-green-400" style={{ fontSize: 16 }}>check_circle</span>
-                    <span className="text-xs font-medium text-green-400">Payment confirmed</span>
-                  </div>
-                ) : currentPlayerRecord?.selfReportedPaid ? (
-                  <div className="flex items-center gap-1.5">
-                    <span className="material-icons text-amber-400" style={{ fontSize: 16 }}>schedule</span>
-                    <span className="text-xs font-medium text-amber-400">Reported — awaiting confirmation</span>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleReportPaid}
-                    disabled={reportingPaid}
-                    className="btn-ghost w-full flex items-center justify-center gap-2"
-                    style={{ minHeight: 44 }}
-                  >
-                    <span className="material-icons" style={{ fontSize: 16 }}>payments</span>
-                    <span className="text-sm font-medium">{reportingPaid ? 'Reporting...' : 'I paid'}</span>
-                  </button>
-                )}
-              </div>
-            )}
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
               View Sign Up List
             </button>
@@ -514,6 +481,19 @@ export default function HomeTab({ onTabChange, onTitleTap }: { onTabChange?: (ta
           </div>
         )}
       </div>
+      {/* Subtle payment reminder for previous session — shown below sign-up card */}
+      {effectiveSession?.showCostBreakdown && (effectiveSession.prevCostPerPerson ?? 0) > 0 && effectiveIsSignedUp && (
+        <div className="mt-3 text-center">
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            Last session ({effectiveSession.prevSessionDate ? fmtDate(effectiveSession.prevSessionDate) : '—'}) · ${effectiveSession.prevCostPerPerson.toFixed(2)}/person
+          </p>
+          {etransferEmail && (
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              E-transfer to {etransferEmail}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

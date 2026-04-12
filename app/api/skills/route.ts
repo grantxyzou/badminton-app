@@ -135,7 +135,8 @@ export async function PATCH(req: NextRequest) {
     }
 
     const container = getContainer('skills');
-    const { resource: existing } = await container.item(id, id).read();
+    const sessionId = await getActiveSessionId();
+    const { resource: existing } = await container.item(id, sessionId).read();
     if (!existing) {
       return NextResponse.json({ error: 'Record not found' }, { status: 404 });
     }
@@ -163,7 +164,8 @@ export async function DELETE(req: NextRequest) {
     if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
     const container = getContainer('skills');
-    await container.item(id, id).delete();
+    const sessionId = await getActiveSessionId();
+    await container.item(id, sessionId).delete();
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE skills error:', error);

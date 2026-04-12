@@ -39,6 +39,8 @@ export default function AdvanceSessionForm({ onBack }: Props) {
   const [deadlineTime, setDeadlineTime] = useState('');
   const [courts, setCourts] = useState(2);
   const [maxPlayers, setMaxPlayers] = useState(12);
+  const [costPerCourt, setCostPerCourt] = useState<number | null>(null);
+  const [recentCosts, setRecentCosts] = useState<number[]>([]);
   const [advancing, setAdvancing] = useState(false);
   const [advanceError, setAdvanceError] = useState('');
 
@@ -51,7 +53,12 @@ export default function AdvanceSessionForm({ onBack }: Props) {
         setDeadlineTime(data.deadline ? data.deadline.slice(11, 16) : '');
         setCourts(data.courts ?? 2);
         setMaxPlayers(data.maxPlayers ?? 12);
+        setCostPerCourt(data.costPerCourt ?? null);
       })
+      .catch(() => {});
+    fetch(`${BASE}/api/sessions/costs`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then((data: { costs: number[] }) => setRecentCosts(data.costs ?? []))
       .catch(() => {});
   }, []);
 
@@ -69,6 +76,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
           deadline: withLocalTz(deadlineDate, deadlineTime),
           courts,
           maxPlayers,
+          ...(costPerCourt !== null ? { costPerCourt } : {}),
         }),
       });
       if (res.ok) {
@@ -131,6 +139,39 @@ export default function AdvanceSessionForm({ onBack }: Props) {
               <input type="number" min={1} value={maxPlayers} onChange={e => setMaxPlayers(parseInt(e.target.value) || 0)} />
             </Label>
           </div>
+
+          <Label text="Cost per court">
+            <div className="relative">
+              {costPerCourt !== null && costPerCourt > 0 && (
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: 'var(--text-muted)' }}>$</span>
+              )}
+              <input
+                type="number"
+                min={0}
+                step={0.5}
+                value={costPerCourt ?? ''}
+                onChange={e => setCostPerCourt(e.target.value === '' ? null : (parseFloat(e.target.value) || 0))}
+                placeholder="None"
+                style={costPerCourt !== null && costPerCourt > 0 ? { paddingLeft: '1.5rem' } : undefined}
+              />
+            </div>
+            {recentCosts.length > 0 && (
+              <div className="flex gap-1.5 flex-wrap pt-1">
+                <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Recent:</span>
+                {recentCosts.map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCostPerCourt(c)}
+                    className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors ${costPerCourt === c ? 'bg-green-500/20 text-green-400' : 'bg-white/5 hover:bg-white/10'}`}
+                    style={costPerCourt !== c ? { color: 'var(--text-secondary)' } : undefined}
+                  >
+                    ${c}
+                  </button>
+                ))}
+              </div>
+            )}
+          </Label>
 
           {advanceError && <p className="text-red-400 text-xs">{advanceError}</p>}
 
