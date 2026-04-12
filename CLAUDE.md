@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Mobile-first web app for managing casual weekly badminton sessions. Players sign up (or join waitlist when full), admin manages sessions, players, payments, and announcements. Built for "BPM Badminton", deployed on Azure App Service Free tier at `/bpm`. Sessions are date-keyed and archived.
+Mobile-first web app for managing casual weekly badminton sessions. Players sign up (or join waitlist when full), admin manages sessions, players, payments, and announcements. Built for "BPM Badminton", deployed on Azure App Service B1 tier at `/bpm`. Sessions are date-keyed and archived.
 
 ## Quick Start
 
@@ -90,6 +90,7 @@ Full session + `POST { waitlist: true }` → `waitlisted: true`. Promote via `PA
 - **Cost per person** renders inside the Announcement card, not as a standalone card. If no announcement exists, cost is hidden — intentional trade-off, keeps one club-comms surface.
 - **Previous session snapshot**: `session.prevSessionDate` and `session.prevCostPerPerson` are frozen at advance time. Used for the payment reminder below the sign-up card. Not live-updated if the archived session is edited later.
 - **DevPanel**: Add `?dev` to the URL to show a floating control panel for testing UI states (cost visibility, payment reminder, signed-up status, player count). Controls override real API data. Only active when `?dev` is in the URL.
+- **Advance form shows success toast**: 1.2s green banner before `onBack()`. Don't remove the delay — it's intentional user feedback.
 - **`.azure/` is gitignored**: Never commit.
 - **Mock store**: Test without DB by omitting `COSMOS_CONNECTION_STRING`. Verify mock query filters match real Cosmos queries.
 
