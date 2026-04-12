@@ -485,7 +485,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
       {effectiveSession?.showCostBreakdown && (effectiveSession.prevCostPerPerson ?? 0) > 0 && effectiveIsSignedUp && (
         <div className="mt-3 text-center">
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            Last session ({effectiveSession.prevSessionDate ? fmtDate(effectiveSession.prevSessionDate) : '—'}) · ${effectiveSession.prevCostPerPerson.toFixed(2)}/person
+            Last session ({effectiveSession.prevSessionDate ? fmtDate(effectiveSession.prevSessionDate) : '—'}) · ${effectiveSession.prevCostPerPerson!.toFixed(2)}/person
           </p>
           {etransferEmail && (
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
