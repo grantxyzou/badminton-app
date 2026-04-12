@@ -28,12 +28,18 @@ export function checkRateLimit(key: string, maxRequests: number, windowMs: numbe
   return true;
 }
 
+/**
+ * Get the real client IP from Azure App Service headers.
+ *
+ * ASSUMPTION: This app runs behind Azure App Service's load balancer, which
+ * sets X-Client-IP to the actual client IP and strips it from external requests.
+ * If deployed outside Azure (e.g., local tunnel, other cloud), these headers
+ * are user-controlled and rate limiting can be bypassed by spoofing them.
+ */
 export function getClientIp(req: Request): string {
   const headers = req.headers as Headers;
-  // Azure App Service sets X-Client-IP to the real client IP — use it first
   const clientIp = headers.get('x-client-ip');
   if (clientIp) return clientIp;
-  // X-Forwarded-For format on Azure: "clientIP, proxyIP" — first entry is the real client
   const forwarded = headers.get('x-forwarded-for');
   if (forwarded) {
     const first = forwarded.split(',')[0].trim();

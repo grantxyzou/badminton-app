@@ -37,6 +37,7 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
   const [editEtransferName, setEditEtransferName] = useState('');
   const [editError, setEditError] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
 
   const loadMembers = useCallback(async () => {
     try {
@@ -299,14 +300,34 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
                   <span className="material-icons icon-sm" style={{ color: 'var(--text-muted)' }}>arrow_back</span>
                   <span className="text-sm flex-1" style={{ color: 'var(--text-secondary)' }}>{alias.etransferName}</span>
                   <button onClick={() => startEdit(alias)} className="text-xs text-blue-400 hover:text-blue-300 transition-colors" style={{ minHeight: 44, display: 'flex', alignItems: 'center' }}>Edit</button>
-                  <button
-                    onClick={() => handleDeleteAlias(alias.id)}
-                    disabled={deletingId === alias.id}
-                    className="text-xs text-red-400 hover:text-red-300 transition-colors"
-                    style={{ minHeight: 44, display: 'flex', alignItems: 'center' }}
-                  >
-                    {deletingId === alias.id ? '...' : 'Delete'}
-                  </button>
+                  {confirmingDeleteId === alias.id ? (
+                    <div className="flex items-center gap-2 text-xs">
+                      <span style={{ color: 'var(--text-muted)' }}>Delete?</span>
+                      <button
+                        onClick={() => { handleDeleteAlias(alias.id); setConfirmingDeleteId(null); }}
+                        disabled={deletingId === alias.id}
+                        className="text-red-400 hover:text-red-300 transition-colors px-2 py-1"
+                        style={{ minHeight: 32 }}
+                      >
+                        {deletingId === alias.id ? '...' : 'Yes'}
+                      </button>
+                      <button
+                        onClick={() => setConfirmingDeleteId(null)}
+                        className="transition-colors px-2 py-1"
+                        style={{ color: 'var(--text-muted)', minHeight: 32 }}
+                      >
+                        No
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmingDeleteId(alias.id)}
+                      className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                      style={{ minHeight: 44, display: 'flex', alignItems: 'center' }}
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
               )
             )}
