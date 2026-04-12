@@ -49,8 +49,11 @@ Full session + `POST { waitlist: true }` → `waitlisted: true`. Promote via `PA
 - **Datetimes**: ISO 8601 with timezone offset via `withLocalTz(date, time)`. Never store plain `YYYY-MM-DDThh:mm:00`.
 - **Session IDs**: `sessionIdFromDate(iso)` → `'session-YYYY-MM-DD'`. Legacy `'current-session'` exists in prod.
 - **Cosmos DB**: Use `getContainer(name)`. **Containers**: `sessions` (PK `/sessionId`), `players` (PK `/sessionId`), `announcements` (PK `/sessionId`), `members` (PK `/id`), `aliases` (PK `/id`), `birds` (PK `/id`), `skills` (PK `/sessionId`). Always filter by `sessionId` on `players`, `announcements`, `skills`. `aliases`, `birds`, `members` are global (no sessionId filter).
+- **Cosmos `item()` calls**: `container.item(docId, partitionKeyValue)` — the second arg is the partition key VALUE, not the doc ID. The mock store ignores partition keys, so wrong values only break in production. Always use the correct partition key (e.g., `sessionId` for skills/players containers).
 - **New containers** must use `ensureContainer(name, partitionKeyPath)` from `lib/cosmos.ts` on first handler call — real Cosmos doesn't auto-create containers the way the mock does. See `app/api/skills/route.ts` for the lazy-promise pattern.
 - **Bird usages**: `session.birdUsages` is an array of `BirdUsage` objects. Legacy single-object `session.birdUsage` is read-tolerated via `normalizeBirdUsages()` in `lib/birdUsages.ts` but never written. Next admin save promotes legacy docs to array shape.
+- **React `{0 && ...}` renders `0`**: Never use a numeric value as the left side of `&&` in JSX. Use `(value ?? 0) > 0` or `!!value` to get a boolean. This applies to `perPersonCost`, `prevCostPerPerson`, player counts, etc.
+- **Cost inputs use `null` for empty**: `costPerCourt` form state is `number | null`. Empty input = `null`, displayed as placeholder "None". Send `0` to the API when null (API validates `typeof === 'number'`). The `$` prefix appears dynamically when value > 0.
 - **Errors**: API returns `NextResponse.json({ error }, { status })`. Client shows `<p className="text-red-400 text-xs" role="alert">`.
 - **Theme**: `data-theme` on `<html>`, CSS custom properties in `globals.css`. Prefer existing Tailwind classes with light-mode overrides.
 - **localStorage**: `badminton_identity` (JSON: `{ name, token, sessionId }` — use `lib/identity.ts` helpers), `badminton_theme`
@@ -67,6 +70,7 @@ Full session + `POST { waitlist: true }` → `waitlisted: true`. Promote via `PA
 8. **Capacity-check restores and promotions.** `removed: false` or `waitlisted: false` must check active count first → 409 if full.
 9. **`purgeAll: true` is irreversible.** Hard-deletes all records including soft-deleted.
 10. **Aliases require admin auth.** E-transfer names are sensitive payment data.
+11. **PIN comparison hashes first.** `admin/route.ts` hashes both PIN and admin PIN to SHA-256 before `timingSafeEqual` to avoid leaking PIN length via timing.
 
 ## Gotchas
 
@@ -84,6 +88,8 @@ Full session + `POST { waitlist: true }` → `waitlisted: true`. Promote via `PA
 - **Sheet drag gestures**: Use `touchAction: 'none'` on drag zones (React's `onTouchMove` is passive, so `preventDefault()` is a no-op). Body lock for modals must use the `position: fixed` freeze technique — plain `overflow: hidden` doesn't stop iOS rubber-band / pull-to-refresh.
 - **HomeTab card order** is deliberately context-on-top, action-on-bottom for one-handed thumb reach: `BPM|Date tile row → Announcement → Sign-Up card`. Don't flip this back without a reason.
 - **Cost per person** renders inside the Announcement card, not as a standalone card. If no announcement exists, cost is hidden — intentional trade-off, keeps one club-comms surface.
+- **Previous session snapshot**: `session.prevSessionDate` and `session.prevCostPerPerson` are frozen at advance time. Used for the payment reminder below the sign-up card. Not live-updated if the archived session is edited later.
+- **DevPanel**: Add `?dev` to the URL to show a floating control panel for testing UI states (cost visibility, payment reminder, signed-up status, player count). Controls override real API data. Only active when `?dev` is in the URL.
 - **`.azure/` is gitignored**: Never commit.
 - **Mock store**: Test without DB by omitting `COSMOS_CONNECTION_STRING`. Verify mock query filters match real Cosmos queries.
 
@@ -98,4 +104,4 @@ npm test              # run all tests (vitest)
 npm run test:watch    # watch mode
 ```
 
-85 tests across 8 suites covering API routes (admin auth, player CRUD, player self-pay, members, sessions, birds, skills). Tests use the in-memory mock store — no DB needed. Test helpers in `__tests__/helpers.ts`. Each test gets a unique IP via `X-Client-IP` to avoid rate limiter collisions.
+92 tests across 8 suites covering API routes (admin auth, player CRUD, player self-pay, members, sessions, session costs, birds, skills). Tests use the in-memory mock store — no DB needed. Test helpers in `__tests__/helpers.ts`. Each test gets a unique IP via `X-Client-IP` to avoid rate limiter collisions.

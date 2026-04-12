@@ -43,6 +43,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
   const [recentCosts, setRecentCosts] = useState<number[]>([]);
   const [advancing, setAdvancing] = useState(false);
   const [advanceError, setAdvanceError] = useState('');
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     fetch(`${BASE}/api/session`, { cache: 'no-store' })
@@ -80,7 +81,8 @@ export default function AdvanceSessionForm({ onBack }: Props) {
         }),
       });
       if (res.ok) {
-        onBack();
+        setSuccess(true);
+        setTimeout(() => onBack(), 1200);
       } else {
         const data = await res.json().catch(() => ({}));
         setAdvanceError(data.error ?? 'Failed to advance. Please try again.');
@@ -175,13 +177,23 @@ export default function AdvanceSessionForm({ onBack }: Props) {
 
           {advanceError && <p className="text-red-400 text-xs">{advanceError}</p>}
 
-          <button
-            type="submit"
-            disabled={advancing || !date || !time || !deadlineDate}
-            className="btn-primary w-full"
-          >
-            {advancing ? 'Creating...' : 'Create Next Session \u2192'}
-          </button>
+          {success ? (
+            <div className="status-banner-green">
+              <span className="material-icons icon-status text-green-400">check_circle</span>
+              <div>
+                <p className="font-semibold text-green-400 text-sm">Session created!</p>
+                <p className="text-xs text-gray-400 mt-0.5">Previous session archived.</p>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="submit"
+              disabled={advancing || !date || !time || !deadlineDate}
+              className="btn-primary w-full"
+            >
+              {advancing ? 'Creating...' : 'Create Next Session \u2192'}
+            </button>
+          )}
         </div>
       </form>
     </div>
