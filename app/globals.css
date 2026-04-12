@@ -127,8 +127,8 @@
 [data-theme="light"] {
   --page-bg: #FAF8F5;
   --text-primary: #1a2332;
-  --text-secondary: rgba(0, 0, 0, 0.55);
-  --text-muted: rgba(0, 0, 0, 0.32);
+  --text-secondary: rgba(0, 0, 0, 0.62);
+  --text-muted: rgba(0, 0, 0, 0.50);
   --accent: #16a34a;
   --accent-dark: #15803d;
   --color-scheme: light;
@@ -432,6 +432,11 @@ body {
   transform: scale(0.97);
 }
 
+.btn-primary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .btn-primary:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -464,6 +469,11 @@ body {
 
 .btn-ghost:active:not(:disabled) {
   transform: scale(0.97);
+}
+
+.btn-ghost:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .btn-ghost:disabled {

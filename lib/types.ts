@@ -16,6 +16,8 @@ export interface Session {
   /** @deprecated Legacy single-object shape; read via normalizeBirdUsages. */
   birdUsage?: BirdUsage;
   showCostBreakdown?: boolean;
+  prevSessionDate?: string;
+  prevCostPerPerson?: number;
 }
 
 export interface BirdUsage {

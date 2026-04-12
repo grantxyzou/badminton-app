@@ -18,7 +18,6 @@ export default function PlayersTab() {
 
   const loadPlayers = useCallback(async () => {
     setLoading(true);
-    const minDelay = new Promise(r => setTimeout(r, 1500));
     try {
       const [pRes, sRes] = await Promise.all([
         fetch(`${BASE}/api/players`, { cache: 'no-store' }),
@@ -26,7 +25,6 @@ export default function PlayersTab() {
       ]);
       if (pRes.ok) setPlayers(await pRes.json());
       if (sRes.ok) setSession(await sRes.json());
-      await minDelay;
     } catch {
       // silent
     } finally {

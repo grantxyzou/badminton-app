@@ -43,6 +43,9 @@ function getMockContainer(name: string) {
             if ('@pointerId' in params) {
               results = results.filter((r) => r.id !== params['@pointerId']);
             }
+            if ('@legacyId' in params) {
+              results = results.filter((r) => r.id !== params['@legacyId']);
+            }
             return { resources: results };
           },
         };

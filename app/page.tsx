@@ -8,6 +8,7 @@ import AdminTab from '@/components/AdminTab';
 import SkillsTab from '@/components/SkillsTab';
 import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
+import DevPanel, { type DevOverrides } from '@/components/DevPanel';
 import { getIdentity } from '@/lib/identity';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
@@ -17,6 +18,14 @@ export type Tab = 'home' | 'players' | 'skills' | 'admin';
 export default function Page() {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [showAdmin, setShowAdmin] = useState(false);
+  const [devMode, setDevMode] = useState(false);
+  const [devOverrides, setDevOverrides] = useState<DevOverrides>({});
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('dev')) {
+      setDevMode(true);
+    }
+  }, []);
 
   useEffect(() => {
     // Show admin tab if user has admin role OR already has a valid admin cookie
@@ -58,11 +67,12 @@ export default function Page() {
       <GlassPhysics />
       <ThemeToggle />
       <div className="max-w-lg mx-auto px-4 pt-6">
-        {activeTab === 'home' && <div key="home" className="animate-fadeIn"><HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} /></div>}
+        {activeTab === 'home' && <div key="home" className="animate-fadeIn"><HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} /></div>}
         {activeTab === 'players' && <div key="players" className="animate-fadeIn"><PlayersTab /></div>}
         {activeTab === 'skills' && <div key="skills" className="animate-fadeIn"><SkillsTab isAdmin={showAdmin} /></div>}
         {activeTab === 'admin' && showAdmin && <div key="admin" className="animate-fadeIn"><AdminTab /></div>}
       </div>
+      {devMode && <DevPanel overrides={devOverrides} onChange={setDevOverrides} />}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} showAdmin={showAdmin} />
     </div>
   );

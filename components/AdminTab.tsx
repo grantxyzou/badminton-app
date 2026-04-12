@@ -16,11 +16,8 @@ export default function AdminTab() {
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
-    const minDelay = new Promise(r => setTimeout(r, 1500));
-    Promise.all([
-      fetch(`${BASE}/api/admin`).then(r => r.json()).catch(() => ({ authed: false })),
-      minDelay,
-    ]).then(([d]) => setIsAuthed(d.authed === true))
+    fetch(`${BASE}/api/admin`).then(r => r.json()).catch(() => ({ authed: false }))
+      .then((d) => setIsAuthed(d.authed === true))
       .catch(() => setIsAuthed(false));
   }, []);
 

@@ -4,6 +4,7 @@ import {
   setupAdminPin,
   seedPointer,
   seedSession,
+  seedPlayer,
   makeRequest,
   makeAdminRequest,
   makeGetRequest,
@@ -11,6 +12,7 @@ import {
 } from './helpers';
 import { GET, PUT } from '@/app/api/session/route';
 import { POST as ADVANCE } from '@/app/api/session/advance/route';
+import { GET as GET_COSTS } from '@/app/api/sessions/costs/route';
 import { POST as CREATE_BIRD } from '@/app/api/birds/route';
 
 setupAdminPin();
@@ -277,6 +279,111 @@ describe('POST /api/session/advance', () => {
     const res = await ADVANCE(req);
 
     // ASSERT
+    expect(res.status).toBe(401);
+  });
+
+  it('carries forward costPerCourt when provided', async () => {
+    const req = makeAdminRequest('POST', 'http://localhost:3000/api/session/advance', {
+      datetime: '2026-04-12T19:00:00-07:00',
+      costPerCourt: 20,
+    });
+
+    const res = await ADVANCE(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(data.costPerCourt).toBe(20);
+  });
+
+  it('clamps costPerCourt to 0-500 range', async () => {
+    const req = makeAdminRequest('POST', 'http://localhost:3000/api/session/advance', {
+      datetime: '2026-04-19T19:00:00-07:00',
+      costPerCourt: 999,
+    });
+
+    const res = await ADVANCE(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(data.costPerCourt).toBe(500);
+  });
+
+  it('snapshots prevCostPerPerson from the current session', async () => {
+    // ARRANGE: current session has costPerCourt=20, courts=2, and 4 active players
+    const store = getStore();
+    // Index 0 is the pointer, index 1 is the actual session
+    store['sessions']![1] = {
+      ...store['sessions']![1] as Record<string, unknown>,
+      costPerCourt: 20,
+      courts: 2,
+      datetime: '2026-04-05T19:00:00-07:00',
+    };
+    // Seed 4 active players for the current session
+    seedPlayer('session-2026-04-05', 'Alice');
+    seedPlayer('session-2026-04-05', 'Bob');
+    seedPlayer('session-2026-04-05', 'Charlie');
+    seedPlayer('session-2026-04-05', 'Diana');
+
+    // ACT
+    const req = makeAdminRequest('POST', 'http://localhost:3000/api/session/advance', {
+      datetime: '2026-04-12T19:00:00-07:00',
+    });
+    const res = await ADVANCE(req);
+    const data = await res.json();
+
+    // ASSERT: (20 * 2) / 4 = $10.00 per person
+    expect(res.status).toBe(201);
+    expect(data.prevCostPerPerson).toBe(10);
+    expect(data.prevSessionDate).toBe('2026-04-05T19:00:00-07:00');
+  });
+
+  it('omits prevCostPerPerson when current session has no cost', async () => {
+    const req = makeAdminRequest('POST', 'http://localhost:3000/api/session/advance', {
+      datetime: '2026-04-12T19:00:00-07:00',
+    });
+    const res = await ADVANCE(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(data.prevCostPerPerson).toBeUndefined();
+    expect(data.prevSessionDate).toBeUndefined();
+  });
+});
+
+describe('GET /api/sessions/costs', () => {
+  beforeEach(() => {
+    resetMockStore();
+    seedPointer('session-2026-04-05');
+  });
+
+  it('returns deduplicated costs from recent sessions', async () => {
+    seedSession('session-2026-03-01', { costPerCourt: 20 });
+    seedSession('session-2026-03-08', { costPerCourt: 18 });
+    seedSession('session-2026-03-15', { costPerCourt: 20 });
+    seedSession('session-2026-04-05', { costPerCourt: 22 });
+
+    const req = makeGetRequest('http://localhost:3000/api/sessions/costs', true);
+    const res = await GET_COSTS(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.costs).toEqual([18, 20, 22]);
+  });
+
+  it('excludes sessions with no costPerCourt', async () => {
+    seedSession('session-2026-03-01', { costPerCourt: 15 });
+    seedSession('session-2026-03-08', {});
+
+    const req = makeGetRequest('http://localhost:3000/api/sessions/costs', true);
+    const res = await GET_COSTS(req);
+    const data = await res.json();
+
+    expect(data.costs).toEqual([15]);
+  });
+
+  it('non-admin → 401', async () => {
+    const req = makeGetRequest('http://localhost:3000/api/sessions/costs');
+    const res = await GET_COSTS(req);
     expect(res.status).toBe(401);
   });
 });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { timingSafeEqual } from 'crypto';
+import { timingSafeEqual, createHash } from 'crypto';
 import { setAdminCookie, clearAdminCookie, isAdminAuthed, getAdminPin, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer } from '@/lib/cosmos';
@@ -24,9 +24,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
     }
     const adminPin = getAdminPin();
-    const pinMatch =
-      pin.length === adminPin.length &&
-      timingSafeEqual(Buffer.from(pin), Buffer.from(adminPin));
+    // Hash both to fixed-length buffers to avoid leaking PIN length via timing
+    const pinHash = createHash('sha256').update(pin).digest();
+    const adminPinHash = createHash('sha256').update(adminPin).digest();
+    const pinMatch = timingSafeEqual(pinHash, adminPinHash);
     if (!pinMatch) {
       return NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
     }
