@@ -11,7 +11,7 @@
       "emphasis": "Cost this week: <amount>{value}</amount>"
     },
     "session": {
-      "date": "Session date",
+      "date": "When",
       "when": "Session on {date, date, long}"
     },
     "roster": {
