@@ -18,7 +18,8 @@
       "count": "{count, plural, other {# 人已报名}}"
     },
     "payment": {
-      "reminder": "您还欠 {amount}（{date}）"
+      "reminder": "上次活动（{date}）· {amount}/人",
+      "etransfer": "转账至 {email}"
     }
   }
 }
