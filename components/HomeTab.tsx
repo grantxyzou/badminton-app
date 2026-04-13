@@ -7,6 +7,7 @@ import { fmtDate } from '@/lib/formatters';
 import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
 import { getIdentity, setIdentity, clearIdentity } from '@/lib/identity';
 import ShuttleLoader from '@/components/ShuttleLoader';
+import CostCard from '@/components/CostCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -259,26 +260,19 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         </div>
       </div>
 
-      {/* Announcement card — also hosts the cost-per-person line when visible.
-          Intentional trade-off: if there's no announcement, the cost line is
-          hidden too. Keeps a single "club comms" surface instead of two. */}
+      {/* Cost per person — standalone card above announcement so cost is
+          visible whether or not the admin has posted an announcement. */}
+      <CostCard
+        showCostBreakdown={effectiveSession?.showCostBreakdown}
+        perPersonCost={perPersonCost}
+        datetime={effectiveSession?.datetime}
+      />
+
+      {/* Announcement card — pure club communications surface. */}
       {effectiveAnnouncement && (
         <div className="glass-card p-5 space-y-2">
           <p className="section-label">ANNOUNCEMENT</p>
           <p className="text-sm text-gray-200 leading-relaxed">{effectiveAnnouncement.text}</p>
-          {effectiveSession?.showCostBreakdown && perPersonCost !== null && perPersonCost > 0 && effectiveSession?.datetime && (
-            <div
-              className="pt-2 mt-2 flex items-center justify-between"
-              style={{ borderTop: '1px solid var(--glass-border)' }}
-            >
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Cost per person on {fmtDate(effectiveSession!.datetime)}
-              </p>
-              <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
-                ${perPersonCost.toFixed(2)}
-              </p>
-            </div>
-          )}
         </div>
       )}
 
