@@ -7,6 +7,8 @@ import { fmtDate } from '@/lib/formatters';
 import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
 import { getIdentity, setIdentity, clearIdentity } from '@/lib/identity';
 import ShuttleLoader from '@/components/ShuttleLoader';
+import CostCard from '@/components/CostCard';
+import PrevPaymentReminder from '@/components/PrevPaymentReminder';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -47,6 +49,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
   const [loading, setLoading] = useState(true);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [memberNames, setMemberNames] = useState<string[]>([]);
+  const [hasIdentity, setHasIdentity] = useState(false);
 
   const maxPlayers = parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12');
 
@@ -67,6 +70,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         if (id && id.sessionId && id.sessionId !== s.id) {
           clearIdentity();
           setCurrentUser(null);
+          setHasIdentity(false);
         }
       }
       if (pRes.ok) setPlayers(await pRes.json());
@@ -87,6 +91,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
 
   useEffect(() => {
     const id = getIdentity();
+    setHasIdentity(id !== null);
     if (id) setCurrentUser(id.name);
     loadData();
   }, [loadData]);
@@ -169,6 +174,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
       } else {
         setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session?.id ?? '' });
         setCurrentUser(name.trim());
+        setHasIdentity(true);
         await loadData();
       }
     } catch {
@@ -195,6 +201,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
       } else {
         setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session?.id ?? '' });
         setCurrentUser(name.trim());
+        setHasIdentity(true);
         await loadData();
       }
     } catch {
@@ -259,26 +266,19 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         </div>
       </div>
 
-      {/* Announcement card — also hosts the cost-per-person line when visible.
-          Intentional trade-off: if there's no announcement, the cost line is
-          hidden too. Keeps a single "club comms" surface instead of two. */}
+      {/* Cost per person — standalone card above announcement so cost is
+          visible whether or not the admin has posted an announcement. */}
+      <CostCard
+        showCostBreakdown={effectiveSession?.showCostBreakdown}
+        perPersonCost={perPersonCost}
+        datetime={effectiveSession?.datetime}
+      />
+
+      {/* Announcement card — pure club communications surface. */}
       {effectiveAnnouncement && (
         <div className="glass-card p-5 space-y-2">
           <p className="section-label">ANNOUNCEMENT</p>
           <p className="text-sm text-gray-200 leading-relaxed">{effectiveAnnouncement.text}</p>
-          {effectiveSession?.showCostBreakdown && perPersonCost !== null && perPersonCost > 0 && effectiveSession?.datetime && (
-            <div
-              className="pt-2 mt-2 flex items-center justify-between"
-              style={{ borderTop: '1px solid var(--glass-border)' }}
-            >
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Cost per person on {fmtDate(effectiveSession!.datetime)}
-              </p>
-              <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
-                ${perPersonCost.toFixed(2)}
-              </p>
-            </div>
-          )}
         </div>
       )}
 
@@ -481,19 +481,16 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           </div>
         )}
       </div>
-      {/* Subtle payment reminder for previous session — shown below sign-up card */}
-      {effectiveSession?.showCostBreakdown && (effectiveSession.prevCostPerPerson ?? 0) > 0 && effectiveIsSignedUp && (
-        <div className="mt-3 text-center">
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            Last session ({effectiveSession.prevSessionDate ? fmtDate(effectiveSession.prevSessionDate) : '—'}) · ${effectiveSession.prevCostPerPerson!.toFixed(2)}/person
-          </p>
-          {etransferEmail && (
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              E-transfer to {etransferEmail}
-            </p>
-          )}
-        </div>
-      )}
+      {/* Payment reminder for previous session — visible whenever the player
+          has identity (i.e. has signed up before), not only when signed up
+          for the current session. Addresses research finding 4.8. */}
+      <PrevPaymentReminder
+        showCostBreakdown={effectiveSession?.showCostBreakdown}
+        prevCostPerPerson={effectiveSession?.prevCostPerPerson}
+        prevSessionDate={effectiveSession?.prevSessionDate}
+        hasIdentity={hasIdentity}
+        etransferEmail={etransferEmail}
+      />
     </div>
   );
 }
