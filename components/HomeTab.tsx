@@ -70,6 +70,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         if (id && id.sessionId && id.sessionId !== s.id) {
           clearIdentity();
           setCurrentUser(null);
+          setHasIdentity(false);
         }
       }
       if (pRes.ok) setPlayers(await pRes.json());
@@ -173,6 +174,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
       } else {
         setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session?.id ?? '' });
         setCurrentUser(name.trim());
+        setHasIdentity(true);
         await loadData();
       }
     } catch {
@@ -199,6 +201,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
       } else {
         setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session?.id ?? '' });
         setCurrentUser(name.trim());
+        setHasIdentity(true);
         await loadData();
       }
     } catch {
