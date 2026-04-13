@@ -27,3 +27,6 @@ tsconfig.tsbuildinfo
 # deployment artifacts
 *.zip
 .azure/
+
+# Worktrees
+.worktrees/
