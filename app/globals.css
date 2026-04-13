@@ -888,8 +888,8 @@ textarea {
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  background: var(--bg-base, #0a0a0a);
-  color: var(--text-primary, #ffffff);
+  background: var(--page-bg, #100F0F);
+  color: var(--text-primary, #e2e8f0);
   pointer-events: none;
 }
 html[data-hydrated="true"] .splash {
