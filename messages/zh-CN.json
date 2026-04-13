@@ -11,7 +11,7 @@
       "emphasis": "本周费用：<amount>{value}</amount>"
     },
     "session": {
-      "date": "活动日期",
+      "date": "时间",
       "when": "活动时间：{date, date, long}"
     },
     "roster": {

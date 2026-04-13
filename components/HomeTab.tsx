@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import type { Session, Player, Announcement } from '@/lib/types';
 import type { DevOverrides } from '@/components/DevPanel';
 import { fmtDate } from '@/lib/formatters';
@@ -9,6 +10,7 @@ import { getIdentity, setIdentity, clearIdentity } from '@/lib/identity';
 import ShuttleLoader from '@/components/ShuttleLoader';
 import CostCard from '@/components/CostCard';
 import PrevPaymentReminder from '@/components/PrevPaymentReminder';
+import LanguageToggle from '@/components/LanguageToggle';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -39,6 +41,7 @@ function fmtDeadline(iso: string) {
 
 
 export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onTabChange?: (tab: 'home' | 'players' | 'admin') => void; onTitleTap?: () => void; devOverrides?: DevOverrides }) {
+  const t = useTranslations('home');
   const [session, setSession] = useState<Session | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
@@ -256,7 +259,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
 
         {/* Date & Time tile */}
         <div className="glass-card p-4 space-y-2">
-          <p className="section-label mb-1">WHEN</p>
+          <p className="section-label mb-1">{t('session.date')}</p>
           <p className="text-sm font-semibold text-white leading-snug">
             {session ? fmtDate(session.datetime) : '—'}
           </p>
@@ -264,6 +267,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
             {session ? fmtTime(session.datetime) : '—'}
           </p>
         </div>
+      </div>
+
+      <div className="flex justify-center">
+        <LanguageToggle />
       </div>
 
       {/* Cost per person — standalone card above announcement so cost is
@@ -355,7 +362,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
               <span className="material-icons icon-status text-amber-400">schedule</span>
               <div>
                 <p className="font-semibold text-amber-400 text-sm">You&apos;re on the waitlist</p>
-                <p className="text-xs text-gray-400 mt-0.5">Position #{waitlistPosition} of {waitlistPlayers.length} · Signed up as {currentUser}</p>
+                <p className="text-xs text-gray-400 mt-0.5">Position #{waitlistPosition} of {waitlistPlayers.length} · {t('signup.confirmed', { name: currentUser ?? '' })}</p>
               </div>
             </div>
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
@@ -372,7 +379,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
             <div className="status-banner-orange">
               <span className="material-icons icon-status text-orange-400">lock</span>
               <div>
-                <p className="font-semibold text-orange-300 text-sm">Session Full</p>
+                <p className="font-semibold text-orange-300 text-sm">{t('signup.full')}</p>
                 <p className="text-xs text-gray-400 mt-0.5">All {spotsTotal} spots are taken.</p>
               </div>
             </div>
@@ -417,7 +424,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
               </div>
               {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
               <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
-                {isSubmitting ? 'Joining…' : 'Join Waitlist'}
+                {isSubmitting ? 'Joining…' : t('signup.waitlist')}
               </button>
             </form>
           </div>
@@ -470,7 +477,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
               {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
               <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
                 {!isSubmitting && <span className="material-icons icon-sm" aria-hidden="true">how_to_reg</span>}
-                {isSubmitting ? 'Signing up…' : 'Sign Up'}
+                {isSubmitting ? 'Signing up…' : t('signup.button')}
               </button>
               {session?.deadline && (
                 <p className={`text-center text-xs font-medium ${isDeadlineApproaching ? 'text-red-400' : 'text-gray-400'}`}>
