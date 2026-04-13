@@ -9,6 +9,7 @@ import SkillsTab from '@/components/SkillsTab';
 import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
 import DevPanel, { type DevOverrides } from '@/components/DevPanel';
+import HydrationMark from '@/components/HydrationMark';
 import { getIdentity } from '@/lib/identity';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
@@ -63,17 +64,20 @@ export default function Page() {
   }, [showAdmin, activeTab]);
 
   return (
-    <div className="min-h-screen pb-32">
-      <GlassPhysics />
-      <ThemeToggle />
-      <div className="max-w-lg mx-auto px-4 pt-6">
-        {activeTab === 'home' && <div key="home" className="animate-fadeIn"><HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} /></div>}
-        {activeTab === 'players' && <div key="players" className="animate-fadeIn"><PlayersTab /></div>}
-        {activeTab === 'skills' && <div key="skills" className="animate-fadeIn"><SkillsTab isAdmin={showAdmin} /></div>}
-        {activeTab === 'admin' && showAdmin && <div key="admin" className="animate-fadeIn"><AdminTab /></div>}
+    <>
+      <HydrationMark />
+      <div className="min-h-screen pb-32">
+        <GlassPhysics />
+        <ThemeToggle />
+        <div className="max-w-lg mx-auto px-4 pt-6">
+          {activeTab === 'home' && <div key="home" className="animate-fadeIn"><HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} /></div>}
+          {activeTab === 'players' && <div key="players" className="animate-fadeIn"><PlayersTab /></div>}
+          {activeTab === 'skills' && <div key="skills" className="animate-fadeIn"><SkillsTab isAdmin={showAdmin} /></div>}
+          {activeTab === 'admin' && showAdmin && <div key="admin" className="animate-fadeIn"><AdminTab /></div>}
+        </div>
+        {devMode && <DevPanel overrides={devOverrides} onChange={setDevOverrides} />}
+        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} showAdmin={showAdmin} />
       </div>
-      {devMode && <DevPanel overrides={devOverrides} onChange={setDevOverrides} />}
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} showAdmin={showAdmin} />
-    </div>
+    </>
   );
 }

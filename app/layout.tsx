@@ -38,6 +38,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
+        {/* Cold-start splash — hidden by CSS once HydrationMark sets data-hydrated */}
+        <div className="splash" aria-hidden="true">
+          <div className="splash-shuttle" />
+          <h1 className="splash-title">BPM Badminton</h1>
+          <p className="splash-tagline">Weekly sessions</p>
+        </div>
         {/* Badminton court background */}
         <div className="court-bg" aria-hidden="true">
           <div className="aurora-blob-1" />
