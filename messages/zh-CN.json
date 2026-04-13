@@ -1,0 +1,24 @@
+{
+  "home": {
+    "signup": {
+      "button": "报名",
+      "waitlist": "加入候补",
+      "full": "名额已满",
+      "confirmed": "已报名：{name}"
+    },
+    "cost": {
+      "label": "每人费用",
+      "emphasis": "本周费用：<amount>{value}</amount>"
+    },
+    "session": {
+      "date": "活动日期",
+      "when": "活动时间：{date, date, long}"
+    },
+    "roster": {
+      "count": "{count, plural, other {# 人已报名}}"
+    },
+    "payment": {
+      "reminder": "您还欠 {amount}（{date}）"
+    }
+  }
+}
