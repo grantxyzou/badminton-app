@@ -8,6 +8,7 @@ import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
 import { getIdentity, setIdentity, clearIdentity } from '@/lib/identity';
 import ShuttleLoader from '@/components/ShuttleLoader';
 import CostCard from '@/components/CostCard';
+import PrevPaymentReminder from '@/components/PrevPaymentReminder';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -48,6 +49,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
   const [loading, setLoading] = useState(true);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [memberNames, setMemberNames] = useState<string[]>([]);
+  const [hasIdentity, setHasIdentity] = useState(false);
 
   const maxPlayers = parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12');
 
@@ -88,6 +90,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
 
   useEffect(() => {
     const id = getIdentity();
+    setHasIdentity(id !== null);
     if (id) setCurrentUser(id.name);
     loadData();
   }, [loadData]);
@@ -475,19 +478,16 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           </div>
         )}
       </div>
-      {/* Subtle payment reminder for previous session — shown below sign-up card */}
-      {effectiveSession?.showCostBreakdown && (effectiveSession.prevCostPerPerson ?? 0) > 0 && effectiveIsSignedUp && (
-        <div className="mt-3 text-center">
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            Last session ({effectiveSession.prevSessionDate ? fmtDate(effectiveSession.prevSessionDate) : '—'}) · ${effectiveSession.prevCostPerPerson!.toFixed(2)}/person
-          </p>
-          {etransferEmail && (
-            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              E-transfer to {etransferEmail}
-            </p>
-          )}
-        </div>
-      )}
+      {/* Payment reminder for previous session — visible whenever the player
+          has identity (i.e. has signed up before), not only when signed up
+          for the current session. Addresses research finding 4.8. */}
+      <PrevPaymentReminder
+        showCostBreakdown={effectiveSession?.showCostBreakdown}
+        prevCostPerPerson={effectiveSession?.prevCostPerPerson}
+        prevSessionDate={effectiveSession?.prevSessionDate}
+        hasIdentity={hasIdentity}
+        etransferEmail={etransferEmail}
+      />
     </div>
   );
 }
