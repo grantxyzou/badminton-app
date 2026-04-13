@@ -95,6 +95,11 @@ Full session + `POST { waitlist: true }` → `waitlisted: true`. Promote via `PA
 - **Advance form shows success toast**: 1.2s green banner before `onBack()`. Don't remove the delay — it's intentional user feedback.
 - **`.azure/` is gitignored**: Never commit.
 - **Mock store**: Test without DB by omitting `COSMOS_CONNECTION_STRING`. Verify mock query filters match real Cosmos queries.
+- **i18n is cookie-based, not URL-based**: `NEXT_LOCALE` cookie drives the locale. `middleware.ts` sets it on first visit from `Accept-Language`; `LanguageToggle` writes it on tap. Cookie `path` must be `/bpm` (matches `basePath`) — not `/`.
+- **Server reads cookie, client writes cookie**: never use `navigator.language` or `localStorage` for locale — it will desync server and client and cause hydration mismatches. Always go through `useLocale()` on client and `getLocale()` on server.
+- **Missing translation keys fall back to English**: `i18n/request.ts` deep-merges `messages/en.json` under the active locale, so a missing `zh-CN` key renders the English string rather than throwing. Do not rely on throwing behavior for "missing translation" detection — use the `canary-strings.test.tsx` assertion pattern.
+- **Rich-text strings use `t.rich`, not `t`**: any message containing `<tag>...</tag>` must be rendered via `t.rich('key', { tag: (chunks) => <Component>{chunks}</Component> })`. Using plain `t()` on a rich-text key prints the raw `<tag>` characters.
+- **Component tests need a provider wrapper**: components that call `useTranslations()` must be rendered inside `<NextIntlClientProvider locale="en" messages={enMessages}>` in tests, or they throw "No intl context found". See `__tests__/components/CostCard.test.tsx` for the pattern.
 
 ## Deployment
 
