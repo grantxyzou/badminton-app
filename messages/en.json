@@ -18,7 +18,8 @@
       "count": "{count, plural, =0 {No players yet} one {# player signed up} other {# players signed up}}"
     },
     "payment": {
-      "reminder": "You owe {amount} from {date}"
+      "reminder": "Last session ({date}) · {amount}/person",
+      "etransfer": "E-transfer to {email}"
     }
   }
 }
