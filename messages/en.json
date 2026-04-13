@@ -1,0 +1,24 @@
+{
+  "home": {
+    "signup": {
+      "button": "Sign Up",
+      "waitlist": "Join Waitlist",
+      "full": "Session Full",
+      "confirmed": "Signed up as {name}"
+    },
+    "cost": {
+      "label": "Cost per person",
+      "emphasis": "Cost this week: <amount>{value}</amount>"
+    },
+    "session": {
+      "date": "Session date",
+      "when": "Session on {date, date, long}"
+    },
+    "roster": {
+      "count": "{count, plural, =0 {No players yet} one {# player signed up} other {# players signed up}}"
+    },
+    "payment": {
+      "reminder": "You owe {amount} from {date}"
+    }
+  }
+}
