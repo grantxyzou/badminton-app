@@ -3,11 +3,20 @@ const nextConfig = {
   basePath: '/bpm',
   output: 'standalone',
   async headers() {
+    const isDev = process.env.NODE_ENV === 'development';
     return [
       {
         source: '/_next/static/:path*',
         headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+          // In dev, Turbopack reuses chunk URLs across rebuilds, so an immutable
+          // header makes the browser serve stale bytes after edits. Only emit
+          // the long-cache header in production builds.
+          {
+            key: 'Cache-Control',
+            value: isDev
+              ? 'no-cache, no-store, must-revalidate'
+              : 'public, max-age=31536000, immutable',
+          },
         ],
       },
       {
