@@ -30,3 +30,19 @@ tsconfig.tsbuildinfo
 
 # Worktrees
 .worktrees/
+
+# Session-generated review/screenshot artifacts
+c1-review-*.png
+c1-polish-*.png
+review-mobile-*.png
+branch-admin.png
+branch-non-admin.png
+live-admin.png
+live-non-admin.png
+favicon.png
+
+# Design playgrounds (one-off explorations, not shipped)
+*-playground.html
+
+# Playwright MCP screenshot cache
+.playwright-mcp/
