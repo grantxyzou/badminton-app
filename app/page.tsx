@@ -8,6 +8,7 @@ import AdminTab from '@/components/AdminTab';
 import SkillsTab from '@/components/SkillsTab';
 import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
+import LanguageToggle from '@/components/LanguageToggle';
 import DevPanel, { type DevOverrides } from '@/components/DevPanel';
 import HydrationMark from '@/components/HydrationMark';
 import { getIdentity } from '@/lib/identity';
@@ -69,6 +70,7 @@ export default function Page() {
       <div className="min-h-screen pb-32">
         <GlassPhysics />
         <ThemeToggle />
+        <LanguageToggle />
         <div className="max-w-lg mx-auto px-4 pt-6">
           {activeTab === 'home' && <div key="home" className="animate-fadeIn"><HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} /></div>}
           {activeTab === 'players' && <div key="players" className="animate-fadeIn"><PlayersTab /></div>}

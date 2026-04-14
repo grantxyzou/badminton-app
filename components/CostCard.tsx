@@ -14,11 +14,11 @@ export default function CostCard({ showCostBreakdown, perPersonCost, datetime }:
 
   return (
     <div className="glass-card p-5 flex items-center justify-between">
-      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+      <p className="text-sm font-semibold text-gray-200">
         {t('label')}
       </p>
       <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
-        ${perPersonCost.toFixed(2)}
+        ~${perPersonCost.toFixed(2)}
       </p>
     </div>
   );

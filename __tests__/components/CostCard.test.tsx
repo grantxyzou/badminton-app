@@ -21,8 +21,8 @@ describe('CostCard', () => {
         />
       </NextIntlClientProvider>
     );
-    expect(screen.getByText(/Cost per person/i)).toBeTruthy();
-    expect(screen.getByText('$11.25')).toBeTruthy();
+    expect(screen.getByText(/Estimated cost/i)).toBeTruthy();
+    expect(screen.getByText('~$11.25')).toBeTruthy();
   });
 
   it('renders nothing when showCostBreakdown is false', () => {
@@ -83,6 +83,6 @@ describe('CostCard', () => {
         <CostCard showCostBreakdown={true} perPersonCost={10} datetime="2026-04-13T19:00:00-04:00" />
       </NextIntlClientProvider>,
     );
-    expect(screen.getByText('每人费用')).toBeTruthy();
+    expect(screen.getByText('预估费用')).toBeTruthy();
   });
 });
