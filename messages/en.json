@@ -1,18 +1,25 @@
 {
   "home": {
     "signup": {
+      "heading": "Sign up",
       "button": "Sign Up",
       "waitlist": "Join Waitlist",
       "full": "Session Full",
       "confirmed": "Signed up as {name}"
     },
     "cost": {
-      "label": "Cost per person",
+      "label": "Estimated cost",
       "emphasis": "Cost this week: <amount>{value}</amount>"
     },
     "session": {
       "date": "When",
       "when": "Session on {date, date, long}"
+    },
+    "location": {
+      "label": "Location"
+    },
+    "announcement": {
+      "label": "Announcement"
     },
     "roster": {
       "count": "{count, plural, =0 {No players yet} one {# player signed up} other {# players signed up}}"

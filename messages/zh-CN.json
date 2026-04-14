@@ -1,18 +1,25 @@
 {
   "home": {
     "signup": {
+      "heading": "报名",
       "button": "报名",
       "waitlist": "加入候补",
       "full": "名额已满",
       "confirmed": "已报名：{name}"
     },
     "cost": {
-      "label": "每人费用",
+      "label": "预估费用",
       "emphasis": "本周费用：<amount>{value}</amount>"
     },
     "session": {
       "date": "时间",
       "when": "活动时间：{date, date, long}"
+    },
+    "location": {
+      "label": "地址"
+    },
+    "announcement": {
+      "label": "公告"
     },
     "roster": {
       "count": "{count, plural, other {# 人已报名}}"

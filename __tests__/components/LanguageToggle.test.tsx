@@ -25,32 +25,34 @@ describe('LanguageToggle', () => {
     document.cookie = 'NEXT_LOCALE=; path=/bpm; max-age=0';
   });
 
-  it('renders both language options', () => {
+  it('renders a single icon button', () => {
     renderWithLocale('en');
-    expect(screen.getByRole('radio', { name: 'EN' })).toBeTruthy();
-    expect(screen.getByRole('radio', { name: '中文' })).toBeTruthy();
+    const buttons = screen.getAllByRole('button');
+    expect(buttons.length).toBe(1);
+    expect(buttons[0].textContent).toBe('translate');
   });
 
-  it('marks the current locale as active', () => {
+  it('shows aria-label pointing to the OTHER locale (English → 中文)', () => {
+    renderWithLocale('en');
+    expect(screen.getByRole('button', { name: 'Switch to 中文' })).toBeTruthy();
+  });
+
+  it('shows aria-label pointing to the OTHER locale (zh-CN → English)', () => {
     renderWithLocale('zh-CN');
-    const zh = screen.getByRole('radio', { name: '中文' });
-    const en = screen.getByRole('radio', { name: 'EN' });
-    expect(zh.getAttribute('aria-checked')).toBe('true');
-    expect(en.getAttribute('aria-checked')).toBe('false');
-    expect(zh.className).toContain('segment-tab-active');
-    expect(en.className).toContain('segment-tab-inactive');
+    expect(screen.getByRole('button', { name: 'Switch to English' })).toBeTruthy();
   });
 
-  it('writes the cookie and calls router.refresh when a different locale is clicked', () => {
+  it('clicking from en writes zh-CN cookie and refreshes', () => {
     renderWithLocale('en');
-    fireEvent.click(screen.getByRole('radio', { name: '中文' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to 中文' }));
     expect(document.cookie).toContain('NEXT_LOCALE=zh-CN');
     expect(refreshMock).toHaveBeenCalledTimes(1);
   });
 
-  it('does nothing when the active locale is re-clicked', () => {
-    renderWithLocale('en');
-    fireEvent.click(screen.getByRole('radio', { name: 'EN' }));
-    expect(refreshMock).not.toHaveBeenCalled();
+  it('clicking from zh-CN writes en cookie and refreshes', () => {
+    renderWithLocale('zh-CN');
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to English' }));
+    expect(document.cookie).toContain('NEXT_LOCALE=en');
+    expect(refreshMock).toHaveBeenCalledTimes(1);
   });
 });

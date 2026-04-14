@@ -10,7 +10,6 @@ import { getIdentity, setIdentity, clearIdentity } from '@/lib/identity';
 import ShuttleLoader from '@/components/ShuttleLoader';
 import CostCard from '@/components/CostCard';
 import PrevPaymentReminder from '@/components/PrevPaymentReminder';
-import LanguageToggle from '@/components/LanguageToggle';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -224,20 +223,23 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
 
   return (
     <div className="space-y-5">
-      {/* Tile row: BPM Badminton | Date & Time */}
+      {/* Page title — pulled out of the LOCATION tile so it reads as the
+          page header, left-aligned with the card stack below. */}
+      <h1
+        className="text-3xl font-bold text-gray-200 leading-tight px-2"
+        onClick={onTitleTap}
+        style={{ cursor: 'default', userSelect: 'none' }}
+      >
+        BPM Badminton
+      </h1>
+
+      {/* Tile row: Location | Date & Time */}
       <div className="grid grid-cols-2 gap-3">
-        {/* BPM tile */}
+        {/* Location tile */}
         <div className="glass-card p-4 space-y-2">
-          <p className="section-label mb-1">BPM</p>
-          <h1
-            className="text-lg font-bold text-white leading-tight"
-            onClick={onTitleTap}
-            style={{ cursor: 'default', userSelect: 'none' }}
-          >
-            BPM Badminton
-          </h1>
+          <p className="section-label mb-1">{t('location.label')}</p>
           {session?.locationName && (
-            <p className="text-xs font-semibold text-white line-clamp-2">
+            <p className="text-lg font-semibold text-gray-200 leading-snug line-clamp-2">
               {session.locationName}
             </p>
           )}
@@ -260,17 +262,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         {/* Date & Time tile */}
         <div className="glass-card p-4 space-y-2">
           <p className="section-label mb-1">{t('session.date')}</p>
-          <p className="text-sm font-semibold text-white leading-snug">
+          <p className="text-lg font-semibold text-gray-200 leading-snug">
             {session ? fmtDate(session.datetime) : '—'}
           </p>
-          <p className="text-sm font-semibold text-white leading-snug">
+          <p className="text-lg font-semibold text-gray-200 leading-snug">
             {session ? fmtTime(session.datetime) : '—'}
           </p>
         </div>
-      </div>
-
-      <div className="flex justify-center">
-        <LanguageToggle />
       </div>
 
       {/* Cost per person — standalone card above announcement so cost is
@@ -284,7 +282,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
       {/* Announcement card — pure club communications surface. */}
       {effectiveAnnouncement && (
         <div className="glass-card p-5 space-y-2">
-          <p className="section-label">ANNOUNCEMENT</p>
+          <p className="section-label">{t('announcement.label')}</p>
           <p className="text-sm text-gray-200 leading-relaxed">{effectiveAnnouncement.text}</p>
         </div>
       )}
@@ -295,7 +293,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         {isSessionFinished ? (
           /* ── State: Session finished ── */
           <div className="space-y-4">
-            <p className="text-xl font-bold text-green-400">Sign up</p>
+            <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
             <div className="status-banner-green">
               <span className="material-icons icon-status text-green-400">celebration</span>
               <div>
@@ -307,7 +305,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         ) : isSignupClosed && !effectiveIsSignedUp && !isWaitlisted ? (
           /* ── State: Sign-ups opening soon ── */
           <div className="space-y-4">
-            <p className="text-xl font-bold text-green-400">Sign up</p>
+            <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
             <div className="status-banner-orange">
               <span className="material-icons icon-status text-amber-400">hourglass_top</span>
               <div>
@@ -319,7 +317,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         ) : isDeadlinePast && !effectiveIsSignedUp && !isWaitlisted ? (
           /* ── State: Deadline passed ── */
           <div className="space-y-4">
-            <p className="text-xl font-bold text-green-400">Sign up</p>
+            <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
             <div className="status-banner-orange">
               <span className="material-icons icon-status text-amber-400">lock_clock</span>
               <div>
@@ -332,13 +330,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           /* ── State 1: Active sign-up ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">
-              <p className="text-xl font-bold text-green-400">Sign up</p>
+              <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
               <p className="text-sm text-gray-400">Signed-up: {activePlayers.length} · {spotsTotal - activePlayers.length} spots left</p>
             </div>
             <div className="status-banner-green">
               <span className="material-icons icon-status text-green-400">check_circle</span>
               <div>
-                <p className="font-semibold text-green-400 text-sm">{currentUser}, thank you for signing up!</p>
+                <p className="font-semibold text-green-400 text-sm">{currentUser ? `${currentUser}, thank you for signing up!` : 'Thanks for signing up!'}</p>
                 <p className="text-xs text-gray-400 mt-0.5">See you soon!</p>
               </div>
             </div>
@@ -350,7 +348,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           /* ── State 2: On waitlist ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">
-              <p className="text-xl font-bold text-green-400">Sign up</p>
+              <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
               <div className="text-right">
                 <p className="text-xs text-gray-400">Waitlist</p>
                 <p className="text-2xl font-bold text-amber-400 leading-none mt-0.5">
@@ -373,7 +371,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           /* ── State 3: Full — join waitlist form ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">
-              <p className="text-xl font-bold text-green-400">Sign up</p>
+              <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
               <p className="text-sm text-gray-400">Signed-up: {activePlayers.length} · Full</p>
             </div>
             <div className="status-banner-orange">
@@ -432,7 +430,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           /* ── State 4: Open — normal sign-up ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">
-              <p className="text-xl font-bold text-green-400">Sign up</p>
+              <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
               <p className="text-sm text-gray-400">Signed-up: {activePlayers.length} · {spotsTotal - activePlayers.length} spots left</p>
             </div>
             <form onSubmit={handleSignUp} className="space-y-3">
