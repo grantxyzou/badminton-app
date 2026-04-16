@@ -251,7 +251,7 @@ export default function SkillsRadar({
               <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
                 {dim.name}
               </p>
-              <p className="text-sm font-bold mt-1" style={{ color: 'var(--accent)' }}>
+              <p className="text-sm font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
                 {score > 0 ? `${score} — ${levelName}` : 'Not rated'}
               </p>
             </button>
@@ -324,7 +324,7 @@ function SkillDetailSheet({ dimId, type, playerName, score, onScoreChange, onClo
       <div style={glassStyle}>
         {/* Header */}
         <BottomSheetHeader className="flex items-center justify-between px-5 pt-4 pb-3">
-          <h2 className="text-lg font-bold" style={{ color: 'var(--accent)' }}>
+          <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
             {dim.name}
           </h2>
           <button
@@ -395,14 +395,14 @@ function DetailContent({
           }}
         >
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+            <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
               {playerName}
             </span>
             <span
               className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
               style={{
                 background: 'rgba(74, 222, 128, 0.2)',
-                color: 'var(--accent)',
+                color: 'var(--text-primary)',
               }}
             >
               {score} — {levelName}
@@ -441,14 +441,14 @@ function DetailContent({
             <div key={l.level} className="flex gap-3">
               <span
                 className="text-sm font-bold shrink-0 mt-0.5"
-                style={{ color: isActive ? 'var(--accent)' : 'var(--text-muted)', width: 14 }}
+                style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-muted)', width: 14 }}
               >
                 {l.level}
               </span>
               <div className="min-w-0">
                 <span
                   className="text-sm font-semibold"
-                  style={{ color: isActive ? 'var(--accent)' : 'var(--text-secondary)' }}
+                  style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)' }}
                 >
                   {l.name} —{' '}
                 </span>
