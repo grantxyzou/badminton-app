@@ -1,5 +1,6 @@
-import { useTranslations } from 'next-intl';
-import { fmtDate } from '@/lib/formatters';
+import { useTranslations, useFormatter } from 'next-intl';
+
+const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
 
 export interface PrevPaymentReminderProps {
   showCostBreakdown: boolean | undefined;
@@ -17,6 +18,7 @@ export default function PrevPaymentReminder({
   etransferEmail,
 }: PrevPaymentReminderProps) {
   const t = useTranslations('home.payment');
+  const format = useFormatter();
 
   if (!showCostBreakdown) return null;
   if (!hasIdentity) return null;
@@ -26,7 +28,7 @@ export default function PrevPaymentReminder({
     <div className="mt-3 text-center">
       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
         {t('reminder', {
-          date: prevSessionDate ? fmtDate(prevSessionDate) : '—',
+          date: prevSessionDate ? format.dateTime(new Date(prevSessionDate), DAY_LONG) : '—',
           amount: `$${prevCostPerPerson!.toFixed(2)}`,
         })}
       </p>
