@@ -44,6 +44,11 @@
       "close": "Close"
     }
   },
+  "pages": {
+    "signup": { "title": "Sign-Up" },
+    "learn": { "title": "Learn" },
+    "admin": { "title": "Admin" }
+  },
   "admin": {
     "releases": {
       "newButton": "New release",
