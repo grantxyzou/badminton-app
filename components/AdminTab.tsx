@@ -75,8 +75,7 @@ export default function AdminTab() {
           <div className="glass-card p-6 w-full max-w-xs space-y-5">
             <div className="text-center">
               <span className="material-icons icon-xl text-green-400">lock</span>
-              <h2 className="text-lg font-bold text-green-400 mt-2">Admin Access</h2>
-              <p className="text-sm text-gray-400 mt-0.5">Enter your PIN to continue</p>
+              <p className="text-sm text-gray-400 mt-2">Enter your PIN to continue</p>
             </div>
             <form onSubmit={handlePinSubmit} className="space-y-3">
               <input

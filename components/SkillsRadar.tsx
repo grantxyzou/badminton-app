@@ -115,14 +115,6 @@ export default function SkillsRadar({
 
   return (
     <div className="space-y-4 pb-4">
-      {/* Header */}
-      <div className="text-center">
-        <p className="section-label mb-1">Skills Radar</p>
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          ACE Scale &middot; BPM Badminton
-        </p>
-      </div>
-
       {/* Solo / Overlay toggle */}
       <div className="flex justify-center">
         <div className="segment-control flex" style={{ width: 200 }}>
