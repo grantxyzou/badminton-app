@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   ResponsiveContainer,
 } from 'recharts';
 import { SKILL_DIMENSIONS, SKILL_LEVELS } from '@/lib/skills-data';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody } from './BottomSheet';
 
 /* ── Types ── */
 export interface PlayerSkills {
@@ -290,181 +291,77 @@ interface SkillDetailSheetProps {
 
 function SkillDetailSheet({ dimId, type, playerName, score, onScoreChange, onClose, onSwitchToEdit }: SkillDetailSheetProps) {
   const dim = SKILL_DIMENSIONS.find(d => d.id === dimId);
-  const sheetRef = useRef<HTMLDivElement>(null);
-  const [dragY, setDragY] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const startY = useRef(0);
-
-  // Lock the viewport while the sheet is open. Plain `overflow: hidden` on
-  // body is not enough on iOS — the browser still rubber-bands and fires
-  // pull-to-refresh. The "position: fixed" freeze technique below pins the
-  // body to its current scroll position so no gesture can move it.
-  useEffect(() => {
-    const scrollY = window.scrollY;
-    const body = document.body;
-    const html = document.documentElement;
-    const prev = {
-      position: body.style.position,
-      top: body.style.top,
-      left: body.style.left,
-      right: body.style.right,
-      width: body.style.width,
-      overflow: body.style.overflow,
-      overscroll: html.style.overscrollBehavior,
-    };
-    body.style.position = 'fixed';
-    body.style.top = `-${scrollY}px`;
-    body.style.left = '0';
-    body.style.right = '0';
-    body.style.width = '100%';
-    body.style.overflow = 'hidden';
-    html.style.overscrollBehavior = 'none';
-    return () => {
-      body.style.position = prev.position;
-      body.style.top = prev.top;
-      body.style.left = prev.left;
-      body.style.right = prev.right;
-      body.style.width = prev.width;
-      body.style.overflow = prev.overflow;
-      html.style.overscrollBehavior = prev.overscroll;
-      window.scrollTo(0, scrollY);
-    };
-  }, []);
-
   if (!dim) return null;
 
   const levelName = SKILL_LEVELS.find(l => l.level === score)?.name ?? '—';
 
-  const handleTouchDragStart = (clientY: number) => {
-    startY.current = clientY;
-    setDragging(true);
-  };
-  const handleTouchDragMove = (clientY: number) => {
-    if (!dragging) return;
-    const delta = Math.max(0, clientY - startY.current);
-    setDragY(delta);
-  };
-  const handleTouchDragEnd = () => {
-    setDragging(false);
-    if (dragY > 100) {
-      onClose();
-    } else {
-      setDragY(0);
-    }
+  // Inline glass styling (preserved from original). Applied to a wrapper inside
+  // the primitive so the visual appearance is unchanged.
+  const glassStyle: React.CSSProperties = {
+    background: 'var(--glass-bg)',
+    WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(140%)',
+    backdropFilter: 'blur(var(--glass-blur)) saturate(140%)',
+    border: '1px solid var(--glass-border)',
+    borderBottom: 'none',
+    boxShadow: 'var(--glass-shadow)',
   };
 
   return (
-    <>
-      {/* Backdrop — zIndex 55 (inline style, not Tailwind class, so it can't
-          get stripped by JIT or overridden). Covers BottomNav (z-50) and
-          everything underneath. */}
-      <div
-        className="fixed inset-0 animate-fadeIn"
-        style={{
-          background: 'rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(4px)',
-          WebkitBackdropFilter: 'blur(4px)',
-          zIndex: 55,
-        }}
-        onClick={onClose}
-      />
-
-      {/* Sheet — zIndex 60 so it sits above both the backdrop and BottomNav.
-          maxHeight 72vh gives a clear visual gap between the top of the sheet
-          and the top of the viewport, which reads as a true "action sheet"
-          instead of a full-screen modal. */}
-      <div
-        ref={sheetRef}
-        className="fixed left-0 right-0 bottom-0 max-w-lg mx-auto"
-        style={{
-          transform: `translateY(${dragY}px)`,
-          transition: dragging ? 'none' : 'transform 0.3s ease-out',
-          maxHeight: '72vh',
-          zIndex: 60,
-        }}
-      >
-        <div
-          className="rounded-t-2xl overflow-hidden animate-slideUp"
-          style={{
-            background: 'var(--glass-bg)',
-            WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(140%)',
-            backdropFilter: 'blur(var(--glass-blur)) saturate(140%)',
-            border: '1px solid var(--glass-border)',
-            borderBottom: 'none',
-            boxShadow: 'var(--glass-shadow)',
-          }}
-        >
-          {/* Drag handle — touch-action: none tells the browser not to
-              interpret touches here as scroll/pan/zoom. Hit area is padded
-              generously (py-4) so a thumb can land without precision. */}
-          <div
-            className="flex justify-center py-4 cursor-grab active:cursor-grabbing"
-            style={{ touchAction: 'none' }}
-            onTouchStart={(e) => handleTouchDragStart(e.touches[0].clientY)}
-            onTouchMove={(e) => handleTouchDragMove(e.touches[0].clientY)}
-            onTouchEnd={handleTouchDragEnd}
-            onTouchCancel={handleTouchDragEnd}
-          >
-            <div
-              className="rounded-full"
-              style={{ width: 36, height: 4, background: 'var(--text-muted)' }}
-            />
-          </div>
-
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 pb-3">
-            <h2 className="text-lg font-bold" style={{ color: 'var(--accent)' }}>
-              {dim.name}
-            </h2>
-            <button
-              onClick={onClose}
-              className="flex items-center justify-center rounded-full"
-              style={{
-                width: 32,
-                height: 32,
-                background: 'var(--inner-card-bg)',
-                border: '1px solid var(--inner-card-border)',
-              }}
-            >
-              <span className="material-icons" style={{ fontSize: 18, color: 'var(--text-muted)' }}>
-                close
-              </span>
-            </button>
-          </div>
-
-          {/* Content — overscroll-behavior: contain prevents the sheet's
-              inner scroll from chaining to the body when it hits its edge.
-              WebkitOverflowScrolling: touch gives iOS momentum scroll, which
-              is important when the content is long (e.g., 6 ACE levels each
-              with a paragraph of description). */}
-          <div
-            className="px-5 pb-8 overflow-y-auto"
+    <BottomSheet
+      open={true}
+      onClose={onClose}
+      ariaLabel={`${dim.name} for ${playerName}`}
+      maxHeight="72vh"
+      className="max-w-lg mx-auto"
+    >
+      <div style={glassStyle}>
+        {/* Header */}
+        <BottomSheetHeader className="flex items-center justify-between px-5 pt-4 pb-3">
+          <h2 className="text-lg font-bold" style={{ color: 'var(--accent)' }}>
+            {dim.name}
+          </h2>
+          <button
+            onClick={onClose}
+            className="flex items-center justify-center rounded-full"
             style={{
-              maxHeight: 'calc(72vh - 80px)',
-              paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))',
-              overscrollBehavior: 'contain',
-              WebkitOverflowScrolling: 'touch',
+              width: 32,
+              height: 32,
+              background: 'var(--inner-card-bg)',
+              border: '1px solid var(--inner-card-border)',
             }}
           >
-            {type === 'detail' ? (
-              <DetailContent
-                dim={dim}
-                playerName={playerName}
-                score={score}
-                levelName={levelName}
-                onEdit={onSwitchToEdit}
-              />
-            ) : (
-              <EditContent
-                dim={dim}
-                score={score}
-                onScoreChange={onScoreChange}
-              />
-            )}
-          </div>
-        </div>
+            <span className="material-icons" style={{ fontSize: 18, color: 'var(--text-muted)' }}>
+              close
+            </span>
+          </button>
+        </BottomSheetHeader>
+
+        {/* Content — overscroll-behavior: contain prevents the sheet's
+            inner scroll from chaining to the body when it hits its edge.
+            WebkitOverflowScrolling: touch gives iOS momentum scroll, which
+            is important when the content is long (e.g., 6 ACE levels each
+            with a paragraph of description). */}
+        <BottomSheetBody
+          className="px-5 pb-8"
+        >
+          {type === 'detail' ? (
+            <DetailContent
+              dim={dim}
+              playerName={playerName}
+              score={score}
+              levelName={levelName}
+              onEdit={onSwitchToEdit}
+            />
+          ) : (
+            <EditContent
+              dim={dim}
+              score={score}
+              onScoreChange={onScoreChange}
+            />
+          )}
+        </BottomSheetBody>
       </div>
-    </>
+    </BottomSheet>
   );
 }
 
