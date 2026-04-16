@@ -90,3 +90,18 @@ export interface PlayerSkills {
   scores: Record<string, number>;  // ACE dimension id → 0..6
   updatedAt: string;
 }
+
+export interface Release {
+  id: string;
+  version: string;
+  title: {
+    en: string;
+    'zh-CN': string;
+  };
+  body: {
+    en: string;
+    'zh-CN': string;
+  };
+  publishedAt: string;
+  publishedBy: 'admin';
+}
