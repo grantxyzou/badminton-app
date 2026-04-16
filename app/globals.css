@@ -971,3 +971,29 @@ html[data-hydrated="true"] .splash {
 .terminal-body    { color: var(--terminal-body); }
 
 .terminal-accent-text { color: var(--terminal-accent); }
+
+/* ── BottomSheet primitive ── */
+.bottom-sheet {
+  transform: translateY(100%);
+  opacity: 0;
+  transition:
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.bottom-sheet[data-state="open"] {
+  transform: translateY(0);
+  opacity: 1;
+}
+.bottom-sheet[data-state="closing"] {
+  transform: translateY(100%);
+  opacity: 0;
+}
+.bottom-sheet[data-state="opening"],
+.bottom-sheet[data-state="closing"] {
+  will-change: transform, opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bottom-sheet {
+    transition: none;
+  }
+}

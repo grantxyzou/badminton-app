@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // @vitest-environment-options { "url": "http://localhost:3000/bpm" }
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../../../components/BottomSheet';
 
 describe('BottomSheet — skeleton', () => {
@@ -76,7 +76,7 @@ describe('BottomSheet — interactions', () => {
     expect(document.body.style.position).toBe('fixed');
   });
 
-  it('restores body scroll when closed', () => {
+  it('restores body scroll when closed', async () => {
     const { rerender } = render(
       <BottomSheet open={true} onClose={vi.fn()} ariaLabel="x">
         <BottomSheetBody>content</BottomSheetBody>
@@ -88,6 +88,13 @@ describe('BottomSheet — interactions', () => {
         <BottomSheetBody>content</BottomSheetBody>
       </BottomSheet>,
     );
-    expect(document.body.style.position).toBe('');
+    // Wait for state machine to reach 'closed' (220ms safety net, since
+    // jsdom does not fire CSS transitionend events).
+    await waitFor(
+      () => {
+        expect(document.body.style.position).toBe('');
+      },
+      { timeout: 500 },
+    );
   });
 });
