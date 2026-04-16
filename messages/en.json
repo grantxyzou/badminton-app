@@ -5,7 +5,9 @@
       "button": "Sign Up",
       "waitlist": "Join Waitlist",
       "full": "Session Full",
-      "confirmed": "Signed up as {name}"
+      "confirmed": "Signed up as {name}",
+      "inviteError": "We don't have \"{name}\" on our invite list. Check the spelling, or ask the friend who shared this app with you to add you.",
+      "networkError": "Network error. Please try again."
     },
     "cost": {
       "label": "Estimated cost",
@@ -20,6 +22,14 @@
     },
     "announcement": {
       "label": "Announcement"
+    },
+    "welcome": {
+      "title": "Welcome to BPM Badminton",
+      "schedule": "📅 Weekly sessions on Thursdays",
+      "invite": "🎟️ Invite-only — your name needs to be added",
+      "payment": "💵 Pay your share via e-transfer after the session",
+      "help": "Ask the player who shared this with you for help.",
+      "dismiss": "Got it"
     },
     "roster": {
       "count": "{count, plural, =0 {No players yet} one {# player signed up} other {# players signed up}}"
