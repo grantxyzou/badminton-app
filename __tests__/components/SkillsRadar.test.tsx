@@ -160,3 +160,34 @@ describe('SkillsRadar — sheet lifecycle (characterization, M1 mitigation)', ()
     expect(body).toEqual({ id: 'p1', scores: { 'grip-stroke': 5 } });
   });
 });
+
+/**
+ * Green-rebalance characterization (2026-04-16): after demoting informational
+ * level text from var(--accent) to var(--text-primary), the category card's
+ * level readout MUST render with primary color, not accent. Preserves the five
+ * swaps from the page-headers-skills-polish branch through future changes.
+ */
+describe('SkillsRadar — green rebalance', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ ok: true } as Response)));
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it('category card level text uses primary color, not accent green', () => {
+    renderRadar();
+    // Category cards render a button per skill dimension with two <p> tags:
+    // the dimension name and the level readout ("3 — Competent" or "Not rated").
+    // Assert the level readout's inline style uses var(--text-primary), not
+    // var(--accent), per the 2026-04-16 green-rebalance spec.
+    const levelTexts = screen.getAllByText(/—|Not rated/);
+    expect(levelTexts.length).toBeGreaterThan(0);
+    const first = levelTexts[0]!;
+    const styleAttr = first.getAttribute('style') ?? '';
+    expect(styleAttr).not.toContain('var(--accent)');
+    expect(styleAttr).toContain('var(--text-primary)');
+  });
+});

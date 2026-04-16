@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import type { Player, Session } from '@/lib/types';
 import { fmtDate } from '@/lib/formatters';
 import { getIdentity, clearIdentity } from '@/lib/identity';
@@ -9,6 +10,7 @@ import ShuttleLoader from '@/components/ShuttleLoader';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 export default function PlayersTab() {
+  const pageT = useTranslations('pages.signup');
   const [players, setPlayers] = useState<Player[]>([]);
   const [session, setSession] = useState<Session | null>(null);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
@@ -62,7 +64,14 @@ export default function PlayersTab() {
   }
 
   if (loading) {
-    return <ShuttleLoader text="Loading players..." />;
+    return (
+      <div className="space-y-5">
+        <h1 className="text-3xl font-bold text-gray-200 leading-tight px-2">
+          {pageT('title')}
+        </h1>
+        <ShuttleLoader text="Loading players..." />
+      </div>
+    );
   }
 
   const activePlayers = players.filter(p => !p.waitlisted);
@@ -70,9 +79,14 @@ export default function PlayersTab() {
 
   if (activePlayers.length === 0 && waitlistPlayers.length === 0) {
     return (
-      <div className="glass-card p-10 text-center">
-        <span className="material-icons block mb-2 text-gray-500" style={{ fontSize: 36, opacity: 0.25 }}>sports_tennis</span>
-        <p className="text-gray-500 text-sm">No one&apos;s signed up yet — be the first!</p>
+      <div className="space-y-5">
+        <h1 className="text-3xl font-bold text-gray-200 leading-tight px-2">
+          {pageT('title')}
+        </h1>
+        <div className="glass-card p-10 text-center">
+          <span className="material-icons block mb-2 text-gray-500" style={{ fontSize: 36, opacity: 0.25 }}>sports_tennis</span>
+          <p className="text-gray-500 text-sm">No one&apos;s signed up yet — be the first!</p>
+        </div>
       </div>
     );
   }
@@ -80,7 +94,11 @@ export default function PlayersTab() {
   const gameDate = session?.datetime ? fmtDate(session.datetime) : '';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      <h1 className="text-3xl font-bold text-gray-200 leading-tight px-2">
+        {pageT('title')}
+      </h1>
+      <div className="space-y-4">
       {/* Active players card */}
       <div className="glass-card overflow-hidden">
         <div className="px-4 pt-3 pb-2 section-label">
@@ -191,6 +209,7 @@ export default function PlayersTab() {
             </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
