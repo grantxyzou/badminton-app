@@ -7,8 +7,35 @@
       "full": "名额已满",
       "confirmed": "已报名：{name}",
       "inviteError": "邀请名单上没有\"{name}\"。请检查拼写，或联系分享此应用的朋友将您添加。",
-      "networkError": "网络错误，请重试。"
+      "networkError": "网络错误，请重试。",
+      "nameRequired": "请输入您的姓名以报名",
+      "genericFailure": "报名失败",
+      "waitlistFailure": "加入候补失败",
+      "namePlaceholder": "输入您的姓名",
+      "nameAriaLabel": "您的姓名",
+      "joining": "正在加入…",
+      "submitting": "正在报名…",
+      "viewList": "查看报名列表",
+      "spotsRemaining": "已报名 {count} 人 · 剩余 {remaining} 个名额",
+      "spotsFull": "已报名 {count} 人 · 满员",
+      "allSpotsTaken": "全部 {total} 个名额已满。",
+      "closesOn": "报名截止于 {date}",
+      "closedPreviously": "报名已于 {date} 截止"
     },
+    "states": {
+      "finishedTitle": "感谢参与！",
+      "finishedBody": "下周的报名稍后公布。",
+      "openingSoonTitle": "报名即将开放",
+      "openingSoonBody": "稍后再来查看。",
+      "closedTitle": "报名已截止",
+      "signedUpTitle": "{name}，感谢您的报名！",
+      "signedUpTitleGeneric": "感谢您的报名！",
+      "signedUpBody": "期待与您相见！",
+      "waitlistLabel": "候补",
+      "waitlistTitle": "您在候补名单上",
+      "waitlistPositionLabel": "候补第 {position} 位 / 共 {total} 位"
+    },
+    "loading": "正在加载活动…",
     "cost": {
       "label": "预估费用",
       "emphasis": "本周费用：<amount>{value}</amount>"
@@ -48,6 +75,25 @@
     "signup": { "title": "报名" },
     "learn": { "title": "进阶技能" },
     "admin": { "title": "管理" }
+  },
+  "nav": {
+    "home": "首页",
+    "signups": "报名",
+    "skills": "即将推出",
+    "admin": "管理"
+  },
+  "players": {
+    "loading": "正在加载报名名单…",
+    "empty": "还没有人报名 — 来当第一个吧！",
+    "upcomingSession": "即将举行的活动",
+    "waitlistHeader": "候补名单",
+    "youSuffix": "（您）",
+    "cancelAction": "取消",
+    "leaveAction": "离开",
+    "cancelConfirm": "取消您的名额？",
+    "confirmYes": "是",
+    "confirmNo": "否",
+    "cancelFailure": "取消失败，请重试。"
   },
   "admin": {
     "releases": {
