@@ -5,7 +5,9 @@
       "button": "报名",
       "waitlist": "加入候补",
       "full": "名额已满",
-      "confirmed": "已报名：{name}"
+      "confirmed": "已报名：{name}",
+      "inviteError": "邀请名单上没有\"{name}\"。请检查拼写，或联系分享此应用的朋友将您添加。",
+      "networkError": "网络错误，请重试。"
     },
     "cost": {
       "label": "预估费用",
@@ -20,6 +22,14 @@
     },
     "announcement": {
       "label": "公告"
+    },
+    "welcome": {
+      "title": "欢迎来到 BPM 羽毛球",
+      "schedule": "📅 每周四活动",
+      "invite": "🎟️ 仅限邀请 — 需要先添加您的名字",
+      "payment": "💵 活动后通过 e-transfer 支付您的费用",
+      "help": "请联系分享此应用给您的朋友获取帮助。",
+      "dismiss": "知道了"
     },
     "roster": {
       "count": "{count, plural, other {# 人已报名}}"
