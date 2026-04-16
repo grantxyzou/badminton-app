@@ -112,7 +112,7 @@ Added April 13, 2026 alongside P1.5 to address the research report's remaining t
 ## Key Decisions Locked
 
 | Decision | Value |
-|---|---|
+| --- | --- |
 | Brand colour | `#4ade80` court green |
 | Identity model | invite-only → emoji PIN (P3) → optional full profile (P4) |
 | Skill model | ACE Badminton Club Skills Matrix — 7 dimensions (Grip & Stroke, Movement, Serve & Return, Offense, Defense, Strategy, Knowledge) × 6 levels (Beginner → National) |
