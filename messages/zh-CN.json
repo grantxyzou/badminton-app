@@ -37,6 +37,18 @@
     "payment": {
       "reminder": "上次活动（{date}）· {amount}/人",
       "etransfer": "转账至 {email}"
+    },
+    "releases": {
+      "whatsNew": "{version} 有新内容",
+      "sheetLabel": "发布历史",
+      "close": "关闭"
+    }
+  },
+  "admin": {
+    "releases": {
+      "newButton": "新发布",
+      "draftWithAI": "用 AI 起草",
+      "publish": "发布"
     }
   }
 }
