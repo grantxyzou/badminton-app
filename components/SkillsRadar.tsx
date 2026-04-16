@@ -343,6 +343,7 @@ function SkillDetailSheet({ dimId, type, playerName, score, onScoreChange, onClo
             with a paragraph of description). */}
         <BottomSheetBody
           className="px-5 pb-8"
+          style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}
         >
           {type === 'detail' ? (
             <DetailContent

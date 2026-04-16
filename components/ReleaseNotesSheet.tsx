@@ -51,7 +51,7 @@ export default function ReleaseNotesSheet({ open, releases, onClose }: ReleaseNo
           <span className="material-icons" style={{ fontSize: '16px' }}>close</span>
         </button>
       </BottomSheetHeader>
-      <BottomSheetBody>
+      <BottomSheetBody className="p-5 pb-20">
         <p className="terminal-prompt mb-4">$ bpm --changelog</p>
         <ul className="space-y-6">
           {releases.map((r) => (
