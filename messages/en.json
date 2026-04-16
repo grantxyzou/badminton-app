@@ -37,6 +37,18 @@
     "payment": {
       "reminder": "Last session ({date}) · {amount}/person",
       "etransfer": "E-transfer to {email}"
+    },
+    "releases": {
+      "whatsNew": "What's new in {version}",
+      "sheetLabel": "Release history",
+      "close": "Close"
+    }
+  },
+  "admin": {
+    "releases": {
+      "newButton": "New release",
+      "draftWithAI": "Draft with AI",
+      "publish": "Publish"
     }
   }
 }
