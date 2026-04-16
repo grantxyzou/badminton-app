@@ -260,7 +260,7 @@ export default function SkillsRadar({
 
       {/* Bottom sheet */}
       {sheet && (
-        <BottomSheet
+        <SkillDetailSheet
           dimId={sheet.dimId}
           type={sheet.type}
           playerName={activePlayer?.name ?? ''}
@@ -278,7 +278,7 @@ export default function SkillsRadar({
    Bottom Sheet
    ══════════════════════════════════════════ */
 
-interface BottomSheetProps {
+interface SkillDetailSheetProps {
   dimId: string;
   type: 'detail' | 'edit';
   playerName: string;
@@ -288,7 +288,7 @@ interface BottomSheetProps {
   onSwitchToEdit: () => void;
 }
 
-function BottomSheet({ dimId, type, playerName, score, onScoreChange, onClose, onSwitchToEdit }: BottomSheetProps) {
+function SkillDetailSheet({ dimId, type, playerName, score, onScoreChange, onClose, onSwitchToEdit }: SkillDetailSheetProps) {
   const dim = SKILL_DIMENSIONS.find(d => d.id === dimId);
   const sheetRef = useRef<HTMLDivElement>(null);
   const [dragY, setDragY] = useState(0);
