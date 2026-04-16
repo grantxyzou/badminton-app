@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import type { PlayerSkills as PersistedPlayerSkills } from '@/lib/types';
 import type { PlayerSkills } from '@/components/SkillsRadar';
@@ -15,6 +16,7 @@ function toRadarShape(records: PersistedPlayerSkills[]): PlayerSkills[] {
 }
 
 export default function SkillsTab({ isAdmin }: { isAdmin?: boolean }) {
+  const pageT = useTranslations('pages.learn');
   const [loading, setLoading] = useState(true);
   const [players, setPlayers] = useState<PlayerSkills[]>([]);
 
@@ -79,23 +81,39 @@ export default function SkillsTab({ isAdmin }: { isAdmin?: boolean }) {
 
   if (!isAdmin) {
     return (
-      <div
-        className="flex items-center justify-center"
-        style={{ minHeight: 'calc(100vh - 12rem)' }}
-      >
-        <p className="text-2xl font-semibold text-center" style={{ color: 'var(--text-muted)' }}>
-          Progress together?
-        </p>
+      <div className="space-y-5">
+        <h1 className="text-3xl font-bold text-gray-200 leading-tight px-2">
+          {pageT('title')}
+        </h1>
+        <div
+          className="flex items-center justify-center"
+          style={{ minHeight: 'calc(100vh - 16rem)' }}
+        >
+          <p className="text-2xl font-semibold text-center" style={{ color: 'var(--text-muted)' }}>
+            Progress together?
+          </p>
+        </div>
       </div>
     );
   }
 
   if (loading) {
-    return <ShuttleLoader text="Loading skills..." />;
+    return (
+      <div className="space-y-5">
+        <h1 className="text-3xl font-bold text-gray-200 leading-tight px-2">
+          {pageT('title')}
+        </h1>
+        <ShuttleLoader text="Loading skills..." />
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      <h1 className="text-3xl font-bold text-gray-200 leading-tight px-2">
+        {pageT('title')}
+      </h1>
+      <div className="space-y-4">
       {players.length === 0 ? (
         <div
           className="flex items-center justify-center"
@@ -139,6 +157,7 @@ export default function SkillsTab({ isAdmin }: { isAdmin?: boolean }) {
           </p>
         )}
       </form>
+      </div>
     </div>
   );
 }

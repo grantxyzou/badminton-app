@@ -17,6 +17,9 @@ const CANARY_KEYS = [
   'home.roster.count',
   'home.payment.reminder',
   'home.payment.etransfer',
+  'pages.signup.title',
+  'pages.learn.title',
+  'pages.admin.title',
 ] as const;
 
 function getByPath(obj: unknown, path: string): unknown {
@@ -28,7 +31,7 @@ function getByPath(obj: unknown, path: string): unknown {
   }, obj);
 }
 
-describe('canary messages — all 11 keys exist in both locales', () => {
+describe('canary messages — all 14 keys exist in both locales', () => {
   it.each(CANARY_KEYS)('en.json defines %s', (key) => {
     expect(typeof getByPath(enMessages, key)).toBe('string');
   });
