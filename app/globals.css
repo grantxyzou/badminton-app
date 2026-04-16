@@ -973,6 +973,19 @@ html[data-hydrated="true"] .splash {
 .terminal-accent-text { color: var(--terminal-accent); }
 
 /* ── BottomSheet primitive ── */
+.bottom-sheet-backdrop {
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+.bottom-sheet-backdrop[data-state="open"] {
+  opacity: 1;
+}
+.bottom-sheet-backdrop[data-state="closing"] {
+  opacity: 0;
+}
+
 .bottom-sheet {
   transform: translateY(100%);
   opacity: 0;

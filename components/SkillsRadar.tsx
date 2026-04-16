@@ -296,7 +296,10 @@ function SkillDetailSheet({ dimId, type, playerName, score, onScoreChange, onClo
   const levelName = SKILL_LEVELS.find(l => l.level === score)?.name ?? '—';
 
   // Inline glass styling (preserved from original). Applied to a wrapper inside
-  // the primitive so the visual appearance is unchanged.
+  // the primitive so the visual appearance is unchanged. The flex props let
+  // the wrapper participate in the BottomSheet's flex column layout, so the
+  // BottomSheetBody inside can flex-1 + scroll when content overflows
+  // (e.g., the EditContent score list when the sheet is short).
   const glassStyle: React.CSSProperties = {
     background: 'var(--glass-bg)',
     WebkitBackdropFilter: 'blur(var(--glass-blur)) saturate(140%)',
@@ -304,6 +307,10 @@ function SkillDetailSheet({ dimId, type, playerName, score, onScoreChange, onClo
     border: '1px solid var(--glass-border)',
     borderBottom: 'none',
     boxShadow: 'var(--glass-shadow)',
+    display: 'flex',
+    flexDirection: 'column',
+    flex: '1 1 auto',
+    minHeight: 0,
   };
 
   return (
@@ -311,7 +318,7 @@ function SkillDetailSheet({ dimId, type, playerName, score, onScoreChange, onClo
       open={true}
       onClose={onClose}
       ariaLabel={`${dim.name} for ${playerName}`}
-      maxHeight="72vh"
+      maxHeight="calc(100vh - 60px)"
       className="max-w-lg mx-auto"
     >
       <div style={glassStyle}>
