@@ -2,7 +2,7 @@
 
 > Live at: `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm`
 > Stack: Next.js 16 · Azure App Service · Cosmos DB · Anthropic API
-> Last updated: April 10, 2026
+> Last updated: April 16, 2026
 
 ---
 
@@ -48,6 +48,32 @@
 - [x] **Cost per person moves into Announcement card** — no standalone cost card; renders as a dynamic line inside the announcement when both exist. Live per-person preview in the admin Cost Details editor.
 - [x] **Session editor card split** — separate "Session Details" (venue, capacity, sign-ups) and "Cost Details" (court cost, bird sources, show-cost toggle) cards with body text descriptions.
 - [x] **One-handed mobile optimization** — Sign-up card, Add Player, Add Purchase, Add Alias all moved to the bottom of their surfaces for thumb reach. Admin announcements lifted above Players.
+
+---
+
+## P1.5 — Access & Admin Relief ⏳ In Progress
+
+Inserted April 13, 2026 after `docs/user-research-simulation.md` revealed 7 of 10 top unmet needs had zero roadmap coverage. Sprint sequence: A → C → B.
+
+- [x] **A1: Cold-start splash + cost/payment visibility** (PR #2, 2026-04-13) — static HTML splash in `app/layout.tsx`, standalone `<CostCard />` above Announcement, persistent `<PrevPaymentReminder />` gated on `hasIdentity`.
+- [x] **C1: i18n framework + 14-key canary** (2026-04-13) — `next-intl` v4 cookie-based localization (`NEXT_LOCALE`), middleware detection, floating language toggle, en + zh-CN canary strings exercising static, interpolation, plural, date formatting, rich text.
+- [ ] **C2: content sweep** — translate ~50 remaining UI strings to zh-CN + zh-TW.
+- [ ] **A2: identity recovery bridge** — name + secret phrase reclaim before P3 emoji PIN.
+- [ ] **B1: e-transfer reconciliation (AI)** — payment aggregate admin view, AI-matched bank notifications.
+
+---
+
+## P1.6 — Research-Gap Fixes + UX Discoverability ⏳ In Progress
+
+Added April 13, 2026 alongside P1.5 to address the research report's remaining top needs and the onboarding / discoverability gaps.
+
+- [x] **R1: text-size accessibility bump** (2026-04-14) — base text min 16px for 50+ readability (research finding #6).
+- [x] **R2: first-time onboarding card** (PR #4, 2026-04-15) — `<WelcomeCard />` with what-is-BPM, invite list guidance, payment expectation; improved 403 error copy (research finding #4).
+- [x] **R5: user-facing release notes** (PR #5, 2026-04-16) — terminal-themed `<ReleaseNotesSheet />` + AI-assisted draft flow in admin.
+- [x] **R6: BottomSheet primitive** (PR #6, 2026-04-16) — consolidated portal + zIndex + body-lock + focus-trap + CSS-driven animation state machine. Two consumers: `ReleaseNotesSheet`, `SkillsRadar`'s `SkillDetailSheet`.
+- [x] **R7: page headers + SkillsRadar green rebalance** (PR #7, 2026-04-16) — 30px h1 on Sign-Up/Learn/Admin via new `pages.{signup,learn,admin}.title` i18n keys (zh-CN: 报名 / 进阶技能 / 管理); 5 `var(--accent)` → `var(--text-primary)` swaps on informational level text.
+- [ ] **R3: WeChat OG + in-app browser compat** (research finding #7) — rich previews, localStorage quirk testing.
+- [ ] **R4: proxy sign-up** (research finding #10) — admin/player signs up on behalf of another player.
 
 ---
 
