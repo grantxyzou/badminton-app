@@ -46,3 +46,6 @@ favicon.png
 
 # Playwright MCP screenshot cache
 .playwright-mcp/
+
+# Agent memory (per-machine scratch — agents regenerate on next run)
+.claude/agent-memory/

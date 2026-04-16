@@ -1,0 +1,209 @@
+{
+  "color": {
+    "$type": "color",
+    "page-bg": {
+      "$value": "#100F0F",
+      "$description": "App background",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#100F0F", "Light": "#FAF8F5" } } }
+    },
+    "text-primary": {
+      "$value": "#e2e8f0",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#e2e8f0", "Light": "#1a2332" } } }
+    },
+    "text-secondary": {
+      "$value": "#ffffff99",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ffffff99", "Light": "#0000008c" } } }
+    },
+    "text-muted": {
+      "$value": "#ffffff59",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ffffff59", "Light": "#00000052" } } }
+    },
+    "accent": {
+      "$value": "#4ade80",
+      "$description": "Brand green",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#4ade80", "Light": "#16a34a" } } }
+    },
+    "accent-dark": {
+      "$value": "#16a34a",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#16a34a", "Light": "#15803d" } } }
+    },
+    "divider": {
+      "$value": "#ffffff0d",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ffffff0d", "Light": "#0000000f" } } }
+    },
+    "overlay": {
+      "$value": "#000000a6",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#000000a6", "Light": "#0000004d" } } }
+    },
+    "error": {
+      "$value": "#ef4444",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ef4444", "Light": "#dc2626" } } }
+    },
+    "glass-border": {
+      "$value": "#ffffff24",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ffffff24", "Light": "#00000014" } } }
+    },
+    "glass-bg-start": {
+      "$value": "#ffffff0f",
+      "$description": "Glass gradient start",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ffffff0f", "Light": "#ffffffb8" } } }
+    },
+    "glass-bg-end": {
+      "$value": "#ffffff05",
+      "$description": "Glass gradient end",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ffffff05", "Light": "#ffffff8c" } } }
+    },
+    "inner-card-bg": {
+      "$value": "#ffffff08",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ffffff08", "Light": "#00000005" } } }
+    },
+    "inner-card-border": {
+      "$value": "#ffffff0f",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ffffff0f", "Light": "#0000000d" } } }
+    },
+    "inner-card-green-bg": {
+      "$value": "#4ade800f",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#4ade800f", "Light": "#16a34a0a" } } }
+    },
+    "inner-card-green-border": {
+      "$value": "#4ade8026",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#4ade8026", "Light": "#16a34a1f" } } }
+    },
+    "btn-primary-text": {
+      "$value": "#ffffff",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ffffff", "Light": "#ffffff" } } }
+    },
+    "btn-primary-border": {
+      "$value": "#4ade8073",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#4ade8073", "Light": "#16a34a4d" } } }
+    },
+    "btn-ghost-border": {
+      "$value": "#ffffff24",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ffffff24", "Light": "#0000001a" } } }
+    },
+    "btn-ghost-text": {
+      "$value": "#ffffffd9",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ffffffd9", "Light": "#000000b3" } } }
+    },
+    "input-border": {
+      "$value": "#ffffff24",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ffffff24", "Light": "#0000001a" } } }
+    },
+    "input-text": {
+      "$value": "#e2e8f0",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#e2e8f0", "Light": "#1a2332" } } }
+    },
+    "input-placeholder": {
+      "$value": "#ffffff80",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ffffff80", "Light": "#00000059" } } }
+    },
+    "input-focus-border": {
+      "$value": "#4ade8073",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#4ade8073", "Light": "#16a34a80" } } }
+    },
+    "nav-active": {
+      "$value": "#4ade80",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#4ade80", "Light": "#16a34a" } } }
+    },
+    "nav-inactive": {
+      "$value": "#ffffff80",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ffffff80", "Light": "#00000066" } } }
+    },
+    "pill-paid-bg": {
+      "$value": "#4ade8026",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#4ade8026", "Light": "#16a34a1a" } } }
+    },
+    "pill-paid-text": {
+      "$value": "#4ade80",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#4ade80", "Light": "#16a34a" } } }
+    },
+    "pill-unpaid-bg": {
+      "$value": "#ffffff0f",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ffffff0f", "Light": "#0000000a" } } }
+    },
+    "pill-unpaid-text": {
+      "$value": "#ffffff59",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ffffff59", "Light": "#00000059" } } }
+    },
+    "banner-green-bg": {
+      "$value": "#4ade8014",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#4ade8014", "Light": "#16a34a0f" } } }
+    },
+    "banner-green-border": {
+      "$value": "#4ade8033",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#4ade8033", "Light": "#16a34a26" } } }
+    },
+    "banner-amber-bg": {
+      "$value": "#fb923c14",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#fb923c14", "Light": "#d97706f" } } }
+    },
+    "banner-amber-border": {
+      "$value": "#fb923c33",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#fb923c33", "Light": "#d9770626" } } }
+    },
+    "list-green-bg": {
+      "$value": "#4ade800f",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#4ade800f", "Light": "#16a34a0d" } } }
+    },
+    "list-green-text": {
+      "$value": "#4ade80a6",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#4ade80a6", "Light": "#16a34abf" } } }
+    },
+    "list-amber-bg": {
+      "$value": "#fbbf240f",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#fbbf240f", "Light": "#d976060d" } } }
+    },
+    "list-amber-text": {
+      "$value": "#fbbf24a6",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#fbbf24a6", "Light": "#d97706bf" } } }
+    },
+    "dropdown-bg": {
+      "$value": "#1e281ef8",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#1e281ef8", "Light": "#fffffff8" } } }
+    },
+    "segment-bg": {
+      "$value": "#7676801f",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#7676801f", "Light": "#0000000d" } } }
+    },
+    "segment-active-bg": {
+      "$value": "#4ade8033",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#4ade8033", "Light": "#16a34a1f" } } }
+    },
+    "segment-active-text": {
+      "$value": "#4ade80",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#4ade80", "Light": "#16a34a" } } }
+    },
+    "segment-inactive-text": {
+      "$value": "#ffffff99",
+      "$extensions": { "com.figma": { "mode": { "Dark": "#ffffff99", "Light": "#00000073" } } }
+    }
+  },
+  "size": {
+    "$type": "number",
+    "radius-card": { "$value": 24, "$description": "Glass card border radius" },
+    "radius-button": { "$value": 14, "$description": "Button & input radius" },
+    "radius-inner-card": { "$value": 12, "$description": "Inner card radius" },
+    "radius-banner": { "$value": 16, "$description": "Status banner radius" },
+    "radius-segment": { "$value": 100, "$description": "Segment control pill" },
+    "radius-segment-tab": { "$value": 20, "$description": "Segment tab radius" },
+    "height-input": { "$value": 42, "$description": "Input/date field height" },
+    "height-segment": { "$value": 32, "$description": "Segment control height" },
+    "min-tap-target": { "$value": 44, "$description": "Minimum touch target" },
+    "blur-glass-dark": { "$value": 10, "$description": "Glass blur (dark)" },
+    "blur-glass-light": { "$value": 16, "$description": "Glass blur (light)" }
+  },
+  "fontWeight": {
+    "$type": "number",
+    "section-label": { "$value": 700 },
+    "btn-primary": { "$value": 600 },
+    "btn-ghost": { "$value": 500 },
+    "segment-active": { "$value": 590 },
+    "segment-inactive": { "$value": 510 }
+  },
+  "duration": {
+    "$type": "number",
+    "fast": { "$value": 150, "$description": "ms" },
+    "normal": { "$value": 250, "$description": "ms" },
+    "slow": { "$value": 400, "$description": "ms" }
+  }
+}
