@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocale, useTranslations } from 'next-intl';
 import type { Release } from '@/lib/types';
 
@@ -25,8 +26,15 @@ function fmtDate(iso: string): string {
 export default function ReleaseNotesSheet({ open, releases, onClose }: ReleaseNotesSheetProps) {
   const locale = useLocale() as 'en' | 'zh-CN';
   const t = useTranslations('home.releases');
+  const [mounted, setMounted] = useState(false);
 
-  // Body scroll lock while open
+  // Portals must only render on the client — wait for mount so SSR pass
+  // matches post-hydration DOM.
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Body scroll lock while open (position:fixed technique per CLAUDE.md).
   useEffect(() => {
     if (!open) return;
     const scrollY = window.scrollY;
@@ -48,17 +56,23 @@ export default function ReleaseNotesSheet({ open, releases, onClose }: ReleaseNo
     onClose();
   }
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  // Portal-render to document.body so the sheet escapes ancestor stacking
+  // contexts created by backdrop-filter on glass-cards (matches DatePicker
+  // pattern). Inline zIndex (not Tailwind z-[60]) prevents JIT-stripping
+  // or override (matches SkillsRadar pattern).
+  return createPortal(
     <>
       <div
-        className="fixed inset-0 bg-black/50 z-[55]"
+        className="fixed inset-0 bg-black/50"
+        style={{ zIndex: 55 }}
         onClick={handleClose}
         aria-hidden="true"
       />
       <div
-        className="fixed bottom-0 left-0 right-0 z-[60] rounded-t-2xl overflow-hidden max-h-[80vh] terminal-sheet"
+        className="fixed bottom-0 left-0 right-0 rounded-t-2xl overflow-hidden max-h-[80vh] terminal-sheet"
+        style={{ zIndex: 60 }}
         role="dialog"
         aria-label={t('sheetLabel')}
       >
@@ -89,6 +103,7 @@ export default function ReleaseNotesSheet({ open, releases, onClose }: ReleaseNo
           </ul>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   );
 }
