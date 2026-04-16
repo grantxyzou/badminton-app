@@ -4,6 +4,7 @@ import { render, screen, cleanup } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import PlayersTab from '../../components/PlayersTab';
 import SkillsTab from '../../components/SkillsTab';
+import AdminTab from '../../components/AdminTab';
 import enMessages from '../../messages/en.json';
 
 describe('PageHeaders', () => {
@@ -47,5 +48,15 @@ describe('PageHeaders', () => {
     );
     const heading = screen.getByRole('heading', { level: 1 });
     expect(heading.textContent).toBe('Learn');
+  });
+
+  it('AdminTab renders "Admin" as an h1', () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <AdminTab />
+      </NextIntlClientProvider>
+    );
+    const heading = screen.getByRole('heading', { level: 1 });
+    expect(heading.textContent).toBe('Admin');
   });
 });
