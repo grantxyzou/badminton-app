@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import type { Session, Player, Announcement } from '@/lib/types';
+import type { Session, Player, Announcement, Release } from '@/lib/types';
 import type { DevOverrides } from '@/components/DevPanel';
 import { fmtDate } from '@/lib/formatters';
 import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
@@ -10,6 +10,8 @@ import { getIdentity, setIdentity, clearIdentity } from '@/lib/identity';
 import ShuttleLoader from '@/components/ShuttleLoader';
 import CostCard from '@/components/CostCard';
 import PrevPaymentReminder from '@/components/PrevPaymentReminder';
+import ReleaseNotesTrigger from './ReleaseNotesTrigger';
+import ReleaseNotesSheet from './ReleaseNotesSheet';
 import WelcomeCard from './WelcomeCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -57,17 +59,20 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
     if (typeof window === 'undefined') return true;
     return localStorage.getItem('badminton_onboarding_dismissed') === 'true';
   });
+  const [releases, setReleases] = useState<Release[]>([]);
+  const [releaseSheetOpen, setReleaseSheetOpen] = useState(false);
 
   const maxPlayers = parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12');
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [sRes, pRes, aRes, mRes] = await Promise.all([
+      const [sRes, pRes, aRes, mRes, rRes] = await Promise.all([
         fetch(`${BASE}/api/session`, { cache: 'no-store' }),
         fetch(`${BASE}/api/players`, { cache: 'no-store' }),
         fetch(`${BASE}/api/announcements`, { cache: 'no-store' }),
         fetch(`${BASE}/api/members`, { cache: 'no-store' }).catch(() => null),
+        fetch(`${BASE}/api/releases`, { cache: 'no-store' }).catch(() => null),
       ]);
       if (sRes.ok) {
         const s: Session = await sRes.json();
@@ -89,6 +94,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         const memberList: { name: string; active: boolean }[] = await mRes.json();
         setMemberNames(memberList.filter(m => m.active).map(m => m.name));
       }
+      if (rRes && rRes.ok) setReleases(await rRes.json());
     } catch (e) {
       console.error('Load error:', e);
     } finally {
@@ -261,6 +267,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
       >
         BPM Badminton
       </h1>
+      <ReleaseNotesTrigger
+        releases={releases}
+        onOpen={() => setReleaseSheetOpen(true)}
+      />
 
       {/* Tile row: Location | Date & Time */}
       <div className="grid grid-cols-2 gap-3">
@@ -524,6 +534,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         prevSessionDate={effectiveSession?.prevSessionDate}
         hasIdentity={hasIdentity}
         etransferEmail={etransferEmail}
+      />
+      <ReleaseNotesSheet
+        open={releaseSheetOpen}
+        releases={releases}
+        onClose={() => setReleaseSheetOpen(false)}
       />
     </div>
   );
