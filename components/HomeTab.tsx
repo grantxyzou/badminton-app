@@ -10,6 +10,7 @@ import { getIdentity, setIdentity, clearIdentity } from '@/lib/identity';
 import ShuttleLoader from '@/components/ShuttleLoader';
 import CostCard from '@/components/CostCard';
 import PrevPaymentReminder from '@/components/PrevPaymentReminder';
+import WelcomeCard from './WelcomeCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -52,6 +53,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [memberNames, setMemberNames] = useState<string[]>([]);
   const [hasIdentity, setHasIdentity] = useState(false);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return localStorage.getItem('badminton_onboarding_dismissed') === 'true';
+  });
 
   const maxPlayers = parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12');
 
@@ -97,6 +102,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
     if (id) setCurrentUser(id.name);
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (hasIdentity && !onboardingDismissed) {
+      localStorage.setItem('badminton_onboarding_dismissed', 'true');
+      setOnboardingDismissed(true);
+    }
+  }, [hasIdentity, onboardingDismissed]);
 
   const activePlayers = players.filter(p => !p.waitlisted);
   const waitlistPlayers = players.filter(p => p.waitlisted);
@@ -158,6 +170,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
     : announcement;
   const effectiveIsSignedUp = dv?.isSignedUp !== undefined ? dv.isSignedUp : isSignedUp;
 
+  function dismissOnboarding() {
+    localStorage.setItem('badminton_onboarding_dismissed', 'true');
+    setOnboardingDismissed(true);
+  }
+
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) { setError('Enter your name to sign up'); return; }
@@ -171,7 +188,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? 'Failed to sign up');
+        if (data.error === 'invite_list_not_found') {
+          setError(t('signup.inviteError', { name: name.trim() }));
+        } else {
+          setError(data.error ?? 'Failed to sign up');
+        }
         if (res.status === 409) loadData();
       } else {
         setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session?.id ?? '' });
@@ -199,7 +220,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? 'Failed to join waitlist');
+        if (data.error === 'invite_list_not_found') {
+          setError(t('signup.inviteError', { name: name.trim() }));
+        } else {
+          setError(data.error ?? 'Failed to join waitlist');
+        }
       } else {
         setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session?.id ?? '' });
         setCurrentUser(name.trim());
@@ -223,6 +248,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
 
   return (
     <div className="space-y-5">
+      {!hasIdentity && !onboardingDismissed && (
+        <WelcomeCard onDismiss={dismissOnboarding} />
+      )}
+
       {/* Page title — pulled out of the LOCATION tile so it reads as the
           page header, left-aligned with the card stack below. */}
       <h1
