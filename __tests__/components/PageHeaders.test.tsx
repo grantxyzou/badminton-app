@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import PlayersTab from '../../components/PlayersTab';
+import SkillsTab from '../../components/SkillsTab';
 import enMessages from '../../messages/en.json';
 
 describe('PageHeaders', () => {
@@ -26,5 +27,25 @@ describe('PageHeaders', () => {
     );
     const heading = screen.getByRole('heading', { level: 1 });
     expect(heading.textContent).toBe('Sign-Up');
+  });
+
+  it('SkillsTab (non-admin) renders "Learn" as an h1', () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <SkillsTab isAdmin={false} />
+      </NextIntlClientProvider>
+    );
+    const heading = screen.getByRole('heading', { level: 1 });
+    expect(heading.textContent).toBe('Learn');
+  });
+
+  it('SkillsTab (admin) renders "Learn" as an h1', () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <SkillsTab isAdmin={true} />
+      </NextIntlClientProvider>
+    );
+    const heading = screen.getByRole('heading', { level: 1 });
+    expect(heading.textContent).toBe('Learn');
   });
 });
