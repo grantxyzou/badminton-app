@@ -99,16 +99,27 @@ export default function BottomSheet({
   if (!mounted || state === 'closed') return null;
 
   return createPortal(
-    <div
-      ref={sheetRef}
-      data-state={state}
-      className={`bottom-sheet fixed bottom-0 left-0 right-0 rounded-t-2xl overflow-hidden flex flex-col ${className ?? ''}`}
-      style={{ zIndex: 60, maxHeight }}
-      role="dialog"
-      aria-label={ariaLabel}
-    >
-      {children}
-    </div>,
+    <>
+      {/* Backdrop — visual dim only. No onClick (per spec: dismiss via close
+          icon or Escape only). Provides contrast against the page so glass
+          sheets stay readable, especially in dark mode. */}
+      <div
+        data-state={state}
+        className="bottom-sheet-backdrop fixed inset-0"
+        style={{ zIndex: 55 }}
+        aria-hidden="true"
+      />
+      <div
+        ref={sheetRef}
+        data-state={state}
+        className={`bottom-sheet fixed bottom-0 left-0 right-0 rounded-t-2xl overflow-hidden flex flex-col ${className ?? ''}`}
+        style={{ zIndex: 60, maxHeight }}
+        role="dialog"
+        aria-label={ariaLabel}
+      >
+        {children}
+      </div>
+    </>,
     document.body,
   );
 }
