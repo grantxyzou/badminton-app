@@ -11,6 +11,7 @@ import DateTimeEditor from './DateTimeEditor';
 import MembersView from './MembersView';
 import BirdInventoryView from './BirdInventoryView';
 import AdvanceSessionForm from './AdvanceSessionForm';
+import ReleasesView from './ReleasesView';
 import { useAnnouncements } from './hooks/useAnnouncements';
 import { useSessionNavigation } from './hooks/useSessionNavigation';
 import { usePlayerManagement } from './hooks/usePlayerManagement';
@@ -58,6 +59,7 @@ export default function AdminDashboard({ onLogout }: Props) {
   if (view === 'members') return <div className="animate-slideInRight"><MembersView onBack={goBack} /></div>;
   if (view === 'birds') return <div className="animate-slideInRight"><BirdInventoryView onBack={goBack} /></div>;
   if (view === 'advance') return <div className="animate-slideInRight"><AdvanceSessionForm onBack={goBack} /></div>;
+  if (view === 'releases') return <div className="animate-slideInRight"><ReleasesView onBack={goBack} /></div>;
 
   return <Dashboard onLogout={onLogout} refreshKey={refreshKey} setView={setView} />;
 }
@@ -491,6 +493,10 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
         <button onClick={() => setView('birds')} className="btn-ghost flex-1">
           <span className="material-icons icon-sm">inventory_2</span>
           Birds
+        </button>
+        <button onClick={() => setView('releases')} className="btn-ghost flex-1">
+          <span className="material-icons icon-sm">campaign</span>
+          Releases
         </button>
       </div>
 
