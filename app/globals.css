@@ -76,6 +76,15 @@
   --segment-active-text: #4ade80;
   --segment-inactive-text: rgba(255, 255, 255, 0.6);
 
+  /* ── Release notes terminal — dark ── */
+  --terminal-bg: #0f1116;
+  --terminal-titlebar-bg: #1e2128;
+  --terminal-prompt: #6b7280;
+  --terminal-accent: #f0d079;
+  --terminal-date: #9ca3af;
+  --terminal-title: #e5e7eb;
+  --terminal-body: #d1d5db;
+
   /* ── Status banners ── */
   --banner-green-bg: rgba(74, 222, 128, 0.08);
   --banner-green-border: rgba(74, 222, 128, 0.2);
@@ -179,6 +188,15 @@
   --segment-active-bg: rgba(22, 163, 74, 0.22);
   --segment-active-text: #16a34a;
   --segment-inactive-text: rgba(0, 0, 0, 0.45);
+
+  /* ── Release notes terminal — light ── */
+  --terminal-bg: #ffffff;
+  --terminal-titlebar-bg: #e5e7eb;
+  --terminal-prompt: #6b7280;
+  --terminal-accent: #b8942d;
+  --terminal-date: #6b7280;
+  --terminal-title: #1a2332;
+  --terminal-body: #374151;
 
   --banner-green-bg: rgba(22, 163, 74, 0.06);
   --banner-green-border: rgba(22, 163, 74, 0.15);
@@ -926,3 +944,30 @@ html[data-hydrated="true"] .splash {
 @media (prefers-reduced-motion: reduce) {
   .splash-shuttle { animation: none; }
 }
+
+/* ── Release notes terminal sheet ── */
+.terminal-sheet {
+  background: var(--terminal-bg);
+  color: var(--terminal-body);
+  font-family: 'SF Mono', Menlo, Consolas, 'Roboto Mono', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+}
+
+.terminal-titlebar {
+  background: var(--terminal-titlebar-bg);
+  padding: 8px 16px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.terminal-prompt  { color: var(--terminal-prompt); }
+.terminal-version { color: var(--terminal-accent); font-weight: 600; }
+.terminal-date    { color: var(--terminal-date); }
+.terminal-title   { color: var(--terminal-title); font-weight: 600; }
+.terminal-body    { color: var(--terminal-body); }
+
+.terminal-accent-text { color: var(--terminal-accent); }
