@@ -258,19 +258,21 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         <WelcomeCard onDismiss={dismissOnboarding} />
       )}
 
-      {/* Page title — pulled out of the LOCATION tile so it reads as the
-          page header, left-aligned with the card stack below. */}
-      <h1
-        className="text-3xl font-bold text-gray-200 leading-tight px-2"
-        onClick={onTitleTap}
-        style={{ cursor: 'default', userSelect: 'none' }}
-      >
-        BPM Badminton
-      </h1>
-      <ReleaseNotesTrigger
-        releases={releases}
-        onOpen={() => setReleaseSheetOpen(true)}
-      />
+      {/* Page title + release trigger — grouped so no space-y-5 gap sits
+          between them; the version stamp sits tight under the title. */}
+      <div>
+        <h1
+          className="text-3xl font-bold text-gray-200 leading-tight px-2"
+          onClick={onTitleTap}
+          style={{ cursor: 'default', userSelect: 'none' }}
+        >
+          BPM Badminton
+        </h1>
+        <ReleaseNotesTrigger
+          releases={releases}
+          onOpen={() => setReleaseSheetOpen(true)}
+        />
+      </div>
 
       {/* Tile row: Location | Date & Time */}
       <div className="grid grid-cols-2 gap-3">
