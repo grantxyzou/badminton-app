@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
         (m: { name: string }) => m.name.toLowerCase() === trimmedName.toLowerCase()
       ) ?? null;
       if (!matchedMember && !isAdminAuthed(req)) {
-        return NextResponse.json({ error: 'hmmmm... please use the name we know you by' }, { status: 403 });
+        return NextResponse.json({ error: 'invite_list_not_found', name: trimmedName }, { status: 403 });
       }
     }
 
