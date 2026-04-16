@@ -102,7 +102,7 @@ export default function BottomSheet({
     <div
       ref={sheetRef}
       data-state={state}
-      className={`bottom-sheet fixed bottom-0 left-0 right-0 rounded-t-2xl overflow-hidden ${className ?? ''}`}
+      className={`bottom-sheet fixed bottom-0 left-0 right-0 rounded-t-2xl overflow-hidden flex flex-col ${className ?? ''}`}
       style={{ zIndex: 60, maxHeight }}
       role="dialog"
       aria-label={ariaLabel}
