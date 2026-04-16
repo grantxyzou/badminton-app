@@ -120,12 +120,12 @@ Add new top-level `pages` namespace. Three keys:
 ```json
 "pages": {
   "signup": { "title": "报名" },
-  "learn": { "title": "学习" },
+  "learn": { "title": "进阶技能" },
   "admin": { "title": "管理" }
 }
 ```
 
-`报名` matches the existing `home.signup.heading` in zh-CN for consistency. `学习` (learning) reads naturally for the Learn tab. `管理` (management) is the conventional short form for an admin surface.
+`报名` matches the existing `home.signup.heading` in zh-CN for consistency. `进阶技能` ("advance skills") maps closer to the ACE skills framework than the more general 学习 — it frames the tab as *progression* rather than generic learning. `管理` (management) is the conventional short form for an admin surface.
 
 ## Testing
 
