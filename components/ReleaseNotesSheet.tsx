@@ -1,6 +1,6 @@
 'use client';
 
-import { useLocale, useTranslations } from 'next-intl';
+import { useLocale, useTranslations, useFormatter } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from './BottomSheet';
 import type { Release } from '@/lib/types';
 
@@ -10,21 +10,12 @@ interface ReleaseNotesSheetProps {
   onClose: () => void;
 }
 
-function fmtDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  } catch {
-    return iso.slice(0, 10);
-  }
-}
+const DATE_SHORT = { month: 'short', day: 'numeric', year: 'numeric' } as const;
 
 export default function ReleaseNotesSheet({ open, releases, onClose }: ReleaseNotesSheetProps) {
   const locale = useLocale() as 'en' | 'zh-CN';
   const t = useTranslations('home.releases');
+  const format = useFormatter();
 
   function handleClose() {
     if (releases.length > 0) {
@@ -58,7 +49,7 @@ export default function ReleaseNotesSheet({ open, releases, onClose }: ReleaseNo
             <li key={r.id}>
               <div className="flex items-baseline gap-2 mb-1">
                 <span className="terminal-version">▸ {r.version}</span>
-                <span className="terminal-date">· {fmtDate(r.publishedAt)}</span>
+                <span className="terminal-date">· {format.dateTime(new Date(r.publishedAt), DATE_SHORT)}</span>
               </div>
               <h3 className="terminal-title mb-1">{r.title[locale]}</h3>
               <p className="terminal-body whitespace-pre-line">{r.body[locale]}</p>

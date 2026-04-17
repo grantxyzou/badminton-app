@@ -1,17 +1,18 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useFormatter } from 'next-intl';
 import type { Player, Session } from '@/lib/types';
-import { fmtDate } from '@/lib/formatters';
 import { getIdentity, clearIdentity } from '@/lib/identity';
 import ShuttleLoader from '@/components/ShuttleLoader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
 
 export default function PlayersTab() {
   const pageT = useTranslations('pages.signup');
   const t = useTranslations('players');
+  const format = useFormatter();
   const [players, setPlayers] = useState<Player[]>([]);
   const [session, setSession] = useState<Session | null>(null);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
@@ -92,7 +93,7 @@ export default function PlayersTab() {
     );
   }
 
-  const gameDate = session?.datetime ? fmtDate(session.datetime) : '';
+  const gameDate = session?.datetime ? format.dateTime(new Date(session.datetime), DAY_LONG) : '';
 
   return (
     <div className="space-y-5">

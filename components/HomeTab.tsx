@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useFormatter } from 'next-intl';
 import type { Session, Player, Announcement, Release } from '@/lib/types';
 import type { DevOverrides } from '@/components/DevPanel';
-import { fmtDate } from '@/lib/formatters';
 import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
 import { getIdentity, setIdentity, clearIdentity } from '@/lib/identity';
 import ShuttleLoader from '@/components/ShuttleLoader';
@@ -16,35 +15,13 @@ import WelcomeCard from './WelcomeCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
-function fmtTime(iso: string) {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleTimeString(undefined, {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return iso;
-  }
-}
-
-function fmtDeadline(iso: string) {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-    });
-  } catch {
-    return iso;
-  }
-}
-
+const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
+const TIME_SHORT = { hour: '2-digit', minute: '2-digit' } as const;
 
 export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onTabChange?: (tab: 'home' | 'players' | 'admin') => void; onTitleTap?: () => void; devOverrides?: DevOverrides }) {
   const t = useTranslations('home');
   const tStates = useTranslations('home.states');
+  const format = useFormatter();
   const [session, setSession] = useState<Session | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
@@ -305,10 +282,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         <div className="glass-card p-4 space-y-2">
           <p className="section-label mb-1">{t('session.date')}</p>
           <p className="text-lg font-semibold text-gray-200 leading-snug">
-            {session ? fmtDate(session.datetime) : '—'}
+            {session ? format.dateTime(new Date(session.datetime), DAY_LONG) : '—'}
           </p>
           <p className="text-lg font-semibold text-gray-200 leading-snug">
-            {session ? fmtTime(session.datetime) : '—'}
+            {session ? format.dateTime(new Date(session.datetime), TIME_SHORT) : '—'}
           </p>
         </div>
       </div>
@@ -364,7 +341,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
               <span className="material-icons icon-status text-amber-400">lock_clock</span>
               <div>
                 <p className="font-semibold text-amber-300 text-sm">{tStates('closedTitle')}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{t('signup.closedPreviously', { date: fmtDeadline(session!.deadline) })}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{t('signup.closedPreviously', { date: format.dateTime(new Date(session!.deadline), DAY_LONG) })}</p>
               </div>
             </div>
           </div>
@@ -521,7 +498,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
               </button>
               {session?.deadline && (
                 <p className={`text-center text-xs font-medium ${isDeadlineApproaching ? 'text-red-400' : 'text-gray-400'}`}>
-                  {t('signup.closesOn', { date: fmtDeadline(session.deadline) })}
+                  {t('signup.closesOn', { date: format.dateTime(new Date(session.deadline), DAY_LONG) })}
                 </p>
               )}
             </form>
