@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslations } from 'next-intl';
 import type { AdminView } from './types';
 import { ShimmerLoader } from '../ShuttleLoader';
 import SessionContextBar from './SessionContextBar';
@@ -73,6 +74,7 @@ interface DashboardProps {
 }
 
 function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
+  const pageT = useTranslations('pages.admin');
   const anno = useAnnouncements(refreshKey);
 
   // Player management needs navigation state, navigation needs loadPlayers
@@ -87,13 +89,17 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
   /* ── Render ── */
 
   return (
-    <div className="space-y-4 w-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-1">
-        <h2 className="font-semibold text-green-400">Admin</h2>
+    <div className="space-y-5 w-full">
+      {/* Header: page h1 matches the 30px style on Sign-Up/Learn pages.
+          Sign-out is aligned to the baseline so it reads as a tertiary action. */}
+      <div className="flex items-end justify-between">
+        <h1 className="text-3xl font-bold text-gray-200 leading-tight px-2">
+          {pageT('title')}
+        </h1>
         <button
+          type="button"
           onClick={onLogout}
-          className="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1"
+          className="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1 px-2 pb-1"
         >
           <span className="material-icons" style={{ fontSize: 16 }}>logout</span>
           Sign out

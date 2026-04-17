@@ -106,18 +106,8 @@ export default function AdminTab() {
     );
   }
 
-  return (
-    <div className="space-y-5">
-      <h1 className="text-3xl font-bold text-gray-200 leading-tight px-2">
-        {pageT('title')}
-      </h1>
-      <AdminPanel onLogout={handleLogout} />
-    </div>
-  );
-}
-
-/* ─────────────────────────── Admin Panel ─────────────────────────── */
-
-function AdminPanel({ onLogout }: { onLogout: () => void }) {
-  return <AdminDashboard onLogout={onLogout} />;
+  // Dashboard renders its own h1 when on the dashboard view so the header
+  // disappears when the user drills into a sub-editor (Session Details,
+  // Members, etc.) — those render AdminBackHeader instead.
+  return <AdminDashboard onLogout={handleLogout} />;
 }
