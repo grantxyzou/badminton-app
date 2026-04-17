@@ -24,6 +24,59 @@ function CardDescription({ children }: { children: React.ReactNode }) {
   );
 }
 
+/* Quarter-tube stepper. Value is clamped to 0+ and rounded to 2 decimals
+   each tap to avoid floating-point drift (0.1 + 0.2 ≠ 0.3). Valid values
+   are 0, 0.25, 0.5, 0.75, 1.0, … */
+function TubeStepper({ value, onChange }: { value: number; onChange: (next: number) => void }) {
+  const step = 0.25;
+  const canDec = value > 0;
+  const round = (n: number) => Math.round(n * 100) / 100;
+  // Drop trailing zeros so 0.5 shows as "0.5" not "0.50", while 0.25 stays "0.25"
+  const display = value === 0 ? '0' : parseFloat(value.toFixed(2)).toString();
+  const btn: React.CSSProperties = {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    background: 'var(--inner-card-bg)',
+    border: '1px solid var(--inner-card-border)',
+  };
+  return (
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
+        onClick={() => onChange(round(Math.max(0, value - step)))}
+        disabled={!canDec}
+        aria-label="Decrease tubes"
+        className="flex items-center justify-center transition-opacity"
+        style={{
+          ...btn,
+          color: 'var(--text-primary)',
+          opacity: canDec ? 1 : 0.35,
+          cursor: canDec ? 'pointer' : 'not-allowed',
+        }}
+      >
+        <span className="material-icons" aria-hidden="true" style={{ fontSize: 20 }}>remove</span>
+      </button>
+      <span
+        className="text-base font-semibold tabular-nums"
+        style={{ color: 'var(--text-primary)', minWidth: 48, textAlign: 'center' }}
+        aria-live="polite"
+      >
+        {display}
+      </span>
+      <button
+        type="button"
+        onClick={() => onChange(round(value + step))}
+        aria-label="Increase tubes"
+        className="flex items-center justify-center"
+        style={{ ...btn, color: 'var(--text-primary)', cursor: 'pointer' }}
+      >
+        <span className="material-icons" aria-hidden="true" style={{ fontSize: 20 }}>add</span>
+      </button>
+    </div>
+  );
+}
+
 type BirdUsageRow = { purchaseId: string; tubes: number };
 
 type DetailsForm = {
@@ -300,30 +353,36 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
             </div>
           </Label>
 
-          {/* ── Bird sources — inline rows, no nested card ── */}
-          <div className="space-y-3">
+          {/* ── Bird usage — divider separates from cost-per-court above.
+               mt-2 + pt-6 widens the breathing room on both sides of the
+               rule so Cost-per-court doesn't feel jammed against it and
+               the "Bird usage" header doesn't hug the line. ── */}
+          <div
+            className="space-y-4 mt-2 pt-6"
+            style={{ borderTop: '1px solid var(--glass-border)' }}
+          >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-                Bird sources
+              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                Bird usage
               </span>
               <button
                 type="button"
                 onClick={() =>
                   setForm((f) => ({
                     ...f,
-                    birdUsages: [...f.birdUsages, { purchaseId: '', tubes: 0.5 }],
+                    birdUsages: [...f.birdUsages, { purchaseId: '', tubes: 0 }],
                   }))
                 }
                 className="text-xs font-medium px-2 py-1 rounded-md"
                 style={{ color: 'var(--accent)', background: 'var(--inner-card-bg)' }}
               >
-                + Add source
+                + Add from inventory
               </button>
             </div>
 
             {form.birdUsages.length === 0 && (
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                No bird sources selected.
+                No bird usage recorded.
               </p>
             )}
 
@@ -336,15 +395,19 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
                   return (
                     <div
                       key={idx}
-                      className="py-3 space-y-2"
+                      className="py-3 space-y-3"
                       style={
                         isLast
                           ? undefined
                           : { borderBottom: '1px solid var(--glass-border)' }
                       }
                     >
-                      <div className="flex items-start gap-2">
-                        <div className="flex-1 space-y-2">
+                      <Label text="Brand">
+                        {/* Native browser chevron varies across macOS/iOS/
+                            Android and doesn't match the app's icon set.
+                            Suppress with appearance:none and render our own
+                            material-icons chevron positioned absolutely. */}
+                        <div className="relative">
                           <select
                             value={row.purchaseId}
                             onChange={(e) =>
@@ -355,17 +418,13 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
                               })
                             }
                             style={{
-                              width: '100%',
-                              padding: '8px 12px',
-                              borderRadius: 8,
-                              background: 'var(--inner-card-bg)',
-                              border: '1px solid var(--inner-card-border)',
-                              color: 'var(--text-primary)',
-                              fontSize: 14,
+                              appearance: 'none',
+                              WebkitAppearance: 'none',
+                              MozAppearance: 'none',
+                              paddingRight: 40,
                             }}
-                            aria-label="Bird purchase"
                           >
-                            <option value="">Select purchase…</option>
+                            <option value="">Select brand…</option>
                             {purchases.map((p) => (
                               <option key={p.id} value={p.id}>
                                 {p.name} — ${p.costPerTube.toFixed(2)}/tube (
@@ -373,52 +432,74 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
                               </option>
                             ))}
                           </select>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs shrink-0" style={{ color: 'var(--text-muted)' }}>
-                              Tubes
-                            </span>
-                            <input
-                              type="number"
-                              min={0}
-                              step={0.5}
-                              value={row.tubes || ''}
-                              placeholder="0.5"
-                              aria-label="Tubes used"
-                              onChange={(e) =>
-                                setForm((f) => {
-                                  const next = [...f.birdUsages];
-                                  next[idx] = { ...next[idx], tubes: parseFloat(e.target.value) || 0 };
-                                  return { ...f, birdUsages: next };
-                                })
-                              }
-                              className="flex-1"
-                            />
-                          </div>
-                          {selected && row.tubes > 0 && (
-                            <p className="text-xs" style={{ color: 'var(--accent)' }}>
-                              {row.tubes} × ${selected.costPerTube.toFixed(2)} = ${rowTotal.toFixed(2)}
-                            </p>
-                          )}
+                          <span
+                            className="material-icons absolute top-1/2 pointer-events-none"
+                            aria-hidden="true"
+                            style={{
+                              right: 10,
+                              transform: 'translateY(-50%)',
+                              fontSize: 20,
+                              color: 'var(--text-muted)',
+                            }}
+                          >
+                            expand_more
+                          </span>
                         </div>
+                      </Label>
+                      <Label text="Tubes used">
+                        <TubeStepper
+                          value={row.tubes}
+                          onChange={(next) =>
+                            setForm((f) => {
+                              const rows = [...f.birdUsages];
+                              rows[idx] = { ...rows[idx], tubes: next };
+                              return { ...f, birdUsages: rows };
+                            })
+                          }
+                        />
+                      </Label>
+                      {/* Footer row: equation reads in plain English. Unset
+                          slots show their label (Tube usage / Cost per tube /
+                          Bird cost); filled slots show the value inline. Color
+                          shifts from muted → accent when fully complete. */}
+                      {(() => {
+                        const complete = !!selected && row.tubes > 0;
+                        const tubesSlot = row.tubes > 0
+                          ? `${parseFloat(row.tubes.toFixed(2))} ${row.tubes === 1 ? 'tube' : 'tubes'}`
+                          : 'Tube usage';
+                        const costSlot = selected
+                          ? `$${selected.costPerTube.toFixed(2)} per tube`
+                          : 'Cost per tube';
+                        const totalSlot = complete ? `$${rowTotal.toFixed(2)}` : 'Bird cost';
+                        return (
+                          <div className="flex items-center justify-between gap-2 min-h-8">
+                            <p
+                              className="text-xs"
+                              style={{ color: complete ? 'var(--accent)' : 'var(--text-muted)' }}
+                            >
+                              {tubesSlot} × {costSlot} = {totalSlot}
+                            </p>
                         <button
                           type="button"
-                          aria-label="Remove bird source"
+                          aria-label="Remove bird usage"
                           onClick={() =>
                             setForm((f) => ({
                               ...f,
                               birdUsages: f.birdUsages.filter((_, i) => i !== idx),
                             }))
                           }
-                          className="text-base rounded-md flex items-center justify-center"
+                          className="rounded-md flex items-center justify-center shrink-0 -mr-2"
                           style={{
                             color: 'var(--text-muted)',
-                            minHeight: 44,
-                            minWidth: 44,
+                            height: 32,
+                            width: 32,
                           }}
                         >
-                          ×
+                          <span className="material-icons" aria-hidden="true" style={{ fontSize: 20 }}>delete_outline</span>
                         </button>
                       </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
@@ -438,28 +519,6 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
                 </span>
               </div>
             )}
-          </div>
-
-          {/* ── Show cost toggle (now a real switch) ── */}
-          <div className="flex items-center justify-between pt-1">
-            <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                Show cost to players
-              </p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                {form.showCostBreakdown ? 'Visible on the Home announcement' : 'Hidden from players'}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setForm((f) => ({ ...f, showCostBreakdown: !f.showCostBreakdown }))}
-              className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${form.showCostBreakdown ? 'bg-green-500' : 'bg-white/20'}`}
-              role="switch"
-              aria-checked={form.showCostBreakdown}
-              aria-label="Toggle cost visibility"
-            >
-              <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200 ${form.showCostBreakdown ? 'translate-x-5' : 'translate-x-0'}`} />
-            </button>
           </div>
 
           {/* ── Per-person preview ── */}
@@ -487,6 +546,28 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
               )}
             </div>
           )}
+
+          {/* ── Show cost toggle (now a real switch) ── */}
+          <div className="flex items-center justify-between pt-1">
+            <div>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                Show cost to players
+              </p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {form.showCostBreakdown ? 'Visible on the Home announcement' : 'Hidden from players'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setForm((f) => ({ ...f, showCostBreakdown: !f.showCostBreakdown }))}
+              className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${form.showCostBreakdown ? 'bg-green-500' : 'bg-white/20'}`}
+              role="switch"
+              aria-checked={form.showCostBreakdown}
+              aria-label="Toggle cost visibility"
+            >
+              <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200 ${form.showCostBreakdown ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
         </div>
 
         {/* ── Error + Update ── */}

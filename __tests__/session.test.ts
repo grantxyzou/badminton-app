@@ -165,7 +165,7 @@ describe('PUT /api/session', () => {
     expect(data.birdUsage).toBeUndefined();
   });
 
-  it('rejects bird tubes not in 0.5 increments', async () => {
+  it('rejects bird tubes not in 0.25 increments', async () => {
     const bird = await (await CREATE_BIRD(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
       name: 'Test', tubes: 4, totalCost: 80,
     }))).json();

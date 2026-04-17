@@ -62,9 +62,9 @@ export async function PUT(req: NextRequest) {
         if (!Number.isFinite(tubes) || tubes <= 0 || tubes > 100) {
           return NextResponse.json({ error: 'Bird tubes must be between 0 and 100' }, { status: 400 });
         }
-        // Multiple of 0.5 — rejects 0.33, 1.7, etc.
-        if (Math.round(tubes * 2) !== tubes * 2) {
-          return NextResponse.json({ error: 'Bird tubes must be in 0.5 increments' }, { status: 400 });
+        // Multiple of 0.25 — rejects 0.33, 1.7, etc.
+        if (Math.round(tubes * 4) !== tubes * 4) {
+          return NextResponse.json({ error: 'Bird tubes must be in 0.25 increments' }, { status: 400 });
         }
         const purchaseId = entry?.purchaseId;
         if (typeof purchaseId !== 'string' || !purchaseId) {
