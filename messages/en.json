@@ -7,8 +7,35 @@
       "full": "Session Full",
       "confirmed": "Signed up as {name}",
       "inviteError": "We don't have \"{name}\" on our invite list. Check the spelling, or ask the friend who shared this app with you to add you.",
-      "networkError": "Network error. Please try again."
+      "networkError": "Network error. Please try again.",
+      "nameRequired": "Enter your name to sign up",
+      "genericFailure": "Failed to sign up",
+      "waitlistFailure": "Failed to join waitlist",
+      "namePlaceholder": "Enter your name",
+      "nameAriaLabel": "Your name",
+      "joining": "Joining…",
+      "submitting": "Signing up…",
+      "viewList": "View Sign Up List",
+      "spotsRemaining": "Signed-up: {count} · {remaining} spots left",
+      "spotsFull": "Signed-up: {count} · Full",
+      "allSpotsTaken": "All {total} spots are taken.",
+      "closesOn": "Sign up closes on {date}",
+      "closedPreviously": "Sign-ups closed on {date}"
     },
+    "states": {
+      "finishedTitle": "Thanks for playing!",
+      "finishedBody": "Sign up for next week will be announced soon.",
+      "openingSoonTitle": "Sign-ups opening soon",
+      "openingSoonBody": "Check back soon.",
+      "closedTitle": "Sign-ups closed",
+      "signedUpTitle": "{name}, thank you for signing up!",
+      "signedUpTitleGeneric": "Thanks for signing up!",
+      "signedUpBody": "See you soon!",
+      "waitlistLabel": "Waitlist",
+      "waitlistTitle": "You're on the waitlist",
+      "waitlistPositionLabel": "Position #{position} of {total}"
+    },
+    "loading": "Loading session...",
     "cost": {
       "label": "Estimated cost",
       "emphasis": "Cost this week: <amount>{value}</amount>"
@@ -48,6 +75,25 @@
     "signup": { "title": "Sign-Up" },
     "learn": { "title": "Learn" },
     "admin": { "title": "Admin" }
+  },
+  "nav": {
+    "home": "Home",
+    "signups": "Sign-Ups",
+    "skills": "Coming Soon",
+    "admin": "Admin"
+  },
+  "players": {
+    "loading": "Loading players...",
+    "empty": "No one's signed up yet — be the first!",
+    "upcomingSession": "UPCOMING SESSION",
+    "waitlistHeader": "WAITLIST",
+    "youSuffix": "(you)",
+    "cancelAction": "Cancel",
+    "leaveAction": "Leave",
+    "cancelConfirm": "Cancel your spot?",
+    "confirmYes": "Yes",
+    "confirmNo": "No",
+    "cancelFailure": "Failed to cancel. Please try again."
   },
   "admin": {
     "releases": {

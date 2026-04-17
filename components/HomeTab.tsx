@@ -44,6 +44,7 @@ function fmtDeadline(iso: string) {
 
 export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onTabChange?: (tab: 'home' | 'players' | 'admin') => void; onTitleTap?: () => void; devOverrides?: DevOverrides }) {
   const t = useTranslations('home');
+  const tStates = useTranslations('home.states');
   const [session, setSession] = useState<Session | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
@@ -183,7 +184,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) { setError('Enter your name to sign up'); return; }
+    if (!name.trim()) { setError(t('signup.nameRequired')); return; }
     setIsSubmitting(true);
     setError('');
     try {
@@ -197,7 +198,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         if (data.error === 'invite_list_not_found') {
           setError(t('signup.inviteError', { name: name.trim() }));
         } else {
-          setError(data.error ?? 'Failed to sign up');
+          setError(data.error ?? t('signup.genericFailure'));
         }
         if (res.status === 409) loadData();
       } else {
@@ -207,7 +208,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         await loadData();
       }
     } catch {
-      setError('Network error. Please try again.');
+      setError(t('signup.networkError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -215,7 +216,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
 
   async function handleJoinWaitlist(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) { setError('Enter your name to sign up'); return; }
+    if (!name.trim()) { setError(t('signup.nameRequired')); return; }
     setIsSubmitting(true);
     setError('');
     try {
@@ -229,7 +230,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         if (data.error === 'invite_list_not_found') {
           setError(t('signup.inviteError', { name: name.trim() }));
         } else {
-          setError(data.error ?? 'Failed to join waitlist');
+          setError(data.error ?? t('signup.waitlistFailure'));
         }
       } else {
         setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session?.id ?? '' });
@@ -238,14 +239,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         await loadData();
       }
     } catch {
-      setError('Network error. Please try again.');
+      setError(t('signup.networkError'));
     } finally {
       setIsSubmitting(false);
     }
   }
 
   if (loading) {
-    return <ShuttleLoader text="Loading session..." />;
+    return <ShuttleLoader text={t('loading')} />;
   }
 
   const mapsUrl = session?.locationAddress
@@ -338,8 +339,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
             <div className="status-banner-green">
               <span className="material-icons icon-status text-green-400">celebration</span>
               <div>
-                <p className="font-semibold text-green-400 text-sm">Thanks for playing!</p>
-                <p className="text-xs text-gray-400 mt-0.5">Sign up for next week will be announced soon.</p>
+                <p className="font-semibold text-green-400 text-sm">{tStates('finishedTitle')}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{tStates('finishedBody')}</p>
               </div>
             </div>
           </div>
@@ -350,8 +351,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
             <div className="status-banner-orange">
               <span className="material-icons icon-status text-amber-400">hourglass_top</span>
               <div>
-                <p className="font-semibold text-amber-300 text-sm">Sign-ups opening soon</p>
-                <p className="text-xs text-gray-400 mt-0.5">Check back soon.</p>
+                <p className="font-semibold text-amber-300 text-sm">{tStates('openingSoonTitle')}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{tStates('openingSoonBody')}</p>
               </div>
             </div>
           </div>
@@ -362,8 +363,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
             <div className="status-banner-orange">
               <span className="material-icons icon-status text-amber-400">lock_clock</span>
               <div>
-                <p className="font-semibold text-amber-300 text-sm">Sign-ups closed</p>
-                <p className="text-xs text-gray-400 mt-0.5">Sign-ups closed on {fmtDeadline(session!.deadline)}</p>
+                <p className="font-semibold text-amber-300 text-sm">{tStates('closedTitle')}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{t('signup.closedPreviously', { date: fmtDeadline(session!.deadline) })}</p>
               </div>
             </div>
           </div>
@@ -372,17 +373,17 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
-              <p className="text-sm text-gray-400">Signed-up: {activePlayers.length} · {spotsTotal - activePlayers.length} spots left</p>
+              <p className="text-sm text-gray-400">{t('signup.spotsRemaining', { count: activePlayers.length, remaining: spotsTotal - activePlayers.length })}</p>
             </div>
             <div className="status-banner-green">
               <span className="material-icons icon-status text-green-400">check_circle</span>
               <div>
-                <p className="font-semibold text-green-400 text-sm">{currentUser ? `${currentUser}, thank you for signing up!` : 'Thanks for signing up!'}</p>
-                <p className="text-xs text-gray-400 mt-0.5">See you soon!</p>
+                <p className="font-semibold text-green-400 text-sm">{currentUser ? tStates('signedUpTitle', { name: currentUser }) : tStates('signedUpTitleGeneric')}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{tStates('signedUpBody')}</p>
               </div>
             </div>
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
-              View Sign Up List
+              {t('signup.viewList')}
             </button>
           </div>
         ) : isWaitlisted ? (
@@ -391,7 +392,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
             <div className="flex items-start justify-between">
               <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
               <div className="text-right">
-                <p className="text-xs text-gray-400">Waitlist</p>
+                <p className="text-xs text-gray-400">{tStates('waitlistLabel')}</p>
                 <p className="text-2xl font-bold text-amber-400 leading-none mt-0.5">
                   #{waitlistPosition}
                 </p>
@@ -400,12 +401,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
             <div className="status-banner-orange">
               <span className="material-icons icon-status text-amber-400">schedule</span>
               <div>
-                <p className="font-semibold text-amber-400 text-sm">You&apos;re on the waitlist</p>
-                <p className="text-xs text-gray-400 mt-0.5">Position #{waitlistPosition} of {waitlistPlayers.length} · {t('signup.confirmed', { name: currentUser ?? '' })}</p>
+                <p className="font-semibold text-amber-400 text-sm">{tStates('waitlistTitle')}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{tStates('waitlistPositionLabel', { position: waitlistPosition, total: waitlistPlayers.length })} · {t('signup.confirmed', { name: currentUser ?? '' })}</p>
               </div>
             </div>
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
-              View Sign Up List
+              {t('signup.viewList')}
             </button>
           </div>
         ) : isFull && !isDeadlinePast ? (
@@ -413,13 +414,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
-              <p className="text-sm text-gray-400">Signed-up: {activePlayers.length} · Full</p>
+              <p className="text-sm text-gray-400">{t('signup.spotsFull', { count: activePlayers.length })}</p>
             </div>
             <div className="status-banner-orange">
               <span className="material-icons icon-status text-orange-400">lock</span>
               <div>
                 <p className="font-semibold text-orange-300 text-sm">{t('signup.full')}</p>
-                <p className="text-xs text-gray-400 mt-0.5">All {spotsTotal} spots are taken.</p>
+                <p className="text-xs text-gray-400 mt-0.5">{t('signup.allSpotsTaken', { total: spotsTotal })}</p>
               </div>
             </div>
             <form onSubmit={handleJoinWaitlist} className="space-y-3">
@@ -428,8 +429,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
                   id="waitlist-name"
                   name="name"
                   type="text"
-                  placeholder="Enter your name"
-                  aria-label="Your name"
+                  placeholder={t('signup.namePlaceholder')}
+                  aria-label={t('signup.nameAriaLabel')}
                   aria-describedby={error ? 'signup-error' : undefined}
                   value={name}
                   onChange={(e) => { setName(e.target.value); setError(''); setShowSuggestions(true); }}
@@ -463,7 +464,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
               </div>
               {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
               <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
-                {isSubmitting ? 'Joining…' : t('signup.waitlist')}
+                {isSubmitting ? t('signup.joining') : t('signup.waitlist')}
               </button>
             </form>
           </div>
@@ -472,7 +473,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
-              <p className="text-sm text-gray-400">Signed-up: {activePlayers.length} · {spotsTotal - activePlayers.length} spots left</p>
+              <p className="text-sm text-gray-400">{t('signup.spotsRemaining', { count: activePlayers.length, remaining: spotsTotal - activePlayers.length })}</p>
             </div>
             <form onSubmit={handleSignUp} className="space-y-3">
               <div className="relative">
@@ -480,8 +481,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
                   id="signup-name"
                   name="name"
                   type="text"
-                  placeholder="Enter your name"
-                  aria-label="Your name"
+                  placeholder={t('signup.namePlaceholder')}
+                  aria-label={t('signup.nameAriaLabel')}
                   aria-describedby={error ? 'signup-error' : undefined}
                   value={name}
                   onChange={(e) => { setName(e.target.value); setError(''); setShowSuggestions(true); }}
@@ -516,11 +517,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
               {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
               <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
                 {!isSubmitting && <span className="material-icons icon-sm" aria-hidden="true">how_to_reg</span>}
-                {isSubmitting ? 'Signing up…' : t('signup.button')}
+                {isSubmitting ? t('signup.submitting') : t('signup.button')}
               </button>
               {session?.deadline && (
                 <p className={`text-center text-xs font-medium ${isDeadlineApproaching ? 'text-red-400' : 'text-gray-400'}`}>
-                  Sign up closes on {fmtDeadline(session.deadline)}
+                  {t('signup.closesOn', { date: fmtDeadline(session.deadline) })}
                 </p>
               )}
             </form>
