@@ -6,7 +6,7 @@ const DEFAULT_LOCALE = 'en';
 const COOKIE_NAME = 'NEXT_LOCALE';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
 
-export function middleware(req: NextRequest): NextResponse {
+export function proxy(req: NextRequest): NextResponse {
   if (req.cookies.get(COOKIE_NAME)) {
     return NextResponse.next();
   }
