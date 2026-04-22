@@ -1,0 +1,62 @@
+name: Deploy to bpm-stable (manual, by tag)
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to deploy (e.g. bpm-stable-v1.0)'
+        required: true
+        type: string
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build Next.js app
+        run: npm run build
+        env:
+          NEXT_PUBLIC_BASE_PATH: /bpm
+          NEXT_PUBLIC_MAX_PLAYERS: '12'
+          NEXT_PUBLIC_ETRANSFER_EMAIL: grantxyzou@gmail.com
+          NEXT_PUBLIC_ENV: stable
+          NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
+
+      - name: Package standalone build
+        run: |
+          cp -r .next/static .next/standalone/.next/static
+          cd .next/standalone
+          zip -r ../../standalone-deploy.zip .
+
+      - name: Login to Azure
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_E2B5E408FEE24616B834E1FC172037C8 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_6F585B86C87D45EEBF9008D7A05C2A77 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_42B7F596180540CB94EFE1DF90C7489B }}
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@2e64e04aaaeeec4396edcb982544dbd30f8e9ddf # v3
+        with:
+          app-name: 'badminton-app'
+          slot-name: 'Production'
+          package: standalone-deploy.zip
