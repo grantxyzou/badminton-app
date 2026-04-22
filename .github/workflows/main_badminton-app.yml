@@ -36,8 +36,8 @@ jobs:
           NEXT_PUBLIC_BASE_PATH: /bpm
           NEXT_PUBLIC_MAX_PLAYERS: '12'
           NEXT_PUBLIC_ETRANSFER_EMAIL: grantxyzou@gmail.com
-            NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}   # ← add this line
-        
+          NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
+    
       - name: Package standalone build
         run: |
           cp -r .next/static .next/standalone/.next/static
