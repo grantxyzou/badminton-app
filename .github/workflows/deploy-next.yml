@@ -1,18 +1,15 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
-name: Build and deploy Node.js app to Azure Web App - badminton-app
+name: Deploy to bpm-next (auto, on push to main)
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
       contents: read
 
     steps:
@@ -36,24 +33,19 @@ jobs:
           NEXT_PUBLIC_BASE_PATH: /bpm
           NEXT_PUBLIC_MAX_PLAYERS: '12'
           NEXT_PUBLIC_ETRANSFER_EMAIL: grantxyzou@gmail.com
+          NEXT_PUBLIC_ENV: next
           NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
-    
+
       - name: Package standalone build
         run: |
           cp -r .next/static .next/standalone/.next/static
           cd .next/standalone
           zip -r ../../standalone-deploy.zip .
 
-      - name: Login to Azure
-        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_E2B5E408FEE24616B834E1FC172037C8 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_6F585B86C87D45EEBF9008D7A05C2A77 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_42B7F596180540CB94EFE1DF90C7489B }}
-
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@2e64e04aaaeeec4396edcb982544dbd30f8e9ddf # v3
         with:
-          app-name: 'badminton-app'
+          app-name: 'vnext-badminton-app'
           slot-name: 'Production'
           package: standalone-deploy.zip
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_C63C5B445B514543BFF5CFA2959ABBD0 }}
