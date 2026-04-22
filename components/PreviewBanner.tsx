@@ -1,12 +1,23 @@
 'use client';
 
+import { useEffect } from 'react';
 import { isPreviewEnv } from '@/lib/flags';
 
 const BANNER_HEIGHT = 28;
 const REPORT_EMAIL = 'xyzou2012@gmail.com';
 
 export default function PreviewBanner() {
-  if (!isPreviewEnv()) return null;
+  const show = isPreviewEnv();
+
+  useEffect(() => {
+    if (!show) return;
+    document.documentElement.style.setProperty('--banner-offset', `${BANNER_HEIGHT}px`);
+    return () => {
+      document.documentElement.style.removeProperty('--banner-offset');
+    };
+  }, [show]);
+
+  if (!show) return null;
 
   const sha = (process.env.NEXT_PUBLIC_GIT_SHA ?? 'dev').slice(0, 7);
 
