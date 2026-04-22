@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import PreviewBanner from '@/components/PreviewBanner';
+import { APP_TIME_ZONE } from '@/i18n/request';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -57,7 +58,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <div className="aurora-blob-2" />
           <div className="aurora-blob-3" />
         </div>
-        <NextIntlClientProvider locale={locale} messages={messages}>
+        <NextIntlClientProvider locale={locale} messages={messages} timeZone={APP_TIME_ZONE}>
           {children}
         </NextIntlClientProvider>
       </body>
