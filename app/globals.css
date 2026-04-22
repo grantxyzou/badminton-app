@@ -857,7 +857,7 @@ textarea {
 .theme-toggle,
 .lang-toggle {
   position: fixed;
-  top: 16px;
+  top: calc(16px + var(--banner-offset, 0px));
   z-index: 60;
   width: 36px;
   height: 36px;
