@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
+import PreviewBanner from '@/components/PreviewBanner';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -43,6 +44,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body>
+        <PreviewBanner />
         {/* Cold-start splash — hidden by CSS once HydrationMark sets data-hydrated */}
         <div className="splash" aria-hidden="true">
           <div className="splash-shuttle" />

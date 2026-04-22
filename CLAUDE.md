@@ -101,9 +101,32 @@ Full session + `POST { waitlist: true }` → `waitlisted: true`. Promote via `PA
 - **Rich-text strings use `t.rich`, not `t`**: any message containing `<tag>...</tag>` must be rendered via `t.rich('key', { tag: (chunks) => <Component>{chunks}</Component> })`. Using plain `t()` on a rich-text key prints the raw `<tag>` characters.
 - **Component tests need a provider wrapper**: components that call `useTranslations()` must be rendered inside `<NextIntlClientProvider locale="en" messages={enMessages}>` in tests, or they throw "No intl context found". See `__tests__/components/CostCard.test.tsx` for the pattern.
 
+## Feature Flags
+
+The repo runs two Azure deployments from a single `main` branch: **`bpm-stable`** (friend-facing, updates only when a git tag is promoted) and **`bpm-next`** (auto-deploys every push to `main`). Stage-by-stage rollout is gated by feature flags so `main` can ship unfinished work to `next` without touching stable.
+
+- **Flag convention**: `NEXT_PUBLIC_FLAG_<STAGE>_<FEATURE>` (e.g., `NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV`). Must be registered in `lib/flags.ts` `FLAGS` registry — the typed `FlagName` union prevents typo'd lookups.
+- **Reading flags**: always `isFlagOn('NEXT_PUBLIC_FLAG_X')` from `lib/flags.ts`. Never `process.env.NEXT_PUBLIC_FLAG_X` directly — Next.js only inlines literal accesses, and the helper's switch statement guarantees each flag is inlined.
+- **Canonical value**: only the literal string `'true'` means on. `'1'`, `'yes'`, `'TRUE'` all read as off. Prevents accidental enablement from typo'd Azure App Settings.
+- **Server vs client**: for flags that gate API response shape or DB writes, read the flag on the server only. Client flags can't protect the database — a user with devtools can flip bundle flags but cannot flip server env vars.
+- **Env detection**: `getEnv()` returns `'stable' | 'next' | 'dev'` from `NEXT_PUBLIC_ENV`. `<PreviewBanner />` uses `isPreviewEnv()` to render the "preview build" warning on `bpm-next` only.
+- **Retirement rule**: every flag in `lib/flags.ts` has a `plannedRemoval` date. Two weeks after a stage promotes to stable, delete the flag + its `off` branch. Long-lived flags become permanent tech debt.
+- **Test requirement**: meaningful code paths gated by a flag should have tests covering both the `on` and `off` branches. Trivial UI-only flags (copy swaps, style tweaks) can skip. See `__tests__/flags.test.ts` for the pattern (mutate `process.env` in `beforeEach`).
+
 ## Deployment
 
-Push to `main` triggers GitHub Actions: test → build → standalone zip → OIDC Azure deploy. Tests must pass before build proceeds. See `.github/workflows/main_badminton-app.yml`. Runtime env vars set in Azure App Settings.
+Two deployments from one `main` branch (trunk-based + tag promotion):
+
+- **`bpm-next`** — auto-deploys every push to `main` via `.github/workflows/deploy-next.yml`. Runs with `NEXT_PUBLIC_ENV=next` and most flags `on`. Preview banner visible. Friend-group beta testers bookmark this URL.
+- **`bpm-stable`** — friend-facing production. Deploys only when `.github/workflows/deploy-stable.yml` is manually dispatched with a `tag` input (e.g., `bpm-stable-v1.0`). Runs with `NEXT_PUBLIC_ENV=stable` and flags `off` by default.
+
+**Promotion runbook**: update `CHANGELOG.md` → tag `main` as `bpm-stable-vN.0` → push tag → dispatch `deploy-stable` with the tag → smoke test → announce.
+
+**Rollback**: re-dispatch `deploy-stable` with a previous tag. For data rollback, Cosmos point-in-time restore (7-day retention).
+
+**Schema rule**: the two deployments share one Cosmos DB. All schema changes must be additive and optional — never remove or rename a field while stable and next share the DB. Stage 2's `orgId` migration is the one high-risk event; see `/Users/gz-mac/.claude/plans/this-was-where-we-clever-diffie.md`.
+
+Tests must pass before build proceeds on either workflow. Runtime env vars (including flags) set in Azure App Settings per App Service.
 
 ## Testing
 
