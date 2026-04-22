@@ -49,7 +49,12 @@ Node.js server under `.next/standalone/`. The deployment zip bundles:
 
 ### Deployment — GitHub Actions (primary)
 
-Every push to `main` triggers the workflow at `.github/workflows/main_badminton-app.yml`:
+Two workflows share the same build recipe but target different App Services. See `docs/deployment-model.md` for the full runbook.
+
+- **`.github/workflows/deploy-next.yml`** — auto-deploys `main` to `vnext-badminton-app` on every push (preview/testing).
+- **`.github/workflows/deploy-stable.yml`** — manual dispatch by tag only, deploys to `badminton-app` (friend-facing).
+
+Both run the same build steps:
 
 1. `npm ci` — install from lockfile
 2. `npm run build` — with `NEXT_PUBLIC_BASE_PATH=/bpm`
