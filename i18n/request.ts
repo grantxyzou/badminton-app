@@ -6,6 +6,11 @@ export const SUPPORTED_LOCALES = ['en', 'zh-CN'] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'en';
 
+// BPM sessions happen in Vancouver. Render all datetimes in that zone so
+// players see the actual clock time of the game, regardless of where they
+// (or the server) are.
+export const APP_TIME_ZONE = 'America/Vancouver';
+
 export function resolveLocale(
   cookieValue: string | undefined,
   acceptLanguage: string | undefined,
@@ -76,5 +81,5 @@ export default getRequestConfig(async () => {
 
   const messages = deepMerge(enMessages, localeMessages);
 
-  return { locale, messages };
+  return { locale, messages, timeZone: APP_TIME_ZONE };
 });
