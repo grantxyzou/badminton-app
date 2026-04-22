@@ -33,7 +33,7 @@ Live URL: `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites
 - **Azure Cosmos DB** (NoSQL) — database: `badminton`, 7 containers at 400 RU/s shared throughput
 - **Anthropic Claude API** (`claude-sonnet-4-20250514`) — announcement polishing
 - **Azure App Service** — Canada Central, B1 Basic tier (Always On), `output: standalone`
-- **Vitest** — 85 tests, 8 suites, CI-gated before deploy
+- **Vitest** — 245 tests, 29 suites, CI-gated before deploy
 
 ---
 
@@ -144,15 +144,14 @@ When `COSMOS_CONNECTION_STRING` is not set, the app uses an in-memory mock store
 
 ## Deployment (Azure App Service)
 
-See `AZURE.md` for the full architecture and environment setup.
+Two Azure App Services run from the same `main` branch — `bpm-stable` (friend-facing, tag-promoted only) and `bpm-next` (preview, auto-deploys every push). See `docs/deployment-model.md` for the full runbook and `AZURE.md` for the architecture.
 
-Deployment is automatic via GitHub Actions — every push to `main` builds and deploys.
-
+```text
+git push  →  deploy-next.yml  →  bpm-next App Service (auto, always at HEAD)
+git tag + dispatch  →  deploy-stable.yml  →  bpm-stable App Service (manual, by tag)
 ```
-git push  →  GitHub Actions builds standalone →  deploys to Azure App Service
-```
 
-The workflow lives at `.github/workflows/main_badminton-app.yml`. It uses OIDC (federated credentials) — no long-lived secrets. All action SHAs are pinned for supply chain safety.
+Workflows live at `.github/workflows/deploy-next.yml` and `deploy-stable.yml`. The next pipeline uses a publish profile secret; the stable pipeline uses OIDC. All action SHAs are pinned for supply chain safety.
 
 ### Manual deploy (fallback only)
 
