@@ -2,6 +2,8 @@
 
 All CSS classes, tokens, and component styles live in `app/globals.css` and the component source files. This document captures the design intent — not the implementation details.
 
+> **Formalized spec.** The canonical, reusable token bundle lives in [`docs/design-system/`](docs/design-system/) and can be previewed live at `/bpm/design` (flag-gated). The bundle was extracted from this codebase and codifies the rules below into importable CSS variables and utility classes (`.bpm-h1`, `.bpm-section-label`, etc.).
+
 1. **Mobile-first, single-column layout.** All tab content renders in a single scrollable column. `max-w-lg` centers content on wider screens while remaining full-bleed on mobile.
 
 2. **Bottom navigation for thumb reach.** The nav is pinned to the bottom of the viewport so primary actions are reachable with a thumb.

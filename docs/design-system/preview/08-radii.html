@@ -1,0 +1,80 @@
+<!doctype html>
+<html data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Radii</title>
+<link rel="stylesheet" href="_preview.css">
+<style>
+  .radii-wrap {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    padding: 10px;
+  }
+  .r {
+    display: flex; flex-direction: column; gap: 8px; align-items: center;
+  }
+  .r .swatch {
+    width: 72px; height: 52px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+  }
+  .r .val {
+    font-size: 12px; font-weight: 600; color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+  .r .use {
+    font-size: 10px; color: var(--text-muted); text-align: center; line-height: 1.25;
+  }
+  .r.rare .swatch {
+    border-color: rgba(74, 222, 128, 0.45);
+    box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.15) inset;
+  }
+  .r.rare .badge {
+    display: inline-block;
+    font-size: 8.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 2px 5px; border-radius: 100px;
+    background: rgba(74, 222, 128, 0.18); color: #4ade80;
+    margin-top: 1px;
+  }
+</style>
+</head>
+<body>
+<div class="court-bg"><div class="aurora-blob-1"></div><div class="aurora-blob-2"></div><div class="aurora-blob-3"></div></div>
+<div class="card-wrap">
+  <div class="radii-wrap">
+    <div class="r">
+      <div class="swatch" style="border-radius:6px;"></div>
+      <div class="val">6</div>
+      <div class="use">xs · tags,<br>badges</div>
+    </div>
+    <div class="r">
+      <div class="swatch" style="border-radius:8px;"></div>
+      <div class="val">8</div>
+      <div class="use">sm · inner,<br>inputs</div>
+    </div>
+    <div class="r">
+      <div class="swatch" style="border-radius:10px;"></div>
+      <div class="val">10</div>
+      <div class="use">md · buttons,<br>nav pill</div>
+    </div>
+    <div class="r">
+      <div class="swatch" style="border-radius:12px;"></div>
+      <div class="val">12</div>
+      <div class="use">lg · banners,<br>menus</div>
+    </div>
+    <div class="r rare">
+      <div class="swatch" style="border-radius:16px;"></div>
+      <div class="val">16</div>
+      <div class="use">xl · cards</div>
+      <span class="badge">Max</span>
+    </div>
+    <div class="r">
+      <div class="swatch" style="border-radius:100px;"></div>
+      <div class="val">999</div>
+      <div class="use">pill ·<br>nav, chips</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

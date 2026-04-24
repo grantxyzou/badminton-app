@@ -1,12 +1,15 @@
 'use client';
 
+import { memo } from 'react';
 import { useTranslations } from 'next-intl';
 
 interface WelcomeCardProps {
   onDismiss: () => void;
 }
 
-export default function WelcomeCard({ onDismiss }: WelcomeCardProps) {
+// Memoized — only re-renders when `onDismiss` identity or locale changes.
+// Pairs with `useCallback(dismissOnboarding, [])` in HomeTab.
+function WelcomeCard({ onDismiss }: WelcomeCardProps) {
   const t = useTranslations('home.welcome');
 
   return (
@@ -31,3 +34,5 @@ export default function WelcomeCard({ onDismiss }: WelcomeCardProps) {
     </div>
   );
 }
+
+export default memo(WelcomeCard);

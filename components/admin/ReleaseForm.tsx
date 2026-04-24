@@ -114,6 +114,8 @@ ${rawNotes}`;
       <div>
         <label className="block text-xs text-gray-400 mb-1">Version</label>
         <input
+          id="release-version"
+          name="version"
           type="text"
           value={version}
           onChange={(e) => setVersion(e.target.value)}
@@ -124,6 +126,8 @@ ${rawNotes}`;
       <div>
         <label className="block text-xs text-gray-400 mb-1">Raw notes</label>
         <textarea
+          id="release-raw-notes"
+          name="rawNotes"
           value={rawNotes}
           onChange={(e) => setRawNotes(e.target.value)}
           className="input w-full min-h-[100px]"
@@ -143,22 +147,22 @@ ${rawNotes}`;
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs text-gray-400 mb-1">Title (EN)</label>
-          <input type="text" value={titleEn} onChange={(e) => setTitleEn(e.target.value)} className="input w-full" />
+          <input id="release-title-en" name="titleEn" type="text" value={titleEn} onChange={(e) => setTitleEn(e.target.value)} className="input w-full" />
         </div>
         <div>
           <label className="block text-xs text-gray-400 mb-1">Title (中文)</label>
-          <input type="text" value={titleZh} onChange={(e) => setTitleZh(e.target.value)} className="input w-full" />
+          <input id="release-title-zh" name="titleZh" type="text" value={titleZh} onChange={(e) => setTitleZh(e.target.value)} className="input w-full" />
         </div>
       </div>
 
       <div>
         <label className="block text-xs text-gray-400 mb-1">Body (EN)</label>
-        <textarea value={bodyEn} onChange={(e) => setBodyEn(e.target.value)} className="input w-full min-h-[100px]" />
+        <textarea id="release-body-en" name="bodyEn" value={bodyEn} onChange={(e) => setBodyEn(e.target.value)} className="input w-full min-h-[100px]" />
       </div>
 
       <div>
         <label className="block text-xs text-gray-400 mb-1">Body (中文)</label>
-        <textarea value={bodyZh} onChange={(e) => setBodyZh(e.target.value)} className="input w-full min-h-[100px]" />
+        <textarea id="release-body-zh" name="bodyZh" value={bodyZh} onChange={(e) => setBodyZh(e.target.value)} className="input w-full min-h-[100px]" />
       </div>
 
       {error && <p className="text-red-400 text-xs" role="alert">{error}</p>}

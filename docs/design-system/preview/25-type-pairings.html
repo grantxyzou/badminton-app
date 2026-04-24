@@ -1,0 +1,369 @@
+<!doctype html>
+<html data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Type system</title>
+<link rel="stylesheet" href="_preview.css">
+<style>
+  .wrap { padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+  .card-wrap { max-width: 760px; }
+
+  .banner {
+    padding: 16px 18px; border-radius: 14px;
+    background: linear-gradient(160deg, rgba(74,222,128,0.14) 0%, rgba(74,222,128,0.05) 100%);
+    border: 1px solid rgba(74,222,128,0.38);
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .banner .left { display: flex; flex-direction: column; gap: 3px; }
+  .banner .tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.16em; text-transform: uppercase; color: #4ade80;
+  }
+  .banner .name {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 19px;
+    color: #bbf7d0; letter-spacing: -0.01em;
+  }
+  .banner .sub {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12px; color: rgba(187,247,208,0.78); line-height: 1.5;
+  }
+  .banner .loader {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: rgba(187,247,208,0.75);
+    padding: 6px 10px; border-radius: 6px;
+    background: rgba(0,0,0,0.25); border: 1px solid rgba(74,222,128,0.28);
+    white-space: nowrap;
+  }
+
+  .block {
+    padding: 20px 22px; border-radius: 14px;
+    background: rgba(255,255,255,0.035); border: 1px solid rgba(255,255,255,0.08);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .label-caption {
+    font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600;
+    color: rgba(226,232,240,0.45); letter-spacing: 0.18em; text-transform: uppercase;
+  }
+  .label-caption .pill {
+    display: inline-block; padding: 2px 7px; border-radius: 4px;
+    background: rgba(74,222,128,0.12); color: #86efac;
+    border: 1px solid rgba(74,222,128,0.3);
+    margin-left: 6px; letter-spacing: 0.08em;
+  }
+  .label-caption .pill.mono { background: rgba(96,165,250,0.12); color: #93c5fd; border-color: rgba(96,165,250,0.3); }
+  .label-caption .pill.plex { background: rgba(251,191,36,0.10); color: #fcd34d; border-color: rgba(251,191,36,0.28); }
+
+  /* ── Three-role system header ────────────────────────────────── */
+  .roles {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px; background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
+    overflow: hidden;
+  }
+  .role {
+    padding: 18px 18px 16px;
+    background: rgba(16,15,15,0.85);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .role .role-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: rgba(226,232,240,0.45);
+  }
+  .role .role-name { font-size: 22px; letter-spacing: -0.015em; color: var(--text-primary); }
+  .role.display .role-name { font-family: 'Space Grotesk', sans-serif; font-weight: 700; }
+  .role.body .role-name    { font-family: 'IBM Plex Sans', sans-serif; font-weight: 600; }
+  .role.data .role-name    { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 19px; }
+  .role .role-use {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 11.5px; color: rgba(226,232,240,0.55); line-height: 1.45;
+  }
+  .role .role-sample {
+    margin-top: 4px;
+    font-size: 13px; color: rgba(226,232,240,0.9);
+  }
+  .role.display .role-sample { font-family: 'Space Grotesk', sans-serif; }
+  .role.body .role-sample    { font-family: 'IBM Plex Sans', sans-serif; }
+  .role.data .role-sample    { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+
+  /* ── Display · Space Grotesk ─────────────────────────────────── */
+  .display {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700; font-size: 84px; line-height: 0.95; letter-spacing: -0.04em;
+    color: var(--text-primary);
+  }
+  .headline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600; font-size: 28px; line-height: 1.12; letter-spacing: -0.02em;
+    color: var(--text-primary);
+  }
+
+  /* ── Body · IBM Plex Sans ────────────────────────────────────── */
+  .body-copy {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 15px; font-weight: 400; line-height: 1.6;
+    color: rgba(226,232,240,0.88);
+  }
+  .body-copy em {
+    font-style: italic; font-weight: 400;
+    color: rgba(226,232,240,0.95);
+  }
+  .body-copy b {
+    font-weight: 600; color: var(--text-primary);
+  }
+
+  /* Plex italic showcase — this is specifically why we use Plex and not Space Grotesk for body */
+  .italic-row {
+    display: flex; gap: 14px; align-items: baseline;
+    padding-top: 6px;
+  }
+  .italic-row .label {
+    font-family: 'JetBrains Mono', monospace; font-size: 9.5px;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: rgba(251,191,36,0.8); flex-shrink: 0; width: 70px; padding-top: 3px;
+  }
+  .italic-row .sample {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 16px; font-style: italic; font-weight: 400;
+    color: rgba(226,232,240,0.92);
+  }
+
+  /* Weight ladder — IBM Plex (body) */
+  .ladder { display: flex; flex-direction: column; gap: 4px; }
+  .ladder-row {
+    display: flex; align-items: baseline; gap: 18px;
+    padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .ladder-row:last-child { border-bottom: none; }
+  .ladder-row .w {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: rgba(226,232,240,0.45); letter-spacing: 0.06em;
+    width: 90px; flex-shrink: 0;
+  }
+  .ladder-row .g {
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 22px;
+    color: var(--text-primary); letter-spacing: -0.005em;
+  }
+  .ladder-row.w300 .g { font-weight: 300; }
+  .ladder-row.w400 .g { font-weight: 400; }
+  .ladder-row.w500 .g { font-weight: 500; }
+  .ladder-row.w600 .g { font-weight: 600; }
+  .ladder-row.w700 .g { font-weight: 700; }
+
+  /* Mono — data moments */
+  .mono-block { display: flex; flex-direction: column; gap: 10px; }
+  .mono-caption {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: #86efac;
+  }
+  .pin {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700; font-size: 38px; letter-spacing: 0.26em;
+    color: var(--text-primary);
+  }
+  .timestamp {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; color: rgba(226,232,240,0.75);
+    font-variant-numeric: tabular-nums;
+  }
+  .timestamp b { color: var(--text-primary); font-weight: 600; }
+
+  /* UI example — all three fonts together */
+  .ui-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px; border-radius: 12px;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+  }
+  .ui-row .ui-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700; font-size: 16px; letter-spacing: -0.01em;
+    color: var(--text-primary);
+  }
+  .ui-row .ui-sub {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12.5px; font-weight: 400;
+    color: rgba(226,232,240,0.6); margin-top: 3px;
+  }
+  .ui-row .ui-count {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    padding: 5px 11px; border-radius: 100px;
+    background: rgba(74,222,128,0.14); border: 1px solid rgba(74,222,128,0.35);
+    color: #86efac; font-size: 12px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Anatomy strip */
+  .anatomy {
+    padding: 14px 18px; border-radius: 10px;
+    background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.06);
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;
+    align-items: center;
+  }
+  .anatomy .col {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .anatomy .col-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 8.5px;
+    color: rgba(226,232,240,0.4); letter-spacing: 0.16em; text-transform: uppercase;
+  }
+  .anatomy .glyph-sg {
+    font-family: 'Space Grotesk', sans-serif; font-weight: 500;
+    font-size: 38px; letter-spacing: -0.01em; line-height: 1;
+    color: var(--text-primary);
+  }
+  .anatomy .glyph-plex {
+    font-family: 'IBM Plex Sans', sans-serif; font-weight: 400;
+    font-size: 38px; line-height: 1; color: var(--text-primary);
+  }
+  .anatomy .glyph-plex i { font-style: italic; font-weight: 400; color: #fcd34d; }
+  .anatomy .glyph-mono {
+    font-family: 'JetBrains Mono', monospace; font-weight: 500;
+    font-size: 30px; color: #86efac; letter-spacing: 0.02em; line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .kv-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 24px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+    color: rgba(226,232,240,0.7); line-height: 1.6;
+  }
+  .kv-grid .k { color: rgba(134,239,172,0.75); }
+</style>
+</head>
+<body>
+<div class="court-bg"><div class="aurora-blob-1"></div><div class="aurora-blob-2"></div><div class="aurora-blob-3"></div></div>
+<div class="card-wrap">
+  <div class="wrap">
+
+    <!-- Top banner -->
+    <div class="banner">
+      <div class="left">
+        <span class="tag">✓ Locked · committed to tokens</span>
+        <div class="name">Space Grotesk · IBM Plex Sans · JetBrains Mono</div>
+        <div class="sub">Sporty display, utilitarian body, tabular data. Three roles, no overlap — each font does exactly one job.</div>
+      </div>
+      <div class="loader">self-hosted · variable TTF</div>
+    </div>
+
+    <!-- Three-role map -->
+    <div class="roles">
+      <div class="role display">
+        <span class="role-tag">Display</span>
+        <div class="role-name">Space Grotesk</div>
+        <div class="role-use">Headlines, numerals, brand moments. Geometric, sporty, tight.</div>
+        <div class="role-sample">Doubles night.</div>
+      </div>
+      <div class="role body">
+        <span class="role-tag">Body / UI</span>
+        <div class="role-name">IBM Plex Sans</div>
+        <div class="role-use">Paragraphs, labels, microcopy. High x-height, italics supported.</div>
+        <div class="role-sample">Sign-ups close at 6 pm sharp.</div>
+      </div>
+      <div class="role data">
+        <span class="role-tag">Data</span>
+        <div class="role-name">JetBrains Mono</div>
+        <div class="role-use">PINs, scores, timestamps, tabular numerics. Fixed-width.</div>
+        <div class="role-sample">4·8·2·1 · 19:30</div>
+      </div>
+    </div>
+
+    <!-- Letterform anatomy -->
+    <div class="block">
+      <span class="label-caption">Letterforms — glyph comparison</span>
+      <div class="anatomy">
+        <div class="col">
+          <span class="col-label">Space Grotesk</span>
+          <span class="glyph-sg">Aa Gg &amp;</span>
+        </div>
+        <div class="col">
+          <span class="col-label">IBM Plex Sans</span>
+          <span class="glyph-plex">Aa Gg <i>&amp;</i></span>
+        </div>
+        <div class="col">
+          <span class="col-label">JetBrains Mono</span>
+          <span class="glyph-mono">4·8·2·1</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Display -->
+    <div class="block">
+      <span class="label-caption">Display <span class="pill">Space Grotesk 700 · 84 px</span></span>
+      <div class="display">bpm.</div>
+    </div>
+
+    <!-- Headline -->
+    <div class="block">
+      <span class="label-caption">Headline <span class="pill">Space Grotesk 600 · 28 px</span></span>
+      <div class="headline">Doubles night — Court 2</div>
+    </div>
+
+    <!-- Body + italic -->
+    <div class="block">
+      <span class="label-caption">Body <span class="pill plex">IBM Plex Sans 400 · 15 px · 1.6</span></span>
+      <div class="body-copy">Eight players, two hours, mixed skill ladder. <b>Sign-ups close at 6 pm sharp</b> and the waitlist opens right after. Bring a spare racket if you have one — <em>we're always short on grips.</em></div>
+
+      <div class="italic-row">
+        <span class="label">Italic</span>
+        <span class="sample">emphasis is expressive, not just slanted — that's why we use Plex here, not Space Grotesk.</span>
+      </div>
+    </div>
+
+    <!-- Weight ladder — Plex -->
+    <div class="block">
+      <span class="label-caption">Weight ladder <span class="pill plex">IBM Plex Sans · variable 300–700</span></span>
+      <div class="ladder">
+        <div class="ladder-row w300"><span class="w">300 · Light</span><span class="g">Court 2 · 7:30 pm</span></div>
+        <div class="ladder-row w400"><span class="w">400 · Reg</span><span class="g">Court 2 · 7:30 pm</span></div>
+        <div class="ladder-row w500"><span class="w">500 · Med</span><span class="g">Court 2 · 7:30 pm</span></div>
+        <div class="ladder-row w600"><span class="w">600 · Semi</span><span class="g">Court 2 · 7:30 pm</span></div>
+        <div class="ladder-row w700"><span class="w">700 · Bold</span><span class="g">Court 2 · 7:30 pm</span></div>
+      </div>
+    </div>
+
+    <!-- Mono data -->
+    <div class="block">
+      <span class="label-caption">Data moments <span class="pill mono">JetBrains Mono · tabular nums</span></span>
+      <div class="mono-block">
+        <span class="mono-caption">Session code</span>
+        <div class="pin">4 · 8 · 2 · 1</div>
+        <div class="timestamp">Tonight · <b>19:30</b> → <b>21:30</b>  ·  Court 2  ·  <b>3/4</b> confirmed</div>
+      </div>
+    </div>
+
+    <!-- All three together in one UI row -->
+    <div class="block">
+      <span class="label-caption">In context — all three roles together</span>
+      <div class="ui-row">
+        <div>
+          <div class="ui-title">Skill ladder · Tuesday</div>
+          <div class="ui-sub">Tonight · 7:30 pm · Court 2</div>
+        </div>
+        <span class="ui-count">3 / 4</span>
+      </div>
+    </div>
+
+    <!-- Tokens -->
+    <div class="block">
+      <span class="label-caption">Tokens (colors_and_type.css)</span>
+      <div class="kv-grid">
+        <div><span class="k">--font-display</span> · 'Space Grotesk', …</div>
+        <div><span class="k">--font-sans</span> · 'IBM Plex Sans', …</div>
+        <div><span class="k">--font-mono</span> · 'JetBrains Mono', …</div>
+        <div><span class="k">display weights</span> · 300 – 700 (variable)</div>
+        <div><span class="k">body weights</span> · 100 – 700 (variable)</div>
+        <div><span class="k">mono weights</span> · 400 · 500 · 600</div>
+        <div><span class="k">hosting</span> · self-hosted TTF</div>
+        <div><span class="k">mono source</span> · Google Fonts CDN</div>
+        <div><span class="k">italic</span> · IBM Plex Sans only</div>
+        <div><span class="k">fallbacks</span> · -apple-system, Segoe UI</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

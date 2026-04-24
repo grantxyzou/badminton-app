@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Segment control</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=swap">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: var(--font-sans); min-height: 100%; }
+  body { padding: 14px; background: #050806; display: flex; justify-content: center; }
+
+  .dual { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 960px; }
+  .pane { padding: 16px; border-radius: 12px; border: 1px solid; }
+  .pane[data-theme="dark"]  { background: #100F0F; border-color: rgba(255,255,255,0.08); color: #e2e8f0; }
+  .pane[data-theme="light"] { background: #FAF8F5; border-color: rgba(0,0,0,0.08);   color: #1a2332; }
+
+  .pane-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+  }
+  .pane[data-theme="dark"]  .pane-title { color: #86efac; }
+  .pane[data-theme="light"] .pane-title { color: #16a34a; }
+  .pane-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .pane[data-theme="dark"]  .pane-title .dot { background: #4ade80; }
+  .pane[data-theme="light"] .pane-title .dot { background: #16a34a; }
+
+  .wcag {
+    margin-top: 12px; padding-top: 10px; border-top: 1px solid;
+    font-size: 11px; font-family: var(--font-mono); line-height: 1.55;
+  }
+  .pane[data-theme="dark"]  .wcag { border-color: rgba(255,255,255,0.1); color: rgba(226,232,240,0.7); }
+  .pane[data-theme="light"] .wcag { border-color: rgba(0,0,0,0.08);    color: rgba(26,35,50,0.72); }
+  .wcag .pass  { color: #16a34a; font-weight: 700; }
+  .wcag .aaa   { color: #86efac; font-weight: 700; }
+  .pane[data-theme="dark"]  .wcag .pass { color: #86efac; }
+
+  .mi { font-family: 'Material Icons Round'; font-weight: normal; font-style: normal;
+        line-height: 1; display: inline-block; white-space: nowrap; direction: ltr;
+        -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased; }
+</style>
+<style>
+  .seg { border-radius: 100px; padding: 2px; display: inline-flex; gap: 4px; height: 32px; }
+  .seg-item {
+    border-radius: 20px; border: none; padding: 0 14px;
+    font-size: 12px; font-family: inherit; cursor: pointer;
+  }
+
+  .pane[data-theme="dark"]  .seg          { background: rgba(118,118,128,0.20); }
+  .pane[data-theme="dark"]  .seg-item.active   { background: rgba(74,222,128,0.22); color: #86efac; font-weight: 590; }
+  .pane[data-theme="dark"]  .seg-item.inactive { background: transparent; color: rgba(255,255,255,0.7); font-weight: 510; }
+
+  .pane[data-theme="light"] .seg          { background: rgba(118,118,128,0.14); }
+  .pane[data-theme="light"] .seg-item.active   { background: rgba(22,163,74,0.18); color: #15803d; font-weight: 590; }
+  .pane[data-theme="light"] .seg-item.inactive { background: transparent; color: rgba(26,35,50,0.72); font-weight: 510; }
+
+  .cap { font-size: 11px; opacity: 0.6; margin-top: 14px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="dual">
+
+  <div class="pane" data-theme="dark">
+    <div class="pane-title"><span class="dot"></span>Dark</div>
+    <div class="seg">
+      <button class="seg-item active">Active</button>
+      <button class="seg-item inactive">Waitlist</button>
+      <button class="seg-item inactive">Removed</button>
+    </div>
+    <div class="cap">Apple HIG · pill 100px · active tint green</div>
+    <div class="wcag">
+      Active #86efac on green-22% tint: <span class="pass">8.6 : 1 AAA</span><br>
+      Inactive 70%-white on Night: <span class="pass">8.1 : 1 AAA</span>
+    </div>
+  </div>
+
+  <div class="pane" data-theme="light">
+    <div class="pane-title"><span class="dot"></span>Light</div>
+    <div class="seg">
+      <button class="seg-item active">Active</button>
+      <button class="seg-item inactive">Waitlist</button>
+      <button class="seg-item inactive">Removed</button>
+    </div>
+    <div class="cap">Apple HIG · pill 100px · active tint green</div>
+    <div class="wcag">
+      Active #15803d on green-18% tint: <span class="pass">7.4 : 1 AAA</span><br>
+      Inactive 72%-ink on cream: <span class="pass">9.8 : 1 AAA</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

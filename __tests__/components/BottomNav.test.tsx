@@ -34,22 +34,22 @@ describe('BottomNav — i18n', () => {
     expect(screen.getByRole('button', { name: '管理' })).toBeTruthy();
   });
 
-  it('splits EN "Coming Soon" into two stacked lines', () => {
-    const { container } = renderWithLocale('en');
+  it('renders EN skills label as a single line — canonical spec (preview/19)', () => {
+    renderWithLocale('en');
+    // Canonical spec dropped the whitespace-split "Coming Soon" stacking.
+    // Label is now a single <span> alongside the `school` icon.
     const skillsBtn = screen.getByRole('button', { name: 'Coming Soon' });
-    const blocks = skillsBtn.querySelectorAll('span.block');
-    expect(blocks.length).toBe(2);
-    expect(blocks[0]?.textContent).toBe('Coming');
-    expect(blocks[1]?.textContent).toBe('Soon');
-    expect(container).toBeTruthy();
+    // No `.block` children — the stacked rendering is removed.
+    expect(skillsBtn.querySelectorAll('span.block').length).toBe(0);
+    // The label text renders verbatim.
+    expect(skillsBtn.textContent).toContain('Coming Soon');
   });
 
-  it('renders zh-CN skills label as a single line (no whitespace split)', () => {
+  it('renders zh-CN skills label as a single line (verbatim, no whitespace split)', () => {
     renderWithLocale('zh-CN');
     const skillsBtn = screen.getByRole('button', { name: '即将推出' });
-    const blocks = skillsBtn.querySelectorAll('span.block');
-    expect(blocks.length).toBe(1);
-    expect(blocks[0]?.textContent).toBe('即将推出');
+    expect(skillsBtn.querySelectorAll('span.block').length).toBe(0);
+    expect(skillsBtn.textContent).toContain('即将推出');
   });
 
   it('hides admin tab when showAdmin is false', () => {

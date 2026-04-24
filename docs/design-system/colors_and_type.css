@@ -1,0 +1,311 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   BPM Badminton Design System — Colors & Type
+   Extracted from app/globals.css + tailwind.config.js in grantxyzou/badminton-app.
+   Import this file to get all color, type, motion, spacing and surface tokens.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Brand fonts ──────────────────────────────────────────────────────────
+   In this Next.js app the variable TTFs are loaded via `next/font/local`
+   in `app/layout.tsx` (see `spaceGrotesk` / `ibmPlexSans` declarations).
+   That path handles preloading, hashing, and path resolution — so the
+   @font-face rules below are intentionally left as reference only. The
+   real `--ff-space-grotesk` and `--ff-ibm-plex` custom properties are
+   injected by next/font on the <html> element.
+
+   Drop-in static HTML consumers: uncomment the @font-face block and
+   colocate `fonts/*.ttf` alongside this CSS file.
+
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('fonts/SpaceGrotesk-VariableFont_wght.ttf') format('truetype-variations'),
+       url('fonts/SpaceGrotesk-VariableFont_wght.ttf') format('truetype');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('fonts/IBMPlexSans-VariableFont_wdth_wght.ttf') format('truetype-variations'),
+       url('fonts/IBMPlexSans-VariableFont_wdth_wght.ttf') format('truetype');
+  font-weight: 100 700;
+  font-stretch: 85% 100%;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('fonts/IBMPlexSans-Italic-VariableFont_wdth_wght.ttf') format('truetype-variations'),
+       url('fonts/IBMPlexSans-Italic-VariableFont_wdth_wght.ttf') format('truetype');
+  font-weight: 100 700;
+  font-stretch: 85% 100%;
+  font-style: italic;
+  font-display: swap;
+} */
+
+:root {
+  /* ── Core brand ── */
+  --bpm-court-green: #4ade80;          /* Court green — PRIMARY brand accent (dark mode) */
+  --bpm-court-green-dark: #16a34a;     /* Deeper green — PRIMARY accent (light mode) */
+  --bpm-forest-900: #050f07;           /* Deepest forest (selects, dropdowns) */
+  --bpm-forest-800: #0a1f0e;
+  --bpm-night: #100F0F;                /* Page bg, dark mode */
+  --bpm-cream: #FAF8F5;                /* Page bg, light mode (warm off-white) */
+  --bpm-ink: #1a2332;                  /* Primary text, light mode */
+  --bpm-fog: #e2e8f0;                  /* Primary text, dark mode */
+
+  /* ── Semantic state colors ── */
+  --bpm-amber-400: #fbbf24;            /* Waitlist + "sign-ups opening" */
+  --bpm-amber-300: #fcd34d;
+  --bpm-orange-400: #fb923c;           /* Session full */
+  --bpm-red-400: #ef4444;              /* Errors + PIN icon */
+  --bpm-red-600: #dc2626;              /* Errors, light mode */
+  --bpm-blue-400: #60a5fa;             /* Informational, dates */
+
+  /* ── Page & text ── */
+  --page-bg: var(--bpm-night);
+  --text-primary: var(--bpm-fog);
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-muted: rgba(255, 255, 255, 0.35);
+  --accent: var(--bpm-court-green);
+  --accent-dark: var(--bpm-court-green-dark);
+  --color-scheme: dark;
+
+  /* ── Motion ── */
+  --ease-glass: cubic-bezier(0.23, 1, 0.32, 1);   /* Default — liquid glass */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy — entrances */
+  --ease-sheet:  cubic-bezier(0.16, 1, 0.3, 1);   /* Bottom-sheet open/close */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --duration-sheet: 180ms;
+
+  /* ── Aurora background blobs (see .court-bg + aurora-blob-1/2/3) ── */
+  --aurora-bg: var(--bpm-night);
+  --aurora-blob1: linear-gradient(180deg, #8FA2B0 0%, #1B324D 56%);
+  --aurora-blob2: linear-gradient(180deg, #BEB293 0%, black 67%);
+  --aurora-blob3: linear-gradient(180deg, #8FA2B0 0%, #1B324D 56%);
+  --aurora-opacity-1: 0.5;
+  --aurora-opacity-2: 0.95;
+  --aurora-opacity-3: 0.6;
+
+  /* ── Glass surfaces ── */
+  --glass-tint: 255, 255, 255;
+  --glass-bg: linear-gradient(160deg, rgba(var(--glass-tint), 0.06) 0%, rgba(var(--glass-tint), 0.02) 100%);
+  --glass-border: rgba(var(--glass-tint), 0.14);
+  --glass-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  --glass-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.22);
+  --glass-inset: rgba(var(--glass-tint), 0.14);
+  --glass-inset-hover: rgba(var(--glass-tint), 0.18);
+  --glass-blur: 10px;
+
+  /* ── Buttons ── */
+  --btn-primary-bg: linear-gradient(160deg, rgba(74, 222, 128, 0.55) 0%, rgba(22, 163, 74, 0.4) 100%);
+  --btn-primary-border: rgba(74, 222, 128, 0.45);
+  --btn-primary-shadow: inset 0 1px 0 rgba(var(--glass-tint), 0.22), 0 4px 20px rgba(22, 163, 74, 0.2), 0 1px 4px rgba(0, 0, 0, 0.2);
+  --btn-primary-text: #fff;
+  --btn-ghost-bg: linear-gradient(160deg, rgba(var(--glass-tint), 0.08) 0%, rgba(var(--glass-tint), 0.03) 100%);
+  --btn-ghost-border: rgba(var(--glass-tint), 0.14);
+  --btn-ghost-text: rgba(255, 255, 255, 0.85);
+  --btn-ghost-hover: linear-gradient(160deg, rgba(var(--glass-tint), 0.22) 0%, rgba(var(--glass-tint), 0.12) 100%);
+
+  /* ── Nav ── */
+  --nav-bg: linear-gradient(160deg, rgba(var(--glass-tint), 0.10) 0%, rgba(var(--glass-tint), 0.04) 100%);
+  --nav-shadow: 0 8px 40px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.18);
+  --nav-tab-active-bg: linear-gradient(160deg, rgba(74, 222, 128, 0.12) 0%, rgba(74, 222, 128, 0.05) 100%);
+  --nav-active-color: #4ade80;
+  --nav-inactive-color: rgba(255, 255, 255, 0.5);
+
+  /* ── Inputs ── */
+  --input-bg: linear-gradient(160deg, rgba(var(--glass-tint), 0.08) 0%, rgba(var(--glass-tint), 0.04) 100%);
+  --input-border: rgba(var(--glass-tint), 0.14);
+  --input-text: #e2e8f0;
+  --input-placeholder: rgba(255, 255, 255, 0.5);
+  --input-focus-border: rgba(74, 222, 128, 0.45);
+  --input-focus-ring: rgba(74, 222, 128, 0.10);
+  --input-inset: rgba(var(--glass-tint), 0.10);
+  --select-option-bg: #0a1f0e;
+  --select-option-text: #e2e8f0;
+
+  /* ── Segments (Apple HIG) ── */
+  --segment-bg: rgba(118, 118, 128, 0.12);
+  --segment-active-bg: rgba(74, 222, 128, 0.2);
+  --segment-active-text: #4ade80;
+  --segment-inactive-text: rgba(255, 255, 255, 0.6);
+
+  /* ── Release-notes terminal ── */
+  --terminal-bg: #0f1116;
+  --terminal-titlebar-bg: #1e2128;
+  --terminal-prompt: #6b7280;
+  --terminal-accent: #f0d079;
+  --terminal-date: #9ca3af;
+  --terminal-title: #e5e7eb;
+  --terminal-body: #d1d5db;
+
+  /* ── Banners ── */
+  --banner-green-bg: rgba(74, 222, 128, 0.08);
+  --banner-green-border: rgba(74, 222, 128, 0.2);
+  --banner-orange-bg: rgba(251, 146, 60, 0.08);
+  --banner-orange-border: rgba(251, 146, 60, 0.2);
+  --banner-red-bg: rgba(248, 113, 113, 0.16);
+  --banner-red-border: rgba(239, 68, 68, 0.85);
+
+  /* ── Pills ── */
+  --pill-paid-bg: rgba(74, 222, 128, 0.15);
+  --pill-paid-text: #4ade80;
+  --pill-unpaid-bg: rgba(var(--glass-tint), 0.06);
+  --pill-unpaid-text: rgba(255, 255, 255, 0.35);
+  --pill-waitlist-bg: rgba(251, 146, 60, 0.15);
+  --pill-waitlist-text: #fb923c;
+  --pill-admin-bg: rgba(167, 139, 250, 0.22);
+  --pill-admin-text: #c4b5fd;
+
+  /* ── Player self-highlight rows ── */
+  --highlight-green: rgba(74, 222, 128, 0.07);
+  --highlight-amber: rgba(251, 191, 36, 0.07);
+
+  /* ── Inner cards ── */
+  --inner-card-bg: rgba(var(--glass-tint), 0.03);
+  --inner-card-border: rgba(var(--glass-tint), 0.06);
+
+  /* ── List-row tinted headers ── */
+  --list-green-bg: rgba(74, 222, 128, 0.06);
+  --list-green-text: rgba(74, 222, 128, 0.65);
+  --list-green-border: rgba(74, 222, 128, 0.1);
+  --list-amber-bg: rgba(251, 191, 36, 0.06);
+  --list-amber-text: rgba(251, 191, 36, 0.65);
+  --list-amber-border: rgba(251, 191, 36, 0.1);
+
+  /* ── Scrollbar, dropdowns, overlays ── */
+  --scrollbar-thumb: rgba(74, 222, 128, 0.3);
+  --dropdown-bg: rgba(30, 40, 30, 0.97);
+  --overlay-bg: rgba(0, 0, 0, 0.65);
+  --divider: rgba(255, 255, 255, 0.05);
+
+  --pin-color: #ef4444;
+
+  /* ══════════════════════════════════════════════════════════
+     TYPOGRAPHY — brand fonts (self-hosted variable)
+     Committed pairing (decided 2026):
+       Space Grotesk — display + headlines (sporty, geometric)
+       IBM Plex Sans — body + UI copy (utility, italics, wider weight range)
+       JetBrains Mono — data moments (tabular nums, PINs, timestamps)
+     System fonts remain as fallbacks so first paint never blocks.
+     ══════════════════════════════════════════════════════════ */
+  --font-display: 'Space Grotesk', 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, 'Roboto Mono', monospace;
+
+  /* Accessibility bump (research finding #6): Tailwind's text-xs and
+     text-sm are shifted up one notch for 50+ readability. */
+  --fs-xs: 0.875rem;   /* 14px — was 12px */
+  --fs-sm: 1rem;       /* 16px — was 14px */
+  --fs-base: 1rem;     /* 16px */
+  --fs-lg: 1.125rem;   /* 18px */
+  --fs-xl: 1.25rem;    /* 20px */
+  --fs-2xl: 1.5rem;    /* 24px */
+  --fs-3xl: 1.875rem;  /* 30px — page h1 */
+
+  --lh-xs: 1.25rem;
+  --lh-sm: 1.5rem;
+  --lh-tight: 1.2;
+  --lh-snug: 1.375;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.625;
+
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* Section-label micro-text (tracking-widest uppercase) */
+  --tracking-widest: 0.1em;
+  --tracking-wide: 0.025em;
+
+  /* ══════════════════════════════════════════════════════════
+     SHAPE & ELEVATION
+     ══════════════════════════════════════════════════════════ */
+  --radius-xs: 6px;
+  --radius-sm: 8px;    /* inner-card, inputs */
+  --radius-md: 10px;   /* buttons, nav pill */
+  --radius-lg: 12px;   /* banners */
+  --radius-xl: 16px;   /* glass-card — MAX, reserved for prominent surfaces */
+  --radius-2xl: 16px;  /* (kept as alias; do not exceed 16px) */
+  --radius-card: var(--radius-xl);
+  --radius-btn: var(--radius-md);
+  --radius-pill: 100px;
+
+  /* ══════════════════════════════════════════════════════════
+     SPACING (Tailwind scale for reference)
+     ══════════════════════════════════════════════════════════ */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;  /* glass-card default padding */
+  --space-6: 1.5rem;
+}
+
+/* ══════════════════════════════════════════════════════════
+   LIGHT MODE OVERRIDES
+   Applied via [data-theme="light"] on <html>.
+   ══════════════════════════════════════════════════════════ */
+[data-theme="light"] {
+  --page-bg: var(--bpm-cream);
+  --text-primary: var(--bpm-ink);
+  --text-secondary: rgba(0, 0, 0, 0.62);
+  --text-muted: rgba(0, 0, 0, 0.50);
+  --accent: var(--bpm-court-green-dark);
+  --accent-dark: #15803d;
+  --color-scheme: light;
+
+  --aurora-bg: var(--bpm-cream);
+  --aurora-blob1: linear-gradient(180deg, #A8D5BA 0%, #E8F5E9 56%);
+  --aurora-blob2: linear-gradient(180deg, #F5E6C8 0%, #FAF8F5 67%);
+  --aurora-blob3: linear-gradient(180deg, #A8D5BA 0%, #C8E6C9 56%);
+  --aurora-opacity-1: 0.3;
+  --aurora-opacity-2: 0.4;
+  --aurora-opacity-3: 0.25;
+
+  --glass-tint: 0, 0, 0;
+  --glass-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.55) 100%);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  --glass-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.07);
+  --glass-inset: rgba(255, 255, 255, 0.5);
+  --glass-inset-hover: rgba(255, 255, 255, 0.6);
+  --glass-blur: 16px;
+
+  --btn-primary-bg: linear-gradient(160deg, #22c55e 0%, #16a34a 100%);
+  --btn-primary-border: rgba(22, 163, 74, 0.3);
+  --btn-primary-shadow: 0 4px 20px rgba(22, 163, 74, 0.15), 0 1px 4px rgba(0, 0, 0, 0.08);
+
+  --terminal-bg: #ffffff;
+  --terminal-titlebar-bg: #e5e7eb;
+  --terminal-accent: #b8942d;
+  --terminal-title: #1a2332;
+  --terminal-body: #374151;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SEMANTIC ALIAS CLASSES — use in design artifacts
+   ══════════════════════════════════════════════════════════ */
+body, html { font-family: var(--font-sans); background: var(--page-bg); color: var(--text-primary); }
+
+.bpm-h1      { font-family: var(--font-display); font-size: var(--fs-3xl); font-weight: var(--fw-bold); line-height: var(--lh-tight); letter-spacing: -0.02em; color: var(--text-primary); }
+.bpm-h2      { font-family: var(--font-display); font-size: var(--fs-xl); font-weight: var(--fw-bold); line-height: var(--lh-snug); letter-spacing: -0.015em; color: var(--accent); }
+.bpm-h3      { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: var(--fw-semibold); line-height: var(--lh-snug); letter-spacing: -0.01em; }
+.bpm-body    { font-size: var(--fs-sm); line-height: var(--lh-relaxed); color: var(--text-primary); }
+.bpm-caption { font-size: var(--fs-xs); color: var(--text-secondary); }
+.bpm-muted   { color: var(--text-muted); }
+.bpm-mono    { font-family: var(--font-mono); }
+
+/* Tracking-widest uppercase micro-label — used as section dividers
+   instead of hard <hr> rules. */
+.bpm-section-label {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-widest);
+  color: var(--accent);
+}
+.bpm-section-label--muted { color: var(--text-muted); }

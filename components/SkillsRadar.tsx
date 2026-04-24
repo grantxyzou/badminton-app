@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   ResponsiveContainer,
@@ -63,22 +63,28 @@ export default function SkillsRadar({
   const activePlayer = players.find(p => p.id === activePlayerId);
   const activeScores = localScores[activePlayerId] ?? {};
 
-  /* ── Radar chart data ── */
-  const chartData = SKILL_DIMENSIONS.map(dim => {
-    const entry: Record<string, string | number> = {
-      category: SHORT_LABELS[dim.id] ?? dim.name,
-      fullName: dim.name,
-      dimId: dim.id,
-    };
-    if (mode === 'solo') {
-      entry.score = activeScores[dim.id] ?? 0;
-    } else {
-      overlayIds.forEach(id => {
-        entry[id] = localScores[id]?.[dim.id] ?? 0;
-      });
-    }
-    return entry;
-  });
+  /* ── Radar chart data ──
+     Memoized so recharts' <RadarChart> bails on re-renders that don't
+     actually change the underlying scores (e.g. parent prop tick, sheet
+     open/close). Recomputes only when mode, active player, overlay set,
+     or local scores change. */
+  const chartData = useMemo(() => {
+    return SKILL_DIMENSIONS.map(dim => {
+      const entry: Record<string, string | number> = {
+        category: SHORT_LABELS[dim.id] ?? dim.name,
+        fullName: dim.name,
+        dimId: dim.id,
+      };
+      if (mode === 'solo') {
+        entry.score = activeScores[dim.id] ?? 0;
+      } else {
+        overlayIds.forEach(id => {
+          entry[id] = localScores[id]?.[dim.id] ?? 0;
+        });
+      }
+      return entry;
+    });
+  }, [mode, activeScores, overlayIds, localScores]);
 
   /* ── Overlay toggle ── */
   const toggleOverlay = (id: string) => {
