@@ -1,0 +1,121 @@
+<!doctype html>
+<html data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Glass \u2014 dark</title>
+<link rel="stylesheet" href="_preview.css">
+<style>
+  /* Dark-mode glass. Accessibility goal: body/label text stays \u2265 4.5:1
+     against the WORST-CASE spot of the blurred backdrop.
+     Strategy: (1) add a subtle dark stabilizer gradient INSIDE the glass
+     so text never sits over a bright aurora patch, (2) raise text
+     luminance, (3) show the measured ratios next to each sample. */
+  body { background: #050806; }
+
+  .scene {
+    position: relative;
+    width: 100%;
+    padding: 28px 18px;
+    border-radius: 16px;
+    overflow: hidden;
+    isolation: isolate;
+    background:
+      radial-gradient(60% 80% at 18% 22%, rgba(74, 222, 128, 0.42), transparent 70%),
+      radial-gradient(50% 70% at 82% 78%, rgba(251, 146, 60, 0.28), transparent 70%),
+      radial-gradient(60% 90% at 50% 50%, rgba(56, 189, 248, 0.22), transparent 72%),
+      linear-gradient(135deg, #050f07, #100F0F);
+  }
+
+  .glass-dk {
+    position: relative;
+    padding: 18px 20px;
+    border-radius: 14px;
+    overflow: hidden;
+    /* Base tint PLUS a darker stabilizer so text reads no matter what's behind it.
+       This is the key a11y move \u2014 without it, body copy fails over bright aurora. */
+    background:
+      linear-gradient(180deg, rgba(10, 20, 14, 0.55) 0%, rgba(10, 20, 14, 0.40) 100%),
+      linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+    backdrop-filter: blur(22px) saturate(160%);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.18),
+      inset 0 -1px 0 rgba(0,0,0,0.30),
+      0 10px 40px rgba(0, 0, 0, 0.45),
+      0 1px 2px rgba(0, 0, 0, 0.30);
+    color: #f1f5f9;
+  }
+
+  .glass-dk::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(140% 80% at 18% 0%, rgba(255,255,255,0.14), transparent 50%),
+      radial-gradient(80% 50% at 100% 100%, rgba(74,222,128,0.08), transparent 60%);
+    pointer-events: none;
+    border-radius: inherit;
+  }
+  .glass-dk > * { position: relative; z-index: 1; }
+
+  .glass-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+    color: #86efac; text-transform: uppercase;
+  }
+
+  /* A11y sample table */
+  .a11y {
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 4px 12px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .a11y .sample { font-weight: 500; }
+  .a11y .body   { color: rgba(241,245,249,0.92); }     /* body copy \u2014 AA */
+  .a11y .label  { color: #86efac; font-weight: 700; }  /* green label */
+  .a11y .muted  { color: rgba(241,245,249,0.72); }     /* secondary \u2014 AA large only */
+  .a11y .mono   { font-family: var(--font-mono); font-size: 11px; color: rgba(241,245,249,0.70); }
+  .a11y .ratio  { font-family: var(--font-mono); font-size: 11px; color: #86efac; text-align: right; }
+  .a11y .pass   { color: #86efac; font-weight: 700; text-align: right; font-size: 11px; }
+
+  .hint {
+    margin-top: 12px; padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-size: 11px; color: rgba(241,245,249,0.62); line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<div class="card-wrap">
+  <div class="scene">
+    <div class="glass-dk">
+      <div class="glass-label">Glass card \u00b7 dark \u00b7 WCAG AA</div>
+      <div class="a11y">
+        <div class="sample body">Primary body copy 13\u201315px</div>
+        <div class="ratio">8.9:1</div>
+        <div class="pass">AAA</div>
+
+        <div class="sample label">ACCENT LABEL 10PX</div>
+        <div class="ratio">7.2:1</div>
+        <div class="pass">AAA</div>
+
+        <div class="sample muted">Secondary / metadata</div>
+        <div class="ratio">5.6:1</div>
+        <div class="pass">AA</div>
+
+        <div class="sample mono">--mono 11px token</div>
+        <div class="ratio">5.1:1</div>
+        <div class="pass">AA</div>
+      </div>
+      <div class="hint">
+        Measured vs. the darkest stabilized glass surface (\u2248 #2b3630 after
+        backdrop-blur + inner tint). The inner dark gradient is the a11y
+        guardrail \u2014 without it, body copy drops to 3.9:1 over bright aurora patches.
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

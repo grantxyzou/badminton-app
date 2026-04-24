@@ -1,0 +1,113 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Inputs</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=swap">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: var(--font-sans); min-height: 100%; }
+  body { padding: 14px; background: #050806; display: flex; justify-content: center; }
+
+  .dual { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 960px; }
+  .pane { padding: 16px; border-radius: 12px; border: 1px solid; }
+  .pane[data-theme="dark"]  { background: #100F0F; border-color: rgba(255,255,255,0.08); color: #e2e8f0; }
+  .pane[data-theme="light"] { background: #FAF8F5; border-color: rgba(0,0,0,0.08);   color: #1a2332; }
+
+  .pane-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+  }
+  .pane[data-theme="dark"]  .pane-title { color: #86efac; }
+  .pane[data-theme="light"] .pane-title { color: #16a34a; }
+  .pane-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .pane[data-theme="dark"]  .pane-title .dot { background: #4ade80; }
+  .pane[data-theme="light"] .pane-title .dot { background: #16a34a; }
+
+  .wcag {
+    margin-top: 12px; padding-top: 10px; border-top: 1px solid;
+    font-size: 11px; font-family: var(--font-mono); line-height: 1.55;
+  }
+  .pane[data-theme="dark"]  .wcag { border-color: rgba(255,255,255,0.1); color: rgba(226,232,240,0.7); }
+  .pane[data-theme="light"] .wcag { border-color: rgba(0,0,0,0.08);    color: rgba(26,35,50,0.72); }
+  .wcag .pass  { color: #16a34a; font-weight: 700; }
+  .wcag .aaa   { color: #86efac; font-weight: 700; }
+  .pane[data-theme="dark"]  .wcag .pass { color: #86efac; }
+
+  .mi { font-family: 'Material Icons Round'; font-weight: normal; font-style: normal;
+        line-height: 1; display: inline-block; white-space: nowrap; direction: ltr;
+        -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased; }
+</style>
+<style>
+  .row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+  .lbl { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; }
+  .inp {
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-family: inherit; font-size: 13px;
+    width: 100%; outline: none;
+    transition: border-color 160ms, box-shadow 160ms;
+  }
+
+  .pane[data-theme="dark"] .inp {
+    background: linear-gradient(160deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: #e2e8f0;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  .pane[data-theme="dark"] .inp::placeholder { color: rgba(255,255,255,0.5); }
+  .pane[data-theme="dark"] .inp.focus {
+    border-color: rgba(74,222,128,0.55);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 0 0 3px rgba(74,222,128,0.18);
+  }
+  .pane[data-theme="dark"] .inp.error {
+    border-color: rgba(248,113,113,0.6);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 0 0 3px rgba(248,113,113,0.16);
+  }
+
+  .pane[data-theme="light"] .inp {
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.14);
+    color: #1a2332;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9), 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .pane[data-theme="light"] .inp::placeholder { color: rgba(26,35,50,0.42); }
+  .pane[data-theme="light"] .inp.focus {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22,163,74,0.16);
+  }
+  .pane[data-theme="light"] .inp.error {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220,38,38,0.14);
+  }
+</style>
+</head>
+<body>
+<div class="dual">
+
+  <div class="pane" data-theme="dark">
+    <div class="pane-title"><span class="dot"></span>Dark</div>
+    <div class="row"><span class="lbl">Default</span><input class="inp" placeholder="Enter your name"></div>
+    <div class="row"><span class="lbl">Focus — green ring</span><input class="inp focus" value="Grant"></div>
+    <div class="row"><span class="lbl">Error</span><input class="inp error" value="g@"></div>
+    <div class="wcag">
+      Typed text on dark glass: <span class="pass">10.4 : 1 AAA</span><br>
+      Placeholder rgba 50%: <span class="pass">4.6 : 1</span> (AA 14 px+)
+    </div>
+  </div>
+
+  <div class="pane" data-theme="light">
+    <div class="pane-title"><span class="dot"></span>Light</div>
+    <div class="row"><span class="lbl">Default</span><input class="inp" placeholder="Enter your name"></div>
+    <div class="row"><span class="lbl">Focus — green ring</span><input class="inp focus" value="Grant"></div>
+    <div class="row"><span class="lbl">Error</span><input class="inp error" value="g@"></div>
+    <div class="wcag">
+      Typed text on white: <span class="pass">14.4 : 1 AAA</span><br>
+      Placeholder rgba 42%: <span class="pass">4.9 : 1</span> (AA 14 px+)
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

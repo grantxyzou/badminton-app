@@ -5,6 +5,7 @@ import { useTranslations, useFormatter } from 'next-intl';
 import type { Player, Session } from '@/lib/types';
 import { getIdentity, clearIdentity } from '@/lib/identity';
 import ShuttleLoader from '@/components/ShuttleLoader';
+import ShuttleIcon from '@/components/ShuttleIcon';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
@@ -86,7 +87,11 @@ export default function PlayersTab() {
           {pageT('title')}
         </h1>
         <div className="glass-card p-10 text-center">
-          <span className="material-icons block mb-2 text-gray-500" style={{ fontSize: 36, opacity: 0.25 }}>sports_tennis</span>
+          {/* Brand shuttle for empty state — design spec reserves this glyph
+              for "anywhere the UI refers to the sport itself." Replaces
+              Material's sports_tennis racquet. */}
+          <ShuttleIcon size={36} color="var(--text-muted)" ariaLabel="No players yet" />
+          <div className="h-2" />
           <p className="text-gray-500 text-sm">{t('empty')}</p>
         </div>
       </div>

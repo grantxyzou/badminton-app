@@ -200,13 +200,19 @@
 
   --banner-green-bg: rgba(22, 163, 74, 0.06);
   --banner-green-border: rgba(22, 163, 74, 0.15);
-  --banner-orange-bg: rgba(234, 88, 12, 0.06);
-  --banner-orange-border: rgba(234, 88, 12, 0.15);
+  --banner-orange-bg: rgba(251, 146, 60, 0.14);
+  --banner-orange-border: rgba(251, 146, 60, 0.42);
+  --banner-red-bg: rgba(239, 68, 68, 0.08);
+  --banner-red-border: rgba(220, 38, 38, 0.40);
 
   --pill-paid-bg: rgba(22, 163, 74, 0.1);
   --pill-paid-text: #16a34a;
-  --pill-unpaid-bg: rgba(0, 0, 0, 0.04);
-  --pill-unpaid-text: rgba(0, 0, 0, 0.35);
+  --pill-unpaid-bg: rgba(0, 0, 0, 0.08);
+  --pill-unpaid-text: rgba(0, 0, 0, 0.72);   /* bumped to hit AA on cream bg */
+  --pill-waitlist-bg: rgba(234, 88, 12, 0.14);
+  --pill-waitlist-text: #9a3412;             /* deep orange for cream bg */
+  --pill-admin-bg: rgba(124, 58, 237, 0.12);
+  --pill-admin-text: #5b21b6;                /* deep purple for cream bg */
 
   --highlight-green: rgba(22, 163, 74, 0.06);
   --highlight-amber: rgba(217, 119, 6, 0.06);
@@ -263,6 +269,30 @@
 [data-theme="light"] .hover\:text-amber-300:hover { color: #b45309; }
 [data-theme="light"] .border-white\/10 { border-color: rgba(0, 0, 0, 0.08); }
 
+/* ── Severity-pill text tokens (theme-adaptive) ──
+   Pastel text colors (#fca5a5, #fdba74, …) work over dark tinted fills in
+   dark mode but lose contrast against cream in light mode. These tokens
+   resolve to the pastel for dark and the corresponding darker hue for
+   light, keeping WCAG AA on both themes. Consumers: /design/perf SevPill. */
+:root {
+  --sev-crit-text: #fca5a5;
+  --sev-high-text: #fdba74;
+  --sev-med-text:  #fcd34d;
+  --sev-low-text:  #93c5fd;
+  --sev-good-text: #86efac;
+  --sev-fix-text:  rgba(187, 247, 208, 0.90);  /* .fix callout body */
+  --sev-code-text: #86efac;                     /* inline code chip */
+}
+[data-theme="light"] {
+  --sev-crit-text: #991b1b;
+  --sev-high-text: #9a3412;
+  --sev-med-text:  #854d0e;
+  --sev-low-text:  #1e40af;
+  --sev-good-text: #15803d;
+  --sev-fix-text:  #14532d;
+  --sev-code-text: #15803d;
+}
+
 /* ══════════════════════════════════════════════════════════
    Base resets
    ══════════════════════════════════════════════════════════ */
@@ -282,113 +312,232 @@ body {
 body {
   background: var(--page-bg);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* Body / UI copy = IBM Plex Sans (bundle v3). Headlines use
+     var(--font-display) (Space Grotesk) via the .bpm-h1/h2/h3 utilities and
+     inline overrides. System fonts remain as fallbacks so first paint never
+     blocks on network (display: swap from next/font/local). */
+  font-family: var(--font-sans);
 }
 
-/* ── Aurora background ── */
+/* ── Bundle v3 type tokens ────────────────────────────────────────────── */
+:root {
+  --font-display:
+    var(--ff-space-grotesk, 'Space Grotesk'),
+    var(--ff-ibm-plex, 'IBM Plex Sans'),
+    -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans:
+    var(--ff-ibm-plex, 'IBM Plex Sans'),
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* --font-mono is set in .bpm-mono below and via --ff-jetbrains. */
+}
+
+/* Display headline utilities — bundle v3 adds negative letter-spacing
+   tuned per size so Space Grotesk reads tight at scale. */
+.bpm-h1 {
+  font-family: var(--font-display);
+  font-size: 1.875rem;   /* 30px */
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.bpm-h2 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;    /* 20px */
+  font-weight: 700;
+  line-height: 1.375;
+  letter-spacing: -0.015em;
+  color: var(--accent);
+}
+.bpm-h3 {
+  font-family: var(--font-display);
+  font-size: 1.125rem;   /* 18px */
+  font-weight: 600;
+  line-height: 1.375;
+  letter-spacing: -0.01em;
+}
+
+/* ── 02 Aurora background ──
+   Bundle variant 02 (per docs/design-system/preview/24-app-background.html +
+   assets/aurora-bg.css). Three breathing blobs: slate-blue + court-green +
+   warm-yellow, drifting on staggered timelines. Pre-blurred radial gradients
+   mean zero filter:blur cost; no mix-blend-mode means no compositor slow-path.
+   Animates only `transform` — composited, no repaint.
+
+     - `contain: strict` + `content-visibility: auto` → skipped off-screen
+     - `prefers-reduced-motion` + `prefers-reduced-transparency` kill animation
+       (iOS low-power mode toggles the latter)
+     - Light mode swaps to pastel green / warm-cream / soft-blue tints */
 .court-bg {
-  background: var(--aurora-bg);
+  background: var(--aurora-bg, var(--page-bg));
   position: fixed;
   inset: 0;
   z-index: -1;
   overflow: hidden;
+  contain: strict;
+  content-visibility: auto;
+  contain-intrinsic-size: 100vw 100vh;
+  pointer-events: none;
 }
 
-.court-bg svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-  transform: scale(1.25);
-  transform-origin: center center;
-}
-
-.aurora-blob-1 {
-  position: absolute;
-  width: 150vw;
-  height: 800px;
-  left: -25vw;
-  top: 280px;
-  opacity: var(--aurora-opacity-1);
-  background: var(--aurora-blob1);
-  filter: blur(100px);
-  animation: breathe-gentle 6s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
-.aurora-blob-2 {
-  position: absolute;
-  width: 150vw;
-  height: 700px;
-  left: -25vw;
-  top: 340px;
-  mix-blend-mode: darken;
-  background: var(--aurora-blob2);
-  filter: blur(100px);
-  animation: exhale-drift 7s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
+.aurora-blob-1,
+.aurora-blob-2,
 .aurora-blob-3 {
   position: absolute;
-  width: 500px;
-  height: 900px;
-  left: 40%;
-  top: 380px;
-  transform: rotate(-58deg);
-  transform-origin: top left;
-  opacity: var(--aurora-opacity-3);
-  mix-blend-mode: hard-light;
-  background: var(--aurora-blob3);
-  filter: blur(100px);
-  animation: inhale-pulse 5.5s ease-in-out infinite;
-  will-change: transform, opacity;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  pointer-events: none;
+  animation: aurora-drift 14s ease-in-out infinite alternate;
 }
 
+/* Blob 1 — slate-blue (cool atmospheric) */
+.aurora-blob-1 {
+  width: 110vmax; height: 80vmax;
+  left: -10vmax; top: 4vh;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%,
+    rgba(120, 158, 196, 0.50) 0%,
+    rgba(74, 120, 170, 0.22) 32%,
+    rgba(74, 120, 170, 0.06) 58%,
+    transparent 80%);
+}
+
+/* Blob 2 — brand court-green (warm accent) */
+.aurora-blob-2 {
+  width: 100vmax; height: 72vmax;
+  right: -15vmax; bottom: 4vh;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%,
+    rgba(74, 222, 128, 0.32) 0%,
+    rgba(74, 222, 128, 0.14) 34%,
+    rgba(74, 222, 128, 0.04) 60%,
+    transparent 80%);
+  animation-delay: -5s;
+}
+
+/* Blob 3 — warm-yellow (midtone glow) */
+.aurora-blob-3 {
+  width: 85vmax; height: 65vmax;
+  right: 10vmax; top: 22vh;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%,
+    rgba(232, 210, 160, 0.34) 0%,
+    rgba(210, 185, 130, 0.14) 36%,
+    rgba(210, 185, 130, 0.04) 62%,
+    transparent 80%);
+  animation-delay: -9s;
+}
+
+/* Light-mode palette: softer, higher-luminance tints so the cream page
+   reads as a bright atmospheric wash rather than a muddy gradient. */
+[data-theme="light"] .aurora-blob-1 {
+  background: radial-gradient(ellipse 50% 50% at 50% 50%,
+    rgba(74, 222, 128, 0.18) 0%,
+    rgba(74, 222, 128, 0.08) 40%,
+    transparent 75%);
+}
 [data-theme="light"] .aurora-blob-2 {
-  mix-blend-mode: multiply;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%,
+    rgba(251, 191, 36, 0.14) 0%,
+    rgba(251, 191, 36, 0.05) 45%,
+    transparent 78%);
 }
-
 [data-theme="light"] .aurora-blob-3 {
-  mix-blend-mode: soft-light;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%,
+    rgba(96, 165, 250, 0.14) 0%,
+    rgba(96, 165, 250, 0.05) 45%,
+    transparent 78%);
 }
 
-@keyframes breathe-gentle {
-  0%, 100% {
-    transform: translate(0px, 0px) scale(1);
-    opacity: var(--aurora-opacity-1);
-  }
-  50% {
-    transform: translate(-25px, 40px) scale(1.08);
-    opacity: calc(var(--aurora-opacity-1) + 0.15);
+/* Single-property transform animation — composited on its own layer,
+   browser skips repaints between keyframes. */
+@keyframes aurora-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(-4%, 3%, 0) scale(1.05); }
+}
+
+/* Opt-in pause for when the aurora is covered (full-bleed sheet, modal). */
+.court-bg.is-hidden .aurora-blob-1,
+.court-bg.is-hidden .aurora-blob-2,
+.court-bg.is-hidden .aurora-blob-3 {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce),
+       (prefers-reduced-transparency: reduce) {
+  .aurora-blob-1,
+  .aurora-blob-2,
+  .aurora-blob-3 {
+    animation: none !important;
+    will-change: auto !important;
   }
 }
 
-@keyframes exhale-drift {
-  0%, 100% {
-    transform: translate(0px, 0px) rotate(0deg) scale(1);
-    opacity: var(--aurora-opacity-2);
-  }
-  50% {
-    transform: translate(-35px, -20px) rotate(1.5deg) scale(1.05);
-    opacity: calc(var(--aurora-opacity-2) - 0.1);
-  }
+/* ── 03 Court — per-tab override for Sign-Ups ──
+   When the user is on the Sign-Ups tab (data-tab="players" on <html>),
+   swap the three drifting aurora blobs for a faint doubles-court etching
+   + soft green floor glow. Per docs/design-system/preview/24-app-background
+   bg-3: static (no animation), embedded SVG lines at ~18% opacity, green
+   glow from below. On-theme for the sport-specific list view. */
+html[data-tab="players"] .aurora-blob-1,
+html[data-tab="players"] .aurora-blob-2,
+html[data-tab="players"] .aurora-blob-3 {
+  /* Hide the aurora blobs entirely — static court backdrop owns the scene. */
+  display: none;
 }
 
-@keyframes inhale-pulse {
-  0%, 100% {
-    transform: rotate(-58deg) translate(0px, 0px) scale(1);
-    opacity: var(--aurora-opacity-3);
-  }
-  50% {
-    transform: rotate(-55deg) translate(30px, -40px) scale(1.12);
-    opacity: calc(var(--aurora-opacity-3) + 0.15);
-  }
+html[data-tab="players"] .court-bg {
+  /* Soft green floor glow — stronger at the bottom so the court reads as
+     being lit from its baseline (gymnasium floor catching stage light). */
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 115%, rgba(22, 163, 74, 0.18) 0%, transparent 60%),
+    var(--page-bg);
+}
+
+/* Proper badminton doubles-court diagram viewed from above.
+   Real dimensions: 13.40m long × 6.10m wide = ratio 2.197:1 (≈ 100:220).
+   Markings at actual proportions:
+     - Singles sidelines:      0.46m inset    →  x ≈ 7.54 / 92.46 on a 0–100 width
+     - Short service line:     1.98m from net →  y ≈ 77.5  / 142.5 on a 0–220 length
+     - Long doubles service:   0.76m inset    →  y ≈ 12.5  / 207.5
+     - Net:                    at court mid   →  y = 110  (dashed)
+     - Center line:            only between short service and back boundary
+   Aspect ratio is LOCKED: `aspect-ratio: 100 / 220` on the container and
+   `background-size: contain` on the SVG. The court never stretches — it's
+   scaled to fit the viewport while keeping real-world proportions, then
+   letterboxed left/right or top/bottom as the viewport dictates. */
+html[data-tab="players"] .court-bg::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  /* min(vw, vh-based) picks whichever dimension is the limiting one so the
+     court always fits entirely inside the viewport with consistent margin. */
+  width: min(86vw, calc(86vh * 100 / 220));
+  aspect-ratio: 100 / 220;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'><g fill='none' stroke='%234ade80' stroke-width='0.5' opacity='0.14' vector-effect='non-scaling-stroke'><rect x='0' y='0' width='100' height='220'/><line x1='7.54' y1='0' x2='7.54' y2='220'/><line x1='92.46' y1='0' x2='92.46' y2='220'/><line x1='0' y1='77.5' x2='100' y2='77.5'/><line x1='0' y1='142.5' x2='100' y2='142.5'/><line x1='0' y1='12.5' x2='100' y2='12.5'/><line x1='0' y1='207.5' x2='100' y2='207.5'/><line x1='50' y1='0' x2='50' y2='77.5'/><line x1='50' y1='142.5' x2='50' y2='220'/></g><line x1='0' y1='110' x2='100' y2='110' stroke='%234ade80' stroke-width='0.9' stroke-dasharray='2 2' opacity='0.22' vector-effect='non-scaling-stroke'/></svg>");
+  background-size: contain;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+[data-theme="light"] html[data-tab="players"] .court-bg,
+html[data-tab="players"][data-theme="light"] .court-bg {
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 115%, rgba(22, 163, 74, 0.10) 0%, transparent 60%),
+    var(--page-bg);
+}
+[data-theme="light"] html[data-tab="players"] .court-bg::before,
+html[data-tab="players"][data-theme="light"] .court-bg::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'><g fill='none' stroke='%2316a34a' stroke-width='0.5' opacity='0.20' vector-effect='non-scaling-stroke'><rect x='0' y='0' width='100' height='220'/><line x1='7.54' y1='0' x2='7.54' y2='220'/><line x1='92.46' y1='0' x2='92.46' y2='220'/><line x1='0' y1='77.5' x2='100' y2='77.5'/><line x1='0' y1='142.5' x2='100' y2='142.5'/><line x1='0' y1='12.5' x2='100' y2='12.5'/><line x1='0' y1='207.5' x2='100' y2='207.5'/><line x1='50' y1='0' x2='50' y2='77.5'/><line x1='50' y1='142.5' x2='50' y2='220'/></g><line x1='0' y1='110' x2='100' y2='110' stroke='%2316a34a' stroke-width='0.9' stroke-dasharray='2 2' opacity='0.32' vector-effect='non-scaling-stroke'/></svg>");
 }
 
 /* ── Liquid Glass card ── */
 .glass-card {
+  /* Canonical per docs/design-system/preview/14-glass-card.html —
+     radius 16 (corner ladder caps rectangular surfaces at 16), blur via
+     --glass-blur token (10 dark / 16 light), saturate 180%. The radial
+     mouse-tracked highlight (GlassPhysics) lays over the base glass tint. */
   background:
     radial-gradient(
       ellipse at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
@@ -396,10 +545,10 @@ body {
       transparent 65%
     ),
     var(--glass-bg);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
   border: 1px solid var(--glass-border);
-  border-radius: 24px;
+  border-radius: 16px;
   box-shadow:
     inset 0 1px 0 var(--glass-inset),
     var(--glass-shadow);
@@ -495,12 +644,17 @@ body {
 
 /* ── Liquid Glass nav bar ── */
 .nav-glass {
+  /* Canonical per docs/design-system/preview/19-bottom-nav.html:
+     radius 16 (corner-ladder compliant), 1px rim border, inline-flex so the
+     pill hugs its tabs instead of stretching to the container edges. */
   background: var(--nav-bg);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
   backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-  border: none;
-  border-radius: 24px;
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
   box-shadow: var(--nav-shadow);
+  display: inline-flex;
+  padding: 4px 6px 6px;
 }
 
 /* ── Safe area bottom padding for nav ── */
@@ -508,15 +662,34 @@ body {
   padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
 }
 
-/* ── Active nav tab pill ── */
+/* ── Active nav tab ──
+   Canonical is color-only (no background pill). Class retained so consumers
+   can still target it for future-proofing; no visual treatment of its own. */
 .nav-tab-active {
-  background: var(--nav-tab-active-bg);
-  border-radius: 14px;
-  box-shadow: inset 0 1px 0 var(--glass-inset), 0 2px 8px rgba(0, 0, 0, 0.15);
+  /* color is set inline on the button; active icon also flips FILL axis */
 }
 
-/* ── Material Icons alignment ── */
+/* ── Icon webfont ──
+   The `.material-icons` class is retained as the call-site API (57 usages
+   across 21 files), but points at Material Symbols Rounded — the webfont
+   loaded in `app/layout.tsx` is subsetted to the ~35 glyphs actually used,
+   so payload drops from ~100 KB to ~15–20 KB. Ligature lookups are the
+   same (element text = glyph name). Variation axes keep the strokes
+   balanced (weight 400, no fill, optical size 24). */
 .material-icons {
+  font-family: 'Material Symbols Rounded', 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'opsz' 24, 'wght' 400, 'FILL' 0, 'GRAD' 0;
+  display: inline-block;
   font-size: inherit;
   vertical-align: middle;
   line-height: 1;
@@ -710,12 +883,28 @@ textarea {
   transform-origin: top;
 }
 
-/* ── Reduced motion ── */
+/* ── Reduced motion ──
+   The blanket rule below collapses every transition/animation to 0.01ms,
+   but GPU-accelerated elements (aurora blobs, wave-bar, shimmer) still
+   pay for their `will-change` compositor layers. On mobile this keeps
+   the GPU warm even when the animation is effectively frozen. Pause the
+   animations outright and drop the compositor hints so the GPU can
+   release the layers. See perf audit: rank 1 + 5 heating hot paths. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+  .aurora-blob-1,
+  .aurora-blob-2,
+  .aurora-blob-3,
+  .wave-bar,
+  .shimmer-line,
+  .splash-shuttle,
+  .splash {
+    animation: none !important;
+    will-change: auto !important;
   }
 }
 
@@ -744,25 +933,31 @@ textarea {
   font-size: 22px;
 }
 
-/* ── Status banners ── */
-.status-banner-green {
-  background: var(--banner-green-bg);
-  border: 1px solid var(--banner-green-border);
-  border-radius: 16px;
-  padding: 16px;
+/* ── Status banners ──
+   Canonical per docs/design-system/preview/15-status-banners.html:
+   radius 12, padding 12px 14px, gap 12, icon 22, title 13/600, body 12 @ 0.72.
+   Three tones: green (success), orange (waitlist / warning), red (error). */
+.status-banner-green,
+.status-banner-orange,
+.status-banner-red {
+  border: 1px solid;
+  border-radius: 12px;
+  padding: 12px 14px;
   display: flex;
   align-items: center;
   gap: 12px;
 }
-
+.status-banner-green {
+  background: var(--banner-green-bg);
+  border-color: var(--banner-green-border);
+}
 .status-banner-orange {
   background: var(--banner-orange-bg);
-  border: 1px solid var(--banner-orange-border);
-  border-radius: 16px;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  border-color: var(--banner-orange-border);
+}
+.status-banner-red {
+  background: var(--banner-red-bg);
+  border-color: var(--banner-red-border);
 }
 
 /* ── Shared text patterns ── */
@@ -817,9 +1012,39 @@ textarea {
 .player-highlight-green { background: var(--highlight-green); }
 .player-highlight-amber  { background: var(--highlight-amber); }
 
-/* ── Paid / unpaid pill ── */
-.pill-paid   { background: var(--pill-paid-bg); color: var(--pill-paid-text); }
-.pill-unpaid { background: var(--pill-unpaid-bg); color: var(--pill-unpaid-text); }
+/* ── Pills — canonical shape per docs/design-system/ui_kits/bpm-app/components.jsx Pill
+   + preview/16-pills.html. The class now carries shape AND color so consumers
+   don't need Tailwind companions (`.pill-paid` alone renders correctly).
+   Live AdminDashboard.tsx still adds `px-3 py-1.5 rounded-full text-xs font-medium`
+   which overrides these via Tailwind specificity — harmless, but can be dropped
+   once the canonical shape is the only source of truth. */
+.pill-paid,
+.pill-unpaid,
+.pill-waitlist,
+.pill-admin {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+}
+/* Slightly tighter left padding when the pill carries a leading icon so the
+   icon hugs the label text (canonical: `padding: 3px 11px 3px 9px`). */
+.pill-paid:has(> .material-icons:first-child),
+.pill-unpaid:has(> .material-icons:first-child),
+.pill-waitlist:has(> .material-icons:first-child),
+.pill-admin:has(> .material-icons:first-child) {
+  padding: 3px 11px 3px 9px;
+}
+.pill-paid     { background: var(--pill-paid-bg);     color: var(--pill-paid-text); }
+.pill-unpaid   { background: var(--pill-unpaid-bg);   color: var(--pill-unpaid-text); }
+.pill-waitlist { background: var(--pill-waitlist-bg); color: var(--pill-waitlist-text); }
+.pill-admin    { background: var(--pill-admin-bg);    color: var(--pill-admin-text); }
 
 /* ── Inner mini-card (nested content blocks) ── */
 .inner-card {
@@ -919,6 +1144,17 @@ textarea {
 html[data-hydrated="true"] .splash {
   display: none;
 }
+/* Failsafe: if hydration stalls silently, the splash spinner would loop
+   forever and keep the GPU warm. Force-fade + hide after 5s regardless
+   of React state. Once data-hydrated is set the rule above wins and
+   clears the animation entirely. */
+.splash {
+  animation: splash-failsafe 5.4s linear forwards;
+}
+@keyframes splash-failsafe {
+  0%, 92% { opacity: 1; visibility: visible; }
+  100%    { opacity: 0; visibility: hidden; }
+}
 .splash-shuttle {
   width: 48px;
   height: 48px;
@@ -928,9 +1164,10 @@ html[data-hydrated="true"] .splash {
   animation: splash-spin 0.9s linear infinite;
 }
 .splash-title {
+  font-family: var(--font-display);
   font-size: 1.5rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   margin: 0;
 }
 .splash-tagline {
@@ -949,7 +1186,10 @@ html[data-hydrated="true"] .splash {
 .terminal-sheet {
   background: var(--terminal-bg);
   color: var(--terminal-body);
-  font-family: 'SF Mono', Menlo, Consolas, 'Roboto Mono', monospace;
+  /* Mono moments — PINs, $ amounts, timestamps, tabular nums */
+  font-family:
+    var(--ff-jetbrains, 'JetBrains Mono'),
+    'SF Mono', Menlo, Consolas, 'Roboto Mono', monospace;
   font-size: 14px;
   line-height: 1.6;
   letter-spacing: -0.01em;

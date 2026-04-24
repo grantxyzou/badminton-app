@@ -106,7 +106,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                 <DatePicker value={date} onChange={v => setDate(v)} placeholder="Date" />
               </div>
               <div className="flex-1">
-                <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{ height: '42px' }} />
+                <input id="advance-start-time" name="startTime" type="time" value={time} onChange={e => setTime(e.target.value)} style={{ height: '42px' }} />
               </div>
             </div>
           </Label>
@@ -117,7 +117,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                 <DatePicker value={deadlineDate} onChange={v => setDeadlineDate(v)} placeholder="Date" />
               </div>
               <div className="flex-1">
-                <input type="time" value={deadlineTime} onChange={e => setDeadlineTime(e.target.value)} style={{ height: '42px' }} />
+                <input id="advance-deadline-time" name="deadlineTime" type="time" value={deadlineTime} onChange={e => setDeadlineTime(e.target.value)} style={{ height: '42px' }} />
               </div>
             </div>
           </Label>
@@ -128,17 +128,17 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                 <DatePicker value={endDate} onChange={v => setEndDate(v)} placeholder="Date" />
               </div>
               <div className="flex-1">
-                <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} style={{ height: '42px' }} />
+                <input id="advance-end-time" name="endTime" type="time" value={endTime} onChange={e => setEndTime(e.target.value)} style={{ height: '42px' }} />
               </div>
             </div>
           </Label>
 
           <div className="grid grid-cols-2 gap-3">
             <Label text="Courts">
-              <input type="number" min={1} value={courts} onChange={e => setCourts(parseInt(e.target.value) || 0)} />
+              <input id="advance-courts" name="courts" type="number" min={1} value={courts} onChange={e => setCourts(parseInt(e.target.value) || 0)} />
             </Label>
             <Label text="Max Players">
-              <input type="number" min={1} value={maxPlayers} onChange={e => setMaxPlayers(parseInt(e.target.value) || 0)} />
+              <input id="advance-max-players" name="maxPlayers" type="number" min={1} value={maxPlayers} onChange={e => setMaxPlayers(parseInt(e.target.value) || 0)} />
             </Label>
           </div>
 
@@ -148,6 +148,8 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: 'var(--text-muted)' }}>$</span>
               )}
               <input
+                id="advance-cost-per-court"
+                name="costPerCourt"
                 type="number"
                 min={0}
                 step={0.5}

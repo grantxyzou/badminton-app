@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BPM Badminton — UI kit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" />
+  <link rel="stylesheet" href="../../colors_and_type.css" />
+  <link rel="stylesheet" href="../../assets/aurora-bg.css" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; min-height: 100vh; font-family: var(--font-sans); background: var(--page-bg); color: var(--text-primary); -webkit-font-smoothing: antialiased; }
+    html { color-scheme: var(--color-scheme); }
+    button { font-family: inherit; cursor: pointer; }
+    input, button { font-family: inherit; }
+
+    /* Google Material Icons — font-family must not be overridden by button/input inheritance */
+    .material-icons { font-family: 'Material Icons' !important; }
+    .material-icons-outlined { font-family: 'Material Icons Outlined' !important; }
+
+    .app-shell { max-width: 512px; margin: 0 auto; min-height: 100vh; padding: 24px 20px 140px; position: relative; }
+
+    /* Glass card — drives OFF --glass-* tokens so dark/light theme both work.
+       (See colors_and_type.css "Glass surfaces" block.) */
+    .glass-card {
+      position: relative;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+      border-radius: var(--radius-card);
+      box-shadow:
+        inset 0 1px 0 var(--glass-inset),
+        var(--glass-shadow);
+      isolation: isolate;
+      transition: box-shadow var(--duration-normal) var(--ease-glass), border-color var(--duration-normal) var(--ease-glass), transform var(--duration-normal) var(--ease-glass);
+    }
+    /* Top lens highlight — uses --glass-tint so it reads as white on dark,
+       near-invisible on light (correct behavior — no fake sheen on cream). */
+    .glass-card::before {
+      content: '';
+      position: absolute;
+      inset: 1px 1px auto 1px;
+      height: 44%;
+      border-radius: calc(var(--radius-card) - 1px) calc(var(--radius-card) - 1px) 120px 120px / calc(var(--radius-card) - 1px) calc(var(--radius-card) - 1px) 40px 40px;
+      background: linear-gradient(180deg, rgba(var(--glass-tint), 0.14) 0%, rgba(var(--glass-tint), 0.03) 55%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .glass-card > * { position: relative; z-index: 1; }
+    .glass-card:hover {
+      box-shadow:
+        inset 0 1px 0 var(--glass-inset-hover),
+        var(--glass-shadow-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: var(--btn-primary-bg);
+      border: 1px solid var(--btn-primary-border);
+      color: var(--btn-primary-text);
+      box-shadow: var(--btn-primary-shadow);
+      border-radius: var(--radius-btn, 14px);
+      padding: 12px 18px;
+      font-weight: 600;
+      font-size: 14px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      transition: transform var(--duration-fast) var(--ease-glass), box-shadow var(--duration-normal) var(--ease-glass);
+    }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn-primary:active:not(:disabled) { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-ghost {
+      background: var(--btn-ghost-bg);
+      border: 1px solid var(--btn-ghost-border);
+      color: var(--btn-ghost-text);
+      border-radius: var(--radius-btn, 14px);
+      padding: 12px 18px;
+      font-weight: 500;
+      font-size: 14px;
+      transition: background var(--duration-normal) var(--ease-glass);
+    }
+    .btn-ghost:hover { background: var(--btn-ghost-hover); }
+
+    input:focus { border-color: var(--input-focus-border) !important; box-shadow: 0 0 0 3px var(--input-focus-ring); }
+    input::placeholder { color: var(--input-placeholder); }
+
+    /* Hide icon ligature text until the font has loaded so it doesn't flash as words */
+    .material-icons, .material-icons-outlined { visibility: hidden; }
+    .fonts-loaded .material-icons, .fonts-loaded .material-icons-outlined { visibility: visible; }
+
+    .theme-toggle {
+      position: fixed; top: 16px; right: 16px; z-index: 60;
+      background: var(--glass-bg); border: 1px solid var(--glass-border);
+      border-radius: 100px; padding: 8px 14px; font-size: 12px; font-weight: 600;
+      color: var(--text-secondary); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      display: inline-flex; gap: 6px; align-items: center; white-space: nowrap;
+      cursor: pointer;
+    }
+    .reset-pill {
+      position: fixed; top: 16px; left: 16px; z-index: 60;
+      background: transparent; border: 1px solid var(--glass-border);
+      border-radius: 100px; padding: 6px 12px; font-size: 11px; font-weight: 500;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="court-bg">
+    <div class="aurora-blob-1"></div>
+    <div class="aurora-blob-2"></div>
+    <div class="aurora-blob-3"></div>
+  </div>
+
+  <button id="reset" class="reset-pill">Reset demo</button>
+  <button id="themeBtn" class="theme-toggle">
+    <span class="material-icons" style="font-size:14px;">dark_mode</span>
+    <span id="themeLabel">Dark</span>
+  </button>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="./components.jsx"></script>
+  <script type="text/babel" src="./home.jsx"></script>
+  <script type="text/babel" src="./signups.jsx"></script>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const TABS = [
+      { id: 'home',    label: 'Home',    icon: 'home' },
+      { id: 'players', label: 'Sign-Up', icon: 'people' },
+      { id: 'skills',  label: 'Learn',   icon: 'school' },
+    ];
+
+    function App() {
+      const storageNs = (new URLSearchParams(location.search).get('ns')) || '';
+      const k = (key) => 'bpm.' + key + (storageNs ? '.' + storageNs : '');
+      const [tab, setTab] = useState(() => localStorage.getItem(k('tab')) || 'home');
+      const [signedUpName, setSignedUpName] = useState(() => localStorage.getItem(k('name')) || null);
+
+      useEffect(() => { localStorage.setItem(k('tab'), tab); }, [tab]);
+      useEffect(() => {
+        if (signedUpName) localStorage.setItem(k('name'), signedUpName);
+        else localStorage.removeItem(k('name'));
+      }, [signedUpName]);
+
+      return (
+        <div className="app-shell">
+          {tab === 'home'    && <HomeTab goTo={setTab} signedUpName={signedUpName} setSignedUpName={setSignedUpName} />}
+          {tab === 'players' && <SignupsTab signedUpName={signedUpName} setSignedUpName={setSignedUpName} />}
+          {tab === 'skills'  && <SkillsTab />}
+          <BottomNav active={tab} onChange={setTab} tabs={TABS} />
+        </div>
+      );
+    }
+
+    // Theme toggle
+    const root = document.documentElement;
+
+    // Reveal icons once the icon font loads — avoids ligature text flashing as words
+    function markFontsLoaded() { root.classList.add('fonts-loaded'); }
+    if (document.fonts && document.fonts.load) {
+      Promise.all([
+        document.fonts.load('22px "Material Icons"'),
+        document.fonts.load('22px "Material Icons Outlined"'),
+      ]).then(markFontsLoaded, markFontsLoaded);
+      // Safety net — always reveal after 2s even if font loading stalls
+      setTimeout(markFontsLoaded, 2000);
+    } else {
+      setTimeout(markFontsLoaded, 600);
+    }
+
+    // URL params let the dual-view parent pin theme + namespace storage.
+    const qp = new URLSearchParams(location.search);
+    const ns = qp.get('ns') ? '.' + qp.get('ns') : '';
+    const forcedTheme = qp.get('theme');
+    const saved = forcedTheme || localStorage.getItem('bpm.theme' + ns) || 'dark';
+    root.setAttribute('data-theme', saved);
+    document.getElementById('themeLabel').textContent = saved === 'dark' ? 'Dark' : 'Light';
+    document.getElementById('themeBtn').onclick = () => {
+      const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      if (!forcedTheme) localStorage.setItem('bpm.theme' + ns, next);
+      document.getElementById('themeLabel').textContent = next === 'dark' ? 'Dark' : 'Light';
+    };
+    document.getElementById('reset').onclick = () => {
+      localStorage.removeItem('bpm.tab' + ns);
+      localStorage.removeItem('bpm.name' + ns);
+      location.reload();
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

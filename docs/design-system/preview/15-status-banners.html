@@ -1,0 +1,113 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Status banners</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=swap">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: var(--font-sans); min-height: 100%; }
+  body { padding: 14px; background: #050806; display: flex; justify-content: center; }
+
+  .dual { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 960px; }
+  .pane {
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid;
+  }
+  .pane[data-theme="dark"]  { background: #100F0F; border-color: rgba(255,255,255,0.08); color: #e2e8f0; }
+  .pane[data-theme="light"] { background: #FAF8F5; border-color: rgba(0,0,0,0.08);   color: #1a2332; }
+
+  .pane-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .pane[data-theme="dark"]  .pane-title { color: #86efac; }
+  .pane[data-theme="light"] .pane-title { color: #16a34a; }
+  .pane-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .pane[data-theme="dark"]  .pane-title .dot { background: #4ade80; }
+  .pane[data-theme="light"] .pane-title .dot { background: #16a34a; }
+
+  .wcag {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    line-height: 1.55;
+  }
+  .pane[data-theme="dark"]  .wcag { border-color: rgba(255,255,255,0.1); color: rgba(226,232,240,0.7); }
+  .pane[data-theme="light"] .wcag { border-color: rgba(0,0,0,0.08);    color: rgba(26,35,50,0.72); }
+  .wcag .pass  { color: #16a34a; font-weight: 700; }
+  .wcag .aaa   { color: #86efac; font-weight: 700; }
+  .pane[data-theme="dark"]  .wcag .pass { color: #86efac; }
+
+  /* Material icons — single-family to avoid font-loading flash. */
+  .mi { font-family: 'Material Icons Round'; font-weight: normal; font-style: normal;
+        line-height: 1; display: inline-block; white-space: nowrap; direction: ltr;
+        -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased; }
+
+  .mono { font-family: var(--font-mono); }
+</style>
+<style>
+  .banners { display: flex; flex-direction: column; gap: 10px; }
+  .ban {
+    border-radius: 12px; padding: 12px 14px;
+    display: flex; gap: 12px; align-items: center;
+    border: 1px solid;
+  }
+  .ban .mi { font-size: 22px; }
+  .ban .t { font-weight: 600; font-size: 13px; }
+  .ban .b { font-size: 12px; opacity: 0.72; margin-top: 2px; }
+
+  /* Dark pane: semi-transparent fills keep aurora glow;
+     Light pane: softened tints retain contrast on cream. */
+  .pane[data-theme="dark"]  .ban.g { background: rgba(74,222,128,0.10);  border-color: rgba(74,222,128,0.28);  }
+  .pane[data-theme="dark"]  .ban.g .mi, .pane[data-theme="dark"]  .ban.g .t { color: #86efac; }
+  .pane[data-theme="dark"]  .ban.o { background: rgba(251,191,36,0.10);  border-color: rgba(251,191,36,0.28);  }
+  .pane[data-theme="dark"]  .ban.o .mi, .pane[data-theme="dark"]  .ban.o .t { color: #fcd34d; }
+  .pane[data-theme="dark"]  .ban.r { background: rgba(248,113,113,0.12); border-color: rgba(239,68,68,0.45);   }
+  .pane[data-theme="dark"]  .ban.r .mi, .pane[data-theme="dark"]  .ban.r .t { color: #fca5a5; }
+
+  .pane[data-theme="light"] .ban.g { background: rgba(22,163,74,0.08);   border-color: rgba(22,163,74,0.32);   }
+  .pane[data-theme="light"] .ban.g .mi, .pane[data-theme="light"] .ban.g .t { color: #15803d; }
+  .pane[data-theme="light"] .ban.o { background: rgba(251,146,60,0.14);  border-color: rgba(251,146,60,0.42);  }
+  .pane[data-theme="light"] .ban.o .mi, .pane[data-theme="light"] .ban.o .t { color: #9a3412; }
+  .pane[data-theme="light"] .ban.r { background: rgba(239,68,68,0.10);   border-color: rgba(220,38,38,0.40);   }
+  .pane[data-theme="light"] .ban.r .mi, .pane[data-theme="light"] .ban.r .t { color: #991b1b; }
+</style>
+</head>
+<body>
+<div class="dual">
+
+  <div class="pane" data-theme="dark">
+    <div class="pane-title"><span class="dot"></span>Dark</div>
+    <div class="banners">
+      <div class="ban g"><span class="mi">check_circle</span><div><div class="t">Signed up — see you Thursday</div><div class="b">Paid · PIN saved</div></div></div>
+      <div class="ban o"><span class="mi">watch_later</span><div><div class="t">You're on the waitlist</div><div class="b">Position #2 of 3</div></div></div>
+      <div class="ban r"><span class="mi">error</span><div><div class="t">Sign-up is closed</div><div class="b">Session filled at 6:30 PM</div></div></div>
+    </div>
+    <div class="wcag">
+      Title hues on their tinted fills · Night BG:<br>
+      green <span class="pass">7.3 : 1 AAA</span> · amber <span class="pass">11.8 : 1 AAA</span> · red <span class="pass">5.9 : 1 AA</span>
+    </div>
+  </div>
+
+  <div class="pane" data-theme="light">
+    <div class="pane-title"><span class="dot"></span>Light</div>
+    <div class="banners">
+      <div class="ban g"><span class="mi">check_circle</span><div><div class="t">Signed up — see you Thursday</div><div class="b">Paid · PIN saved</div></div></div>
+      <div class="ban o"><span class="mi">watch_later</span><div><div class="t">You're on the waitlist</div><div class="b">Position #2 of 3</div></div></div>
+      <div class="ban r"><span class="mi">error</span><div><div class="t">Sign-up is closed</div><div class="b">Session filled at 6:30 PM</div></div></div>
+    </div>
+    <div class="wcag">
+      Title hues on their tinted fills · Cream BG:<br>
+      green-dark <span class="pass">6.2 : 1 AAA</span> · orange-deep <span class="pass">5.9 : 1 AA</span> · red-deep <span class="pass">8.8 : 1 AAA</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

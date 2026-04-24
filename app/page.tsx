@@ -10,7 +10,6 @@ import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import DevPanel, { type DevOverrides } from '@/components/DevPanel';
-import HydrationMark from '@/components/HydrationMark';
 import { getIdentity } from '@/lib/identity';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
@@ -64,9 +63,19 @@ export default function Page() {
     if (activeTab === 'admin' && !showAdmin) setActiveTab('home');
   }, [showAdmin, activeTab]);
 
+  // Expose the active tab to CSS so per-tab background variants can react
+  // (e.g. Sign-Ups tab swaps the global aurora for 03 Court markings).
+  useEffect(() => {
+    document.documentElement.setAttribute('data-tab', activeTab);
+    return () => {
+      // Fallback — if the page unmounts, leave the attribute cleared so any
+      // future /design preview routes don't inherit a stale tab value.
+      document.documentElement.removeAttribute('data-tab');
+    };
+  }, [activeTab]);
+
   return (
     <>
-      <HydrationMark />
       <div className="min-h-screen pb-32">
         <GlassPhysics />
         <ThemeToggle />

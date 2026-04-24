@@ -1,9 +1,13 @@
 # Badminton Session Manager
 
-A Next.js 16 app for managing casual weekly badminton sessions — sign-ups (with invite-list gating), waitlist, payment tracking, session history, and AI-polished announcements.
+A Next.js 16 app for managing casual weekly badminton sessions — sign-ups (with invite-list gating), waitlist, payment tracking, session history, AI-polished announcements, and a formalized design system.
 
-Deployed to **Azure App Service** (Canada Central, Free tier).
-Live URL: `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm`
+**Deployed as two App Services from a single `main` branch:**
+
+- `bpm-stable` (friend-facing): https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm
+- `bpm-next` (preview, auto-deploys `main`): https://vnext-badminton-app-enhcave5djcvafe9.canadacentral-01.azurewebsites.net/bpm
+
+See [`docs/deployment-model.md`](docs/deployment-model.md) for the promotion runbook.
 
 ---
 
@@ -11,29 +15,43 @@ Live URL: `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites
 
 | Tab | Description |
 |-----|-------------|
-| **Home** | BPM + date/time tile row, announcements (with dynamic cost-per-person line), sign-up card at the bottom for one-handed thumb reach. 7 sign-up states (open, closed, finished, signed-up, waitlisted, full, deadline-past). |
-| **Sign-Ups** | Full player list + waitlist card; self-cancel flow with delete token |
-| **Skills** | "Progress together?" placeholder for regular users; admin gets a persistent ACE Skills Matrix radar (7 dimensions × 6 levels), per-player score editing via drag-to-dismiss bottom sheet, and inline Add Player form |
-| **Admin** | PIN-gated panel — session/cost editors (two-card split), member/alias management, bird inventory, player admin (paid toggle, promote, restore, history), AI-polished announcements. Hidden by default; revealed via member role or 5-tap easter egg. |
+| **Home** | BPM + date/time tile row, announcements (with dynamic cost-per-person line), 7-state sign-up card at the bottom for one-handed thumb reach |
+| **Sign-Ups** | Full player list + waitlist card; self-cancel flow via `deleteToken` |
+| **Skills** | "Progress together?" placeholder for regular users; admin gets a persistent ACE Skills Matrix radar (7 dimensions × 6 levels), per-player score editing via drag-to-dismiss bottom sheet, inline Add Player form |
+| **Admin** | PIN-gated — session/cost editors, member/alias management, bird inventory, player admin (paid toggle, promote, restore), AI-polished announcements. Hidden by default; revealed via member role or 5-tap easter egg |
 
-### Additional Features
+### Supporting features
 
-- **Theme system** — light/dark mode with system preference auto-follow (`ThemeToggle`)
-- **Persistent member identity** — `members` collection with admin/member roles
-- **Consolidated localStorage identity** — `{ name, token, sessionId }` with stale session detection
-- **Dynamic OG image** — branded preview for link sharing (session title, date, player count)
-- **ShuttleLoader** — BPM-branded waveform loading animation
+- **Dual-deployment pipeline** — `bpm-next` auto-deploys every push; `bpm-stable` deploys only on tag dispatch
+- **Feature flag registry** (`lib/flags.ts`) — staged rollout between next + stable, typed `FlagName` union, `plannedRemoval` date on every flag
+- **i18n** — `next-intl` v4, cookie-based locale (`NEXT_LOCALE`), English + Simplified Chinese, `America/Vancouver` datetime formatting on both server and client
+- **Theme system** — light/dark with system-preference auto-follow; `data-theme` attribute drives CSS custom properties
+- **Persistent member identity** — `members` collection with admin/member roles; consolidated `{ name, token, sessionId }` localStorage
+- **Branded chrome** — cold-start splash, `<BpmWordmark />` tempo-dot logo, `<ShuttleLoader />` waveform loading, dynamic OG image for link previews
+
+### Design system
+
+The formalized token bundle lives under [`docs/design-system/`](docs/design-system/) — 43 files mirroring the pristine drop from claude.ai/design: color/type/motion/radii/spacing tokens, 28 preview specimen HTMLs, UI-kit JSX references, and three self-hosted variable fonts.
+
+A hidden **`/bpm/design`** preview route renders the specimen cards live (flag-gated behind `NEXT_PUBLIC_FLAG_DESIGN_PREVIEW`, 404 on stable).
+
+**Locked decisions (in use on live surfaces):**
+
+- **Fonts**: Space Grotesk (display) + IBM Plex Sans (body) + JetBrains Mono (data). Self-hosted variable TTFs via `next/font/local`, loaded from `app/fonts/`.
+- **Icons**: Material Symbols Rounded, subsetted to ~43 glyphs (~20 KB vs. ~100 KB full webfont). `.material-icons` class aliased so call-sites stay unchanged.
+- **Backgrounds**: `02 Aurora` (3-blob slate-blue + court-green + warm-yellow) on Home / Skills / Admin; `03 Court` (real badminton-doubles proportions, aspect-locked) on Sign-Ups only.
 
 ---
 
 ## Tech Stack
 
-- **Next.js 16** (App Router), TypeScript, Tailwind CSS
-- **Recharts** — radar chart for Skills tab
-- **Azure Cosmos DB** (NoSQL) — database: `badminton`, 7 containers at 400 RU/s shared throughput
-- **Anthropic Claude API** (`claude-sonnet-4-20250514`) — announcement polishing
-- **Azure App Service** — Canada Central, B1 Basic tier (Always On), `output: standalone`
-- **Vitest** — 245 tests, 29 suites, CI-gated before deploy
+- **Next.js 16** (App Router, Turbopack), TypeScript, Tailwind CSS
+- **next/font/local** for self-hosted variable fonts; `next/font/google` for JetBrains Mono
+- **Recharts** — radar chart for Skills tab (dynamic import, `ssr: false`)
+- **Azure Cosmos DB** (NoSQL) — database `badminton`, 7 containers at 400 RU/s shared throughput
+- **Anthropic Claude API** (`claude-sonnet-4-20250514`) — announcement polishing, admin-only
+- **Azure App Service** — Canada Central, B1 Basic tier, `output: standalone`, Always On
+- **Vitest** — 251 tests, 30 suites, CI-gated before deploy
 
 ---
 
@@ -41,67 +59,68 @@ Live URL: `https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites
 
 ```
 app/
-  api/
-    admin/route.ts            GET (auth check) · POST (PIN verify) · DELETE (logout)
-    aliases/route.ts          GET · POST · PATCH · DELETE — admin-only e-transfer alias management
-    announcements/route.ts    GET · POST · PATCH · DELETE
-    birds/route.ts            GET · POST · PATCH · DELETE — shuttle purchase inventory, stock deduction
-    claude/route.ts           POST (AI proxy, admin only, rate-limited)
-    members/route.ts          GET · POST · PATCH · DELETE — persistent player identity
-    players/route.ts          GET · POST · PATCH · DELETE — per-session sign-ups
-    session/route.ts          GET · PUT (admin only)
-    session/advance/route.ts  POST (admin only) — create next session and archive current
-    sessions/route.ts         GET (admin only) — list all archived sessions
-    skills/route.ts           GET · POST · PATCH · DELETE — per-session ACE skill scores (lazy container bootstrap)
-  globals.css
-  layout.tsx
-  page.tsx
-  opengraph-image.tsx    Dynamic OG image generator
+  api/                     All server-side routes (see API table below)
+  design/                  Hidden design-system preview route (flag-gated)
+    layout.tsx, page.tsx, _nav.ts
+    tokens/, components/, logo/, fonts/, backgrounds/, perf/
+  fonts/                   Self-hosted variable TTFs
+    SpaceGrotesk-VariableFont_wght.ttf
+    IBMPlexSans-VariableFont_wdth_wght.ttf
+    IBMPlexSans-Italic-VariableFont_wdth_wght.ttf
+  globals.css              All tokens + class utilities (single source of truth)
+  layout.tsx               Root shell: splash, aurora stub blobs, toggles, i18n provider
+  page.tsx                 SPA tab container (Home / Sign-Ups / Skills / Admin)
+  opengraph-image.tsx      Dynamic OG image generator
+
 components/
-  BottomNav.tsx            Fixed bottom nav (Home, Sign-Ups, Skills, Admin)
-  DatePicker.tsx           Custom calendar picker, portal-rendered
-  GlassPhysics.tsx         Mouse-tracking CSS var updater for glass card hover effect
-  HomeTab.tsx              7-state sign-up card (bottom, thumb zone) + tile row (BPM|Date) + announcement with cost line
-  PlayersTab.tsx           Active player list + waitlist card; self-cancel flow
+  BottomNav.tsx            Fixed bottom pill nav (canonical per bundle spec)
+  BottomSheet/             Portal primitive with scroll-lock, focus-trap, CSS animation
+  BpmWordmark.tsx          "bpm." tempo-dot logo component
+  DatePicker.tsx           Portal-rendered calendar popover, RAF-coalesced scroll
+  GlassPhysics.tsx         Mouse-tracking CSS var for glass-card hover (touch devices skip)
+  HomeTab.tsx              7-state sign-up card + tile row + announcement
+  HydrationMark.tsx        Root-mounted; flips html[data-hydrated="true"] to hide splash
+  PlayersTab.tsx           Active list + waitlist; court background variant
+  ShuttleIcon.tsx          Brand shuttlecock SVG (replaces sports_tennis in empty states)
   ShuttleLoader.tsx        BPM waveform loading animation
-  SkillsTab.tsx            ACE skill radar entrypoint + add-player form (admin); "Progress together?" (non-admin)
-  SkillsRadar.tsx          Recharts radar + solo/overlay mode + drag-dismissable bottom sheet
-  ThemeToggle.tsx          Light/dark theme toggle (system preference + localStorage)
-  admin/
-    AdminDashboard.tsx     Drill-down shell with 3 custom hooks (players, announcements, session nav)
-    SessionDetailsEditor.tsx  Two-card split: Session Details + Cost Details, per-person preview
-    DateTimeEditor.tsx     Session date/time/deadline editor
-    MembersView.tsx        Invite list + e-transfer aliases
-    BirdInventoryView.tsx  Shuttle purchase CRUD with stock remaining indicator
-    AdvanceSessionForm.tsx Next-week session creation with pointer flip
-    SessionContextBar.tsx  Small "Editing · date" pill at top of admin
-    VenueSummary.tsx       Venue name + capacity/cost summary pill
-    AdminBackHeader.tsx    Consistent back button for drill-down views
-    hooks/                 usePlayerManagement, useAnnouncements, useSessionNavigation
+  SkillsTab.tsx            ACE radar entrypoint + add-player form
+  SkillsRadar.tsx          Recharts radar + drag-dismissable bottom sheet
+  ThemeToggle.tsx          Light/dark toggle (system-pref + localStorage)
+  admin/                   Admin drill-down components + hooks
+
+docs/
+  design-system/           43-file canonical bundle mirror
+  deployment-model.md      bpm-stable / bpm-next runbook
+  saas-productization-findings.md
+  user-research-simulation.md
+
 lib/
-  auth.ts          HTTP-only cookie auth helpers
-  birdUsages.ts    normalizeBirdUsages shim (legacy single-object + new array shapes), totalTubes, totalBirdCost
-  cosmos.ts        DB connection + session pointer helpers + in-memory mock + ensureContainer for lazy bootstrap
-  formatters.ts    Shared fmtDate utility
-  identity.ts      Consolidated localStorage identity (getIdentity/setIdentity/clearIdentity)
-  rateLimit.ts     In-memory rate limiter (per client IP)
-  skills-data.ts   ACE Skills Matrix — 7 dimensions × 6 levels with descriptive text per level
-  types.ts         Session, Player, Member, Alias, Announcement, BirdUsage, BirdPurchase, PlayerSkills interfaces
+  auth.ts                  HTTP-only cookie auth
+  birdUsages.ts            normalizeBirdUsages, totalTubes, totalBirdCost
+  cosmos.ts                DB connection + mock store + lazy ensureContainer
+  flags.ts                 Typed feature-flag registry + isFlagOn helper
+  formatters.ts
+  identity.ts              Consolidated localStorage identity helpers
+  rateLimit.ts             In-memory per-IP rate limiter
+  skills-data.ts           ACE Skills Matrix (7 × 6)
+  types.ts
+
+public/brand/              SVG + PNG brand assets (shuttlecock, wordmark)
 ```
 
 ---
 
 ## Auth Model
 
-- Admin PIN stored in `ADMIN_PIN` env var (use 8+ chars with letters and numbers)
-- Login: `POST /api/admin` verifies with `timingSafeEqual`, sets HTTP-only cookie (SHA-256 of `badminton-admin:<PIN>`)
+- Admin PIN stored in `ADMIN_PIN` env var (use 8+ chars, letters + numbers)
+- `POST /api/admin` → verifies with `timingSafeEqual` on SHA-256 hash, sets HTTP-only cookie
 - Cookie: `HttpOnly`, `SameSite=Strict`, `Secure` in production, 8-hour TTL
-- Protected routes check cookie via `isAdminAuthed(req)`
-- Rate limit on login: 5 attempts / 15 min per **client** IP (reads `X-Client-IP` first — the real client IP on Azure, not the proxy IP)
+- All admin routes call `isAdminAuthed(req)` before any other logic
+- Rate limit on login: **5 attempts / 15 min per client IP** (reads `X-Client-IP` header first — Azure's real-client header — not `X-Forwarded-For` tail)
 
-### Self-cancellation auth
+### Self-cancellation
 
-Players get a random `deleteToken` on sign-up (returned once, stored in `localStorage` as part of `badminton_identity`). Cancellation requires the token OR an admin cookie. Prevents anyone who knows a player's name from removing them.
+Players get a random `deleteToken` (16-byte hex) once at sign-up, stored in `localStorage` as part of `badminton_identity`. Cancellation requires the token OR an admin cookie — prevents anyone-who-knows-a-name from removing a player.
 
 ---
 
@@ -118,14 +137,20 @@ Players get a random `deleteToken` on sign-up (returned once, stored in `localSt
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `ADMIN_PIN` | Admin PIN for protected routes |
-| `ANTHROPIC_API_KEY` | Anthropic API key |
-| `COSMOS_CONNECTION_STRING` | Azure Cosmos DB connection string |
-| `COSMOS_DB_NAME` | Database name (default: `badminton`) |
-| `NEXT_PUBLIC_MAX_PLAYERS` | Max players per session (default: `12`) |
-| `NEXT_PUBLIC_BASE_PATH` | Base path prefix — must match `basePath` in `next.config.js` (currently `/bpm`) |
+| Variable | Required | Description |
+|----------|:---:|-------------|
+| `ADMIN_PIN` | ✓ | Admin PIN (8+ chars, letters + numbers) |
+| `ANTHROPIC_API_KEY` | ✓ | Anthropic API key for announcement polishing |
+| `COSMOS_CONNECTION_STRING` | — | Full Cosmos DB connection string; omit to use the in-memory mock store |
+| `COSMOS_DB_NAME` | — | Database name (default `badminton`) |
+| `NEXT_PUBLIC_MAX_PLAYERS` | — | Max players per session (default `12`) |
+| `NEXT_PUBLIC_BASE_PATH` | ✓ | Must match `basePath` in `next.config.js` (currently `/bpm`) |
+| `NEXT_PUBLIC_ENV` | — | `stable` / `next` / `dev` — drives preview banner + flag defaults |
+| `NEXT_PUBLIC_FLAG_DESIGN_PREVIEW` | — | Set to `"true"` to expose `/bpm/design` |
+| `NEXT_PUBLIC_FLAG_DEMO` | — | End-to-end promotion test flag |
+| `NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV` | — | Stage 0a: new bottom nav labels |
+
+All `NEXT_PUBLIC_*` vars are **baked at build time** — changes require a rebuild + redeploy.
 
 ---
 
@@ -133,41 +158,36 @@ Players get a random `deleteToken` on sign-up (returned once, stored in `localSt
 
 ```bash
 npm install
-# Create .env.local with the required env vars above
+cp .env.local.example .env.local   # if provided, otherwise create manually
 npm run dev
 # → http://localhost:3000/bpm
 ```
 
-When `COSMOS_CONNECTION_STRING` is not set, the app uses an in-memory mock store so all routes work offline.
+Omit `COSMOS_CONNECTION_STRING` to use the in-memory mock store — all routes work offline.
+
+```bash
+npm test              # 251 tests, 30 suites
+npm run test:watch    # watch mode
+npm run build         # production build (static analysis + route compile)
+npm run lint          # eslint
+```
 
 ---
 
-## Deployment (Azure App Service)
+## Deployment
 
-Two Azure App Services run from the same `main` branch — `bpm-stable` (friend-facing, tag-promoted only) and `bpm-next` (preview, auto-deploys every push). See `docs/deployment-model.md` for the full runbook and `AZURE.md` for the architecture.
+**Push goes to next. Tag goes to stable.**
 
 ```text
-git push  →  deploy-next.yml  →  bpm-next App Service (auto, always at HEAD)
-git tag + dispatch  →  deploy-stable.yml  →  bpm-stable App Service (manual, by tag)
+git push origin main      →  deploy-next.yml    →  bpm-next App Service (auto, always at HEAD)
+git tag bpm-stable-v1.X   →  deploy-stable.yml  →  bpm-stable App Service (manual, by tag)
+git push --tags
+# Then: GitHub Actions → deploy-stable.yml → Run workflow → enter tag
 ```
 
-Workflows live at `.github/workflows/deploy-next.yml` and `deploy-stable.yml`. The next pipeline uses a publish profile secret; the stable pipeline uses OIDC. All action SHAs are pinned for supply chain safety.
+Workflows at `.github/workflows/deploy-next.yml` (auto, publish profile) and `deploy-stable.yml` (OIDC, manual dispatch). All action SHAs pinned.
 
-### Manual deploy (fallback only)
-
-```bash
-rm -rf .next
-npm run build
-cp -r .next/static .next/standalone/.next/static
-cd .next/standalone
-zip -r ../../standalone-deploy.zip .
-cd ../..
-az webapp deploy \
-  --resource-group grantzou \
-  --name badminton-app \
-  --src-path standalone-deploy.zip \
-  --type zip
-```
+Full runbook + rollback procedure: [`docs/deployment-model.md`](docs/deployment-model.md). Infrastructure details: [`docs/azure.md`](docs/azure.md).
 
 ---
 
@@ -175,59 +195,58 @@ az webapp deploy \
 
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
-| `GET` | `/api/session` | — | Get active session info |
-| `PUT` | `/api/session` | Admin | Update session details |
+| `GET` | `/api/session` | — | Active session info |
+| `PUT` | `/api/session` | Admin | Update session |
 | `POST` | `/api/session/advance` | Admin | Create next session, archive current |
-| `GET` | `/api/sessions` | Admin | List all archived sessions |
+| `GET` | `/api/sessions` | Admin | List archived sessions |
+| `GET` | `/api/sessions/costs` | Admin | Recent cost-per-court history |
 | `GET` | `/api/players` | — | List players (deleteToken stripped); `?all=true` and `?sessionId=` admin-only |
 | `POST` | `/api/players` | — | Sign up (rate-limited); returns deleteToken once |
 | `PATCH` | `/api/players` | Admin | Toggle paid, promote from waitlist, restore |
-| `DELETE` | `/api/players` | Token or Admin | Soft-delete player, clearAll, or purgeAll |
+| `DELETE` | `/api/players` | Token or Admin | Soft-delete, clearAll, or purgeAll |
 | `GET` | `/api/members` | — | List members (admin sees full records, public sees names only) |
-| `POST` | `/api/members` | Admin | Create persistent member |
-| `PATCH` | `/api/members` | Admin | Update member (name, stage, active) |
-| `DELETE` | `/api/members` | Admin | Soft-delete (or hard-delete with `hard: true`) |
-| `GET` | `/api/aliases` | Admin | List e-transfer aliases |
-| `POST` | `/api/aliases` | Admin | Create alias |
-| `PATCH` | `/api/aliases` | Admin | Update alias |
-| `DELETE` | `/api/aliases` | Admin | Delete alias |
-| `GET` | `/api/announcements` | — | Get announcements (newest first, session-scoped) |
-| `POST` | `/api/announcements` | Admin | Post an announcement |
-| `PATCH` | `/api/announcements` | Admin | Edit an announcement (sets editedAt) |
-| `DELETE` | `/api/announcements` | Admin | Delete an announcement |
-| `GET` | `/api/birds` | Admin | List shuttle purchases + current stock (sum across all session birdUsages) |
-| `POST` | `/api/birds` | Admin | Create purchase (name, tubes, totalCost, optional speed/quality/notes) |
-| `PATCH` | `/api/birds` | Admin | Update purchase; recalculates costPerTube if cost inputs change |
-| `DELETE` | `/api/birds` | Admin | Delete purchase |
-| `GET` | `/api/skills` | Admin | List per-session skill profiles (supports `?sessionId=` override) |
-| `POST` | `/api/skills` | Admin | Upsert by `(sessionId, name)` case-insensitive; 0-6 integer scores |
-| `PATCH` | `/api/skills` | Admin | Merge scores into existing record by id |
-| `DELETE` | `/api/skills` | Admin | Remove a skill profile |
-| `GET` | `/api/admin` | — | Check auth cookie status |
-| `POST` | `/api/admin` | — | Verify PIN, set cookie |
-| `DELETE` | `/api/admin` | Admin | Logout, clear cookie |
-| `POST` | `/api/claude` | Admin | Proxy to Claude AI (rate-limited) |
-
----
-
-## Security Notes
-
-- All datetimes stored with the admin's local timezone offset so they display correctly for all users
-- `DELETE /api/players` requires either the player's own `deleteToken` or an admin cookie — not just a name
-- Rate limiter reads `X-Client-IP` (Azure's real client header) — limits are per-person, not global
-- Cookie cleared on logout with all security attributes (`HttpOnly`, `Secure`, `SameSite`)
-- `NEXT_PUBLIC_BASE_PATH` is baked into the client bundle at build time — set it in `.env.local` for local dev and in Azure App Settings for production
-- `approvedNames` gating prevents unknown users from signing up when the invite list is active
-- `signupOpen` toggle lets admin control when sign-ups are accepted
-- Security headers set in `next.config.js`: CSP, X-Frame-Options, HSTS, X-Content-Type-Options, Referrer-Policy, Permissions-Policy
-- All API routes return structured JSON errors — no stack traces or DB schema leaked in production
-- Same-origin architecture (no CORS headers needed) — frontend and API share the same App Service
+| `GET` | `/api/members/me` | — | Public role lookup for admin tab visibility |
+| `POST` `PATCH` `DELETE` | `/api/members` | Admin | Create / update / soft-delete |
+| `GET` `POST` `PATCH` `DELETE` | `/api/aliases` | Admin | E-transfer name mappings |
+| `GET` | `/api/announcements` | — | Newest first, session-scoped |
+| `POST` `PATCH` `DELETE` | `/api/announcements` | Admin | Create / edit / delete |
+| `GET` `POST` `PATCH` `DELETE` | `/api/birds` | Admin | Shuttle purchases + stock remaining |
+| `GET` `POST` `PATCH` `DELETE` | `/api/skills` | Admin | ACE skill profiles (lazy container bootstrap) |
+| `GET` `POST` `DELETE` | `/api/admin` | varies | Auth-check / PIN-verify / logout |
+| `POST` | `/api/claude` | Admin | Anthropic proxy (rate-limited) |
+| `GET` | `/api/releases` | — | Release-notes feed (user-facing terminal sheet) |
 
 ---
 
 ## Known Limitations
 
-- **Race condition on signup**: capacity check and insert are not atomic — concurrent signups can exceed `maxPlayers` by 1-2 spots (needs Cosmos DB optimistic concurrency to fix properly)
-- **Rate limiter is in-memory**: resets on server restart; not shared across multiple instances (would need Redis for multi-instance)
-- **Cosmos DB firewall**: App Service has no static outbound IP — "Allow access from Azure datacenters" is used instead of IP-restricted access
-- **Legacy `birdUsage` single-object docs**: still read-tolerated but never written; will migrate to array shape on next admin save per session
+- **Race condition on sign-up**: capacity check + insert are not atomic — concurrent sign-ups can exceed `maxPlayers` by 1–2 spots. Would need Cosmos DB optimistic concurrency (`_etag`) to fix properly.
+- **In-memory rate limiter**: resets on cold start, not shared across instances. Single App Service instance only. Would need Redis for multi-instance.
+- **Cosmos DB firewall**: App Service has no static outbound IP → "Allow access from Azure datacenters" is enabled instead of IP-allowlisting.
+- **Legacy `birdUsage` single-object docs**: read-tolerated via `normalizeBirdUsages()` but never written; legacy docs get promoted to array shape on next admin save.
+
+---
+
+## Security Notes
+
+- All datetimes stored with ISO 8601 offset; displayed in `America/Vancouver` via `next-intl` `useFormatter`
+- `deleteToken` is stripped from every API response after creation (it's only returned once at sign-up)
+- Rate limiter reads `X-Client-IP` first (Azure's real-client header); falls back to the first `X-Forwarded-For` entry. Never uses the last entry (that's Azure's proxy IP).
+- `NEXT_PUBLIC_*` vars are baked at build time — set in `.env.local` for dev and in Azure App Settings per environment for production
+- Security headers (CSP, HSTS, X-Frame-Options, etc.) set in `next.config.js`
+- Same-origin architecture — frontend and API share the same App Service, no CORS needed
+- `approvedNames` gates sign-ups when the invite list is active
+- `signupOpen` toggle lets admin open/close sign-ups; `session.deadline` enforced server-side
+- `POST /api/claude` is admin-only — unauthenticated access would expose the API-key budget
+
+---
+
+## Further reading
+
+- [`CLAUDE.md`](CLAUDE.md) — instructions for AI coding assistants (architecture, conventions, gotchas)
+- [`DESIGN.md`](DESIGN.md) — design principles
+- [`ROADMAP.md`](ROADMAP.md) — what's shipped, what's staged, what's deferred
+- [`docs/azure.md`](docs/azure.md) — infrastructure details
+- [`docs/deployment-model.md`](docs/deployment-model.md) — two-deployment promotion runbook
+- [`docs/design-system/`](docs/design-system/) — canonical bundle (tokens, specimens, UI-kit refs)
+- [`CHANGELOG.md`](CHANGELOG.md) — what ships to stable, tagged per version

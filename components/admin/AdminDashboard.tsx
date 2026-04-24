@@ -99,9 +99,11 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
         <button
           type="button"
           onClick={onLogout}
-          className="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1 px-2 pb-1"
+          aria-label="Sign out of admin"
+          className="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1 px-3"
+          style={{ minHeight: 44 }}
         >
-          <span className="material-icons" style={{ fontSize: 16 }}>logout</span>
+          <span className="material-icons" style={{ fontSize: 18 }}>logout</span>
           Sign out
         </button>
       </div>
@@ -116,6 +118,8 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
         <div className="glass-card p-5 space-y-3">
           <h3 className="section-label">ANNOUNCEMENTS</h3>
           <textarea
+            id="admin-announcement-draft"
+            name="announcementDraft"
             rows={3}
             placeholder="Type your announcement\u2026"
             aria-label="Announcement text"
@@ -171,6 +175,7 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
                 anno.editingAnnoId === a.id ? (
                   <div key={a.id} className="inner-card p-3 space-y-2">
                     <textarea
+                      name="announcementEdit"
                       rows={3}
                       value={anno.editAnnoText}
                       onChange={(e) => anno.setEditAnnoText(e.target.value)}
@@ -341,10 +346,12 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
                     <button
                       onClick={() => pm.handleRemove(player)}
                       disabled={pm.removingId === player.id}
-                      className="text-xs text-gray-500 hover:text-amber-400 transition-colors p-1 flex items-center gap-1"
+                      className="text-xs text-gray-500 hover:text-amber-400 transition-colors flex items-center gap-1 px-2"
                       title={`Remove ${player.name}`}
+                      aria-label={`Remove ${player.name}`}
+                      style={{ minHeight: 44, minWidth: 44, justifyContent: 'center' }}
                     >
-                      <span className="material-icons" style={{ fontSize: 16 }}>person_remove</span>
+                      <span className="material-icons" style={{ fontSize: 18 }}>person_remove</span>
                       <span className="hidden sm:inline">Remove</span>
                     </button>
                   </div>
@@ -360,6 +367,8 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
           <h3 className="section-label">ADD PLAYER</h3>
           <div className="flex gap-2">
             <input
+              id="admin-add-player-name"
+              name="playerName"
               type="text"
               placeholder="Player name"
               aria-label="Player name"
@@ -367,6 +376,7 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
               value={pm.name}
               onChange={e => pm.setName(e.target.value)}
               maxLength={50}
+              autoComplete="off"
             />
             <button type="submit" disabled={pm.adding || !pm.name.trim()} className="btn-primary" style={{ whiteSpace: 'nowrap' }}>
               {pm.adding ? '\u2026' : 'Add'}

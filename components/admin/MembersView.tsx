@@ -203,12 +203,15 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
         {!inviteCollapsed && (<>
           <div className="flex gap-2">
             <input
+              id="members-add-name"
+              name="memberName"
               type="text"
               placeholder="Add a name..."
               value={nameInput}
               onChange={(e) => { setNameInput(e.target.value); setAddError(''); }}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddMember(); } }}
               maxLength={50}
+              autoComplete="off"
               className="flex-1"
             />
             <button
@@ -274,17 +277,21 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
                 <div key={alias.id} className="px-4 py-3 space-y-2">
                   <div className="flex gap-2">
                     <input
+                      name="editAppName"
                       type="text"
                       value={editAppName}
                       onChange={(e) => setEditAppName(e.target.value)}
                       maxLength={50}
+                      autoComplete="off"
                       className="flex-1 text-sm"
                     />
                     <input
+                      name="editEtransferName"
                       type="text"
                       value={editEtransferName}
                       onChange={(e) => setEditEtransferName(e.target.value)}
                       maxLength={50}
+                      autoComplete="off"
                       className="flex-1 text-sm"
                     />
                   </div>
@@ -345,21 +352,27 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
         <form onSubmit={handleAddAlias} className="space-y-3">
           <div className="flex gap-2">
             <input
+              id="alias-app-name"
+              name="appName"
               type="text"
               placeholder="App name (e.g. Jon)"
               value={appName}
               onChange={(e) => setAppName(e.target.value)}
               maxLength={50}
               required
+              autoComplete="off"
               className="flex-1"
             />
             <input
+              id="alias-etransfer-name"
+              name="etransferName"
               type="text"
               placeholder="E-transfer name (e.g. Jonathan Smith)"
               value={etransferName}
               onChange={(e) => setEtransferName(e.target.value)}
               maxLength={50}
               required
+              autoComplete="off"
               className="flex-1"
             />
           </div>

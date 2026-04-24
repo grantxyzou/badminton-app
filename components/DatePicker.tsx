@@ -53,16 +53,31 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
     return () => document.removeEventListener('mousedown', onMouseDown);
   }, []);
 
-  // Reposition calendar when scrolling while open
+  // Reposition calendar when scrolling while open. iOS Safari fires scroll
+  // events at up to 120 fps — coalesce to one layout read per animation
+  // frame so getBoundingClientRect() isn't called 120x/sec (perf audit
+  // rank 4 heating hot path).
   useEffect(() => {
     if (!open) return;
+    let raf = 0;
+    let pending = false;
     function reposition() {
+      raf = 0;
+      pending = false;
       if (!btnRef.current) return;
       const rect = btnRef.current.getBoundingClientRect();
       setCalPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
     }
-    window.addEventListener('scroll', reposition, true);
-    return () => window.removeEventListener('scroll', reposition, true);
+    function onScroll() {
+      if (pending) return;
+      pending = true;
+      raf = requestAnimationFrame(reposition);
+    }
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, [open]);
 
   function handleToggle() {
@@ -125,16 +140,24 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
       >
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <button type="button" onClick={prevMonth}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px', lineHeight: 1 }}>
-          <span className="material-icons" style={{ fontSize: 16 }}>chevron_left</span>
+        <button
+          type="button"
+          onClick={prevMonth}
+          aria-label="Previous month"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+        >
+          <span className="material-icons" style={{ fontSize: 18 }}>chevron_left</span>
         </button>
         <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.75rem' }}>
           {MONTHS_FULL[viewMonth]} {viewYear}
         </span>
-        <button type="button" onClick={nextMonth}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px', lineHeight: 1 }}>
-          <span className="material-icons" style={{ fontSize: 16 }}>chevron_right</span>
+        <button
+          type="button"
+          onClick={nextMonth}
+          aria-label="Next month"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+        >
+          <span className="material-icons" style={{ fontSize: 18 }}>chevron_right</span>
         </button>
       </div>
 

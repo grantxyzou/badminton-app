@@ -39,6 +39,15 @@ Full session + `POST { waitlist: true }` → `waitlisted: true`. Promote via `PA
 ### Sign-Up Gating
 `session.signupOpen` (boolean) — `false` blocks non-admin sign-ups. New sessions via advance always start `signupOpen: false`. `session.deadline` enforced server-side.
 
+### Design System
+Canonical bundle mirrored at `docs/design-system/` (43 files — tokens, 28 specimen HTMLs, UI-kit JSX refs, self-hosted fonts). `app/globals.css` is the **single source of truth** for tokens in the running app; the docs folder is pristine reference only (never imported).
+
+- **Fonts**: Space Grotesk (display — h1/h2/h3, wordmark, splash) + IBM Plex Sans (body — `var(--font-sans)`) + JetBrains Mono (data — `var(--font-mono)`). Self-hosted variable TTFs in `app/fonts/`, loaded via `next/font/local`. Italic variant wired for IBM Plex.
+- **Icons**: `.material-icons` class aliased to Material Symbols Rounded, subsetted to ~43 glyphs via Google Fonts `icon_names=` param (~20 KB). New glyphs must be added to the URL in `app/layout.tsx` — missing glyphs render as raw text (e.g. `EXPAND_LESS`) instead of failing loud.
+- **Backgrounds** live on the `.court-bg` element (rendered once in root layout). `02 Aurora` (3 blobs with transform-only animation) is the default; `03 Court` (real badminton-doubles proportions, aspect-locked via `aspect-ratio: 100/220` + `background-size: contain`) activates on Sign-Ups via `html[data-tab="players"]` selectors.
+- **Preview route** at `/bpm/design` (7 sub-pages, flag-gated behind `NEXT_PUBLIC_FLAG_DESIGN_PREVIEW`). Not linked from BottomNav.
+- **Corner radii ladder** — rectangular surfaces capped at **16px**. 6/8/10/12/16 for rect; 100px for pill. Glass-card was at 24px historically (self-inflicted spec violation); now 16.
+
 ## Coding Conventions
 
 - **Components**: PascalCase files, default export. **Lib**: camelCase files.
@@ -89,7 +98,9 @@ Full session + `POST { waitlist: true }` → `waitlisted: true`. Promote via `PA
 - **HomeTab card order** is deliberately context-on-top, action-on-bottom for one-handed thumb reach: `BPM|Date tile row → CostCard → Announcement → Sign-Up card → PrevPaymentReminder`. Don't flip this back without a reason.
 - **Cost per person** renders as a standalone `<CostCard />` between the tile row and the Announcement card. Visibility is gated on `showCostBreakdown && perPersonCost > 0 && datetime` — independent of announcement presence (research finding 4.7).
 - **Previous session snapshot**: `session.prevSessionDate` and `session.prevCostPerPerson` are frozen at advance time. `<PrevPaymentReminder />` renders below the sign-up card, gated on `hasIdentity` (not `isSignedUp`) — so players who played last week still see what they owe even before signing up for the next session (research finding 4.8). `hasIdentity` must be kept in sync with `setIdentity` / `clearIdentity` call sites. Not live-updated if the archived session is edited later.
-- **Cold-start splash**: Pre-hydration splash lives in `app/layout.tsx` (pure HTML in the server component body). `<HydrationMark />` mounted in `app/page.tsx` sets `html[data-hydrated="true"]` on mount; CSS hides the splash via that selector. Splash uses `var(--page-bg)` so it honors the current theme.
+- **Cold-start splash**: Pre-hydration splash lives in `app/layout.tsx` (pure HTML in the server component body). `<HydrationMark />` is mounted in the **root layout** (`app/layout.tsx`, not `app/page.tsx`) so it fires on every route including `/design/*` — not just the SPA index. Sets `html[data-hydrated="true"]` on mount; CSS hides the splash via that selector. A 5.4s CSS-keyframe failsafe also fades the splash if hydration stalls silently. Splash uses `var(--page-bg)` so it honors the current theme.
+- **Per-tab backgrounds**: `app/page.tsx` writes `document.documentElement.setAttribute('data-tab', activeTab)` via a `useEffect` on every tab change. CSS rules under `html[data-tab="players"]` swap the global aurora for the 03 Court pattern (only on Sign-Ups). Home / Skills / Admin keep the 3-blob aurora. Add future per-tab variants via the same mechanism — no component changes needed.
+- **Design-system cascade trap**: Do NOT import `docs/design-system/colors_and_type.css` anywhere in the app. Its `:root` block re-asserts dark-mode tokens and shadows `app/globals.css`'s `[data-theme="light"]` overrides (same specificity, later-wins). `globals.css` is the single source of truth for tokens; the docs file is the pristine bundle reference only.
 - **Component tests need `afterEach(cleanup)`**: Per-file `// @vitest-environment jsdom` docblock enables component tests, but Vitest globals aren't configured — so `cleanup()` from `@testing-library/react` must be called manually between cases when multiple tests render overlapping text. See `__tests__/components/PrevPaymentReminder.test.tsx` for the pattern.
 - **DevPanel**: Add `?dev` to the URL to show a floating control panel for testing UI states (cost visibility, payment reminder, signed-up status, player count). Controls override real API data. Only active when `?dev` is in the URL.
 - **Advance form shows success toast**: 1.2s green banner before `onBack()`. Don't remove the delay — it's intentional user feedback.
@@ -105,7 +116,7 @@ Full session + `POST { waitlist: true }` → `waitlisted: true`. Promote via `PA
 
 The repo runs two Azure deployments from a single `main` branch: **`bpm-stable`** (friend-facing, updates only when a git tag is promoted) and **`bpm-next`** (auto-deploys every push to `main`). Stage-by-stage rollout is gated by feature flags so `main` can ship unfinished work to `next` without touching stable.
 
-- **Flag convention**: `NEXT_PUBLIC_FLAG_<STAGE>_<FEATURE>` (e.g., `NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV`). Must be registered in `lib/flags.ts` `FLAGS` registry — the typed `FlagName` union prevents typo'd lookups.
+- **Flag convention**: `NEXT_PUBLIC_FLAG_<STAGE>_<FEATURE>` (e.g., `NEXT_PUBLIC_FLAG_DESIGN_PREVIEW`, `NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV`). Must be registered in `lib/flags.ts` `FLAGS` registry — the typed `FlagName` union prevents typo'd lookups.
 - **Reading flags**: always `isFlagOn('NEXT_PUBLIC_FLAG_X')` from `lib/flags.ts`. Never `process.env.NEXT_PUBLIC_FLAG_X` directly — Next.js only inlines literal accesses, and the helper's switch statement guarantees each flag is inlined.
 - **Canonical value**: only the literal string `'true'` means on. `'1'`, `'yes'`, `'TRUE'` all read as off. Prevents accidental enablement from typo'd Azure App Settings.
 - **Server vs client**: for flags that gate API response shape or DB writes, read the flag on the server only. Client flags can't protect the database — a user with devtools can flip bundle flags but cannot flip server env vars.
@@ -135,4 +146,4 @@ npm test              # run all tests (vitest)
 npm run test:watch    # watch mode
 ```
 
-245 tests across 29 suites covering API routes (admin auth, player CRUD, player self-pay, members, sessions, session costs, birds, skills), feature flags, i18n parity, and component rendering. Tests use the in-memory mock store — no DB needed. Test helpers in `__tests__/helpers.ts`. Each test gets a unique IP via `X-Client-IP` to avoid rate limiter collisions.
+251 tests across 30 suites covering API routes (admin auth, player CRUD, player self-pay, members, sessions, session costs, birds, skills), feature flags, i18n parity, component rendering, and the design-preview route (flag registration + nav isolation). Tests use the in-memory mock store — no DB needed. Test helpers in `__tests__/helpers.ts`. Each test gets a unique IP via `X-Client-IP` to avoid rate limiter collisions.

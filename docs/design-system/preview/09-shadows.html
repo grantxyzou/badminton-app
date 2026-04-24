@@ -1,0 +1,27 @@
+<!doctype html>
+<html data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Shadows</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap">
+<link rel="stylesheet" href="_preview.css">
+</head>
+<body>
+<div class="court-bg"><div class="aurora-blob-1"></div><div class="aurora-blob-2"></div><div class="aurora-blob-3"></div></div>
+<div class="card-wrap">
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:10px;">
+  <div style="padding:16px;border-radius:18px;background:var(--glass-bg);border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 var(--glass-inset),0 8px 40px rgba(0,0,0,0.25),0 2px 8px rgba(0,0,0,0.12);">
+    <div class="label">GLASS</div>
+    <div class="mono" style="margin-top:4px;">inset 1px + 8·40 / 2·8</div>
+  </div>
+  <div style="padding:16px;border-radius:18px;background:var(--glass-bg);border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 rgba(255,255,255,0.18),0 16px 48px rgba(0,0,0,0.3),0 4px 12px rgba(0,0,0,0.15);">
+    <div class="label">HOVER</div>
+    <div class="mono" style="margin-top:4px;">+2px lift · 16·48 shadow</div>
+  </div>
+  <div style="padding:16px;border-radius:18px;background:var(--btn-primary-bg);border:1px solid var(--btn-primary-border);box-shadow:inset 0 1px 0 rgba(255,255,255,0.22),0 4px 20px rgba(22,163,74,0.2),0 1px 4px rgba(0,0,0,0.2);color:#fff;">
+    <div style="font-weight:700;font-size:13px;">PRIMARY GLOW</div>
+    <div class="mono" style="margin-top:4px;color:rgba(255,255,255,0.8);">green 20% outer</div>
+  </div>
+</div></div>
+</body>
+</html>

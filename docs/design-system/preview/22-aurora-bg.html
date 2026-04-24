@@ -1,0 +1,296 @@
+<!doctype html>
+<html data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Aurora background</title>
+<link rel="stylesheet" href="_preview.css">
+<style>
+  /* Override the global fixed .court-bg for this card:
+     demo the aurora effect inside a bounded stage so it's actually visible. */
+  .court-bg { display: none; }
+
+  .stack { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 14px; }
+
+  .aurora-demo {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    border-radius: 14px;
+    overflow: hidden;
+    isolation: isolate;
+    background: var(--bpm-night);
+    contain: strict;
+    contain-intrinsic-size: 100% 200px;
+  }
+  .aurora-demo.light {
+    background: #FAF8F5;
+  }
+
+  /* Court markings — faint SVG overlay behind blobs. */
+  .court-lines {
+    position: absolute; inset: 0; pointer-events: none; z-index: 0;
+    opacity: 0.22;
+  }
+  .court-lines line, .court-lines rect {
+    stroke: #86efac; stroke-width: 1; fill: none;
+    vector-effect: non-scaling-stroke;
+  }
+  .aurora-demo.light .court-lines { opacity: 0.35; }
+  .aurora-demo.light .court-lines line,
+  .aurora-demo.light .court-lines rect { stroke: #16a34a; }
+  .court-lines .net    { stroke-width: 1.8; stroke-dasharray: 3 2; opacity: 0.85; }
+  .court-lines .tramline { opacity: 0.5; }
+
+  .shuttle-arc {
+    position: absolute; inset: 0; pointer-events: none; z-index: 2;
+    opacity: 0.5;
+  }
+  .shuttle-arc path {
+    fill: none; stroke: #4ade80; stroke-width: 1.4;
+    stroke-dasharray: 1 4; stroke-linecap: round;
+    animation: arc-fade 12s ease-in-out infinite;
+  }
+  .aurora-demo.light .shuttle-arc path { stroke: #16a34a; }
+  .aurora-demo.light .shuttle-arc { opacity: 0.65; }
+  @keyframes arc-fade {
+    0%, 28%, 68%, 100% { opacity: 0; }
+    12%, 22%, 46%, 56%, 80%, 90% { opacity: 1; }
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     Blobs — rewritten to match production aurora-bg.css pattern:
+       • No `filter: blur()` — blur is baked into the radial-gradient stops.
+       • No `mix-blend-mode` — colors tuned to look right as semi-transparent
+         layers on the dark/light background.
+       • `will-change: transform` + `translate3d(0,0,0)` forces its own
+         GPU layer → composited, not repainted.
+       • Animates ONLY `transform` → no paint invalidation per frame.
+     ════════════════════════════════════════════════════════════════ */
+  .demo-blob {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+  }
+  .demo-blob.b1 {
+    /* Slate — blue-grey, the net defender */
+    width: 360px; height: 280px;
+    left: 50%; top: 50%;
+    margin-left: -180px; margin-top: -140px;
+    background: radial-gradient(ellipse 50% 50% at 50% 50%,
+      rgba(120, 158, 196, 0.55) 0%,
+      rgba(74, 120, 170, 0.32) 28%,
+      rgba(74, 120, 170, 0.10) 55%,
+      transparent 78%);
+    animation: footwork-b1 12s cubic-bezier(0.22, 1.2, 0.36, 1) infinite;
+  }
+  .demo-blob.b2 {
+    /* Brand green — the attacker */
+    width: 300px; height: 240px;
+    left: 50%; top: 50%;
+    margin-left: -150px; margin-top: -120px;
+    background: radial-gradient(ellipse 50% 50% at 50% 50%,
+      rgba(74, 222, 128, 0.40) 0%,
+      rgba(74, 222, 128, 0.18) 32%,
+      rgba(74, 222, 128, 0.06) 58%,
+      transparent 80%);
+    animation: footwork-b2 12s cubic-bezier(0.22, 1.2, 0.36, 1) infinite;
+    animation-delay: -4s;
+  }
+  .demo-blob.b3 {
+    /* Warm ochre — the lateral chasse */
+    width: 280px; height: 240px;
+    left: 50%; top: 50%;
+    margin-left: -140px; margin-top: -120px;
+    background: radial-gradient(ellipse 50% 50% at 50% 50%,
+      rgba(232, 210, 160, 0.42) 0%,
+      rgba(210, 185, 130, 0.18) 35%,
+      rgba(210, 185, 130, 0.05) 60%,
+      transparent 80%);
+    animation: footwork-b3 12s cubic-bezier(0.22, 1.2, 0.36, 1) infinite;
+    animation-delay: -8s;
+  }
+
+  /* Light-mode blobs — denser pigments tuned for cream background, no blend */
+  .aurora-demo.light .demo-blob.b1 {
+    background: radial-gradient(ellipse 50% 50% at 50% 50%,
+      rgba(74, 120, 170, 0.32) 0%,
+      rgba(74, 120, 170, 0.14) 35%,
+      rgba(74, 120, 170, 0.04) 60%,
+      transparent 80%);
+  }
+  .aurora-demo.light .demo-blob.b2 {
+    background: radial-gradient(ellipse 50% 50% at 50% 50%,
+      rgba(22, 163, 74, 0.26) 0%,
+      rgba(22, 163, 74, 0.10) 40%,
+      rgba(22, 163, 74, 0.03) 65%,
+      transparent 82%);
+  }
+  .aurora-demo.light .demo-blob.b3 {
+    background: radial-gradient(ellipse 50% 50% at 50% 50%,
+      rgba(210, 165, 80, 0.30) 0%,
+      rgba(210, 165, 80, 0.12) 38%,
+      rgba(210, 165, 80, 0.04) 62%,
+      transparent 80%);
+  }
+
+  /* Six-corner footwork pattern. Each keyframe = a step:
+     center (split-step) → lunge into a corner → hold briefly → recover. */
+  @keyframes footwork-b1 {
+    /* b1 works the front-right / back-left diagonal */
+    0%   { transform: translate3d(0, 0, 0) scale(1); }
+    12%  { transform: translate3d(90px, -50px, 0) scale(1.1); }
+    22%  { transform: translate3d(90px, -50px, 0) scale(1.1); }
+    34%  { transform: translate3d(0, 0, 0) scale(1); }
+    46%  { transform: translate3d(-80px, 45px, 0) scale(1.05); }
+    56%  { transform: translate3d(-80px, 45px, 0) scale(1.05); }
+    68%  { transform: translate3d(0, 0, 0) scale(1); }
+    80%  { transform: translate3d(60px, 40px, 0) scale(1.08); }
+    90%  { transform: translate3d(60px, 40px, 0) scale(1.08); }
+    100% { transform: translate3d(0, 0, 0) scale(1); }
+  }
+  @keyframes footwork-b2 {
+    /* b2 works the front-left / back-right diagonal — green is the attacker */
+    0%   { transform: translate3d(0, 0, 0) scale(1); }
+    12%  { transform: translate3d(-85px, -45px, 0) scale(1.12); }
+    22%  { transform: translate3d(-85px, -45px, 0) scale(1.12); }
+    34%  { transform: translate3d(0, 0, 0) scale(1); }
+    46%  { transform: translate3d(75px, 50px, 0) scale(1.06); }
+    56%  { transform: translate3d(75px, 50px, 0) scale(1.06); }
+    68%  { transform: translate3d(0, 0, 0) scale(1); }
+    80%  { transform: translate3d(-50px, -50px, 0) scale(1.1); }
+    90%  { transform: translate3d(-50px, -50px, 0) scale(1.1); }
+    100% { transform: translate3d(0, 0, 0) scale(1); }
+  }
+  @keyframes footwork-b3 {
+    /* b3 works side-to-side — lateral chasse */
+    0%   { transform: translate3d(0, 0, 0) rotate(-4deg) scale(1); }
+    12%  { transform: translate3d(80px, 10px, 0) rotate(6deg) scale(1.08); }
+    22%  { transform: translate3d(80px, 10px, 0) rotate(6deg) scale(1.08); }
+    34%  { transform: translate3d(0, 0, 0) rotate(-4deg) scale(1); }
+    46%  { transform: translate3d(-70px, -15px, 0) rotate(-10deg) scale(1.06); }
+    56%  { transform: translate3d(-70px, -15px, 0) rotate(-10deg) scale(1.06); }
+    68%  { transform: translate3d(0, 0, 0) rotate(-4deg) scale(1); }
+    80%  { transform: translate3d(40px, 30px, 0) rotate(4deg) scale(1.05); }
+    90%  { transform: translate3d(40px, 30px, 0) rotate(4deg) scale(1.05); }
+    100% { transform: translate3d(0, 0, 0) rotate(-4deg) scale(1); }
+  }
+
+  /* Honor reduced-motion / reduced-transparency */
+  @media (prefers-reduced-motion: reduce),
+         (prefers-reduced-transparency: reduce) {
+    .demo-blob, .shuttle-arc path {
+      animation: none !important;
+      will-change: auto;
+    }
+  }
+
+  .demo-chip {
+    position: absolute;
+    left: 12px; top: 12px;
+    padding: 4px 10px;
+    border-radius: 100px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.12);
+    font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: rgba(255,255,255,0.9);
+    z-index: 3;
+  }
+  .aurora-demo.light .demo-chip {
+    background: rgba(255,255,255,0.75);
+    border: 1px solid rgba(0,0,0,0.08);
+    color: #1a2332;
+  }
+
+  .perf-note {
+    padding: 10px 12px; border-radius: 8px;
+    background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.25);
+    font-family: var(--font-mono); font-size: 10.5px; line-height: 1.55;
+    color: rgba(134,239,172,0.85);
+    margin-top: 10px;
+  }
+  .perf-note b { color: #bbf7d0; }
+
+  .legend {
+    display: flex; gap: 12px; margin-top: 10px;
+    font-size: 11px; color: var(--text-muted);
+  }
+  .legend .sw {
+    display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+    margin-right: 5px; vertical-align: middle;
+  }
+    .legend .sw-1 { background: #789EC4; }
+    .legend .sw-2 { background: #4ade80; }
+    .legend .sw-3 { background: #E8D2A0; }
+</style>
+</head>
+<body>
+<div class="card-wrap">
+  <div class="stack">
+    <!-- DARK -->
+    <div class="aurora-demo">
+      <span class="demo-chip">Dark · night</span>
+      <svg class="court-lines" viewBox="0 0 400 180" preserveAspectRatio="none">
+        <rect x="30" y="25" width="340" height="130" />
+        <line class="tramline" x1="30"  y1="42"  x2="370" y2="42" />
+        <line class="tramline" x1="30"  y1="138" x2="370" y2="138" />
+        <line x1="30"  y1="55"  x2="95"  y2="55" />
+        <line x1="305" y1="55"  x2="370" y2="55" />
+        <line x1="30"  y1="125" x2="95"  y2="125" />
+        <line x1="305" y1="125" x2="370" y2="125" />
+        <line x1="150" y1="25"  x2="150" y2="155" />
+        <line x1="250" y1="25"  x2="250" y2="155" />
+        <line x1="150" y1="90"  x2="250" y2="90" />
+        <line class="net" x1="200" y1="15" x2="200" y2="165" />
+      </svg>
+      <div class="demo-blob b1"></div>
+      <div class="demo-blob b2"></div>
+      <div class="demo-blob b3"></div>
+      <svg class="shuttle-arc" viewBox="0 0 400 180" preserveAspectRatio="none">
+        <path d="M 90 120 Q 200 30 310 120" />
+        <path d="M 310 60 Q 200 150 90 60" opacity="0.55" />
+      </svg>
+    </div>
+
+    <!-- LIGHT -->
+    <div class="aurora-demo light">
+      <span class="demo-chip">Light · cream</span>
+      <svg class="court-lines" viewBox="0 0 400 180" preserveAspectRatio="none">
+        <rect x="30" y="25" width="340" height="130" />
+        <line class="tramline" x1="30"  y1="42"  x2="370" y2="42" />
+        <line class="tramline" x1="30"  y1="138" x2="370" y2="138" />
+        <line x1="30"  y1="55"  x2="95"  y2="55" />
+        <line x1="305" y1="55"  x2="370" y2="55" />
+        <line x1="30"  y1="125" x2="95"  y2="125" />
+        <line x1="305" y1="125" x2="370" y2="125" />
+        <line x1="150" y1="25"  x2="150" y2="155" />
+        <line x1="250" y1="25"  x2="250" y2="155" />
+        <line x1="150" y1="90"  x2="250" y2="90" />
+        <line class="net" x1="200" y1="15" x2="200" y2="165" />
+      </svg>
+      <div class="demo-blob b1"></div>
+      <div class="demo-blob b2"></div>
+      <div class="demo-blob b3"></div>
+      <svg class="shuttle-arc" viewBox="0 0 400 180" preserveAspectRatio="none">
+        <path d="M 90 120 Q 200 30 310 120" />
+        <path d="M 310 60 Q 200 150 90 60" opacity="0.55" />
+      </svg>
+    </div>
+  </div>
+
+  <div style="padding:0 14px 14px;">
+    <div class="perf-note">
+      <b>Composited path.</b> No <code>filter: blur()</code>, no <code>mix-blend-mode</code>. Gradient stops carry the softness; only <code>transform</code> animates → GPU-composited, no repaint per frame. Matches <code>assets/aurora-bg.css</code>.
+    </div>
+    <div class="legend">
+      <span><span class="sw sw-1"></span>slate · net defender</span>
+      <span><span class="sw sw-2"></span>brand green · attacker</span>
+      <span><span class="sw sw-3"></span>warm ochre · chasse</span>
+    </div>
+    <div class="mono" style="color:var(--text-muted);margin-top:6px;">Footwork rhythm across doubles-court proportions · 12s loop · paused on prefers-reduced-motion &amp; prefers-reduced-transparency</div>
+  </div>
+</div>
+</body>
+</html>

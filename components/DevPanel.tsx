@@ -159,6 +159,7 @@ export default function DevPanel({
             Cost per court: {overrides.costPerCourt ? `$${overrides.costPerCourt}` : 'None'}
           </label>
           <input
+            name="dev-costPerCourt"
             type="range"
             min={0}
             max={50}
@@ -175,6 +176,7 @@ export default function DevPanel({
             Courts: {overrides.courts ?? 2}
           </label>
           <input
+            name="dev-courts"
             type="range"
             min={1}
             max={6}
@@ -231,6 +233,7 @@ export default function DevPanel({
             Active players: {overrides.activePlayerCount ?? 8}
           </label>
           <input
+            name="dev-activePlayerCount"
             type="range"
             min={0}
             max={20}
@@ -249,6 +252,7 @@ export default function DevPanel({
             Prev session cost: {overrides.prevCostPerPerson ? `$${overrides.prevCostPerPerson}` : 'None'}
           </label>
           <input
+            name="dev-prevCostPerPerson"
             type="range"
             min={0}
             max={20}

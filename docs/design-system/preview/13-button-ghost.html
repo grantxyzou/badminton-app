@@ -1,0 +1,112 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Ghost button</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=swap">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: var(--font-sans); min-height: 100%; }
+  body { padding: 14px; background: #050806; display: flex; justify-content: center; }
+
+  .dual { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 960px; }
+  .pane { padding: 16px; border-radius: 12px; border: 1px solid; }
+  .pane[data-theme="dark"]  { background: #100F0F; border-color: rgba(255,255,255,0.08); color: #e2e8f0; }
+  .pane[data-theme="light"] { background: #FAF8F5; border-color: rgba(0,0,0,0.08);   color: #1a2332; }
+
+  .pane-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+  }
+  .pane[data-theme="dark"]  .pane-title { color: #86efac; }
+  .pane[data-theme="light"] .pane-title { color: #16a34a; }
+  .pane-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .pane[data-theme="dark"]  .pane-title .dot { background: #4ade80; }
+  .pane[data-theme="light"] .pane-title .dot { background: #16a34a; }
+
+  .wcag {
+    margin-top: 12px; padding-top: 10px; border-top: 1px solid;
+    font-size: 11px; font-family: var(--font-mono); line-height: 1.55;
+  }
+  .pane[data-theme="dark"]  .wcag { border-color: rgba(255,255,255,0.1); color: rgba(226,232,240,0.7); }
+  .pane[data-theme="light"] .wcag { border-color: rgba(0,0,0,0.08);    color: rgba(26,35,50,0.72); }
+  .wcag .pass  { color: #16a34a; font-weight: 700; }
+  .wcag .aaa   { color: #86efac; font-weight: 700; }
+  .pane[data-theme="dark"]  .wcag .pass { color: #86efac; }
+
+  .mi { font-family: 'Material Icons Round'; font-weight: normal; font-style: normal;
+        line-height: 1; display: inline-block; white-space: nowrap; direction: ltr;
+        -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased; }
+</style>
+<style>
+  .states { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .state  { display: flex; flex-direction: column; gap: 6px; }
+  .state .lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; }
+  .state .desc { font-size: 10px; line-height: 1.4; opacity: 0.7; }
+
+  .btn-g {
+    border-radius: 10px;
+    padding: 11px 14px;
+    font-size: 13px; font-weight: 500; font-family: inherit;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background 160ms, border-color 160ms, transform 120ms;
+  }
+  .pane[data-theme="dark"] .btn-g {
+    background: linear-gradient(160deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: rgba(255,255,255,0.85);
+  }
+  .pane[data-theme="dark"] .btn-g.hover {
+    background: linear-gradient(160deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.12) 100%);
+    border-color: rgba(255,255,255,0.4); color: #fff;
+  }
+  .pane[data-theme="dark"] .btn-g.pressed { transform: scale(0.97); filter: brightness(0.85); }
+  .pane[data-theme="dark"] .btn-g.disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .pane[data-theme="light"] .btn-g {
+    background: linear-gradient(160deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.02) 100%);
+    border: 1px solid rgba(0,0,0,0.10);
+    color: rgba(26,35,50,0.82);
+  }
+  .pane[data-theme="light"] .btn-g.hover {
+    background: linear-gradient(160deg, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.06) 100%);
+    border-color: rgba(0,0,0,0.22); color: #0f172a;
+  }
+  .pane[data-theme="light"] .btn-g.pressed { transform: scale(0.97); filter: brightness(0.92); }
+  .pane[data-theme="light"] .btn-g.disabled { opacity: 0.35; cursor: not-allowed; }
+</style>
+</head>
+<body>
+<div class="dual">
+
+  <div class="pane" data-theme="dark">
+    <div class="pane-title"><span class="dot"></span>Dark</div>
+    <div class="states">
+      <div class="state"><span class="lbl">Default</span><button class="btn-g">Dismiss</button><span class="desc">Glass tint · faint border</span></div>
+      <div class="state"><span class="lbl">Hover</span><button class="btn-g hover">Dismiss</button><span class="desc">Bg lifts · text brightens</span></div>
+      <div class="state"><span class="lbl">Pressed</span><button class="btn-g pressed">Dismiss</button><span class="desc">scale(0.97)</span></div>
+      <div class="state"><span class="lbl">Disabled</span><button class="btn-g disabled" disabled>Dismiss</button><span class="desc">opacity 0.35</span></div>
+    </div>
+    <div class="wcag">
+      Fog 85% on Night + ghost tint: <span class="pass">12.4 : 1</span> <span class="aaa">AAA</span>
+    </div>
+  </div>
+
+  <div class="pane" data-theme="light">
+    <div class="pane-title"><span class="dot"></span>Light</div>
+    <div class="states">
+      <div class="state"><span class="lbl">Default</span><button class="btn-g">Dismiss</button><span class="desc">Ink tint on cream</span></div>
+      <div class="state"><span class="lbl">Hover</span><button class="btn-g hover">Dismiss</button><span class="desc">Bg deepens · ink richer</span></div>
+      <div class="state"><span class="lbl">Pressed</span><button class="btn-g pressed">Dismiss</button><span class="desc">scale(0.97)</span></div>
+      <div class="state"><span class="lbl">Disabled</span><button class="btn-g disabled" disabled>Dismiss</button><span class="desc">opacity 0.35</span></div>
+    </div>
+    <div class="wcag">
+      Ink 82% on cream + ghost tint: <span class="pass">10.9 : 1</span> <span class="aaa">AAA</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

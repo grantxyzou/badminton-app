@@ -133,6 +133,8 @@ export default function SkillsTab({ isAdmin }: { isAdmin?: boolean }) {
         <h3 className="section-label">ADD PLAYER</h3>
         <div className="flex gap-2">
           <input
+            id="skills-player-name"
+            name="playerName"
             type="text"
             placeholder="Player name"
             aria-label="Player name"
@@ -140,6 +142,7 @@ export default function SkillsTab({ isAdmin }: { isAdmin?: boolean }) {
             value={name}
             onChange={(e) => { setName(e.target.value); setAddError(''); }}
             maxLength={50}
+            autoComplete="off"
             className="flex-1"
           />
           <button

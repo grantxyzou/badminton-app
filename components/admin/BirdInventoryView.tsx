@@ -185,15 +185,20 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                 <div className="space-y-3">
                   <Label text="Shuttle">
                     <input
+                      id="bird-edit-name"
+                      name="birdName"
                       type="text"
                       value={editForm.name ?? ''}
                       onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                       maxLength={100}
+                      autoComplete="off"
                     />
                   </Label>
                   <div className="grid grid-cols-3 gap-3">
                     <Label text="Tubes">
                       <input
+                        id="bird-edit-tubes"
+                        name="tubes"
                         type="number"
                         min={1}
                         value={editForm.tubes || ''}
@@ -202,6 +207,8 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                     </Label>
                     <Label text="Total ($)">
                       <input
+                        id="bird-edit-total-cost"
+                        name="totalCost"
                         type="number"
                         min={0}
                         step={0.01}
@@ -211,6 +218,8 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                     </Label>
                     <Label text="Speed">
                       <input
+                        id="bird-edit-speed"
+                        name="speed"
                         type="number"
                         min={1}
                         value={editForm.speed ?? ''}
@@ -221,6 +230,8 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                   <div className="grid grid-cols-2 gap-3">
                     <Label text="Date">
                       <input
+                        id="bird-edit-date"
+                        name="date"
                         type="date"
                         value={editForm.date ?? ''}
                         onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
@@ -250,6 +261,8 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                   </div>
                   <Label text="Notes">
                     <textarea
+                      id="bird-edit-notes"
+                      name="notes"
                       value={editForm.notes ?? ''}
                       onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
                       maxLength={500}
@@ -335,16 +348,21 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
           <p className="section-label">ADD PURCHASE</p>
           <Label text="Shuttle">
             <input
+              id="bird-add-name"
+              name="birdName"
               type="text"
               placeholder="e.g. Victor Master No.3"
               value={shuttleName}
               onChange={(e) => setShuttleName(e.target.value)}
               maxLength={100}
+              autoComplete="off"
             />
           </Label>
           <div className="grid grid-cols-3 gap-3">
             <Label text="Tubes">
               <input
+                id="bird-add-tubes"
+                name="tubes"
                 type="number"
                 min={1}
                 value={tubes || ''}
@@ -354,6 +372,8 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
             </Label>
             <Label text="Total ($)">
               <input
+                id="bird-add-total-cost"
+                name="totalCost"
                 type="number"
                 min={0}
                 step={0.01}
@@ -364,6 +384,8 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
             </Label>
             <Label text="Speed">
               <input
+                id="bird-add-speed"
+                name="speed"
                 type="number"
                 min={1}
                 value={speed}
@@ -375,6 +397,8 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
           <div className="grid grid-cols-2 gap-3">
             <Label text="Date">
               <input
+                id="bird-add-date"
+                name="date"
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
@@ -404,6 +428,8 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
           </div>
           <Label text="Notes (optional)">
             <textarea
+              id="bird-add-notes"
+              name="notes"
               value={birdNotes}
               onChange={(e) => setBirdNotes(e.target.value)}
               placeholder="e.g. Good for doubles, flies straight"

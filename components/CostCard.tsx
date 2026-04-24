@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useTranslations } from 'next-intl';
 
 export interface CostCardProps {
@@ -6,7 +7,9 @@ export interface CostCardProps {
   datetime: string | undefined;
 }
 
-export default function CostCard({ showCostBreakdown, perPersonCost, datetime }: CostCardProps) {
+// Memoized: props only change on session edits; avoids re-render on parent
+// state tick (e.g. name input keystrokes in HomeTab).
+function CostCard({ showCostBreakdown, perPersonCost, datetime }: CostCardProps) {
   const t = useTranslations('home.cost');
   if (!showCostBreakdown) return null;
   if (perPersonCost === null || perPersonCost <= 0) return null;
@@ -23,3 +26,5 @@ export default function CostCard({ showCostBreakdown, perPersonCost, datetime }:
     </div>
   );
 }
+
+export default memo(CostCard);

@@ -49,3 +49,7 @@ favicon.png
 
 # Agent memory (per-machine scratch — agents regenerate on next run)
 .claude/agent-memory/
+
+# Claude Code runtime lock files
+.claude/scheduled_tasks.lock
+.claude/*.lock
