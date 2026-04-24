@@ -21,8 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
-      issues: read
+      # Write access so the review bot can post PR review comments.
+      # Previously `read` which silently swallowed review output.
+      pull-requests: write
+      issues: write
       id-token: write
 
     steps:
