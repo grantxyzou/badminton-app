@@ -96,7 +96,7 @@
     },
     "cost": {
       "title": "Cost trend",
-      "subtitle": "$/person across recent sessions."
+      "subtitle": "Per-person price across recent sessions."
     },
     "partners": {
       "title": "Partner frequency",
