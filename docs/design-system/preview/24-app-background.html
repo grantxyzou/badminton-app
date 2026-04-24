@@ -1,0 +1,293 @@
+<!doctype html>
+<html data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>App background — 6 directions</title>
+<link rel="stylesheet" href="_preview.css">
+<style>
+  * { box-sizing: border-box; }
+  .court-bg { display: none; }
+
+  .wrap { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .intro {
+    padding: 12px 14px; border-radius: 10px;
+    background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.3);
+    font-size: 11.5px; color: rgba(134,239,172,0.95); line-height: 1.55;
+  }
+  .intro b { color: #bbf7d0; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .opt {
+    position: relative; border-radius: 14px; overflow: hidden;
+    height: 260px;
+    border: 1px solid rgba(255,255,255,0.08);
+    isolation: isolate;
+    contain: strict;
+    contain-intrinsic-size: 100% 260px;
+  }
+  .opt .tag {
+    position: absolute; top: 10px; left: 10px;
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: 6px;
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: #86efac;
+    z-index: 10;
+  }
+  .opt .desc {
+    position: absolute; bottom: 10px; left: 10px; right: 10px;
+    padding: 10px 12px; border-radius: 8px;
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,255,255,0.1);
+    font-size: 11px; color: rgba(226,232,240,0.88); line-height: 1.5;
+    z-index: 10;
+  }
+  .opt .desc b { color: #bbf7d0; font-weight: 700; }
+
+  /* Card sample for scale reference */
+  .sample-card {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 72%; padding: 14px 16px; border-radius: 14px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14);
+    backdrop-filter: blur(10px) saturate(140%); -webkit-backdrop-filter: blur(10px) saturate(140%);
+    color: #e2e8f0; z-index: 5;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  }
+  .sample-card .t { font-size: 10px; color: #86efac; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .sample-card .h { font-size: 15px; font-weight: 700; margin-top: 6px; }
+  .sample-card .s { font-size: 11px; color: rgba(226,232,240,0.6); margin-top: 3px; }
+
+  /* ═══════ 01 · Solid Night ═══════ */
+  .bg-1 { background: #100F0F; }
+
+  /* ═══════ 02 · Aurora footwork — composited-path pattern ═══════
+     No filter: blur(), no mix-blend-mode. Blur baked into gradient stops.
+     Animates only transform. Matches assets/aurora-bg.css.               */
+  .bg-2 { background: #100F0F; }
+  .bg-2 .blob {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    animation: drift 14s ease-in-out infinite alternate;
+  }
+  .bg-2 .blob.a {
+    width: 300px; height: 240px; top: 10%; left: 10%;
+    background: radial-gradient(ellipse 50% 50% at 50% 50%,
+      rgba(120,158,196,0.50) 0%,
+      rgba(74,120,170,0.22) 32%,
+      rgba(74,120,170,0.06) 58%,
+      transparent 80%);
+  }
+  .bg-2 .blob.b {
+    width: 260px; height: 220px; bottom: 6%; right: 6%;
+    background: radial-gradient(ellipse 50% 50% at 50% 50%,
+      rgba(74,222,128,0.32) 0%,
+      rgba(74,222,128,0.14) 34%,
+      rgba(74,222,128,0.04) 60%,
+      transparent 80%);
+    animation-delay: -5s;
+  }
+  .bg-2 .blob.c {
+    width: 240px; height: 200px; top: 32%; right: 22%;
+    background: radial-gradient(ellipse 50% 50% at 50% 50%,
+      rgba(232,210,160,0.34) 0%,
+      rgba(210,185,130,0.14) 36%,
+      rgba(210,185,130,0.04) 62%,
+      transparent 80%);
+    animation-delay: -9s;
+  }
+  @keyframes drift {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to   { transform: translate3d(-18px, 14px, 0) scale(1.05); }
+  }
+  @media (prefers-reduced-motion: reduce),
+         (prefers-reduced-transparency: reduce) {
+    .bg-2 .blob, .bg-6 .arc path {
+      animation: none !important;
+      will-change: auto;
+    }
+  }
+
+  /* ═══════ 03 · Court topography ═══════ */
+  .bg-3 {
+    background:
+      radial-gradient(120% 80% at 50% 120%, rgba(22,163,74,0.22) 0%, transparent 60%),
+      #0a0f0c;
+  }
+  .bg-3 .lines {
+    position: absolute; inset: 0; opacity: 0.18;
+  }
+  .bg-3 .lines line, .bg-3 .lines rect {
+    stroke: #4ade80; stroke-width: 1; fill: none;
+    vector-effect: non-scaling-stroke;
+  }
+  .bg-3 .lines .net { stroke-dasharray: 4 3; stroke-width: 1.5; }
+
+  /* ═══════ 04 · Chalk texture ═══════ */
+  .bg-4 {
+    background:
+      radial-gradient(100% 100% at 30% 0%, rgba(74,222,128,0.12) 0%, transparent 55%),
+      radial-gradient(120% 100% at 100% 100%, rgba(210,165,80,0.12) 0%, transparent 60%),
+      #0f1410;
+  }
+  .bg-4 .noise {
+    position: absolute; inset: 0; opacity: 0.4;
+    background-image:
+      radial-gradient(circle at 10% 20%, rgba(255,255,255,0.03) 0%, transparent 0.4%),
+      radial-gradient(circle at 80% 50%, rgba(255,255,255,0.03) 0%, transparent 0.4%),
+      radial-gradient(circle at 40% 80%, rgba(255,255,255,0.03) 0%, transparent 0.4%);
+    background-size: 3px 3px, 5px 5px, 7px 7px;
+  }
+
+  /* ═══════ 05 · Tempo dot field ═══════ */
+  .bg-5 {
+    background: #0a0f0c;
+    background-image:
+      radial-gradient(circle at 50% 50%, rgba(74,222,128,0.22) 1.5px, transparent 2px);
+    background-size: 42px 42px;
+  }
+  .bg-5::before {
+    content:''; position:absolute; inset:0;
+    background: radial-gradient(60% 60% at 50% 50%, transparent 0%, #0a0f0c 85%);
+  }
+
+  /* ═══════ 06 · Shuttle contrail ═══════ */
+  .bg-6 {
+    background: linear-gradient(180deg, #0a1410 0%, #100F0F 100%);
+    overflow: hidden;
+  }
+  .bg-6 .arc {
+    position: absolute; inset: 0;
+    opacity: 0.28;
+  }
+  .bg-6 .arc path {
+    stroke: #4ade80; stroke-width: 1.5; fill: none;
+    stroke-dasharray: 2 5; stroke-linecap: round;
+    animation: arc-sweep 6s ease-in-out infinite;
+  }
+  .bg-6 .arc path:nth-child(2) { animation-delay: -2s; opacity: 0.7; }
+  .bg-6 .arc path:nth-child(3) { animation-delay: -4s; opacity: 0.5; }
+  @keyframes arc-sweep {
+    0%,100% { stroke-dashoffset: 0; opacity: 0.1; }
+    50%     { opacity: 1; }
+  }
+  /* Glow — static radial (no filter, no blend) to match composited pattern */
+  .bg-6 .glow {
+    position: absolute; width: 220px; height: 200px; border-radius: 50%;
+    background: radial-gradient(ellipse 50% 50% at 50% 50%,
+      rgba(74,222,128,0.28) 0%,
+      rgba(74,222,128,0.10) 35%,
+      rgba(74,222,128,0.03) 62%,
+      transparent 80%);
+    top: 28%; left: 38%;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+  }
+</style>
+</head>
+<body>
+<div class="card-wrap">
+  <div class="wrap">
+
+    <div class="intro">
+      <b>App background explorations.</b> Six directions that all share the design system: Night base, brand green, court motifs, tempo dots. Each keeps content legible on glass cards (inset sample shown for scale). <b>Option 02 rewritten</b> to the composited-path pattern — no filter/blend, matches <code>aurora-bg.css</code>.
+    </div>
+
+    <div class="grid">
+
+      <!-- 01 Solid -->
+      <div class="opt bg-1">
+        <span class="tag">01 · Solid</span>
+        <div class="sample-card">
+          <div class="t">Tonight · 7:30</div>
+          <div class="h">Doubles · Court 2</div>
+          <div class="s">3 / 4 confirmed</div>
+        </div>
+        <div class="desc"><b>Flat Night.</b> Zero distraction. Safest for text-dense views (session lists, settings).</div>
+      </div>
+
+      <!-- 02 Aurora -->
+      <div class="opt bg-2">
+        <span class="tag">02 · Aurora</span>
+        <div class="blob a"></div>
+        <div class="blob b"></div>
+        <div class="blob c"></div>
+        <div class="sample-card">
+          <div class="t">Tonight · 7:30</div>
+          <div class="h">Doubles · Court 2</div>
+          <div class="s">3 / 4 confirmed</div>
+        </div>
+        <div class="desc"><b>Aurora footwork.</b> Slate/green/cream drift. Composited-path — GPU-cheap.</div>
+      </div>
+
+      <!-- 03 Court lines -->
+      <div class="opt bg-3">
+        <span class="tag">03 · Court</span>
+        <svg class="lines" viewBox="0 0 400 260" preserveAspectRatio="none">
+          <rect x="30" y="20" width="340" height="220"/>
+          <line x1="30" y1="55" x2="370" y2="55"/>
+          <line x1="30" y1="205" x2="370" y2="205"/>
+          <line x1="140" y1="20" x2="140" y2="240"/>
+          <line x1="260" y1="20" x2="260" y2="240"/>
+          <line x1="140" y1="130" x2="260" y2="130"/>
+          <line class="net" x1="200" y1="10" x2="200" y2="250"/>
+        </svg>
+        <div class="sample-card">
+          <div class="t">Tonight · 7:30</div>
+          <div class="h">Doubles · Court 2</div>
+          <div class="s">3 / 4 confirmed</div>
+        </div>
+        <div class="desc"><b>Court topography.</b> Faint doubles-court etched in, green glow from below. On-theme, static.</div>
+      </div>
+
+      <!-- 04 Chalk -->
+      <div class="opt bg-4">
+        <span class="tag">04 · Chalk</span>
+        <div class="noise"></div>
+        <div class="sample-card">
+          <div class="t">Tonight · 7:30</div>
+          <div class="h">Doubles · Court 2</div>
+          <div class="s">3 / 4 confirmed</div>
+        </div>
+        <div class="desc"><b>Chalk texture.</b> Warm green + ochre wash, fine grain. Cozy evening-gym vibe.</div>
+      </div>
+
+      <!-- 05 Dot field -->
+      <div class="opt bg-5">
+        <span class="tag">05 · Tempo field</span>
+        <div class="sample-card">
+          <div class="t">Tonight · 7:30</div>
+          <div class="h">Doubles · Court 2</div>
+          <div class="s">3 / 4 confirmed</div>
+        </div>
+        <div class="desc"><b>Tempo dot field.</b> Extends the logo's dot motif — 42px grid fading at edges.</div>
+      </div>
+
+      <!-- 06 Contrail -->
+      <div class="opt bg-6">
+        <span class="tag">06 · Contrail</span>
+        <svg class="arc" viewBox="0 0 400 260" preserveAspectRatio="none">
+          <path d="M -20 200 Q 150 80 400 180"/>
+          <path d="M -20 100 Q 200 220 420 80"/>
+          <path d="M -20 240 Q 180 140 420 220"/>
+        </svg>
+        <div class="glow"></div>
+        <div class="sample-card">
+          <div class="t">Tonight · 7:30</div>
+          <div class="h">Doubles · Court 2</div>
+          <div class="s">3 / 4 confirmed</div>
+        </div>
+        <div class="desc"><b>Shuttle contrail.</b> Dotted trajectory arcs with green glow. Most sport-forward.</div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

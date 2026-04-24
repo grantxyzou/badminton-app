@@ -154,10 +154,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
     : announcement;
   const effectiveIsSignedUp = dv?.isSignedUp !== undefined ? dv.isSignedUp : isSignedUp;
 
-  function dismissOnboarding() {
+  // Stable identities so memoized children (WelcomeCard / ReleaseNotesTrigger)
+  // don't re-render when HomeTab's frequently-changing state ticks (e.g. name
+  // input keystrokes). Setters from useState are already stable.
+  const dismissOnboarding = useCallback(() => {
     localStorage.setItem('badminton_onboarding_dismissed', 'true');
     setOnboardingDismissed(true);
-  }
+  }, []);
+  const openReleaseSheet = useCallback(() => setReleaseSheetOpen(true), []);
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
@@ -242,13 +246,18 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         <h1
           className="text-3xl font-bold text-gray-200 leading-tight px-2"
           onClick={onTitleTap}
-          style={{ cursor: 'default', userSelect: 'none' }}
+          style={{
+            cursor: 'default',
+            userSelect: 'none',
+            fontFamily: 'var(--font-display)',
+            letterSpacing: '-0.02em',
+          }}
         >
           BPM Badminton
         </h1>
         <ReleaseNotesTrigger
           releases={releases}
-          onOpen={() => setReleaseSheetOpen(true)}
+          onOpen={openReleaseSheet}
         />
       </div>
 
@@ -326,7 +335,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           <div className="space-y-4">
             <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
             <div className="status-banner-orange">
-              <span className="material-icons icon-status text-amber-400">hourglass_top</span>
+              <span className="material-icons icon-status text-amber-400">watch_later</span>
               <div>
                 <p className="font-semibold text-amber-300 text-sm">{tStates('openingSoonTitle')}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{tStates('openingSoonBody')}</p>

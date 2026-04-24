@@ -1,0 +1,121 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Pills</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=swap">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: var(--font-sans); min-height: 100%; }
+  body { padding: 14px; background: #050806; display: flex; justify-content: center; }
+
+  .dual { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 960px; }
+  .pane {
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid;
+  }
+  .pane[data-theme="dark"]  { background: #100F0F; border-color: rgba(255,255,255,0.08); color: #e2e8f0; }
+  .pane[data-theme="light"] { background: #FAF8F5; border-color: rgba(0,0,0,0.08);   color: #1a2332; }
+
+  .pane-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .pane[data-theme="dark"]  .pane-title { color: #86efac; }
+  .pane[data-theme="light"] .pane-title { color: #16a34a; }
+  .pane-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .pane[data-theme="dark"]  .pane-title .dot { background: #4ade80; }
+  .pane[data-theme="light"] .pane-title .dot { background: #16a34a; }
+
+  .wcag {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    line-height: 1.55;
+  }
+  .pane[data-theme="dark"]  .wcag { border-color: rgba(255,255,255,0.1); color: rgba(226,232,240,0.7); }
+  .pane[data-theme="light"] .wcag { border-color: rgba(0,0,0,0.08);    color: rgba(26,35,50,0.72); }
+  .wcag .pass  { color: #16a34a; font-weight: 700; }
+  .wcag .aaa   { color: #86efac; font-weight: 700; }
+  .pane[data-theme="dark"]  .wcag .pass { color: #86efac; }
+
+  /* Material icons — single-family to avoid font-loading flash. */
+  .mi { font-family: 'Material Icons Round'; font-weight: normal; font-style: normal;
+        line-height: 1; display: inline-block; white-space: nowrap; direction: ltr;
+        -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased; }
+
+  .mono { font-family: var(--font-mono); }
+</style>
+<style>
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 12px 4px 10px;
+    border-radius: 100px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em; line-height: 1;
+  }
+  .pill .mi { font-size: 13px !important; margin-left: -1px; }
+  .pill.no-icon { padding: 4px 12px; }
+
+  /* Dark */
+  .pane[data-theme="dark"]  .pi-paid     { background: rgba(74,222,128,0.22);  color: #86efac; }
+  .pane[data-theme="dark"]  .pi-unpaid   { background: rgba(251,191,36,0.18);  color: #fcd34d; }
+  .pane[data-theme="dark"]  .pi-waitlist { background: rgba(251,146,60,0.20);  color: #fdba74; }
+  .pane[data-theme="dark"]  .pi-whistle  { background: rgba(56,189,248,0.22);  color: #7dd3fc; }
+  .pane[data-theme="dark"]  .pi-admin    { background: rgba(168,85,247,0.22);  color: #d8b4fe; }
+
+  /* Light — tinted pills with darker text for contrast on cream */
+  .pane[data-theme="light"] .pi-paid     { background: rgba(22,163,74,0.15);   color: #166534; }
+  .pane[data-theme="light"] .pi-unpaid   { background: rgba(251,191,36,0.28);  color: #854d0e; }
+  .pane[data-theme="light"] .pi-waitlist { background: rgba(251,146,60,0.22);  color: #9a3412; }
+  .pane[data-theme="light"] .pi-whistle  { background: rgba(56,189,248,0.22);  color: #075985; }
+  .pane[data-theme="light"] .pi-admin    { background: rgba(168,85,247,0.18);  color: #6b21a8; }
+
+  .cap { font-size: 11px; opacity: 0.6; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="dual">
+
+  <div class="pane" data-theme="dark">
+    <div class="pane-title"><span class="dot"></span>Dark</div>
+    <div class="pill-row">
+      <span class="pill pi-paid"><span class="mi">check</span>PAID</span>
+      <span class="pill pi-unpaid no-icon">UNPAID</span>
+      <span class="pill pi-waitlist"><span class="mi">watch_later</span>WAITLIST</span>
+    </div>
+    <div class="pill-row">
+      <span class="pill pi-whistle"><span class="mi">sports</span>WHISTLES</span>
+      <span class="pill pi-admin"><span class="mi">shield</span>ADMIN</span>
+    </div>
+    <div class="wcag">
+      Pill text on tinted bg · composite with Night BG:<br>
+      green 86efac → <span class="pass">8.1 : 1 AAA</span> · amber fcd34d → <span class="pass">10.2 : 1 AAA</span> · red family ≥ <span class="pass">6 : 1</span>
+    </div>
+  </div>
+
+  <div class="pane" data-theme="light">
+    <div class="pane-title"><span class="dot"></span>Light</div>
+    <div class="pill-row">
+      <span class="pill pi-paid"><span class="mi">check</span>PAID</span>
+      <span class="pill pi-unpaid no-icon">UNPAID</span>
+      <span class="pill pi-waitlist"><span class="mi">watch_later</span>WAITLIST</span>
+    </div>
+    <div class="pill-row">
+      <span class="pill pi-whistle"><span class="mi">sports</span>WHISTLES</span>
+      <span class="pill pi-admin"><span class="mi">shield</span>ADMIN</span>
+    </div>
+    <div class="wcag">
+      Pill text on tinted bg · composite with Cream BG:<br>
+      166534 → <span class="pass">8.9 : 1 AAA</span> · 854d0e → <span class="pass">7.4 : 1 AAA</span> · 9a3412 → <span class="pass">6.8 : 1 AAA</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

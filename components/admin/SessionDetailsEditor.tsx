@@ -293,17 +293,17 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
           </div>
 
           <Label text="Venue Name">
-            <input type="text" value={form.locationName} onChange={setStr('locationName')} placeholder="e.g. Smash Sports Centre" />
+            <input id="session-location-name" name="locationName" type="text" value={form.locationName} onChange={setStr('locationName')} placeholder="e.g. Smash Sports Centre" autoComplete="off" />
           </Label>
           <Label text="Address">
-            <input type="text" value={form.locationAddress} onChange={setStr('locationAddress')} placeholder="e.g. 123 Main St, City" />
+            <input id="session-location-address" name="locationAddress" type="text" value={form.locationAddress} onChange={setStr('locationAddress')} placeholder="e.g. 123 Main St, City" autoComplete="off" />
           </Label>
           <div className="grid grid-cols-2 gap-3">
             <Label text="Courts">
-              <input type="number" min={1} value={form.courts} onChange={setNum('courts')} />
+              <input id="session-courts" name="courts" type="number" min={1} value={form.courts} onChange={setNum('courts')} />
             </Label>
             <Label text="Max Players">
-              <input type="number" min={1} value={form.maxPlayers} onChange={setNum('maxPlayers')} />
+              <input id="session-max-players" name="maxPlayers" type="number" min={1} value={form.maxPlayers} onChange={setNum('maxPlayers')} />
             </Label>
           </div>
 
@@ -342,6 +342,8 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: 'var(--text-muted)' }}>$</span>
               )}
               <input
+                id="session-cost-per-court"
+                name="costPerCourt"
                 type="number"
                 min={0}
                 step={0.5}
@@ -409,6 +411,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
                             material-icons chevron positioned absolutely. */}
                         <div className="relative">
                           <select
+                            name={`bird-usage-${idx}-purchase`}
                             value={row.purchaseId}
                             onChange={(e) =>
                               setForm((f) => {

@@ -158,7 +158,7 @@ export default function DateTimeEditor({ onBack }: { onBack: () => void }) {
                 <DatePicker value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} placeholder="Date" />
               </div>
               <div className="flex-1">
-                <input type="time" value={form.time} onChange={setStr('time')} style={{ height: '42px' }} />
+                <input id="session-start-time" name="startTime" type="time" value={form.time} onChange={setStr('time')} style={{ height: '42px' }} />
               </div>
             </div>
           </Label>
@@ -168,7 +168,7 @@ export default function DateTimeEditor({ onBack }: { onBack: () => void }) {
                 <DatePicker value={form.deadlineDate} onChange={v => setForm(f => ({ ...f, deadlineDate: v }))} placeholder="Date" />
               </div>
               <div className="flex-1">
-                <input type="time" value={form.deadlineTime} onChange={setStr('deadlineTime')} style={{ height: '42px' }} />
+                <input id="session-deadline-time" name="deadlineTime" type="time" value={form.deadlineTime} onChange={setStr('deadlineTime')} style={{ height: '42px' }} />
               </div>
             </div>
           </Label>
@@ -178,7 +178,7 @@ export default function DateTimeEditor({ onBack }: { onBack: () => void }) {
                 <DatePicker value={form.endDate} onChange={v => setForm(f => ({ ...f, endDate: v }))} placeholder="Date" />
               </div>
               <div className="flex-1">
-                <input type="time" value={form.endTime} onChange={setStr('endTime')} style={{ height: '42px' }} />
+                <input id="session-end-time" name="endTime" type="time" value={form.endTime} onChange={setStr('endTime')} style={{ height: '42px' }} />
               </div>
             </div>
           </Label>

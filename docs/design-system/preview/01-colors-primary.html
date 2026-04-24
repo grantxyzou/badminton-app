@@ -1,0 +1,53 @@
+<!doctype html>
+<html data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Primary colors</title>
+<link rel="stylesheet" href="_preview.css">
+<style>
+  .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 10px; }
+  .theme-block { border-radius: 12px; overflow: hidden; padding: 12px; }
+  .theme-block.dark  { background: #100F0F; }
+  .theme-block.light { background: #FAF8F5; }
+  .theme-block.light .label { color: rgba(0,0,0,0.5); }
+  .theme-title { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 10px; }
+  .theme-block.dark  .theme-title { color: #4ade80; }
+  .theme-block.light .theme-title { color: #16a34a; }
+  .sw-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .sw { border-radius: 8px; padding: 10px; font-size: 11px; border: 1px solid rgba(255,255,255,0.08); }
+  .sw .n  { font-weight: 600; }
+  .sw .h  { font-family: var(--font-mono); opacity: 0.72; margin-top: 2px; font-size: 10px; }
+</style>
+</head>
+<body>
+<div class="card-wrap">
+  <div class="theme-grid">
+
+    <div class="theme-block dark">
+      <div class="theme-title">Dark mode (default)</div>
+      <div class="sw-row">
+        <div class="sw" style="background:#4ade80;color:#050f07;border-color:rgba(0,0,0,0.1);"><div class="n">Court Green</div><div class="h">#4ade80 \u2022 --accent</div></div>
+        <div class="sw" style="background:#16a34a;color:#fff;"><div class="n">Green Dark</div><div class="h">#16a34a</div></div>
+        <div class="sw" style="background:#100F0F;color:#e2e8f0;"><div class="n">Night BG</div><div class="h">#100F0F \u2022 --page-bg</div></div>
+        <div class="sw" style="background:#050f07;color:#e2e8f0;"><div class="n">Forest 900</div><div class="h">#050f07</div></div>
+        <div class="sw" style="background:#0a1f0e;color:#e2e8f0;"><div class="n">Forest 800</div><div class="h">#0a1f0e</div></div>
+        <div class="sw" style="background:#e2e8f0;color:#1a2332;border-color:rgba(0,0,0,0.1);"><div class="n">Fog Text</div><div class="h">#e2e8f0 \u2022 --text-primary</div></div>
+      </div>
+    </div>
+
+    <div class="theme-block light">
+      <div class="theme-title">Light mode</div>
+      <div class="sw-row">
+        <div class="sw" style="background:#16a34a;color:#fff;border-color:rgba(0,0,0,0.1);"><div class="n">Green Dark</div><div class="h">#16a34a \u2022 --accent</div></div>
+        <div class="sw" style="background:#15803d;color:#fff;border-color:rgba(0,0,0,0.1);"><div class="n">Green Deep</div><div class="h">#15803d \u2022 --accent-dark</div></div>
+        <div class="sw" style="background:#FAF8F5;color:#1a2332;border-color:rgba(0,0,0,0.1);"><div class="n">Cream BG</div><div class="h">#FAF8F5 \u2022 --page-bg</div></div>
+        <div class="sw" style="background:#ffffff;color:#1a2332;border-color:rgba(0,0,0,0.1);"><div class="n">White Surface</div><div class="h">#ffffff</div></div>
+        <div class="sw" style="background:#1a2332;color:#FAF8F5;border-color:rgba(0,0,0,0.1);"><div class="n">Ink Text</div><div class="h">#1a2332 \u2022 --text-primary</div></div>
+        <div class="sw" style="background:#4ade80;color:#050f07;border-color:rgba(0,0,0,0.1);"><div class="n">Court Green</div><div class="h">#4ade80 \u2022 swatches/branding</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

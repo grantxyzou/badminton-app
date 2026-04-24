@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Release } from '@/lib/types';
 
@@ -9,7 +9,7 @@ interface ReleaseNotesTriggerProps {
   onOpen: () => void;
 }
 
-export default function ReleaseNotesTrigger({ releases, onOpen }: ReleaseNotesTriggerProps) {
+function ReleaseNotesTrigger({ releases, onOpen }: ReleaseNotesTriggerProps) {
   const t = useTranslations('home.releases');
   const [storedVersion, setStoredVersion] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -42,3 +42,5 @@ export default function ReleaseNotesTrigger({ releases, onOpen }: ReleaseNotesTr
     </button>
   );
 }
+
+export default memo(ReleaseNotesTrigger);

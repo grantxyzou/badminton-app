@@ -17,7 +17,8 @@
 
 export type FlagName =
   | 'NEXT_PUBLIC_FLAG_DEMO'
-  | 'NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV';
+  | 'NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV'
+  | 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW';
 
 interface FlagMeta {
   description: string;
@@ -36,6 +37,11 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'two weeks after Stage 0a promotes',
   },
+  NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: {
+    description: 'Exposes the /design preview route with the formalized BPM design-system specimen cards, logo candidates, font pairings, and background variants. Off on bpm-stable; on for bpm-next + dev.',
+    owner: 'grant',
+    plannedRemoval: 'after design system decisions (logo / fonts / background) finalize',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -44,6 +50,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_DEMO;
     case 'NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV':
       return process.env.NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV;
+    case 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW':
+      return process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
   }
 }
 

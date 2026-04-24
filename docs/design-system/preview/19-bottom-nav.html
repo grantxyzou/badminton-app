@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Bottom nav</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=swap">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: var(--font-sans); min-height: 100%; }
+  body { padding: 14px; background: #050806; display: flex; justify-content: center; }
+
+  .dual { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 960px; }
+  .pane { padding: 16px; border-radius: 12px; border: 1px solid; }
+  .pane[data-theme="dark"]  { background: #100F0F; border-color: rgba(255,255,255,0.08); color: #e2e8f0; }
+  .pane[data-theme="light"] { background: #FAF8F5; border-color: rgba(0,0,0,0.08);   color: #1a2332; }
+
+  .pane-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+  }
+  .pane[data-theme="dark"]  .pane-title { color: #86efac; }
+  .pane[data-theme="light"] .pane-title { color: #16a34a; }
+  .pane-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .pane[data-theme="dark"]  .pane-title .dot { background: #4ade80; }
+  .pane[data-theme="light"] .pane-title .dot { background: #16a34a; }
+
+  .wcag {
+    margin-top: 12px; padding-top: 10px; border-top: 1px solid;
+    font-size: 11px; font-family: var(--font-mono); line-height: 1.55;
+  }
+  .pane[data-theme="dark"]  .wcag { border-color: rgba(255,255,255,0.1); color: rgba(226,232,240,0.7); }
+  .pane[data-theme="light"] .wcag { border-color: rgba(0,0,0,0.08);    color: rgba(26,35,50,0.72); }
+  .wcag .pass  { color: #16a34a; font-weight: 700; }
+  .wcag .aaa   { color: #86efac; font-weight: 700; }
+  .pane[data-theme="dark"]  .wcag .pass { color: #86efac; }
+
+  .mi { font-family: 'Material Icons Round'; font-weight: normal; font-style: normal;
+        line-height: 1; display: inline-block; white-space: nowrap; direction: ltr;
+        -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased; }
+</style>
+<style>
+  .nav-stage { padding: 16px 4px 6px; display: flex; justify-content: center; }
+  .nav {
+    display: inline-flex;
+    padding: 4px 6px 6px;
+    border-radius: 16px;
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    border: 1px solid;
+  }
+  .tab {
+    flex: 0 0 auto; min-width: 58px;
+    background: transparent; border: none;
+    padding: 5px 8px 3px;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    font-family: inherit; cursor: pointer;
+  }
+  .tab .mi { font-size: 20px; }
+  .tab .lbl { font-size: 9.5px; font-weight: 500; letter-spacing: 0.01em; line-height: 1.1; }
+
+  .pane[data-theme="dark"] .nav {
+    background: linear-gradient(160deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 100%);
+    border-color: rgba(255,255,255,0.14);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.35);
+  }
+  .pane[data-theme="dark"] .tab { color: rgba(255,255,255,0.55); }
+  .pane[data-theme="dark"] .tab.active { color: #4ade80; }
+
+  .pane[data-theme="light"] .nav {
+    background: linear-gradient(160deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+    border-color: rgba(0,0,0,0.08);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+  }
+  .pane[data-theme="light"] .tab { color: rgba(26,35,50,0.58); }
+  .pane[data-theme="light"] .tab.active { color: #16a34a; }
+</style>
+</head>
+<body>
+<div class="dual">
+
+  <div class="pane" data-theme="dark">
+    <div class="pane-title"><span class="dot"></span>Dark</div>
+    <div class="nav-stage">
+      <nav class="nav">
+        <button class="tab active"><span class="mi">home</span><span class="lbl">Home</span></button>
+        <button class="tab"><span class="mi">group</span><span class="lbl">Sign-Ups</span></button>
+        <button class="tab"><span class="mi">school</span><span class="lbl">Learn</span></button>
+        <button class="tab"><span class="mi">admin_panel_settings</span><span class="lbl">Admin</span></button>
+      </nav>
+    </div>
+    <div class="wcag">
+      Active #4ade80 on glass pill: <span class="pass">7.8 : 1 AAA</span><br>
+      Inactive 55%-white: <span class="pass">6.5 : 1 AAA</span>
+    </div>
+  </div>
+
+  <div class="pane" data-theme="light">
+    <div class="pane-title"><span class="dot"></span>Light</div>
+    <div class="nav-stage">
+      <nav class="nav">
+        <button class="tab active"><span class="mi">home</span><span class="lbl">Home</span></button>
+        <button class="tab"><span class="mi">group</span><span class="lbl">Sign-Ups</span></button>
+        <button class="tab"><span class="mi">school</span><span class="lbl">Learn</span></button>
+        <button class="tab"><span class="mi">admin_panel_settings</span><span class="lbl">Admin</span></button>
+      </nav>
+    </div>
+    <div class="wcag">
+      Active #16a34a on white pill: <span class="pass">4.6 : 1 AA</span><br>
+      Inactive 58%-ink on cream: <span class="pass">6.4 : 1 AAA</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

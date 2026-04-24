@@ -1,0 +1,130 @@
+/* Aurora background — drop into any HTML file that imports colors_and_type.css.
+   Put this HTML near the top of <body>, and content after:
+   <div class="court-bg">
+     <div class="aurora-blob-1"></div>
+     <div class="aurora-blob-2"></div>
+     <div class="aurora-blob-3"></div>
+   </div>
+
+   PERFORMANCE NOTES
+   -----------------
+   The old version chewed GPU: three 150vw elements with `filter: blur(100px)`
+   + `mix-blend-mode` + animating transform/opacity/filter together forced
+   non-composited paint every frame. This revision:
+
+   1. Drops `filter: blur()` — pre-blurs at source using giant radial-gradient
+      stops instead. Essentially free for the GPU.
+   2. Drops `mix-blend-mode` — it disables hardware layer compositing. Blobs
+      are tuned to look right as plain semi-transparent layers.
+   3. Animates only `transform` (promoted) — no `filter`, no `opacity`, no
+      `background-position`. Composited on a separate layer → no repaint.
+   4. `contain: strict` + `will-change: transform` isolates the aurora so
+      scrolling and content updates never invalidate the blob layers.
+   5. `content-visibility: auto` lets the browser skip the container entirely
+      when it's off-screen (e.g. covered by a long scrolling view).
+   6. `prefers-reduced-motion` AND `prefers-reduced-transparency` both kill
+      animation. On battery / low-power mode iOS honours the transparency hint.
+   7. Optional `.court-bg.is-hidden` class — add it when a modal or full-bleed
+      sheet covers the aurora, so the animations pause while unseen.
+*/
+
+.court-bg {
+  background: var(--aurora-bg);
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  contain: strict;
+  content-visibility: auto;
+  contain-intrinsic-size: 100vw 100vh;
+  pointer-events: none;
+}
+
+.aurora-blob-1, .aurora-blob-2, .aurora-blob-3 {
+  position: absolute;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);         /* force its own layer */
+  backface-visibility: hidden;
+  pointer-events: none;
+}
+
+/* Big, soft radial gradients replace filter:blur(100px) — the blur is baked
+   into the gradient itself. Zero filter cost. */
+.aurora-blob-1 {
+  width: 120vmax; height: 70vmax;
+  left: -20vmax; top: 20vh;
+  background: radial-gradient(ellipse 50% 50% at 50% 40%,
+    rgba(143, 162, 176, 0.50) 0%,
+    rgba(27, 50, 77, 0.30) 35%,
+    transparent 70%);
+  animation: aurora-drift-1 14s ease-in-out infinite alternate;
+}
+
+.aurora-blob-2 {
+  width: 110vmax; height: 60vmax;
+  left: -15vmax; top: 30vh;
+  background: radial-gradient(ellipse 55% 50% at 50% 50%,
+    rgba(190, 178, 147, 0.35) 0%,
+    rgba(0, 0, 0, 0.50) 45%,
+    transparent 75%);
+  animation: aurora-drift-2 18s ease-in-out infinite alternate;
+}
+
+.aurora-blob-3 {
+  width: 55vmax; height: 90vmax;
+  left: 40%; top: 25vh;
+  transform-origin: top left;
+  background: radial-gradient(ellipse 50% 50% at 50% 40%,
+    rgba(143, 162, 176, 0.38) 0%,
+    rgba(27, 50, 77, 0.22) 40%,
+    transparent 75%);
+  animation: aurora-drift-3 16s ease-in-out infinite alternate;
+}
+
+/* Single-property (transform) animations — composited, no repaint. */
+@keyframes aurora-drift-1 {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(-2vmax, 3vmax, 0) scale(1.04); }
+}
+@keyframes aurora-drift-2 {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(-3vmax, -2vmax, 0) scale(1.03); }
+}
+@keyframes aurora-drift-3 {
+  from { transform: translate3d(0, 0, 0) rotate(-58deg) scale(1); }
+  to   { transform: translate3d(2vmax, -3vmax, 0) rotate(-56deg) scale(1.05); }
+}
+
+/* Light-mode blobs — slightly different tints, no blend modes. */
+[data-theme="light"] .aurora-blob-1 {
+  background: radial-gradient(ellipse 50% 50% at 50% 40%,
+    rgba(74, 222, 128, 0.14) 0%, rgba(74, 222, 128, 0.06) 40%, transparent 75%);
+}
+[data-theme="light"] .aurora-blob-2 {
+  background: radial-gradient(ellipse 55% 50% at 50% 50%,
+    rgba(251, 191, 36, 0.12) 0%, rgba(251, 191, 36, 0.04) 45%, transparent 75%);
+}
+[data-theme="light"] .aurora-blob-3 {
+  background: radial-gradient(ellipse 50% 50% at 50% 40%,
+    rgba(96, 165, 250, 0.12) 0%, rgba(96, 165, 250, 0.04) 45%, transparent 75%);
+}
+
+/* Pause animation when the aurora is covered (modal / full-bleed route).
+   Consumers add/remove .is-hidden to opt in. */
+.court-bg.is-hidden .aurora-blob-1,
+.court-bg.is-hidden .aurora-blob-2,
+.court-bg.is-hidden .aurora-blob-3 {
+  animation-play-state: paused;
+}
+
+/* Respect user preferences — reduced motion or reduced transparency kills
+   the animations. iOS low-power-mode toggles the transparency hint. */
+@media (prefers-reduced-motion: reduce),
+       (prefers-reduced-transparency: reduce) {
+  .aurora-blob-1,
+  .aurora-blob-2,
+  .aurora-blob-3 {
+    animation: none !important;
+    will-change: auto;
+  }
+}

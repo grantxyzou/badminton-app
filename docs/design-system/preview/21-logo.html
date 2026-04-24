@@ -1,0 +1,280 @@
+<!doctype html>
+<html data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Logo — bpm. primary</title>
+<link rel="stylesheet" href="_preview.css">
+<style>
+  .wrap { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+
+  .hero {
+    padding: 36px 20px 28px; border-radius: 16px;
+    background: var(--glass-bg); border: 1px solid var(--glass-border);
+    backdrop-filter: blur(10px) saturate(140%); -webkit-backdrop-filter: blur(10px) saturate(140%);
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+  }
+  .hero .tag {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase; color: #86efac;
+  }
+
+  /* ═══ Primary lockup: bpm + tempo dots feeding into final period ═══ */
+  .primary-lockup {
+    display: flex; align-items: baseline; gap: 0;
+    font-family: var(--font-display); font-weight: 700;
+    letter-spacing: -0.045em; line-height: 1;
+  }
+  .primary-lockup .bpm { color: var(--text-primary); }
+  .primary-lockup .trail {
+    display: inline-flex; align-items: flex-end;
+    padding-bottom: 0.12em;
+    margin-left: 0.08em;
+  }
+  .primary-lockup .trail .d {
+    display: inline-block; border-radius: 50%;
+    background: #4ade80;
+    margin-right: 0.14em;
+  }
+  /* Dots scale with type — sized by em so they stay proportional */
+  .primary-lockup .trail .d1 { width: 0.16em; height: 0.16em; opacity: 0.32; }
+  .primary-lockup .trail .d2 { width: 0.20em; height: 0.20em; opacity: 0.55; }
+  .primary-lockup .trail .d3 { width: 0.24em; height: 0.24em; opacity: 0.78; }
+  /* The "period" — largest dot, flush to the wordmark baseline */
+  .primary-lockup .trail .period {
+    width: 0.32em; height: 0.32em;
+    opacity: 1; margin-right: 0;
+  }
+
+  /* Size variants */
+  .size-xl { font-size: 96px; }
+  .size-l  { font-size: 56px; }
+  .size-m  { font-size: 32px; }
+  .size-s  { font-size: 20px; }
+
+  .hero .label {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-muted);
+  }
+
+  /* ═══ Surfaces row ═══ */
+  .surfaces { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .surface {
+    padding: 24px 16px 16px; border-radius: 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px; min-height: 130px;
+    justify-content: center;
+  }
+  .surf-dark  { background: #100F0F; border: 1px solid rgba(255,255,255,0.06); }
+  .surf-light { background: #FAF8F5; border: 1px solid rgba(0,0,0,0.06); }
+  .surf-green { background: #4ade80; }
+
+  .surf-light .primary-lockup .bpm { color: #1a2332; }
+  .surf-light .primary-lockup .trail .d { background: #16a34a; }
+
+  .surf-green .primary-lockup .bpm { color: #050f07; }
+  .surf-green .primary-lockup .trail .d { background: #050f07; }
+
+  .surface .mini {
+    font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .surf-light .mini { color: rgba(26,35,50,0.5); }
+  .surf-green .mini { color: rgba(5,15,7,0.55); }
+
+  /* ═══ App icon exploration ═══ */
+  .icons {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+    padding: 16px; border-radius: 12px;
+    background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.06);
+  }
+  .icon-cell {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .icon-cell .tile {
+    width: 88px; height: 88px; border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+    padding: 0 6px;
+  }
+  .icon-cell .mini {
+    font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted);
+    text-align: center;
+  }
+
+  /* Icon 1 · Solid green, dark bpm. lockup — high contrast, brand-forward */
+  .ic1 { background: #4ade80; }
+  /* Icon 2 · Night ground, green trail — matches dark UI */
+  .ic2 { background: #100F0F; border: 1px solid rgba(255,255,255,0.08); }
+  /* Icon 3 · Cream ground, green trail — matches light UI */
+  .ic3 { background: #FAF8F5; }
+  /* Icon 4 · Just the dot trail — minimal mark */
+  .ic4 { background: linear-gradient(155deg, #0d1f14 0%, #050f07 100%); border: 1px solid rgba(74,222,128,0.25); }
+
+  .caption {
+    padding: 12px 14px; border-radius: 10px;
+    background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.3);
+    font-size: 11.5px; color: rgba(134,239,172,0.95); line-height: 1.55;
+  }
+  .caption b { color: #bbf7d0; }
+  .caption .q {
+    display: block; margin-top: 6px;
+    font-family: var(--font-mono); font-size: 10.5px;
+    color: rgba(134,239,172,0.75); letter-spacing: 0.02em;
+  }
+</style>
+</head>
+<body>
+<div class="court-bg"><div class="aurora-blob-1"></div><div class="aurora-blob-2"></div><div class="aurora-blob-3"></div></div>
+<div class="card-wrap">
+  <div class="wrap">
+
+    <div class="caption">
+      <b>Primary lockup · bpm.</b> — C's wordmark with D's 4 tempo dots absorbed as the trailing punctuation.
+      The four dots build in size left-to-right until the last becomes the period — reads as a beat ramp resolving into the mark.
+      <span class="q">App icon below → 4 variations. Tell me which (or none).</span>
+    </div>
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="tag">Primary · hero</div>
+      <div class="primary-lockup size-xl">
+        <span class="bpm">bpm</span>
+        <span class="trail">
+          <span class="d d1"></span>
+          <span class="d d2"></span>
+          <span class="d d3"></span>
+          <span class="d period"></span>
+        </span>
+      </div>
+      <div class="label">96 px · display</div>
+    </div>
+
+    <!-- SCALE -->
+    <div class="hero" style="padding: 22px 20px 18px; gap: 22px;">
+      <div class="tag">Scale · dark</div>
+      <div class="primary-lockup size-l">
+        <span class="bpm">bpm</span>
+        <span class="trail">
+          <span class="d d1"></span><span class="d d2"></span><span class="d d3"></span><span class="d period"></span>
+        </span>
+      </div>
+      <div class="primary-lockup size-m">
+        <span class="bpm">bpm</span>
+        <span class="trail">
+          <span class="d d1"></span><span class="d d2"></span><span class="d d3"></span><span class="d period"></span>
+        </span>
+      </div>
+      <div class="primary-lockup size-s">
+        <span class="bpm">bpm</span>
+        <span class="trail">
+          <span class="d d1"></span><span class="d d2"></span><span class="d d3"></span><span class="d period"></span>
+        </span>
+      </div>
+      <div class="label">56 · 32 · 20 px</div>
+    </div>
+
+    <!-- SURFACES -->
+    <div class="surfaces">
+      <div class="surface surf-dark">
+        <div class="primary-lockup size-m">
+          <span class="bpm">bpm</span>
+          <span class="trail">
+            <span class="d d1"></span><span class="d d2"></span><span class="d d3"></span><span class="d period"></span>
+          </span>
+        </div>
+        <div class="mini">Night</div>
+      </div>
+      <div class="surface surf-light">
+        <div class="primary-lockup size-m">
+          <span class="bpm">bpm</span>
+          <span class="trail">
+            <span class="d d1"></span><span class="d d2"></span><span class="d d3"></span><span class="d period"></span>
+          </span>
+        </div>
+        <div class="mini">Cream</div>
+      </div>
+      <div class="surface surf-green">
+        <div class="primary-lockup size-m">
+          <span class="bpm">bpm</span>
+          <span class="trail">
+            <span class="d d1"></span><span class="d d2"></span><span class="d d3"></span><span class="d period"></span>
+          </span>
+        </div>
+        <div class="mini">Knockout</div>
+      </div>
+    </div>
+
+    <!-- APP ICON EXPLORATION -->
+    <div class="hero" style="padding: 16px 14px 14px; gap: 10px; align-items: stretch;">
+      <div class="tag" style="align-self:flex-start;">App icon · 4 explorations</div>
+      <div class="icons">
+
+        <!-- IC1 · Green ground, dark bpm. — boldest -->
+        <div class="icon-cell">
+          <div class="tile ic1">
+            <div class="primary-lockup" style="font-size:24px;">
+              <span class="bpm" style="color:#050f07;">bpm</span>
+              <span class="trail">
+                <span class="d d1" style="background:#050f07;"></span>
+                <span class="d d2" style="background:#050f07;"></span>
+                <span class="d d3" style="background:#050f07;"></span>
+                <span class="d period" style="background:#050f07;"></span>
+              </span>
+            </div>
+          </div>
+          <div class="mini">01 · Green</div>
+        </div>
+
+        <!-- IC2 · Night ground, brand green mark -->
+        <div class="icon-cell">
+          <div class="tile ic2">
+            <div class="primary-lockup" style="font-size:24px;">
+              <span class="bpm" style="color:#e2e8f0;">bpm</span>
+              <span class="trail">
+                <span class="d d1"></span>
+                <span class="d d2"></span>
+                <span class="d d3"></span>
+                <span class="d period"></span>
+              </span>
+            </div>
+          </div>
+          <div class="mini">02 · Night</div>
+        </div>
+
+        <!-- IC3 · Cream, green mark -->
+        <div class="icon-cell">
+          <div class="tile ic3">
+            <div class="primary-lockup" style="font-size:24px;">
+              <span class="bpm" style="color:#1a2332;">bpm</span>
+              <span class="trail">
+                <span class="d d1" style="background:#16a34a;"></span>
+                <span class="d d2" style="background:#16a34a;"></span>
+                <span class="d d3" style="background:#16a34a;"></span>
+                <span class="d period" style="background:#16a34a;"></span>
+              </span>
+            </div>
+          </div>
+          <div class="mini">03 · Cream</div>
+        </div>
+
+        <!-- IC4 · Just the dots — minimal mark, centered, no wordmark -->
+        <div class="icon-cell">
+          <div class="tile ic4">
+            <div class="trail" style="display:inline-flex;align-items:flex-end;font-size:56px;">
+              <span class="d" style="display:inline-block;width:0.18em;height:0.18em;border-radius:50%;background:#4ade80;opacity:0.32;margin-right:0.14em;"></span>
+              <span class="d" style="display:inline-block;width:0.24em;height:0.24em;border-radius:50%;background:#4ade80;opacity:0.55;margin-right:0.14em;"></span>
+              <span class="d" style="display:inline-block;width:0.30em;height:0.30em;border-radius:50%;background:#4ade80;opacity:0.78;margin-right:0.14em;"></span>
+              <span class="d" style="display:inline-block;width:0.42em;height:0.42em;border-radius:50%;background:#4ade80;opacity:1;"></span>
+            </div>
+          </div>
+          <div class="mini">04 · Dots only</div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

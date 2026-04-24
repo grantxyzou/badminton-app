@@ -1,0 +1,194 @@
+<!doctype html>
+<html data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Motion</title>
+<link rel="stylesheet" href="_preview.css">
+<style>
+  .motion-wrap { padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+
+  /* ────────── Section: live easing pucks ────────── */
+  .section-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: #4ade80;
+  }
+
+  .curve-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 90px;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+  }
+  .curve-row .name { font-size: 12px; font-weight: 600; color: #e2e8f0; }
+  .curve-row .name small {
+    display: block; font-size: 10px; font-weight: 400;
+    color: rgba(226,232,240,0.55); margin-top: 2px;
+    font-family: var(--font-mono);
+  }
+
+  .track {
+    position: relative;
+    height: 22px; border-radius: 11px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    overflow: hidden;
+  }
+  .puck {
+    position: absolute; top: 50%;
+    left: 4px; width: 14px; height: 14px; border-radius: 50%;
+    margin-top: -7px;
+    background: linear-gradient(160deg, #86efac, #16a34a);
+    box-shadow: 0 0 12px rgba(74,222,128,0.6), inset 0 1px 0 rgba(255,255,255,0.4);
+    animation-iteration-count: infinite;
+    animation-duration: 2.4s;
+  }
+  @keyframes slide-to-end {
+    0%   { left: 4px; }
+    45%  { left: calc(100% - 18px); }
+    55%  { left: calc(100% - 18px); }
+    100% { left: 4px; }
+  }
+  .puck.glass   { animation-name: slide-to-end; animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1); }
+  .puck.spring  { animation-name: slide-to-end; animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .puck.sheet   { animation-name: slide-to-end; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+
+  .duration { font-family: var(--font-mono); font-size: 11px; color: rgba(226,232,240,0.55); text-align: right; }
+
+  /* ────────── Section: real examples ────────── */
+  .examples { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .ex {
+    padding: 14px 12px; border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    display: flex; flex-direction: column; gap: 10px; align-items: stretch;
+  }
+  .ex-label {
+    font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: rgba(226,232,240,0.55); font-weight: 600;
+  }
+  .ex-caption { font-size: 11px; color: rgba(226,232,240,0.55); line-height: 1.5; }
+  .ex-caption code {
+    font-family: var(--font-mono); font-size: 10px;
+    color: #86efac; background: rgba(74,222,128,0.08);
+    padding: 1px 5px; border-radius: 3px;
+  }
+
+  /* Example 1 \u2014 button hover (glass ease, 150ms) */
+  .demo-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 9px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    color: #050f07;
+    background: linear-gradient(160deg, #4ade80, #16a34a);
+    box-shadow: 0 4px 20px rgba(74,222,128,0.2), inset 0 1px 0 rgba(255,255,255,0.3);
+    border: 1px solid rgba(22,163,74,0.4);
+    cursor: pointer;
+    animation: btn-pulse 2.4s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+  }
+  @keyframes btn-pulse {
+    0%, 35%, 100% { transform: scale(1); box-shadow: 0 4px 20px rgba(74,222,128,0.2), inset 0 1px 0 rgba(255,255,255,0.3); }
+    50%           { transform: scale(1.04); box-shadow: 0 8px 28px rgba(74,222,128,0.35), inset 0 1px 0 rgba(255,255,255,0.4); }
+  }
+
+  /* Example 2 \u2014 bottom sheet slide (sheet ease, 180ms) */
+  .sheet-frame {
+    position: relative;
+    height: 70px; border-radius: 8px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.06);
+    overflow: hidden;
+  }
+  .sheet-body {
+    position: absolute; left: 6px; right: 6px; bottom: 6px;
+    height: 40px; border-radius: 8px 8px 4px 4px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
+    border: 1px solid rgba(255,255,255,0.1);
+    animation: sheet-in 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  }
+  .sheet-handle {
+    width: 28px; height: 3px; border-radius: 2px; margin: 6px auto 0;
+    background: rgba(255,255,255,0.3);
+  }
+  @keyframes sheet-in {
+    0%, 15%     { transform: translateY(100%); }
+    35%, 75%    { transform: translateY(0); }
+    90%, 100%   { transform: translateY(100%); }
+  }
+
+  /* Example 3 \u2014 list entry spring (spring ease, 400ms) */
+  .list-demo { display: flex; flex-direction: column; gap: 4px; }
+  .list-item {
+    padding: 6px 10px; border-radius: 6px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.06);
+    font-size: 11px; color: rgba(226,232,240,0.85);
+    animation: item-in 2.4s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+    opacity: 0;
+  }
+  .list-item:nth-child(1) { animation-delay: 0ms; }
+  .list-item:nth-child(2) { animation-delay: 100ms; }
+  .list-item:nth-child(3) { animation-delay: 200ms; }
+  @keyframes item-in {
+    0%, 10%    { opacity: 0; transform: translateY(8px) scale(0.94); }
+    30%, 75%   { opacity: 1; transform: translateY(0)   scale(1); }
+    90%, 100%  { opacity: 0; transform: translateY(8px) scale(0.94); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .puck, .demo-btn, .sheet-body, .list-item { animation: none !important; opacity: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="card-wrap">
+  <div class="motion-wrap">
+
+    <div class="section-title">Easing curves \u2014 live</div>
+    <div class="curve-row">
+      <div class="name">--ease-glass<small>cubic-bezier(0.23,1,0.32,1)</small></div>
+      <div class="track"><div class="puck glass"></div></div>
+      <div class="duration">default</div>
+    </div>
+    <div class="curve-row">
+      <div class="name">--ease-spring<small>cubic-bezier(0.34,1.56,0.64,1)</small></div>
+      <div class="track"><div class="puck spring"></div></div>
+      <div class="duration">entrances</div>
+    </div>
+    <div class="curve-row">
+      <div class="name">--ease-sheet<small>cubic-bezier(0.16,1,0.3,1)</small></div>
+      <div class="track"><div class="puck sheet"></div></div>
+      <div class="duration">sheets</div>
+    </div>
+
+    <div class="section-title" style="margin-top:4px;">Applied \u2014 live</div>
+    <div class="examples">
+      <div class="ex">
+        <div class="ex-label">Button hover</div>
+        <button class="demo-btn">Sign up</button>
+        <div class="ex-caption"><code>ease-glass</code> \u00b7 <code>150ms</code> \u00b7 transform + shadow</div>
+      </div>
+      <div class="ex">
+        <div class="ex-label">Bottom sheet</div>
+        <div class="sheet-frame">
+          <div class="sheet-body"><div class="sheet-handle"></div></div>
+        </div>
+        <div class="ex-caption"><code>ease-sheet</code> \u00b7 <code>180ms</code> \u00b7 translateY</div>
+      </div>
+      <div class="ex">
+        <div class="ex-label">List entry</div>
+        <div class="list-demo">
+          <div class="list-item">Grant Zou</div>
+          <div class="list-item">Ada Lovelace</div>
+          <div class="list-item">Kenji Tanaka</div>
+        </div>
+        <div class="ex-caption"><code>ease-spring</code> \u00b7 <code>400ms</code> \u00b7 stagger 100ms</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

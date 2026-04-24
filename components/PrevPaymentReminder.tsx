@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useTranslations, useFormatter } from 'next-intl';
 
 const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
@@ -10,7 +11,8 @@ export interface PrevPaymentReminderProps {
   etransferEmail: string | null;
 }
 
-export default function PrevPaymentReminder({
+// Memoized — props are derived from the session snapshot and change rarely.
+function PrevPaymentReminder({
   showCostBreakdown,
   prevCostPerPerson,
   prevSessionDate,
@@ -40,3 +42,5 @@ export default function PrevPaymentReminder({
     </div>
   );
 }
+
+export default memo(PrevPaymentReminder);

@@ -1,0 +1,124 @@
+<!doctype html>
+<html data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Material Icons — Rounded + Brand shuttle</title>
+<link rel="stylesheet" href="_preview.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=swap">
+<style>
+  .icon-card {
+    padding: 14px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+
+  .icons-row {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 6px;
+    justify-items: center;
+    padding: 10px 6px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+  }
+  .icons-row .ic {
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    color: var(--text-primary);
+    opacity: 0.92;
+  }
+  .icons-row .material-icons-round { font-size: 22px; line-height: 1; }
+
+  /* The brand shuttle is a custom SVG — slot it into the same grid so it
+     sits at the same metrics as the rounded material glyphs. */
+  .ic.brand svg { width: 22px; height: 22px; display: block; }
+  .ic.brand {
+    background: rgba(74, 222, 128, 0.10);
+    border: 1px solid rgba(74, 222, 128, 0.22);
+  }
+
+  .label-row {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 6px;
+    padding: 0 6px;
+  }
+  .label-row .lbl {
+    font-size: 9px; color: var(--text-muted);
+    text-align: center; letter-spacing: 0.02em;
+    line-height: 1.2;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  .caption {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11px; color: var(--text-muted);
+  }
+  .caption strong { color: var(--text-secondary); font-weight: 600; }
+  .badge {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 3px 7px; border-radius: 100px;
+    background: rgba(74, 222, 128, 0.15); color: #4ade80;
+  }
+</style>
+</head>
+<body>
+<div class="card-wrap">
+  <div class="icon-card">
+
+    <div class="caption">
+      <span><strong>Material Icons Round</strong> — soft corners, warm, single source</span>
+      <span class="badge">Rounded only</span>
+    </div>
+
+    <div class="icons-row">
+      <span class="ic brand" title="Shuttle (brand)">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" aria-label="Shuttle">
+          <!-- rounded shuttle: each feather is a thick rounded stroke that flares outward -->
+          <g fill="none" stroke="#4ade80" stroke-linecap="round" stroke-linejoin="round">
+            <!-- feathers as fat rounded strokes -->
+            <g stroke-width="3.2" stroke-opacity="0.95">
+              <path d="M20 30 Q12 22 11 7"/>
+              <path d="M20 30 Q16 20 15 6"/>
+              <path d="M20 30 L20 5"/>
+              <path d="M20 30 Q24 20 25 6"/>
+              <path d="M20 30 Q28 22 29 7"/>
+            </g>
+            <!-- connecting band across the top of the feathers -->
+            <path d="M11 7 Q20 3 29 7" stroke-width="1.8" stroke-opacity="0.55"/>
+            <!-- cork: rounded pill -->
+            <rect x="15" y="27" width="10" height="7" rx="3.5" fill="#4ade80" stroke="none"/>
+          </g>
+        </svg>
+      </span>
+      <span class="ic"><span class="material-icons-round">home</span></span>
+      <span class="ic"><span class="material-icons-round">group</span></span>
+      <span class="ic"><span class="material-icons-round">school</span></span>
+      <span class="ic"><span class="material-icons-round">admin_panel_settings</span></span>
+      <span class="ic"><span class="material-icons-round">check_circle</span></span>
+      <span class="ic"><span class="material-icons-round">schedule</span></span>
+      <span class="ic"><span class="material-icons-round">lock</span></span>
+      <span class="ic"><span class="material-icons-round">how_to_reg</span></span>
+    </div>
+    <div class="label-row">
+      <span class="lbl" style="color:#4ade80;">shuttle</span>
+      <span class="lbl">home</span>
+      <span class="lbl">group</span>
+      <span class="lbl">school</span>
+      <span class="lbl">admin</span>
+      <span class="lbl">check</span>
+      <span class="lbl">schedule</span>
+      <span class="lbl">lock</span>
+      <span class="lbl">how_to_reg</span>
+    </div>
+
+    <div class="caption" style="margin-top:4px;">
+      <span>Sizes: 16 / 18 / 22 (default) / 28</span>
+      <span style="color:var(--text-muted);">Brand shuttle = <span class="mono">assets/shuttlecock.svg</span></span>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

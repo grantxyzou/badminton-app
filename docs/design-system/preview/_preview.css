@@ -1,0 +1,245 @@
+/* Shared preview-card stylesheet — used by every preview/*.html card.
+   Imports tokens + glass patterns so each card is self-contained. */
+
+/* Mono — Google Fonts (we self-host Space Grotesk + IBM Plex via @font-face in colors_and_type.css) */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('../colors_and_type.css');
+@import url('../assets/aurora-bg.css');
+
+/* Material Icons glyph rendering — the Google Fonts stylesheet loads the
+   webfont but doesn't ship the `.material-icons-round` class rules, so we
+   define them here to mirror Google's official recipe. */
+.material-icons,
+.material-icons-round,
+.material-icons-outlined {
+  font-family: 'Material Icons Round', 'Material Icons Outlined', 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+.material-icons-outlined { font-family: 'Material Icons Outlined'; }
+.material-icons          { font-family: 'Material Icons'; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--page-bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  min-height: 100%;
+}
+html { overflow-x: hidden; }
+body { overflow-y: auto; }
+
+body {
+  padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+/* Glass card replica — iOS liquid-glass (so previews stay in sync with app) */
+.glass-card {
+  position: relative;
+  background:
+    radial-gradient(120% 140% at 12% 0%, rgba(255,255,255,0.12), transparent 55%),
+    radial-gradient(120% 140% at 88% 100%, rgba(74,222,128,0.06), transparent 60%),
+    linear-gradient(160deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.025) 100%);
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.28),
+    inset 0 -1px 0 rgba(255,255,255,0.04),
+    0 10px 36px rgba(0,0,0,0.28),
+    0 2px 8px rgba(0,0,0,0.14);
+  isolation: isolate;
+}
+.glass-card::before {
+  content: '';
+  position: absolute;
+  inset: 1px 1px auto 1px;
+  height: 44%;
+  border-radius: calc(var(--radius-xl) - 1px) calc(var(--radius-xl) - 1px) 120px 120px / calc(var(--radius-xl) - 1px) calc(var(--radius-xl) - 1px) 40px 40px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.03) 55%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+.glass-card > * { position: relative; z-index: 1; }
+
+.btn-primary {
+  background: var(--btn-primary-bg);
+  border: 1px solid var(--btn-primary-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--btn-primary-shadow);
+  color: var(--btn-primary-text);
+  padding: 12px 20px;
+  font-weight: 600;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 160ms var(--ease-glass, cubic-bezier(0.22,1,0.36,1)), border-color 160ms, transform 120ms, box-shadow 160ms, filter 160ms;
+}
+.btn-primary:hover, .btn-primary.is-hover {
+  background: linear-gradient(160deg, rgba(134, 239, 172, 0.85) 0%, rgba(34, 197, 94, 0.7) 100%);
+  border-color: rgba(134, 239, 172, 0.9);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.45),
+    0 10px 36px rgba(34, 197, 94, 0.55),
+    0 2px 6px rgba(0,0,0,0.25);
+  transform: translateY(-1px);
+}
+.btn-primary:active, .btn-primary.is-pressed {
+  background: linear-gradient(160deg, rgba(34, 197, 94, 0.55) 0%, rgba(20, 83, 45, 0.7) 100%);
+  border-color: rgba(34, 197, 94, 0.4);
+  transform: scale(0.94);
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.4),
+    inset 0 -1px 0 rgba(255,255,255,0.05),
+    0 1px 2px rgba(0,0,0,0.2);
+  filter: none;
+}
+.btn-primary:disabled, .btn-primary.is-disabled {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.35);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+.btn-ghost {
+  background: var(--btn-ghost-bg);
+  border: 1px solid var(--btn-ghost-border);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 1px 0 var(--glass-inset), 0 2px 8px rgba(0,0,0,0.15);
+  color: var(--btn-ghost-text);
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 160ms var(--ease-glass, cubic-bezier(0.22,1,0.36,1)), border-color 160ms, transform 120ms, box-shadow 160ms;
+}
+.btn-ghost:hover, .btn-ghost.is-hover {
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.55);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.32),
+    0 6px 20px rgba(0,0,0,0.28);
+  transform: translateY(-1px);
+}
+.btn-ghost:active, .btn-ghost.is-pressed {
+  background: rgba(0,0,0,0.25);
+  border-color: rgba(255,255,255,0.16);
+  color: rgba(255,255,255,0.75);
+  transform: scale(0.94);
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.45),
+    0 0 0 rgba(0,0,0,0);
+}
+.btn-ghost:disabled, .btn-ghost.is-disabled {
+  background: transparent;
+  border-color: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.22);
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.status-banner-green {
+  background: var(--banner-green-bg);
+  border: 1px solid var(--banner-green-border);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  display: flex; gap: 12px; align-items: center;
+}
+.status-banner-orange {
+  background: var(--banner-orange-bg);
+  border: 1px solid var(--banner-orange-border);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  display: flex; gap: 12px; align-items: center;
+}
+.status-banner-red {
+  background: var(--banner-red-bg);
+  border: 1px solid var(--banner-red-border);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  display: flex; gap: 12px; align-items: center;
+}
+
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal; font-style: normal;
+  display: inline-block; line-height: 1;
+  text-transform: none; letter-spacing: normal;
+  word-wrap: normal; white-space: nowrap;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased;
+}
+
+/* Focus — brand green, never browser blue */
+input:focus, input:focus-visible,
+textarea:focus, textarea:focus-visible,
+select:focus, select:focus-visible,
+button:focus, button:focus-visible {
+  outline: none;
+  border-color: var(--input-focus-border, rgba(74, 222, 128, 0.45));
+  box-shadow: inset 0 1px 0 var(--input-inset, rgba(255,255,255,0.06)),
+              0 0 0 3px var(--input-focus-ring, rgba(74, 222, 128, 0.14));
+}
+
+.card-wrap {
+  width: 100%;
+  max-width: 660px;
+}
+
+/* Small helpers for preview layouts */
+.row { display: flex; gap: 12px; align-items: center; }
+.col { display: flex; flex-direction: column; gap: 12px; }
+.wrap { display: flex; flex-wrap: wrap; gap: 10px; }
+.mono { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); }
+.label {
+  font-size: 14px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--accent);
+}
+.label-muted {
+  font-size: 14px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.swatch {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  padding: 12px;
+  color: #fff;
+  min-height: 84px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  font-size: 11px;
+}
+.swatch .name { font-weight: 600; font-size: 13px; color: inherit; }
+.swatch .hex { font-family: var(--font-mono); opacity: 0.85; }
