@@ -187,7 +187,7 @@ git push --tags
 
 Workflows at `.github/workflows/deploy-next.yml` (auto, publish profile) and `deploy-stable.yml` (OIDC, manual dispatch). All action SHAs pinned.
 
-Full runbook + rollback procedure: [`docs/deployment-model.md`](docs/deployment-model.md). Infrastructure details: [`AZURE.md`](AZURE.md).
+Full runbook + rollback procedure: [`docs/deployment-model.md`](docs/deployment-model.md). Infrastructure details: [`docs/azure.md`](docs/azure.md).
 
 ---
 
@@ -246,7 +246,7 @@ Full runbook + rollback procedure: [`docs/deployment-model.md`](docs/deployment-
 - [`CLAUDE.md`](CLAUDE.md) — instructions for AI coding assistants (architecture, conventions, gotchas)
 - [`DESIGN.md`](DESIGN.md) — design principles
 - [`ROADMAP.md`](ROADMAP.md) — what's shipped, what's staged, what's deferred
-- [`AZURE.md`](AZURE.md) — infrastructure details
+- [`docs/azure.md`](docs/azure.md) — infrastructure details
 - [`docs/deployment-model.md`](docs/deployment-model.md) — two-deployment promotion runbook
 - [`docs/design-system/`](docs/design-system/) — canonical bundle (tokens, specimens, UI-kit refs)
 - [`CHANGELOG.md`](CHANGELOG.md) — what ships to stable, tagged per version
