@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { getEnv, type EnvName } from '@/lib/flags';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,7 +51,20 @@ export async function GET(_req: NextRequest) {
     const sorted = [...resources].sort((a, b) =>
       (b as { publishedAt: string }).publishedAt.localeCompare((a as { publishedAt: string }).publishedAt),
     );
-    return NextResponse.json(sorted);
+
+    // Environment filter — only return releases stamped with the current env
+    // (or legacy pre-env records with no `env` field, which stay visible on
+    // both deployments for backcompat). Stops releases posted on bpm-next
+    // from leaking onto bpm-stable through the shared Cosmos DB.
+    const env = getEnv();
+    const filtered = sorted.filter((r) => {
+      const recEnv = (r as { env?: EnvName }).env;
+      if (!recEnv) return true;   // legacy, always visible
+      if (env === 'dev') return true; // dev sees everything
+      return recEnv === env;
+    });
+
+    return NextResponse.json(filtered);
   } catch (error) {
     console.error('GET releases error:', error);
     return NextResponse.json([]);
@@ -68,6 +82,7 @@ export async function POST(req: NextRequest) {
     }
     const publishedAt = new Date().toISOString();
     const id = `release-${publishedAt.slice(0, 10)}-${validated.version}-${randomBytes(4).toString('hex')}`;
+    const env = getEnv();
     const record = {
       id,
       version: validated.version,
@@ -75,6 +90,9 @@ export async function POST(req: NextRequest) {
       body: validated.body,
       publishedAt,
       publishedBy: 'admin' as const,
+      // Stamp the deployment this was posted from so GET can filter
+      // (bpm-next releases don't leak onto bpm-stable via the shared DB).
+      env,
     };
     const container = getContainer('releases');
     await container.items.create(record);
