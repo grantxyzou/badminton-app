@@ -50,6 +50,11 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 *Items here live on `main`. They ship to stable when the next tag is cut. Will promote as `bpm-stable-v1.1` — see PR #22 for the full commit.*
 
+### Added — release workflow automation
+
+- **Release form auto-fills from CHANGELOG.md** — `scripts/extract-unreleased.mjs` runs as a `prebuild` hook, parses the `## Unreleased` section, writes `public/changelog-unreleased.json`. The admin Release Form fetches that JSON on mount and pre-fills version (next minor bump from the highest existing tag) + raw notes (verbatim Unreleased bullets). Admin no longer types the raw notes — just reviews, runs AI polish, publishes. A "↻ from CHANGELOG" button next to the raw-notes field re-pulls if needed.
+- **Per-environment releases** — `app/api/releases/route.ts` now stamps `env: 'next' | 'stable' | 'dev'` on every record at POST time via `getEnv()`. GET filters by the current env (with legacy-null backcompat, so existing v1.0/v1.0.1 entries stay visible on both). Releases published on `bpm-next` no longer leak to `bpm-stable` through the shared Cosmos DB.
+
 ### Added
 
 - **Design system v3 bundle** mirrored at `docs/design-system/` — 43 files (tokens, 28 specimen HTMLs, UI-kit JSX references, 3 self-hosted variable fonts). Single canonical reference.
