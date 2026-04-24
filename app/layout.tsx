@@ -85,7 +85,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Material Symbols Rounded — subsetted to the ~35 glyphs actually used.
             Replaces the old full Material Icons webfont (~100 KB → ~15–20 KB). */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,admin_panel_settings,arrow_back,auto_fix_high,calendar_today,campaign,celebration,check_circle,chevron_left,chevron_right,close,dark_mode,delete,delete_forever,delete_outline,delete_sweep,download,edit,error,error_outline,expand_less,expand_more,group,group_add,home,hourglass_empty,hourglass_top,how_to_reg,inventory_2,light_mode,lock,lock_clock,logout,more_vert,person_remove,remove,restore,schedule,school,science,shield,sports_tennis,translate,watch_later&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,admin_panel_settings,arrow_back,auto_fix_high,bar_chart,bolt,calendar_today,campaign,celebration,check_circle,chevron_left,chevron_right,close,dark_mode,delete,delete_forever,delete_outline,delete_sweep,download,edit,emoji_events,error,error_outline,event,expand_less,expand_more,format_list_bulleted,format_list_numbered,group,group_add,groups,home,hourglass_empty,hourglass_top,how_to_reg,inventory_2,light_mode,local_fire_department,lock,lock_clock,logout,more_vert,paid,payments,person_remove,radio_button_unchecked,receipt_long,remove,restore,schedule,school,science,shield,sports_tennis,star,subdirectory_arrow_left,translate,trending_up,verified,visibility,watch_later&display=swap"
           rel="stylesheet"
         />
       </head>

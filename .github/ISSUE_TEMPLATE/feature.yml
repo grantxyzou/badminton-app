@@ -1,0 +1,51 @@
+name: Feature idea
+description: Something the app should do that it doesn't, or could do better.
+title: "[idea] "
+labels: ["feature", "backlog"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas welcome — doesn't matter how small.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: What's the pain point? Who feels it?
+      placeholder: I keep forgetting which court we're on — would love a reminder.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: How might the app solve it?
+      description: Rough idea — doesn't have to be a full design.
+      placeholder: Add a court number to the home-screen session card.
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Who would use this / when?
+      description: Any context helps — who, when, where, how often.
+    validations:
+      required: false
+  - type: input
+    id: url
+    attributes:
+      label: URL
+      description: The page you were on when this idea struck (auto-filled).
+    validations:
+      required: false
+  - type: input
+    id: sha
+    attributes:
+      label: Build SHA
+    validations:
+      required: false
+  - type: input
+    id: ua
+    attributes:
+      label: Device / browser
+    validations:
+      required: false

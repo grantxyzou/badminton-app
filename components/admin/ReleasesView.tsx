@@ -12,11 +12,13 @@ interface Props {
   onBack: () => void;
 }
 
+type FormMode = { kind: 'hidden' } | { kind: 'new' } | { kind: 'edit'; record: Release };
+
 export default function ReleasesView({ onBack }: Props) {
   const t = useTranslations('admin.releases');
   const [releases, setReleases] = useState<Release[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState<FormMode>({ kind: 'hidden' });
   const [error, setError] = useState('');
 
   async function load() {
@@ -50,17 +52,18 @@ export default function ReleasesView({ onBack }: Props) {
     <div className="space-y-4">
       <AdminBackHeader onBack={onBack} title="Releases" />
 
-      {showForm ? (
+      {form.kind !== 'hidden' ? (
         <ReleaseForm
           latestVersion={releases[0]?.version}
-          onPublished={() => { setShowForm(false); load(); }}
-          onCancel={() => setShowForm(false)}
+          initialRecord={form.kind === 'edit' ? form.record : undefined}
+          onPublished={() => { setForm({ kind: 'hidden' }); load(); }}
+          onCancel={() => setForm({ kind: 'hidden' })}
         />
       ) : (
         <>
           <button
             type="button"
-            onClick={() => setShowForm(true)}
+            onClick={() => setForm({ kind: 'new' })}
             className="btn-primary w-full"
           >
             {t('newButton')}
@@ -77,16 +80,33 @@ export default function ReleasesView({ onBack }: Props) {
                 <li key={r.id} className="glass-card p-3 flex justify-between items-start">
                   <div>
                     <p className="text-sm font-semibold text-white">{r.version} · {r.title.en}</p>
-                    <p className="text-xs text-gray-400">{new Date(r.publishedAt).toLocaleDateString()}</p>
+                    <p className="text-xs text-gray-400">
+                      {new Date(r.publishedAt).toLocaleDateString()}
+                      {r.editedAt && <> · edited {new Date(r.editedAt).toLocaleDateString()}</>}
+                    </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(r.id)}
-                    className="text-red-400 text-xs"
-                    aria-label={`Delete ${r.version}`}
-                  >
-                    Delete
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setForm({ kind: 'edit', record: r })}
+                      className="text-gray-300 hover:text-white"
+                      style={{ minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                      aria-label={`Edit ${r.version}`}
+                      title="Edit"
+                    >
+                      <span className="material-icons" style={{ fontSize: 18 }}>edit</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(r.id)}
+                      className="text-red-400 hover:text-red-300"
+                      style={{ minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                      aria-label={`Delete ${r.version}`}
+                      title="Delete"
+                    >
+                      <span className="material-icons" style={{ fontSize: 18 }}>delete</span>
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

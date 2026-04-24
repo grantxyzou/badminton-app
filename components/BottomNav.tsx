@@ -26,7 +26,7 @@ export default function BottomNav({ activeTab, onTabChange, showAdmin }: Props) 
   const tabs: NavItem[] = [
     { id: 'home',    label: t('home'),    icon: 'home' },
     { id: 'players', label: t('signups'), icon: 'group' },
-    { id: 'skills',  label: t('skills'),  icon: 'school' },
+    { id: 'skills',  label: t('skills'),  icon: 'bar_chart' },
     { id: 'admin',   label: t('admin'),   icon: 'admin_panel_settings' },
   ];
   const visibleTabs = tabs.filter((tab) => tab.id !== 'admin' || showAdmin);

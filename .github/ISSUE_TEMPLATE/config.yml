@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Email Grant (private / sensitive)
+    url: mailto:xyzou2012@gmail.com
+    about: For anything security-related, personal data, or things you'd rather keep off a public issue tracker.

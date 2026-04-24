@@ -66,8 +66,8 @@ export async function PATCH(req: NextRequest) {
     if (!trimmed) {
       return NextResponse.json({ error: 'Text required' }, { status: 400 });
     }
-    if (trimmed.length > 500) {
-      return NextResponse.json({ error: 'Announcement too long (max 500 chars)' }, { status: 400 });
+    if (trimmed.length > 800) {
+      return NextResponse.json({ error: 'Announcement too long (max 800 chars)' }, { status: 400 });
     }
 
     const container = getContainer('announcements');
@@ -107,8 +107,8 @@ export async function POST(req: NextRequest) {
     if (!trimmed) {
       return NextResponse.json({ error: 'Text required' }, { status: 400 });
     }
-    if (trimmed.length > 500) {
-      return NextResponse.json({ error: 'Announcement too long (max 500 chars)' }, { status: 400 });
+    if (trimmed.length > 800) {
+      return NextResponse.json({ error: 'Announcement too long (max 800 chars)' }, { status: 400 });
     }
 
     const announcement = {
