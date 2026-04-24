@@ -17,8 +17,8 @@ See [`docs/deployment-model.md`](docs/deployment-model.md) for the promotion run
 |-----|-------------|
 | **Home** | BPM + date/time tile row, announcements (with dynamic cost-per-person line), 7-state sign-up card at the bottom for one-handed thumb reach |
 | **Sign-Ups** | Full player list + waitlist card; self-cancel flow via `deleteToken` |
-| **Skills** | "Progress together?" placeholder for regular users; admin gets a persistent ACE Skills Matrix radar (7 dimensions × 6 levels), per-player score editing via drag-to-dismiss bottom sheet, inline Add Player form |
-| **Admin** | PIN-gated — session/cost editors, member/alias management, bird inventory, player admin (paid toggle, promote, restore), AI-polished announcements. Hidden by default; revealed via member role or 5-tap easter egg |
+| **Stats** | GitHub-style attendance heatmap with 3M / 6M / 1Y zoom + streak hero (flag-gated via `NEXT_PUBLIC_FLAG_STATS_ATTENDANCE`); compact "Coming soon" cards for cost / partners / skill progression. Admin also gets the full ACE Skills Matrix radar (7 dimensions × 6 levels) with inline score editing + Add Player form as a live card at the bottom |
+| **Admin** | PIN-gated — session/cost editors, member/alias management, bird inventory (with runway hero + per-brand grouping + retro-assignable session usage), player admin (paid toggle, promote, restore), markdown-formatted announcements. Hidden by default; revealed via member role or 5-tap easter egg |
 
 ### Supporting features
 
@@ -51,7 +51,7 @@ A hidden **`/bpm/design`** preview route renders the specimen cards live (flag-g
 - **Azure Cosmos DB** (NoSQL) — database `badminton`, 7 containers at 400 RU/s shared throughput
 - **Anthropic Claude API** (`claude-sonnet-4-20250514`) — announcement polishing, admin-only
 - **Azure App Service** — Canada Central, B1 Basic tier, `output: standalone`, Always On
-- **Vitest** — 251 tests, 30 suites, CI-gated before deploy
+- **Vitest** — 316 tests, 39 suites, CI-gated before deploy
 
 ---
 
@@ -69,7 +69,7 @@ app/
     IBMPlexSans-Italic-VariableFont_wdth_wght.ttf
   globals.css              All tokens + class utilities (single source of truth)
   layout.tsx               Root shell: splash, aurora stub blobs, toggles, i18n provider
-  page.tsx                 SPA tab container (Home / Sign-Ups / Skills / Admin)
+  page.tsx                 SPA tab container (Home / Sign-Ups / Stats / Admin)
   opengraph-image.tsx      Dynamic OG image generator
 
 components/
@@ -147,6 +147,7 @@ Players get a random `deleteToken` (16-byte hex) once at sign-up, stored in `loc
 | `NEXT_PUBLIC_BASE_PATH` | ✓ | Must match `basePath` in `next.config.js` (currently `/bpm`) |
 | `NEXT_PUBLIC_ENV` | — | `stable` / `next` / `dev` — drives preview banner + flag defaults |
 | `NEXT_PUBLIC_FLAG_DESIGN_PREVIEW` | — | Set to `"true"` to expose `/bpm/design` |
+| `NEXT_PUBLIC_FLAG_STATS_ATTENDANCE` | — | Set to `"true"` to flip the Stats-tab Attendance card from skeleton to live heatmap |
 | `NEXT_PUBLIC_FLAG_DEMO` | — | End-to-end promotion test flag |
 | `NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV` | — | Stage 0a: new bottom nav labels |
 
@@ -166,7 +167,7 @@ npm run dev
 Omit `COSMOS_CONNECTION_STRING` to use the in-memory mock store — all routes work offline.
 
 ```bash
-npm test              # 251 tests, 30 suites
+npm test              # 316 tests, 39 suites
 npm run test:watch    # watch mode
 npm run build         # production build (static analysis + route compile)
 npm run lint          # eslint

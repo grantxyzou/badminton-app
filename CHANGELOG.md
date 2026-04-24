@@ -48,7 +48,51 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased — `bpm-next` only
 
-*No unreleased items. Next work lands here on `main` and ships to stable when the next tag is cut.*
+*Items here live on `main`. They ship to stable when the next tag is cut. Will promote as `bpm-stable-v1.2` — see PR #25.*
+
+### Added — announcements
+
+- **Minimal markdown in announcements** — admins can now use `**bold**`, `*italic*`, `- list`, and `1. numbered` in the announcement textarea. Home tab renders formatted output via the tiny `lib/miniMarkdown.tsx` parser (JSX-only, no raw-HTML injection). Composer has Write / Preview tabs and 5 formatting buttons (B, I, UL, OL, paragraph break). Character cap raised 500 → 800 to account for markdown overhead.
+
+### Added — release workflow
+
+- **Released notes are editable** — pencil icon on each row in Admin → Releases opens the form pre-filled for that record; `PATCH /api/releases` preserves `publishedAt` / `env` / `publishedBy` and stamps `editedAt`. AI polish stays opt-in on edit (no surprise rewrites of already-shipped copy). Delete icon replaces the old text link.
+
+### Added — Stats tab (Skills → Stats)
+
+- **Bottom nav "Skills" renamed to "Stats"** (`bar_chart` icon; zh-CN: 数据). Existing SkillsRadar content stays available to admins via the bottom-most "Skill progression" live card.
+- **Live Attendance card** gated behind `NEXT_PUBLIC_FLAG_STATS_ATTENDANCE`. Shows a GitHub-style heatmap (7 rows × N weeks) with 3M / 6M / 1Y zoom pills. Solid green = session attended, outlined = missed, empty = no session that day. Month labels along the top, Mon/Wed/Fri on the side.
+- **Attendance streak hero** above the cards. Hidden when streak is zero. Personal-best flame gradient when `streak >= longestStreak && streak >= 3`, otherwise green tint with "Keep showing up."
+- **Identity fallback** — when no `badminton_identity` exists (admin browsing, incognito, first-time visitor), the card shows a "View attendance for:" autocomplete input backed by the members list. Picked name saves to `badminton_stats_preview_name` (separate from real identity so it doesn't muddy self-cancel semantics).
+- **Layout rework** — live content (attendance) full-width up top; remaining "Coming soon" cards collapse into a compact 2-column grid at the bottom under a "More coming" label. Admin's live Skill Progression card lands below the grid as its own full-width section.
+- **API:** `GET /api/stats/attendance?name=X&weeks=N` — no auth (stats are player-facing). Case-insensitive name match. Excludes waitlisted + removed player rows. Returns `{ attended, streak, longestStreak, history[] }`. Weeks clamped to [1, 260].
+
+### Added — `/design/stats` preview
+
+- **Stats narrative playground** — new 7th sub-page on the `/design` preview route. Three narrative arcs: **Your season so far** (per-person, 7 cards), **The club pulse** (per-group / admin, 6 cards), **Anatomy of Thursday** (per-session recap, 5 cards). All cards mocked with fabricated data + inline SVG viz. Ends with a proposed ship-order section. Flag-gated like the rest of `/design/*`.
+
+### Added — bird inventory
+
+- **Hero card** on Admin → Birds: giant remaining-tubes number, runway weeks (`remaining / avgTubesPerSession`), avg/session, total used, brand count. Color tiers: red at 0, amber below 2 weeks, green at 3+.
+- **Per-brand grouping** via `lib/birdBrand.ts::parseBirdName` (first whitespace-delimited token = brand, remainder = model). No schema migration — `BirdPurchase.name` stays a single string.
+- **Assign-to-session flow** — `+` button on each purchase row opens `AssignUsageSheet` (BottomSheet primitive). Lists most-recent 10 sessions with current tubes-used for that purchase; admin can set 0.5-tube increments per session; Save batches `PATCH /api/session/bird-usage` calls. Hero runway recalculates on save.
+- **API:** `PATCH /api/session/bird-usage` — admin-only. Upserts one purchase's usage into any session's `birdUsages` array (by `sessionId`). Unlike `PUT /api/session` which replaces the whole active-session doc, this targets archived sessions too. `tubes: 0` removes the entry.
+- **New helpers in `lib/birdUsages.ts`**: `tubesUsedAcross(sessions)`, `avgTubesPerSession(sessions, window=8)`, `runwayWeeks(remaining, avg)`.
+
+### Added — bug reporting
+
+- **Preview banner bug link** now opens a picker menu (Bug / Feature idea / Private email) instead of the old mailto. Bug and Feature paths deep-link to GitHub Issues with URL + SHA + UA pre-filled via `?template=&url=&sha=&ua=` query string.
+- **GitHub issue templates** in `.github/ISSUE_TEMPLATE/`: `bug.yml`, `feature.yml`, `config.yml` (blank issues disabled, private-email contact link). Fully usable once the repo flips to public.
+
+### Infra
+
+- `NEXT_PUBLIC_FLAG_STATS_ATTENDANCE` registered in `lib/flags.ts` (first Arc 1 live card; retires two weeks after full Arc 1 promotion).
+- Material Symbols Rounded subset URL gains 17 new glyphs: `bar_chart`, `bolt`, `emoji_events`, `event`, `format_list_bulleted`, `format_list_numbered`, `groups`, `local_fire_department`, `paid`, `payments`, `radio_button_unchecked`, `receipt_long`, `star`, `subdirectory_arrow_left`, `trending_up`, `verified`, `visibility`. (~43 → ~60 glyphs; URL bundle still ~20 KB.)
+- i18n: new `stats.{heading,subhead,comingSoon,progression,attendance,cost,partners}.*` keys in both `en.json` and `zh-CN.json`; `nav.skills` value updated ("Coming Soon" → "Stats" / "即将推出" → "数据").
+
+### Tests
+
+- 316 passing, up from 251. New suites: `miniMarkdown`, `announcements`, `releases` PATCH, `birdBrand`, `birdUsages.helpers`, `session-bird-usage`, `stats-attendance`, `StatsPlaceholder`.
 
 ---
 

@@ -113,6 +113,35 @@ End-to-end adoption of the formalized design-system bundle from claude.ai/design
 
 ---
 
+## v1.1 — Design system v3 + release automation ✅ Shipped (bpm-stable-v1.1, 2026-04-24)
+
+Promotion bundle. First stable release to include live-surface visual changes (type trio, icons, backgrounds) alongside the release-form CHANGELOG auto-fill + env-stamped release records.
+
+- [x] All P1.7 items above, plus
+- [x] Release form auto-fills from `CHANGELOG.md`'s `## Unreleased` section via `scripts/extract-unreleased.mjs` prebuild hook (#23)
+- [x] Per-environment releases — records stamp `env: next | stable | dev`; GET filters by current env with legacy-null backcompat (#23)
+- [x] `next.grantzou.com` custom domain + managed SSL for bpm-next
+- [x] `claude-code-review.yml` workflow permissions fixed — was silently swallowing review output (#24)
+
+---
+
+## P1.8 — UX polish batch ✅ Shipped to `bpm-next` (PR #25, 2026-04-24)
+
+Six small streams bundled because they share surface area (admin dashboard, stats tab, bottom nav). Will promote as `bpm-stable-v1.2`.
+
+- [x] **Announcement markdown** — `**bold**` / `*italic*` / `- list` / `1. numbered`, Write/Preview tabs in composer. Custom tiny parser (`lib/miniMarkdown.tsx`, JSX-only, no raw-HTML injection). Char cap 500 → 800.
+- [x] **Release notes editable** — pencil icon per row, `PATCH /api/releases` preserves publishedAt/env, AI polish stays opt-in on edit
+- [x] **Stats tab** — Skills → Stats rename, `bar_chart` icon, new i18n keys (`stats.*`). StatsPlaceholder restructured: live content up top, compact coming-soon cards in 2-col grid at bottom, admin SkillsRadar lands full-width below
+- [x] **Live Attendance card** (flag-gated `NEXT_PUBLIC_FLAG_STATS_ATTENDANCE`) — GitHub-style heatmap (7×N grid, 3M/6M/1Y zoom), streak hero above the cards with personal-best flame state, identity picker fallback for admin/anonymous browsing
+- [x] **Bird inventory rebuild** — hero with runway weeks, per-brand grouping (`lib/birdBrand.ts`), `AssignUsageSheet` for retro-assigning tubes to archived sessions, `PATCH /api/session/bird-usage` endpoint
+- [x] **Bug link → GitHub templates** — PreviewBanner opens picker (Bug / Feature / Private email), `.github/ISSUE_TEMPLATE/` with bug.yml + feature.yml + config.yml. Needs repo-public flip to work E2E.
+- [x] **`/design/stats` preview** — three narrative arcs (per-person / per-group / per-session), mocked for decision-making on which real cards to ship next
+- [x] 316 tests passing (up from 251)
+
+**Remaining for Arc 1 (live per-person stats):** Cost trend, Partner frequency, Skill progression (needs `skillsHistory` container — start writing on every `PATCH /api/skills` to bank data).
+
+---
+
 ## P2 — Self-Assessment & Radar
 
 - [ ] Player self-assessment — rate yourself across ACE dimensions
