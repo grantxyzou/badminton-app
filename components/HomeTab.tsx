@@ -12,6 +12,7 @@ import PrevPaymentReminder from '@/components/PrevPaymentReminder';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
 import WelcomeCard from './WelcomeCard';
+import { renderMarkdown } from '@/lib/miniMarkdown';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -311,7 +312,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
       {effectiveAnnouncement && (
         <div className="glass-card p-5 space-y-2">
           <p className="section-label">{t('announcement.label')}</p>
-          <p className="text-sm text-gray-200 leading-relaxed">{effectiveAnnouncement.text}</p>
+          <div className="announcement-body text-sm text-gray-200 leading-relaxed">
+            {renderMarkdown(effectiveAnnouncement.text)}
+          </div>
         </div>
       )}
 

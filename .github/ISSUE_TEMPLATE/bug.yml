@@ -1,0 +1,55 @@
+name: Bug report
+description: Something broke or looks wrong on the preview site.
+title: "[bug] "
+labels: ["bug", "next-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! The more you can tell us, the faster we can fix it.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do? What did you see?
+      placeholder: I tapped the sign-up button and nothing happened.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      placeholder: I expected to be added to the session.
+    validations:
+      required: false
+  - type: input
+    id: url
+    attributes:
+      label: URL
+      description: The page you were on when it broke (auto-filled from the preview banner).
+      placeholder: https://next.grantzou.com/bpm/...
+    validations:
+      required: false
+  - type: input
+    id: sha
+    attributes:
+      label: Build SHA
+      description: Auto-filled from the preview banner — helps pin down which build broke.
+      placeholder: abcd123
+    validations:
+      required: false
+  - type: input
+    id: ua
+    attributes:
+      label: Device / browser
+      description: Auto-filled with your user-agent string.
+      placeholder: iPhone 17 Pro Max, Safari 18.x
+    validations:
+      required: false
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Paste or drag images here if you have any.
+    validations:
+      required: false

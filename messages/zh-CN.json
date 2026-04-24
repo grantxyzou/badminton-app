@@ -79,8 +79,29 @@
   "nav": {
     "home": "首页",
     "signups": "报名",
-    "skills": "即将推出",
+    "skills": "数据",
     "admin": "管理"
+  },
+  "stats": {
+    "heading": "你的数据",
+    "subhead": "即将上线 — 了解你的打球、付款和出勤情况。",
+    "comingSoon": "即将推出",
+    "progression": {
+      "title": "技能进展",
+      "subtitle": "你的 ACE 分数随时间变化。"
+    },
+    "attendance": {
+      "title": "出勤记录",
+      "subtitle": "本月参加的场次。"
+    },
+    "cost": {
+      "title": "费用趋势",
+      "subtitle": "近期每人每场的费用。"
+    },
+    "partners": {
+      "title": "搭档频率",
+      "subtitle": "你最常一起打球的人。"
+    }
   },
   "players": {
     "loading": "正在加载报名名单…",

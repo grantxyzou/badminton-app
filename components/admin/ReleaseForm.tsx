@@ -13,7 +13,8 @@ function nextPatchVersion(current: string | undefined): string {
 }
 
 interface ReleaseFormProps {
-  latestVersion: string | undefined;
+  latestVersion?: string;
+  initialRecord?: Release;
   onPublished: (release: Release) => void;
   onCancel: () => void;
 }
@@ -26,9 +27,10 @@ interface ChangelogUnreleased {
   text: string;
 }
 
-export default function ReleaseForm({ latestVersion, onPublished, onCancel }: ReleaseFormProps) {
+export default function ReleaseForm({ latestVersion, initialRecord, onPublished, onCancel }: ReleaseFormProps) {
   const t = useTranslations('admin.releases');
-  const [version, setVersion] = useState(() => nextPatchVersion(latestVersion));
+  const isEdit = !!initialRecord;
+  const [version, setVersion] = useState(() => initialRecord?.version ?? nextPatchVersion(latestVersion));
   const [rawNotes, setRawNotes] = useState('');
   // Tracks when the Unreleased section was baked at build time, so the admin
   // can see at a glance whether the pre-filled bullets are current.
@@ -36,6 +38,7 @@ export default function ReleaseForm({ latestVersion, onPublished, onCancel }: Re
 
   // Pull the CHANGELOG Unreleased section baked by scripts/extract-unreleased.mjs
   // and pre-fill the form. Admin can edit before running the AI draft.
+  // Skipped in edit mode — editing existing copy shouldn't be overwritten by the changelog.
   const loadFromChangelog = useCallback(async () => {
     try {
       const res = await fetch(`${BASE}/changelog-unreleased.json`, { cache: 'no-store' });
@@ -50,12 +53,12 @@ export default function ReleaseForm({ latestVersion, onPublished, onCancel }: Re
   }, []);
 
   useEffect(() => {
-    loadFromChangelog();
-  }, [loadFromChangelog]);
-  const [titleEn, setTitleEn] = useState('');
-  const [titleZh, setTitleZh] = useState('');
-  const [bodyEn, setBodyEn] = useState('');
-  const [bodyZh, setBodyZh] = useState('');
+    if (!isEdit) loadFromChangelog();
+  }, [loadFromChangelog, isEdit]);
+  const [titleEn, setTitleEn] = useState(initialRecord?.title.en ?? '');
+  const [titleZh, setTitleZh] = useState(initialRecord?.title['zh-CN'] ?? '');
+  const [bodyEn, setBodyEn] = useState(initialRecord?.body.en ?? '');
+  const [bodyZh, setBodyZh] = useState(initialRecord?.body['zh-CN'] ?? '');
   const [drafting, setDrafting] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState('');
@@ -107,7 +110,7 @@ ${rawNotes}`;
     }
   }
 
-  async function publish() {
+  async function save() {
     if (!version.trim() || !titleEn.trim() || !titleZh.trim() || !bodyEn.trim() || !bodyZh.trim()) {
       setError('All fields required before publish.');
       return;
@@ -115,18 +118,20 @@ ${rawNotes}`;
     setPublishing(true);
     setError('');
     try {
+      const payload = {
+        version: version.trim(),
+        title: { en: titleEn.trim(), 'zh-CN': titleZh.trim() },
+        body: { en: bodyEn.trim(), 'zh-CN': bodyZh.trim() },
+        ...(isEdit && initialRecord ? { id: initialRecord.id } : {}),
+      };
       const res = await fetch(`${BASE}/api/releases`, {
-        method: 'POST',
+        method: isEdit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          version: version.trim(),
-          title: { en: titleEn.trim(), 'zh-CN': titleZh.trim() },
-          body: { en: bodyEn.trim(), 'zh-CN': bodyZh.trim() },
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? 'Publish failed');
+        setError(data.error ?? (isEdit ? 'Save failed' : 'Publish failed'));
         return;
       }
       onPublished(data);
@@ -155,43 +160,47 @@ ${rawNotes}`;
         />
       </div>
 
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <label htmlFor="release-raw-notes" className="block text-xs text-gray-400">Raw notes</label>
-          <button
-            type="button"
-            onClick={loadFromChangelog}
-            className="text-[11px]"
-            style={{ color: 'var(--accent)', background: 'transparent', border: 'none', padding: '2px 6px', cursor: 'pointer' }}
-            aria-label="Refresh from CHANGELOG.md Unreleased section"
-            title="Re-pull the Unreleased bullets from CHANGELOG.md"
-          >
-            ↻ from CHANGELOG
-          </button>
+      {!isEdit && (
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label htmlFor="release-raw-notes" className="block text-xs text-gray-400">Raw notes</label>
+            <button
+              type="button"
+              onClick={loadFromChangelog}
+              className="text-[11px]"
+              style={{ color: 'var(--accent)', background: 'transparent', border: 'none', padding: '2px 6px', cursor: 'pointer' }}
+              aria-label="Refresh from CHANGELOG.md Unreleased section"
+              title="Re-pull the Unreleased bullets from CHANGELOG.md"
+            >
+              ↻ from CHANGELOG
+            </button>
+          </div>
+          <textarea
+            id="release-raw-notes"
+            name="rawNotes"
+            value={rawNotes}
+            onChange={(e) => setRawNotes(e.target.value)}
+            className="input w-full min-h-[120px]"
+            placeholder="Paste commit messages, rough notes, bullet points..."
+          />
+          {changelogFreshness && (
+            <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+              Pre-filled from CHANGELOG.md Unreleased (baked {changelogFreshness}). Edit freely — AI will polish on next step.
+            </p>
+          )}
         </div>
-        <textarea
-          id="release-raw-notes"
-          name="rawNotes"
-          value={rawNotes}
-          onChange={(e) => setRawNotes(e.target.value)}
-          className="input w-full min-h-[120px]"
-          placeholder="Paste commit messages, rough notes, bullet points..."
-        />
-        {changelogFreshness && (
-          <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
-            Pre-filled from CHANGELOG.md Unreleased (baked {changelogFreshness}). Edit freely — AI will polish on next step.
-          </p>
-        )}
-      </div>
+      )}
 
-      <button
-        type="button"
-        onClick={draftWithAI}
-        disabled={drafting}
-        className="btn-secondary w-full"
-      >
-        {drafting ? 'Drafting…' : t('draftWithAI')}
-      </button>
+      {!isEdit && (
+        <button
+          type="button"
+          onClick={draftWithAI}
+          disabled={drafting}
+          className="btn-secondary w-full"
+        >
+          {drafting ? 'Drafting…' : t('draftWithAI')}
+        </button>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -218,8 +227,8 @@ ${rawNotes}`;
 
       <div className="flex gap-2">
         <button type="button" onClick={onCancel} className="btn-ghost flex-1">Cancel</button>
-        <button type="button" onClick={publish} disabled={publishing} className="btn-primary flex-1">
-          {publishing ? 'Publishing…' : t('publish')}
+        <button type="button" onClick={save} disabled={publishing} className="btn-primary flex-1">
+          {publishing ? (isEdit ? 'Saving…' : 'Publishing…') : (isEdit ? 'Save changes' : t('publish'))}
         </button>
       </div>
     </div>

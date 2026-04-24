@@ -14,6 +14,8 @@ import BirdInventoryView from './BirdInventoryView';
 import AdvanceSessionForm from './AdvanceSessionForm';
 import ReleasesView from './ReleasesView';
 import { useAnnouncements } from './hooks/useAnnouncements';
+import AnnouncementComposer from './AnnouncementComposer';
+import { renderMarkdown } from '@/lib/miniMarkdown';
 import { useSessionNavigation } from './hooks/useSessionNavigation';
 import { usePlayerManagement } from './hooks/usePlayerManagement';
 
@@ -117,17 +119,7 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
         {/* Compose */}
         <div className="glass-card p-5 space-y-3">
           <h3 className="section-label">ANNOUNCEMENTS</h3>
-          <textarea
-            id="admin-announcement-draft"
-            name="announcementDraft"
-            rows={3}
-            placeholder="Type your announcement\u2026"
-            aria-label="Announcement text"
-            value={anno.draft}
-            onChange={(e) => anno.setDraft(e.target.value)}
-            maxLength={500}
-          />
-          <p className="text-right text-xs text-gray-500">{anno.draft.length}/500</p>
+          <AnnouncementComposer draft={anno.draft} setDraft={anno.setDraft} />
           <button
             onClick={anno.handlePolish}
             disabled={anno.polishing || !anno.draft.trim()}
@@ -176,13 +168,13 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
                   <div key={a.id} className="inner-card p-3 space-y-2">
                     <textarea
                       name="announcementEdit"
-                      rows={3}
+                      rows={4}
                       value={anno.editAnnoText}
                       onChange={(e) => anno.setEditAnnoText(e.target.value)}
-                      maxLength={500}
+                      maxLength={800}
                       className="w-full text-sm"
                     />
-                    <p className="text-right text-xs text-gray-500">{anno.editAnnoText.length}/500</p>
+                    <p className="text-right text-xs text-gray-500">{anno.editAnnoText.length}/800</p>
                     {anno.editAnnoError && <p className="text-red-400 text-xs">{anno.editAnnoError}</p>}
                     <div className="flex gap-2">
                       <button
@@ -200,7 +192,7 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
                 ) : (
                   <div key={a.id} className="inner-card p-3">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm text-gray-200 flex-1">{a.text}</p>
+                      <div className="announcement-body text-sm text-gray-200 flex-1">{renderMarkdown(a.text)}</div>
                       <div className="flex gap-3 shrink-0">
                         <button
                           onClick={() => anno.startEditAnno(a)}

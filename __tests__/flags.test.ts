@@ -43,6 +43,14 @@ describe('feature flags', () => {
     expect(isFlagOn('NEXT_PUBLIC_FLAG_DEMO')).toBe(true);
     expect(isFlagOn('NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV')).toBe(false);
   });
+
+  it('recognizes NEXT_PUBLIC_FLAG_STATS_ATTENDANCE', () => {
+    delete process.env.NEXT_PUBLIC_FLAG_STATS_ATTENDANCE;
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_STATS_ATTENDANCE')).toBe(false);
+    process.env.NEXT_PUBLIC_FLAG_STATS_ATTENDANCE = 'true';
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_STATS_ATTENDANCE')).toBe(true);
+    delete process.env.NEXT_PUBLIC_FLAG_STATS_ATTENDANCE;
+  });
 });
 
 describe('environment detection', () => {

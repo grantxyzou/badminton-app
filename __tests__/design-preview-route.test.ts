@@ -31,7 +31,7 @@ describe('design preview route — flag + nav isolation', () => {
     expect(isFlagOn('NEXT_PUBLIC_FLAG_DESIGN_PREVIEW')).toBe(true);
   });
 
-  it('SUBPAGES lists the six specimen sub-pages', () => {
+  it('SUBPAGES lists all specimen sub-pages in order', () => {
     const hrefs = SUBPAGES.map((p) => p.href);
     expect(hrefs).toEqual([
       '/design/tokens',
@@ -40,6 +40,7 @@ describe('design preview route — flag + nav isolation', () => {
       '/design/fonts',
       '/design/backgrounds',
       '/design/perf',
+      '/design/stats',
     ]);
   });
 

@@ -103,6 +103,48 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PATCH(req: NextRequest) {
+  if (!isAdminAuthed(req)) return unauthorized();
+  try {
+    await ensureReleasesContainer();
+    const raw = await req.json();
+    if (!raw || typeof raw !== 'object') {
+      return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+    }
+    const r = raw as Record<string, unknown>;
+    if (typeof r.id !== 'string' || !r.id) {
+      return NextResponse.json({ error: 'ID required' }, { status: 400 });
+    }
+    const validated = validateReleaseBody(r);
+    if (!validated) {
+      return NextResponse.json({ error: 'Missing or invalid required fields' }, { status: 400 });
+    }
+    const container = getContainer('releases');
+    const { resources } = await container.items
+      .query({
+        query: 'SELECT * FROM c WHERE c.id = @id',
+        parameters: [{ name: '@id', value: r.id }],
+      })
+      .fetchAll();
+    if (resources.length === 0) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    const existing = resources[0] as Record<string, unknown>;
+    const updated = {
+      ...existing,
+      version: validated.version,
+      title: validated.title,
+      body: validated.body,
+      editedAt: new Date().toISOString(),
+    };
+    const { resource } = await container.items.upsert(updated);
+    return NextResponse.json(resource);
+  } catch (error) {
+    console.error('PATCH releases error:', error);
+    return NextResponse.json({ error: 'Failed to update release' }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: NextRequest) {
   if (!isAdminAuthed(req)) return unauthorized();
   try {
