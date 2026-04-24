@@ -96,7 +96,7 @@
     },
     "cost": {
       "title": "费用趋势",
-      "subtitle": "近期每人每场的费用。"
+      "subtitle": "近期每人每场的费用分摊。"
     },
     "partners": {
       "title": "搭档频率",
