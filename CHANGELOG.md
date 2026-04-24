@@ -48,36 +48,37 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased — `bpm-next` only
 
-*Items here live on `main`. They ship to stable when the next tag is cut.*
+*Items here live on `main`. They ship to stable when the next tag is cut. Will promote as `bpm-stable-v1.1` — see PR #22 for the full commit.*
 
 ### Added
 
-- **BPM design-system preview route** at `/bpm/design` — flag-gated behind `NEXT_PUBLIC_FLAG_DESIGN_PREVIEW` (off on stable, on for `bpm-next` + dev). Sub-pages: `/tokens`, `/components`, `/logo` (3 candidates × 4 contexts; user's chat pick C+D marked), `/fonts` (locked Space Grotesk + JetBrains Mono spec), `/backgrounds` (6 directions), `/perf` (re-tiered audit). Not linked from `BottomNav`.
-- **Design-system bundle v2** under `docs/design-system/` — `README.md`, `BUNDLE.md`, `SKILL.md`, `colors_and_type.css`, `aurora-bg.css`, `26-perf-audit.html`. Brand SVGs under `public/brand/`.
+- **Design system v3 bundle** mirrored at `docs/design-system/` — 43 files (tokens, 28 specimen HTMLs, UI-kit JSX references, 3 self-hosted variable fonts). Single canonical reference.
+- **Hidden preview route** at `/bpm/design` — 7 sub-pages (tokens, components, logo, fonts, backgrounds, perf, index). Flag-gated behind `NEXT_PUBLIC_FLAG_DESIGN_PREVIEW` (404 on stable, visible on `bpm-next` + dev). Not linked from `BottomNav`.
+- **`<BpmWordmark />`** tempo-dot logo component (displayed on `/design/logo` preview).
+- **`<ShuttleIcon />`** brand shuttlecock SVG — replaces `sports_tennis` in empty states.
 
-### Changed — phone-heating fixes
+### Changed — visible on live surfaces
 
-- **Live background replaced with the tempo-field dot grid** (`app/globals.css`, `.court-bg`). Extends the new wordmark's tempo-dot motif across the full viewport as a single static `radial-gradient` pattern with a center-focused edge-fade mask. **Zero animation, zero `backdrop-filter`, zero `will-change`** — the compositor stamps the pattern once and caches it forever. Replaces the fast-compositor aurora (which itself replaced the original `filter: blur()` + `mix-blend-mode` aurora). Light mode uses a darker, lower-opacity green so the dots register without dominating the cream page. `prefers-reduced-transparency` drops the pattern entirely for iOS Low Power Mode.
-- The three `.aurora-blob-*` elements in `app/layout.tsx` are now `display: none` — kept in the DOM so a future background variant can revive them without touching the layout.
-- **Reduced-motion pauses GPU animations** (`app/globals.css`): `.aurora-blob-*`, `.wave-bar`, `.shimmer-line`, `.splash-shuttle`, `.splash` get `animation: none` + `will-change: auto`. Previously the blanket rule only collapsed durations, keeping compositor layers alive.
-- **GlassPhysics skips touch devices** (`components/GlassPhysics.tsx`) — short-circuits when `(hover: none)` matches.
-- **DatePicker scroll is RAF-coalesced** (`components/DatePicker.tsx`) — `getBoundingClientRect()` runs once per frame.
-- **Splash failsafe** (`app/globals.css`) — CSS keyframe fades splash at ~5s if hydration stalls silently.
+- **Type trio adopted live** — Space Grotesk (display / headlines), IBM Plex Sans (body / UI, leads `var(--font-sans)`), JetBrains Mono (data: PINs, costs, timestamps, code). Self-hosted variable TTFs in `app/fonts/` via `next/font/local`; system fonts remain as metric-matched fallbacks so first paint never waits on the network.
+- **Icons** — Material Icons → Material Symbols Rounded, subsetted to ~43 glyphs via `icon_names=` query param (~100 KB → ~20 KB). `.material-icons` class aliased so 57 call-sites stay unchanged.
+- **Backgrounds** — `02 Aurora` (3-blob slate-blue + court-green + warm-yellow, fast-compositor path) on Home/Skills/Admin; `03 Court` (real badminton-doubles proportions at 100:220 viewBox, aspect-locked via `aspect-ratio` + `background-size: contain`) on Sign-Ups only. Wired via `html[data-tab=...]` attribute from an `activeTab` `useEffect` in `app/page.tsx`.
+- **Canonical component alignment** — Status banners radius 12, padding 12×14, new `.status-banner-red`; pills 11px/600/0.04em/line-height 1 bare-class shape; glass-card radius 24→**16** (was violating corner-radii ladder) + saturate 140→**180%**; BottomNav inline-flex pill (not full-width stretch), 20px icons, FILL-axis active glyph, 9.5px labels.
 
-### Decisions
+### Perf
 
-- **Type system locked and adopted live (bundle v3 — three roles)**:
-  - **Space Grotesk** — display / headlines (self-hosted variable TTF, weight 300–700). Drives `.bpm-h1 / h2 / h3`, the HomeTab page header, splash title, and `<BpmWordmark />`. New negative letter-spacing tuned per size (-0.02em / -0.015em / -0.01em).
-  - **IBM Plex Sans** — body / UI (self-hosted variable TTF with width 85–100% × weight 100–700 + genuine italic variant). `var(--font-sans)` now leads with IBM Plex, so every `<body>` surface — HomeTab cards, PlayersTab list, AdminTab forms — picks it up automatically.
-  - **JetBrains Mono** — data moments (PINs, costs, timestamps, build SHA). Loaded from Google Fonts.
-  Self-hosted fonts live at `app/fonts/*.ttf` and load via `next/font/local` so first paint never blocks on the Google Fonts CDN and the app works on restricted networks. New `--font-display` CSS token added. `/design/fonts` reflects the three-role lock.
-- **"bpm." wordmark adopted** in the HomeTab page header and the splash: the chat-picked "C+D merge" — four tempo dots crescendoing into the period — rendered from the new `<BpmWordmark />` component. Tempo dots inherit `var(--accent)` so they auto-tint for light/dark themes.
+- GlassPhysics short-circuits on `(hover:none)` touch devices.
+- DatePicker scroll handler RAF-coalesced (one `getBoundingClientRect` per frame, not per scroll event).
+- Splash 5.4s CSS-keyframe failsafe + `<HydrationMark />` moved to **root layout** (was only on `/`, leaving non-index routes stuck on the splash).
+- `React.memo` on `CostCard`, `PrevPaymentReminder`, `WelcomeCard`, `ReleaseNotesTrigger`, `BpmWordmark`; `useCallback` for HomeTab handlers; `useMemo` for SkillsRadar chartData.
+- `prefers-reduced-transparency` kill-switch on aurora animation (iOS Low Power Mode).
 
-### Changed — icon webfont + render perf
+### A11y
 
-- **Material Icons → Material Symbols Rounded (subsetted)** (`app/layout.tsx`, `app/globals.css`). Payload drops from ~100 KB (full Material Icons) to ~15–20 KB (35-glyph subset via the `icon_names` query param). Call-site API unchanged — the `.material-icons` class stays as the 57-usage idiom but the class definition now points at Material Symbols Rounded with the rounded-weight-balanced axis settings (`'opsz' 24, 'wght' 400, 'FILL' 0, 'GRAD' 0`). Matches the design-spec rule "Rounded only — never mix weights."
-- **Memoization pass** on the HomeTab subtree: `CostCard`, `PrevPaymentReminder`, `WelcomeCard`, `ReleaseNotesTrigger`, and `BpmWordmark` wrapped with `React.memo`; `dismissOnboarding` and `openReleaseSheet` handlers converted to `useCallback` in `HomeTab` so the memoized children no longer re-render on every name-input keystroke. `SkillsRadar` chart data wrapped in `useMemo` so recharts' `<RadarChart>` bails on parent ticks that don't change scores.
+- All 38 form fields across `/design/components`, SkillsTab, and admin surfaces now have `id` + `name` + `autoComplete` (silences Chrome DevTools "no id/name" warning).
+- Touch targets bumped to **44×44 minimum** on DatePicker month chevrons, AdminDashboard logout, AdminDashboard person_remove.
+- Light-mode legibility audit — theme-adaptive `--sev-*-text` tokens; pill waitlist/admin/red now have light-mode overrides; `--pill-unpaid-text` alpha 35→72% for AA contrast. **Removed `docs/design-system/colors_and_type.css` import from the design layout** — it was shadowing `globals.css`'s `[data-theme="light"]` overrides via cascade source-order.
 
-### Tests
+### Infra
 
-- `__tests__/design-preview-route.test.ts` — flag registration, default-off, strict `"true"` match, six-entry subpage list, "Type system" label, `BottomNav` isolation.
+- `NEXT_PUBLIC_FLAG_DESIGN_PREVIEW` registered in `lib/flags.ts`.
+- Tests: 251 passing (added 5 for the preview-route flag + nav isolation).
