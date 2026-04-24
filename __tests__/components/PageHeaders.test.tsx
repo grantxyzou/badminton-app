@@ -30,24 +30,24 @@ describe('PageHeaders', () => {
     expect(heading.textContent).toBe('Sign-Up');
   });
 
-  it('SkillsTab (non-admin) renders "Learn" as an h1', () => {
+  it('SkillsTab (non-admin) renders "Your stats" as an h1', () => {
     render(
       <NextIntlClientProvider locale="en" messages={enMessages}>
         <SkillsTab isAdmin={false} />
       </NextIntlClientProvider>
     );
     const heading = screen.getByRole('heading', { level: 1 });
-    expect(heading.textContent).toBe('Learn');
+    expect(heading.textContent).toBe('Your stats');
   });
 
-  it('SkillsTab (admin) renders "Learn" as an h1', () => {
+  it('SkillsTab (admin) renders "Your stats" as an h1', () => {
     render(
       <NextIntlClientProvider locale="en" messages={enMessages}>
         <SkillsTab isAdmin={true} />
       </NextIntlClientProvider>
     );
     const heading = screen.getByRole('heading', { level: 1 });
-    expect(heading.textContent).toBe('Learn');
+    expect(heading.textContent).toBe('Your stats');
   });
 
   it('AdminTab renders "Admin" as an h1', () => {

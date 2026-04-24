@@ -1250,3 +1250,33 @@ html[data-hydrated="true"] .splash {
     transition: none;
   }
 }
+
+/* ── Announcement body (miniMarkdown output) ────────────────────────── */
+.announcement-body {
+  white-space: normal;
+}
+.announcement-body p {
+  margin: 0;
+}
+.announcement-body p + p,
+.announcement-body ul + p,
+.announcement-body ol + p,
+.announcement-body p + ul,
+.announcement-body p + ol {
+  margin-top: 0.5rem;
+}
+.announcement-body ul,
+.announcement-body ol {
+  padding-left: 1.25rem;
+  margin: 0;
+}
+.announcement-body li {
+  margin: 0.15rem 0;
+}
+.announcement-body strong {
+  color: var(--text-primary, #fff);
+  font-weight: 600;
+}
+.announcement-body em {
+  font-style: italic;
+}

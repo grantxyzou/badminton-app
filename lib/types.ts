@@ -104,4 +104,6 @@ export interface Release {
   };
   publishedAt: string;
   publishedBy: 'admin';
+  editedAt?: string;
+  env?: 'stable' | 'next' | 'dev';
 }

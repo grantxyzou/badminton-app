@@ -7,4 +7,5 @@ export const SUBPAGES: DesignSubpage[] = [
   { href: '/design/fonts',       label: 'Type system', blurb: 'Locked pairing — Space Grotesk + JetBrains Mono' },
   { href: '/design/backgrounds', label: 'Backgrounds', blurb: '6 background directions — solid → contrail' },
   { href: '/design/perf',        label: 'Perf audit',  blurb: 'Findings re-tiered for iPhone 15 / Pixel 8 floor' },
+  { href: '/design/stats',       label: 'Stats playground', blurb: 'Three narrative arcs — your season · the club pulse · anatomy of Thursday' },
 ];

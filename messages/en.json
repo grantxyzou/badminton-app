@@ -79,8 +79,29 @@
   "nav": {
     "home": "Home",
     "signups": "Sign-Ups",
-    "skills": "Coming Soon",
+    "skills": "Stats",
     "admin": "Admin"
+  },
+  "stats": {
+    "heading": "Your stats",
+    "subhead": "Soon — a quick read on how you're playing, paying, and showing up.",
+    "comingSoon": "Coming soon",
+    "progression": {
+      "title": "Skill progression",
+      "subtitle": "Your ACE scores over time."
+    },
+    "attendance": {
+      "title": "Attendance",
+      "subtitle": "Sessions played this month."
+    },
+    "cost": {
+      "title": "Cost trend",
+      "subtitle": "$/person across recent sessions."
+    },
+    "partners": {
+      "title": "Partner frequency",
+      "subtitle": "Who you play with most."
+    }
   },
   "players": {
     "loading": "Loading players...",

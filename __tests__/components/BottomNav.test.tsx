@@ -22,7 +22,7 @@ describe('BottomNav — i18n', () => {
     renderWithLocale('en');
     expect(screen.getByRole('button', { name: 'Home' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign-Ups' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Coming Soon' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Stats' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Admin' })).toBeTruthy();
   });
 
@@ -30,26 +30,28 @@ describe('BottomNav — i18n', () => {
     renderWithLocale('zh-CN');
     expect(screen.getByRole('button', { name: '首页' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '报名' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '即将推出' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '数据' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '管理' })).toBeTruthy();
   });
 
-  it('renders EN skills label as a single line — canonical spec (preview/19)', () => {
+  it('renders EN stats label as a single line', () => {
     renderWithLocale('en');
-    // Canonical spec dropped the whitespace-split "Coming Soon" stacking.
-    // Label is now a single <span> alongside the `school` icon.
-    const skillsBtn = screen.getByRole('button', { name: 'Coming Soon' });
-    // No `.block` children — the stacked rendering is removed.
+    const skillsBtn = screen.getByRole('button', { name: 'Stats' });
     expect(skillsBtn.querySelectorAll('span.block').length).toBe(0);
-    // The label text renders verbatim.
-    expect(skillsBtn.textContent).toContain('Coming Soon');
+    expect(skillsBtn.textContent).toContain('Stats');
   });
 
-  it('renders zh-CN skills label as a single line (verbatim, no whitespace split)', () => {
+  it('renders zh-CN stats label as a single line', () => {
     renderWithLocale('zh-CN');
-    const skillsBtn = screen.getByRole('button', { name: '即将推出' });
+    const skillsBtn = screen.getByRole('button', { name: '数据' });
     expect(skillsBtn.querySelectorAll('span.block').length).toBe(0);
-    expect(skillsBtn.textContent).toContain('即将推出');
+    expect(skillsBtn.textContent).toContain('数据');
+  });
+
+  it('uses bar_chart icon for stats tab', () => {
+    renderWithLocale('en');
+    const skillsBtn = screen.getByRole('button', { name: 'Stats' });
+    expect(skillsBtn.textContent).toContain('bar_chart');
   });
 
   it('hides admin tab when showAdmin is false', () => {
