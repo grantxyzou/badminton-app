@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Release } from '@/lib/types';
 
@@ -20,10 +20,38 @@ interface ReleaseFormProps {
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
+interface ChangelogUnreleased {
+  suggestedVersion: string;
+  generatedAt: string;
+  text: string;
+}
+
 export default function ReleaseForm({ latestVersion, onPublished, onCancel }: ReleaseFormProps) {
   const t = useTranslations('admin.releases');
   const [version, setVersion] = useState(() => nextPatchVersion(latestVersion));
   const [rawNotes, setRawNotes] = useState('');
+  // Tracks when the Unreleased section was baked at build time, so the admin
+  // can see at a glance whether the pre-filled bullets are current.
+  const [changelogMeta, setChangelogMeta] = useState<{ generatedAt: string } | null>(null);
+
+  // Pull the CHANGELOG Unreleased section baked by scripts/extract-unreleased.mjs
+  // and pre-fill the form. Admin can edit before running the AI draft.
+  const loadFromChangelog = useCallback(async () => {
+    try {
+      const res = await fetch(`${BASE}/changelog-unreleased.json`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = (await res.json()) as ChangelogUnreleased;
+      if (data.suggestedVersion) setVersion(data.suggestedVersion);
+      if (data.text) setRawNotes(data.text);
+      if (data.generatedAt) setChangelogMeta({ generatedAt: data.generatedAt });
+    } catch {
+      /* swallow — changelog is optional */
+    }
+  }, []);
+
+  useEffect(() => {
+    loadFromChangelog();
+  }, [loadFromChangelog]);
   const [titleEn, setTitleEn] = useState('');
   const [titleZh, setTitleZh] = useState('');
   const [bodyEn, setBodyEn] = useState('');
@@ -109,10 +137,14 @@ ${rawNotes}`;
     }
   }
 
+  const changelogFreshness = changelogMeta
+    ? new Date(changelogMeta.generatedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : null;
+
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-xs text-gray-400 mb-1">Version</label>
+        <label htmlFor="release-version" className="block text-xs text-gray-400 mb-1">Version</label>
         <input
           id="release-version"
           name="version"
@@ -124,15 +156,32 @@ ${rawNotes}`;
       </div>
 
       <div>
-        <label className="block text-xs text-gray-400 mb-1">Raw notes</label>
+        <div className="flex items-center justify-between mb-1">
+          <label htmlFor="release-raw-notes" className="block text-xs text-gray-400">Raw notes</label>
+          <button
+            type="button"
+            onClick={loadFromChangelog}
+            className="text-[11px]"
+            style={{ color: 'var(--accent)', background: 'transparent', border: 'none', padding: '2px 6px', cursor: 'pointer' }}
+            aria-label="Refresh from CHANGELOG.md Unreleased section"
+            title="Re-pull the Unreleased bullets from CHANGELOG.md"
+          >
+            ↻ from CHANGELOG
+          </button>
+        </div>
         <textarea
           id="release-raw-notes"
           name="rawNotes"
           value={rawNotes}
           onChange={(e) => setRawNotes(e.target.value)}
-          className="input w-full min-h-[100px]"
+          className="input w-full min-h-[120px]"
           placeholder="Paste commit messages, rough notes, bullet points..."
         />
+        {changelogFreshness && (
+          <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+            Pre-filled from CHANGELOG.md Unreleased (baked {changelogFreshness}). Edit freely — AI will polish on next step.
+          </p>
+        )}
       </div>
 
       <button
@@ -146,22 +195,22 @@ ${rawNotes}`;
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Title (EN)</label>
+          <label htmlFor="release-title-en" className="block text-xs text-gray-400 mb-1">Title (EN)</label>
           <input id="release-title-en" name="titleEn" type="text" value={titleEn} onChange={(e) => setTitleEn(e.target.value)} className="input w-full" />
         </div>
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Title (中文)</label>
+          <label htmlFor="release-title-zh" className="block text-xs text-gray-400 mb-1">Title (中文)</label>
           <input id="release-title-zh" name="titleZh" type="text" value={titleZh} onChange={(e) => setTitleZh(e.target.value)} className="input w-full" />
         </div>
       </div>
 
       <div>
-        <label className="block text-xs text-gray-400 mb-1">Body (EN)</label>
+        <label htmlFor="release-body-en" className="block text-xs text-gray-400 mb-1">Body (EN)</label>
         <textarea id="release-body-en" name="bodyEn" value={bodyEn} onChange={(e) => setBodyEn(e.target.value)} className="input w-full min-h-[100px]" />
       </div>
 
       <div>
-        <label className="block text-xs text-gray-400 mb-1">Body (中文)</label>
+        <label htmlFor="release-body-zh" className="block text-xs text-gray-400 mb-1">Body (中文)</label>
         <textarea id="release-body-zh" name="bodyZh" value={bodyZh} onChange={(e) => setBodyZh(e.target.value)} className="input w-full min-h-[100px]" />
       </div>
 
