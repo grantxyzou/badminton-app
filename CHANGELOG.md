@@ -48,7 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased — `bpm-next` only
 
-*Items here live on `main`. They ship to stable when the next tag is cut. Will promote as `bpm-stable-v1.1` — see PR #22 for the full commit.*
+*No unreleased items. Next work lands here on `main` and ships to stable when the next tag is cut.*
+
+---
+
+## v1.1 — Design system v3 + release automation (2026-04-24)
+
+Shipped as `bpm-stable-v1.1`. First promotion to bundle live-surface visual changes (type trio, icons, backgrounds) alongside infra (release automation, env-stamped releases).
 
 ### Added — release workflow automation
 
