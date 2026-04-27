@@ -12,7 +12,7 @@ import PrevPaymentReminder from '@/components/PrevPaymentReminder';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
 import WelcomeCard from './WelcomeCard';
-import PinInput from '@/components/PinInput';
+import SetPinSheet from '@/components/SetPinSheet';
 import { isFlagOn } from '@/lib/flags';
 import { renderMarkdown } from '@/lib/miniMarkdown';
 
@@ -36,9 +36,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [memberNames, setMemberNames] = useState<string[]>([]);
   const [hasIdentity, setHasIdentity] = useState(false);
-  const [signupPin, setSignupPin] = useState('');
-  const [pinOptIn, setPinOptIn] = useState(false);
   const recoveryFlag = isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY');
+  const [pinSheetOpen, setPinSheetOpen] = useState(false);
+  const [pinPromptCard, setPinPromptCard] = useState<{ playerId: string; deleteToken: string } | null>(null);
   const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
     if (typeof window === 'undefined') return true;
     return localStorage.getItem('badminton_onboarding_dismissed') === 'true';
@@ -175,11 +175,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
     setIsSubmitting(true);
     setError('');
     try {
-      const includePin = recoveryFlag && pinOptIn && signupPin.length === 4;
       const res = await fetch(`${BASE}/api/players`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), ...(includePin ? { pin: signupPin } : {}) }),
+        body: JSON.stringify({ name: name.trim() }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -193,7 +192,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session?.id ?? '' });
         setCurrentUser(name.trim());
         setHasIdentity(true);
-        if (includePin) localStorage.setItem('badminton_pin_set', 'true');
+        if (
+          recoveryFlag &&
+          data.id &&
+          data.deleteToken &&
+          localStorage.getItem('badminton_pin_set') !== 'true' &&
+          localStorage.getItem('badminton_pin_prompted') !== 'true'
+        ) {
+          setPinPromptCard({ playerId: data.id, deleteToken: data.deleteToken });
+        }
         await loadData();
       }
     } catch {
@@ -209,11 +216,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
     setIsSubmitting(true);
     setError('');
     try {
-      const includePin = recoveryFlag && pinOptIn && signupPin.length === 4;
       const res = await fetch(`${BASE}/api/players`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), waitlist: true, ...(includePin ? { pin: signupPin } : {}) }),
+        body: JSON.stringify({ name: name.trim(), waitlist: true }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -226,7 +232,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session?.id ?? '' });
         setCurrentUser(name.trim());
         setHasIdentity(true);
-        if (includePin) localStorage.setItem('badminton_pin_set', 'true');
+        if (
+          recoveryFlag &&
+          data.id &&
+          data.deleteToken &&
+          localStorage.getItem('badminton_pin_set') !== 'true' &&
+          localStorage.getItem('badminton_pin_prompted') !== 'true'
+        ) {
+          setPinPromptCard({ playerId: data.id, deleteToken: data.deleteToken });
+        }
         await loadData();
       }
     } catch {
@@ -380,6 +394,43 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
                 <p className="text-xs text-gray-400 mt-0.5">{tStates('signedUpBody')}</p>
               </div>
             </div>
+            {recoveryFlag && pinPromptCard && (
+              <div
+                className="glass-card"
+                style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="material-icons" style={{ fontSize: 18, color: 'var(--text-secondary)' }}>
+                    key
+                  </span>
+                  <p style={{ fontSize: 14, fontWeight: 600 }}>{t('signup.pinPrompt.cardTitle')}</p>
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  {t('signup.pinPrompt.cardBody')}
+                </p>
+                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => setPinSheetOpen(true)}
+                    className="btn-primary"
+                    style={{ flex: 1 }}
+                  >
+                    {t('signup.pinPrompt.cardCTA')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.setItem('badminton_pin_prompted', 'true');
+                      setPinPromptCard(null);
+                    }}
+                    className="btn-ghost"
+                    style={{ flex: 1 }}
+                  >
+                    {t('signup.pinPrompt.cardDismiss')}
+                  </button>
+                </div>
+              </div>
+            )}
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
               {t('signup.viewList')}
             </button>
@@ -403,6 +454,43 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
                 <p className="text-xs text-gray-400 mt-0.5">{tStates('waitlistPositionLabel', { position: waitlistPosition, total: waitlistPlayers.length })} · {t('signup.confirmed', { name: currentUser ?? '' })}</p>
               </div>
             </div>
+            {recoveryFlag && pinPromptCard && (
+              <div
+                className="glass-card"
+                style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="material-icons" style={{ fontSize: 18, color: 'var(--text-secondary)' }}>
+                    key
+                  </span>
+                  <p style={{ fontSize: 14, fontWeight: 600 }}>{t('signup.pinPrompt.cardTitle')}</p>
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  {t('signup.pinPrompt.cardBody')}
+                </p>
+                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => setPinSheetOpen(true)}
+                    className="btn-primary"
+                    style={{ flex: 1 }}
+                  >
+                    {t('signup.pinPrompt.cardCTA')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.setItem('badminton_pin_prompted', 'true');
+                      setPinPromptCard(null);
+                    }}
+                    className="btn-ghost"
+                    style={{ flex: 1 }}
+                  >
+                    {t('signup.pinPrompt.cardDismiss')}
+                  </button>
+                </div>
+              </div>
+            )}
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
               {t('signup.viewList')}
             </button>
@@ -460,21 +548,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
                   </ul>
                 )}
               </div>
-              {recoveryFlag && (
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-xs text-gray-300">
-                    <input
-                      type="checkbox"
-                      checked={pinOptIn}
-                      onChange={(e) => setPinOptIn(e.target.checked)}
-                    />
-                    {t('signup.setPinLabel')}
-                  </label>
-                  {pinOptIn && (
-                    <PinInput value={signupPin} onChange={setSignupPin} digits={4} label={t('signup.pinLabel')} />
-                  )}
-                </div>
-              )}
               {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
               <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
                 {isSubmitting ? t('signup.joining') : t('signup.waitlist')}
@@ -527,21 +600,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
                   </ul>
                 )}
               </div>
-              {recoveryFlag && (
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-xs text-gray-300">
-                    <input
-                      type="checkbox"
-                      checked={pinOptIn}
-                      onChange={(e) => setPinOptIn(e.target.checked)}
-                    />
-                    {t('signup.setPinLabel')}
-                  </label>
-                  {pinOptIn && (
-                    <PinInput value={signupPin} onChange={setSignupPin} digits={4} label={t('signup.pinLabel')} />
-                  )}
-                </div>
-              )}
               {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
               <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
                 {!isSubmitting && <span className="material-icons icon-sm" aria-hidden="true">how_to_reg</span>}
@@ -571,6 +629,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         releases={releases}
         onClose={() => setReleaseSheetOpen(false)}
       />
+      {pinPromptCard && (
+        <SetPinSheet
+          open={pinSheetOpen}
+          onClose={() => setPinSheetOpen(false)}
+          onSaved={() => setPinPromptCard(null)}
+          playerId={pinPromptCard.playerId}
+          deleteToken={pinPromptCard.deleteToken}
+        />
+      )}
     </div>
   );
 }

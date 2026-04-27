@@ -21,8 +21,19 @@
       "allSpotsTaken": "All {total} spots are taken.",
       "closesOn": "Sign up closes on {date}",
       "closedPreviously": "Sign-ups closed on {date}",
-      "setPinLabel": "Set a recovery PIN (optional)",
-      "pinLabel": "Recovery PIN"
+      "pinPrompt": {
+        "cardTitle": "Add a recovery PIN",
+        "cardBody": "Use this to manage your account and access your stats.",
+        "cardCTA": "Set PIN",
+        "cardDismiss": "Maybe later",
+        "sheetTitle": "Set a recovery PIN",
+        "sheetBody": "This 4-digit PIN lets you restore your access on a new device and unlocks per-player stats.",
+        "save": "Save PIN",
+        "skip": "Skip",
+        "savedToast": "PIN saved",
+        "errorInvalid": "PIN must be 4 digits",
+        "errorTooCommon": "Pick a less common PIN"
+      }
     },
     "states": {
       "finishedTitle": "Thanks for playing!",

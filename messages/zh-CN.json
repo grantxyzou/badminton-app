@@ -21,8 +21,19 @@
       "allSpotsTaken": "全部 {total} 个名额已满。",
       "closesOn": "报名截止于 {date}",
       "closedPreviously": "报名已于 {date} 截止",
-      "setPinLabel": "设置恢复 PIN（可选）",
-      "pinLabel": "恢复 PIN"
+      "pinPrompt": {
+        "cardTitle": "添加恢复 PIN",
+        "cardBody": "用于管理账号和查看个人数据。",
+        "cardCTA": "设置 PIN",
+        "cardDismiss": "稍后再说",
+        "sheetTitle": "设置恢复 PIN",
+        "sheetBody": "这个 4 位 PIN 可以在新设备上恢复访问，并解锁个人数据。",
+        "save": "保存 PIN",
+        "skip": "跳过",
+        "savedToast": "PIN 已保存",
+        "errorInvalid": "PIN 必须是 4 位数字",
+        "errorTooCommon": "请选择不那么常见的 PIN"
+      }
     },
     "states": {
       "finishedTitle": "感谢参与！",
