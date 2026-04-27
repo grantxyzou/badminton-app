@@ -6,6 +6,7 @@ import HomeTab from '@/components/HomeTab';
 import PlayersTab from '@/components/PlayersTab';
 import AdminTab from '@/components/AdminTab';
 import SkillsTab from '@/components/SkillsTab';
+import ProfileTab from '@/components/ProfileTab';
 import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
@@ -21,11 +22,31 @@ export default function Page() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [devMode, setDevMode] = useState(false);
   const [devOverrides, setDevOverrides] = useState<DevOverrides>({});
+  const [profileSession, setProfileSession] = useState<{ id: string; label: string }>({ id: '', label: '' });
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('dev')) {
-      setDevMode(true);
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('dev')) setDevMode(true);
+    const tabParam = params.get('tab');
+    if (tabParam === 'home' || tabParam === 'players' || tabParam === 'skills' || tabParam === 'admin' || tabParam === 'profile') {
+      setActiveTab(tabParam);
     }
+  }, []);
+
+  // Fetch enough session info for ProfileTab's session label + recovery sheet.
+  // ProfileTab is allowed to render with empty values (anonymous state).
+  useEffect(() => {
+    fetch(`${BASE}/api/session`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((s: { id?: string; datetime?: string }) => {
+        if (!s?.id) return;
+        const label = s.datetime
+          ? new Date(s.datetime).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+          : '';
+        setProfileSession({ id: s.id, label });
+      })
+      .catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -85,6 +106,16 @@ export default function Page() {
           {activeTab === 'players' && <div key="players" className="animate-fadeIn"><PlayersTab /></div>}
           {activeTab === 'skills' && <div key="skills" className="animate-fadeIn"><SkillsTab isAdmin={showAdmin} /></div>}
           {activeTab === 'admin' && showAdmin && <div key="admin" className="animate-fadeIn"><AdminTab /></div>}
+          {activeTab === 'profile' && (
+            <div key="profile" className="animate-fadeIn">
+              <ProfileTab
+                sessionId={profileSession.id}
+                sessionLabel={profileSession.label}
+                isAdmin={showAdmin}
+                onAdminTools={() => setActiveTab('admin')}
+              />
+            </div>
+          )}
         </div>
         {devMode && <DevPanel overrides={devOverrides} onChange={setDevOverrides} />}
         <BottomNav activeTab={activeTab} onTabChange={setActiveTab} showAdmin={showAdmin} />
