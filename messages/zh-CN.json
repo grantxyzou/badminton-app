@@ -122,5 +122,21 @@
       "draftWithAI": "用 AI 起草",
       "publish": "发布"
     }
+  },
+  "recovery": {
+    "sheetTitle": "恢复我的账号",
+    "pinPathTitle": "我有 PIN 码",
+    "pinPathHelp": "输入注册时设置的 4 位恢复 PIN 码。",
+    "codePathTitle": "向管理员索取验证码",
+    "codePathHelp": "告诉管理员你失去了访问权限，他们会给你一个 6 位验证码。",
+    "nameLabel": "你的名字",
+    "pinLabel": "恢复 PIN",
+    "codeLabel": "恢复验证码",
+    "submitPin": "用 PIN 码恢复",
+    "submitCode": "用验证码恢复",
+    "errorInvalid": "信息不匹配，请重试。",
+    "errorRateLimited": "尝试次数过多，请稍后再试。",
+    "welcomeBack": "欢迎回来，{name}",
+    "close": "关闭"
   }
 }

@@ -122,5 +122,21 @@
       "draftWithAI": "Draft with AI",
       "publish": "Publish"
     }
+  },
+  "recovery": {
+    "sheetTitle": "Restore my access",
+    "pinPathTitle": "I have my PIN",
+    "pinPathHelp": "Enter the 4-digit recovery PIN you set when signing up.",
+    "codePathTitle": "Ask admin for a code",
+    "codePathHelp": "Tell the admin you lost access. They'll give you a 6-digit code.",
+    "nameLabel": "Your name",
+    "pinLabel": "Recovery PIN",
+    "codeLabel": "Recovery code",
+    "submitPin": "Restore with PIN",
+    "submitCode": "Restore with code",
+    "errorInvalid": "That didn't match. Try again.",
+    "errorRateLimited": "Too many tries. Try again later.",
+    "welcomeBack": "Welcome back, {name}",
+    "close": "Close"
   }
 }
