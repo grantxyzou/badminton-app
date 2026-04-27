@@ -69,7 +69,7 @@ export default function SetPinSheet({ open, onClose, onSaved, playerId, deleteTo
   }
 
   return (
-    <BottomSheet open={open} onClose={handleClose} ariaLabel={t('sheetTitle')}>
+    <BottomSheet open={open} onClose={handleClose} ariaLabel={t('sheetTitle')} className="max-w-lg mx-auto">
       <BottomSheetHeader className="flex items-center justify-between p-4">
         <span style={{ fontSize: 16, fontWeight: 600 }}>{t('sheetTitle')}</span>
         <button

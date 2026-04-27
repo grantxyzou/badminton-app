@@ -31,7 +31,7 @@ export default function ResetAccessSheet({ open, onClose, playerName, code, expi
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={`Recovery code for ${playerName}`}>
+    <BottomSheet open={open} onClose={onClose} ariaLabel={`Recovery code for ${playerName}`} className="max-w-lg mx-auto">
       <BottomSheetHeader className="flex items-center justify-between p-4">
         <span style={{ fontSize: 16, fontWeight: 600 }}>Recovery code for {playerName}</span>
         <button

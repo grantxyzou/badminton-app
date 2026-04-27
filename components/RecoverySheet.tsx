@@ -56,7 +56,7 @@ export default function RecoverySheet({ open, onClose, sessionId }: Props) {
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('sheetTitle')}>
+    <BottomSheet open={open} onClose={onClose} ariaLabel={t('sheetTitle')} className="max-w-lg mx-auto">
       <BottomSheetHeader className="flex items-center justify-between p-4">
         <span style={{ fontSize: 16, fontWeight: 600 }}>{t('sheetTitle')}</span>
         <button
