@@ -2,8 +2,10 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { isFlagOn } from '@/lib/flags';
-import { getIdentity, type Identity } from '@/lib/identity';
+import { getIdentity, clearIdentity, type Identity } from '@/lib/identity';
+import type { Release } from '@/lib/types';
 import RecoverySheet from './RecoverySheet';
+import ReleaseNotesSheet from './ReleaseNotesSheet';
 import PinInput from './PinInput';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -27,6 +29,9 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
   const [confirmPin, setConfirmPin] = useState('');
   const [pinError, setPinError] = useState<'too_common' | 'invalid' | null>(null);
   const [pinSaved, setPinSaved] = useState(false);
+  const [releaseSheetOpen, setReleaseSheetOpen] = useState(false);
+  const [releases, setReleases] = useState<Release[]>([]);
+  const tSettings = useTranslations('profile.settings');
 
   useEffect(() => {
     const id = getIdentity();
@@ -35,7 +40,19 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
       const hint = localStorage.getItem('badminton_pin_set');
       setPinIsSet(hint === 'true');
     }
+    fetch(`${BASE}/api/releases`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: Release[]) => setReleases(Array.isArray(data) ? data : []))
+      .catch(() => setReleases([]));
   }, []);
+
+  function handleLogout() {
+    clearIdentity();
+    localStorage.removeItem('badminton_pin_set');
+    localStorage.removeItem('badminton_pin_prompted');
+    setLocalIdentity(null);
+    setPinIsSet(false);
+  }
 
   async function savePin(value: string | null) {
     if (!identity) return;
@@ -180,13 +197,98 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
         </div>
       )}
 
-      {isAdmin && (
-        <div className="glass-card p-5">
-          <button type="button" onClick={onAdminTools} className="btn-primary" style={{ width: '100%' }}>
-            {t('adminToolsButton')}
-          </button>
-        </div>
+      <SettingsList
+        title={tSettings('title')}
+        rows={[
+          ...(recoveryFlag
+            ? [{ icon: 'key', label: tSettings('forgotPin'), onClick: () => setRecoveryOpen(true) }]
+            : []),
+          { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
+          ...(isAdmin
+            ? [{ icon: 'admin_panel_settings', label: tSettings('adminAccess'), onClick: onAdminTools }]
+            : []),
+          { icon: 'logout', label: tSettings('logout'), onClick: handleLogout, destructive: true },
+        ]}
+      />
+
+      {recoveryFlag && (
+        <RecoverySheet
+          open={recoveryOpen}
+          onClose={() => setRecoveryOpen(false)}
+          sessionId={sessionId}
+        />
       )}
+
+      <ReleaseNotesSheet
+        open={releaseSheetOpen}
+        releases={releases}
+        onClose={() => setReleaseSheetOpen(false)}
+      />
+    </div>
+  );
+}
+
+interface SettingsRow {
+  icon: string;
+  label: string;
+  onClick: () => void;
+  destructive?: boolean;
+}
+
+function SettingsList({ title, rows }: { title: string; rows: SettingsRow[] }) {
+  return (
+    <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+      <p
+        style={{
+          padding: '14px 16px 8px',
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color: 'var(--text-secondary)',
+        }}
+      >
+        {title}
+      </p>
+      <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        {rows.map((row, idx) => (
+          <li key={row.label} style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--divider)' }}>
+            <button
+              type="button"
+              onClick={row.onClick}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '14px 16px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: row.destructive ? 'var(--color-amber, #f59e0b)' : 'var(--text-primary)',
+                fontSize: 15,
+                textAlign: 'left',
+              }}
+            >
+              <span
+                className="material-icons"
+                aria-hidden="true"
+                style={{ fontSize: 20, color: 'var(--text-secondary)' }}
+              >
+                {row.icon}
+              </span>
+              <span style={{ flex: 1 }}>{row.label}</span>
+              <span
+                className="material-icons"
+                aria-hidden="true"
+                style={{ fontSize: 18, color: 'var(--text-secondary)' }}
+              >
+                chevron_right
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

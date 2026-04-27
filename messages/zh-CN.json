@@ -112,7 +112,14 @@
     "pinTooCommon": "请选择不那么常见的 PIN",
     "pinInvalid": "PIN 必须是 4 位数字",
     "adminToolsTitle": "管理员工具",
-    "adminToolsButton": "管理员工具 →"
+    "adminToolsButton": "管理员工具 →",
+    "settings": {
+      "title": "账号",
+      "forgotPin": "忘记 PIN",
+      "releaseNotes": "更新日志",
+      "adminAccess": "管理员访问",
+      "logout": "退出登录"
+    }
   },
   "pin": {
     "newLabel": "新 PIN",

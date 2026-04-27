@@ -112,7 +112,14 @@
     "pinTooCommon": "Pick a less common PIN",
     "pinInvalid": "PIN must be 4 digits",
     "adminToolsTitle": "Admin tools",
-    "adminToolsButton": "Admin tools →"
+    "adminToolsButton": "Admin tools →",
+    "settings": {
+      "title": "Account",
+      "forgotPin": "Forgot PIN",
+      "releaseNotes": "What's new",
+      "adminAccess": "Admin access",
+      "logout": "Log out"
+    }
   },
   "pin": {
     "newLabel": "New PIN",
