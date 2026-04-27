@@ -80,7 +80,33 @@
     "home": "首页",
     "signups": "报名",
     "skills": "数据",
-    "admin": "管理"
+    "admin": "管理",
+    "profile": "档案"
+  },
+  "profile": {
+    "anonymousTitle": "设置你的档案",
+    "anonymousBody": "你还没注册。去「报名」页面加入一场。",
+    "anonymousRestoreLink": "已经是球员但失去了访问权限？",
+    "playerName": "名字",
+    "playerSession": "已报名场次",
+    "pinSectionTitle": "恢复 PIN 码",
+    "pinNotSet": "未设置",
+    "pinIsSet": "已设置",
+    "pinSetButton": "设置 PIN",
+    "pinChangeButton": "更改",
+    "pinRemoveButton": "移除",
+    "pinSaved": "已保存",
+    "pinTooCommon": "请选择不那么常见的 PIN",
+    "pinInvalid": "PIN 必须是 4 位数字",
+    "adminToolsTitle": "管理员工具",
+    "adminToolsButton": "管理员工具 →"
+  },
+  "pin": {
+    "newLabel": "新 PIN",
+    "confirmLabel": "确认 PIN",
+    "save": "保存",
+    "cancel": "取消",
+    "mismatch": "PIN 不匹配"
   },
   "stats": {
     "heading": "你的数据",

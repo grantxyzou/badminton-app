@@ -80,7 +80,33 @@
     "home": "Home",
     "signups": "Sign-Ups",
     "skills": "Stats",
-    "admin": "Admin"
+    "admin": "Admin",
+    "profile": "Profile"
+  },
+  "profile": {
+    "anonymousTitle": "Set up your profile",
+    "anonymousBody": "You're not signed up yet. Head to Sign-Ups to join a session.",
+    "anonymousRestoreLink": "Already a player but lost your access?",
+    "playerName": "Name",
+    "playerSession": "Signed up for",
+    "pinSectionTitle": "Recovery PIN",
+    "pinNotSet": "Not set",
+    "pinIsSet": "Set",
+    "pinSetButton": "Set PIN",
+    "pinChangeButton": "Change",
+    "pinRemoveButton": "Remove",
+    "pinSaved": "Saved",
+    "pinTooCommon": "Pick a less common PIN",
+    "pinInvalid": "PIN must be 4 digits",
+    "adminToolsTitle": "Admin tools",
+    "adminToolsButton": "Admin tools →"
+  },
+  "pin": {
+    "newLabel": "New PIN",
+    "confirmLabel": "Confirm PIN",
+    "save": "Save",
+    "cancel": "Cancel",
+    "mismatch": "PINs don't match"
   },
   "stats": {
     "heading": "Your stats",
