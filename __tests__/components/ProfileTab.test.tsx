@@ -29,7 +29,7 @@ describe('ProfileTab', () => {
   it('shows anonymous empty state when no identity', () => {
     renderWith();
     expect(screen.getByText(/Set up your profile/i)).toBeDefined();
-    expect(screen.getByText(/lost your access/i)).toBeDefined();
+    expect(screen.getByText(/Already a player\? Sign in/i)).toBeDefined();
   });
 
   it('shows player profile + PIN row when identity exists', () => {

@@ -74,28 +74,28 @@ export default function RecoverySheet({ open, onClose, sessionId }: Props) {
             {t('welcomeBack', { name: success })}
           </p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <input
+              type="text"
+              aria-label={t('nameLabel')}
+              placeholder={t('nameLabel')}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{
+                width: '100%',
+                padding: 12,
+                borderRadius: 10,
+                border: '1px solid var(--glass-border)',
+                background: 'var(--input-bg, rgba(255,255,255,0.05))',
+                color: 'var(--text-primary)',
+              }}
+            />
+
             <section>
-              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>{t('pinPathTitle')}</h3>
-              <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>{t('pinPathTitle')}</h3>
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
                 {t('pinPathHelp')}
               </p>
-              <input
-                type="text"
-                aria-label={t('nameLabel')}
-                placeholder={t('nameLabel')}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: 12,
-                  borderRadius: 10,
-                  marginBottom: 10,
-                  border: '1px solid var(--glass-border)',
-                  background: 'var(--input-bg, rgba(255,255,255,0.05))',
-                  color: 'var(--text-primary)',
-                }}
-              />
               <PinInput
                 value={pin}
                 onChange={setPin}
@@ -108,7 +108,7 @@ export default function RecoverySheet({ open, onClose, sessionId }: Props) {
                 disabled={submitting || !name.trim() || pin.length !== 4}
                 onClick={() => submit('pin')}
                 className="btn-primary"
-                style={{ marginTop: 12, width: '100%' }}
+                style={{ marginTop: 10, width: '100%' }}
               >
                 {t('submitPin')}
               </button>
@@ -117,8 +117,8 @@ export default function RecoverySheet({ open, onClose, sessionId }: Props) {
             <hr style={{ border: 'none', borderTop: '1px solid var(--glass-border)' }} />
 
             <section>
-              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>{t('codePathTitle')}</h3>
-              <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>{t('codePathTitle')}</h3>
+              <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
                 {t('codePathHelp')}
               </p>
               <PinInput
@@ -133,7 +133,7 @@ export default function RecoverySheet({ open, onClose, sessionId }: Props) {
                 disabled={submitting || !name.trim() || code.length !== 6}
                 onClick={() => submit('code')}
                 className="btn-primary"
-                style={{ marginTop: 12, width: '100%' }}
+                style={{ marginTop: 10, width: '100%' }}
               >
                 {t('submitCode')}
               </button>

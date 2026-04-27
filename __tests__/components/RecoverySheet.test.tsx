@@ -25,13 +25,13 @@ describe('RecoverySheet', () => {
 
   it('renders both PIN and code paths when open', () => {
     renderWith(true);
-    expect(screen.getByText(/I have my PIN/i)).toBeDefined();
-    expect(screen.getByText(/Ask admin for a code/i)).toBeDefined();
+    expect(screen.getByText(/Use my PIN/i)).toBeDefined();
+    expect(screen.getByText(/I forgot my PIN/i)).toBeDefined();
   });
 
   it('does not render when closed', () => {
     renderWith(false);
-    expect(screen.queryByText(/I have my PIN/i)).toBeNull();
+    expect(screen.queryByText(/Use my PIN/i)).toBeNull();
   });
 
   it('PIN path success writes identity to localStorage', async () => {
@@ -45,8 +45,8 @@ describe('RecoverySheet', () => {
     renderWith(true, onClose);
 
     fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Michael' } });
-    fireEvent.change(screen.getByLabelText('Recovery PIN'), { target: { value: '1234' } });
-    fireEvent.click(screen.getByRole('button', { name: /restore with pin/i }));
+    fireEvent.change(screen.getByLabelText('PIN'), { target: { value: '1234' } });
+    fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
 
     await waitFor(() => {
       const stored = localStorage.getItem('badminton_identity');
@@ -64,8 +64,8 @@ describe('RecoverySheet', () => {
     });
     renderWith(true);
     fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'X' } });
-    fireEvent.change(screen.getByLabelText('Recovery PIN'), { target: { value: '0000' } });
-    fireEvent.click(screen.getByRole('button', { name: /restore with pin/i }));
+    fireEvent.change(screen.getByLabelText('PIN'), { target: { value: '0000' } });
+    fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
     await waitFor(() => {
       expect(screen.getByText(/too many tries/i)).toBeDefined();
     });

@@ -165,7 +165,7 @@ export default function AttendanceCardLive() {
             Stats are personal
           </p>
           <p style={{ margin: 0, fontSize: 12, color: MUTED, lineHeight: 1.45 }}>
-            Sign up for a session to start tracking your attendance{recoveryFlag ? ', or restore access if you played here before.' : '.'}
+            Sign up for a session to start tracking your attendance{recoveryFlag ? ', or sign in if you played here before.' : '.'}
           </p>
           {recoveryFlag && (
             <button
@@ -174,7 +174,7 @@ export default function AttendanceCardLive() {
               className="btn-primary"
               style={{ alignSelf: 'flex-start', minHeight: 36, padding: '0 14px', fontSize: 13 }}
             >
-              Restore my access
+              Sign in
             </button>
           )}
         </div>
