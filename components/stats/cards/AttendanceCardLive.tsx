@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { getIdentity } from '@/lib/identity';
+import { isFlagOn } from '@/lib/flags';
+import RecoverySheet from '@/components/RecoverySheet';
 import AttendanceHeatmap from './AttendanceHeatmap';
 
 type Zoom = { label: string; weeks: number };
@@ -47,14 +49,28 @@ export default function AttendanceCardLive() {
   const [members, setMembers] = useState<string[]>([]);
   const [pickerValue, setPickerValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState('');
 
   const weeks = ZOOMS[zoomIdx].weeks;
+  const recoveryFlag = isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY');
 
   // Resolve active name once from localStorage.
   useEffect(() => {
     setActiveName(resolveActiveName());
     setResolved(true);
   }, []);
+
+  // Lazily fetch active session id only if we'll need to open RecoverySheet.
+  useEffect(() => {
+    if (!recoveryFlag || activeName) return;
+    fetch(`${BASE}/api/session`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s: { id?: string } | null) => {
+        if (s?.id) setActiveSessionId(s.id);
+      })
+      .catch(() => undefined);
+  }, [recoveryFlag, activeName]);
 
   // Load member names for autocomplete (public endpoint, no auth needed).
   useEffect(() => {
@@ -140,10 +156,32 @@ export default function AttendanceCardLive() {
     return <LoadingStrip weeks={weeks} />;
   }
 
-  // No active name — show picker.
+  // No active name — show empty-state CTA + the look-up picker.
   if (!activeName) {
     return (
-      <div style={{ display: 'grid', gap: 8, position: 'relative' }}>
+      <div style={{ display: 'grid', gap: 14, position: 'relative' }}>
+        <div style={{ display: 'grid', gap: 8 }}>
+          <p style={{ margin: 0, fontSize: 13, color: PRIMARY, fontWeight: 600 }}>
+            Stats are personal
+          </p>
+          <p style={{ margin: 0, fontSize: 12, color: MUTED, lineHeight: 1.45 }}>
+            Sign up for a session to start tracking your attendance{recoveryFlag ? ', or restore access if you played here before.' : '.'}
+          </p>
+          {recoveryFlag && (
+            <button
+              type="button"
+              onClick={() => setRecoveryOpen(true)}
+              className="btn-primary"
+              style={{ alignSelf: 'flex-start', minHeight: 36, padding: '0 14px', fontSize: 13 }}
+            >
+              Restore my access
+            </button>
+          )}
+        </div>
+        <div style={{ borderTop: '1px solid var(--inner-card-border)', paddingTop: 10, display: 'grid', gap: 8 }}>
+          <p style={{ margin: 0, fontSize: 11, color: MUTED, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Or look up another player
+          </p>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <label htmlFor="stats-name-picker" style={{ fontSize: 12, color: MUTED }}>
             View attendance for:
@@ -221,6 +259,14 @@ export default function AttendanceCardLive() {
         <p style={{ margin: 0, fontSize: 11, color: MUTED }}>
           Or sign up for a session — your name is saved automatically after that.
         </p>
+        </div>
+        {recoveryFlag && (
+          <RecoverySheet
+            open={recoveryOpen}
+            onClose={() => setRecoveryOpen(false)}
+            sessionId={activeSessionId}
+          />
+        )}
       </div>
     );
   }
