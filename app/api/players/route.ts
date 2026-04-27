@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const { pinHash: _ph, ...safeResource } = resource as Record<string, unknown>;
+      const { pinHash: _ph, ...safeResource } = resource as unknown as Record<string, unknown>;
       return NextResponse.json({ ...safeResource, deleteToken }, { status: 201 });
     }
 
@@ -186,7 +186,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Return the deleteToken once so the client can store it for self-cancellation
-    const { pinHash: _ph, ...safeResource } = resource as Record<string, unknown>;
+    const { pinHash: _ph, ...safeResource } = resource as unknown as Record<string, unknown>;
     return NextResponse.json({ ...safeResource, deleteToken }, { status: 201 });
   } catch (error) {
     console.error('POST players error:', error);
