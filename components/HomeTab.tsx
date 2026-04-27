@@ -12,6 +12,8 @@ import PrevPaymentReminder from '@/components/PrevPaymentReminder';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
 import WelcomeCard from './WelcomeCard';
+import PinInput from '@/components/PinInput';
+import { isFlagOn } from '@/lib/flags';
 import { renderMarkdown } from '@/lib/miniMarkdown';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -34,6 +36,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [memberNames, setMemberNames] = useState<string[]>([]);
   const [hasIdentity, setHasIdentity] = useState(false);
+  const [signupPin, setSignupPin] = useState('');
+  const [pinOptIn, setPinOptIn] = useState(false);
+  const recoveryFlag = isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY');
   const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
     if (typeof window === 'undefined') return true;
     return localStorage.getItem('badminton_onboarding_dismissed') === 'true';
@@ -170,10 +175,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
     setIsSubmitting(true);
     setError('');
     try {
+      const includePin = recoveryFlag && pinOptIn && signupPin.length === 4;
       const res = await fetch(`${BASE}/api/players`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name: name.trim(), ...(includePin ? { pin: signupPin } : {}) }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -187,6 +193,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session?.id ?? '' });
         setCurrentUser(name.trim());
         setHasIdentity(true);
+        if (includePin) localStorage.setItem('badminton_pin_set', 'true');
         await loadData();
       }
     } catch {
@@ -202,10 +209,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
     setIsSubmitting(true);
     setError('');
     try {
+      const includePin = recoveryFlag && pinOptIn && signupPin.length === 4;
       const res = await fetch(`${BASE}/api/players`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), waitlist: true }),
+        body: JSON.stringify({ name: name.trim(), waitlist: true, ...(includePin ? { pin: signupPin } : {}) }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -218,6 +226,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session?.id ?? '' });
         setCurrentUser(name.trim());
         setHasIdentity(true);
+        if (includePin) localStorage.setItem('badminton_pin_set', 'true');
         await loadData();
       }
     } catch {
@@ -451,6 +460,21 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
                   </ul>
                 )}
               </div>
+              {recoveryFlag && (
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-xs text-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={pinOptIn}
+                      onChange={(e) => setPinOptIn(e.target.checked)}
+                    />
+                    {t('signup.setPinLabel')}
+                  </label>
+                  {pinOptIn && (
+                    <PinInput value={signupPin} onChange={setSignupPin} digits={4} label={t('signup.pinLabel')} />
+                  )}
+                </div>
+              )}
               {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
               <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
                 {isSubmitting ? t('signup.joining') : t('signup.waitlist')}
@@ -503,6 +527,21 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
                   </ul>
                 )}
               </div>
+              {recoveryFlag && (
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-xs text-gray-300">
+                    <input
+                      type="checkbox"
+                      checked={pinOptIn}
+                      onChange={(e) => setPinOptIn(e.target.checked)}
+                    />
+                    {t('signup.setPinLabel')}
+                  </label>
+                  {pinOptIn && (
+                    <PinInput value={signupPin} onChange={setSignupPin} digits={4} label={t('signup.pinLabel')} />
+                  )}
+                </div>
+              )}
               {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
               <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
                 {!isSubmitting && <span className="material-icons icon-sm" aria-hidden="true">how_to_reg</span>}

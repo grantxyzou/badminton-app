@@ -20,7 +20,9 @@
       "spotsFull": "Signed-up: {count} · Full",
       "allSpotsTaken": "All {total} spots are taken.",
       "closesOn": "Sign up closes on {date}",
-      "closedPreviously": "Sign-ups closed on {date}"
+      "closedPreviously": "Sign-ups closed on {date}",
+      "setPinLabel": "Set a recovery PIN (optional)",
+      "pinLabel": "Recovery PIN"
     },
     "states": {
       "finishedTitle": "Thanks for playing!",

@@ -20,7 +20,9 @@
       "spotsFull": "已报名 {count} 人 · 满员",
       "allSpotsTaken": "全部 {total} 个名额已满。",
       "closesOn": "报名截止于 {date}",
-      "closedPreviously": "报名已于 {date} 截止"
+      "closedPreviously": "报名已于 {date} 截止",
+      "setPinLabel": "设置恢复 PIN（可选）",
+      "pinLabel": "恢复 PIN"
     },
     "states": {
       "finishedTitle": "感谢参与！",
