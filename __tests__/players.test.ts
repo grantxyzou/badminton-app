@@ -306,3 +306,67 @@ describe('PATCH /api/players — pin field', () => {
     }
   });
 });
+
+describe('POST /api/players — opt-in PIN at sign-up', () => {
+  const SESSION = 'session-2026-04-05';
+  const ORIGINAL_RECOVERY_FLAG = process.env.NEXT_PUBLIC_FLAG_RECOVERY;
+
+  beforeEach(() => {
+    resetMockStoreH();
+    setupAdminPin();
+    seedPointerH(SESSION);
+    seedSessionH(SESSION);
+    process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'true';
+  });
+
+  afterEach(() => {
+    if (ORIGINAL_RECOVERY_FLAG === undefined) {
+      delete process.env.NEXT_PUBLIC_FLAG_RECOVERY;
+    } else {
+      process.env.NEXT_PUBLIC_FLAG_RECOVERY = ORIGINAL_RECOVERY_FLAG;
+    }
+  });
+
+  function findPlayerByName(name: string) {
+    const players = (getStore()['players'] ?? []) as Array<Record<string, unknown>>;
+    return players.find((p) => (p.name as string)?.toLowerCase() === name.toLowerCase());
+  }
+
+  it('valid PIN at sign-up — 201, response strips pinHash, DB stores it, deleteToken returned', async () => {
+    const res = await POST(makeRequest('POST', 'http://localhost/api/players', { name: 'Alice', pin: '5839' }));
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.pinHash).toBeUndefined();
+    expect(typeof data.deleteToken).toBe('string');
+    expect((data.deleteToken as string).length).toBeGreaterThan(0);
+    const stored = findPlayerByName('Alice');
+    expect(typeof stored?.pinHash).toBe('string');
+    expect((stored?.pinHash as string).length).toBeGreaterThan(0);
+  });
+
+  it('blocklisted PIN at sign-up — 400 pin_too_common', async () => {
+    const res = await POST(makeRequest('POST', 'http://localhost/api/players', { name: 'Bob', pin: '0000' }));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe('pin_too_common');
+  });
+
+  it('sign-up with no pin field — 201, current behavior preserved', async () => {
+    const res = await POST(makeRequest('POST', 'http://localhost/api/players', { name: 'Carol' }));
+    expect(res.status).toBe(201);
+    const stored = findPlayerByName('Carol');
+    expect(stored?.pinHash).toBeUndefined();
+  });
+
+  it('PIN silently ignored when flag is OFF — 201 succeeds, no pinHash in DB', async () => {
+    process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'false';
+    try {
+      const res = await POST(makeRequest('POST', 'http://localhost/api/players', { name: 'Dan', pin: '5839' }));
+      expect(res.status).toBe(201);
+      const stored = findPlayerByName('Dan');
+      expect(stored?.pinHash).toBeUndefined();
+    } finally {
+      process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'true';
+    }
+  });
+});

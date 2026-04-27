@@ -53,6 +53,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Name too long (max 50 chars)' }, { status: 400 });
     }
 
+    // Optional PIN at sign-up — only honored when the recovery flag is on.
+    let pinHash: string | undefined;
+    if (body.pin !== undefined && body.pin !== null && isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY')) {
+      if (typeof body.pin !== 'string' || !/^[0-9]{4}$/.test(body.pin)) {
+        return NextResponse.json({ error: 'Invalid PIN format' }, { status: 400 });
+      }
+      if (BLOCKLISTED_PINS.has(body.pin)) {
+        return NextResponse.json({ error: 'pin_too_common' }, { status: 400 });
+      }
+      pinHash = await hashPin(body.pin);
+    }
+
     const sessionContainer = getContainer('sessions');
     const membersContainer = getContainer('members');
     const container = getContainer('players');
@@ -132,6 +144,7 @@ export async function POST(req: NextRequest) {
         cancelledBySelf: undefined,
         waitlisted: isFull && joinWaitlist ? true : false,
         ...(matchedMember ? { memberId: matchedMember.id } : {}),
+        ...(pinHash ? { pinHash } : {}),
       };
       const { resource } = await container.items.upsert(restored);
 
@@ -144,7 +157,8 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      return NextResponse.json({ ...resource, deleteToken }, { status: 201 });
+      const { pinHash: _ph, ...safeResource } = resource as Record<string, unknown>;
+      return NextResponse.json({ ...safeResource, deleteToken }, { status: 201 });
     }
 
     const player = {
@@ -157,6 +171,7 @@ export async function POST(req: NextRequest) {
       removed: false,
       waitlisted: isFull && joinWaitlist ? true : false,
       ...(matchedMember ? { memberId: matchedMember.id } : {}),
+      ...(pinHash ? { pinHash } : {}),
     };
 
     const { resource } = await container.items.create(player);
@@ -171,7 +186,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Return the deleteToken once so the client can store it for self-cancellation
-    return NextResponse.json({ ...resource, deleteToken }, { status: 201 });
+    const { pinHash: _ph, ...safeResource } = resource as Record<string, unknown>;
+    return NextResponse.json({ ...safeResource, deleteToken }, { status: 201 });
   } catch (error) {
     console.error('POST players error:', error);
     return NextResponse.json({ error: 'Failed to sign up' }, { status: 500 });
