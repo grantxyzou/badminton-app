@@ -42,16 +42,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
+  const ip = getClientIp(req);
+  // Rate-limit BEFORE auth (CLAUDE.md rule #4) and before looking up the player
+  // so non-existent names also bucket and an attacker can't enumerate names by timing.
+  if (!checkRateLimit(`recover:${name.toLowerCase()}:${ip}`, 5, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'rate_limited', retryAfter: 60 * 60 }, { status: 429 });
+  }
+
   // Admins must use /reset-access; never let /recover mint tokens for them.
   if (isAdminAuthed(req)) {
     return NextResponse.json({ error: 'Use reset-access' }, { status: 403 });
-  }
-
-  const ip = getClientIp(req);
-  // Rate-limit BEFORE looking up the player so non-existent names also bucket
-  // and an attacker can't enumerate names by timing.
-  if (!checkRateLimit(`recover:${name.toLowerCase()}:${ip}`, 5, 60 * 60 * 1000)) {
-    return NextResponse.json({ error: 'rate_limited', retryAfter: 60 * 60 }, { status: 429 });
   }
 
   const container = getContainer('players');
