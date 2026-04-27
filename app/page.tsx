@@ -14,7 +14,7 @@ import { getIdentity } from '@/lib/identity';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
-export type Tab = 'home' | 'players' | 'skills' | 'admin';
+export type Tab = 'home' | 'players' | 'skills' | 'admin' | 'profile';
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState<Tab>('home');
