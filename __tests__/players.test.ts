@@ -1,6 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { POST } from '@/app/api/players/route';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { POST, PATCH, GET } from '@/app/api/players/route';
 import { NextRequest } from 'next/server';
+import {
+  resetMockStore as resetMockStoreH,
+  setupAdminPin,
+  seedPointer as seedPointerH,
+  seedSession as seedSessionH,
+  seedPlayer,
+  makeRequest,
+  makeAdminRequest,
+  makeGetRequest,
+  getStore,
+} from './helpers';
 
 // ---- HELPERS ----
 // These build fake requests so we can call our route handler directly.
@@ -192,5 +203,106 @@ describe('POST /api/players', () => {
     // ASSERT: accepted
     expect(res.status).toBe(201);
     expect(data.name).toBe('Alice');
+  });
+});
+
+describe('PATCH /api/players — pin field', () => {
+  const SESSION = 'session-2026-04-05';
+  const ORIGINAL_RECOVERY_FLAG = process.env.NEXT_PUBLIC_FLAG_RECOVERY;
+
+  beforeEach(() => {
+    resetMockStoreH();
+    setupAdminPin();
+    seedPointerH(SESSION);
+    seedSessionH(SESSION);
+    process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'true';
+  });
+
+  afterEach(() => {
+    if (ORIGINAL_RECOVERY_FLAG === undefined) {
+      delete process.env.NEXT_PUBLIC_FLAG_RECOVERY;
+    } else {
+      process.env.NEXT_PUBLIC_FLAG_RECOVERY = ORIGINAL_RECOVERY_FLAG;
+    }
+  });
+
+  function findPlayerInStore(id: string) {
+    const players = (getStore()['players'] ?? []) as Array<Record<string, unknown>>;
+    return players.find((p) => p.id === id);
+  }
+
+  it('admin sets a PIN — response strips pinHash but DB stores it', async () => {
+    seedPlayer(SESSION, 'Grant', { id: 'p1', deleteToken: 'self-token' });
+    const res = await PATCH(makeAdminRequest('PATCH', 'http://localhost/api/players', { id: 'p1', pin: '5839' }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.pinHash).toBeUndefined();
+    expect(data.deleteToken).toBeUndefined();
+    const stored = findPlayerInStore('p1');
+    expect(typeof stored?.pinHash).toBe('string');
+    expect((stored?.pinHash as string).length).toBeGreaterThan(0);
+  });
+
+  it('player self-sets PIN with valid deleteToken', async () => {
+    seedPlayer(SESSION, 'Grant', { id: 'p1', deleteToken: 'self-token' });
+    const res = await PATCH(
+      makeRequest('PATCH', 'http://localhost/api/players', {
+        id: 'p1',
+        pin: '5839',
+        deleteToken: 'self-token',
+      })
+    );
+    expect(res.status).toBe(200);
+    const stored = findPlayerInStore('p1');
+    expect(typeof stored?.pinHash).toBe('string');
+  });
+
+  it('rejects non-admin without deleteToken (401)', async () => {
+    seedPlayer(SESSION, 'Grant', { id: 'p1', deleteToken: 'self-token' });
+    const res = await PATCH(
+      makeRequest('PATCH', 'http://localhost/api/players', { id: 'p1', pin: '5839' })
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects blocklisted PIN with pin_too_common', async () => {
+    seedPlayer(SESSION, 'Grant', { id: 'p1', deleteToken: 'self-token' });
+    const res = await PATCH(
+      makeAdminRequest('PATCH', 'http://localhost/api/players', { id: 'p1', pin: '0000' })
+    );
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe('pin_too_common');
+  });
+
+  it('rejects malformed PIN (5 digits) with 400', async () => {
+    seedPlayer(SESSION, 'Grant', { id: 'p1', deleteToken: 'self-token' });
+    const res = await PATCH(
+      makeAdminRequest('PATCH', 'http://localhost/api/players', { id: 'p1', pin: '12345' })
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('pin: null clears pinHash from DB', async () => {
+    seedPlayer(SESSION, 'Grant', { id: 'p1', deleteToken: 'self-token', pinHash: 'salt:hash' });
+    const res = await PATCH(
+      makeAdminRequest('PATCH', 'http://localhost/api/players', { id: 'p1', pin: null })
+    );
+    expect(res.status).toBe(200);
+    const stored = findPlayerInStore('p1');
+    expect(stored?.pinHash).toBeUndefined();
+  });
+
+  it('GET strips pinHash from every player', async () => {
+    seedPlayer(SESSION, 'Alice', { id: 'p1', pinHash: 'salt:hash-a' });
+    seedPlayer(SESSION, 'Bob', { id: 'p2', pinHash: 'salt:hash-b' });
+    const res = await GET(makeGetRequest('http://localhost/api/players'));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data)).toBe(true);
+    for (const p of data) {
+      expect(p.pinHash).toBeUndefined();
+      expect(p.deleteToken).toBeUndefined();
+    }
   });
 });
