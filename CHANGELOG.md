@@ -48,7 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased — `bpm-next` only
 
-*Items here live on `main`. They ship to stable when the next tag is cut. Will promote as `bpm-stable-v1.2` — see PR #25.*
+*Items here live on `main`. They ship to stable when the next tag is cut.*
+
+---
+
+## v1.2 — UX polish: Stats tab + markdown announcements + bird inventory (2026-04-26)
+
+Shipped as `bpm-stable-v1.2`. Bundles content-side polish (markdown announcements, editable release notes), the new Stats tab skeleton (Skills renamed and re-laid-out), and admin bird-inventory upgrades. Live attendance + design-stats preview are also in the cut but flag-gated and dark on stable.
 
 ### Added — announcements
 
@@ -89,6 +95,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - `NEXT_PUBLIC_FLAG_STATS_ATTENDANCE` registered in `lib/flags.ts` (first Arc 1 live card; retires two weeks after full Arc 1 promotion).
 - Material Symbols Rounded subset URL gains 17 new glyphs: `bar_chart`, `bolt`, `emoji_events`, `event`, `format_list_bulleted`, `format_list_numbered`, `groups`, `local_fire_department`, `paid`, `payments`, `radio_button_unchecked`, `receipt_long`, `star`, `subdirectory_arrow_left`, `trending_up`, `verified`, `visibility`. (~43 → ~60 glyphs; URL bundle still ~20 KB.)
 - i18n: new `stats.{heading,subhead,comingSoon,progression,attendance,cost,partners}.*` keys in both `en.json` and `zh-CN.json`; `nav.skills` value updated ("Coming Soon" → "Stats" / "即将推出" → "数据").
+
+### Fixed
+
+- **`stats.cost.subtitle` rendered with a stray `$`** in the compact "Coming soon" Cost card on the Stats tab. Rewrote the i18n string to drop the `$` glyph (the placeholder cost surface is purely illustrative and the literal currency symbol read as a typo). (#27)
 
 ### Tests
 
