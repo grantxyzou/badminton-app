@@ -41,7 +41,10 @@ jobs:
 
       - name: Package standalone build
         run: |
+          # Next.js standalone output excludes .next/static and public/ —
+          # both must be copied in manually before zipping.
           cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
           cd .next/standalone
           zip -r ../../standalone-deploy.zip .
 
