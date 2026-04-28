@@ -4,7 +4,7 @@
  * at build time, so changing a flag requires a redeploy (same as any
  * `NEXT_PUBLIC_*` var — see CLAUDE.md).
  *
- * Convention: `NEXT_PUBLIC_FLAG_<STAGE>_<FEATURE>` (e.g. `NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV`).
+ * Convention: `NEXT_PUBLIC_FLAG_<STAGE>_<FEATURE>` (e.g. `NEXT_PUBLIC_FLAG_RECOVERY`).
  *
  * Retirement rule: every flag entry below has a `plannedRemoval` date. Two
  * weeks after a stage promotes and is stable, delete the flag and its `off`
@@ -16,8 +16,6 @@
  */
 
 export type FlagName =
-  | 'NEXT_PUBLIC_FLAG_DEMO'
-  | 'NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV'
   | 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW'
   | 'NEXT_PUBLIC_FLAG_STATS_ATTENDANCE'
   | 'NEXT_PUBLIC_FLAG_RECOVERY';
@@ -29,16 +27,6 @@ interface FlagMeta {
 }
 
 export const FLAGS: Record<FlagName, FlagMeta> = {
-  NEXT_PUBLIC_FLAG_DEMO: {
-    description: 'End-to-end promotion test flag. Delete after first successful promotion.',
-    owner: 'grant',
-    plannedRemoval: '2026-05-01',
-  },
-  NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV: {
-    description: 'Stage 0a: new bottom nav (Home · Games · Stats · You). Admin moves to overflow.',
-    owner: 'grant',
-    plannedRemoval: 'two weeks after Stage 0a promotes',
-  },
   NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: {
     description: 'Exposes the /design preview route with the formalized BPM design-system specimen cards, logo candidates, font pairings, and background variants. Off on bpm-stable; on for bpm-next + dev.',
     owner: 'grant',
@@ -58,10 +46,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
 
 function readFlag(name: FlagName): string | undefined {
   switch (name) {
-    case 'NEXT_PUBLIC_FLAG_DEMO':
-      return process.env.NEXT_PUBLIC_FLAG_DEMO;
-    case 'NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV':
-      return process.env.NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV;
     case 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW':
       return process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
     case 'NEXT_PUBLIC_FLAG_STATS_ATTENDANCE':

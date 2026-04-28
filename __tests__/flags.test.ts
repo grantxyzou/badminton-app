@@ -5,8 +5,9 @@ const originalEnv = { ...process.env };
 
 describe('feature flags', () => {
   beforeEach(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_DEMO;
-    delete process.env.NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV;
+    delete process.env.NEXT_PUBLIC_FLAG_RECOVERY;
+    delete process.env.NEXT_PUBLIC_FLAG_STATS_ATTENDANCE;
+    delete process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
     delete process.env.NEXT_PUBLIC_ENV;
   });
 
@@ -15,41 +16,39 @@ describe('feature flags', () => {
   });
 
   it('returns false when flag is unset', () => {
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_DEMO')).toBe(false);
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY')).toBe(false);
   });
 
   it('returns false when flag is explicitly "false"', () => {
-    process.env.NEXT_PUBLIC_FLAG_DEMO = 'false';
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_DEMO')).toBe(false);
+    process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'false';
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY')).toBe(false);
   });
 
   it('returns true only when flag is exactly "true"', () => {
-    process.env.NEXT_PUBLIC_FLAG_DEMO = 'true';
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_DEMO')).toBe(true);
+    process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'true';
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY')).toBe(true);
   });
 
   it('treats non-"true" truthy-looking values as off (prevents accidental enablement)', () => {
-    process.env.NEXT_PUBLIC_FLAG_DEMO = '1';
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_DEMO')).toBe(false);
-    process.env.NEXT_PUBLIC_FLAG_DEMO = 'yes';
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_DEMO')).toBe(false);
-    process.env.NEXT_PUBLIC_FLAG_DEMO = 'TRUE';
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_DEMO')).toBe(false);
+    process.env.NEXT_PUBLIC_FLAG_RECOVERY = '1';
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY')).toBe(false);
+    process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'yes';
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY')).toBe(false);
+    process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'TRUE';
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY')).toBe(false);
   });
 
   it('each flag is read independently', () => {
-    process.env.NEXT_PUBLIC_FLAG_DEMO = 'true';
-    process.env.NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV = 'false';
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_DEMO')).toBe(true);
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV')).toBe(false);
+    process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'true';
+    process.env.NEXT_PUBLIC_FLAG_STATS_ATTENDANCE = 'false';
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY')).toBe(true);
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_STATS_ATTENDANCE')).toBe(false);
   });
 
-  it('recognizes NEXT_PUBLIC_FLAG_STATS_ATTENDANCE', () => {
-    delete process.env.NEXT_PUBLIC_FLAG_STATS_ATTENDANCE;
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_STATS_ATTENDANCE')).toBe(false);
-    process.env.NEXT_PUBLIC_FLAG_STATS_ATTENDANCE = 'true';
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_STATS_ATTENDANCE')).toBe(true);
-    delete process.env.NEXT_PUBLIC_FLAG_STATS_ATTENDANCE;
+  it('recognizes NEXT_PUBLIC_FLAG_DESIGN_PREVIEW', () => {
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_DESIGN_PREVIEW')).toBe(false);
+    process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW = 'true';
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_DESIGN_PREVIEW')).toBe(true);
   });
 });
 
