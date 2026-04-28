@@ -180,6 +180,8 @@
     "codeLabel": "Recovery code",
     "submitPin": "Sign in",
     "submitCode": "Sign in with code",
+    "forgotPinLink": "Forgot your PIN?",
+    "haveCodeLink": "Have a recovery code from admin?",
     "errorInvalid": "That didn't match. Try again.",
     "errorRateLimited": "Too many tries. Try again later.",
     "welcomeBack": "Welcome back, {name}",

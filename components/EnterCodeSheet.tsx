@@ -11,17 +11,12 @@ interface Props {
   open: boolean;
   onClose: () => void;
   sessionId: string;
-  /** When provided, a small "Forgot your PIN?" text link is rendered below the
-   *  Sign in button. Click closes the sheet and invokes this callback so the
-   *  caller can hand off to a code-redemption surface (e.g. open EnterCodeSheet
-   *  or navigate to Profile). */
-  onForgotPin?: () => void;
 }
 
-export default function RecoverySheet({ open, onClose, sessionId, onForgotPin }: Props) {
+export default function EnterCodeSheet({ open, onClose, sessionId }: Props) {
   const t = useTranslations('recovery');
   const [name, setName] = useState('');
-  const [pin, setPin] = useState('');
+  const [code, setCode] = useState('');
   const [error, setError] = useState<'invalid' | 'rate_limited' | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
@@ -33,7 +28,7 @@ export default function RecoverySheet({ open, onClose, sessionId, onForgotPin }:
       const res = await fetch(`${BASE}/api/players/recover`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), sessionId, pin }),
+        body: JSON.stringify({ name: name.trim(), sessionId, code }),
       });
       if (res.status === 429) { setError('rate_limited'); return; }
       if (!res.ok) { setError('invalid'); return; }
@@ -46,15 +41,10 @@ export default function RecoverySheet({ open, onClose, sessionId, onForgotPin }:
     }
   }
 
-  function handleForgotPin() {
-    onClose();
-    onForgotPin?.();
-  }
-
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('sheetTitle')} className="max-w-lg mx-auto">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={t('codePathTitle')} className="max-w-lg mx-auto">
       <BottomSheetHeader className="flex items-center justify-between p-4">
-        <span style={{ fontSize: 16, fontWeight: 600 }}>{t('sheetTitle')}</span>
+        <span style={{ fontSize: 16, fontWeight: 600 }}>{t('codePathTitle')}</span>
         <button
           type="button"
           onClick={onClose}
@@ -71,6 +61,9 @@ export default function RecoverySheet({ open, onClose, sessionId, onForgotPin }:
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+              {t('codePathHelp')}
+            </p>
             <input
               type="text"
               aria-label={t('nameLabel')}
@@ -88,39 +81,21 @@ export default function RecoverySheet({ open, onClose, sessionId, onForgotPin }:
               }}
             />
             <PinInput
-              value={pin}
-              onChange={setPin}
-              digits={4}
-              label={t('pinLabel')}
+              value={code}
+              onChange={setCode}
+              digits={6}
+              label={t('codeLabel')}
               ariaInvalid={error === 'invalid'}
             />
             <button
               type="button"
-              disabled={submitting || !name.trim() || pin.length !== 4}
+              disabled={submitting || !name.trim() || code.length !== 6}
               onClick={submit}
               className="btn-primary"
               style={{ marginTop: 4, width: '100%' }}
             >
-              {t('submitPin')}
+              {t('submitCode')}
             </button>
-            {onForgotPin && (
-              <button
-                type="button"
-                onClick={handleForgotPin}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-secondary)',
-                  fontSize: 12,
-                  textDecoration: 'underline',
-                  cursor: 'pointer',
-                  alignSelf: 'center',
-                  padding: 4,
-                }}
-              >
-                {t('forgotPinLink')}
-              </button>
-            )}
             {error === 'invalid' && (
               <p role="alert" style={{ color: 'var(--color-red, #ef4444)', fontSize: 12 }}>
                 {t('errorInvalid')}

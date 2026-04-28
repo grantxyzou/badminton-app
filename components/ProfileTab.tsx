@@ -5,6 +5,7 @@ import { isFlagOn } from '@/lib/flags';
 import { getIdentity, clearIdentity, type Identity } from '@/lib/identity';
 import type { Release } from '@/lib/types';
 import RecoverySheet from './RecoverySheet';
+import EnterCodeSheet from './EnterCodeSheet';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
 import PinInput from './PinInput';
 
@@ -24,6 +25,8 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
   const [identity, setLocalIdentity] = useState<Identity | null>(null);
   const [pinIsSet, setPinIsSet] = useState(false);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [enterCodeOpen, setEnterCodeOpen] = useState(false);
+  const tRecovery = useTranslations('recovery');
   const [editingPin, setEditingPin] = useState(false);
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
@@ -93,12 +96,37 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
         <p style={{ color: 'var(--text-secondary)' }}>{t('anonymousBody')}</p>
         {recoveryFlag && (
           <>
-            <p>
-              <button type="button" onClick={() => setRecoveryOpen(true)} className="btn-ghost">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+              <button type="button" onClick={() => setRecoveryOpen(true)} className="btn-primary">
                 {t('anonymousRestoreLink')}
               </button>
-            </p>
-            <RecoverySheet open={recoveryOpen} onClose={() => setRecoveryOpen(false)} sessionId={sessionId} />
+              <button
+                type="button"
+                onClick={() => setEnterCodeOpen(true)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-secondary)',
+                  fontSize: 12,
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                  padding: 4,
+                }}
+              >
+                {tRecovery('haveCodeLink')}
+              </button>
+            </div>
+            <RecoverySheet
+              open={recoveryOpen}
+              onClose={() => setRecoveryOpen(false)}
+              sessionId={sessionId}
+              onForgotPin={() => setEnterCodeOpen(true)}
+            />
+            <EnterCodeSheet
+              open={enterCodeOpen}
+              onClose={() => setEnterCodeOpen(false)}
+              sessionId={sessionId}
+            />
           </>
         )}
         {isAdmin && (
@@ -212,11 +240,19 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
       />
 
       {recoveryFlag && (
-        <RecoverySheet
-          open={recoveryOpen}
-          onClose={() => setRecoveryOpen(false)}
-          sessionId={sessionId}
-        />
+        <>
+          <RecoverySheet
+            open={recoveryOpen}
+            onClose={() => setRecoveryOpen(false)}
+            sessionId={sessionId}
+            onForgotPin={() => setEnterCodeOpen(true)}
+          />
+          <EnterCodeSheet
+            open={enterCodeOpen}
+            onClose={() => setEnterCodeOpen(false)}
+            sessionId={sessionId}
+          />
+        </>
       )}
 
       <ReleaseNotesSheet

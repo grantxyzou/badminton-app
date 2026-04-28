@@ -23,15 +23,16 @@ describe('RecoverySheet', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders both PIN and code paths when open', () => {
+  it('renders the PIN sign-in form when open', () => {
     renderWith(true);
-    expect(screen.getByText(/Use my PIN/i)).toBeDefined();
-    expect(screen.getByText(/I forgot my PIN/i)).toBeDefined();
+    expect(screen.getByLabelText('Your name')).toBeDefined();
+    expect(screen.getByLabelText('PIN')).toBeDefined();
+    expect(screen.getByRole('button', { name: /^sign in$/i })).toBeDefined();
   });
 
   it('does not render when closed', () => {
     renderWith(false);
-    expect(screen.queryByText(/Use my PIN/i)).toBeNull();
+    expect(screen.queryByLabelText('PIN')).toBeNull();
   });
 
   it('PIN path success writes identity to localStorage', async () => {

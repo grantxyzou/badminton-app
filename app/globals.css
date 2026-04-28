@@ -1214,13 +1214,18 @@ html[data-hydrated="true"] .splash {
 
 /* ── BottomSheet primitive ── */
 .bottom-sheet-backdrop {
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.72);
   opacity: 0;
   transition: opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
 }
 .bottom-sheet-backdrop[data-state="open"] {
   opacity: 1;
+}
+/* Solid sheet surface so page content doesn't bleed through. */
+.bottom-sheet {
+  background: var(--page-bg);
+  border-top: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
 }
 .bottom-sheet-backdrop[data-state="closing"] {
   opacity: 0;

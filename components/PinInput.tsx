@@ -21,7 +21,7 @@ export default function PinInput({
       <input
         id={id}
         name={`pin-${digits}`}
-        type="text"
+        type="password"
         inputMode="numeric"
         autoComplete="one-time-code"
         pattern={`[0-9]{${digits}}`}
