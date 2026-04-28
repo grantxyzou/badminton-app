@@ -166,7 +166,8 @@
     "releases": {
       "newButton": "新发布",
       "draftWithAI": "用 AI 起草",
-      "publish": "发布"
+      "publish": "发布",
+      "howItWorks": "粘贴原始笔记（或从 CHANGELOG 刷新），用 AI 起草双语文案，按需编辑后发布——所有玩家可在首页看到。"
     },
     "resetAccess": {
       "title": "{name} 的恢复验证码",

@@ -148,6 +148,11 @@ ${rawNotes}`;
 
   return (
     <div className="space-y-4">
+      {!isEdit && (
+        <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+          {t('howItWorks')}
+        </p>
+      )}
       <div>
         <label htmlFor="release-version" className="block text-xs text-gray-400 mb-1">Version</label>
         <input
@@ -196,7 +201,7 @@ ${rawNotes}`;
           type="button"
           onClick={draftWithAI}
           disabled={drafting}
-          className="btn-secondary w-full"
+          className="btn-ghost w-full"
         >
           {drafting ? 'Drafting…' : t('draftWithAI')}
         </button>
