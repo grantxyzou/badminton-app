@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { Tab } from '@/app/page';
+import { isFlagOn } from '@/lib/flags';
 
 interface Props {
   activeTab: Tab;
@@ -23,13 +24,26 @@ type NavItem = { id: Tab; label: string; icon: string };
  */
 export default function BottomNav({ activeTab, onTabChange, showAdmin }: Props) {
   const t = useTranslations('nav');
-  const tabs: NavItem[] = [
-    { id: 'home',    label: t('home'),    icon: 'home' },
-    { id: 'players', label: t('signups'), icon: 'group' },
-    { id: 'skills',  label: t('skills'),  icon: 'bar_chart' },
-    { id: 'admin',   label: t('admin'),   icon: 'admin_panel_settings' },
-  ];
-  const visibleTabs = tabs.filter((tab) => tab.id !== 'admin' || showAdmin);
+  const recoveryFlag = isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY');
+  // When the recovery flag is on, Profile takes the 4th slot in the bar and
+  // Admin becomes reachable via Profile → "Admin tools →" or `?tab=admin`
+  // deep links. When off, original behavior (Admin in bar gated on showAdmin).
+  const tabs: NavItem[] = recoveryFlag
+    ? [
+        { id: 'home',    label: t('home'),    icon: 'home' },
+        { id: 'players', label: t('signups'), icon: 'group' },
+        { id: 'skills',  label: t('skills'),  icon: 'bar_chart' },
+        { id: 'profile', label: t('profile'), icon: 'person' },
+      ]
+    : [
+        { id: 'home',    label: t('home'),    icon: 'home' },
+        { id: 'players', label: t('signups'), icon: 'group' },
+        { id: 'skills',  label: t('skills'),  icon: 'bar_chart' },
+        { id: 'admin',   label: t('admin'),   icon: 'admin_panel_settings' },
+      ];
+  const visibleTabs = recoveryFlag
+    ? tabs
+    : tabs.filter((tab) => tab.id !== 'admin' || showAdmin);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 nav-safe-area" aria-label="Primary navigation">

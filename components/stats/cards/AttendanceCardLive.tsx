@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { getIdentity } from '@/lib/identity';
+import { isFlagOn } from '@/lib/flags';
+import RecoverySheet from '@/components/RecoverySheet';
 import AttendanceHeatmap from './AttendanceHeatmap';
 
 type Zoom = { label: string; weeks: number };
@@ -38,7 +40,11 @@ function resolveActiveName(): string | null {
   return null;
 }
 
-export default function AttendanceCardLive() {
+interface AttendanceCardLiveProps {
+  onSignUp?: () => void;
+}
+
+export default function AttendanceCardLive({ onSignUp }: AttendanceCardLiveProps = {}) {
   const [activeName, setActiveName] = useState<string | null>(null);
   const [resolved, setResolved] = useState(false);
   const [zoomIdx, setZoomIdx] = useState(0); // default 3M
@@ -47,14 +53,28 @@ export default function AttendanceCardLive() {
   const [members, setMembers] = useState<string[]>([]);
   const [pickerValue, setPickerValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState('');
 
   const weeks = ZOOMS[zoomIdx].weeks;
+  const recoveryFlag = isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY');
 
   // Resolve active name once from localStorage.
   useEffect(() => {
     setActiveName(resolveActiveName());
     setResolved(true);
   }, []);
+
+  // Lazily fetch active session id only if we'll need to open RecoverySheet.
+  useEffect(() => {
+    if (!recoveryFlag || activeName) return;
+    fetch(`${BASE}/api/session`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s: { id?: string } | null) => {
+        if (s?.id) setActiveSessionId(s.id);
+      })
+      .catch(() => undefined);
+  }, [recoveryFlag, activeName]);
 
   // Load member names for autocomplete (public endpoint, no auth needed).
   useEffect(() => {
@@ -140,87 +160,45 @@ export default function AttendanceCardLive() {
     return <LoadingStrip weeks={weeks} />;
   }
 
-  // No active name — show picker.
+  // No active name — your stats only. No look-up affordance for other players.
   if (!activeName) {
     return (
-      <div style={{ display: 'grid', gap: 8, position: 'relative' }}>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <label htmlFor="stats-name-picker" style={{ fontSize: 12, color: MUTED }}>
-            View attendance for:
-          </label>
-          <div style={{ position: 'relative', flex: 1, minWidth: 140 }}>
-            <input
-              id="stats-name-picker"
-              name="statsName"
-              type="text"
-              autoComplete="off"
-              placeholder="Type a player name…"
-              value={pickerValue}
-              onChange={(e) => { setPickerValue(e.target.value); setShowSuggestions(true); }}
-              onFocus={() => setShowSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 120)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); confirmName(pickerValue); }
-              }}
-              style={{ width: '100%', minHeight: 40, padding: '0 10px' }}
-            />
-            {showSuggestions && suggestions.length > 0 && (
-              <ul
-                role="listbox"
-                style={{
-                  listStyle: 'none',
-                  margin: 0,
-                  padding: 4,
-                  position: 'absolute',
-                  top: 'calc(100% + 4px)',
-                  left: 0,
-                  right: 0,
-                  maxHeight: 180,
-                  overflowY: 'auto',
-                  background: 'var(--bg-elevated, #1a1a1a)',
-                  border: '1px solid var(--inner-card-border)',
-                  borderRadius: 10,
-                  zIndex: 5,
-                }}
-              >
-                {suggestions.map((s) => (
-                  <li key={s}>
-                    <button
-                      type="button"
-                      onMouseDown={() => confirmName(s)}
-                      style={{
-                        width: '100%',
-                        textAlign: 'left',
-                        padding: '8px 10px',
-                        minHeight: 40,
-                        background: 'transparent',
-                        border: 'none',
-                        color: PRIMARY,
-                        fontSize: 13,
-                        cursor: 'pointer',
-                        borderRadius: 6,
-                      }}
-                    >
-                      {s}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => confirmName(pickerValue)}
-            disabled={!pickerValue.trim()}
-            className="btn-primary"
-            style={{ minHeight: 40, padding: '0 14px' }}
-          >
-            View
-          </button>
-        </div>
-        <p style={{ margin: 0, fontSize: 11, color: MUTED }}>
-          Or sign up for a session — your name is saved automatically after that.
+      <div style={{ display: 'grid', gap: 10 }}>
+        <p style={{ margin: 0, fontSize: 13, color: PRIMARY, fontWeight: 600 }}>
+          Your stats
         </p>
+        <p style={{ margin: 0, fontSize: 12, color: MUTED, lineHeight: 1.45 }}>
+          Sign up for a session to start tracking your attendance{recoveryFlag ? ', or sign in if you played here before.' : '.'}
+        </p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {onSignUp && (
+            <button
+              type="button"
+              onClick={onSignUp}
+              className="btn-primary"
+              style={{ minHeight: 36, padding: '0 14px', fontSize: 13 }}
+            >
+              Sign up
+            </button>
+          )}
+          {recoveryFlag && (
+            <button
+              type="button"
+              onClick={() => setRecoveryOpen(true)}
+              className="btn-ghost"
+              style={{ minHeight: 36, padding: '0 14px', fontSize: 13 }}
+            >
+              Sign in
+            </button>
+          )}
+        </div>
+        {recoveryFlag && (
+          <RecoverySheet
+            open={recoveryOpen}
+            onClose={() => setRecoveryOpen(false)}
+            sessionId={activeSessionId}
+          />
+        )}
       </div>
     );
   }

@@ -46,7 +46,10 @@ function CompactComingSoonCard({ icon, title, subtitle, comingSoon }: CompactCar
           {comingSoon}
         </span>
       </div>
-      <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', margin: 0, lineHeight: 1.25 }}>
+      <h3
+        className="text-xs font-semibold m-0"
+        style={{ color: 'var(--text-primary)', lineHeight: 1.25 }}
+      >
         {title}
       </h3>
       <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, lineHeight: 1.35 }}>{subtitle}</p>
@@ -74,7 +77,10 @@ function LiveCard({ icon, title, subtitle, children }: LiveCardProps) {
             {icon}
           </span>
           <div>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', margin: 0, lineHeight: 1.2 }}>
+            <h3
+              className="text-base font-semibold m-0"
+              style={{ color: 'var(--text-primary)', lineHeight: 1.2 }}
+            >
               {title}
             </h3>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, marginTop: 2 }}>{subtitle}</p>
