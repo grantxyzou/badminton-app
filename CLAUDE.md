@@ -130,7 +130,7 @@ Canonical bundle mirrored at `docs/design-system/` (43 files — tokens, 28 spec
 
 The repo runs two Azure deployments from a single `main` branch: **`bpm-stable`** (friend-facing, updates only when a git tag is promoted) and **`bpm-next`** (auto-deploys every push to `main`). Stage-by-stage rollout is gated by feature flags so `main` can ship unfinished work to `next` without touching stable.
 
-- **Flag convention**: `NEXT_PUBLIC_FLAG_<STAGE>_<FEATURE>` (e.g., `NEXT_PUBLIC_FLAG_DESIGN_PREVIEW`, `NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV`). Must be registered in `lib/flags.ts` `FLAGS` registry — the typed `FlagName` union prevents typo'd lookups.
+- **Flag convention**: `NEXT_PUBLIC_FLAG_<STAGE>_<FEATURE>` (e.g., `NEXT_PUBLIC_FLAG_DESIGN_PREVIEW`, `NEXT_PUBLIC_FLAG_RECOVERY`). Must be registered in `lib/flags.ts` `FLAGS` registry — the typed `FlagName` union prevents typo'd lookups.
 - **Reading flags**: always `isFlagOn('NEXT_PUBLIC_FLAG_X')` from `lib/flags.ts`. Never `process.env.NEXT_PUBLIC_FLAG_X` directly — Next.js only inlines literal accesses, and the helper's switch statement guarantees each flag is inlined.
 - **Canonical value**: only the literal string `'true'` means on. `'1'`, `'yes'`, `'TRUE'` all read as off. Prevents accidental enablement from typo'd Azure App Settings.
 - **Server vs client**: for flags that gate API response shape or DB writes, read the flag on the server only. Client flags can't protect the database — a user with devtools can flip bundle flags but cannot flip server env vars.

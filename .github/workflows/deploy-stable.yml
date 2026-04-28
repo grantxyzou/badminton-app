@@ -40,7 +40,6 @@ jobs:
           NEXT_PUBLIC_ETRANSFER_EMAIL: grantxyzou@gmail.com
           NEXT_PUBLIC_ENV: stable
           NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
-          NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV: 'false'
           NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: 'false'
           NEXT_PUBLIC_FLAG_STATS_ATTENDANCE: 'false'
           NEXT_PUBLIC_FLAG_RECOVERY: 'false'
