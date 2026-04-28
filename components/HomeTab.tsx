@@ -395,25 +395,21 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
               </div>
             </div>
             {recoveryFlag && pinPromptCard && (
-              <div
-                className="inner-card"
-                style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className="material-icons" style={{ fontSize: 18, color: 'var(--text-secondary)' }}>
+              <div className="inner-card p-3.5 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="material-icons text-sm" style={{ color: 'var(--text-secondary)' }}>
                     key
                   </span>
-                  <p style={{ fontSize: 14, fontWeight: 600 }}>{t('signup.pinPrompt.cardTitle')}</p>
+                  <p className="text-sm font-semibold">{t('signup.pinPrompt.cardTitle')}</p>
                 </div>
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                   {t('signup.pinPrompt.cardBody')}
                 </p>
-                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <div className="flex gap-2 mt-1">
                   <button
                     type="button"
                     onClick={() => setPinSheetOpen(true)}
-                    className="btn-primary"
-                    style={{ flex: 1 }}
+                    className="btn-primary flex-1"
                   >
                     {t('signup.pinPrompt.cardCTA')}
                   </button>
@@ -423,8 +419,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
                       localStorage.setItem('badminton_pin_prompted', 'true');
                       setPinPromptCard(null);
                     }}
-                    className="btn-ghost"
-                    style={{ flex: 1 }}
+                    className="btn-ghost flex-1"
                   >
                     {t('signup.pinPrompt.cardDismiss')}
                   </button>
@@ -455,25 +450,21 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
               </div>
             </div>
             {recoveryFlag && pinPromptCard && (
-              <div
-                className="inner-card"
-                style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className="material-icons" style={{ fontSize: 18, color: 'var(--text-secondary)' }}>
+              <div className="inner-card p-3.5 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="material-icons text-sm" style={{ color: 'var(--text-secondary)' }}>
                     key
                   </span>
-                  <p style={{ fontSize: 14, fontWeight: 600 }}>{t('signup.pinPrompt.cardTitle')}</p>
+                  <p className="text-sm font-semibold">{t('signup.pinPrompt.cardTitle')}</p>
                 </div>
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                   {t('signup.pinPrompt.cardBody')}
                 </p>
-                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <div className="flex gap-2 mt-1">
                   <button
                     type="button"
                     onClick={() => setPinSheetOpen(true)}
-                    className="btn-primary"
-                    style={{ flex: 1 }}
+                    className="btn-primary flex-1"
                   >
                     {t('signup.pinPrompt.cardCTA')}
                   </button>
@@ -483,8 +474,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
                       localStorage.setItem('badminton_pin_prompted', 'true');
                       setPinPromptCard(null);
                     }}
-                    className="btn-ghost"
-                    style={{ flex: 1 }}
+                    className="btn-ghost flex-1"
                   >
                     {t('signup.pinPrompt.cardDismiss')}
                   </button>

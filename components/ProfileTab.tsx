@@ -92,8 +92,8 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
   // Anonymous state
   if (!identity) {
     return (
-      <div className="animate-fadeIn" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <h2 style={{ fontSize: 30, fontWeight: 600 }}>{t('anonymousTitle')}</h2>
+      <div className="animate-fadeIn flex flex-col gap-4">
+        <h2 className="bpm-h1">{t('anonymousTitle')}</h2>
         <p style={{ color: 'var(--text-secondary)' }}>{t('anonymousBody')}</p>
         {recoveryFlag && (
           <>
@@ -146,8 +146,8 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
 
   // Player (and possibly admin) state
   return (
-    <div className="animate-fadeIn" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <h1 style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>{tNav('profile')}</h1>
+    <div className="animate-fadeIn flex flex-col gap-4">
+      <h1 className="bpm-h1">{tNav('profile')}</h1>
       <div className="glass-card" style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div className="inner-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('playerName')}</p>
@@ -161,7 +161,7 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
 
       {recoveryFlag && (
         <div className="inner-card" style={{ padding: 16 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>{t('pinSectionTitle')}</h3>
+          <h3 className="text-sm font-semibold mb-3">{t('pinSectionTitle')}</h3>
           {!editingPin ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 13 }}>

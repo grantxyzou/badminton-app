@@ -329,6 +329,16 @@ body {
     var(--ff-ibm-plex, 'IBM Plex Sans'),
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   /* --font-mono is set in .bpm-mono below and via --ff-jetbrains. */
+
+  /* Corner radii ladder — rectangular surfaces capped at 16px per design
+     bundle v3. Use these tokens in inline styles (`borderRadius:
+     var(--radius-md)`) instead of typing 10/12/16 by hand. Pill = 100. */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 100px;
 }
 
 /* Bare heading elements default to the display family (Space Grotesk) per
