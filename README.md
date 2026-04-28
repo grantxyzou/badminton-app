@@ -148,8 +148,7 @@ Players get a random `deleteToken` (16-byte hex) once at sign-up, stored in `loc
 | `NEXT_PUBLIC_ENV` | — | `stable` / `next` / `dev` — drives preview banner + flag defaults |
 | `NEXT_PUBLIC_FLAG_DESIGN_PREVIEW` | — | Set to `"true"` to expose `/bpm/design` |
 | `NEXT_PUBLIC_FLAG_STATS_ATTENDANCE` | — | Set to `"true"` to flip the Stats-tab Attendance card from skeleton to live heatmap |
-| `NEXT_PUBLIC_FLAG_DEMO` | — | End-to-end promotion test flag |
-| `NEXT_PUBLIC_FLAG_STAGE0_NEW_NAV` | — | Stage 0a: new bottom nav labels |
+| `NEXT_PUBLIC_FLAG_RECOVERY` | — | Set to `"true"` to enable A2 identity recovery (opt-in PIN + admin-mediated 6-digit code) |
 
 All `NEXT_PUBLIC_*` vars are **baked at build time** — changes require a rebuild + redeploy.
 
