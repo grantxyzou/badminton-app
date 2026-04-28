@@ -40,7 +40,11 @@ function resolveActiveName(): string | null {
   return null;
 }
 
-export default function AttendanceCardLive() {
+interface AttendanceCardLiveProps {
+  onSignUp?: () => void;
+}
+
+export default function AttendanceCardLive({ onSignUp }: AttendanceCardLiveProps = {}) {
   const [activeName, setActiveName] = useState<string | null>(null);
   const [resolved, setResolved] = useState(false);
   const [zoomIdx, setZoomIdx] = useState(0); // default 3M
@@ -166,16 +170,28 @@ export default function AttendanceCardLive() {
         <p style={{ margin: 0, fontSize: 12, color: MUTED, lineHeight: 1.45 }}>
           Sign up for a session to start tracking your attendance{recoveryFlag ? ', or sign in if you played here before.' : '.'}
         </p>
-        {recoveryFlag && (
-          <button
-            type="button"
-            onClick={() => setRecoveryOpen(true)}
-            className="btn-primary"
-            style={{ alignSelf: 'flex-start', minHeight: 36, padding: '0 14px', fontSize: 13 }}
-          >
-            Sign in
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {onSignUp && (
+            <button
+              type="button"
+              onClick={onSignUp}
+              className="btn-primary"
+              style={{ minHeight: 36, padding: '0 14px', fontSize: 13 }}
+            >
+              Sign up
+            </button>
+          )}
+          {recoveryFlag && (
+            <button
+              type="button"
+              onClick={() => setRecoveryOpen(true)}
+              className="btn-ghost"
+              style={{ minHeight: 36, padding: '0 14px', fontSize: 13 }}
+            >
+              Sign in
+            </button>
+          )}
+        </div>
         {recoveryFlag && (
           <RecoverySheet
             open={recoveryOpen}

@@ -76,7 +76,7 @@ export default function SetPinSheet({ open, onClose, onSaved, playerId, deleteTo
           type="button"
           onClick={handleClose}
           aria-label={tPin('cancel')}
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <span className="material-icons" style={{ fontSize: 20 }}>close</span>
         </button>
@@ -101,7 +101,7 @@ export default function SetPinSheet({ open, onClose, onSaved, playerId, deleteTo
                 {t('errorInvalid')}
               </p>
             )}
-            {error === 'mismatch' && (
+            {(error === 'mismatch' || (pin && confirmPin && pin !== confirmPin)) && (
               <p role="alert" style={{ fontSize: 12, color: 'var(--color-red, #ef4444)' }}>
                 {tPin('mismatch')}
               </p>
@@ -110,7 +110,7 @@ export default function SetPinSheet({ open, onClose, onSaved, playerId, deleteTo
               <button
                 type="button"
                 onClick={save}
-                disabled={submitting || pin.length !== 4 || confirmPin.length !== 4}
+                disabled={submitting || pin.length !== 4 || pin !== confirmPin}
                 className="btn-primary"
                 style={{ flex: 1 }}
               >

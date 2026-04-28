@@ -35,6 +35,7 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
   const [releaseSheetOpen, setReleaseSheetOpen] = useState(false);
   const [releases, setReleases] = useState<Release[]>([]);
   const tSettings = useTranslations('profile.settings');
+  const tNav = useTranslations('nav');
 
   useEffect(() => {
     const id = getIdentity();
@@ -143,6 +144,7 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
   // Player (and possibly admin) state
   return (
     <div className="animate-fadeIn" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <h1 style={{ fontSize: 30, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>{tNav('profile')}</h1>
       <div className="glass-card" style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div className="inner-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('playerName')}</p>
@@ -175,8 +177,14 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <PinInput value={newPin} onChange={setNewPin} digits={4} label={tPin('newLabel')} autoFocus />
-              <PinInput value={confirmPin} onChange={setConfirmPin} digits={4} label={tPin('confirmLabel')} />
+              <div>
+                <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>{tPin('newLabel')}</p>
+                <PinInput value={newPin} onChange={setNewPin} digits={4} label={tPin('newLabel')} autoFocus />
+              </div>
+              <div>
+                <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>{tPin('confirmLabel')}</p>
+                <PinInput value={confirmPin} onChange={setConfirmPin} digits={4} label={tPin('confirmLabel')} />
+              </div>
               {pinError === 'too_common' && (
                 <p role="alert" style={{ fontSize: 12, color: 'var(--color-red, #ef4444)' }}>
                   {t('pinTooCommon')}

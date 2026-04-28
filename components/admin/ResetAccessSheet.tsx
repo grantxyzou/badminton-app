@@ -38,7 +38,7 @@ export default function ResetAccessSheet({ open, onClose, playerName, code, expi
           type="button"
           onClick={onClose}
           aria-label="Close"
-          style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <span className="material-icons" style={{ fontSize: 20 }}>close</span>
         </button>
