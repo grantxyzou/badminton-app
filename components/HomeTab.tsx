@@ -396,7 +396,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
             </div>
             {recoveryFlag && pinPromptCard && (
               <div
-                className="glass-card"
+                className="inner-card"
                 style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -456,7 +456,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
             </div>
             {recoveryFlag && pinPromptCard && (
               <div
-                className="glass-card"
+                className="inner-card"
                 style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
