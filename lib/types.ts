@@ -41,7 +41,17 @@ export interface Player {
   selfReportedPaid?: boolean;
   memberId?: string;    // links to Member.id for persistent identity
   deleteToken?: string; // DB-only — never sent to clients
+  pinHash?: string;
+  recoveryEvents?: RecoveryEvent[];
 }
+
+export type RecoveryEvent =
+  | { event: 'pin-set'; at: string }
+  | { event: 'pin-removed'; at: string }
+  | { event: 'reset-access-issued'; at: string; admin: 'admin' }
+  | { event: 'recovered-via-pin'; at: string }
+  | { event: 'recovered-via-code'; at: string }
+  | { event: 'recovery-failed'; at: string; reason: 'wrong_pin' | 'wrong_code' | 'expired_code' };
 
 export type Role = 'admin' | 'member';
 

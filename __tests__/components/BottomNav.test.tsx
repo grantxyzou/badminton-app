@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import BottomNav from '../../components/BottomNav';
@@ -16,6 +16,11 @@ function renderWithLocale(locale: 'en' | 'zh-CN', showAdmin = true) {
 }
 
 describe('BottomNav — i18n', () => {
+  beforeEach(() => {
+    // Existing tests assume the recovery flag is OFF (Admin in bar, no Profile).
+    // Tests below that need the flag on set it explicitly per case.
+    delete process.env.NEXT_PUBLIC_FLAG_RECOVERY;
+  });
   afterEach(cleanup);
 
   it('renders English tab labels', () => {
@@ -58,5 +63,27 @@ describe('BottomNav — i18n', () => {
     renderWithLocale('en', false);
     expect(screen.queryByRole('button', { name: 'Admin' })).toBeNull();
     expect(screen.getAllByRole('button').length).toBe(3);
+  });
+});
+
+describe('BottomNav — recovery flag on', () => {
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'true';
+  });
+  afterEach(() => {
+    cleanup();
+    delete process.env.NEXT_PUBLIC_FLAG_RECOVERY;
+  });
+
+  it('shows Profile in the bar instead of Admin', () => {
+    renderWithLocale('en', true);
+    expect(screen.getByRole('button', { name: 'Profile' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Admin' })).toBeNull();
+  });
+
+  it('Profile is visible regardless of showAdmin', () => {
+    renderWithLocale('en', false);
+    expect(screen.getByRole('button', { name: 'Profile' })).toBeTruthy();
+    expect(screen.getAllByRole('button').length).toBe(4);
   });
 });

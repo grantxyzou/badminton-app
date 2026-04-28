@@ -3,6 +3,12 @@ import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isAdminAuthed } from '@/lib/auth';
+import { isFlagOn } from '@/lib/flags';
+import { hashPin } from '@/lib/recoveryHash';
+import { appendEvent } from '@/lib/recoveryAudit';
+import type { RecoveryEvent } from '@/lib/types';
+
+const BLOCKLISTED_PINS = new Set(['0000', '1111', '1234', '4321', '1212']);
 
 export async function GET(req: NextRequest) {
   try {
@@ -20,7 +26,7 @@ export async function GET(req: NextRequest) {
       })
       .fetchAll();
     // Strip deleteToken — it must never be exposed to other clients
-    return NextResponse.json(resources.map(({ deleteToken: _dt, ...p }: { deleteToken?: string; [key: string]: unknown }) => p));
+    return NextResponse.json(resources.map(({ deleteToken: _dt, pinHash: _ph, ...p }: { deleteToken?: string; pinHash?: string; [key: string]: unknown }) => p));
   } catch (error) {
     console.error('GET players error:', error);
     return NextResponse.json([]);
@@ -45,6 +51,18 @@ export async function POST(req: NextRequest) {
     }
     if (trimmedName.length > 50) {
       return NextResponse.json({ error: 'Name too long (max 50 chars)' }, { status: 400 });
+    }
+
+    // Optional PIN at sign-up — only honored when the recovery flag is on.
+    let pinHash: string | undefined;
+    if (body.pin !== undefined && body.pin !== null && isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY')) {
+      if (typeof body.pin !== 'string' || !/^[0-9]{4}$/.test(body.pin)) {
+        return NextResponse.json({ error: 'Invalid PIN format' }, { status: 400 });
+      }
+      if (BLOCKLISTED_PINS.has(body.pin)) {
+        return NextResponse.json({ error: 'pin_too_common' }, { status: 400 });
+      }
+      pinHash = await hashPin(body.pin);
     }
 
     const sessionContainer = getContainer('sessions');
@@ -126,6 +144,7 @@ export async function POST(req: NextRequest) {
         cancelledBySelf: undefined,
         waitlisted: isFull && joinWaitlist ? true : false,
         ...(matchedMember ? { memberId: matchedMember.id } : {}),
+        ...(pinHash ? { pinHash } : {}),
       };
       const { resource } = await container.items.upsert(restored);
 
@@ -138,7 +157,8 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      return NextResponse.json({ ...resource, deleteToken }, { status: 201 });
+      const { pinHash: _ph, ...safeResource } = resource as unknown as Record<string, unknown>;
+      return NextResponse.json({ ...safeResource, deleteToken }, { status: 201 });
     }
 
     const player = {
@@ -151,6 +171,7 @@ export async function POST(req: NextRequest) {
       removed: false,
       waitlisted: isFull && joinWaitlist ? true : false,
       ...(matchedMember ? { memberId: matchedMember.id } : {}),
+      ...(pinHash ? { pinHash } : {}),
     };
 
     const { resource } = await container.items.create(player);
@@ -165,7 +186,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Return the deleteToken once so the client can store it for self-cancellation
-    return NextResponse.json({ ...resource, deleteToken }, { status: 201 });
+    const { pinHash: _ph, ...safeResource } = resource as unknown as Record<string, unknown>;
+    return NextResponse.json({ ...safeResource, deleteToken }, { status: 201 });
   } catch (error) {
     console.error('POST players error:', error);
     return NextResponse.json({ error: 'Failed to sign up' }, { status: 500 });
@@ -180,6 +202,65 @@ export async function PATCH(req: NextRequest) {
     const { id } = body;
     if (typeof id !== 'string') {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    }
+
+    // PIN set/change/remove — admin OR player-self via deleteToken
+    if (body.pin !== undefined) {
+      if (!isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY')) {
+        return NextResponse.json({ error: 'Not Found' }, { status: 404 });
+      }
+      // Pre-validate pin shape (fail fast before DB load)
+      let nextPinHash: string | undefined;
+      let clearPin = false;
+      let event: RecoveryEvent | null = null;
+      if (body.pin === null) {
+        clearPin = true;
+        event = { event: 'pin-removed', at: new Date().toISOString() };
+      } else if (typeof body.pin === 'string') {
+        if (!/^[0-9]{4}$/.test(body.pin)) {
+          return NextResponse.json({ error: 'Invalid PIN format' }, { status: 400 });
+        }
+        if (BLOCKLISTED_PINS.has(body.pin)) {
+          return NextResponse.json({ error: 'pin_too_common' }, { status: 400 });
+        }
+        nextPinHash = await hashPin(body.pin);
+        event = { event: 'pin-set', at: new Date().toISOString() };
+      } else {
+        return NextResponse.json({ error: 'Invalid PIN format' }, { status: 400 });
+      }
+
+      const sessionId = isAdmin && typeof body.sessionId === 'string' ? body.sessionId : await getActiveSessionId();
+      const container = getContainer('players');
+      const { resource: existing } = await container.item(id, sessionId).read();
+      if (!existing) {
+        return NextResponse.json({ error: 'Player not found' }, { status: 404 });
+      }
+
+      // Auth: admin OR self via deleteToken
+      let allowed = isAdmin;
+      if (!allowed && typeof body.deleteToken === 'string') {
+        const stored = existing.deleteToken;
+        if (stored && typeof stored === 'string' && stored.length === body.deleteToken.length &&
+            timingSafeEqual(Buffer.from(stored), Buffer.from(body.deleteToken))) {
+          allowed = true;
+        }
+      }
+      if (!allowed) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+
+      const updatedDoc: Record<string, unknown> = {
+        ...existing,
+        recoveryEvents: appendEvent(existing.recoveryEvents, event!),
+      };
+      if (clearPin) {
+        delete updatedDoc.pinHash;
+      } else {
+        updatedDoc.pinHash = nextPinHash;
+      }
+      const { resource: updated } = await container.items.upsert(updatedDoc);
+      const { deleteToken: _dt, pinHash: _ph, ...safe } = updated as typeof existing;
+      return NextResponse.json(safe);
     }
 
     // Self-serve "I paid" path — player reports payment using their deleteToken
@@ -202,7 +283,7 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
       const { resource: updated } = await container.items.upsert({ ...existing, selfReportedPaid: true });
-      const { deleteToken: _dt, ...safe } = updated as typeof existing;
+      const { deleteToken: _dt, pinHash: _ph, ...safe } = updated as typeof existing;
       return NextResponse.json(safe);
     }
 
@@ -248,7 +329,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const { resource: updated } = await container.items.upsert({ ...existing, ...updates });
-    const { deleteToken: _dt, ...safe } = updated as typeof existing;
+    const { deleteToken: _dt, pinHash: _ph, ...safe } = updated as typeof existing;
     return NextResponse.json(safe);
   } catch (error) {
     console.error('PATCH player error:', error);

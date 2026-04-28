@@ -20,7 +20,20 @@
       "spotsFull": "Signed-up: {count} · Full",
       "allSpotsTaken": "All {total} spots are taken.",
       "closesOn": "Sign up closes on {date}",
-      "closedPreviously": "Sign-ups closed on {date}"
+      "closedPreviously": "Sign-ups closed on {date}",
+      "pinPrompt": {
+        "cardTitle": "Add a recovery PIN",
+        "cardBody": "Use this to manage your account and access your stats.",
+        "cardCTA": "Set PIN",
+        "cardDismiss": "Maybe later",
+        "sheetTitle": "Set a recovery PIN",
+        "sheetBody": "This 4-digit PIN lets you restore your access on a new device and unlocks per-player stats.",
+        "save": "Save PIN",
+        "skip": "Maybe later",
+        "savedToast": "PIN saved",
+        "errorInvalid": "PIN must be 4 digits",
+        "errorTooCommon": "Pick a less common PIN"
+      }
     },
     "states": {
       "finishedTitle": "Thanks for playing!",
@@ -80,7 +93,40 @@
     "home": "Home",
     "signups": "Sign-Ups",
     "skills": "Stats",
-    "admin": "Admin"
+    "admin": "Admin",
+    "profile": "Profile"
+  },
+  "profile": {
+    "anonymousTitle": "Set up your profile",
+    "anonymousBody": "You're not signed up yet.",
+    "anonymousRestoreLink": "Already a player? Sign in →",
+    "playerName": "Name",
+    "playerSession": "Signed up for",
+    "pinSectionTitle": "Recovery PIN",
+    "pinNotSet": "Not set",
+    "pinIsSet": "Set",
+    "pinSetButton": "Set PIN",
+    "pinChangeButton": "Change",
+    "pinRemoveButton": "Remove",
+    "pinSaved": "Saved",
+    "pinTooCommon": "Pick a less common PIN",
+    "pinInvalid": "PIN must be 4 digits",
+    "adminToolsTitle": "Admin tools",
+    "adminToolsButton": "Admin tools →",
+    "settings": {
+      "title": "Account",
+      "forgotPin": "Forgot PIN",
+      "releaseNotes": "What's new",
+      "adminAccess": "Admin access",
+      "logout": "Log out"
+    }
+  },
+  "pin": {
+    "newLabel": "New PIN",
+    "confirmLabel": "Confirm PIN",
+    "save": "Save",
+    "cancel": "Cancel",
+    "mismatch": "PINs don't match"
   },
   "stats": {
     "heading": "Your stats",
@@ -121,6 +167,31 @@
       "newButton": "New release",
       "draftWithAI": "Draft with AI",
       "publish": "Publish"
+    },
+    "resetAccess": {
+      "title": "Recovery code for {name}",
+      "expiresIn": "Expires in {time}",
+      "copy": "Copy",
+      "done": "Done",
+      "close": "Close"
     }
+  },
+  "recovery": {
+    "sheetTitle": "Sign in",
+    "pinPathTitle": "Use my PIN",
+    "pinPathHelp": "Enter the 4-digit PIN you set when signing up.",
+    "codePathTitle": "I forgot my PIN",
+    "codePathHelp": "Ask the admin for a 6-digit code, then enter it here.",
+    "nameLabel": "Your name",
+    "pinLabel": "PIN",
+    "codeLabel": "Recovery code",
+    "submitPin": "Sign in",
+    "submitCode": "Sign in with code",
+    "forgotPinLink": "Forgot your PIN?",
+    "haveCodeLink": "Have a recovery code from admin?",
+    "errorInvalid": "That didn't match. Try again.",
+    "errorRateLimited": "Too many tries. Try again later.",
+    "welcomeBack": "Welcome back, {name}",
+    "close": "Close"
   }
 }

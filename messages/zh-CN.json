@@ -20,7 +20,20 @@
       "spotsFull": "已报名 {count} 人 · 满员",
       "allSpotsTaken": "全部 {total} 个名额已满。",
       "closesOn": "报名截止于 {date}",
-      "closedPreviously": "报名已于 {date} 截止"
+      "closedPreviously": "报名已于 {date} 截止",
+      "pinPrompt": {
+        "cardTitle": "添加恢复 PIN",
+        "cardBody": "用于管理账号和查看个人数据。",
+        "cardCTA": "设置 PIN",
+        "cardDismiss": "稍后再说",
+        "sheetTitle": "设置恢复 PIN",
+        "sheetBody": "这个 4 位 PIN 可以在新设备上恢复访问，并解锁个人数据。",
+        "save": "保存 PIN",
+        "skip": "稍后再说",
+        "savedToast": "PIN 已保存",
+        "errorInvalid": "PIN 必须是 4 位数字",
+        "errorTooCommon": "请选择不那么常见的 PIN"
+      }
     },
     "states": {
       "finishedTitle": "感谢参与！",
@@ -80,7 +93,40 @@
     "home": "首页",
     "signups": "报名",
     "skills": "数据",
-    "admin": "管理"
+    "admin": "管理",
+    "profile": "档案"
+  },
+  "profile": {
+    "anonymousTitle": "设置你的档案",
+    "anonymousBody": "你还没注册。",
+    "anonymousRestoreLink": "已经是球员？登录 →",
+    "playerName": "名字",
+    "playerSession": "已报名场次",
+    "pinSectionTitle": "恢复 PIN 码",
+    "pinNotSet": "未设置",
+    "pinIsSet": "已设置",
+    "pinSetButton": "设置 PIN",
+    "pinChangeButton": "更改",
+    "pinRemoveButton": "移除",
+    "pinSaved": "已保存",
+    "pinTooCommon": "请选择不那么常见的 PIN",
+    "pinInvalid": "PIN 必须是 4 位数字",
+    "adminToolsTitle": "管理员工具",
+    "adminToolsButton": "管理员工具 →",
+    "settings": {
+      "title": "账号",
+      "forgotPin": "忘记 PIN",
+      "releaseNotes": "更新日志",
+      "adminAccess": "管理员访问",
+      "logout": "退出登录"
+    }
+  },
+  "pin": {
+    "newLabel": "新 PIN",
+    "confirmLabel": "确认 PIN",
+    "save": "保存",
+    "cancel": "取消",
+    "mismatch": "PIN 不匹配"
   },
   "stats": {
     "heading": "你的数据",
@@ -121,6 +167,31 @@
       "newButton": "新发布",
       "draftWithAI": "用 AI 起草",
       "publish": "发布"
+    },
+    "resetAccess": {
+      "title": "{name} 的恢复验证码",
+      "expiresIn": "{time} 后过期",
+      "copy": "复制",
+      "done": "完成",
+      "close": "关闭"
     }
+  },
+  "recovery": {
+    "sheetTitle": "登录",
+    "pinPathTitle": "用 PIN 登录",
+    "pinPathHelp": "输入注册时设置的 4 位 PIN 码。",
+    "codePathTitle": "忘记 PIN",
+    "codePathHelp": "向管理员索取一个 6 位验证码，然后在这里输入。",
+    "nameLabel": "你的名字",
+    "pinLabel": "PIN",
+    "codeLabel": "恢复验证码",
+    "submitPin": "登录",
+    "submitCode": "用验证码登录",
+    "forgotPinLink": "忘记 PIN？",
+    "haveCodeLink": "有管理员发的验证码？",
+    "errorInvalid": "信息不匹配，请重试。",
+    "errorRateLimited": "尝试次数过多，请稍后再试。",
+    "welcomeBack": "欢迎回来，{name}",
+    "close": "关闭"
   }
 }

@@ -18,7 +18,7 @@ function toRadarShape(records: PersistedPlayerSkills[]): PlayerSkills[] {
   return records.map((s) => ({ id: s.id, name: s.name, scores: s.scores }));
 }
 
-export default function SkillsTab({ isAdmin }: { isAdmin?: boolean }) {
+export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean; onTabChange?: (tab: 'home' | 'players' | 'skills' | 'admin' | 'profile') => void }) {
   const [loading, setLoading] = useState(true);
   const [players, setPlayers] = useState<PlayerSkills[]>([]);
 
@@ -82,7 +82,7 @@ export default function SkillsTab({ isAdmin }: { isAdmin?: boolean }) {
   }
 
   const attendanceOn = isFlagOn('NEXT_PUBLIC_FLAG_STATS_ATTENDANCE');
-  const attendanceContent = attendanceOn ? <AttendanceCardLive /> : undefined;
+  const attendanceContent = attendanceOn ? <AttendanceCardLive onSignUp={() => onTabChange?.('players')} /> : undefined;
   const heroSlot = attendanceOn ? <StatsStreakHero /> : undefined;
 
   if (!isAdmin) {
