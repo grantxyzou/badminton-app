@@ -331,6 +331,24 @@ body {
   /* --font-mono is set in .bpm-mono below and via --ff-jetbrains. */
 }
 
+/* Bare heading elements default to the display family (Space Grotesk) per
+   design-system spec. Per-component sizes/weights via Tailwind still apply;
+   this rule only sets family + a sensible default tracking. The .bpm-h1/h2/h3
+   utilities below remain as opinionated presets when explicit type tokens
+   are wanted. */
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+/* Section labels (uppercase tracking-widest microcopy on cards) read more
+   architecturally in the display family — matches the documentary feel of
+   the bundle's specimen pages. */
+.section-label,
+.section-label-muted {
+  font-family: var(--font-display);
+}
+
 /* Display headline utilities — bundle v3 adds negative letter-spacing
    tuned per size so Space Grotesk reads tight at scale. */
 .bpm-h1 {
