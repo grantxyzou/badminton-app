@@ -690,11 +690,67 @@ html[data-tab="players"][data-theme="light"] .court-bg::before {
   padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
 }
 
+/* ── Nav tab base ──
+   Single source of truth for tab styling. The button defaults to inactive
+   color; .nav-tab-active overrides on the same element. Border-radius is
+   declared here (not just on .nav-tab-active) so the active background and
+   rim animate in with rounded corners on tab change. */
+.nav-tab {
+  flex: 0 0 auto;
+  min-width: 58px;
+  padding: 5px 8px 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--nav-inactive-color);
+  border-radius: var(--radius-lg);
+  transition:
+    color 150ms var(--ease-glass),
+    background 150ms var(--ease-glass),
+    box-shadow 150ms var(--ease-glass);
+}
+
+.nav-tab-icon {
+  font-size: 20px;
+  line-height: 1;
+  opacity: 1;
+  /* Material Symbols variable-font outline by default */
+  font-variation-settings: 'opsz' 24, 'wght' 400, 'FILL' 0, 'GRAD' 0;
+}
+
+.nav-tab-icon-active {
+  /* Flip FILL axis to 1 so the glyph reads as filled vs. outlined */
+  font-variation-settings: 'opsz' 24, 'wght' 500, 'FILL' 1, 'GRAD' 0;
+}
+
+.nav-tab-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+
 /* ── Active nav tab ──
-   Canonical is color-only (no background pill). Class retained so consumers
-   can still target it for future-proofing; no visual treatment of its own. */
+   Tinted pill background + 1px green rim + color swap. The rim is what
+   carries the active state through bright-light glare — a tinted gradient
+   alone can wash out, but a hairline inner stroke survives. Active label
+   bumps to weight 600 so the active signal isn't carried by color alone
+   (sunlight + colorblind cases). */
 .nav-tab-active {
-  /* color is set inline on the button; active icon also flips FILL axis */
+  color: var(--nav-active-color);
+  background: var(--nav-tab-active-bg);
+  box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.18);
+}
+.nav-tab-active .nav-tab-label {
+  font-weight: 600;
+}
+[data-theme="light"] .nav-tab-active {
+  box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.22);
 }
 
 /* ── Icon webfont ──

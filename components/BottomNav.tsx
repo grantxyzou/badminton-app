@@ -19,8 +19,14 @@ type NavItem = { id: Tab; label: string; icon: string };
  *   Container: glass pill, `inline-flex`, radius 16, 1px rim, padding 4/6/6.
  *   Tab:       `flex: 0 0 auto; min-width: 58px; padding: 5px 8px 3px`.
  *   Icon:      20px. Active tab uses FILL axis = 1 (filled); inactive = 0.
- *   Label:     9.5px / 500 / tracking 0.01em / line-height 1.1.
- *   Active:    color-only (`--nav-active-color`). No background pill.
+ *   Label:     11px / 500 (active 600) / tracking 0.01em / line-height 1.1.
+ *   Active:    tinted pill background (`--nav-tab-active-bg`) + 1px green
+ *              rim + color swap (`--nav-active-color`) + filled icon.
+ *
+ * All styling lives in `globals.css` (`.nav-tab`, `.nav-tab-icon`,
+ * `.nav-tab-icon-active`, `.nav-tab-label`, `.nav-tab-active`). No inline
+ * styles — the previous `style={{ background: 'transparent' }}` was silently
+ * overriding the active-state class background.
  */
 export default function BottomNav({ activeTab, onTabChange, showAdmin }: Props) {
   const t = useTranslations('nav');
@@ -47,7 +53,7 @@ export default function BottomNav({ activeTab, onTabChange, showAdmin }: Props) 
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 nav-safe-area" aria-label="Primary navigation">
-      <div className="max-w-lg mx-auto px-4" style={{ display: 'flex', justifyContent: 'center' }}>
+      <div className="max-w-lg mx-auto px-4 flex justify-center">
         <div className="nav-glass">
           {visibleTabs.map((tab) => {
             const active = activeTab === tab.id;
@@ -58,49 +64,19 @@ export default function BottomNav({ activeTab, onTabChange, showAdmin }: Props) 
                 onClick={() => onTabChange(tab.id)}
                 aria-label={tab.label}
                 aria-current={active ? 'page' : undefined}
-                className={active ? 'nav-tab-active' : undefined}
-                style={{
-                  flex: '0 0 auto',
-                  minWidth: 58,
-                  padding: '5px 8px 3px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 2,
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  color: active ? 'var(--nav-active-color)' : 'var(--nav-inactive-color)',
-                  transition: 'color 150ms var(--ease-glass)',
-                }}
+                className={active ? 'nav-tab nav-tab-active' : 'nav-tab'}
               >
                 <span
-                  className="material-icons"
+                  className={
+                    active
+                      ? 'material-icons nav-tab-icon nav-tab-icon-active'
+                      : 'material-icons nav-tab-icon'
+                  }
                   aria-hidden="true"
-                  style={{
-                    fontSize: 20,
-                    lineHeight: 1,
-                    opacity: 1,
-                    // Material Symbols variable-font: flip the FILL axis on the
-                    // active tab so the glyph reads as filled vs. outlined.
-                    fontVariationSettings: active
-                      ? "'opsz' 24, 'wght' 500, 'FILL' 1, 'GRAD' 0"
-                      : "'opsz' 24, 'wght' 400, 'FILL' 0, 'GRAD' 0",
-                  }}
                 >
                   {tab.icon}
                 </span>
-                <span
-                  style={{
-                    fontSize: 9.5,
-                    fontWeight: 500,
-                    letterSpacing: '0.01em',
-                    lineHeight: 1.1,
-                  }}
-                >
-                  {tab.label}
-                </span>
+                <span className="nav-tab-label">{tab.label}</span>
               </button>
             );
           })}

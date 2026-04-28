@@ -55,9 +55,11 @@
     padding: 5px 8px 3px;
     display: flex; flex-direction: column; align-items: center; gap: 2px;
     font-family: inherit; cursor: pointer;
+    border-radius: 12px;
   }
   .tab .mi { font-size: 20px; }
-  .tab .lbl { font-size: 9.5px; font-weight: 500; letter-spacing: 0.01em; line-height: 1.1; }
+  .tab .lbl { font-size: 11px; font-weight: 500; letter-spacing: 0.01em; line-height: 1.1; }
+  .tab.active .lbl { font-weight: 600; }
 
   .pane[data-theme="dark"] .nav {
     background: linear-gradient(160deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 100%);
@@ -65,7 +67,11 @@
     box-shadow: 0 8px 40px rgba(0,0,0,0.35);
   }
   .pane[data-theme="dark"] .tab { color: rgba(255,255,255,0.55); }
-  .pane[data-theme="dark"] .tab.active { color: #4ade80; }
+  .pane[data-theme="dark"] .tab.active {
+    color: #4ade80;
+    background: linear-gradient(160deg, rgba(74,222,128,0.12) 0%, rgba(74,222,128,0.05) 100%);
+    box-shadow: inset 0 0 0 1px rgba(74,222,128,0.18);
+  }
 
   .pane[data-theme="light"] .nav {
     background: linear-gradient(160deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
@@ -73,7 +79,11 @@
     box-shadow: 0 8px 40px rgba(0,0,0,0.08);
   }
   .pane[data-theme="light"] .tab { color: rgba(26,35,50,0.58); }
-  .pane[data-theme="light"] .tab.active { color: #16a34a; }
+  .pane[data-theme="light"] .tab.active {
+    color: #16a34a;
+    background: linear-gradient(160deg, rgba(22,163,74,0.10) 0%, rgba(22,163,74,0.05) 100%);
+    box-shadow: inset 0 0 0 1px rgba(22,163,74,0.22);
+  }
 </style>
 </head>
 <body>
