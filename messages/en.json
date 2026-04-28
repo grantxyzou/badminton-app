@@ -166,7 +166,8 @@
     "releases": {
       "newButton": "New release",
       "draftWithAI": "Draft with AI",
-      "publish": "Publish"
+      "publish": "Publish",
+      "howItWorks": "Paste raw notes (or refresh from CHANGELOG), draft bilingual copy with AI, edit if needed, then publish — appears on the Home tab for all players."
     },
     "resetAccess": {
       "title": "Recovery code for {name}",
