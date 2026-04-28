@@ -143,18 +143,19 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
   // Player (and possibly admin) state
   return (
     <div className="animate-fadeIn" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div className="glass-card p-5" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('playerName')}</p>
-        <p style={{ fontSize: 24, fontWeight: 600 }}>{identity.name}</p>
-        {sessionLabel && (
-          <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            {t('playerSession')} {sessionLabel}
-          </p>
-        )}
-      </div>
+      <div className="glass-card" style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="inner-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('playerName')}</p>
+          <p style={{ fontSize: 24, fontWeight: 600 }}>{identity.name}</p>
+          {sessionLabel && (
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              {t('playerSession')} {sessionLabel}
+            </p>
+          )}
+        </div>
 
       {recoveryFlag && (
-        <div className="glass-card p-5">
+        <div className="inner-card" style={{ padding: 16 }}>
           <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>{t('pinSectionTitle')}</h3>
           {!editingPin ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -225,19 +226,20 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
         </div>
       )}
 
-      <SettingsList
-        title={tSettings('title')}
-        rows={[
-          ...(recoveryFlag
-            ? [{ icon: 'key', label: tSettings('forgotPin'), onClick: () => setRecoveryOpen(true) }]
-            : []),
-          { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
-          ...(isAdmin
-            ? [{ icon: 'admin_panel_settings', label: tSettings('adminAccess'), onClick: onAdminTools }]
-            : []),
-          { icon: 'logout', label: tSettings('logout'), onClick: handleLogout, destructive: true },
-        ]}
-      />
+        <SettingsList
+          title={tSettings('title')}
+          rows={[
+            ...(recoveryFlag
+              ? [{ icon: 'key', label: tSettings('forgotPin'), onClick: () => setRecoveryOpen(true) }]
+              : []),
+            { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
+            ...(isAdmin
+              ? [{ icon: 'admin_panel_settings', label: tSettings('adminAccess'), onClick: onAdminTools }]
+              : []),
+            { icon: 'logout', label: tSettings('logout'), onClick: handleLogout, destructive: true },
+          ]}
+        />
+      </div>
 
       {recoveryFlag && (
         <>
@@ -273,7 +275,7 @@ interface SettingsRow {
 
 function SettingsList({ title, rows }: { title: string; rows: SettingsRow[] }) {
   return (
-    <div className="glass-card" style={{ padding: 0, overflow: 'hidden' }}>
+    <div className="inner-card" style={{ padding: 0, overflow: 'hidden' }}>
       <p
         style={{
           padding: '14px 16px 8px',
