@@ -29,7 +29,7 @@
         "sheetTitle": "Set a recovery PIN",
         "sheetBody": "This 4-digit PIN lets you restore your access on a new device and unlocks per-player stats.",
         "save": "Save PIN",
-        "skip": "Skip",
+        "skip": "Maybe later",
         "savedToast": "PIN saved",
         "errorInvalid": "PIN must be 4 digits",
         "errorTooCommon": "Pick a less common PIN"
@@ -98,7 +98,7 @@
   },
   "profile": {
     "anonymousTitle": "Set up your profile",
-    "anonymousBody": "You're not signed up yet. Head to Sign-Ups to join a session.",
+    "anonymousBody": "You're not signed up yet.",
     "anonymousRestoreLink": "Already a player? Sign in →",
     "playerName": "Name",
     "playerSession": "Signed up for",
@@ -167,6 +167,13 @@
       "newButton": "New release",
       "draftWithAI": "Draft with AI",
       "publish": "Publish"
+    },
+    "resetAccess": {
+      "title": "Recovery code for {name}",
+      "expiresIn": "Expires in {time}",
+      "copy": "Copy",
+      "done": "Done",
+      "close": "Close"
     }
   },
   "recovery": {

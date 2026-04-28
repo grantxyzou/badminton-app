@@ -29,7 +29,7 @@
         "sheetTitle": "设置恢复 PIN",
         "sheetBody": "这个 4 位 PIN 可以在新设备上恢复访问，并解锁个人数据。",
         "save": "保存 PIN",
-        "skip": "跳过",
+        "skip": "稍后再说",
         "savedToast": "PIN 已保存",
         "errorInvalid": "PIN 必须是 4 位数字",
         "errorTooCommon": "请选择不那么常见的 PIN"
@@ -98,7 +98,7 @@
   },
   "profile": {
     "anonymousTitle": "设置你的档案",
-    "anonymousBody": "你还没注册。去「报名」页面加入一场。",
+    "anonymousBody": "你还没注册。",
     "anonymousRestoreLink": "已经是球员？登录 →",
     "playerName": "名字",
     "playerSession": "已报名场次",
@@ -167,6 +167,13 @@
       "newButton": "新发布",
       "draftWithAI": "用 AI 起草",
       "publish": "发布"
+    },
+    "resetAccess": {
+      "title": "{name} 的恢复验证码",
+      "expiresIn": "{time} 后过期",
+      "copy": "复制",
+      "done": "完成",
+      "close": "关闭"
     }
   },
   "recovery": {

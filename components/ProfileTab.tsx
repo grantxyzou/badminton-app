@@ -111,7 +111,10 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
                   fontSize: 12,
                   textDecoration: 'underline',
                   cursor: 'pointer',
-                  padding: 4,
+                  padding: '0 12px',
+                  minHeight: 44,
+                  display: 'inline-flex',
+                  alignItems: 'center',
                 }}
               >
                 {tRecovery('haveCodeLink')}
@@ -161,7 +164,14 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
           <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>{t('pinSectionTitle')}</h3>
           {!editingPin ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 13 }}>
+                <span
+                  className="material-icons"
+                  aria-hidden="true"
+                  style={{ fontSize: 16, color: pinIsSet ? 'var(--color-green, #10b981)' : 'var(--text-muted)' }}
+                >
+                  {pinIsSet ? 'check_circle' : 'radio_button_unchecked'}
+                </span>
                 {pinIsSet ? t('pinIsSet') : t('pinNotSet')}
               </span>
               <div style={{ display: 'flex', gap: 8 }}>

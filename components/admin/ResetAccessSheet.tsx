@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function ResetAccessSheet({ open, onClose, playerName, code, expiresAt }: Props) {
+  const t = useTranslations('admin.resetAccess');
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (!open) return;
@@ -21,6 +23,7 @@ export default function ResetAccessSheet({ open, onClose, playerName, code, expi
   const remainingSec = Math.max(0, Math.floor((expiresAt - now) / 1000));
   const mm = Math.floor(remainingSec / 60).toString().padStart(2, '0');
   const ss = (remainingSec % 60).toString().padStart(2, '0');
+  const titleText = t('title', { name: playerName });
 
   async function copy() {
     try {
@@ -31,13 +34,13 @@ export default function ResetAccessSheet({ open, onClose, playerName, code, expi
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={`Recovery code for ${playerName}`} className="max-w-lg mx-auto">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={titleText} className="max-w-lg mx-auto">
       <BottomSheetHeader className="flex items-center justify-between p-4">
-        <span style={{ fontSize: 16, fontWeight: 600 }}>Recovery code for {playerName}</span>
+        <span style={{ fontSize: 16, fontWeight: 600 }}>{titleText}</span>
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t('close')}
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <span className="material-icons" style={{ fontSize: 20 }}>close</span>
@@ -46,25 +49,26 @@ export default function ResetAccessSheet({ open, onClose, playerName, code, expi
       <BottomSheetBody className="p-5 pb-8">
         <div style={{ textAlign: 'center' }}>
           <p
+            role="text"
+            aria-label={`Recovery code: ${code.split('').join(' ')}`}
             style={{
               fontFamily: 'var(--font-mono)',
               fontSize: 36,
               letterSpacing: '0.3em',
               margin: '24px 0 16px',
             }}
-            aria-live="polite"
           >
             {code}
           </p>
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>
-            Expires in {mm}:{ss}
+            {t('expiresIn', { time: `${mm}:${ss}` })}
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" onClick={copy} className="btn-ghost" style={{ flex: 1 }}>
-              Copy
+              {t('copy')}
             </button>
             <button type="button" onClick={onClose} className="btn-primary" style={{ flex: 1 }}>
-              Done
+              {t('done')}
             </button>
           </div>
         </div>

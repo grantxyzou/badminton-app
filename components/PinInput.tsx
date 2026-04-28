@@ -35,8 +35,10 @@ export default function PinInput({
         placeholder={'•'.repeat(digits)}
         style={{
           fontFamily: 'var(--font-mono)',
-          fontSize: 28,
-          letterSpacing: '0.4em',
+          // Scale type down on narrow viewports so 4/6 dots + letter-spacing
+          // never overflow at 320px. clamp(min, preferred, max).
+          fontSize: 'clamp(20px, 6.5vw, 28px)',
+          letterSpacing: '0.35em',
           textAlign: 'center',
           padding: '12px 14px',
           borderRadius: 12,

@@ -115,7 +115,10 @@ export default function RecoverySheet({ open, onClose, sessionId, onForgotPin }:
                   textDecoration: 'underline',
                   cursor: 'pointer',
                   alignSelf: 'center',
-                  padding: 4,
+                  padding: '0 12px',
+                  minHeight: 44,
+                  display: 'inline-flex',
+                  alignItems: 'center',
                 }}
               >
                 {t('forgotPinLink')}
