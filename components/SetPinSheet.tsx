@@ -15,7 +15,7 @@ interface Props {
 }
 
 export default function SetPinSheet({ open, onClose, onSaved, playerId, deleteToken }: Props) {
-  const t = useTranslations('signup.pinPrompt');
+  const t = useTranslations('home.signup.pinPrompt');
   const tPin = useTranslations('pin');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
