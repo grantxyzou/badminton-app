@@ -17,8 +17,7 @@
 
 export type FlagName =
   | 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW'
-  | 'NEXT_PUBLIC_FLAG_STATS_ATTENDANCE'
-  | 'NEXT_PUBLIC_FLAG_RECOVERY';
+  | 'NEXT_PUBLIC_FLAG_STATS_ATTENDANCE';
 
 interface FlagMeta {
   description: string;
@@ -37,11 +36,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'two weeks after promotion — retire once all Arc 1 cards are live on stable',
   },
-  NEXT_PUBLIC_FLAG_RECOVERY: {
-    description: 'A2 identity recovery: opt-in PIN at sign-up, set/change PIN in Profile, admin-mediated 6-digit code. Off on bpm-stable, on for bpm-next + dev.',
-    owner: 'grant',
-    plannedRemoval: 'two weeks after promotion to bpm-stable',
-  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -50,8 +44,6 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
     case 'NEXT_PUBLIC_FLAG_STATS_ATTENDANCE':
       return process.env.NEXT_PUBLIC_FLAG_STATS_ATTENDANCE;
-    case 'NEXT_PUBLIC_FLAG_RECOVERY':
-      return process.env.NEXT_PUBLIC_FLAG_RECOVERY;
   }
 }
 

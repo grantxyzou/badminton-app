@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { getIdentity } from '@/lib/identity';
-import { isFlagOn } from '@/lib/flags';
 import RecoverySheet from '@/components/RecoverySheet';
 import AttendanceHeatmap from './AttendanceHeatmap';
 
@@ -57,7 +56,6 @@ export default function AttendanceCardLive({ onSignUp }: AttendanceCardLiveProps
   const [activeSessionId, setActiveSessionId] = useState('');
 
   const weeks = ZOOMS[zoomIdx].weeks;
-  const recoveryFlag = isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY');
 
   // Resolve active name once from localStorage.
   useEffect(() => {
@@ -67,14 +65,14 @@ export default function AttendanceCardLive({ onSignUp }: AttendanceCardLiveProps
 
   // Lazily fetch active session id only if we'll need to open RecoverySheet.
   useEffect(() => {
-    if (!recoveryFlag || activeName) return;
+    if (activeName) return;
     fetch(`${BASE}/api/session`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((s: { id?: string } | null) => {
         if (s?.id) setActiveSessionId(s.id);
       })
       .catch(() => undefined);
-  }, [recoveryFlag, activeName]);
+  }, [activeName]);
 
   // Load member names for autocomplete (public endpoint, no auth needed).
   useEffect(() => {
@@ -168,7 +166,7 @@ export default function AttendanceCardLive({ onSignUp }: AttendanceCardLiveProps
           Your stats
         </p>
         <p style={{ margin: 0, fontSize: 12, color: MUTED, lineHeight: 1.45 }}>
-          Sign up for a session to start tracking your attendance{recoveryFlag ? ', or sign in if you played here before.' : '.'}
+          Sign up for a session to start tracking your attendance, or sign in if you played here before.
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {onSignUp && (
@@ -181,16 +179,14 @@ export default function AttendanceCardLive({ onSignUp }: AttendanceCardLiveProps
               Sign up
             </button>
           )}
-          {recoveryFlag && (
-            <button
-              type="button"
-              onClick={() => setRecoveryOpen(true)}
-              className="btn-ghost"
-              style={{ minHeight: 36, padding: '0 14px', fontSize: 13 }}
-            >
-              Sign in
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setRecoveryOpen(true)}
+            className="btn-ghost"
+            style={{ minHeight: 36, padding: '0 14px', fontSize: 13 }}
+          >
+            Sign in
+          </button>
         </div>
         {recoveryFlag && (
           <RecoverySheet
