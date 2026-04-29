@@ -1,0 +1,983 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login flow prototype — BPM Badminton</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ── Tokens (mirrored from app/globals.css) ── */
+  :root {
+    --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    --ease-glass: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-sheet: cubic-bezier(0.16, 1, 0.3, 1);
+    --duration-fast: 150ms;
+    --duration-normal: 250ms;
+    --radius-sm: 8px;
+    --radius-md: 10px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-pill: 100px;
+    --accent: #4ade80;
+    --accent-strong: #22c55e;
+  }
+
+  [data-theme="dark"] {
+    --page-bg: #0a0e0a;
+    --surface: rgba(255,255,255,0.04);
+    --surface-raised: rgba(255,255,255,0.08);
+    --glass-bg: linear-gradient(160deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 100%);
+    --glass-border: rgba(255,255,255,0.14);
+    --glass-shadow: 0 8px 40px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.18);
+    --text-primary: rgba(226,232,240,0.95);
+    --text-secondary: rgba(226,232,240,0.7);
+    --text-muted: rgba(226,232,240,0.5);
+    --input-bg: rgba(255,255,255,0.05);
+    --aurora-1: rgba(74,222,128,0.18);
+    --aurora-2: rgba(60,140,255,0.10);
+    --aurora-3: rgba(255,200,100,0.08);
+    --nav-active-color: #4ade80;
+    --nav-inactive-color: rgba(255,255,255,0.5);
+    --nav-tab-active-bg: linear-gradient(160deg, rgba(74,222,128,0.12) 0%, rgba(74,222,128,0.05) 100%);
+    --color-amber: #f59e0b;
+    --color-red: #ef4444;
+    --rim-active: rgba(74,222,128,0.18);
+  }
+
+  [data-theme="light"] {
+    --page-bg: #FAF8F5;
+    --surface: rgba(0,0,0,0.04);
+    --surface-raised: rgba(0,0,0,0.08);
+    --glass-bg: linear-gradient(160deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.65) 100%);
+    --glass-border: rgba(0,0,0,0.08);
+    --glass-shadow: 0 8px 40px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+    --text-primary: rgba(26,35,50,0.95);
+    --text-secondary: rgba(26,35,50,0.65);
+    --text-muted: rgba(26,35,50,0.45);
+    --input-bg: rgba(255,255,255,0.7);
+    --aurora-1: rgba(34,197,94,0.10);
+    --aurora-2: rgba(60,140,255,0.06);
+    --aurora-3: rgba(255,200,100,0.05);
+    --nav-active-color: #16a34a;
+    --nav-inactive-color: rgba(0,0,0,0.4);
+    --nav-tab-active-bg: linear-gradient(160deg, rgba(22,163,74,0.10) 0%, rgba(22,163,74,0.05) 100%);
+    --color-amber: #d97706;
+    --color-red: #dc2626;
+    --rim-active: rgba(22,163,74,0.22);
+    --accent: #16a34a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    font-family: var(--font-sans);
+    background: var(--page-bg);
+    color: var(--text-primary);
+    min-height: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 20% 30%, var(--aurora-1), transparent 50%),
+      radial-gradient(circle at 80% 60%, var(--aurora-2), transparent 50%),
+      radial-gradient(circle at 50% 90%, var(--aurora-3), transparent 50%);
+    animation: aurora-drift 30s ease-in-out infinite alternate;
+  }
+  @keyframes aurora-drift {
+    0%   { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(20px, -20px) scale(1.1); }
+  }
+
+  .sidebar {
+    position: relative;
+    z-index: 1;
+    border-right: 1px solid var(--glass-border);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--surface);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .sidebar-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .sidebar-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    margin-bottom: 16px;
+  }
+  .nav-item {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 13px;
+    text-align: left;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-glass), color var(--duration-fast) var(--ease-glass);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .nav-item:hover { background: var(--surface-raised); color: var(--text-primary); }
+  .nav-item[aria-current="page"] {
+    background: var(--nav-tab-active-bg);
+    color: var(--nav-active-color);
+    box-shadow: inset 0 0 0 1px var(--rim-active);
+  }
+  .nav-item .num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    min-width: 16px;
+  }
+  .nav-item[aria-current="page"] .num { color: var(--nav-active-color); }
+  .theme-row {
+    margin-top: auto;
+    display: flex;
+    gap: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--glass-border);
+  }
+  .theme-btn {
+    flex: 1;
+    padding: 8px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11px;
+    transition: all var(--duration-fast) var(--ease-glass);
+  }
+  .theme-btn[aria-pressed="true"] {
+    background: var(--nav-tab-active-bg);
+    color: var(--nav-active-color);
+    border-color: var(--rim-active);
+  }
+
+  .stage {
+    position: relative;
+    z-index: 1;
+    padding: 40px 24px 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-y: auto;
+  }
+  .scene-header {
+    width: 100%;
+    max-width: 480px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .scene-title {
+    font-family: var(--font-display);
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .scene-caption {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .phone {
+    width: 100%;
+    max-width: 480px;
+    background: var(--page-bg);
+    border-radius: 28px;
+    padding: 24px 16px 96px;
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    position: relative;
+    min-height: 700px;
+    overflow: hidden;
+  }
+  .phone-aurora {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 20% 20%, var(--aurora-1), transparent 50%),
+      radial-gradient(circle at 80% 80%, var(--aurora-2), transparent 50%);
+    z-index: 0;
+  }
+  .phone > * { position: relative; z-index: 1; }
+
+  .wordmark {
+    font-family: var(--font-display);
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 24px;
+  }
+  .wordmark .accent { color: var(--accent); }
+
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    padding: 16px;
+    box-shadow: var(--glass-shadow);
+  }
+
+  .field-label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+  .field-input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--glass-border);
+    background: var(--input-bg);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 14px;
+    transition: border-color var(--duration-fast) var(--ease-glass);
+  }
+  .field-input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .pin-input {
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 24px;
+    letter-spacing: 0.35em;
+    -webkit-text-security: disc;
+    text-security: disc;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all var(--duration-fast) var(--ease-glass);
+  }
+  .btn-primary {
+    background: linear-gradient(160deg, rgba(74,222,128,0.55) 0%, rgba(22,163,74,0.4) 100%);
+    border-color: rgba(74,222,128,0.45);
+    color: #fff;
+    font-weight: 600;
+  }
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .btn-primary:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(22,163,74,0.3);
+  }
+  .btn-ghost {
+    background: var(--surface);
+    border-color: var(--glass-border);
+    color: var(--text-primary);
+  }
+  .btn-ghost:hover {
+    background: var(--surface-raised);
+  }
+  .btn-link {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    text-decoration: underline;
+    font-size: 12px;
+    padding: 8px;
+    cursor: pointer;
+  }
+  .btn-link:hover { color: var(--text-primary); }
+  [data-theme="light"] .btn-primary { color: #fff; }
+
+  .hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-top: 6px;
+  }
+
+  .bottom-nav {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    padding: 4px 6px 6px;
+    border-radius: 16px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    z-index: 5;
+  }
+  .nav-tab {
+    flex: 0 0 auto;
+    min-width: 58px;
+    padding: 5px 8px 3px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--nav-inactive-color);
+    border-radius: var(--radius-lg);
+    transition: all var(--duration-fast) var(--ease-glass);
+  }
+  .nav-tab.active {
+    color: var(--nav-active-color);
+    background: var(--nav-tab-active-bg);
+    box-shadow: inset 0 0 0 1px var(--rim-active);
+  }
+  .nav-tab-icon {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Apple Symbols', 'Segoe UI Symbol', sans-serif;
+    font-size: 18px;
+  }
+  .nav-tab-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1.1;
+  }
+  .nav-tab.active .nav-tab-label { font-weight: 600; }
+
+  .force-pin-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    animation: overlay-in 220ms var(--ease-sheet);
+  }
+  @keyframes overlay-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .force-pin-card {
+    width: 100%;
+    max-width: 360px;
+    background: var(--page-bg);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    padding: 24px 20px;
+    animation: card-in 280ms var(--ease-sheet);
+  }
+  @keyframes card-in {
+    from { transform: translateY(20px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+  .force-pin-title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .force-pin-body {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin-bottom: 16px;
+  }
+  details.what-is {
+    margin-top: 8px;
+    margin-bottom: 16px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+  details.what-is summary {
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-muted);
+    list-style: none;
+    padding: 6px 0;
+    text-decoration: underline;
+  }
+  details.what-is summary::-webkit-details-marker { display: none; }
+  details.what-is[open] summary { color: var(--text-primary); }
+  details.what-is p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    padding: 4px 0 8px;
+  }
+  .escape-hatch {
+    text-align: center;
+    margin-top: 12px;
+  }
+
+  .stats-card {
+    margin-bottom: 12px;
+    padding: 14px;
+  }
+  .stats-card-heading {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    margin-bottom: 8px;
+    color: var(--accent);
+  }
+  .heatmap {
+    display: grid;
+    grid-template-columns: repeat(13, 1fr);
+    gap: 3px;
+  }
+  .heatmap-cell {
+    aspect-ratio: 1;
+    border-radius: 2px;
+    background: var(--surface);
+  }
+  .heatmap-cell.hit { background: var(--accent); opacity: 0.85; }
+  .heatmap-cell.miss { border: 1px solid var(--accent); opacity: 0.5; }
+
+  .players-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .player-row {
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+  }
+  .player-row.you {
+    background: var(--surface-raised);
+    border-left: 3px solid var(--accent);
+    padding-left: 9px;
+  }
+  .player-row .you-tag {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-left: 6px;
+  }
+  .player-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    min-width: 18px;
+  }
+
+  .status-banner {
+    background: linear-gradient(160deg, rgba(74,222,128,0.18) 0%, rgba(22,163,74,0.08) 100%);
+    border: 1px solid rgba(74,222,128,0.3);
+    border-radius: var(--radius-lg);
+    padding: 12px 14px;
+    margin-bottom: 12px;
+  }
+  .status-banner-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 2px;
+  }
+  .status-banner-body {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .callouts-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    width: 100%;
+    max-width: 480px;
+  }
+  .callout-mock {
+    background: var(--surface);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--glass-border);
+    padding: 20px 16px;
+  }
+  .callout-mock-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .admin-tile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .admin-tile {
+    padding: 14px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--glass-border);
+    font-size: 12px;
+  }
+  .admin-tile-num {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 600;
+    margin-top: 4px;
+    color: var(--accent);
+  }
+
+  .anon-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .welcome-state {
+    text-align: center;
+    padding: 32px 16px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+  }
+  .welcome-state.active { display: flex; }
+  .welcome-emoji {
+    font-size: 48px;
+    margin-bottom: 12px;
+  }
+  .welcome-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .welcome-body {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+  }
+
+  .scene { display: none; width: 100%; flex-direction: column; align-items: center; }
+  .scene.active { display: flex; }
+
+  .notes {
+    width: 100%;
+    max-width: 480px;
+    margin-top: 16px;
+    padding: 14px 16px;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--glass-border);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-muted);
+  }
+  .notes strong { color: var(--text-secondary); }
+
+  @media (max-width: 720px) {
+    body { grid-template-columns: 1fr; }
+    .sidebar {
+      flex-direction: row;
+      flex-wrap: wrap;
+      border-right: none;
+      border-bottom: 1px solid var(--glass-border);
+      padding: 12px;
+    }
+    .sidebar-title, .sidebar-subtitle { width: 100%; }
+    .theme-row { margin-top: 0; padding-top: 0; border-top: none; }
+  }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-title">Login flow</div>
+  <div class="sidebar-subtitle">BPM · revamp prototype</div>
+  <button class="nav-item" data-scene="signup" aria-current="page"><span class="num">1</span>Signup with PIN</button>
+  <button class="nav-item" data-scene="force-pin"><span class="num">2</span>Force-PIN modal</button>
+  <button class="nav-item" data-scene="admin"><span class="num">3</span>Single-login admin</button>
+  <button class="nav-item" data-scene="profile-anon"><span class="num">4</span>Profile (anonymous)</button>
+  <button class="nav-item" data-scene="callouts"><span class="num">5</span>Identity callouts</button>
+  <div class="theme-row">
+    <button class="theme-btn" data-theme-toggle="dark" aria-pressed="true">Dark</button>
+    <button class="theme-btn" data-theme-toggle="light" aria-pressed="false">Light</button>
+  </div>
+</aside>
+
+<main class="stage">
+
+  <!-- Scene 1: Signup with mandatory PIN -->
+  <section class="scene active" data-scene="signup">
+    <div class="scene-header">
+      <h1 class="scene-title">Signup with mandatory PIN</h1>
+      <p class="scene-caption">Replaces today's name-only signup. PIN is required at submit time. The post-signup "would you like to set a PIN?" card goes away — there's nothing to defer.</p>
+    </div>
+    <div class="phone">
+      <div class="phone-aurora"></div>
+      <div class="wordmark">BPM<span class="accent">.</span></div>
+      <div class="glass-card" id="signup-card">
+        <h2 style="font-family: var(--font-display); font-size: 18px; font-weight: 600; margin-bottom: 14px;">Sign up for next session</h2>
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div>
+            <label class="field-label" for="signup-name">Name</label>
+            <input class="field-input" id="signup-name" type="text" placeholder="Your name" autocomplete="off">
+          </div>
+          <div>
+            <label class="field-label" for="signup-pin">4-digit PIN</label>
+            <input class="field-input pin-input" id="signup-pin" type="text" inputmode="numeric" maxlength="4" placeholder="••••">
+            <p class="hint">Required. Use this PIN to recover access if you change phones.</p>
+          </div>
+          <button class="btn btn-primary" id="signup-submit" disabled>Sign up</button>
+        </div>
+      </div>
+      <div class="welcome-state" id="signup-welcome">
+        <div class="welcome-emoji">🏸</div>
+        <div class="welcome-title">Welcome, <span id="welcome-name">friend</span></div>
+        <div class="welcome-body">Your PIN is set. You're in for next session.</div>
+        <button class="btn btn-ghost" style="max-width: 200px;" id="signup-reset">Reset prototype</button>
+      </div>
+      <div class="bottom-nav">
+        <button class="nav-tab active"><span class="nav-tab-icon">⌂</span><span class="nav-tab-label">Home</span></button>
+        <button class="nav-tab"><span class="nav-tab-icon">◉</span><span class="nav-tab-label">Sign-Ups</span></button>
+        <button class="nav-tab"><span class="nav-tab-icon">▤</span><span class="nav-tab-label">Stats</span></button>
+        <button class="nav-tab"><span class="nav-tab-icon">☺</span><span class="nav-tab-label">Profile</span></button>
+      </div>
+    </div>
+    <div class="notes">
+      <strong>Behaviour to validate:</strong> the submit button is disabled until both name and 4 digits are filled. Try typing only the name — the button stays inert. The PIN renders as dots (uses <code>WebkitTextSecurity: disc</code>, NOT <code>type=password</code> — the latter triggers Chrome's password manager warning we fixed in PR #37).
+    </div>
+  </section>
+
+  <!-- Scene 2: Force-PIN modal -->
+  <section class="scene" data-scene="force-pin">
+    <div class="scene-header">
+      <h1 class="scene-title">Force-PIN modal</h1>
+      <p class="scene-caption">Fires when an existing identity has no PIN set. Cannot be dismissed except by saving a 4-digit PIN or tapping "Sign out instead." This is a blocking primitive (z-index 70, NOT a BottomSheet) — Escape and backdrop tap are explicitly disabled.</p>
+    </div>
+    <div class="phone" style="position: relative;">
+      <div class="phone-aurora"></div>
+      <div class="wordmark">BPM<span class="accent">.</span></div>
+      <div class="glass-card" style="opacity: 0.4;">
+        <p style="font-size:13px; color: var(--text-secondary);">[Home tab content — blurred behind the modal]</p>
+        <div style="height: 200px;"></div>
+      </div>
+      <div class="bottom-nav" style="opacity: 0.5;">
+        <button class="nav-tab active"><span class="nav-tab-icon">⌂</span><span class="nav-tab-label">Home</span></button>
+        <button class="nav-tab"><span class="nav-tab-icon">◉</span><span class="nav-tab-label">Sign-Ups</span></button>
+        <button class="nav-tab"><span class="nav-tab-icon">▤</span><span class="nav-tab-label">Stats</span></button>
+        <button class="nav-tab"><span class="nav-tab-icon">☺</span><span class="nav-tab-label">Profile</span></button>
+      </div>
+
+      <div class="force-pin-overlay" id="force-pin-overlay">
+        <div class="force-pin-card">
+          <h2 class="force-pin-title">Set a PIN to keep your spot</h2>
+          <p class="force-pin-body">PINs are now required so you can recover your account if you change phones or clear your browser. Pick a 4-digit code you'll remember.</p>
+          <details class="what-is">
+            <summary>What is this? Why now?</summary>
+            <p>Until today, PINs were optional and most accounts didn't have one. That meant a single browser refresh could lock you out forever. We're making them required for everyone. It takes 5 seconds.</p>
+          </details>
+          <div style="margin-bottom: 12px;">
+            <label class="field-label" for="force-pin-input">Your PIN</label>
+            <input class="field-input pin-input" id="force-pin-input" type="text" inputmode="numeric" maxlength="4" placeholder="••••">
+          </div>
+          <button class="btn btn-primary" id="force-pin-submit" disabled>Save PIN</button>
+          <div class="escape-hatch">
+            <button class="btn-link" id="force-pin-signout">Sign out instead</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <strong>Behaviour to validate:</strong> the modal is impossible to dismiss except by saving or signing out. Tapping the backdrop does nothing. There's no close button. The "What is this?" expands to explain. The "Sign out instead" escape exists for the rare user who'd rather start over than set a PIN.
+    </div>
+  </section>
+
+  <!-- Scene 3: Single-login admin -->
+  <section class="scene" data-scene="admin">
+    <div class="scene-header">
+      <h1 class="scene-title">Single-login admin</h1>
+      <p class="scene-caption">Admins log in with their <em>own</em> name + PIN — same credentials they'd use as a player. The shared <code>ADMIN_PIN</code> env var is retired. Admin powers come from <code>member.role === 'admin'</code> on the matched record.</p>
+    </div>
+    <div class="phone">
+      <div class="phone-aurora"></div>
+      <div class="wordmark">Admin</div>
+      <div class="glass-card" id="admin-login-card">
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px;">Sign in with your name and PIN. If you're an admin, you'll get full access. If not, you'll get an error.</p>
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div>
+            <label class="field-label" for="admin-name">Name</label>
+            <input class="field-input" id="admin-name" type="text" value="Grant" autocomplete="off">
+            <p class="hint">Pre-filled from your current player identity.</p>
+          </div>
+          <div>
+            <label class="field-label" for="admin-pin">PIN</label>
+            <input class="field-input pin-input" id="admin-pin" type="text" inputmode="numeric" maxlength="4" placeholder="••••">
+          </div>
+          <button class="btn btn-primary" id="admin-submit" disabled>Sign in</button>
+        </div>
+      </div>
+      <div id="admin-dashboard" style="display: none;">
+        <div class="status-banner">
+          <div class="status-banner-title">Signed in as Grant · Admin</div>
+          <div class="status-banner-body">Full access until 8h cookie expiry.</div>
+        </div>
+        <div class="glass-card">
+          <h3 style="font-family: var(--font-display); font-size: 16px; font-weight: 600; margin-bottom: 4px;">Active session</h3>
+          <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Mon May 5 · 8 of 12 spots filled</p>
+          <div class="admin-tile-grid">
+            <div class="admin-tile">Players<div class="admin-tile-num">8</div></div>
+            <div class="admin-tile">Waitlist<div class="admin-tile-num">2</div></div>
+            <div class="admin-tile">Bird tubes<div class="admin-tile-num">3</div></div>
+            <div class="admin-tile">Cost / pp<div class="admin-tile-num">$12</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-nav">
+        <button class="nav-tab"><span class="nav-tab-icon">⌂</span><span class="nav-tab-label">Home</span></button>
+        <button class="nav-tab"><span class="nav-tab-icon">◉</span><span class="nav-tab-label">Sign-Ups</span></button>
+        <button class="nav-tab"><span class="nav-tab-icon">▤</span><span class="nav-tab-label">Stats</span></button>
+        <button class="nav-tab active"><span class="nav-tab-icon">⚙</span><span class="nav-tab-label">Admin</span></button>
+      </div>
+    </div>
+    <div class="notes">
+      <strong>Behaviour to validate:</strong> there is exactly one form. No "now enter the admin PIN" second step. Type any 4 digits in the PIN field — once filled, the submit button activates and clicking drops directly into the AdminDashboard. The flow is: <em>player credentials → admin powers</em>, same as everyone else.
+    </div>
+  </section>
+
+  <!-- Scene 4: Profile anonymous redesign -->
+  <section class="scene" data-scene="profile-anon">
+    <div class="scene-header">
+      <h1 class="scene-title">Profile tab — anonymous state</h1>
+      <p class="scene-caption">Today this tab shows only "Restore" + "Have code?" with no path to sign up — confusing for first-timers. Redesign offers three clear paths: sign up new, restore via PIN, or use a recovery code.</p>
+    </div>
+    <div class="phone">
+      <div class="phone-aurora"></div>
+      <div class="wordmark">Profile</div>
+      <div class="glass-card">
+        <h2 style="font-family: var(--font-display); font-size: 20px; font-weight: 700; margin-bottom: 8px;">Welcome to BPM</h2>
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 18px;">You're not signed in yet. Pick what fits:</p>
+        <div class="anon-stack">
+          <button class="btn btn-primary" id="anon-signup">Sign up for this week</button>
+          <button class="btn btn-ghost" id="anon-restore">Restore with my PIN</button>
+          <button class="btn-link" style="text-align:center;" id="anon-code">Have a recovery code?</button>
+        </div>
+      </div>
+      <div class="bottom-nav">
+        <button class="nav-tab"><span class="nav-tab-icon">⌂</span><span class="nav-tab-label">Home</span></button>
+        <button class="nav-tab"><span class="nav-tab-icon">◉</span><span class="nav-tab-label">Sign-Ups</span></button>
+        <button class="nav-tab"><span class="nav-tab-icon">▤</span><span class="nav-tab-label">Stats</span></button>
+        <button class="nav-tab active"><span class="nav-tab-icon">☺</span><span class="nav-tab-label">Profile</span></button>
+      </div>
+    </div>
+    <div class="notes">
+      <strong>Behaviour to validate:</strong> three CTAs, hierarchy is clear (primary green, secondary glass-ghost, tertiary text link). First-time users have an obvious next step instead of getting bounced to the Home tab to figure it out. Existing users who got logged out have two paths to get back in.
+    </div>
+  </section>
+
+  <!-- Scene 5: Contextual identity callouts -->
+  <section class="scene" data-scene="callouts">
+    <div class="scene-header">
+      <h1 class="scene-title">Contextual identity callouts</h1>
+      <p class="scene-caption">Instead of a global "signed in as X" chip eating chrome, the player's name appears inside content where it makes sense. Three examples — Home, Stats, Sign-Ups.</p>
+    </div>
+
+    <div class="callouts-grid">
+
+      <div class="callout-mock">
+        <div class="callout-mock-label">Home tab — signup card</div>
+        <div class="status-banner">
+          <div class="status-banner-title">You're signed up, Grant ✓</div>
+          <div class="status-banner-body">Mon May 5 · spot 7 of 12</div>
+        </div>
+      </div>
+
+      <div class="callout-mock">
+        <div class="callout-mock-label">Stats tab — attendance card</div>
+        <div class="stats-card glass-card">
+          <div class="stats-card-heading">Your Attendance — last 13 weeks</div>
+          <div class="heatmap" id="heatmap-mock"></div>
+        </div>
+      </div>
+
+      <div class="callout-mock">
+        <div class="callout-mock-label">Sign-Ups tab — list highlight</div>
+        <div class="players-list">
+          <div class="player-row"><span class="player-num">1</span>Alex Chen</div>
+          <div class="player-row"><span class="player-num">2</span>Mei Wong</div>
+          <div class="player-row you"><span class="player-num">3</span>Grant<span class="you-tag">(you)</span></div>
+          <div class="player-row"><span class="player-num">4</span>David Park</div>
+          <div class="player-row"><span class="player-num">5</span>Priya Singh</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes" style="max-width: 480px;">
+      <strong>Behaviour to validate:</strong> the name appears in <em>content</em>, not in chrome. Home reads as a sentence. Stats reads as ownership ("Your Attendance"). Sign-Ups visually anchors the user's row with a left accent border + a quiet <code>(you)</code> tag. None of these add a header bar or chip — the identity surface is the content itself.
+    </div>
+  </section>
+
+</main>
+
+<script>
+  // Scene navigation
+  const navButtons = document.querySelectorAll('.nav-item');
+  const scenes = document.querySelectorAll('.scene');
+  navButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.scene;
+      navButtons.forEach((b) => b.removeAttribute('aria-current'));
+      btn.setAttribute('aria-current', 'page');
+      scenes.forEach((s) => s.classList.toggle('active', s.dataset.scene === target));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+
+  // Theme toggle
+  const themeButtons = document.querySelectorAll('[data-theme-toggle]');
+  themeButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.themeToggle;
+      document.documentElement.setAttribute('data-theme', target);
+      themeButtons.forEach((b) => b.setAttribute('aria-pressed', b.dataset.themeToggle === target ? 'true' : 'false'));
+    });
+  });
+
+  // Signup form — uses textContent to avoid XSS on the welcome name
+  const signupName = document.getElementById('signup-name');
+  const signupPin = document.getElementById('signup-pin');
+  const signupSubmit = document.getElementById('signup-submit');
+  const signupCard = document.getElementById('signup-card');
+  const signupWelcome = document.getElementById('signup-welcome');
+  const welcomeName = document.getElementById('welcome-name');
+  const signupReset = document.getElementById('signup-reset');
+
+  function gateSignup() {
+    const valid = signupName.value.trim().length > 0 && signupPin.value.length === 4;
+    signupSubmit.disabled = !valid;
+  }
+  signupPin.addEventListener('input', () => {
+    signupPin.value = signupPin.value.replace(/[^0-9]/g, '').slice(0, 4);
+    gateSignup();
+  });
+  signupName.addEventListener('input', gateSignup);
+  signupSubmit.addEventListener('click', () => {
+    welcomeName.textContent = signupName.value.trim();
+    signupCard.style.display = 'none';
+    signupWelcome.classList.add('active');
+  });
+  signupReset.addEventListener('click', () => {
+    signupName.value = '';
+    signupPin.value = '';
+    signupCard.style.display = '';
+    signupWelcome.classList.remove('active');
+    gateSignup();
+  });
+
+  // Force-PIN modal form
+  const forcePinInput = document.getElementById('force-pin-input');
+  const forcePinSubmit = document.getElementById('force-pin-submit');
+  const forcePinOverlay = document.getElementById('force-pin-overlay');
+  const forcePinSignout = document.getElementById('force-pin-signout');
+  forcePinInput.addEventListener('input', () => {
+    forcePinInput.value = forcePinInput.value.replace(/[^0-9]/g, '').slice(0, 4);
+    forcePinSubmit.disabled = forcePinInput.value.length !== 4;
+  });
+  forcePinSubmit.addEventListener('click', () => {
+    forcePinOverlay.style.display = 'none';
+  });
+  forcePinSignout.addEventListener('click', () => {
+    alert('In real app: clears identity from localStorage so the user can sign up fresh next session with a new PIN.');
+  });
+
+  // Admin form
+  const adminName = document.getElementById('admin-name');
+  const adminPin = document.getElementById('admin-pin');
+  const adminSubmit = document.getElementById('admin-submit');
+  const adminLoginCard = document.getElementById('admin-login-card');
+  const adminDashboard = document.getElementById('admin-dashboard');
+  function gateAdmin() {
+    const valid = adminName.value.trim().length > 0 && adminPin.value.length === 4;
+    adminSubmit.disabled = !valid;
+  }
+  adminPin.addEventListener('input', () => {
+    adminPin.value = adminPin.value.replace(/[^0-9]/g, '').slice(0, 4);
+    gateAdmin();
+  });
+  adminName.addEventListener('input', gateAdmin);
+  adminSubmit.addEventListener('click', () => {
+    adminLoginCard.style.display = 'none';
+    adminDashboard.style.display = 'block';
+  });
+
+  // Profile anon button alerts (just demo affordances — no real navigation in the proto)
+  document.getElementById('anon-signup').addEventListener('click', () => alert('Real app: navigates to Home tab signup form.'));
+  document.getElementById('anon-restore').addEventListener('click', () => alert('Real app: opens RecoverySheet — name + PIN.'));
+  document.getElementById('anon-code').addEventListener('click', () => alert('Real app: opens EnterCodeSheet — name + 6-digit code from admin.'));
+
+  // Heatmap mock — build via DOM nodes (avoid innerHTML on dynamic content)
+  (function buildHeatmap() {
+    const grid = document.getElementById('heatmap-mock');
+    if (!grid) return;
+    const cells = 7 * 13; // 7 rows × 13 weeks
+    for (let i = 0; i < cells; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'heatmap-cell';
+      const r = Math.random();
+      if (r > 0.7) cell.classList.add('hit');
+      else if (r > 0.5) cell.classList.add('miss');
+      grid.appendChild(cell);
+    }
+  })();
+</script>
+
+</body>
+</html>

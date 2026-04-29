@@ -9,6 +9,10 @@
       "inviteError": "We don't have \"{name}\" on our invite list. Check the spelling, or ask the friend who shared this app with you to add you.",
       "networkError": "Network error. Please try again.",
       "nameRequired": "Enter your name to sign up",
+      "pinRequired": "Set a 4-digit PIN to sign up",
+      "pinTooCommon": "Pick a less common PIN",
+      "pinLabel": "4-digit PIN",
+      "pinHint": "Required. Use this PIN to recover access if you change phones.",
       "genericFailure": "Failed to sign up",
       "waitlistFailure": "Failed to join waitlist",
       "namePlaceholder": "Enter your name",
@@ -100,6 +104,7 @@
     "anonymousTitle": "Set up your profile",
     "anonymousBody": "You're not signed up yet.",
     "anonymousRestoreLink": "Already a player? Sign in →",
+    "anonymousSignupCta": "Sign up for this week",
     "playerName": "Name",
     "playerSession": "Signed up for",
     "pinSectionTitle": "Recovery PIN",
@@ -161,6 +166,21 @@
     "confirmYes": "Yes",
     "confirmNo": "No",
     "cancelFailure": "Failed to cancel. Please try again."
+  },
+  "forcePinModal": {
+    "title": "Set a PIN to keep your spot",
+    "body": "PINs are now required so you can recover your account if you change phones or clear your browser. Pick a 4-digit code you'll remember.",
+    "whatIsThis": "What is this? Why now?",
+    "whatIsThisBody": "Until today, PINs were optional and most accounts didn't have one — so a single browser refresh could lock you out forever. We're making them required for everyone. It takes 5 seconds.",
+    "pinLabel": "Your PIN",
+    "confirmLabel": "Confirm",
+    "save": "Save PIN",
+    "saving": "Saving…",
+    "signOutInstead": "Sign out instead",
+    "errMismatch": "PINs don't match",
+    "errTooCommon": "Pick a less common PIN",
+    "errInvalid": "Couldn't save. Try again.",
+    "errNetwork": "Network error. Try again."
   },
   "admin": {
     "releases": {

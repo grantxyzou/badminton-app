@@ -22,7 +22,6 @@ const renderWith = (props: Partial<typeof baseProps> = {}) =>
 describe('ProfileTab', () => {
   beforeEach(() => {
     localStorage.clear();
-    process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'true';
   });
   afterEach(() => cleanup());
 
@@ -50,13 +49,13 @@ describe('ProfileTab', () => {
     expect(screen.getByText(/Admin tools/i)).toBeDefined();
   });
 
-  it('hides PIN affordances when flag is off', () => {
-    process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'false';
-    localStorage.setItem(
-      'badminton_identity',
-      JSON.stringify({ name: 'Michael', token: 'tok', sessionId: 'session-2026-04-27' }),
+  it('renders the Sign-up CTA in anonymous state when onTabChange is provided', () => {
+    const onTabChange = vi.fn();
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <ProfileTab {...baseProps} onTabChange={onTabChange} />
+      </NextIntlClientProvider>,
     );
-    renderWith();
-    expect(screen.queryByText(/Recovery PIN/i)).toBeNull();
+    expect(screen.getByText(/Sign up for this week/i)).toBeDefined();
   });
 });
