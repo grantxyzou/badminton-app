@@ -48,14 +48,25 @@ const jetbrainsMono = JetBrains_Mono({
   preload: false, // mono is below-the-fold on first load
 });
 
+/**
+ * Canonical URL for SEO + social-share metadata. Pulls from
+ * `NEXT_PUBLIC_BASE_URL` so a custom-domain swap is one Azure App Setting
+ * change + redeploy — no code edit. Fallback retains the current bpm-stable
+ * azurewebsites URL so dev and any environment without the var set produces
+ * sensible output.
+ */
+const CANONICAL_URL =
+  process.env.NEXT_PUBLIC_BASE_URL ??
+  'https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm';
+
 export const metadata: Metadata = {
-  metadataBase: new URL('https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm'),
+  metadataBase: new URL(CANONICAL_URL),
   title: 'BPM Badminton',
   description: 'Sign up for weekly badminton sessions',
   openGraph: {
     title: 'BPM Badminton',
     description: 'Sign up for weekly badminton sessions',
-    url: 'https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm',
+    url: CANONICAL_URL,
     siteName: 'BPM Badminton',
     type: 'website',
   },
