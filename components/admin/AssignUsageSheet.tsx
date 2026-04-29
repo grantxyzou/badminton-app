@@ -164,7 +164,7 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
         {!loading && rows.length > 0 && (
           <div className="space-y-2">
             {rows.map((r) => (
-              <div key={r.sessionId} className="inner-card p-3 flex items-center justify-between gap-3">
+              <div key={r.sessionId} className="glass-card-soft p-3 flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                     {r.title ?? 'Session'}

@@ -173,7 +173,7 @@ export default function ProfileTab({
     <div className="animate-fadeIn flex flex-col gap-4">
       <h1 className="bpm-h1">{tNav('profile')}</h1>
       <div className="glass-card" style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div className="inner-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="glass-card-soft" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('playerName')}</p>
           <p style={{ fontSize: 24, fontWeight: 600 }}>{identity.name}</p>
           {sessionLabel && (
@@ -183,7 +183,7 @@ export default function ProfileTab({
           )}
         </div>
 
-        <div className="inner-card" style={{ padding: 16 }}>
+        <div className="glass-card-soft" style={{ padding: 16 }}>
           <h3 className="text-sm font-semibold mb-3">{t('pinSectionTitle')}</h3>
           {!editingPin ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -309,7 +309,7 @@ interface SettingsRow {
 
 function SettingsList({ title, rows }: { title: string; rows: SettingsRow[] }) {
   return (
-    <div className="inner-card" style={{ padding: 0, overflow: 'hidden' }}>
+    <div className="glass-card-soft" style={{ padding: 0, overflow: 'hidden' }}>
       <p
         style={{
           padding: '14px 16px 8px',
