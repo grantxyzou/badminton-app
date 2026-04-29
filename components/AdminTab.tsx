@@ -8,6 +8,7 @@ import { getIdentity } from '@/lib/identity';
 import ShuttleLoader from './ShuttleLoader';
 import AdminDashboard from './admin/AdminDashboard';
 import PinInput from './PinInput';
+import PageHeader from './primitives/PageHeader';
 
 /* ─────────────────────────── Admin login ───────────────────────────
    Per PR B: admin auth is now per-player. Sign in with your name + your
@@ -63,9 +64,7 @@ export default function AdminTab() {
   if (isAuthed === null) {
     return (
       <div className="space-y-5">
-        <h1 className="text-3xl font-bold text-gray-200 leading-tight px-2">
-          {pageT('title')}
-        </h1>
+        <PageHeader>{pageT('title')}</PageHeader>
         <ShuttleLoader />
       </div>
     );
@@ -74,9 +73,7 @@ export default function AdminTab() {
   if (!isAuthed) {
     return (
       <div className="space-y-5">
-        <h1 className="text-3xl font-bold text-gray-200 leading-tight px-2">
-          {pageT('title')}
-        </h1>
+        <PageHeader>{pageT('title')}</PageHeader>
         <div className="flex items-center justify-center min-h-[50vh]">
           <div className="glass-card p-6 w-full max-w-xs space-y-5">
             <div className="text-center">
