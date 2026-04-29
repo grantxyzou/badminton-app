@@ -192,6 +192,7 @@
     "haveCodeLink": "有管理员发的验证码？",
     "errorInvalid": "信息不匹配，请重试。",
     "errorRateLimited": "尝试次数过多，请稍后再试。",
+    "errorAdminLoggedIn": "当前为管理员登录——请先退出后再恢复玩家账户。",
     "welcomeBack": "欢迎回来，{name}",
     "close": "关闭"
   }
