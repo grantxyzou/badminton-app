@@ -7,6 +7,7 @@ import { getIdentity, clearIdentity } from '@/lib/identity';
 import ShuttleLoader from '@/components/ShuttleLoader';
 import ShuttleIcon from '@/components/ShuttleIcon';
 import PageHeader from '@/components/primitives/PageHeader';
+import ConfirmInline from '@/components/primitives/ConfirmInline';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
@@ -132,11 +133,13 @@ export default function PlayersTab() {
                   {isMe && (
                     <div className="flex flex-col items-end gap-0.5">
                       {confirmingCancel ? (
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="text-gray-400">{t('cancelConfirm')}</span>
-                          <button type="button" onClick={handleCancel} className="text-red-400 hover:text-red-300 transition-colors px-2 py-1" style={{ minHeight: 32 }}>{t('confirmYes')}</button>
-                          <button type="button" onClick={() => setConfirmingCancel(false)} className="text-gray-400 hover:text-white transition-colors px-2 py-1" style={{ minHeight: 32 }}>{t('confirmNo')}</button>
-                        </div>
+                        <ConfirmInline
+                          message={t('cancelConfirm')}
+                          yesLabel={t('confirmYes')}
+                          noLabel={t('confirmNo')}
+                          onYes={handleCancel}
+                          onNo={() => setConfirmingCancel(false)}
+                        />
                       ) : (
                         <button
                           type="button"
@@ -188,11 +191,13 @@ export default function PlayersTab() {
                     {isMe && (
                       <div className="flex flex-col items-end gap-0.5">
                         {confirmingCancel ? (
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="text-gray-400">{t('cancelConfirm')}</span>
-                            <button type="button" onClick={handleCancel} className="text-red-400 hover:text-red-300 transition-colors">{t('confirmYes')}</button>
-                            <button type="button" onClick={() => setConfirmingCancel(false)} className="text-gray-400 hover:text-white transition-colors">{t('confirmNo')}</button>
-                          </div>
+                          <ConfirmInline
+                            message={t('cancelConfirm')}
+                            yesLabel={t('confirmYes')}
+                            noLabel={t('confirmNo')}
+                            onYes={handleCancel}
+                            onNo={() => setConfirmingCancel(false)}
+                          />
                         ) : (
                           <button
                             type="button"
