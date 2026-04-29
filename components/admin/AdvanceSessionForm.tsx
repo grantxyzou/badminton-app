@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import type { Session } from '@/lib/types';
 import AdminBackHeader from './AdminBackHeader';
 import DatePicker from '../DatePicker';
+import StatusBanner from '../primitives/StatusBanner';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -180,13 +181,12 @@ export default function AdvanceSessionForm({ onBack }: Props) {
           {advanceError && <p className="text-red-400 text-xs">{advanceError}</p>}
 
           {success ? (
-            <div className="status-banner-green">
-              <span className="material-icons icon-status text-green-400">check_circle</span>
-              <div>
-                <p className="font-semibold text-green-400 text-sm">Session created!</p>
-                <p className="text-xs text-gray-400 mt-0.5">Previous session archived.</p>
-              </div>
-            </div>
+            <StatusBanner
+              tone="success"
+              icon="check_circle"
+              title="Session created!"
+              body="Previous session archived."
+            />
           ) : (
             <button
               type="submit"
