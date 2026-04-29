@@ -19,6 +19,10 @@
   /* ── Motion ── */
   --ease-glass: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Sheet/modal slide-up curve — declared in
+     docs/design-system/preview/11-motion.html since v3 but only landed in
+     globals.css in PR C. Match the live token to the spec. */
+  --ease-sheet: cubic-bezier(0.16, 1, 0.3, 1);
   --duration-fast: 150ms;
   --duration-normal: 250ms;
   --duration-slow: 400ms;
@@ -1296,11 +1300,14 @@ html[data-hydrated="true"] .splash {
 
 .terminal-accent-text { color: var(--terminal-accent); }
 
-/* ── BottomSheet primitive ── */
+/* ── BottomSheet primitive ──
+   Easing pulled from `--ease-sheet` (added to the token surface in PR C).
+   Same visual curve as the previous hardcoded `cubic-bezier(0.16, 1, 0.3, 1)`,
+   now sourced from the design system instead of duplicated inline. */
 .bottom-sheet-backdrop {
   background: rgba(0, 0, 0, 0.72);
   opacity: 0;
-  transition: opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 180ms var(--ease-sheet);
   pointer-events: none;
 }
 .bottom-sheet-backdrop[data-state="open"] {
@@ -1319,8 +1326,8 @@ html[data-hydrated="true"] .splash {
   transform: translateY(100%);
   opacity: 0;
   transition:
-    transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    transform 180ms var(--ease-sheet),
+    opacity 180ms var(--ease-sheet);
 }
 .bottom-sheet[data-state="open"] {
   transform: translateY(0);
