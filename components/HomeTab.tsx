@@ -13,6 +13,7 @@ import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
 import WelcomeCard from './WelcomeCard';
 import PinInput from '@/components/PinInput';
+import StatusBanner from '@/components/primitives/StatusBanner';
 import { renderMarkdown } from '@/lib/miniMarkdown';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -340,37 +341,24 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           /* ── State: Session finished ── */
           <div className="space-y-4">
             <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
-            <div className="status-banner-green">
-              <span className="material-icons icon-status text-green-400">celebration</span>
-              <div>
-                <p className="font-semibold text-green-400 text-sm">{tStates('finishedTitle')}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{tStates('finishedBody')}</p>
-              </div>
-            </div>
+            <StatusBanner tone="success" icon="celebration" title={tStates('finishedTitle')} body={tStates('finishedBody')} />
           </div>
         ) : isSignupClosed && !effectiveIsSignedUp && !isWaitlisted ? (
           /* ── State: Sign-ups opening soon ── */
           <div className="space-y-4">
             <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
-            <div className="status-banner-orange">
-              <span className="material-icons icon-status text-amber-400">watch_later</span>
-              <div>
-                <p className="font-semibold text-amber-300 text-sm">{tStates('openingSoonTitle')}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{tStates('openingSoonBody')}</p>
-              </div>
-            </div>
+            <StatusBanner tone="warn" icon="watch_later" title={tStates('openingSoonTitle')} body={tStates('openingSoonBody')} />
           </div>
         ) : isDeadlinePast && !effectiveIsSignedUp && !isWaitlisted ? (
           /* ── State: Deadline passed ── */
           <div className="space-y-4">
             <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
-            <div className="status-banner-orange">
-              <span className="material-icons icon-status text-amber-400">lock_clock</span>
-              <div>
-                <p className="font-semibold text-amber-300 text-sm">{tStates('closedTitle')}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{t('signup.closedPreviously', { date: format.dateTime(new Date(session!.deadline), DAY_LONG) })}</p>
-              </div>
-            </div>
+            <StatusBanner
+              tone="warn"
+              icon="lock_clock"
+              title={tStates('closedTitle')}
+              body={t('signup.closedPreviously', { date: format.dateTime(new Date(session!.deadline), DAY_LONG) })}
+            />
           </div>
         ) : effectiveIsSignedUp ? (
           /* ── State 1: Active sign-up ── */
@@ -379,13 +367,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
               <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
               <p className="text-sm text-gray-400">{t('signup.spotsRemaining', { count: activePlayers.length, remaining: spotsTotal - activePlayers.length })}</p>
             </div>
-            <div className="status-banner-green">
-              <span className="material-icons icon-status text-green-400">check_circle</span>
-              <div>
-                <p className="font-semibold text-green-400 text-sm">{currentUser ? tStates('signedUpTitle', { name: currentUser }) : tStates('signedUpTitleGeneric')}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{tStates('signedUpBody')}</p>
-              </div>
-            </div>
+            <StatusBanner
+              tone="success"
+              icon="check_circle"
+              title={currentUser ? tStates('signedUpTitle', { name: currentUser }) : tStates('signedUpTitleGeneric')}
+              body={tStates('signedUpBody')}
+            />
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
               {t('signup.viewList')}
             </button>
@@ -402,13 +389,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
                 </p>
               </div>
             </div>
-            <div className="status-banner-orange">
-              <span className="material-icons icon-status text-amber-400">schedule</span>
-              <div>
-                <p className="font-semibold text-amber-400 text-sm">{tStates('waitlistTitle')}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{tStates('waitlistPositionLabel', { position: waitlistPosition, total: waitlistPlayers.length })} · {t('signup.confirmed', { name: currentUser ?? '' })}</p>
-              </div>
-            </div>
+            <StatusBanner
+              tone="warn"
+              icon="schedule"
+              title={tStates('waitlistTitle')}
+              body={`${tStates('waitlistPositionLabel', { position: waitlistPosition, total: waitlistPlayers.length })} · ${t('signup.confirmed', { name: currentUser ?? '' })}`}
+            />
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
               {t('signup.viewList')}
             </button>
@@ -420,13 +406,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
               <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
               <p className="text-sm text-gray-400">{t('signup.spotsFull', { count: activePlayers.length })}</p>
             </div>
-            <div className="status-banner-orange">
-              <span className="material-icons icon-status text-orange-400">lock</span>
-              <div>
-                <p className="font-semibold text-orange-300 text-sm">{t('signup.full')}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{t('signup.allSpotsTaken', { total: spotsTotal })}</p>
-              </div>
-            </div>
+            <StatusBanner tone="warn" icon="lock" title={t('signup.full')} body={t('signup.allSpotsTaken', { total: spotsTotal })} />
             <form onSubmit={handleJoinWaitlist} className="space-y-3">
               <div className="relative">
                 <input
