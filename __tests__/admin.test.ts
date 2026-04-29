@@ -1,122 +1,197 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GET, POST, DELETE } from '@/app/api/admin/route';
 import {
   resetMockStore,
   setupAdminPin,
+  seedTestAdminMember,
   getTestPin,
+  getTestAdminName,
+  seedMember,
   makeRequest,
   makeAdminRequest,
   makeGetRequest,
-  adminCookieValue,
+  getStore,
 } from './helpers';
 
-// ---- TESTS ----
+const URL_PATH = 'http://localhost:3000/api/admin';
 
-describe('POST /api/admin (login)', () => {
-  // ARRANGE (shared): reset store and pin before every test so each
-  // starts from a clean, known state — same idea as resetting a prototype
-  // before each usability session.
-  beforeEach(() => {
+describe('POST /api/admin (login) — unified per-player auth', () => {
+  beforeEach(async () => {
     setupAdminPin();
     resetMockStore();
+    await seedTestAdminMember();
   });
 
-  // TEST 1: The happy path — correct PIN returns success and a cookie
-  it('returns 200 and success:true with Set-Cookie on correct PIN', async () => {
-    // ARRANGE: nothing extra — setupAdminPin already loaded the correct PIN
+  afterEach(() => {
+    delete process.env.ADMIN_NAMES;
+  });
 
-    // ACT
-    const res = await POST(makeRequest('POST', 'http://localhost:3000/api/admin', { pin: getTestPin() }));
+  it('returns 200 + Set-Cookie for the seeded admin Member with correct name + PIN', async () => {
+    const res = await POST(
+      makeRequest('POST', URL_PATH, { name: getTestAdminName(), pin: getTestPin() }),
+    );
     const data = await res.json();
-
-    // ASSERT
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
-    // The Set-Cookie header must be present so the browser can persist the session
+    expect(data.name).toBe(getTestAdminName());
     const setCookie = res.headers.get('set-cookie');
     expect(setCookie).not.toBeNull();
     expect(setCookie).toContain('admin_session=');
   });
 
-  // TEST 2: Wrong PIN — rejected
   it('returns 401 on wrong PIN', async () => {
-    // ACT
-    const res = await POST(makeRequest('POST', 'http://localhost:3000/api/admin', { pin: 'wrong-pin' }));
-    const data = await res.json();
-
-    // ASSERT
+    const res = await POST(
+      makeRequest('POST', URL_PATH, { name: getTestAdminName(), pin: '9999' }),
+    );
     expect(res.status).toBe(401);
-    expect(data.error).toBeDefined();
   });
 
-  // TEST 3: Empty string PIN — rejected without leaking timing info
-  it('returns 401 on empty PIN', async () => {
-    // ACT
-    const res = await POST(makeRequest('POST', 'http://localhost:3000/api/admin', { pin: '' }));
-    const data = await res.json();
-
-    // ASSERT
+  it('returns 401 on unknown name (constant-time miss path)', async () => {
+    const res = await POST(
+      makeRequest('POST', URL_PATH, { name: 'Nobody', pin: getTestPin() }),
+    );
     expect(res.status).toBe(401);
-    expect(data.error).toBeDefined();
   });
 
-  // TEST 4: Missing pin field entirely — should not crash, should reject
-  it('returns 401 when pin field is absent', async () => {
-    // ACT: body has no "pin" key at all
-    const res = await POST(makeRequest('POST', 'http://localhost:3000/api/admin', {}));
-    const data = await res.json();
-
-    // ASSERT
+  it('returns 401 when name is missing', async () => {
+    const res = await POST(makeRequest('POST', URL_PATH, { pin: getTestPin() }));
     expect(res.status).toBe(401);
-    expect(data.error).toBeDefined();
+  });
+
+  it('returns 401 when PIN is missing', async () => {
+    const res = await POST(makeRequest('POST', URL_PATH, { name: getTestAdminName() }));
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 401 when PIN is malformed (not 4 digits)', async () => {
+    const res = await POST(
+      makeRequest('POST', URL_PATH, { name: getTestAdminName(), pin: '123' }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 401 when member exists with role=member (no auto-promotion without ADMIN_NAMES)', async () => {
+    resetMockStore();
+    setupAdminPin();
+    seedMember('Casual Carol', { pinHash: 'unused' });
+    const res = await POST(
+      makeRequest('POST', URL_PATH, { name: 'Casual Carol', pin: getTestPin() }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  describe('ADMIN_NAMES bootstrap', () => {
+    it('promotes a non-admin member to admin when their name is in ADMIN_NAMES + correct PIN', async () => {
+      resetMockStore();
+      setupAdminPin();
+      const { hashPin } = await import('../lib/recoveryHash');
+      const pinHash = await hashPin(getTestPin());
+      seedMember('Bootstrap Bob', { pinHash });
+      process.env.ADMIN_NAMES = 'Bootstrap Bob, someone-else';
+      try {
+        const res = await POST(
+          makeRequest('POST', URL_PATH, { name: 'Bootstrap Bob', pin: getTestPin() }),
+        );
+        expect(res.status).toBe(200);
+        const store = getStore();
+        const member = (store['members'] as Array<{ name: string; role: string }>).find(
+          (m) => m.name === 'Bootstrap Bob',
+        );
+        expect(member?.role).toBe('admin');
+      } finally {
+        delete process.env.ADMIN_NAMES;
+      }
+    });
+
+    it('still 401s when name is in ADMIN_NAMES but PIN is wrong', async () => {
+      resetMockStore();
+      setupAdminPin();
+      const { hashPin } = await import('../lib/recoveryHash');
+      const pinHash = await hashPin('1357');
+      seedMember('Bootstrap Bob', { pinHash });
+      process.env.ADMIN_NAMES = 'Bootstrap Bob';
+      try {
+        const res = await POST(
+          makeRequest('POST', URL_PATH, { name: 'Bootstrap Bob', pin: getTestPin() }),
+        );
+        expect(res.status).toBe(401);
+      } finally {
+        delete process.env.ADMIN_NAMES;
+      }
+    });
+
+    it('returns 401 when ADMIN_NAMES is empty (no bootstrap path)', async () => {
+      resetMockStore();
+      setupAdminPin();
+      const { hashPin } = await import('../lib/recoveryHash');
+      const pinHash = await hashPin(getTestPin());
+      seedMember('Casual Carol', { pinHash });
+      delete process.env.ADMIN_NAMES;
+      const res = await POST(
+        makeRequest('POST', URL_PATH, { name: 'Casual Carol', pin: getTestPin() }),
+      );
+      expect(res.status).toBe(401);
+    });
   });
 });
 
-// ---- GET ----
-
 describe('GET /api/admin (auth check)', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     setupAdminPin();
     resetMockStore();
+    await seedTestAdminMember();
   });
 
-  // TEST 5: No cookie → not authenticated
   it('returns { authed: false } without a cookie', async () => {
-    // ACT: plain request, no Cookie header
-    const res = await GET(makeGetRequest('http://localhost:3000/api/admin'));
+    const res = await GET(makeGetRequest(URL_PATH));
     const data = await res.json();
-
-    // ASSERT
     expect(data.authed).toBe(false);
   });
 
-  // TEST 6: Valid admin cookie → authenticated
-  it('returns { authed: true } with a valid admin cookie', async () => {
-    // ACT: admin request includes the correct hashed cookie value
-    const res = await GET(makeAdminRequest('GET', 'http://localhost:3000/api/admin'));
+  it('returns { authed: true, name } with a valid admin cookie', async () => {
+    const res = await GET(makeAdminRequest('GET', URL_PATH));
     const data = await res.json();
-
-    // ASSERT
     expect(data.authed).toBe(true);
+    expect(data.name).toBe(getTestAdminName());
+  });
+
+  it('returns { authed: false } when cookie is valid but Member is demoted', async () => {
+    const store = getStore();
+    const members = store['members'] as Array<{ id: string; role: string }>;
+    const admin = members.find((m) => m.id === 'member-test-admin');
+    if (admin) admin.role = 'member';
+    const res = await GET(makeAdminRequest('GET', URL_PATH));
+    const data = await res.json();
+    expect(data.authed).toBe(false);
+  });
+
+  it('returns { authed: false } when cookie is valid but Member was deactivated', async () => {
+    const store = getStore();
+    const members = store['members'] as Array<{ id: string; active: boolean }>;
+    const admin = members.find((m) => m.id === 'member-test-admin');
+    if (admin) admin.active = false;
+    const res = await GET(makeAdminRequest('GET', URL_PATH));
+    const data = await res.json();
+    expect(data.authed).toBe(false);
   });
 });
 
-// ---- DELETE ----
-
 describe('DELETE /api/admin (logout)', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     setupAdminPin();
     resetMockStore();
+    await seedTestAdminMember();
   });
 
-  // TEST 7: Logout with valid admin cookie → 200 and success:true
   it('returns 200 and success:true when logged out as admin', async () => {
-    // ACT
-    const res = await DELETE(makeAdminRequest('DELETE', 'http://localhost:3000/api/admin'));
+    const res = await DELETE(makeAdminRequest('DELETE', URL_PATH));
     const data = await res.json();
-
-    // ASSERT
     expect(res.status).toBe(200);
     expect(data.success).toBe(true);
+  });
+
+  it('returns 401 without a cookie', async () => {
+    const res = await DELETE(makeRequest('DELETE', URL_PATH));
+    expect(res.status).toBe(401);
   });
 });

@@ -1,5 +1,6 @@
-import { createHash } from 'crypto';
+import { createHmac } from 'crypto';
 import { NextRequest } from 'next/server';
+import { hashPin } from '../lib/recoveryHash';
 
 /* ── Mock store management ── */
 
@@ -111,22 +112,81 @@ function uniqueIp(): string {
   return `test-${reqCounter}`;
 }
 
-/** Admin PIN used in tests */
-const TEST_PIN = 'test-pin-1234';
+/** Admin PIN used in tests (4 digits — matches the new unified PIN format) */
+const TEST_PIN = '4242';
+const TEST_SESSION_SECRET = 'test-session-secret-not-for-production-use-please';
+const TEST_ADMIN_MEMBER_ID = 'member-test-admin';
+const TEST_ADMIN_NAME = 'Test Admin';
 
-/** Set up the admin PIN env var for tests */
+/**
+ * Set up the test session secret for the new signed-payload cookie format.
+ * Replaces the legacy `setupAdminPin` (ADMIN_PIN env var). Tests that need
+ * a real admin Member with a working pinHash should also call
+ * `seedTestAdminMember()`.
+ */
 export function setupAdminPin() {
+  process.env.SESSION_SECRET = TEST_SESSION_SECRET;
+  // Legacy alias kept for any test that hasn't been updated yet.
   process.env.ADMIN_PIN = TEST_PIN;
 }
 
-/** Get the test PIN value */
 export function getTestPin(): string {
   return TEST_PIN;
 }
 
-/** Generate a valid admin cookie value matching the auth module's expected hash */
+export function getTestAdminName(): string {
+  return TEST_ADMIN_NAME;
+}
+
+/**
+ * Seed the test Member that admin tests authenticate as: `role: 'admin'`,
+ * `active: true`, and `pinHash` derived from `TEST_PIN`. Idempotent.
+ */
+export async function seedTestAdminMember() {
+  const store = getStore();
+  if (!store['members']) store['members'] = [];
+  const existing = (store['members'] as Array<{ id: string }>).find(
+    (m) => m.id === TEST_ADMIN_MEMBER_ID,
+  );
+  const pinHash = await hashPin(TEST_PIN);
+  if (existing) {
+    Object.assign(existing, { role: 'admin', active: true, pinHash });
+    return existing;
+  }
+  const member = {
+    id: TEST_ADMIN_MEMBER_ID,
+    name: TEST_ADMIN_NAME,
+    role: 'admin' as const,
+    sessionCount: 0,
+    active: true,
+    createdAt: new Date().toISOString(),
+    pinHash,
+  };
+  store['members'].push(member);
+  return member;
+}
+
+function base64urlEncode(buf: Buffer): string {
+  return buf.toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+
+/**
+ * Build a valid admin cookie value (signed payload) for the test admin.
+ * Mirrors the production `signPayload` function exactly so tests exercise
+ * the real verification path.
+ */
 export function adminCookieValue(): string {
-  return createHash('sha256').update(`badminton-admin:${TEST_PIN}`).digest('hex');
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    memberId: TEST_ADMIN_MEMBER_ID,
+    name: TEST_ADMIN_NAME,
+    iat: now,
+    exp: now + 60 * 60 * 8,
+  };
+  const headerB64 = base64urlEncode(Buffer.from(JSON.stringify(payload), 'utf8'));
+  const sig = createHmac('sha256', TEST_SESSION_SECRET).update(headerB64).digest();
+  const sigB64 = base64urlEncode(sig);
+  return `${headerB64}.${sigB64}`;
 }
 
 export function makeRequest(
