@@ -64,6 +64,14 @@ export interface Member {
   lastSeen?: string;
   createdAt: string;
   active: boolean;
+  /**
+   * scrypt-hashed PIN, mirrored from the player's `pinHash` whenever the
+   * player sets or changes their PIN via /api/players. Used by the unified
+   * admin auth flow: an admin authenticates with their name + own PIN, the
+   * server verifies against this hash. Optional — members who have never set
+   * a PIN cannot use admin login.
+   */
+  pinHash?: string;
 }
 
 export interface Alias {
