@@ -260,15 +260,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
       {/* Page title + release trigger — grouped so no space-y-5 gap sits
           between them; the version stamp sits tight under the title. */}
       <div>
+        {/* Wordmark uses the same `bpm-h1` token as PageHeader but stays
+            inline because of the easter-egg `onTitleTap` handler. The
+            font-family + letter-spacing are now sourced from the class
+            instead of duplicated inline. */}
         <h1
-          className="text-3xl font-bold text-gray-200 leading-tight px-2"
+          className="bpm-h1 leading-tight px-2"
           onClick={onTitleTap}
-          style={{
-            cursor: 'default',
-            userSelect: 'none',
-            fontFamily: 'var(--font-display)',
-            letterSpacing: '-0.02em',
-          }}
+          style={{ cursor: 'default', userSelect: 'none' }}
         >
           BPM Badminton
         </h1>
