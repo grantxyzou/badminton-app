@@ -18,7 +18,6 @@ import AnnouncementComposer from './AnnouncementComposer';
 import { renderMarkdown } from '@/lib/miniMarkdown';
 import { useSessionNavigation } from './hooks/useSessionNavigation';
 import { usePlayerManagement } from './hooks/usePlayerManagement';
-import { isFlagOn } from '@/lib/flags';
 import ResetAccessSheet from './ResetAccessSheet';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -92,8 +91,8 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
   // Wire up the ref after both hooks are created
   useEffect(() => { playerLoadRef.current = pm.loadPlayers; }, [pm.loadPlayers]);
 
-  // A2 recovery: admin issues a 6-digit reset-access code per player
-  const recoveryFlag = isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY');
+  // A2 recovery: admin issues a 6-digit reset-access code per player.
+  // Always available now that the recovery flag has been retired.
   const [resetSheet, setResetSheet] = useState<{
     open: boolean; playerName: string; code: string; expiresAt: number;
   }>({ open: false, playerName: '', code: '', expiresAt: 0 });
@@ -360,18 +359,16 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
                     >
                       {pm.savedId === player.id ? '\u2713' : pm.togglingId === player.id ? '\u2026' : player.paid ? 'Paid' : 'Pending'}
                     </button>
-                    {recoveryFlag && (
-                      <button
-                        onClick={() => handleResetAccess(player)}
-                        className="text-xs text-gray-500 hover:text-blue-400 transition-colors flex items-center gap-1 px-2"
-                        title={`Reset access for ${player.name}`}
-                        aria-label={`Reset access for ${player.name}`}
-                        style={{ minHeight: 44, minWidth: 44, justifyContent: 'center' }}
-                      >
-                        <span className="material-icons" style={{ fontSize: 18 }}>key</span>
-                        <span className="hidden sm:inline">Reset</span>
-                      </button>
-                    )}
+                    <button
+                      onClick={() => handleResetAccess(player)}
+                      className="text-xs text-gray-500 hover:text-blue-400 transition-colors flex items-center gap-1 px-2"
+                      title={`Reset access for ${player.name}`}
+                      aria-label={`Reset access for ${player.name}`}
+                      style={{ minHeight: 44, minWidth: 44, justifyContent: 'center' }}
+                    >
+                      <span className="material-icons" style={{ fontSize: 18 }}>key</span>
+                      <span className="hidden sm:inline">Reset</span>
+                    </button>
                     <button
                       onClick={() => pm.handleRemove(player)}
                       disabled={pm.removingId === player.id}

@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { isFlagOn } from '@/lib/flags';
 import { getIdentity, clearIdentity, type Identity } from '@/lib/identity';
 import type { Release } from '@/lib/types';
 import RecoverySheet from './RecoverySheet';
@@ -16,12 +15,23 @@ interface Props {
   sessionLabel: string;
   isAdmin: boolean;
   onAdminTools: () => void;
+  /**
+   * Called when the user taps the "Sign up for this week" CTA in the
+   * anonymous state — navigates them to the Home tab where the signup form
+   * lives. Optional: if absent, the CTA is hidden.
+   */
+  onTabChange?: (tab: 'home') => void;
 }
 
-export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTools }: Props) {
+export default function ProfileTab({
+  sessionId,
+  sessionLabel,
+  isAdmin,
+  onAdminTools,
+  onTabChange,
+}: Props) {
   const t = useTranslations('profile');
   const tPin = useTranslations('pin');
-  const recoveryFlag = isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY');
   const [identity, setLocalIdentity] = useState<Identity | null>(null);
   const [pinIsSet, setPinIsSet] = useState(false);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
@@ -89,50 +99,64 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
     setTimeout(() => setPinSaved(false), 2000);
   }
 
-  // Anonymous state
+  // Anonymous state — three clear paths: sign up new, restore via PIN, or
+  // enter a recovery code from admin. Replaces the old "Restore-only" state
+  // which left first-timers without a path forward.
   if (!identity) {
     return (
       <div className="animate-fadeIn flex flex-col gap-4">
         <h2 className="bpm-h1">{t('anonymousTitle')}</h2>
         <p style={{ color: 'var(--text-secondary)' }}>{t('anonymousBody')}</p>
-        {recoveryFlag && (
-          <>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-              <button type="button" onClick={() => setRecoveryOpen(true)} className="btn-primary">
-                {t('anonymousRestoreLink')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setEnterCodeOpen(true)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-secondary)',
-                  fontSize: 12,
-                  textDecoration: 'underline',
-                  cursor: 'pointer',
-                  padding: '0 12px',
-                  minHeight: 44,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                }}
-              >
-                {tRecovery('haveCodeLink')}
-              </button>
-            </div>
-            <RecoverySheet
-              open={recoveryOpen}
-              onClose={() => setRecoveryOpen(false)}
-              sessionId={sessionId}
-              onForgotPin={() => setEnterCodeOpen(true)}
-            />
-            <EnterCodeSheet
-              open={enterCodeOpen}
-              onClose={() => setEnterCodeOpen(false)}
-              sessionId={sessionId}
-            />
-          </>
-        )}
+        <div className="glass-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {onTabChange && (
+            <button
+              type="button"
+              onClick={() => onTabChange('home')}
+              className="btn-primary"
+              style={{ width: '100%' }}
+            >
+              {t('anonymousSignupCta')}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setRecoveryOpen(true)}
+            className="btn-ghost"
+            style={{ width: '100%' }}
+          >
+            {t('anonymousRestoreLink')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setEnterCodeOpen(true)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-secondary)',
+              fontSize: 12,
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              padding: '8px 12px',
+              minHeight: 44,
+              display: 'inline-flex',
+              alignItems: 'center',
+              alignSelf: 'center',
+            }}
+          >
+            {tRecovery('haveCodeLink')}
+          </button>
+        </div>
+        <RecoverySheet
+          open={recoveryOpen}
+          onClose={() => setRecoveryOpen(false)}
+          sessionId={sessionId}
+          onForgotPin={() => setEnterCodeOpen(true)}
+        />
+        <EnterCodeSheet
+          open={enterCodeOpen}
+          onClose={() => setEnterCodeOpen(false)}
+          sessionId={sessionId}
+        />
         {isAdmin && (
           <div className="glass-card p-5">
             <button type="button" onClick={onAdminTools} className="btn-primary" style={{ width: '100%' }}>
@@ -159,7 +183,6 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
           )}
         </div>
 
-      {recoveryFlag && (
         <div className="inner-card" style={{ padding: 16 }}>
           <h3 className="text-sm font-semibold mb-3">{t('pinSectionTitle')}</h3>
           {!editingPin ? (
@@ -242,14 +265,11 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
             </p>
           )}
         </div>
-      )}
 
         <SettingsList
           title={tSettings('title')}
           rows={[
-            ...(recoveryFlag
-              ? [{ icon: 'key', label: tSettings('forgotPin'), onClick: () => setRecoveryOpen(true) }]
-              : []),
+            { icon: 'key', label: tSettings('forgotPin'), onClick: () => setRecoveryOpen(true) },
             { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
             ...(isAdmin
               ? [{ icon: 'admin_panel_settings', label: tSettings('adminAccess'), onClick: onAdminTools }]
@@ -259,21 +279,17 @@ export default function ProfileTab({ sessionId, sessionLabel, isAdmin, onAdminTo
         />
       </div>
 
-      {recoveryFlag && (
-        <>
-          <RecoverySheet
-            open={recoveryOpen}
-            onClose={() => setRecoveryOpen(false)}
-            sessionId={sessionId}
-            onForgotPin={() => setEnterCodeOpen(true)}
-          />
-          <EnterCodeSheet
-            open={enterCodeOpen}
-            onClose={() => setEnterCodeOpen(false)}
-            sessionId={sessionId}
-          />
-        </>
-      )}
+      <RecoverySheet
+        open={recoveryOpen}
+        onClose={() => setRecoveryOpen(false)}
+        sessionId={sessionId}
+        onForgotPin={() => setEnterCodeOpen(true)}
+      />
+      <EnterCodeSheet
+        open={enterCodeOpen}
+        onClose={() => setEnterCodeOpen(false)}
+        sessionId={sessionId}
+      />
 
       <ReleaseNotesSheet
         open={releaseSheetOpen}

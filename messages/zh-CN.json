@@ -9,6 +9,10 @@
       "inviteError": "邀请名单上没有\"{name}\"。请检查拼写，或联系分享此应用的朋友将您添加。",
       "networkError": "网络错误，请重试。",
       "nameRequired": "请输入您的姓名以报名",
+      "pinRequired": "请设置 4 位 PIN 后报名",
+      "pinTooCommon": "请使用不太常见的 PIN",
+      "pinLabel": "4 位 PIN",
+      "pinHint": "必填。换设备时用此 PIN 恢复账户。",
       "genericFailure": "报名失败",
       "waitlistFailure": "加入候补失败",
       "namePlaceholder": "输入您的姓名",
@@ -100,6 +104,7 @@
     "anonymousTitle": "设置你的档案",
     "anonymousBody": "你还没注册。",
     "anonymousRestoreLink": "已经是球员？登录 →",
+    "anonymousSignupCta": "报名本周场次",
     "playerName": "名字",
     "playerSession": "已报名场次",
     "pinSectionTitle": "恢复 PIN 码",
@@ -161,6 +166,21 @@
     "confirmYes": "是",
     "confirmNo": "否",
     "cancelFailure": "取消失败，请重试。"
+  },
+  "forcePinModal": {
+    "title": "设置 PIN 保住您的名额",
+    "body": "现在所有账户都需要 PIN，这样换手机或清除浏览器后还能恢复账户。选一个 4 位数容易记住的就好。",
+    "whatIsThis": "为什么现在要设？",
+    "whatIsThisBody": "之前 PIN 是可选的，大多数账户都没有——只要清一次浏览器就永远找不回。现在所有人都需要设。只要 5 秒。",
+    "pinLabel": "您的 PIN",
+    "confirmLabel": "确认",
+    "save": "保存 PIN",
+    "saving": "保存中…",
+    "signOutInstead": "改为退出登录",
+    "errMismatch": "两次输入的 PIN 不一致",
+    "errTooCommon": "请使用不太常见的 PIN",
+    "errInvalid": "保存失败，请重试。",
+    "errNetwork": "网络错误，请重试。"
   },
   "admin": {
     "releases": {

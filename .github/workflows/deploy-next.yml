@@ -37,7 +37,6 @@ jobs:
           NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
           NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: 'true'
           NEXT_PUBLIC_FLAG_STATS_ATTENDANCE: 'true'
-          NEXT_PUBLIC_FLAG_RECOVERY: 'true'
 
       - name: Package standalone build
         run: |

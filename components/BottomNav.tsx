@@ -2,11 +2,15 @@
 
 import { useTranslations } from 'next-intl';
 import { Tab } from '@/app/page';
-import { isFlagOn } from '@/lib/flags';
 
 interface Props {
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
+  /**
+   * Retained for the page-level state machine (Admin tab is still reachable
+   * via Profile → "Admin tools" or `?tab=admin` deep link), but no longer
+   * gates a slot in the bottom nav. Profile is always the 4th slot.
+   */
   showAdmin?: boolean;
 }
 
@@ -23,33 +27,19 @@ type NavItem = { id: Tab; label: string; icon: string };
  *   Active:    tinted pill background (`--nav-tab-active-bg`) + 1px green
  *              rim + color swap (`--nav-active-color`) + filled icon.
  *
- * All styling lives in `globals.css` (`.nav-tab`, `.nav-tab-icon`,
- * `.nav-tab-icon-active`, `.nav-tab-label`, `.nav-tab-active`). No inline
- * styles — the previous `style={{ background: 'transparent' }}` was silently
- * overriding the active-state class background.
+ * All styling lives in `globals.css`.
+ *
+ * Per the auth revamp (PR C), the recovery-flag conditional is gone. Profile
+ * is unconditionally the 4th slot; Admin is reachable from inside Profile.
  */
-export default function BottomNav({ activeTab, onTabChange, showAdmin }: Props) {
+export default function BottomNav({ activeTab, onTabChange }: Props) {
   const t = useTranslations('nav');
-  const recoveryFlag = isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY');
-  // When the recovery flag is on, Profile takes the 4th slot in the bar and
-  // Admin becomes reachable via Profile → "Admin tools →" or `?tab=admin`
-  // deep links. When off, original behavior (Admin in bar gated on showAdmin).
-  const tabs: NavItem[] = recoveryFlag
-    ? [
-        { id: 'home',    label: t('home'),    icon: 'home' },
-        { id: 'players', label: t('signups'), icon: 'group' },
-        { id: 'skills',  label: t('skills'),  icon: 'bar_chart' },
-        { id: 'profile', label: t('profile'), icon: 'person' },
-      ]
-    : [
-        { id: 'home',    label: t('home'),    icon: 'home' },
-        { id: 'players', label: t('signups'), icon: 'group' },
-        { id: 'skills',  label: t('skills'),  icon: 'bar_chart' },
-        { id: 'admin',   label: t('admin'),   icon: 'admin_panel_settings' },
-      ];
-  const visibleTabs = recoveryFlag
-    ? tabs
-    : tabs.filter((tab) => tab.id !== 'admin' || showAdmin);
+  const visibleTabs: NavItem[] = [
+    { id: 'home',    label: t('home'),    icon: 'home' },
+    { id: 'players', label: t('signups'), icon: 'group' },
+    { id: 'skills',  label: t('skills'),  icon: 'bar_chart' },
+    { id: 'profile', label: t('profile'), icon: 'person' },
+  ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 nav-safe-area" aria-label="Primary navigation">
