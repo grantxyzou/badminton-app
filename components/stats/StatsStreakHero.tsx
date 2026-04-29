@@ -106,12 +106,15 @@ export default function StatsStreakHero() {
         </span>
       </div>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: PRIMARY, lineHeight: 1.25 }}>
-          {streak === 1 ? '1 week streak' : `${streak} weeks in a row`}
+        <p style={{ margin: 0, fontSize: 11, color: MUTED, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+          {onPersonalBest ? `${name} — Personal Best` : `${name}'s Streak`}
+        </p>
+        <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: PRIMARY, lineHeight: 1.25, marginTop: 2 }}>
+          {streak === 1 ? "You're on a 1-week streak" : `You're on a ${streak}-week streak`}
         </p>
         <p style={{ margin: 0, fontSize: 12, color: MUTED, marginTop: 2 }}>
           {onPersonalBest
-            ? `Personal best — tied or beating your longest run of ${longestStreak}.`
+            ? `Tied or beating your longest run of ${longestStreak}.`
             : `Longest run: ${longestStreak} week${longestStreak === 1 ? '' : 's'}. Keep showing up.`}
         </p>
       </div>
