@@ -7,14 +7,20 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 import { getIdentity } from '@/lib/identity';
 import ShuttleLoader from './ShuttleLoader';
 import AdminDashboard from './admin/AdminDashboard';
+import PinInput from './PinInput';
 
-/* ─────────────────────────── PIN Gate ─────────────────────────── */
+/* ─────────────────────────── Admin login ───────────────────────────
+   Per PR B: admin auth is now per-player. Sign in with your name + your
+   own PIN (the same one you use as a player). The shared ADMIN_PIN env
+   var is retired. Admin powers come from `member.role === 'admin'` on
+   the matched record. */
 
 export default function AdminTab() {
   const pageT = useTranslations('pages.admin');
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null); // null = loading
+  const [name, setName] = useState(() => getIdentity()?.name ?? '');
   const [pin, setPin] = useState('');
-  const [pinError, setPinError] = useState('');
+  const [error, setError] = useState('');
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
@@ -23,26 +29,26 @@ export default function AdminTab() {
       .catch(() => setIsAuthed(false));
   }, []);
 
-  async function handlePinSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setChecking(true);
-    setPinError('');
+    setError('');
     try {
       const res = await fetch(`${BASE}/api/admin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin, name: getIdentity()?.name ?? '' }),
+        body: JSON.stringify({ name: name.trim(), pin }),
       });
       if (res.ok) {
         setIsAuthed(true);
+      } else if (res.status === 429) {
+        setError('Too many attempts. Try again in 15 minutes.');
       } else {
-        setPinError(res.status === 429
-          ? 'Too many attempts. Try again in 15 minutes.'
-          : 'Incorrect PIN. Please try again.');
+        setError('Incorrect name or PIN.');
         setPin('');
       }
     } catch {
-      setPinError('Network error.');
+      setError('Network error.');
     } finally {
       setChecking(false);
     }
@@ -75,29 +81,39 @@ export default function AdminTab() {
           <div className="glass-card p-6 w-full max-w-xs space-y-5">
             <div className="text-center">
               <span className="material-icons icon-xl text-green-400">lock</span>
-              <p className="text-sm text-gray-400 mt-2">Enter your PIN to continue</p>
+              <p className="text-sm text-gray-400 mt-2">Sign in with your name and PIN</p>
             </div>
-            <form onSubmit={handlePinSubmit} className="space-y-3">
-              <input
-                id="admin-pin"
-                name="pin"
-                type="password"
-                placeholder="PIN"
-                aria-label="Admin PIN"
-                aria-describedby={pinError ? 'pin-error' : undefined}
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div>
+                <label htmlFor="admin-name" className="sr-only">Name</label>
+                <input
+                  id="admin-name"
+                  name="name"
+                  type="text"
+                  placeholder="Your name"
+                  aria-label="Your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  maxLength={50}
+                  autoComplete="username"
+                  autoFocus={!name}
+                />
+              </div>
+              <PinInput
                 value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                maxLength={10}
-                inputMode="numeric"
-                autoFocus
+                onChange={setPin}
+                digits={4}
+                label="PIN"
+                ariaInvalid={!!error}
+                autoFocus={!!name}
               />
-              {pinError && <p id="pin-error" role="alert" className="text-xs text-red-400">{pinError}</p>}
+              {error && <p id="admin-error" role="alert" className="text-xs text-red-400">{error}</p>}
               <button
                 type="submit"
-                disabled={checking || !pin}
+                disabled={checking || !name.trim() || pin.length !== 4}
                 className="btn-primary w-full"
               >
-                {checking ? 'Checking\u2026' : 'Enter'}
+                {checking ? 'Checking\u2026' : 'Sign in'}
               </button>
             </form>
           </div>

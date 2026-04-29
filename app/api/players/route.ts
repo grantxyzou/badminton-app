@@ -150,12 +150,13 @@ export async function POST(req: NextRequest) {
       };
       const { resource } = await container.items.upsert(restored);
 
-      // Update member stats
+      // Update member stats + mirror pinHash for unified admin auth
       if (matchedMember) {
         await membersContainer.items.upsert({
           ...matchedMember,
           sessionCount: (matchedMember.sessionCount ?? 0) + 1,
           lastSeen: new Date().toISOString(),
+          ...(pinHash ? { pinHash } : {}),
         });
       }
 
@@ -178,12 +179,13 @@ export async function POST(req: NextRequest) {
 
     const { resource } = await container.items.create(player);
 
-    // Update member stats
+    // Update member stats + mirror pinHash for unified admin auth
     if (matchedMember) {
       await membersContainer.items.upsert({
         ...matchedMember,
         sessionCount: (matchedMember.sessionCount ?? 0) + 1,
         lastSeen: new Date().toISOString(),
+        ...(pinHash ? { pinHash } : {}),
       });
     }
 
@@ -259,6 +261,32 @@ export async function PATCH(req: NextRequest) {
         updatedDoc.pinHash = nextPinHash;
       }
       const { resource: updated } = await container.items.upsert(updatedDoc);
+
+      // Mirror pinHash to the matching Member so unified admin auth can
+      // verify against it. Best-effort — a Cosmos hiccup here shouldn't fail
+      // the player's PIN write.
+      try {
+        const membersContainer = getContainer('members');
+        const { resources: members } = await membersContainer.items
+          .query({
+            query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
+            parameters: [{ name: '@name', value: existing.name }],
+          })
+          .fetchAll();
+        if (members.length > 0) {
+          const m = members[0];
+          const memberUpdate: Record<string, unknown> = { ...m };
+          if (clearPin) {
+            delete memberUpdate.pinHash;
+          } else {
+            memberUpdate.pinHash = nextPinHash;
+          }
+          await membersContainer.items.upsert(memberUpdate);
+        }
+      } catch {
+        // Member mirror is best-effort; player PIN write already succeeded.
+      }
+
       const { deleteToken: _dt, pinHash: _ph, ...safe } = updated as typeof existing;
       return NextResponse.json(safe);
     }
