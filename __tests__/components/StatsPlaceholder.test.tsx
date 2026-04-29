@@ -21,7 +21,7 @@ describe('StatsPlaceholder', () => {
   it('renders four skeleton cards with titles in English', () => {
     renderWithLocale('en');
     expect(screen.getByText('Skill progression')).toBeTruthy();
-    expect(screen.getByText('Attendance')).toBeTruthy();
+    expect(screen.getByText('Your Attendance')).toBeTruthy();
     expect(screen.getByText('Cost trend')).toBeTruthy();
     expect(screen.getByText('Partner frequency')).toBeTruthy();
   });
@@ -40,7 +40,7 @@ describe('StatsPlaceholder', () => {
   it('renders Chinese titles when locale is zh-CN', () => {
     renderWithLocale('zh-CN');
     expect(screen.getByText('技能进展')).toBeTruthy();
-    expect(screen.getByText('出勤记录')).toBeTruthy();
+    expect(screen.getByText('您的出勤记录')).toBeTruthy();
     expect(screen.getByText('费用趋势')).toBeTruthy();
     expect(screen.getByText('搭档频率')).toBeTruthy();
   });
