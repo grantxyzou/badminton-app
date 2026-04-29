@@ -36,6 +36,10 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_BASE_PATH: /bpm
+          # Canonical URL for SEO + social-share metadata. Swap when a custom
+          # domain is wired up; everything else (basePath, env, flags)
+          # stays the same.
+          NEXT_PUBLIC_BASE_URL: https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm
           NEXT_PUBLIC_MAX_PLAYERS: '12'
           NEXT_PUBLIC_ETRANSFER_EMAIL: grantxyzou@gmail.com
           NEXT_PUBLIC_ENV: stable
