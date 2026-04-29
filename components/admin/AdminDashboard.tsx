@@ -19,6 +19,7 @@ import { renderMarkdown } from '@/lib/miniMarkdown';
 import { useSessionNavigation } from './hooks/useSessionNavigation';
 import { usePlayerManagement } from './hooks/usePlayerManagement';
 import ResetAccessSheet from './ResetAccessSheet';
+import PageHeader from '../primitives/PageHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -116,23 +117,22 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
 
   return (
     <div className="space-y-5 w-full">
-      {/* Header: page h1 matches the 30px style on Sign-Up/Learn pages.
-          Sign-out is aligned to the baseline so it reads as a tertiary action. */}
-      <div className="flex items-end justify-between">
-        <h1 className="text-3xl font-bold text-gray-200 leading-tight px-2">
-          {pageT('title')}
-        </h1>
-        <button
-          type="button"
-          onClick={onLogout}
-          aria-label="Sign out of admin"
-          className="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1 px-3"
-          style={{ minHeight: 44 }}
-        >
-          <span className="material-icons" style={{ fontSize: 18 }}>logout</span>
-          Sign out
-        </button>
-      </div>
+      <PageHeader
+        action={
+          <button
+            type="button"
+            onClick={onLogout}
+            aria-label="Sign out of admin"
+            className="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1 px-3"
+            style={{ minHeight: 44 }}
+          >
+            <span className="material-icons" style={{ fontSize: 18 }}>logout</span>
+            Sign out
+          </button>
+        }
+      >
+        {pageT('title')}
+      </PageHeader>
 
       {/* Session context */}
       <SessionContextBar session={nav.session} onEditDates={() => setView('date-time')} />

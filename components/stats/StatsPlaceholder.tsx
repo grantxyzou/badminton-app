@@ -132,9 +132,9 @@ export default function StatsPlaceholder({
 
   return (
     <div className="space-y-5 w-full animate-fadeIn">
-      <div className="px-2">
-        <h1 className="text-3xl font-bold text-gray-200 leading-tight">{t('heading')}</h1>
-        <p className="text-sm text-gray-400 mt-1">{t('subhead')}</p>
+      <div>
+        <h1 className="bpm-h1 leading-tight px-2">{t('heading')}</h1>
+        <p className="text-sm text-gray-400 mt-1 px-2">{t('subhead')}</p>
       </div>
 
       {heroSlot}
