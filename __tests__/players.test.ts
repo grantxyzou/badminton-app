@@ -358,15 +358,17 @@ describe('POST /api/players — opt-in PIN at sign-up', () => {
     expect(stored?.pinHash).toBeUndefined();
   });
 
-  it('PIN silently ignored when flag is OFF — 201 succeeds, no pinHash in DB', async () => {
-    process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'false';
-    try {
-      const res = await POST(makeRequest('POST', 'http://localhost/api/players', { name: 'Dan', pin: '5839' }));
-      expect(res.status).toBe(201);
-      const stored = findPlayerByName('Dan');
-      expect(stored?.pinHash).toBeUndefined();
-    } finally {
-      process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'true';
-    }
+  // Note: the "PIN silently ignored when flag is OFF" test was removed when
+  // the recovery flag was retired. PIN at signup is now accepted
+  // unconditionally; absence is the only path that produces no pinHash.
+
+  it('PIN at signup is now accepted regardless of any env flag (recovery flag retired)', async () => {
+    const res = await POST(
+      makeRequest('POST', 'http://localhost/api/players', { name: 'Dan', pin: '5839' }),
+    );
+    expect(res.status).toBe(201);
+    const stored = findPlayerByName('Dan');
+    expect(stored?.pinHash).toBeDefined();
+    expect(typeof stored?.pinHash).toBe('string');
   });
 });

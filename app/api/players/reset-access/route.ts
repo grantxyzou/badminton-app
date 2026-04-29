@@ -4,15 +4,12 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { issueCode } from '@/lib/recoveryCodes';
 import { appendEvent } from '@/lib/recoveryAudit';
-import { isFlagOn } from '@/lib/flags';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY')) {
-    return NextResponse.json({ error: 'Not Found' }, { status: 404 });
-  }
-
+  // Recovery flag retired — endpoint is unconditionally active. Admin auth +
+  // rate-limit gates remain in force.
   const ip = getClientIp(req);
   if (!checkRateLimit(`reset-access:${ip}`, 10, 60 * 60 * 1000)) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });

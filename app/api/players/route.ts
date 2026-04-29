@@ -3,7 +3,6 @@ import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isAdminAuthed } from '@/lib/auth';
-import { isFlagOn } from '@/lib/flags';
 import { hashPin } from '@/lib/recoveryHash';
 import { appendEvent } from '@/lib/recoveryAudit';
 import type { RecoveryEvent } from '@/lib/types';
@@ -53,9 +52,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Name too long (max 50 chars)' }, { status: 400 });
     }
 
-    // Optional PIN at sign-up — only honored when the recovery flag is on.
+    // PIN at sign-up — accepted unconditionally (recovery flag retired). Still
+    // optional at the server boundary; PR C will make it required at signup
+    // once the client-side form ships the field. Until then, callers may
+    // omit pin and the player record is created without a hash.
     let pinHash: string | undefined;
-    if (body.pin !== undefined && body.pin !== null && isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY')) {
+    if (body.pin !== undefined && body.pin !== null) {
       if (typeof body.pin !== 'string' || !/^[0-9]{4}$/.test(body.pin)) {
         return NextResponse.json({ error: 'Invalid PIN format' }, { status: 400 });
       }
@@ -204,11 +206,9 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
 
-    // PIN set/change/remove — admin OR player-self via deleteToken
+    // PIN set/change/remove — admin OR player-self via deleteToken.
+    // Recovery flag retired; PIN management is unconditionally available.
     if (body.pin !== undefined) {
-      if (!isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY')) {
-        return NextResponse.json({ error: 'Not Found' }, { status: 404 });
-      }
       // Pre-validate pin shape (fail fast before DB load)
       let nextPinHash: string | undefined;
       let clearPin = false;

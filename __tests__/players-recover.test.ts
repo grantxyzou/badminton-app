@@ -179,20 +179,8 @@ describe('POST /api/players/recover', () => {
     expect(res.status).toBe(403);
   });
 
-  it('Flag off → 404', async () => {
-    const prev = process.env.NEXT_PUBLIC_FLAG_RECOVERY;
-    process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'false';
-    try {
-      const pinHash = await hashPin('1234');
-      seedPlayer(SESSION, 'Michael', { pinHash });
-      const res = await POST(
-        makeRequest('POST', URL_PATH, { name: 'Michael', sessionId: SESSION, pin: '1234' }),
-      );
-      expect(res.status).toBe(404);
-    } finally {
-      process.env.NEXT_PUBLIC_FLAG_RECOVERY = prev;
-    }
-  });
+  // Note: the "Flag off → 404" test was removed when the recovery flag was
+  // retired. The endpoint is now unconditionally active.
 });
 
 // Silence unused var lint

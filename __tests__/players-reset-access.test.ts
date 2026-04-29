@@ -65,15 +65,6 @@ describe('POST /api/players/reset-access', () => {
     expect(res.status).toBe(429);
   });
 
-  it('returns 404 when flag is off', async () => {
-    const prev = process.env.NEXT_PUBLIC_FLAG_RECOVERY;
-    process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'false';
-    try {
-      const player = seedPlayer(SESSION, 'Michael');
-      const res = await POST(makeAdminRequest('POST', URL_PATH, { playerId: player.id }));
-      expect(res.status).toBe(404);
-    } finally {
-      process.env.NEXT_PUBLIC_FLAG_RECOVERY = prev;
-    }
-  });
+  // Note: the "returns 404 when flag is off" test was removed when the
+  // recovery flag was retired. The endpoint is now unconditionally active.
 });
