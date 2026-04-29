@@ -188,13 +188,11 @@ export default function AttendanceCardLive({ onSignUp }: AttendanceCardLiveProps
             Sign in
           </button>
         </div>
-        {recoveryFlag && (
-          <RecoverySheet
-            open={recoveryOpen}
-            onClose={() => setRecoveryOpen(false)}
-            sessionId={activeSessionId}
-          />
-        )}
+        <RecoverySheet
+          open={recoveryOpen}
+          onClose={() => setRecoveryOpen(false)}
+          sessionId={activeSessionId}
+        />
       </div>
     );
   }
