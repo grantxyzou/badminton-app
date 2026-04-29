@@ -192,6 +192,7 @@
     "haveCodeLink": "Have a recovery code from admin?",
     "errorInvalid": "That didn't match. Try again.",
     "errorRateLimited": "Too many tries. Try again later.",
+    "errorAdminLoggedIn": "Signed in as admin — sign out first to recover a player account.",
     "welcomeBack": "Welcome back, {name}",
     "close": "Close"
   }

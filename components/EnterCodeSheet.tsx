@@ -17,7 +17,7 @@ export default function EnterCodeSheet({ open, onClose, sessionId }: Props) {
   const t = useTranslations('recovery');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
-  const [error, setError] = useState<'invalid' | 'rate_limited' | null>(null);
+  const [error, setError] = useState<'invalid' | 'rate_limited' | 'admin_logged_in' | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -31,6 +31,10 @@ export default function EnterCodeSheet({ open, onClose, sessionId }: Props) {
         body: JSON.stringify({ name: name.trim(), sessionId, code }),
       });
       if (res.status === 429) { setError('rate_limited'); return; }
+      // Admin cookie set: /api/players/recover refuses (admins must use
+      // /reset-access instead). Surface this distinctly so the user knows
+      // they're not just typing the wrong code.
+      if (res.status === 403) { setError('admin_logged_in'); return; }
       if (!res.ok) { setError('invalid'); return; }
       const body = await res.json();
       setIdentity({ name: name.trim(), token: body.deleteToken, sessionId });
@@ -104,6 +108,11 @@ export default function EnterCodeSheet({ open, onClose, sessionId }: Props) {
             {error === 'rate_limited' && (
               <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>
                 {t('errorRateLimited')}
+              </p>
+            )}
+            {error === 'admin_logged_in' && (
+              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>
+                {t('errorAdminLoggedIn')}
               </p>
             )}
           </div>
