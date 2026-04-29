@@ -6,17 +6,13 @@ import { getContainer } from '@/lib/cosmos';
 import { verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import { consumeCode } from '@/lib/recoveryCodes';
 import { appendEvent } from '@/lib/recoveryAudit';
-import { isFlagOn } from '@/lib/flags';
 
 export const dynamic = 'force-dynamic';
 
 const FAIL = () => NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
 
 export async function POST(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_RECOVERY')) {
-    return NextResponse.json({ error: 'Not Found' }, { status: 404 });
-  }
-
+  // Recovery flag retired — endpoint is unconditionally active.
   let body: { name?: unknown; sessionId?: unknown; pin?: unknown; code?: unknown };
   try {
     body = await req.json();
