@@ -124,12 +124,13 @@ The voice is **friendly, direct, and pragmatic** — the same tone a neighborhoo
 - **Actions live at the bottom of their surface.** HomeTab's info-then-action order (Tiles → Cost → Announcement → Sign-Up → Payment reminder) is deliberate for one-handed thumb reach. The `BottomNav` is pinned to the viewport bottom (`fixed bottom-0`) with a safe-area inset for iOS home-indicator.
 
 ### Background & atmosphere
-- **Aurora blobs, not a flat page.** Three gradient blobs (`aurora-blob-1/2/3`) sit fixed behind all content, each with its own `blur(100px)` and `mix-blend-mode`, each animating on a slightly different `breathe-gentle` / `exhale-drift` / `inhale-pulse` 5.5–7s loop.
-- **Light-mode blobs use different blend modes** (`multiply` and `soft-light` instead of `darken` and `hard-light`) so they read as pastel washes rather than muddy darks.
+- **Aurora blobs, not a flat page.** Three gradient blobs (`aurora-blob-1/2/3`) sit fixed behind all content. Blur is **baked into the radial-gradient stops** rather than a CSS `filter: blur()` (zero filter cost; composites cleanly). No `mix-blend-mode` either — the rgba alpha values are tuned to stack as plain semi-transparent layers. Each blob animates on the shared `aurora-drift` 14s `ease-in-out` loop, offset via `animation-delay` so they never line up.
+- **Aspect-ratio variety, not three orbs.** Blob 1 is a tall vertical wash (slate-blue, upper-left), blob 2 is a wide horizontal curtain (court-green, lower), blob 3 is a compact accent point (warm-yellow, mid-right seam). Same colors as v1, but the size + position tuning gives each a distinct atmospheric role.
+- **Light-mode blobs swap to softer pastel tints** (pastel green / amber / sky-blue at ~14–18% opacity) tuned for the cream page bg. No blend modes in either theme.
 - **No hand-drawn illustrations. No textures. No patterns.** The blobs are the only decoration — everything else is content-forward.
 
 ### Materials & surfaces
-- **Everything is glass.** `.glass-card` is `backdrop-filter: blur(10px) saturate(140%)` over a `linear-gradient(160deg, 6% → 2%)` white tint, a 1px `rgba(white, 0.14)` border, `24px` radius, and a layered shadow: `inset 0 1px 0 white-14%` for the inner rim + `0 8px 40px black-25%` + `0 2px 8px black-12%` for depth.
+- **Everything is glass.** `.glass-card` (Tier 1) is `backdrop-filter: blur(10px) saturate(140%)` over a `linear-gradient(160deg, 3% → 1%)` white tint, a 1px `rgba(white, 0.14)` border, `16px` radius (corner-ladder max), and a layered shadow: `inset 0 1px 0 white-14%` for the inner rim + `0 8px 40px black-25%` + `0 2px 8px black-12%` for depth. The thin tint is intentional — keeps the aurora visible behind cards (brand identity over frosted opacity); contrast is carried by the text-side alphas instead. Tier 2 surface is `.glass-card-soft` (alias `.inner-card`) — flat tint + 1px border at 12px radius, no blur or shadow.
 - **Materials simplify inward** (see `DESIGN.md` #9). The outermost glass card has the full material; nested inputs flatten to transparent + border only; focus reinstates the full material. Enforced in `globals.css` via `.glass-card input, .glass-card select, .glass-card textarea`.
 - **Hover state = lift, not fill.** `hover: translateY(-2px)` + heavier shadow. No color change, no background flash. Gated on `@media (hover: hover)` so it doesn't mis-fire on touch.
 - **Active / press state = `scale(0.97)`** with 100ms transition. Buttons only. No color change on press.
@@ -141,7 +142,7 @@ The voice is **friendly, direct, and pragmatic** — the same tone a neighborhoo
   - `--ease-glass` `cubic-bezier(0.23, 1, 0.32, 1)` — default, for anything glass
   - `--ease-spring` `cubic-bezier(0.34, 1.56, 0.64, 1)` — entries, slide-ups
   - `--ease-sheet` `cubic-bezier(0.16, 1, 0.3, 1)` — bottom-sheet open/close (180ms, matches iOS)
-- **Named keyframes.** `breathe-gentle`, `exhale-drift`, `inhale-pulse` (aurora), `wave-smash` (loader), `shimmer`, `fadeIn`, `slideUp`, `slideInRight`, `scaleIn`.
+- **Named keyframes.** `aurora-drift` (the three aurora blobs share this single keyframe; offset entrances via `animation-delay: -5s` / `-9s`), `wave-smash` (loader), `shimmer`, `fadeIn`, `slideUp`, `slideInRight`, `scaleIn`.
 - **`prefers-reduced-motion` kills everything.** Global `*, *::before, *::after` rule drops all animation and transition durations to 0.01ms.
 
 ### Transparency & blur

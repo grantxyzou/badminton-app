@@ -48,65 +48,77 @@
   pointer-events: none;
 }
 
-/* Big, soft radial gradients replace filter:blur(100px) — the blur is baked
-   into the gradient itself. Zero filter cost. */
+/* Three blobs with distinct aspect ratios so each reads as a different
+   atmospheric element instead of three uniform orbs. Sizes + offsets +
+   colors mirror `app/globals.css` exactly — keep this asset in sync
+   when production tunes the aurora.
+
+   Role-by-blob:
+     1 — slate-blue: tall vertical wash, upper-left
+     2 — court-green: wide horizontal curtain, lower
+     3 — warm-yellow: compact accent in the right seam
+*/
 .aurora-blob-1 {
-  width: 120vmax; height: 70vmax;
-  left: -20vmax; top: 20vh;
-  background: radial-gradient(ellipse 50% 50% at 50% 40%,
-    rgba(143, 162, 176, 0.50) 0%,
-    rgba(27, 50, 77, 0.30) 35%,
-    transparent 70%);
-  animation: aurora-drift-1 14s ease-in-out infinite alternate;
+  width: 100vmax; height: 75vmax;
+  left: -25vmax; top: -8vh;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%,
+    rgba(120, 158, 196, 0.50) 0%,
+    rgba(74, 120, 170, 0.22) 32%,
+    rgba(74, 120, 170, 0.06) 58%,
+    transparent 80%);
+  animation: aurora-drift 14s ease-in-out infinite alternate;
 }
 
 .aurora-blob-2 {
-  width: 110vmax; height: 60vmax;
-  left: -15vmax; top: 30vh;
-  background: radial-gradient(ellipse 55% 50% at 50% 50%,
-    rgba(190, 178, 147, 0.35) 0%,
-    rgba(0, 0, 0, 0.50) 45%,
-    transparent 75%);
-  animation: aurora-drift-2 18s ease-in-out infinite alternate;
+  width: 115vmax; height: 55vmax;
+  right: -20vmax; bottom: -8vh;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%,
+    rgba(74, 222, 128, 0.32) 0%,
+    rgba(74, 222, 128, 0.14) 34%,
+    rgba(74, 222, 128, 0.04) 60%,
+    transparent 80%);
+  animation: aurora-drift 14s ease-in-out infinite alternate;
+  animation-delay: -5s;
 }
 
 .aurora-blob-3 {
-  width: 55vmax; height: 90vmax;
-  left: 40%; top: 25vh;
-  transform-origin: top left;
-  background: radial-gradient(ellipse 50% 50% at 50% 40%,
-    rgba(143, 162, 176, 0.38) 0%,
-    rgba(27, 50, 77, 0.22) 40%,
-    transparent 75%);
-  animation: aurora-drift-3 16s ease-in-out infinite alternate;
+  width: 65vmax; height: 50vmax;
+  right: -10vmax; top: 28vh;
+  background: radial-gradient(ellipse 50% 50% at 50% 50%,
+    rgba(232, 210, 160, 0.34) 0%,
+    rgba(210, 185, 130, 0.14) 36%,
+    rgba(210, 185, 130, 0.04) 62%,
+    transparent 80%);
+  animation: aurora-drift 14s ease-in-out infinite alternate;
+  animation-delay: -9s;
 }
 
-/* Single-property (transform) animations — composited, no repaint. */
-@keyframes aurora-drift-1 {
+/* Single-property (transform) animation — composited, no repaint.
+   All three blobs share this keyframe; offset entrances via
+   `animation-delay`. */
+@keyframes aurora-drift {
   from { transform: translate3d(0, 0, 0) scale(1); }
-  to   { transform: translate3d(-2vmax, 3vmax, 0) scale(1.04); }
-}
-@keyframes aurora-drift-2 {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to   { transform: translate3d(-3vmax, -2vmax, 0) scale(1.03); }
-}
-@keyframes aurora-drift-3 {
-  from { transform: translate3d(0, 0, 0) rotate(-58deg) scale(1); }
-  to   { transform: translate3d(2vmax, -3vmax, 0) rotate(-56deg) scale(1.05); }
+  to   { transform: translate3d(-4%, 3%, 0) scale(1.05); }
 }
 
-/* Light-mode blobs — slightly different tints, no blend modes. */
+/* Light-mode blobs — softer pastel tints tuned for the cream page bg. */
 [data-theme="light"] .aurora-blob-1 {
-  background: radial-gradient(ellipse 50% 50% at 50% 40%,
-    rgba(74, 222, 128, 0.14) 0%, rgba(74, 222, 128, 0.06) 40%, transparent 75%);
+  background: radial-gradient(ellipse 50% 50% at 50% 50%,
+    rgba(74, 222, 128, 0.18) 0%,
+    rgba(74, 222, 128, 0.08) 40%,
+    transparent 75%);
 }
 [data-theme="light"] .aurora-blob-2 {
-  background: radial-gradient(ellipse 55% 50% at 50% 50%,
-    rgba(251, 191, 36, 0.12) 0%, rgba(251, 191, 36, 0.04) 45%, transparent 75%);
+  background: radial-gradient(ellipse 50% 50% at 50% 50%,
+    rgba(251, 191, 36, 0.14) 0%,
+    rgba(251, 191, 36, 0.05) 45%,
+    transparent 78%);
 }
 [data-theme="light"] .aurora-blob-3 {
-  background: radial-gradient(ellipse 50% 50% at 50% 40%,
-    rgba(96, 165, 250, 0.12) 0%, rgba(96, 165, 250, 0.04) 45%, transparent 75%);
+  background: radial-gradient(ellipse 50% 50% at 50% 50%,
+    rgba(96, 165, 250, 0.14) 0%,
+    rgba(96, 165, 250, 0.05) 45%,
+    transparent 78%);
 }
 
 /* Pause animation when the aurora is covered (modal / full-bleed route).
