@@ -3,10 +3,13 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { getIdentity, clearIdentity, type Identity } from '@/lib/identity';
 import type { Release } from '@/lib/types';
-import RecoverySheet from './RecoverySheet';
 import EnterCodeSheet from './EnterCodeSheet';
+import CreateAccountSheet from './CreateAccountSheet';
+import RecoveryPinSheet from './RecoveryPinSheet';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
 import PinInput from './PinInput';
+// PinInput is used by the inline anonymous sign-in form below. The signed-in
+// state's PIN management lives in RecoveryPinSheet now (opened via Settings).
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -15,12 +18,6 @@ interface Props {
   sessionLabel: string;
   isAdmin: boolean;
   onAdminTools: () => void;
-  /**
-   * Called when the user taps the "Sign up for this week" CTA in the
-   * anonymous state — navigates them to the Home tab where the signup form
-   * lives. Optional: if absent, the CTA is hidden.
-   */
-  onTabChange?: (tab: 'home') => void;
 }
 
 export default function ProfileTab({
@@ -28,20 +25,22 @@ export default function ProfileTab({
   sessionLabel,
   isAdmin,
   onAdminTools,
-  onTabChange,
 }: Props) {
   const t = useTranslations('profile');
-  const tPin = useTranslations('pin');
   const [identity, setLocalIdentity] = useState<Identity | null>(null);
   const [pinIsSet, setPinIsSet] = useState(false);
-  const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
+  const [createAccountOpen, setCreateAccountOpen] = useState(false);
+  // Anonymous-state inline sign-in form. Replaces the old RecoverySheet path
+  // for fresh visitors per the auth taxonomy split.
+  const [signInName, setSignInName] = useState('');
+  const [signInPin, setSignInPin] = useState('');
+  const [signInError, setSignInError] = useState<'invalid' | 'rate_limited' | 'admin_logged_in' | null>(null);
+  const [signInSubmitting, setSignInSubmitting] = useState(false);
+  // Signed-in state PIN management: tap the Settings "Recovery PIN" row to
+  // open RecoveryPinSheet (set / change / remove + forgot-it handoff).
+  const [recoveryPinOpen, setRecoveryPinOpen] = useState(false);
   const tRecovery = useTranslations('recovery');
-  const [editingPin, setEditingPin] = useState(false);
-  const [newPin, setNewPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
-  const [pinError, setPinError] = useState<'too_common' | 'invalid' | null>(null);
-  const [pinSaved, setPinSaved] = useState(false);
   const [releaseSheetOpen, setReleaseSheetOpen] = useState(false);
   const [releases, setReleases] = useState<Release[]>([]);
   const tSettings = useTranslations('profile.settings');
@@ -50,81 +49,140 @@ export default function ProfileTab({
   useEffect(() => {
     const id = getIdentity();
     setLocalIdentity(id);
-    if (id) {
-      const hint = localStorage.getItem('badminton_pin_set');
-      setPinIsSet(hint === 'true');
-    }
     fetch(`${BASE}/api/releases`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : []))
       .then((data: Release[]) => setReleases(Array.isArray(data) ? data : []))
       .catch(() => setReleases([]));
   }, []);
 
+  // Reflect server-side pin status whenever identity changes (mount, sign-in,
+  // logout). Source of truth is `members.pinHash` mirrored from the player
+  // record — `/api/members/me` returns `hasPin` as a derived boolean. Avoids
+  // the previous localStorage-flag approach which de-synced after sign-in
+  // and was the bug behind "Recovery PIN: Not set" until refresh.
+  useEffect(() => {
+    if (!identity) {
+      setPinIsSet(false);
+      return;
+    }
+    let cancelled = false;
+    fetch(`${BASE}/api/members/me?name=${encodeURIComponent(identity.name)}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : { hasPin: false }))
+      .then((data: { hasPin?: boolean }) => {
+        if (!cancelled) setPinIsSet(data.hasPin === true);
+      })
+      .catch(() => {
+        if (!cancelled) setPinIsSet(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [identity]);
+
   function handleLogout() {
     clearIdentity();
-    localStorage.removeItem('badminton_pin_set');
-    localStorage.removeItem('badminton_pin_prompted');
     setLocalIdentity(null);
     setPinIsSet(false);
   }
 
-  async function savePin(value: string | null) {
-    if (!identity) return;
-    setPinError(null);
-    const meRes = await fetch(`${BASE}/api/players`, { cache: 'no-store' });
-    const players = (await meRes.json()) as { id: string; name: string; sessionId: string }[];
-    const me = players.find(
-      (p) => p.name.toLowerCase() === identity.name.toLowerCase() && p.sessionId === identity.sessionId,
-    );
-    if (!me) {
-      setPinError('invalid');
-      return;
+  // Anonymous state — Profile is identity-only. Inline sign-in form (name +
+  // PIN) sits in the glass card; "Create an account" lives below an "or"
+  // divider and opens an action sheet. Session signup belongs on Home, not
+  // here.
+  async function submitSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = signInName.trim();
+    if (!trimmed || signInPin.length !== 4) return;
+    setSignInError(null);
+    setSignInSubmitting(true);
+    try {
+      const res = await fetch(`${BASE}/api/players/recover`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmed, sessionId, pin: signInPin }),
+      });
+      if (res.status === 429) { setSignInError('rate_limited'); return; }
+      if (res.status === 403) { setSignInError('admin_logged_in'); return; }
+      if (!res.ok) { setSignInError('invalid'); return; }
+      const body = await res.json();
+      const { setIdentity } = await import('@/lib/identity');
+      setIdentity({ name: trimmed, token: body.deleteToken, sessionId });
+      setLocalIdentity(getIdentity());
+    } finally {
+      setSignInSubmitting(false);
     }
-    const patchRes = await fetch(`${BASE}/api/players`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: me.id, pin: value, deleteToken: identity.token }),
-    });
-    if (!patchRes.ok) {
-      const body = await patchRes.json().catch(() => ({}));
-      setPinError(body.error === 'pin_too_common' ? 'too_common' : 'invalid');
-      return;
-    }
-    setPinIsSet(value !== null);
-    localStorage.setItem('badminton_pin_set', value !== null ? 'true' : 'false');
-    setPinSaved(true);
-    setEditingPin(false);
-    setNewPin('');
-    setConfirmPin('');
-    setTimeout(() => setPinSaved(false), 2000);
   }
-
-  // Anonymous state — three clear paths: sign up new, restore via PIN, or
-  // enter a recovery code from admin. Replaces the old "Restore-only" state
-  // which left first-timers without a path forward.
   if (!identity) {
+    const canSubmit = signInName.trim().length > 0 && signInPin.length === 4 && !signInSubmitting;
     return (
       <div className="animate-fadeIn flex flex-col gap-4">
-        <h2 className="bpm-h1">{t('anonymousTitle')}</h2>
+        <h1 className="bpm-h1">{t('anonymousTitle')}</h1>
         <p style={{ color: 'var(--text-secondary)' }}>{t('anonymousBody')}</p>
-        <div className="glass-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {onTabChange && (
+        <div className="glass-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <form onSubmit={submitSignIn} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <input
+              type="text"
+              aria-label={t('anonymousNamePlaceholder')}
+              placeholder={t('anonymousNamePlaceholder')}
+              value={signInName}
+              onChange={(e) => { setSignInName(e.target.value); setSignInError(null); }}
+              autoComplete="username"
+              maxLength={50}
+            />
+            <PinInput
+              value={signInPin}
+              onChange={(v) => { setSignInPin(v); setSignInError(null); }}
+              digits={4}
+              label={t('anonymousPinLabel')}
+              ariaInvalid={signInError === 'invalid'}
+            />
             <button
-              type="button"
-              onClick={() => onTabChange('home')}
+              type="submit"
+              disabled={!canSubmit}
               className="btn-primary"
               style={{ width: '100%' }}
             >
-              {t('anonymousSignupCta')}
+              {signInSubmitting ? t('anonymousSignInChecking') : t('anonymousSignInButton')}
             </button>
-          )}
+            {signInError === 'invalid' && (
+              <p role="alert" style={{ color: 'var(--color-red, #ef4444)', fontSize: 12, margin: 0 }}>
+                {t('anonymousSignInErrorInvalid')}
+              </p>
+            )}
+            {signInError === 'rate_limited' && (
+              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12, margin: 0 }}>
+                {t('anonymousSignInErrorRateLimited')}
+              </p>
+            )}
+            {signInError === 'admin_logged_in' && (
+              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12, margin: 0 }}>
+                {t('anonymousSignInErrorAdminLogged')}
+              </p>
+            )}
+          </form>
+          <div
+            aria-hidden="true"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              color: 'var(--text-muted)',
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+            }}
+          >
+            <span style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
+            <span>{t('anonymousOrDivider')}</span>
+            <span style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
+          </div>
           <button
             type="button"
-            onClick={() => setRecoveryOpen(true)}
+            onClick={() => setCreateAccountOpen(true)}
             className="btn-ghost"
             style={{ width: '100%' }}
           >
-            {t('anonymousRestoreLink')}
+            {t('anonymousCreateCta')}
           </button>
           <button
             type="button"
@@ -146,11 +204,14 @@ export default function ProfileTab({
             {tRecovery('haveCodeLink')}
           </button>
         </div>
-        <RecoverySheet
-          open={recoveryOpen}
-          onClose={() => setRecoveryOpen(false)}
+        <CreateAccountSheet
+          open={createAccountOpen}
+          onClose={() => {
+            setCreateAccountOpen(false);
+            // Refresh identity if the sheet set it.
+            setLocalIdentity(getIdentity());
+          }}
           sessionId={sessionId}
-          onForgotPin={() => setEnterCodeOpen(true)}
         />
         <EnterCodeSheet
           open={enterCodeOpen}
@@ -183,93 +244,19 @@ export default function ProfileTab({
           )}
         </div>
 
-        <div className="glass-card-soft" style={{ padding: 16 }}>
-          <h3 className="text-sm font-semibold mb-3">{t('pinSectionTitle')}</h3>
-          {!editingPin ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 13 }}>
-                <span
-                  className="material-icons"
-                  aria-hidden="true"
-                  style={{ fontSize: 16, color: pinIsSet ? 'var(--color-green, #10b981)' : 'var(--text-muted)' }}
-                >
-                  {pinIsSet ? 'check_circle' : 'radio_button_unchecked'}
-                </span>
-                {pinIsSet ? t('pinIsSet') : t('pinNotSet')}
-              </span>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" onClick={() => setEditingPin(true)} className="btn-ghost">
-                  {pinIsSet ? t('pinChangeButton') : t('pinSetButton')}
-                </button>
-                {pinIsSet && (
-                  <button type="button" onClick={() => savePin(null)} className="btn-ghost">
-                    {t('pinRemoveButton')}
-                  </button>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div>
-                <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>{tPin('newLabel')}</p>
-                <PinInput value={newPin} onChange={setNewPin} digits={4} label={tPin('newLabel')} autoFocus />
-              </div>
-              <div>
-                <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>{tPin('confirmLabel')}</p>
-                <PinInput value={confirmPin} onChange={setConfirmPin} digits={4} label={tPin('confirmLabel')} />
-              </div>
-              {pinError === 'too_common' && (
-                <p role="alert" style={{ fontSize: 12, color: 'var(--color-red, #ef4444)' }}>
-                  {t('pinTooCommon')}
-                </p>
-              )}
-              {pinError === 'invalid' && (
-                <p role="alert" style={{ fontSize: 12, color: 'var(--color-red, #ef4444)' }}>
-                  {t('pinInvalid')}
-                </p>
-              )}
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  disabled={newPin.length !== 4 || newPin !== confirmPin}
-                  onClick={() => savePin(newPin)}
-                  style={{ flex: 1 }}
-                >
-                  {tPin('save')}
-                </button>
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  onClick={() => {
-                    setEditingPin(false);
-                    setNewPin('');
-                    setConfirmPin('');
-                    setPinError(null);
-                  }}
-                  style={{ flex: 1 }}
-                >
-                  {tPin('cancel')}
-                </button>
-              </div>
-              {newPin && confirmPin && newPin !== confirmPin && (
-                <p role="alert" style={{ fontSize: 12, color: 'var(--color-red, #ef4444)' }}>
-                  {tPin('mismatch')}
-                </p>
-              )}
-            </div>
-          )}
-          {pinSaved && (
-            <p style={{ fontSize: 12, color: 'var(--color-green, #10b981)', marginTop: 8 }}>
-              {t('pinSaved')}
-            </p>
-          )}
-        </div>
-
         <SettingsList
           title={tSettings('title')}
           rows={[
-            { icon: 'key', label: tSettings('forgotPin'), onClick: () => setRecoveryOpen(true) },
+            {
+              icon: 'key',
+              label: pinIsSet ? tSettings('updatePin') : tSettings('newPin'),
+              onClick: () => setRecoveryPinOpen(true),
+            },
+            {
+              icon: 'help_outline',
+              label: tSettings('recoveryCode'),
+              onClick: () => setEnterCodeOpen(true),
+            },
             { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
             ...(isAdmin
               ? [{ icon: 'admin_panel_settings', label: tSettings('adminAccess'), onClick: onAdminTools }]
@@ -279,11 +266,12 @@ export default function ProfileTab({
         />
       </div>
 
-      <RecoverySheet
-        open={recoveryOpen}
-        onClose={() => setRecoveryOpen(false)}
-        sessionId={sessionId}
-        onForgotPin={() => setEnterCodeOpen(true)}
+      <RecoveryPinSheet
+        open={recoveryPinOpen}
+        onClose={() => setRecoveryPinOpen(false)}
+        identity={identity}
+        hasPin={pinIsSet}
+        onSaved={(newHasPin) => setPinIsSet(newHasPin)}
       />
       <EnterCodeSheet
         open={enterCodeOpen}
@@ -305,6 +293,8 @@ interface SettingsRow {
   label: string;
   onClick: () => void;
   destructive?: boolean;
+  /** Right-aligned status text shown before the chevron (e.g. "Set" / "Not set"). */
+  meta?: string;
 }
 
 function SettingsList({ title, rows }: { title: string; rows: SettingsRow[] }) {
@@ -350,6 +340,9 @@ function SettingsList({ title, rows }: { title: string; rows: SettingsRow[] }) {
                 {row.icon}
               </span>
               <span style={{ flex: 1 }}>{row.label}</span>
+              {row.meta && (
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{row.meta}</span>
+              )}
               <span
                 className="material-icons"
                 aria-hidden="true"

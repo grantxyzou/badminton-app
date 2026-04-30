@@ -11,7 +11,7 @@
       "nameRequired": "请输入您的姓名以报名",
       "pinRequired": "请设置 4 位 PIN 后报名",
       "pinTooCommon": "请使用不太常见的 PIN",
-      "pinLabel": "4 位 PIN",
+      "pinLabel": "PIN",
       "pinHint": "必填。换设备时用此 PIN 恢复账户。",
       "genericFailure": "报名失败",
       "waitlistFailure": "加入候补失败",
@@ -25,6 +25,8 @@
       "allSpotsTaken": "全部 {total} 个名额已满。",
       "closesOn": "报名截止于 {date}",
       "closedPreviously": "报名已于 {date} 截止",
+      "alreadyPlayer": "已经是球员？登录 →",
+      "pinRequired": "该名字已设置 PIN，请登录。",
       "pinPrompt": {
         "cardTitle": "添加恢复 PIN",
         "cardBody": "用于管理账号和查看个人数据。",
@@ -91,7 +93,18 @@
   "pages": {
     "signup": { "title": "报名" },
     "learn": { "title": "进阶技能" },
-    "admin": { "title": "管理" }
+    "admin": {
+      "title": "管理",
+      "signInHelp": "用你的名字和 PIN 登录",
+      "nameLabel": "你的名字",
+      "namePlaceholder": "你的名字",
+      "pinLabel": "PIN",
+      "signInButton": "登录",
+      "signInChecking": "验证中…",
+      "signInErrorRateLimited": "尝试次数过多，请 15 分钟后再试。",
+      "signInErrorInvalid": "名字或 PIN 不正确。",
+      "signInErrorNetwork": "网络错误。"
+    }
   },
   "nav": {
     "home": "首页",
@@ -101,10 +114,35 @@
     "profile": "档案"
   },
   "profile": {
-    "anonymousTitle": "设置你的档案",
-    "anonymousBody": "你还没注册。",
-    "anonymousRestoreLink": "已经是球员？登录 →",
-    "anonymousSignupCta": "报名本周场次",
+    "anonymousTitle": "档案",
+    "anonymousBody": "仅限受邀创建账号 — 如有疑问请联系管理员（测试版）。",
+    "anonymousCreateCta": "创建账号",
+    "anonymousNamePlaceholder": "你叫什么名字？",
+    "anonymousPinLabel": "PIN",
+    "anonymousSignInButton": "登录",
+    "anonymousSignInChecking": "验证中…",
+    "anonymousSignInErrorInvalid": "信息不匹配，请重试。",
+    "anonymousSignInErrorRateLimited": "尝试次数过多，请稍后再试。",
+    "anonymousSignInErrorAdminLogged": "已以管理员身份登录 — 请先退出再恢复球员账号。",
+    "anonymousOrDivider": "或",
+    "anonymousRestoreLink": "登录",
+    "createAccount": {
+      "title": "创建你的账号",
+      "body": "设置名字和 PIN。之后可以报名场次。",
+      "nameLabel": "你的名字",
+      "namePlaceholder": "输入你的名字",
+      "pinLabel": "PIN",
+      "confirmPinLabel": "确认 PIN",
+      "submit": "创建账号",
+      "submitting": "创建中…",
+      "successWelcome": "欢迎，{name}",
+      "errorMismatch": "两次输入的 PIN 不一致",
+      "errorTooCommon": "请选择不那么常见的 PIN",
+      "errorInvalid": "PIN 必须是 4 位数字",
+      "errorRateLimited": "尝试次数过多，请一小时后再试。",
+      "errorNetwork": "网络错误，请重试。",
+      "errorAccountExists": "该名字已存在账号，请登录。"
+    },
     "playerName": "名字",
     "playerSession": "已报名场次",
     "pinSectionTitle": "恢复 PIN 码",
@@ -116,11 +154,14 @@
     "pinSaved": "已保存",
     "pinTooCommon": "请选择不那么常见的 PIN",
     "pinInvalid": "PIN 必须是 4 位数字",
+    "pinUpdateFailed": "更新 PIN 失败，请重试。",
     "adminToolsTitle": "管理员工具",
     "adminToolsButton": "管理员工具 →",
     "settings": {
       "title": "账号",
-      "forgotPin": "忘记 PIN",
+      "newPin": "新建 PIN",
+      "updatePin": "更新 PIN",
+      "recoveryCode": "有恢复码？",
       "releaseNotes": "更新日志",
       "adminAccess": "管理员访问",
       "logout": "退出登录"
@@ -200,7 +241,7 @@
   "recovery": {
     "sheetTitle": "登录",
     "pinPathTitle": "用 PIN 登录",
-    "pinPathHelp": "输入注册时设置的 4 位 PIN 码。",
+    "pinPathHelp": "输入注册时设置的 PIN 码。",
     "codePathTitle": "忘记 PIN",
     "codePathHelp": "向管理员索取一个 6 位验证码，然后在这里输入。",
     "nameLabel": "你的名字",
