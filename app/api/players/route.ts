@@ -87,6 +87,14 @@ export async function POST(req: NextRequest) {
         })
         .fetchAll();
       const existingMember = existingMembers[0];
+      // Refuse to overwrite an existing PIN. Otherwise anyone who knows a
+      // member's name could hijack the account by "creating an account" for
+      // them with a new PIN. Pre-seeded members without a PIN can still be
+      // claimed (this is the friend-group beta flow — admin seeds names,
+      // friends claim by setting the first PIN).
+      if (existingMember && typeof existingMember.pinHash === 'string' && existingMember.pinHash.length > 0) {
+        return NextResponse.json({ error: 'account_exists' }, { status: 409 });
+      }
       const memberDoc = {
         ...(existingMember ?? {
           id: randomBytes(12).toString('hex'),
@@ -143,7 +151,7 @@ export async function POST(req: NextRequest) {
 
     // Members-based identity check
     const allMembers = membersRes.resources;
-    let matchedMember: { id: string; name: string; sessionCount: number; [key: string]: unknown } | null = null;
+    let matchedMember: { id: string; name: string; sessionCount: number; pinHash?: string; [key: string]: unknown } | null = null;
     if (allMembers.length > 0) {
       matchedMember = allMembers.find(
         (m: { name: string }) => m.name.toLowerCase() === trimmedName.toLowerCase()
@@ -151,6 +159,14 @@ export async function POST(req: NextRequest) {
       if (!matchedMember && !isAdminAuthed(req)) {
         return NextResponse.json({ error: 'invite_list_not_found', name: trimmedName }, { status: 403 });
       }
+    }
+
+    // PIN-protected member: the signup path is anonymous (just a name) and
+    // can't tell whether the requester is the legitimate owner. Forcing
+    // them through the sign-in flow (which verifies PIN against
+    // members.pinHash) closes the impersonation hole. Admins bypass.
+    if (matchedMember && typeof matchedMember.pinHash === 'string' && matchedMember.pinHash.length > 0 && !isAdminAuthed(req)) {
+      return NextResponse.json({ error: 'pin_required' }, { status: 401 });
     }
 
     const anyExisting = existingRes.resources;

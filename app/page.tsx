@@ -11,7 +11,6 @@ import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import DevPanel, { type DevOverrides } from '@/components/DevPanel';
-import ForcePinModal from '@/components/ForcePinModal';
 import { getIdentity } from '@/lib/identity';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
@@ -114,7 +113,6 @@ export default function Page() {
                 sessionLabel={profileSession.label}
                 isAdmin={showAdmin}
                 onAdminTools={() => setActiveTab('admin')}
-                onTabChange={(tab) => setActiveTab(tab)}
               />
             </div>
           )}
@@ -122,10 +120,6 @@ export default function Page() {
         {devMode && <DevPanel overrides={devOverrides} onChange={setDevOverrides} />}
         <BottomNav activeTab={activeTab} onTabChange={setActiveTab} showAdmin={showAdmin} />
       </div>
-      {/* Force-PIN modal — fires when there's an existing identity without a
-          PIN. Mounted at the root above all tabs so it can block any path
-          into the app until the user sets a PIN or signs out. */}
-      <ForcePinModal />
     </>
   );
 }

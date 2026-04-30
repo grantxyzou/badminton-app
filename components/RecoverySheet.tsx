@@ -82,14 +82,6 @@ export default function RecoverySheet({ open, onClose, sessionId, onForgotPin }:
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoComplete="username"
-              style={{
-                width: '100%',
-                padding: 12,
-                borderRadius: 10,
-                border: '1px solid var(--glass-border)',
-                background: 'var(--input-bg, rgba(255,255,255,0.05))',
-                color: 'var(--text-primary)',
-              }}
             />
             <PinInput
               value={pin}
