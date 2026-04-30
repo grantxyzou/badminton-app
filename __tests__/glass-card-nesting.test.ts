@@ -3,8 +3,9 @@ import { readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 
 /**
- * Lints the design-system rule: `.glass-card` is reserved for top-level
- * surfaces. Nested cards must use `.inner-card`. When two glass cards stack
+ * Lints the design-system rule: `.glass-card` (Tier 1) is reserved for
+ * top-level surfaces. Nested cards must use `.glass-card-soft` (Tier 2 —
+ * also exposed via the `.inner-card` alias). When two glass cards stack
  * at the same blur level, the inner one reads as a pasted-on rectangle —
  * the inset highlight fights the parent's, and depth disappears.
  *
@@ -87,9 +88,13 @@ function findNestedGlassCards(source: string, file: string): Violation[] {
     if (j >= source.length) break;
     const tag = source.slice(i, j + 1);
     const selfClosing = tag.trimEnd().endsWith('/>');
+    // `\b` treats `-` as a word boundary, so `\bglass-card\b` matches the
+    // `glass-card` prefix of `glass-card-soft`. Add a negative lookahead so
+    // only the bare Tier-1 class is detected here — `.glass-card-soft` is a
+    // legitimate Tier-2 nested surface.
     const hasGlass =
-      /\bclassName\s*=\s*"[^"]*\bglass-card\b/.test(tag) ||
-      /\bclassName\s*=\s*\{`[^`]*\bglass-card\b/.test(tag);
+      /\bclassName\s*=\s*"[^"]*\bglass-card\b(?!-)/.test(tag) ||
+      /\bclassName\s*=\s*\{`[^`]*\bglass-card\b(?!-)/.test(tag);
 
     if (!selfClosing) {
       stack.push({ isGlass: hasGlass });
@@ -149,6 +154,22 @@ describe('findNestedGlassCards (algorithm)', () => {
       <div className="glass-card">
         <div className="inner-card">fine</div>
       </div>
+    `;
+    expect(findNestedGlassCards(src, 'x.tsx')).toHaveLength(0);
+  });
+
+  it('does not flag .glass-card-soft inside .glass-card (Tier 2 nested under Tier 1)', () => {
+    const src = `
+      <div className="glass-card">
+        <div className="glass-card-soft">tier-2 nested in tier-1</div>
+      </div>
+    `;
+    expect(findNestedGlassCards(src, 'x.tsx')).toHaveLength(0);
+  });
+
+  it('does not flag .glass-card-soft as a top-level surface (it is its own tier)', () => {
+    const src = `
+      <div className="glass-card-soft">standalone tier-2</div>
     `;
     expect(findNestedGlassCards(src, 'x.tsx')).toHaveLength(0);
   });

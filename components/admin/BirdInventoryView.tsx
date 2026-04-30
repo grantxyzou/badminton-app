@@ -285,7 +285,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
             const expanded = expandedBrand === g.brand;
             const purchasesOfBrand = purchases.filter((p) => parseBirdName(p.name).brand === (g.brand === '—' ? '' : g.brand));
             return (
-              <div key={g.brand} className="inner-card p-3">
+              <div key={g.brand} className="glass-card-soft p-3">
                 <button
                   type="button"
                   onClick={() => setExpandedBrand(expanded ? null : g.brand)}
@@ -357,7 +357,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
           {purchases.map((p) => {
             const used = usedByPurchase.get(p.id) ?? 0;
             return (
-              <div key={p.id} className="inner-card p-3">
+              <div key={p.id} className="glass-card-soft p-3">
                 {editingId === p.id ? (
                   <div className="space-y-3">
                     <Label text="Shuttle">

@@ -96,6 +96,45 @@ export default function TokensPage() {
         </p>
       </Section>
 
+      <Section title="SURFACES — TWO TIERS">
+        <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', margin: '0 0 0.75rem' }}>
+          Materials simplify inward (DESIGN.md #9). Tier 1 carries the full glass material; Tier 2
+          drops blur + shadow + rim and renders as a flat tint nested inside Tier 1.
+        </p>
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
+          <div className="glass-card" style={{ padding: '0.875rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.5rem' }}>
+              <code className="bpm-mono" style={{ fontSize: '0.75rem' }}>.glass-card</code>
+              <span className="bpm-mono" style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Tier 1 · radius 16</span>
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
+              Backdrop blur, saturation, layered shadow, inset rim. Use for the primary card on each surface.
+            </p>
+            <div className="glass-card-soft" style={{ marginTop: '0.625rem', padding: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.375rem' }}>
+                <code className="bpm-mono" style={{ fontSize: '0.7rem' }}>.glass-card-soft</code>
+                <span className="bpm-mono" style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Tier 2 · radius 12</span>
+              </div>
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0 }}>
+                Flat tint + 1px border, no blur or shadow. Nest inside Tier 1 to group related content
+                without restating the material. <code className="bpm-mono">.inner-card</code> kept as a
+                backwards-compatible alias.
+              </p>
+            </div>
+          </div>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.4rem' }}>
+            <li style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.75rem', fontSize: '0.75rem' }}>
+              <code className="bpm-mono">--glass-bg / --glass-border</code>
+              <span style={{ color: 'var(--text-muted)' }}>Tier 1 source</span>
+            </li>
+            <li style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.75rem', fontSize: '0.75rem' }}>
+              <code className="bpm-mono">--glass-soft-bg / --glass-soft-border</code>
+              <span style={{ color: 'var(--text-muted)' }}>Tier 2 source (alias of --inner-card-*)</span>
+            </li>
+          </ul>
+        </div>
+      </Section>
+
       <Section title="CORNER RADII — NEVER EXCEED 16px ON RECTANGLES">
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.5rem' }}>
           {RADII.map(([tok, val, note]) => (

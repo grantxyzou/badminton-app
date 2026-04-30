@@ -71,11 +71,22 @@ export default function ComponentsPage() {
           <p style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 600, letterSpacing: '-0.01em' }}>7:00 PM</p>
           <p style={{ margin: '0.25rem 0 0', color: 'var(--text-secondary)', fontSize: '0.8125rem', opacity: 0.72 }}>~$8.50 per person</p>
 
-          <div className="inner-card" style={{ marginTop: '0.75rem', padding: '0.75rem' }}>
+          <div className="glass-card-soft" style={{ marginTop: '0.75rem', padding: '0.75rem' }}>
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-              Nested: <code className="bpm-mono">.inner-card</code> flattens to transparent tint inside glass. Materials simplify inward.
+              Nested: <code className="bpm-mono">.glass-card-soft</code> flattens to transparent tint inside glass. Materials simplify inward.
             </p>
           </div>
+        </div>
+      </Row>
+
+      {/* ── Glass card — soft (Tier 2) ─────────────────────────────────── */}
+      <Row title="GLASS CARD — SOFT" caption="Tier 2 surface. Flat tint + 1px border, no blur or shadow, radius 12. Nest inside .glass-card to group related content without restating the material. .inner-card is a backwards-compatible alias.">
+        <div className="glass-card-soft" style={{ padding: '0.875rem' }}>
+          <p className="bpm-section-label" style={{ color: 'var(--text-muted)' }}>RECOVERY PIN</p>
+          <p style={{ margin: '0.4rem 0 0', fontSize: '0.875rem' }}>4-digit PIN saved</p>
+          <p style={{ margin: '0.25rem 0 0', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+            Used for <code className="bpm-mono">.inner-card</code> + nested groupings under the primary glass surface — settings rows, PIN editor, list items inside an admin card.
+          </p>
         </div>
       </Row>
 

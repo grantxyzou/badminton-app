@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Surfaces — Tier 1 + Tier 2</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round&display=swap">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: var(--font-sans); min-height: 100%; }
+  body { padding: 14px; background: #050806; display: flex; justify-content: center; }
+
+  .dual { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 960px; }
+  .pane {
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid;
+    position: relative;
+    overflow: hidden;
+  }
+  .pane[data-theme="dark"]  { background: linear-gradient(135deg, #050f07 0%, #100F0F 100%); border-color: rgba(255,255,255,0.08); color: #e2e8f0; }
+  .pane[data-theme="light"] { background: linear-gradient(135deg, #fff 0%, #eaf5ea 100%); border-color: rgba(0,0,0,0.08);   color: #1a2332; }
+  .pane::before {
+    content: '';
+    position: absolute; inset: 0;
+    z-index: 0;
+  }
+  .pane[data-theme="dark"]::before {
+    background:
+      radial-gradient(60% 80% at 18% 22%, rgba(74,222,128,0.35), transparent 70%),
+      radial-gradient(50% 70% at 82% 78%, rgba(251,146,60,0.22), transparent 70%);
+  }
+  .pane[data-theme="light"]::before {
+    background:
+      radial-gradient(60% 80% at 18% 22%, rgba(74,222,128,0.48), transparent 70%),
+      radial-gradient(50% 70% at 82% 78%, rgba(251,146,60,0.36), transparent 70%);
+  }
+  .pane > * { position: relative; z-index: 1; }
+
+  .pane-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .pane[data-theme="dark"]  .pane-title { color: #86efac; }
+  .pane[data-theme="light"] .pane-title { color: #16a34a; }
+  .pane-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .pane[data-theme="dark"]  .pane-title .dot { background: #4ade80; }
+  .pane[data-theme="light"] .pane-title .dot { background: #16a34a; }
+
+  /* Tier 1 — full glass */
+  .tier1 {
+    padding: 20px;
+    border-radius: 16px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    box-shadow:
+      inset 0 1px 0 var(--glass-inset),
+      var(--glass-shadow);
+  }
+  .pane[data-theme="dark"]  .tier1 { color: #e2e8f0; }
+  .pane[data-theme="light"] .tier1 { color: #1a2332; }
+
+  /* Tier 2 — flat tint */
+  .tier2 {
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--glass-soft-bg);
+    border: 1px solid var(--glass-soft-border);
+    margin-top: 12px;
+  }
+
+  .label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .pane[data-theme="dark"]  .tier1 .label { color: #86efac; }
+  .pane[data-theme="light"] .tier1 .label { color: #15803d; }
+  .pane[data-theme="dark"]  .tier2 .label { color: rgba(255,255,255,0.55); }
+  .pane[data-theme="light"] .tier2 .label { color: rgba(26,35,50,0.55); }
+
+  .h { font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: -0.01em; margin-top: 8px; }
+  .body { font-size: 13px; opacity: 0.78; margin-top: 4px; line-height: 1.45; }
+
+  .meta {
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px solid;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    line-height: 1.55;
+  }
+  .pane[data-theme="dark"]  .meta { border-color: rgba(255,255,255,0.1); color: rgba(226,232,240,0.7); }
+  .pane[data-theme="light"] .meta { border-color: rgba(0,0,0,0.08);    color: rgba(26,35,50,0.72); }
+  .meta b { color: inherit; font-weight: 700; }
+  .pane[data-theme="dark"]  .meta b { color: #86efac; }
+  .pane[data-theme="light"] .meta b { color: #15803d; }
+</style>
+</head>
+<body>
+<div class="dual">
+
+  <div class="pane" data-theme="dark">
+    <div class="pane-title"><span class="dot"></span>Dark</div>
+    <div class="tier1">
+      <div class="label">Upcoming session</div>
+      <div class="h">Thursday, April 18</div>
+      <div class="body">Tier&nbsp;1 — full glass: backdrop blur + saturate 180% + rim + layered shadow at radius 16.</div>
+      <div class="tier2">
+        <div class="label">Nested · Tier 2</div>
+        <div class="body" style="margin-top: 4px;">Flat tint + 1px border at radius 12. No backdrop-filter, no shadow, no rim. Materials simplify inward.</div>
+      </div>
+    </div>
+    <div class="meta">
+      Tier 1 → <b>.glass-card</b> · <b>--glass-bg</b> · <b>--glass-border</b><br>
+      Tier 2 → <b>.glass-card-soft</b> · <b>--glass-soft-bg</b> · <b>--glass-soft-border</b>
+    </div>
+  </div>
+
+  <div class="pane" data-theme="light">
+    <div class="pane-title"><span class="dot"></span>Light</div>
+    <div class="tier1">
+      <div class="label">Upcoming session</div>
+      <div class="h">Thursday, April 18</div>
+      <div class="body">Tier&nbsp;1 — full glass: backdrop blur 16 + saturate 180% + rim + layered shadow at radius 16.</div>
+      <div class="tier2">
+        <div class="label">Nested · Tier 2</div>
+        <div class="body" style="margin-top: 4px;">Flat ink-tint + 1px border at radius 12. No backdrop-filter, no shadow, no rim. Materials simplify inward.</div>
+      </div>
+    </div>
+    <div class="meta">
+      Tier 1 → <b>.glass-card</b> · <b>--glass-bg</b> · <b>--glass-border</b><br>
+      Tier 2 → <b>.glass-card-soft</b> · <b>--glass-soft-bg</b> · <b>--glass-soft-border</b>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

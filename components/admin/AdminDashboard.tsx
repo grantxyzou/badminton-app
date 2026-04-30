@@ -189,7 +189,7 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
               {anno.deletePostError && <p className="text-xs text-red-400 mb-1">{anno.deletePostError}</p>}
               {anno.announcements.map((a) =>
                 anno.editingAnnoId === a.id ? (
-                  <div key={a.id} className="inner-card p-3 space-y-2">
+                  <div key={a.id} className="glass-card-soft p-3 space-y-2">
                     <textarea
                       name="announcementEdit"
                       rows={4}
@@ -214,7 +214,7 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
                     </div>
                   </div>
                 ) : (
-                  <div key={a.id} className="inner-card p-3">
+                  <div key={a.id} className="glass-card-soft p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="announcement-body text-sm text-gray-200 flex-1">{renderMarkdown(a.text)}</div>
                       <div className="flex gap-3 shrink-0">

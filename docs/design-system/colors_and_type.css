@@ -166,6 +166,9 @@
   /* ── Inner cards ── */
   --inner-card-bg: rgba(var(--glass-tint), 0.03);
   --inner-card-border: rgba(var(--glass-tint), 0.06);
+  /* Tier-2 surface aliases — paired with --glass-* (Tier 1). */
+  --glass-soft-bg: var(--inner-card-bg);
+  --glass-soft-border: var(--inner-card-border);
 
   /* ── List-row tinted headers ── */
   --list-green-bg: rgba(74, 222, 128, 0.06);

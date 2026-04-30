@@ -110,7 +110,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
       )}
 
       {/* Inline add-player form — only shown to admins inside the live card. */}
-      <form onSubmit={handleAddPlayer} className="inner-card p-3 space-y-2">
+      <form onSubmit={handleAddPlayer} className="glass-card-soft p-3 space-y-2">
         <p className="section-label">ADD PLAYER</p>
         <div className="flex gap-2">
           <input
