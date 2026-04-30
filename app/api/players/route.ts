@@ -67,6 +67,42 @@ export async function POST(req: NextRequest) {
       pinHash = await hashPin(body.pin);
     }
 
+    // Account-only path: create/update the member record without signing up
+    // for a session. PIN is required here — there's no session player to
+    // generate a deleteToken from, so the member's pinHash is the only
+    // recovery primitive. Tighter rate limit than session signup since
+    // account creation is rarer and more enumeration-sensitive.
+    if (body.sessionSignup === false) {
+      if (!pinHash) {
+        return NextResponse.json({ error: 'PIN required for account creation' }, { status: 400 });
+      }
+      if (!checkRateLimit(`create-account:${trimmedName.toLowerCase()}:${ip}`, 3, 60 * 60 * 1000)) {
+        return NextResponse.json({ error: 'Too many account creation attempts. Try again later.' }, { status: 429 });
+      }
+      const membersContainer = getContainer('members');
+      const { resources: existingMembers } = await membersContainer.items
+        .query({
+          query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name)',
+          parameters: [{ name: '@name', value: trimmedName }],
+        })
+        .fetchAll();
+      const existingMember = existingMembers[0];
+      const memberDoc = {
+        ...(existingMember ?? {
+          id: randomBytes(12).toString('hex'),
+          name: trimmedName,
+          active: true,
+          sessionCount: 0,
+          createdAt: new Date().toISOString(),
+        }),
+        pinHash,
+        lastSeen: new Date().toISOString(),
+      };
+      const { resource } = await membersContainer.items.upsert(memberDoc);
+      const safe = resource as Record<string, unknown>;
+      return NextResponse.json({ id: safe.id, name: safe.name, deleteToken: null }, { status: 201 });
+    }
+
     const sessionContainer = getContainer('sessions');
     const membersContainer = getContainer('members');
     const container = getContainer('players');
