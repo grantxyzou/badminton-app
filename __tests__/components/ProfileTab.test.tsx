@@ -25,10 +25,17 @@ describe('ProfileTab', () => {
   });
   afterEach(() => cleanup());
 
-  it('shows anonymous empty state when no identity', () => {
+  it('shows anonymous identity-only state: inline sign-in form + Create account + recovery code link', () => {
     renderWith();
-    expect(screen.getByText(/Set up your profile/i)).toBeDefined();
-    expect(screen.getByText(/Already a player\? Sign in/i)).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Profile' })).toBeDefined();
+    expect(screen.getByText(/invite only/i)).toBeDefined();
+    // Inline sign-in form has a name input + PIN input + Sign in button
+    expect(screen.getByPlaceholderText('What is your name?')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeDefined();
+    // Create-an-account opens the action sheet
+    expect(screen.getByRole('button', { name: 'Create an account' })).toBeDefined();
+    // Recovery-code fallback still present
+    expect(screen.getByText(/Have a recovery code/i)).toBeDefined();
   });
 
   it('shows player profile + PIN row when identity exists', () => {
@@ -38,7 +45,9 @@ describe('ProfileTab', () => {
     );
     renderWith();
     expect(screen.getByText('Michael')).toBeDefined();
-    expect(screen.getByText(/Recovery PIN/i)).toBeDefined();
+    // PIN management is now a Settings row labelled "New PIN" / "Update PIN"
+    // depending on hasPin (defaults to false until /api/members/me resolves).
+    expect(screen.getByText(/New PIN/i)).toBeDefined();
   });
 
   it('shows admin tools button only when isAdmin', () => {
@@ -49,13 +58,8 @@ describe('ProfileTab', () => {
     expect(screen.getByText(/Admin tools/i)).toBeDefined();
   });
 
-  it('renders the Sign-up CTA in anonymous state when onTabChange is provided', () => {
-    const onTabChange = vi.fn();
-    render(
-      <NextIntlClientProvider locale="en" messages={enMessages}>
-        <ProfileTab {...baseProps} onTabChange={onTabChange} />
-      </NextIntlClientProvider>,
-    );
-    expect(screen.getByText(/Sign up for this week/i)).toBeDefined();
+  it('does not show a session-signup CTA in anonymous state — Profile is identity-only', () => {
+    renderWith();
+    expect(screen.queryByText(/Sign up for this week/i)).toBeNull();
   });
 });

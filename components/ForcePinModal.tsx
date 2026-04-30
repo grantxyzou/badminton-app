@@ -32,6 +32,13 @@ export default function ForcePinModal() {
 
   // Decide on mount whether to fire. Re-evaluates only when identity or the
   // localStorage flag would have changed (after signup, set-pin, or sign-out).
+  //
+  // Post auth-taxonomy split (PR B): every new identity creation path
+  // (HomeTab signup, CreateAccountSheet, RecoverySheet) explicitly sets
+  // `badminton_pin_set: 'true'`, so this modal effectively only fires for
+  // *legacy* PIN-less identities — players who signed up before PR #41 made
+  // PIN mandatory and never set one through the Profile editor. If the
+  // legacy population reaches zero, this whole component can be deleted.
   useEffect(() => {
     function evaluate() {
       const id = getIdentity();

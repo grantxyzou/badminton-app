@@ -181,6 +181,74 @@ describe('POST /api/players/recover', () => {
 
   // Note: the "Flag off → 404" test was removed when the recovery flag was
   // retired. The endpoint is now unconditionally active.
+
+  describe('member-only fallback (no session player)', () => {
+    it('verifies against members.pinHash and auto-creates a session player when signup is open', async () => {
+      const pinHash = await hashPin('4827');
+      const { seedMember } = await import('./helpers');
+      seedMember('Riley', { pinHash });
+      // No player record for the active session.
+
+      const res = await POST(
+        makeRequest('POST', URL_PATH, { name: 'Riley', sessionId: SESSION, pin: '4827' }),
+      );
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.deleteToken).toMatch(/^[0-9a-f]{32}$/);
+
+      // Session player was created on-the-fly
+      const store = getStore();
+      const players = (store['players'] ?? []) as Array<{ name: string; sessionId: string; deleteToken: string }>;
+      const created = players.find((p) => p.name === 'Riley' && p.sessionId === SESSION);
+      expect(created).toBeDefined();
+      expect(created?.deleteToken).toBe(data.deleteToken);
+    });
+
+    it('returns identity-only (deleteToken: null) when signup is closed', async () => {
+      const pinHash = await hashPin('4827');
+      const { seedMember, seedSession, resetMockStore, seedPointer } = await import('./helpers');
+      // Reset and reseed with signupOpen=false
+      resetMockStore();
+      seedPointer(SESSION);
+      seedSession(SESSION, { signupOpen: false });
+      seedMember('Riley', { pinHash });
+
+      const res = await POST(
+        makeRequest('POST', URL_PATH, { name: 'Riley', sessionId: SESSION, pin: '4827' }),
+      );
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.deleteToken).toBeNull();
+
+      // No session player created
+      const store = getStore();
+      expect((store['players'] ?? [])).toHaveLength(0);
+    });
+
+    it('wrong PIN against member.pinHash → 401, no player created', async () => {
+      const pinHash = await hashPin('4827');
+      const { seedMember } = await import('./helpers');
+      seedMember('Riley', { pinHash });
+
+      const res = await POST(
+        makeRequest('POST', URL_PATH, { name: 'Riley', sessionId: SESSION, pin: '0000' }),
+      );
+      expect(res.status).toBe(401);
+
+      const store = getStore();
+      expect((store['players'] ?? [])).toHaveLength(0);
+    });
+
+    it('member exists without pinHash → 401 (constant-time miss), no player created', async () => {
+      const { seedMember } = await import('./helpers');
+      seedMember('Riley'); // no pinHash
+
+      const res = await POST(
+        makeRequest('POST', URL_PATH, { name: 'Riley', sessionId: SESSION, pin: '4827' }),
+      );
+      expect(res.status).toBe(401);
+    });
+  });
 });
 
 // Silence unused var lint

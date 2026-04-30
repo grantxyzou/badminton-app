@@ -12,8 +12,8 @@ import PrevPaymentReminder from '@/components/PrevPaymentReminder';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
 import WelcomeCard from './WelcomeCard';
-import PinInput from '@/components/PinInput';
 import StatusBanner from '@/components/primitives/StatusBanner';
+import RecoverySheet from './RecoverySheet';
 import { renderMarkdown } from '@/lib/miniMarkdown';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -36,15 +36,17 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [memberNames, setMemberNames] = useState<string[]>([]);
   const [hasIdentity, setHasIdentity] = useState(false);
-  // PIN is mandatory at signup per the auth revamp (PR C). No more deferred
-  // SetPinSheet — collect upfront so existing-account fragility goes away.
-  const [pinValue, setPinValue] = useState('');
+  // Sign up = session signup only (auth taxonomy split). PIN is no longer
+  // collected here — it's an opt-in identity primitive, set via Profile →
+  // Create account / Set PIN. Returning players who already have a PIN can
+  // tap "Already a player? Sign in →" to authenticate via RecoverySheet.
   const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
     if (typeof window === 'undefined') return true;
     return localStorage.getItem('badminton_onboarding_dismissed') === 'true';
   });
   const [releases, setReleases] = useState<Release[]>([]);
   const [releaseSheetOpen, setReleaseSheetOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
 
   const maxPlayers = parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12');
 
@@ -172,21 +174,23 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) { setError(t('signup.nameRequired')); return; }
-    if (pinValue.length !== 4) { setError(t('signup.pinRequired')); return; }
     setIsSubmitting(true);
     setError('');
     try {
       const res = await fetch(`${BASE}/api/players`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), pin: pinValue }),
+        body: JSON.stringify({ name: name.trim() }),
       });
       const data = await res.json();
       if (!res.ok) {
         if (data.error === 'invite_list_not_found') {
           setError(t('signup.inviteError', { name: name.trim() }));
-        } else if (data.error === 'pin_too_common') {
-          setError(t('signup.pinTooCommon'));
+        } else if (data.error === 'pin_required') {
+          // Member is PIN-protected — open Sign In sheet instead of letting
+          // an anonymous request claim their session slot.
+          setSignInOpen(true);
+          setError('');
         } else {
           setError(data.error ?? t('signup.genericFailure'));
         }
@@ -195,10 +199,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session?.id ?? '' });
         setCurrentUser(name.trim());
         setHasIdentity(true);
-        // PIN was collected at signup; mark it set so the force-PIN modal
-        // doesn't fire on next visit.
-        localStorage.setItem('badminton_pin_set', 'true');
-        setPinValue('');
         await loadData();
       }
     } catch {
@@ -211,21 +211,21 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
   async function handleJoinWaitlist(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) { setError(t('signup.nameRequired')); return; }
-    if (pinValue.length !== 4) { setError(t('signup.pinRequired')); return; }
     setIsSubmitting(true);
     setError('');
     try {
       const res = await fetch(`${BASE}/api/players`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), waitlist: true, pin: pinValue }),
+        body: JSON.stringify({ name: name.trim(), waitlist: true }),
       });
       const data = await res.json();
       if (!res.ok) {
         if (data.error === 'invite_list_not_found') {
           setError(t('signup.inviteError', { name: name.trim() }));
-        } else if (data.error === 'pin_too_common') {
-          setError(t('signup.pinTooCommon'));
+        } else if (data.error === 'pin_required') {
+          setSignInOpen(true);
+          setError('');
         } else {
           setError(data.error ?? t('signup.waitlistFailure'));
         }
@@ -233,8 +233,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session?.id ?? '' });
         setCurrentUser(name.trim());
         setHasIdentity(true);
-        localStorage.setItem('badminton_pin_set', 'true');
-        setPinValue('');
         await loadData();
       }
     } catch {
@@ -446,18 +444,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
                   </ul>
                 )}
               </div>
-              <PinInput
-                value={pinValue}
-                onChange={setPinValue}
-                digits={4}
-                label={t('signup.pinLabel')}
-                ariaInvalid={!!error}
-              />
-              <p className="text-[11px] text-gray-400 leading-snug">{t('signup.pinHint')}</p>
               {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
               <button
                 type="submit"
-                disabled={isSubmitting || !name.trim() || pinValue.length !== 4}
+                disabled={isSubmitting || !name.trim()}
                 className="btn-primary w-full"
               >
                 {isSubmitting ? t('signup.joining') : t('signup.waitlist')}
@@ -510,22 +500,22 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
                   </ul>
                 )}
               </div>
-              <PinInput
-                value={pinValue}
-                onChange={setPinValue}
-                digits={4}
-                label={t('signup.pinLabel')}
-                ariaInvalid={!!error}
-              />
-              <p className="text-[11px] text-gray-400 leading-snug">{t('signup.pinHint')}</p>
               {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
               <button
                 type="submit"
-                disabled={isSubmitting || !name.trim() || pinValue.length !== 4}
+                disabled={isSubmitting || !name.trim()}
                 className="btn-primary w-full"
               >
                 {!isSubmitting && <span className="material-icons icon-sm" aria-hidden="true">how_to_reg</span>}
                 {isSubmitting ? t('signup.submitting') : t('signup.button')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSignInOpen(true)}
+                className="text-center text-xs underline"
+                style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px 12px', minHeight: 44, alignSelf: 'center' }}
+              >
+                {t('signup.alreadyPlayer')}
               </button>
               {session?.deadline && (
                 <p className={`text-center text-xs font-medium ${isDeadlineApproaching ? 'text-red-400' : 'text-gray-400'}`}>
@@ -536,6 +526,19 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           </div>
         )}
       </div>
+      <RecoverySheet
+        open={signInOpen}
+        onClose={() => {
+          setSignInOpen(false);
+          // Refresh identity and active player after sign-in.
+          const fresh = getIdentity();
+          if (fresh) {
+            setHasIdentity(true);
+            setCurrentUser(fresh.name);
+          }
+        }}
+        sessionId={session?.id ?? ''}
+      />
       {/* Payment reminder for previous session — visible whenever the player
           has identity (i.e. has signed up before), not only when signed up
           for the current session. Addresses research finding 4.8. */}
