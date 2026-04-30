@@ -63,6 +63,77 @@ export async function POST(req: NextRequest) {
     .fetchAll();
   const player = resources[0];
 
+  // No session player for the active session, but the user may still have
+  // a member record (account-only identity, or returning player on a fresh
+  // session before they've signed up). Fall back to verifying against the
+  // member's pinHash. Codes don't have a member-level path — those are
+  // issued against a specific player record, so we still hard-fail.
+  if (!player && pin) {
+    const membersContainer = getContainer('members');
+    const { resources: members } = await membersContainer.items
+      .query({
+        query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
+        parameters: [{ name: '@name', value: name }],
+      })
+      .fetchAll();
+    const member = members[0];
+    if (!member || typeof member.pinHash !== 'string' || !member.pinHash) {
+      // Constant-time miss against FAKE_HASH so attackers can't enumerate
+      // names or distinguish "no member" from "no PIN" by timing.
+      await verifyPin(pin, FAKE_HASH);
+      return FAIL();
+    }
+    const ok = await verifyPin(pin, member.pinHash);
+    if (!ok) return FAIL();
+
+    // PIN matched a member without a session player. If the active session
+    // is open and has capacity, auto-create the session player so this call
+    // doubles as "sign in + sign up for this week" — the natural mental
+    // model for a returning user on a new session. Otherwise return an
+    // identity-only success with no deleteToken.
+    const sessionContainer = getContainer('sessions');
+    const { resources: sessions } = await sessionContainer.items
+      .query({ query: 'SELECT * FROM c WHERE c.id = @id', parameters: [{ name: '@id', value: sessionId }] })
+      .fetchAll();
+    const sessionData = sessions[0];
+    const maxPlayers = sessionData?.maxPlayers ?? parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12', 10);
+    const signupBlocked =
+      sessionData?.signupOpen === false ||
+      (sessionData?.deadline && new Date() > new Date(sessionData.deadline));
+
+    if (signupBlocked) {
+      return NextResponse.json({ deleteToken: null });
+    }
+
+    const { resources: active } = await container.items
+      .query({
+        query:
+          'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
+        parameters: [{ name: '@sessionId', value: sessionId }],
+      })
+      .fetchAll();
+    if (active.length >= maxPlayers) {
+      return NextResponse.json({ deleteToken: null });
+    }
+
+    const newDeleteToken = randomBytes(16).toString('hex');
+    const newPlayer = {
+      id: randomBytes(12).toString('hex'),
+      name: member.name,
+      sessionId,
+      timestamp: new Date().toISOString(),
+      deleteToken: newDeleteToken,
+      paid: false,
+      removed: false,
+      waitlisted: false,
+      memberId: member.id,
+      pinHash: member.pinHash,
+      recoveryEvents: [{ event: 'recovered-via-pin', at: new Date().toISOString() }],
+    };
+    await container.items.create(newPlayer);
+    return NextResponse.json({ deleteToken: newDeleteToken });
+  }
+
   // Constant-time miss: do a real verify against FAKE_HASH so latency matches
   // a real failed verify and an attacker can't distinguish "no player" from "wrong PIN".
   if (!player) {

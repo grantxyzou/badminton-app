@@ -43,13 +43,13 @@ export default function AdminTab() {
       if (res.ok) {
         setIsAuthed(true);
       } else if (res.status === 429) {
-        setError('Too many attempts. Try again in 15 minutes.');
+        setError(pageT('signInErrorRateLimited'));
       } else {
-        setError('Incorrect name or PIN.');
+        setError(pageT('signInErrorInvalid'));
         setPin('');
       }
     } catch {
-      setError('Network error.');
+      setError(pageT('signInErrorNetwork'));
     } finally {
       setChecking(false);
     }
@@ -78,17 +78,17 @@ export default function AdminTab() {
           <div className="glass-card p-6 w-full max-w-xs space-y-5">
             <div className="text-center">
               <span className="material-icons icon-xl text-green-400">lock</span>
-              <p className="text-sm text-gray-400 mt-2">Sign in with your name and PIN</p>
+              <p className="text-sm text-gray-400 mt-2">{pageT('signInHelp')}</p>
             </div>
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label htmlFor="admin-name" className="sr-only">Name</label>
+                <label htmlFor="admin-name" className="sr-only">{pageT('nameLabel')}</label>
                 <input
                   id="admin-name"
                   name="name"
                   type="text"
-                  placeholder="Your name"
-                  aria-label="Your name"
+                  placeholder={pageT('namePlaceholder')}
+                  aria-label={pageT('nameLabel')}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   maxLength={50}
@@ -100,7 +100,7 @@ export default function AdminTab() {
                 value={pin}
                 onChange={setPin}
                 digits={4}
-                label="PIN"
+                label={pageT('pinLabel')}
                 ariaInvalid={!!error}
                 autoFocus={!!name}
               />
@@ -110,7 +110,7 @@ export default function AdminTab() {
                 disabled={checking || !name.trim() || pin.length !== 4}
                 className="btn-primary w-full"
               >
-                {checking ? 'Checking\u2026' : 'Sign in'}
+                {checking ? pageT('signInChecking') : pageT('signInButton')}
               </button>
             </form>
           </div>

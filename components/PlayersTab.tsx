@@ -125,7 +125,7 @@ export default function PlayersTab() {
                   <span className="flex-1 text-sm text-gray-200 font-medium">
                     {player.name}
                     {isMe && (
-                      <span className="ml-1.5 text-xs text-green-400 font-normal">
+                      <span className="ml-1.5 text-xs font-normal" style={{ color: 'var(--text-muted)' }}>
                         {t('youSuffix')}
                       </span>
                     )}
@@ -183,7 +183,7 @@ export default function PlayersTab() {
                     <span className="flex-1 text-sm text-gray-400 font-medium">
                       {player.name}
                       {isMe && (
-                        <span className="ml-1.5 text-xs text-amber-400 font-normal">
+                        <span className="ml-1.5 text-xs font-normal" style={{ color: 'var(--text-muted)' }}>
                           {t('youSuffix')}
                         </span>
                       )}

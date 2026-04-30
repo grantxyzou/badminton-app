@@ -11,7 +11,7 @@
       "nameRequired": "Enter your name to sign up",
       "pinRequired": "Set a 4-digit PIN to sign up",
       "pinTooCommon": "Pick a less common PIN",
-      "pinLabel": "4-digit PIN",
+      "pinLabel": "PIN",
       "pinHint": "Required. Use this PIN to recover access if you change phones.",
       "genericFailure": "Failed to sign up",
       "waitlistFailure": "Failed to join waitlist",
@@ -25,6 +25,8 @@
       "allSpotsTaken": "All {total} spots are taken.",
       "closesOn": "Sign up closes on {date}",
       "closedPreviously": "Sign-ups closed on {date}",
+      "alreadyPlayer": "Already a player? Sign in →",
+      "pinRequired": "This name has a PIN. Sign in instead.",
       "pinPrompt": {
         "cardTitle": "Add a recovery PIN",
         "cardBody": "Use this to manage your account and access your stats.",
@@ -91,7 +93,18 @@
   "pages": {
     "signup": { "title": "Sign-Up" },
     "learn": { "title": "Learn" },
-    "admin": { "title": "Admin" }
+    "admin": {
+      "title": "Admin",
+      "signInHelp": "Sign in with your name and PIN",
+      "nameLabel": "Your name",
+      "namePlaceholder": "Your name",
+      "pinLabel": "PIN",
+      "signInButton": "Sign in",
+      "signInChecking": "Checking…",
+      "signInErrorRateLimited": "Too many attempts. Try again in 15 minutes.",
+      "signInErrorInvalid": "Incorrect name or PIN.",
+      "signInErrorNetwork": "Network error."
+    }
   },
   "nav": {
     "home": "Home",
@@ -101,10 +114,35 @@
     "profile": "Profile"
   },
   "profile": {
-    "anonymousTitle": "Set up your profile",
-    "anonymousBody": "You're not signed up yet.",
-    "anonymousRestoreLink": "Already a player? Sign in →",
-    "anonymousSignupCta": "Sign up for this week",
+    "anonymousTitle": "Profile",
+    "anonymousBody": "Account creation is invite only — contact admin for inquiries (beta).",
+    "anonymousCreateCta": "Create an account",
+    "anonymousNamePlaceholder": "What is your name?",
+    "anonymousPinLabel": "PIN",
+    "anonymousSignInButton": "Sign in",
+    "anonymousSignInChecking": "Checking…",
+    "anonymousSignInErrorInvalid": "That didn't match. Try again.",
+    "anonymousSignInErrorRateLimited": "Too many tries. Try again later.",
+    "anonymousSignInErrorAdminLogged": "Signed in as admin — sign out first to recover a player account.",
+    "anonymousOrDivider": "or",
+    "anonymousRestoreLink": "Sign in",
+    "createAccount": {
+      "title": "Create your account",
+      "body": "Set a name and PIN. You can sign up for sessions afterward.",
+      "nameLabel": "Your name",
+      "namePlaceholder": "Enter your name",
+      "pinLabel": "PIN",
+      "confirmPinLabel": "Confirm PIN",
+      "submit": "Create account",
+      "submitting": "Creating…",
+      "successWelcome": "Welcome, {name}",
+      "errorMismatch": "PINs don't match",
+      "errorTooCommon": "Pick a less common PIN",
+      "errorInvalid": "PIN must be 4 digits",
+      "errorRateLimited": "Too many tries. Try again in an hour.",
+      "errorNetwork": "Network error. Please try again.",
+      "errorAccountExists": "An account with this name already exists. Sign in instead."
+    },
     "playerName": "Name",
     "playerSession": "Signed up for",
     "pinSectionTitle": "Recovery PIN",
@@ -116,11 +154,14 @@
     "pinSaved": "Saved",
     "pinTooCommon": "Pick a less common PIN",
     "pinInvalid": "PIN must be 4 digits",
+    "pinUpdateFailed": "Couldn't update PIN. Please try again.",
     "adminToolsTitle": "Admin tools",
     "adminToolsButton": "Admin tools →",
     "settings": {
       "title": "Account",
-      "forgotPin": "Forgot PIN",
+      "newPin": "New PIN",
+      "updatePin": "Update PIN",
+      "recoveryCode": "Have a recovery code?",
       "releaseNotes": "What's new",
       "adminAccess": "Admin access",
       "logout": "Log out"
@@ -200,7 +241,7 @@
   "recovery": {
     "sheetTitle": "Sign in",
     "pinPathTitle": "Use my PIN",
-    "pinPathHelp": "Enter the 4-digit PIN you set when signing up.",
+    "pinPathHelp": "Enter the PIN you set when signing up.",
     "codePathTitle": "I forgot my PIN",
     "codePathHelp": "Ask the admin for a 6-digit code, then enter it here.",
     "nameLabel": "Your name",

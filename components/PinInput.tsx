@@ -1,6 +1,8 @@
 'use client';
 import { useId, type CSSProperties } from 'react';
 
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+
 interface Props {
   value: string;
   onChange: (v: string) => void;
@@ -11,12 +13,18 @@ interface Props {
   ariaInvalid?: boolean;
 }
 
+// Cycle the three brand baddicons (pink / yellow / green from
+// public/brand/*.svg) one per typed digit. Empty fields show no icons, so
+// the input doesn't leak max length at a glance. Filename `baddicon-yello`
+// is intentionally short — that's how the asset ships.
+const BADDICONS = ['pink', 'yello', 'green'];
+
 export default function PinInput({
   value, onChange, digits, label, autoFocus, disabled, ariaInvalid,
 }: Props) {
   const id = useId();
   return (
-    <div>
+    <div style={{ position: 'relative' }}>
       <label htmlFor={id} className="sr-only">{label}</label>
       <input
         id={id}
@@ -25,7 +33,7 @@ export default function PinInput({
         // a stored-password reuse check on every type="password" field, which
         // flags this site as "Dangerous" with a "Check your passwords"
         // overlay when the user types a PIN that matches a saved password
-        // for any other domain. The visual masking below preserves
+        // for any other domain. The shuttlecock overlay below preserves
         // shoulder-surf protection without engaging Chrome's heuristic.
         type="text"
         inputMode="numeric"
@@ -38,29 +46,53 @@ export default function PinInput({
         disabled={disabled}
         aria-label={label}
         aria-invalid={ariaInvalid || undefined}
-        placeholder={'•'.repeat(digits)}
+        placeholder={value ? '' : label}
         style={{
-          fontFamily: 'var(--font-mono)',
-          // Scale type down on narrow viewports so 4/6 dots + letter-spacing
-          // never overflow at 320px. clamp(min, preferred, max).
-          fontSize: 'clamp(20px, 6.5vw, 28px)',
-          letterSpacing: '0.35em',
-          textAlign: 'center',
-          padding: '12px 14px',
-          borderRadius: 12,
-          border: ariaInvalid ? '1px solid var(--color-red, #ef4444)' : '1px solid var(--glass-border)',
-          background: 'var(--input-bg, rgba(255,255,255,0.05))',
-          color: 'var(--text-primary)',
-          width: '100%',
-          // Visual masking — renders typed digits as dots without the
-          // type="password" semantic. Supported in Chrome/Safari/Edge and
-          // Firefox 116+. If a Firefox user pre-dates that, digits show as
-          // plain text — acceptable trade-off vs the Chrome warning.
-          // `WebkitTextSecurity` isn't in csstype's CSSProperties yet, so
-          // we cast through a vendor-extension intersection type.
-          WebkitTextSecurity: 'disc',
-        } as CSSProperties & { WebkitTextSecurity?: 'none' | 'disc' | 'circle' | 'square' }}
+          // Inherit canonical input styles from globals.css (14px radius,
+          // 11px 14px padding, --input-bg/--input-border, focus ring). Only
+          // override what's specific to PinInput: hide typed characters but
+          // keep the caret beam so the user has typing feedback alongside
+          // the baddicon overlay. Letter-spacing only applies when there's
+          // a typed value — placeholder text stays at canonical body size,
+          // and the caret advances ~30px per digit to align with the
+          // baddicon slot pitch (24px icon + 6px gap).
+          color: 'transparent',
+          caretColor: 'var(--text-primary)',
+          ...(value.length > 0 ? { letterSpacing: '22px' } : {}),
+        } as CSSProperties}
       />
+      {value.length > 0 && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: 14,
+            top: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            pointerEvents: 'none',
+          }}
+        >
+          {Array.from({ length: value.length }, (_, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={i}
+              src={`${BASE}/brand/baddicon-${BADDICONS[i % BADDICONS.length]}.svg`}
+              alt=""
+              aria-hidden="true"
+              width={24}
+              style={{
+                height: 22,
+                width: 24,
+                flexShrink: 0,
+                animation: 'baddicon-pop 320ms var(--ease-spring) both',
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
