@@ -10,8 +10,12 @@
   /* ── Page ── */
   --page-bg: #100F0F;
   --text-primary: #e2e8f0;
-  --text-secondary: rgba(255, 255, 255, 0.6);
-  --text-muted: rgba(255, 255, 255, 0.35);
+  /* Dark-mode contrast: bumped from 0.6 / 0.35 because the original values
+     fell below AA on `.glass-card` regions where the aurora gradient blooms
+     through the translucent surface. Light mode untouched (already
+     well-contrasted on cream). */
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.55);
   --accent: #4ade80;
   --accent-dark: #16a34a;
   --color-scheme: dark;
@@ -38,7 +42,13 @@
 
   /* ── Glass surfaces ── */
   --glass-tint: 255, 255, 255;
-  --glass-bg: linear-gradient(160deg, rgba(var(--glass-tint), 0.06) 0%, rgba(var(--glass-tint), 0.02) 100%);
+  /* Dark-mode glass: tuned via the contrast-tuner playground to 0.03/0.01.
+     Counter-intuitive direction — going *more* translucent than the original
+     0.06/0.02. The contrast win comes from the text-side bumps below
+     (text-secondary 0.6 → 0.70, text-muted 0.35 → 0.55), not from frosting
+     the glass. Keeps the aurora visible behind cards (the brand identity)
+     instead of muting it. Light mode glass untouched. */
+  --glass-bg: linear-gradient(160deg, rgba(var(--glass-tint), 0.03) 0%, rgba(var(--glass-tint), 0.01) 100%);
   --glass-border: rgba(var(--glass-tint), 0.14);
   --glass-shadow: 0 8px 40px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.12);
   --glass-shadow-hover: 0 16px 48px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.15);
