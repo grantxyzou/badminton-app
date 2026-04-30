@@ -12,7 +12,10 @@ const LEGACY_TOKEN_KEY = 'badminton_deletetoken';
 
 export interface Identity {
   name: string;
-  token: string;
+  /** Session-player deleteToken. Absent for account-only identities created
+   *  via the `sessionSignup: false` POST path — those upgrade to a full
+   *  identity once the user signs up for a session. */
+  token?: string;
   sessionId: string;
 }
 
