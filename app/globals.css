@@ -433,10 +433,13 @@ h1, h2, h3, h4 {
   animation: aurora-drift 14s ease-in-out infinite alternate;
 }
 
-/* Blob 1 — slate-blue (cool atmospheric) */
+/* Blob 1 — slate-blue (cool atmospheric, upper-left)
+   Sized down ~25% from the original (110×80vmax) so each blob owns its
+   corner instead of bleeding into the others. The previous overlap mixed
+   slate+green into murky teal in the middle of every screen. */
 .aurora-blob-1 {
-  width: 110vmax; height: 80vmax;
-  left: -10vmax; top: 4vh;
+  width: 80vmax; height: 60vmax;
+  left: -15vmax; top: -2vh;
   background: radial-gradient(ellipse 50% 50% at 50% 50%,
     rgba(120, 158, 196, 0.50) 0%,
     rgba(74, 120, 170, 0.22) 32%,
@@ -444,10 +447,10 @@ h1, h2, h3, h4 {
     transparent 80%);
 }
 
-/* Blob 2 — brand court-green (warm accent) */
+/* Blob 2 — brand court-green (warm accent, lower-right) */
 .aurora-blob-2 {
-  width: 100vmax; height: 72vmax;
-  right: -15vmax; bottom: 4vh;
+  width: 75vmax; height: 55vmax;
+  right: -15vmax; bottom: -2vh;
   background: radial-gradient(ellipse 50% 50% at 50% 50%,
     rgba(74, 222, 128, 0.32) 0%,
     rgba(74, 222, 128, 0.14) 34%,
@@ -456,10 +459,12 @@ h1, h2, h3, h4 {
   animation-delay: -5s;
 }
 
-/* Blob 3 — warm-yellow (midtone glow) */
+/* Blob 3 — warm-yellow (midtone glow, mid-right)
+   Smaller still and pushed further right + down so it doesn't sit on
+   top of blob 1. Reads as an accent point rather than a third wash. */
 .aurora-blob-3 {
-  width: 85vmax; height: 65vmax;
-  right: 10vmax; top: 22vh;
+  width: 55vmax; height: 42vmax;
+  right: -8vmax; top: 30vh;
   background: radial-gradient(ellipse 50% 50% at 50% 50%,
     rgba(232, 210, 160, 0.34) 0%,
     rgba(210, 185, 130, 0.14) 36%,
