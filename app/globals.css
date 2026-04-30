@@ -120,6 +120,10 @@
   --inner-card-border: rgba(var(--glass-tint), 0.06);
   --inner-card-green-bg: rgba(74, 222, 128, 0.06);
   --inner-card-green-border: rgba(74, 222, 128, 0.15);
+  /* Tier-2 surface aliases — paired with --glass-* (Tier 1). Resolve through
+     --inner-card-* so existing call sites keep working unchanged. */
+  --glass-soft-bg: var(--inner-card-bg);
+  --glass-soft-border: var(--inner-card-border);
 
   /* ── List headers ── */
   --list-green-bg: rgba(74, 222, 128, 0.06);
@@ -1156,10 +1160,15 @@ textarea {
 .pill-waitlist { background: var(--pill-waitlist-bg); color: var(--pill-waitlist-text); }
 .pill-admin    { background: var(--pill-admin-bg);    color: var(--pill-admin-text); }
 
-/* ── Inner mini-card (nested content blocks) ── */
+/* ── Tier-2 glass surface ──
+   Paired with .glass-card (Tier 1) for nested groupings inside the primary
+   surface. Materials simplify inward (DESIGN.md #9): no backdrop-filter, no
+   shadow, no rim — just a faint tint + border at radius 12. .inner-card is
+   kept as a backwards-compatible alias of .glass-card-soft. */
+.glass-card-soft,
 .inner-card {
-  background: var(--inner-card-bg);
-  border: 1px solid var(--inner-card-border);
+  background: var(--glass-soft-bg);
+  border: 1px solid var(--glass-soft-border);
   border-radius: 12px;
 }
 

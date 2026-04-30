@@ -59,6 +59,7 @@ preview/
   12-button-primary.html
   13-button-ghost.html
   14-glass-card.html
+  14b-surfaces.html             ← Tier 1 + Tier 2 surface ladder
   15-status-banners.html
   16-pills.html
   17-inputs.html
@@ -130,8 +131,9 @@ The voice is **friendly, direct, and pragmatic** — the same tone a neighborhoo
 - **No hand-drawn illustrations. No textures. No patterns.** The blobs are the only decoration — everything else is content-forward.
 
 ### Materials & surfaces
-- **Everything is glass.** `.glass-card` (Tier 1) is `backdrop-filter: blur(10px) saturate(140%)` over a `linear-gradient(160deg, 3% → 1%)` white tint, a 1px `rgba(white, 0.14)` border, `16px` radius (corner-ladder max), and a layered shadow: `inset 0 1px 0 white-14%` for the inner rim + `0 8px 40px black-25%` + `0 2px 8px black-12%` for depth. The thin tint is intentional — keeps the aurora visible behind cards (brand identity over frosted opacity); contrast is carried by the text-side alphas instead. Tier 2 surface is `.glass-card-soft` (alias `.inner-card`) — flat tint + 1px border at 12px radius, no blur or shadow.
-- **Materials simplify inward** (see `DESIGN.md` #9). The outermost glass card has the full material; nested inputs flatten to transparent + border only; focus reinstates the full material. Enforced in `globals.css` via `.glass-card input, .glass-card select, .glass-card textarea`.
+- **Everything is glass.** `.glass-card` (Tier 1) is `backdrop-filter: blur(10px) saturate(140%)` over a `linear-gradient(160deg, 3% → 1%)` white tint, a 1px `rgba(white, 0.14)` border, `16px` radius (corner-ladder max), and a layered shadow: `inset 0 1px 0 white-14%` for the inner rim + `0 8px 40px black-25%` + `0 2px 8px black-12%` for depth. The thin tint is intentional — keeps the aurora visible behind cards (brand identity over frosted opacity); contrast is carried by the text-side alphas instead.
+- **Two surface tiers.** Tier 1 is `.glass-card` (full material above). Tier 2 is `.glass-card-soft` (alias `.inner-card`) — flat tint + 1px border at radius 12, no backdrop-filter, no shadow, no rim. Tier 2 lives only inside Tier 1, for nested groupings (announcement edit panes, profile sub-sections, per-brand bird groups). Tokens: `--glass-soft-bg`, `--glass-soft-border`. See `preview/14b-surfaces.html`.
+- **Materials simplify inward** (see `DESIGN.md` #9). The outermost glass card has the full material; nested elements step down to Tier 2; inputs further flatten to transparent + border only; focus reinstates the full material. Enforced in `globals.css` via `.glass-card input, .glass-card select, .glass-card textarea`.
 - **Hover state = lift, not fill.** `hover: translateY(-2px)` + heavier shadow. No color change, no background flash. Gated on `@media (hover: hover)` so it doesn't mis-fire on touch.
 - **Active / press state = `scale(0.97)`** with 100ms transition. Buttons only. No color change on press.
 - **Focus state = green ring.** `0 0 0 3px rgba(74, 222, 128, 0.10)` inside a slightly stronger `rgba(74, 222, 128, 0.45)` border. Visible — never suppressed.
