@@ -28,14 +28,17 @@ export default function ProfileTab({
 }: Props) {
   const t = useTranslations('profile');
   const [identity, setLocalIdentity] = useState<Identity | null>(null);
-  const [pinIsSet, setPinIsSet] = useState(false);
+  // null = unknown/loading or fetch failed. Used to avoid the bug where a
+  // 5xx on /api/members/me silently rendered "Recovery PIN: Not set" and
+  // pushed users into a re-create loop that 409'd on `account_exists`.
+  const [pinIsSet, setPinIsSet] = useState<boolean | null>(null);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
   const [createAccountOpen, setCreateAccountOpen] = useState(false);
   // Anonymous-state inline sign-in form. Replaces the old RecoverySheet path
   // for fresh visitors per the auth taxonomy split.
   const [signInName, setSignInName] = useState('');
   const [signInPin, setSignInPin] = useState('');
-  const [signInError, setSignInError] = useState<'invalid' | 'rate_limited' | 'admin_logged_in' | null>(null);
+  const [signInError, setSignInError] = useState<'invalid' | 'rate_limited' | 'admin_logged_in' | 'network' | null>(null);
   const [signInSubmitting, setSignInSubmitting] = useState(false);
   // Signed-in state PIN management: tap the Settings "Recovery PIN" row to
   // open RecoveryPinSheet (set / change / remove + forgot-it handoff).
@@ -62,17 +65,26 @@ export default function ProfileTab({
   // and was the bug behind "Recovery PIN: Not set" until refresh.
   useEffect(() => {
     if (!identity) {
-      setPinIsSet(false);
+      setPinIsSet(null);
       return;
     }
     let cancelled = false;
+    setPinIsSet(null); // mark unknown while fetching
     fetch(`${BASE}/api/members/me?name=${encodeURIComponent(identity.name)}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : { hasPin: false }))
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`hasPin fetch ${r.status}`);
+        return r.json();
+      })
       .then((data: { hasPin?: boolean }) => {
         if (!cancelled) setPinIsSet(data.hasPin === true);
       })
-      .catch(() => {
-        if (!cancelled) setPinIsSet(false);
+      .catch((err) => {
+        if (cancelled) return;
+        // Keep status unknown rather than asserting "Not set". The audit
+        // (H4) found this default-to-false flip was pushing users into
+        // recreate-account loops on transient backend failures.
+        console.warn('hasPin fetch failed:', err);
+        setPinIsSet(null);
       });
     return () => {
       cancelled = true;
@@ -82,7 +94,7 @@ export default function ProfileTab({
   function handleLogout() {
     clearIdentity();
     setLocalIdentity(null);
-    setPinIsSet(false);
+    setPinIsSet(null);
   }
 
   // Anonymous state — Profile is identity-only. Inline sign-in form (name +
@@ -103,11 +115,25 @@ export default function ProfileTab({
       });
       if (res.status === 429) { setSignInError('rate_limited'); return; }
       if (res.status === 403) { setSignInError('admin_logged_in'); return; }
+      // Distinguish 5xx (server/DB failure) from 4xx (bad credentials).
+      // Without this, a Cosmos throttle or a /api/players/recover 500
+      // looks identical to "wrong PIN" — user retries 5x and rate-limits
+      // themselves out of recovery for an hour.
+      if (res.status >= 500) { setSignInError('network'); return; }
       if (!res.ok) { setSignInError('invalid'); return; }
       const body = await res.json();
+      if (!body || typeof body.deleteToken === 'undefined') {
+        setSignInError('network');
+        return;
+      }
       const { setIdentity } = await import('@/lib/identity');
       setIdentity({ name: trimmed, token: body.deleteToken, sessionId });
       setLocalIdentity(getIdentity());
+    } catch {
+      // fetch threw (offline, DNS, CORS) or res.json() threw on malformed
+      // response. Surface a distinct error so user knows to retry vs.
+      // double-checking PIN.
+      setSignInError('network');
     } finally {
       setSignInSubmitting(false);
     }
@@ -157,6 +183,11 @@ export default function ProfileTab({
             {signInError === 'admin_logged_in' && (
               <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12, margin: 0 }}>
                 {t('anonymousSignInErrorAdminLogged')}
+              </p>
+            )}
+            {signInError === 'network' && (
+              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12, margin: 0 }}>
+                {t('anonymousSignInErrorNetwork')}
               </p>
             )}
           </form>
@@ -249,7 +280,15 @@ export default function ProfileTab({
           rows={[
             {
               icon: 'key',
-              label: pinIsSet ? tSettings('updatePin') : tSettings('newPin'),
+              // pinIsSet === null means we couldn't load status. Show the
+              // generic section title rather than asserting "New PIN" (which
+              // would suggest "you don't have one yet" — false on transient
+              // backend failures).
+              label: pinIsSet === null
+                ? t('pinSectionTitle')
+                : pinIsSet
+                ? tSettings('updatePin')
+                : tSettings('newPin'),
               onClick: () => setRecoveryPinOpen(true),
             },
             {
@@ -270,7 +309,7 @@ export default function ProfileTab({
         open={recoveryPinOpen}
         onClose={() => setRecoveryPinOpen(false)}
         identity={identity}
-        hasPin={pinIsSet}
+        hasPin={pinIsSet === true}
         onSaved={(newHasPin) => setPinIsSet(newHasPin)}
       />
       <EnterCodeSheet

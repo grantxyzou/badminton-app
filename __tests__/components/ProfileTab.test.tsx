@@ -45,9 +45,11 @@ describe('ProfileTab', () => {
     );
     renderWith();
     expect(screen.getByText('Michael')).toBeDefined();
-    // PIN management is now a Settings row labelled "New PIN" / "Update PIN"
-    // depending on hasPin (defaults to false until /api/members/me resolves).
-    expect(screen.getByText(/New PIN/i)).toBeDefined();
+    // PIN management Settings row: until /api/members/me resolves the
+    // hasPin status, the label falls back to the generic "Recovery PIN"
+    // section title rather than asserting "New PIN" (which would mislead
+    // users who DO have a PIN but the fetch errored). See Batch A H4.
+    expect(screen.getByText(/Recovery PIN/i)).toBeDefined();
   });
 
   it('shows admin tools button only when isAdmin', () => {
