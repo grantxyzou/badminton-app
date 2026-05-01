@@ -41,7 +41,19 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
       });
       if (res.status === 429) { setError('rate_limited'); return; }
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+        // Batch C M4: clone the response so we can both attempt JSON
+        // parse AND log the raw body if parsing fails. The previous
+        // .catch(() => ({})) silently masked Azure proxy HTML error pages
+        // as "Network error" — leaving operators no breadcrumb when a
+        // deploy was misconfigured.
+        const cloned = res.clone();
+        let data: { error?: string } = {};
+        try {
+          data = await res.json();
+        } catch {
+          const raw = await cloned.text().catch(() => '');
+          console.warn(`POST /api/players ${res.status} non-JSON body:`, raw.slice(0, 200));
+        }
         if (data.error === 'pin_too_common') { setError('too_common'); return; }
         if (data.error === 'Invalid PIN format') { setError('invalid'); return; }
         if (data.error === 'account_exists') { setError('account_exists'); return; }
