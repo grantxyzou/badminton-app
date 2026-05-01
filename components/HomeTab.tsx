@@ -196,7 +196,16 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         }
         if (res.status === 409) loadData();
       } else {
-        setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session?.id ?? '' });
+        // Batch C M2: refuse to write identity without a real sessionId.
+        // The previous `session?.id ?? ''` defaulted to empty string and
+        // silently corrupted identity for every downstream fetch (the
+        // RecoveryPinSheet PATCH lookup, attendance card resolution, etc.)
+        // until a manual logout cleared it.
+        if (!session?.id) {
+          setError(t('signup.networkError'));
+          return;
+        }
+        setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session.id });
         setCurrentUser(name.trim());
         setHasIdentity(true);
         await loadData();
@@ -230,7 +239,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           setError(data.error ?? t('signup.waitlistFailure'));
         }
       } else {
-        setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session?.id ?? '' });
+        // Batch C M2: same empty-sessionId guard as handleSignUp.
+        if (!session?.id) {
+          setError(t('signup.networkError'));
+          return;
+        }
+        setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session.id });
         setCurrentUser(name.trim());
         setHasIdentity(true);
         await loadData();
