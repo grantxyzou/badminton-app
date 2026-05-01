@@ -12,6 +12,20 @@ export const dynamic = 'force-dynamic';
 const FAIL = () => NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
 
 export async function POST(req: NextRequest) {
+  try {
+    return await handlePost(req);
+  } catch (err) {
+    // Audit C2: every Cosmos query/upsert below was unwrapped, so a
+    // throttle / partition misconfig / id collision returned a raw 500.
+    // The client treats `!res.ok` as "wrong PIN" and rate-limits the user
+    // after 5 attempts. 503 lets the client distinguish "server problem,
+    // retry" from "credentials wrong".
+    console.error('POST /api/players/recover unhandled:', err);
+    return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
+  }
+}
+
+async function handlePost(req: NextRequest) {
   // Recovery flag retired — endpoint is unconditionally active.
   let body: { name?: unknown; sessionId?: unknown; pin?: unknown; code?: unknown };
   try {

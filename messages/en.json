@@ -124,6 +124,7 @@
     "anonymousSignInErrorInvalid": "That didn't match. Try again.",
     "anonymousSignInErrorRateLimited": "Too many tries. Try again later.",
     "anonymousSignInErrorAdminLogged": "Signed in as admin — sign out first to recover a player account.",
+    "anonymousSignInErrorNetwork": "Couldn't reach the server. Check your connection and try again.",
     "anonymousOrDivider": "or",
     "anonymousRestoreLink": "Sign in",
     "createAccount": {

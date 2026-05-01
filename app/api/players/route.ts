@@ -107,7 +107,14 @@ export async function POST(req: NextRequest) {
         lastSeen: new Date().toISOString(),
       };
       const { resource } = await membersContainer.items.upsert(memberDoc);
-      const safe = resource as Record<string, unknown>;
+      const safe = resource as Record<string, unknown> | undefined;
+      // Audit C3: the upsert can return undefined (partial Cosmos response,
+      // mock-store quirk). Without this guard the client got
+      // {id: undefined, name: undefined} with status 201 and set a broken
+      // identity for a non-existent account.
+      if (!safe || typeof safe.id !== 'string' || typeof safe.name !== 'string') {
+        return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
+      }
       return NextResponse.json({ id: safe.id, name: safe.name, deleteToken: null }, { status: 201 });
     }
 
