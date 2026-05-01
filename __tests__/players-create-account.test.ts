@@ -23,6 +23,7 @@ beforeEach(() => {
 
 describe('POST /api/players { sessionSignup: false } — account-only path', () => {
   it('creates a member with pinHash, no session player', async () => {
+    seedMember('Riley'); // pre-seeded by admin (invite-only flow)
     const res = await POST(
       makeRequest('POST', URL_PATH, { name: 'Riley', pin: '4827', sessionSignup: false }),
     );
@@ -30,7 +31,7 @@ describe('POST /api/players { sessionSignup: false } — account-only path', () 
     const data = await res.json();
     expect(data.name).toBe('Riley');
     expect(data.deleteToken).toBeNull();
-    expect(data.id).toMatch(/^[0-9a-f]{24}$/);
+    expect(typeof data.id).toBe('string');
 
     const store = getStore();
     const members = (store['members'] ?? []) as Array<{ name: string; pinHash?: string }>;
@@ -104,11 +105,12 @@ describe('POST /api/players { sessionSignup: false } — account-only path', () 
   });
 
   it('rate-limits at 3 attempts/hr per (name, IP)', async () => {
-    // Only the FIRST attempt for a fresh name actually creates a member;
-    // subsequent attempts on that name 409 (account_exists) but still
-    // count toward the rate limiter. So 3 successful + 1 limited would
-    // require 3 different fresh names. Easier: use one name and observe
-    // limit firing at attempt 4 once 3 attempts have been counted.
+    // Only the FIRST attempt for a pre-seeded name actually creates a
+    // member; subsequent attempts on that name 409 (account_exists) but
+    // still count toward the rate limiter. Seed the names as
+    // admin-invited members first.
+    seedMember('Spammer');
+    seedMember('Different');
     const ip = { 'X-Client-IP': '10.99.0.1' };
 
     const first = await POST(
@@ -136,14 +138,15 @@ describe('POST /api/players { sessionSignup: false } — account-only path', () 
     expect(otherName.status).toBe(201);
   });
 
-  it('does not run invite-list check (account creation is universal)', async () => {
-    seedMember('Existing'); // active member exists, so non-admin signup normally requires being on the list
+  it('enforces invite list — non-existent name is rejected (admin must pre-seed)', async () => {
+    seedMember('Existing'); // "NewPerson" is NOT on the list
 
-    // Account creation for a name not on the list still succeeds
     const res = await POST(
       makeRequest('POST', URL_PATH, { name: 'NewPerson', pin: '4827', sessionSignup: false }),
     );
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toBe('invite_list_not_found');
   });
 });
 

@@ -87,11 +87,17 @@ export async function POST(req: NextRequest) {
         })
         .fetchAll();
       const existingMember = existingMembers[0];
+      // Invite-only: account creation requires the admin to have pre-seeded
+      // the name in the members container. Profile copy says "Account
+      // creation is invite only — contact admin for inquiries (beta)" so
+      // the server has to enforce that. Admins bypass.
+      if (!existingMember && !isAdminAuthed(req)) {
+        return NextResponse.json({ error: 'invite_list_not_found', name: trimmedName }, { status: 403 });
+      }
       // Refuse to overwrite an existing PIN. Otherwise anyone who knows a
       // member's name could hijack the account by "creating an account" for
       // them with a new PIN. Pre-seeded members without a PIN can still be
-      // claimed (this is the friend-group beta flow — admin seeds names,
-      // friends claim by setting the first PIN).
+      // claimed (admin seeds names, friends claim by setting the first PIN).
       if (existingMember && typeof existingMember.pinHash === 'string' && existingMember.pinHash.length > 0) {
         return NextResponse.json({ error: 'account_exists' }, { status: 409 });
       }
@@ -263,12 +269,12 @@ export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
     const { id } = body;
-    if (typeof id !== 'string') {
-      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-    }
 
     // PIN set/change/remove — admin OR player-self via deleteToken.
     // Recovery flag retired; PIN management is unconditionally available.
+    // PIN branch supports lookup by `id` (legacy) OR by `{name, sessionId,
+    // deleteToken}` (Batch B M1: avoids the client fetching the full
+    // session roster just to find its own player ID before patching).
     if (body.pin !== undefined) {
       // Pre-validate pin shape (fail fast before DB load)
       let nextPinHash: string | undefined;
@@ -292,7 +298,33 @@ export async function PATCH(req: NextRequest) {
 
       const sessionId = isAdmin && typeof body.sessionId === 'string' ? body.sessionId : await getActiveSessionId();
       const container = getContainer('players');
-      const { resource: existing } = await container.item(id, sessionId).read();
+
+      // Resolve the player record. Prefer id (legacy clients), fall back
+      // to name lookup so RecoveryPinSheet can patch without first GETing
+      // the whole roster. Use `any` for the resource type to match the
+      // existing PATCH conventions elsewhere in this file (Cosmos doesn't
+      // give us strong typing here).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let existing: any = null;
+      if (typeof id === 'string') {
+        const { resource } = await container.item(id, sessionId).read();
+        existing = resource ?? null;
+      } else if (typeof body.name === 'string' && body.name.trim()) {
+        const trimmedLookupName = body.name.trim();
+        const { resources } = await container.items
+          .query({
+            query:
+              'SELECT * FROM c WHERE c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name) AND (NOT IS_DEFINED(c.removed) OR c.removed != true)',
+            parameters: [
+              { name: '@sessionId', value: sessionId },
+              { name: '@name', value: trimmedLookupName },
+            ],
+          })
+          .fetchAll();
+        existing = resources[0] ?? null;
+      } else {
+        return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+      }
       if (!existing) {
         return NextResponse.json({ error: 'Player not found' }, { status: 404 });
       }
@@ -348,6 +380,12 @@ export async function PATCH(req: NextRequest) {
 
       const { deleteToken: _dt, pinHash: _ph, ...safe } = updated as typeof existing;
       return NextResponse.json(safe);
+    }
+
+    // Non-PIN paths still require id. The PIN branch above handles the
+    // name-fallback case; everything below assumes an id exists.
+    if (typeof id !== 'string') {
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
 
     // Self-serve "I paid" path — player reports payment using their deleteToken
