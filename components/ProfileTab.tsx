@@ -91,10 +91,18 @@ export default function ProfileTab({
     };
   }, [identity]);
 
-  function handleLogout() {
+  async function handleLogout() {
+    // Single-identity model: logging out as a player also revokes admin
+    // status. Otherwise the admin cookie outlived the player session and
+    // leaked admin powers to whoever signed in next on the same browser.
     clearIdentity();
     setLocalIdentity(null);
     setPinIsSet(null);
+    try {
+      await fetch(`${BASE}/api/admin`, { method: 'DELETE' });
+    } catch {
+      // best-effort — local identity is already cleared
+    }
   }
 
   // Anonymous state — Profile is identity-only. Inline sign-in form (name +
@@ -152,7 +160,7 @@ export default function ProfileTab({
               placeholder={t('anonymousNamePlaceholder')}
               value={signInName}
               onChange={(e) => { setSignInName(e.target.value); setSignInError(null); }}
-              autoComplete="username"
+              autoComplete="nickname"
               maxLength={50}
             />
             <PinInput
@@ -278,6 +286,10 @@ export default function ProfileTab({
         <SettingsList
           title={tSettings('title')}
           rows={[
+            // Batch B (expanded): PIN management is now member-scoped via
+            // PATCH /api/members/me — works regardless of whether the user
+            // has a session player. The previous "Sign up for a session
+            // first" gate is no longer needed.
             {
               icon: 'key',
               // pinIsSet === null means we couldn't load status. Show the
