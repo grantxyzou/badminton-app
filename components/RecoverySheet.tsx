@@ -81,7 +81,7 @@ export default function RecoverySheet({ open, onClose, sessionId, onForgotPin }:
               placeholder={t('nameLabel')}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              autoComplete="username"
+              autoComplete="nickname"
             />
             <PinInput
               value={pin}

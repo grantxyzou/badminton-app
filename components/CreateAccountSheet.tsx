@@ -13,7 +13,7 @@ interface Props {
   sessionId: string;
 }
 
-type ErrorKind = 'mismatch' | 'too_common' | 'invalid' | 'rate_limited' | 'network' | 'name_required' | 'account_exists' | null;
+type ErrorKind = 'mismatch' | 'too_common' | 'invalid' | 'rate_limited' | 'network' | 'name_required' | 'account_exists' | 'invite_only' | null;
 
 export default function CreateAccountSheet({ open, onClose, sessionId }: Props) {
   const t = useTranslations('profile.createAccount');
@@ -45,6 +45,7 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
         if (data.error === 'pin_too_common') { setError('too_common'); return; }
         if (data.error === 'Invalid PIN format') { setError('invalid'); return; }
         if (data.error === 'account_exists') { setError('account_exists'); return; }
+        if (data.error === 'invite_list_not_found') { setError('invite_only'); return; }
         setError('network');
         return;
       }
@@ -92,7 +93,7 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={50}
-              autoComplete="username"
+              autoComplete="nickname"
             />
             <div>
               <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('pinLabel')}</p>
@@ -128,6 +129,9 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
             )}
             {error === 'account_exists' && (
               <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>{t('errorAccountExists')}</p>
+            )}
+            {error === 'invite_only' && (
+              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>{t('errorInviteOnly')}</p>
             )}
           </div>
         )}

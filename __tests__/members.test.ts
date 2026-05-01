@@ -8,7 +8,8 @@ import {
   makeGetRequest,
 } from './helpers';
 import { GET, POST, PATCH, DELETE } from '@/app/api/members/route';
-import { GET as ME_GET } from '@/app/api/members/me/route';
+import { GET as ME_GET, PATCH as ME_PATCH } from '@/app/api/members/me/route';
+import { hashPin, verifyPin } from '@/lib/recoveryHash';
 
 setupAdminPin();
 
@@ -153,5 +154,132 @@ describe('GET /api/members/me', () => {
 
     // ASSERT: short-circuits to safe default
     expect(data.role).toBe('member');
+  });
+});
+
+describe('PATCH /api/members/me — member-scoped PIN management', () => {
+  beforeEach(() => {
+    resetMockStore();
+    setupAdminPin();
+  });
+
+  it('first-time set: claim flow — no currentPin required when member has no pinHash', async () => {
+    seedMember('Riley');
+    const res = await ME_PATCH(
+      makeRequest('POST', 'http://localhost:3000/api/members/me', {
+        name: 'Riley',
+        newPin: '4827',
+      }),
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    expect(data.hasPin).toBe(true);
+  });
+
+  it('change with correct currentPin succeeds', async () => {
+    const oldHash = await hashPin('4827');
+    seedMember('Riley', { pinHash: oldHash });
+
+    const res = await ME_PATCH(
+      makeRequest('POST', 'http://localhost:3000/api/members/me', {
+        name: 'Riley',
+        currentPin: '4827',
+        newPin: '5392',
+      }),
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it('change with wrong currentPin → 401 invalid_credentials', async () => {
+    const oldHash = await hashPin('4827');
+    seedMember('Riley', { pinHash: oldHash });
+
+    const res = await ME_PATCH(
+      makeRequest('POST', 'http://localhost:3000/api/members/me', {
+        name: 'Riley',
+        currentPin: '0000',
+        newPin: '5392',
+      }),
+    );
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(data.error).toBe('invalid_credentials');
+  });
+
+  it('change WITHOUT currentPin (when member has pinHash) → 401 current_pin_required', async () => {
+    const oldHash = await hashPin('4827');
+    seedMember('Riley', { pinHash: oldHash });
+
+    const res = await ME_PATCH(
+      makeRequest('POST', 'http://localhost:3000/api/members/me', {
+        name: 'Riley',
+        newPin: '5392',
+      }),
+    );
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(data.error).toBe('current_pin_required');
+  });
+
+  it('clear PIN with correct currentPin works', async () => {
+    const oldHash = await hashPin('4827');
+    seedMember('Riley', { pinHash: oldHash });
+
+    const res = await ME_PATCH(
+      makeRequest('POST', 'http://localhost:3000/api/members/me', {
+        name: 'Riley',
+        currentPin: '4827',
+        newPin: null,
+      }),
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.hasPin).toBe(false);
+  });
+
+  it('blocklisted newPin → 400 pin_too_common', async () => {
+    seedMember('Riley');
+    const res = await ME_PATCH(
+      makeRequest('POST', 'http://localhost:3000/api/members/me', {
+        name: 'Riley',
+        newPin: '1234',
+      }),
+    );
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe('pin_too_common');
+  });
+
+  it('non-existent member → 401 invalid_credentials (constant-time, FAKE_HASH)', async () => {
+    const res = await ME_PATCH(
+      makeRequest('POST', 'http://localhost:3000/api/members/me', {
+        name: 'Ghost',
+        currentPin: '4827',
+        newPin: '5392',
+      }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('cross-week persistence: PIN set via member endpoint survives session advance', async () => {
+    // Member set PIN; later when sessions advance, the member.pinHash
+    // is still the source of truth — recover endpoint will verify
+    // against it regardless of any (or no) session player.
+    seedMember('Riley');
+    await ME_PATCH(
+      makeRequest('POST', 'http://localhost:3000/api/members/me', {
+        name: 'Riley',
+        newPin: '4827',
+      }),
+    );
+
+    const { getStore } = await import('./helpers');
+    const members = (getStore()['members'] ?? []) as Array<{ name: string; pinHash?: string }>;
+    const stored = members.find((m) => m.name === 'Riley');
+    expect(stored?.pinHash).toBeDefined();
+    if (stored?.pinHash) {
+      expect(await verifyPin('4827', stored.pinHash)).toBe(true);
+    }
   });
 });

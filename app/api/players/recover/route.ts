@@ -1,11 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { isAdminAuthed } from '@/lib/auth';
+import { setAdminCookie, clearAdminCookie } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer } from '@/lib/cosmos';
 import { verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import { consumeCode } from '@/lib/recoveryCodes';
 import { appendEvent } from '@/lib/recoveryAudit';
+
+/**
+ * Single-identity model: when a member with `role === 'admin'` proves their
+ * PIN, issue the admin session cookie so they don't have to log in again on
+ * AdminTab. Admin status is a property of the member record, not a separate
+ * auth surface. Conversely, when a non-admin member signs in, ANY existing
+ * admin cookie must be cleared — otherwise admin powers persist across
+ * player sign-out → sign-in-as-different-player and leak to whoever logs
+ * in next.
+ */
+function syncAdminCookie(
+  res: NextResponse,
+  member: { id: string; name: string; role?: string } | null | undefined,
+): void {
+  if (member && member.role === 'admin') {
+    setAdminCookie(res, member.id, member.name);
+  } else {
+    clearAdminCookie(res);
+  }
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +46,6 @@ export async function POST(req: NextRequest) {
 }
 
 async function handlePost(req: NextRequest) {
-  // Recovery flag retired — endpoint is unconditionally active.
   let body: { name?: unknown; sessionId?: unknown; pin?: unknown; code?: unknown };
   try {
     body = await req.json();
@@ -53,19 +72,23 @@ async function handlePost(req: NextRequest) {
   }
 
   const ip = getClientIp(req);
-  // Rate-limit BEFORE auth (CLAUDE.md rule #4) and before looking up the player
-  // so non-existent names also bucket and an attacker can't enumerate names by timing.
   if (!checkRateLimit(`recover:${name.toLowerCase()}:${ip}`, 5, 60 * 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 60 * 60 }, { status: 429 });
   }
 
-  // Admins must use /reset-access; never let /recover mint tokens for them.
-  if (isAdminAuthed(req)) {
-    return NextResponse.json({ error: 'Use reset-access' }, { status: 403 });
-  }
+  // Note: the previous "admins must use /reset-access" guard was retired
+  // alongside the single-identity model. Recovery only succeeds with the
+  // player's own PIN, so an admin cookie holder can't impersonate other
+  // players — the syncAdminCookie call below also clears admin status if
+  // the recovered identity is not itself an admin.
 
-  const container = getContainer('players');
-  const { resources } = await container.items
+  const playersContainer = getContainer('players');
+  const membersContainer = getContainer('members');
+
+  // Resolve the (optional) session player up front. Used for code path
+  // (codes are issued against a specific player record) and for the
+  // success path (mint a fresh deleteToken if a player exists).
+  const { resources: playerHits } = await playersContainer.items
     .query({
       query:
         'SELECT * FROM c WHERE c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name) AND (NOT IS_DEFINED(c.removed) OR c.removed != true)',
@@ -75,36 +98,70 @@ async function handlePost(req: NextRequest) {
       ],
     })
     .fetchAll();
-  const player = resources[0];
+  const player = playerHits[0] ?? null;
 
-  // No session player for the active session, but the user may still have
-  // a member record (account-only identity, or returning player on a fresh
-  // session before they've signed up). Fall back to verifying against the
-  // member's pinHash. Codes don't have a member-level path — those are
-  // issued against a specific player record, so we still hard-fail.
-  if (!player && pin) {
-    const membersContainer = getContainer('members');
+  // === PIN path ============================================================
+  // Verify against `members.pinHash` ALWAYS — that's the canonical PIN
+  // store. Previous behavior (verify against `players.pinHash` first) lost
+  // the PIN every week because new session-player records are created
+  // hash-less when signup doesn't include a PIN field. By making the
+  // member record the source of truth, the PIN persists across sessions.
+  if (pin) {
     const { resources: members } = await membersContainer.items
       .query({
         query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
         parameters: [{ name: '@name', value: name }],
       })
       .fetchAll();
-    const member = members[0];
+    const member = members[0] ?? null;
+
     if (!member || typeof member.pinHash !== 'string' || !member.pinHash) {
-      // Constant-time miss against FAKE_HASH so attackers can't enumerate
-      // names or distinguish "no member" from "no PIN" by timing.
       await verifyPin(pin, FAKE_HASH);
+      if (player) {
+        const updatedEvents = appendEvent(player.recoveryEvents, {
+          event: 'recovery-failed',
+          at: new Date().toISOString(),
+          reason: 'wrong_pin',
+        });
+        await playersContainer.items.upsert({ ...player, recoveryEvents: updatedEvents });
+      }
       return FAIL();
     }
-    const ok = await verifyPin(pin, member.pinHash);
-    if (!ok) return FAIL();
 
-    // PIN matched a member without a session player. If the active session
-    // is open and has capacity, auto-create the session player so this call
-    // doubles as "sign in + sign up for this week" — the natural mental
-    // model for a returning user on a new session. Otherwise return an
-    // identity-only success with no deleteToken.
+    const ok = await verifyPin(pin, member.pinHash);
+    if (!ok) {
+      if (player) {
+        const updatedEvents = appendEvent(player.recoveryEvents, {
+          event: 'recovery-failed',
+          at: new Date().toISOString(),
+          reason: 'wrong_pin',
+        });
+        await playersContainer.items.upsert({ ...player, recoveryEvents: updatedEvents });
+      }
+      return FAIL();
+    }
+
+    // PIN verified. If a session player exists, mint a fresh deleteToken.
+    if (player) {
+      const newDeleteToken = randomBytes(16).toString('hex');
+      const updatedEvents = appendEvent(player.recoveryEvents, {
+        event: 'recovered-via-pin',
+        at: new Date().toISOString(),
+      });
+      await playersContainer.items.upsert({
+        ...player,
+        deleteToken: newDeleteToken,
+        recoveryEvents: updatedEvents,
+        // Keep the per-player pinHash mirror current for any legacy reader.
+        pinHash: member.pinHash,
+      });
+      const res = NextResponse.json({ deleteToken: newDeleteToken });
+      syncAdminCookie(res, member);
+      return res;
+    }
+
+    // No session player yet — auto-sign-up for this week if signup is
+    // open + capacity allows. Otherwise return identity-only.
     const sessionContainer = getContainer('sessions');
     const { resources: sessions } = await sessionContainer.items
       .query({ query: 'SELECT * FROM c WHERE c.id = @id', parameters: [{ name: '@id', value: sessionId }] })
@@ -116,10 +173,12 @@ async function handlePost(req: NextRequest) {
       (sessionData?.deadline && new Date() > new Date(sessionData.deadline));
 
     if (signupBlocked) {
-      return NextResponse.json({ deleteToken: null });
+      const res = NextResponse.json({ deleteToken: null });
+      syncAdminCookie(res, member);
+      return res;
     }
 
-    const { resources: active } = await container.items
+    const { resources: active } = await playersContainer.items
       .query({
         query:
           'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
@@ -127,7 +186,9 @@ async function handlePost(req: NextRequest) {
       })
       .fetchAll();
     if (active.length >= maxPlayers) {
-      return NextResponse.json({ deleteToken: null });
+      const res = NextResponse.json({ deleteToken: null });
+      syncAdminCookie(res, member);
+      return res;
     }
 
     const newDeleteToken = randomBytes(16).toString('hex');
@@ -144,47 +205,37 @@ async function handlePost(req: NextRequest) {
       pinHash: member.pinHash,
       recoveryEvents: [{ event: 'recovered-via-pin', at: new Date().toISOString() }],
     };
-    await container.items.create(newPlayer);
-    return NextResponse.json({ deleteToken: newDeleteToken });
+    await playersContainer.items.create(newPlayer);
+    const res = NextResponse.json({ deleteToken: newDeleteToken });
+    syncAdminCookie(res, member);
+    return res;
   }
 
-  // Constant-time miss: do a real verify against FAKE_HASH so latency matches
-  // a real failed verify and an attacker can't distinguish "no player" from "wrong PIN".
+  // === Code path ===========================================================
+  // Recovery codes are still player-scoped — they're issued against a
+  // specific player.id by `/api/players/reset-access`.
   if (!player) {
-    if (pin) await verifyPin(pin, FAKE_HASH);
-    else await verifyPin(code!, FAKE_HASH);
+    await verifyPin(code!, FAKE_HASH);
     return FAIL();
   }
 
-  let ok = false;
-  if (pin) {
-    if (typeof player.pinHash === 'string' && player.pinHash) {
-      ok = await verifyPin(pin, player.pinHash);
-    } else {
-      // No PIN set — same dummy verify so latency is constant.
-      await verifyPin(pin, FAKE_HASH);
-      ok = false;
-    }
-  } else {
-    ok = await consumeCode(player.id, code!);
-  }
-
+  const ok = await consumeCode(player.id, code!);
   if (!ok) {
     const updatedEvents = appendEvent(player.recoveryEvents, {
       event: 'recovery-failed',
       at: new Date().toISOString(),
-      reason: pin ? 'wrong_pin' : 'wrong_code',
+      reason: 'wrong_code',
     });
-    await container.items.upsert({ ...player, recoveryEvents: updatedEvents });
+    await playersContainer.items.upsert({ ...player, recoveryEvents: updatedEvents });
     return FAIL();
   }
 
   const newDeleteToken = randomBytes(16).toString('hex');
   const updatedEvents = appendEvent(player.recoveryEvents, {
-    event: pin ? 'recovered-via-pin' : 'recovered-via-code',
+    event: 'recovered-via-code',
     at: new Date().toISOString(),
   });
-  await container.items.upsert({
+  await playersContainer.items.upsert({
     ...player,
     deleteToken: newDeleteToken,
     recoveryEvents: updatedEvents,

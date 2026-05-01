@@ -509,14 +509,16 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
                 {!isSubmitting && <span className="material-icons icon-sm" aria-hidden="true">how_to_reg</span>}
                 {isSubmitting ? t('signup.submitting') : t('signup.button')}
               </button>
-              <button
-                type="button"
-                onClick={() => setSignInOpen(true)}
-                className="text-center text-xs underline"
-                style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px 12px', minHeight: 44, alignSelf: 'center' }}
-              >
-                {t('signup.alreadyPlayer')}
-              </button>
+              {!hasIdentity && (
+                <button
+                  type="button"
+                  onClick={() => setSignInOpen(true)}
+                  className="text-center text-xs underline"
+                  style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px 12px', minHeight: 44, alignSelf: 'center' }}
+                >
+                  {t('signup.alreadyPlayer')}
+                </button>
+              )}
               {session?.deadline && (
                 <p className={`text-center text-xs font-medium ${isDeadlineApproaching ? 'text-red-400' : 'text-gray-400'}`}>
                   {t('signup.closesOn', { date: format.dateTime(new Date(session.deadline), DAY_LONG) })}

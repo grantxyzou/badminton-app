@@ -142,7 +142,8 @@
       "errorInvalid": "PIN must be 4 digits",
       "errorRateLimited": "Too many tries. Try again in an hour.",
       "errorNetwork": "Network error. Please try again.",
-      "errorAccountExists": "An account with this name already exists. Sign in instead."
+      "errorAccountExists": "An account with this name already exists. Sign in instead.",
+      "errorInviteOnly": "This name isn't on the invite list. Ask the admin to add you."
     },
     "playerName": "Name",
     "playerSession": "Signed up for",
@@ -156,6 +157,8 @@
     "pinTooCommon": "Pick a less common PIN",
     "pinInvalid": "PIN must be 4 digits",
     "pinUpdateFailed": "Couldn't update PIN. Please try again.",
+    "pinWrongCurrent": "Current PIN doesn't match.",
+    "pinRateLimited": "Too many tries. Try again in an hour.",
     "adminToolsTitle": "Admin tools",
     "adminToolsButton": "Admin tools →",
     "settings": {
@@ -170,6 +173,7 @@
   },
   "pin": {
     "newLabel": "New PIN",
+    "currentLabel": "Current PIN",
     "confirmLabel": "Confirm PIN",
     "save": "Save",
     "cancel": "Cancel",

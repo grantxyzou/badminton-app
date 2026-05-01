@@ -92,7 +92,7 @@ export default function AdminTab() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   maxLength={50}
-                  autoComplete="username"
+                  autoComplete="nickname"
                   autoFocus={!name}
                 />
               </div>

@@ -142,7 +142,8 @@
       "errorInvalid": "PIN 必须是 4 位数字",
       "errorRateLimited": "尝试次数过多，请一小时后再试。",
       "errorNetwork": "网络错误，请重试。",
-      "errorAccountExists": "该名字已存在账号，请登录。"
+      "errorAccountExists": "该名字已存在账号，请登录。",
+      "errorInviteOnly": "该名字不在邀请名单上，请联系管理员添加。"
     },
     "playerName": "名字",
     "playerSession": "已报名场次",
@@ -156,6 +157,8 @@
     "pinTooCommon": "请选择不那么常见的 PIN",
     "pinInvalid": "PIN 必须是 4 位数字",
     "pinUpdateFailed": "更新 PIN 失败，请重试。",
+    "pinWrongCurrent": "当前 PIN 不正确。",
+    "pinRateLimited": "尝试次数过多，请一小时后再试。",
     "adminToolsTitle": "管理员工具",
     "adminToolsButton": "管理员工具 →",
     "settings": {
@@ -170,6 +173,7 @@
   },
   "pin": {
     "newLabel": "新 PIN",
+    "currentLabel": "当前 PIN",
     "confirmLabel": "确认 PIN",
     "save": "保存",
     "cancel": "取消",

@@ -28,7 +28,12 @@ beforeEach(() => {
 
 describe('POST /api/players/recover', () => {
   it('PIN success: mints fresh deleteToken, never returns pinHash', async () => {
+    // PIN auth verifies against members.pinHash (canonical source) per the
+    // expanded Batch B architecture. Seed both records so the player
+    // record exists for the deleteToken-mint path.
     const pinHash = await hashPin('1234');
+    const { seedMember } = await import('./helpers');
+    seedMember('Michael', { pinHash });
     const player = seedPlayer(SESSION, 'Michael', { pinHash, deleteToken: 'old-token' });
 
     const res = await POST(
@@ -62,6 +67,8 @@ describe('POST /api/players/recover', () => {
 
   it('Wrong PIN: 401 invalid_credentials', async () => {
     const pinHash = await hashPin('1234');
+    const { seedMember } = await import('./helpers');
+    seedMember('Michael', { pinHash });
     seedPlayer(SESSION, 'Michael', { pinHash });
     const res = await POST(
       makeRequest('POST', URL_PATH, { name: 'Michael', sessionId: SESSION, pin: '9999' }),
@@ -133,7 +140,11 @@ describe('POST /api/players/recover', () => {
   });
 
   it('Mints new token AND invalidates old', async () => {
+    // Seed member.pinHash (canonical PIN store) + player record (so we
+    // hit the existing-player branch that mints a new token).
     const pinHash = await hashPin('1234');
+    const { seedMember } = await import('./helpers');
+    seedMember('Michael', { pinHash });
     const player = seedPlayer(SESSION, 'Michael', { pinHash, deleteToken: 'old' });
     const res = await POST(
       makeRequest('POST', URL_PATH, { name: 'Michael', sessionId: SESSION, pin: '1234' }),
@@ -166,8 +177,15 @@ describe('POST /api/players/recover', () => {
     expect(res.status).toBe(400);
   });
 
-  it('Admin attempting recover → 403', async () => {
+  it('Single-identity model: an admin recovering as themselves succeeds (admin cookie persists)', async () => {
+    // Previously this test asserted 403 'Use reset-access' to keep admin
+    // and player auth strictly separate. The single-identity model retired
+    // that guard — admin status is a property of the member record, not a
+    // separate auth surface. Recovery still requires the player's own
+    // PIN, so an admin can only recover as themselves.
     const pinHash = await hashPin('1234');
+    const { seedMember } = await import('./helpers');
+    seedMember('Michael', { pinHash, role: 'admin' });
     seedPlayer(SESSION, 'Michael', { pinHash });
     const res = await POST(
       makeAdminRequest('POST', URL_PATH, {
@@ -176,7 +194,9 @@ describe('POST /api/players/recover', () => {
         pin: '1234',
       }),
     );
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.deleteToken).toMatch(/^[0-9a-f]{32}$/);
   });
 
   // Note: the "Flag off → 404" test was removed when the recovery flag was
