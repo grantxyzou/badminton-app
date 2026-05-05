@@ -50,6 +50,12 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 *Items here live on `main`. They ship to stable when the next tag is cut.*
 
+---
+
+## v1.3 — Stats redesign + design system tier-2 + UI primitives (2026-05-05)
+
+Shipped as `bpm-stable-v1.3`. Stats tab visual overhaul (Tempo Field dot-grid background + refractive glass cards), three new UI primitives sweeping ~25 duplicated bits across the app, the design system's two-tier surface model formalized, dark-mode AA contrast lift, and a 7-tap demo placeholder.
+
 ### Added — Stats tab visual overhaul
 
 - **Tempo Field background** on the Stats tab — a 42px dot grid extending the BPM logo's tempo-dot motif, with a soft radial vignette mask so dots fade at the edges. Static (no animation), brand-green dots on dark theme, darker forest dots on cream. Dots-grid replaces the global aurora on Stats only; other tabs keep aurora / court / etc.
