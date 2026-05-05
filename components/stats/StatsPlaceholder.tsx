@@ -149,6 +149,7 @@ export default function StatsPlaceholder({
           icon="calendar_today"
           title={t('attendance.title')}
           subtitle={t('attendance.subtitle')}
+          badge="Beta"
         >
           {attendanceContent}
         </LiveCard>
