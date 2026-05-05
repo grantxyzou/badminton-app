@@ -50,6 +50,16 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 *Items here live on `main`. They ship to stable when the next tag is cut.*
 
+<!-- Add bullets under the matching subheading as you ship user-facing changes.
+     Format: `- **Short title** — one-sentence what + why.` See v1.3 below for examples.
+     Empty subheadings are fine; delete a section if you don't end up using it. -->
+
+### Added
+
+### Changed
+
+### Fixed
+
 ---
 
 ## v1.3 — Stats redesign + design system tier-2 + UI primitives (2026-05-05)
