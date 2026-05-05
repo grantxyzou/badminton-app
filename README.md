@@ -17,8 +17,8 @@ See [`docs/deployment-model.md`](docs/deployment-model.md) for the promotion run
 |-----|-------------|
 | **Home** | BPM + date/time tile row, announcements (with dynamic cost-per-person line), 7-state sign-up card at the bottom for one-handed thumb reach |
 | **Sign-Ups** | Full player list + waitlist card; self-cancel flow via `deleteToken` |
-| **Stats** | GitHub-style attendance heatmap with 3M / 6M / 1Y zoom + streak hero (flag-gated via `NEXT_PUBLIC_FLAG_STATS_ATTENDANCE`); compact "Coming soon" cards for cost / partners / skill progression. Admin also gets the full ACE Skills Matrix radar (7 dimensions × 6 levels) with inline score editing + Add Player form as a live card at the bottom |
-| **Admin** | PIN-gated — session/cost editors, member/alias management, bird inventory (with runway hero + per-brand grouping + retro-assignable session usage), player admin (paid toggle, promote, restore), markdown-formatted announcements. Hidden by default; revealed via member role or 5-tap easter egg |
+| **Stats** | GitHub-style attendance heatmap with 3M / 6M / 1Y zoom + streak hero (always-on); Skill progression radar below as a Beta-badged live card; compact "Coming soon" cards for cost / partners |
+| **Admin** | PIN-gated — session/cost editors, member/alias management, bird inventory (with runway hero + per-brand grouping + retro-assignable session usage), player admin (paid toggle, promote, restore), markdown-formatted announcements. Reachable via Profile → "Admin tools →" or `?tab=admin` deep link |
 
 ### Supporting features
 
@@ -147,8 +147,6 @@ Players get a random `deleteToken` (16-byte hex) once at sign-up, stored in `loc
 | `NEXT_PUBLIC_BASE_PATH` | ✓ | Must match `basePath` in `next.config.js` (currently `/bpm`) |
 | `NEXT_PUBLIC_ENV` | — | `stable` / `next` / `dev` — drives preview banner + flag defaults |
 | `NEXT_PUBLIC_FLAG_DESIGN_PREVIEW` | — | Set to `"true"` to expose `/bpm/design` |
-| `NEXT_PUBLIC_FLAG_STATS_ATTENDANCE` | — | Set to `"true"` to flip the Stats-tab Attendance card from skeleton to live heatmap |
-| `NEXT_PUBLIC_FLAG_RECOVERY` | — | Set to `"true"` to enable A2 identity recovery (opt-in PIN + admin-mediated 6-digit code) |
 
 All `NEXT_PUBLIC_*` vars are **baked at build time** — changes require a rebuild + redeploy.
 

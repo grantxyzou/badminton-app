@@ -16,8 +16,7 @@
  */
 
 export type FlagName =
-  | 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW'
-  | 'NEXT_PUBLIC_FLAG_STATS_ATTENDANCE';
+  | 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW';
 
 interface FlagMeta {
   description: string;
@@ -31,19 +30,12 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'after design system decisions (logo / fonts / background) finalize',
   },
-  NEXT_PUBLIC_FLAG_STATS_ATTENDANCE: {
-    description: 'Replaces the Stats tab "Attendance" skeleton card with a live 12-week attendance strip derived from /api/stats/attendance. First of the Arc 1 cards to go live — off on bpm-stable, on for bpm-next + dev.',
-    owner: 'grant',
-    plannedRemoval: 'two weeks after promotion — retire once all Arc 1 cards are live on stable',
-  },
 };
 
 function readFlag(name: FlagName): string | undefined {
   switch (name) {
     case 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW':
       return process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
-    case 'NEXT_PUBLIC_FLAG_STATS_ATTENDANCE':
-      return process.env.NEXT_PUBLIC_FLAG_STATS_ATTENDANCE;
   }
 }
 
