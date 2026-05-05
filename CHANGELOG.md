@@ -50,6 +50,51 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 *Items here live on `main`. They ship to stable when the next tag is cut.*
 
+### Added — Stats tab visual overhaul
+
+- **Tempo Field background** on the Stats tab — a 42px dot grid extending the BPM logo's tempo-dot motif, with a soft radial vignette mask so dots fade at the edges. Static (no animation), brand-green dots on dark theme, darker forest dots on cream. Dots-grid replaces the global aurora on Stats only; other tabs keep aurora / court / etc.
+- **Refractive glass cards** on Stats — cards now bend the dot field beneath them rather than sitting as tinted overlays. Four independent levers: dispersion (blur radius), fray (chromatic aberration), frost (milkiness), depth (multi-layer box-shadow stack). Cards visibly float above the backdrop instead of laying flat.
+- **Contextual identity callouts** — Stats tab adapts its copy and live cards based on whether you're identified, anonymous, or admin-browsing.
+
+### Added — Stats Attendance card UX
+
+- **Anonymous attendance card is now passive copy** — "Sign in or create an account to see personalized stats" replaces the previous Sign up / Sign in CTAs. The Stats tab is now a *consequence* of being signed in, not a gate to it.
+
+### Added — Demo mode placeholder
+
+- **7-tap title gesture opens a Demo overlay** — full-screen placeholder with X close button (also dismissible via Escape). Slot for a future guided product tour.
+
+### Added — UI primitives
+
+- **`<PageHeader>`** primitive — replaces 8 duplicated 30px `<h1>` headers across the app. Consistent typography, optional right-aligned action slot.
+- **`<StatusBanner>`** primitive — replaces 7 duplicated success / warning / error banners with a single typed component.
+- **`<ConfirmInline>`** primitive — replaces ad-hoc "are you sure?" inline UI in PlayersTab; foundation for the rest of the app.
+- **`--ease-sheet` motion token** added (`cubic-bezier(0.16, 1, 0.3, 1)`) and wired through `<BottomSheet>` so all sheets share one slide-up curve. Token was in the design-system doc since v3 but only landed in `globals.css` now.
+
+### Changed — design system: two-tier surface model
+
+- **Surface adoption split**: `docs/design-system/preview/` is the frozen reference bundle (never imported), and `app/design/` is the live drift-proof preview. The runtime `app/globals.css` is the single source of truth for tokens. Documented as a hard rule to prevent the kind of cascade collisions that happened pre-v1.2.
+- **Aurora docs synced** to current production values. The two visualizations now match.
+
+### Changed — dark-mode contrast
+
+- **AA contrast lift** on dark theme — text-secondary bumped from `0.6` → `0.7` and text-muted from `0.35` → `0.55` so glass-card content passes WCAG AA on the brightest aurora regions. Light mode untouched (already well-contrasted on cream).
+- **Aurora reshape**: blob proportions and spread reworked to reduce the green-on-tan color-mix overlap in the upper-third of the viewport. Vertical wash + horizontal curtain + accent layout per `docs/design-system/preview/02-aurora.html`.
+
+### Changed — Admin tab
+
+- **Admin tab background** is now flat `var(--page-bg)` with the aurora hidden — admin reads as its own visual register without atmospheric chrome competing for attention.
+
+### Fixed — deployment
+
+- **Standalone bundle copies `public/`** — Next.js 16 standalone output drops the public directory by default; deploy workflows now `cp -r public/` into the bundle so brand assets, fonts, and changelog JSON ship to Azure correctly.
+- **Brand asset loading** — missing or 404'd brand assets now load reliably across both deployments.
+- **Canonical URL** sourced from `NEXT_PUBLIC_BASE_URL` env var (per-deployment) so Open Graph / canonical tags are correct on both bpm-next and bpm-stable.
+
+### Fixed — admin
+
+- **Release form Draft button** — repaired (was no-oping). Added inline explainer for the publish vs. draft distinction.
+
 ---
 
 ## v1.2 — UX polish: Stats tab + markdown announcements + bird inventory (2026-04-26)
