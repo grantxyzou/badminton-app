@@ -132,9 +132,7 @@ export default function WeeklySummaryCard() {
           >
             auto_fix_high
           </span>
-          <h3 className="text-base font-semibold m-0" style={{ color: 'var(--text-primary)', lineHeight: 1.2 }}>
-            This week&rsquo;s quick read
-          </h3>
+          <h3 className="bpm-h3 m-0">This week&rsquo;s quick read</h3>
         </div>
         <span
           style={{
@@ -154,12 +152,12 @@ export default function WeeklySummaryCard() {
       </div>
 
       {summary ? (
-        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: 'var(--text-primary)' }}>
+        <p style={{ margin: 0, fontSize: 15, lineHeight: 1.55, color: 'var(--text-primary)' }}>
           {summary}
         </p>
       ) : (
         <>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.45 }}>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
             One-tap AI read of your last year, generated once per week.
           </p>
           <button
@@ -167,12 +165,12 @@ export default function WeeklySummaryCard() {
             onClick={generate}
             disabled={loading}
             className="btn-ghost"
-            style={{ alignSelf: 'flex-start', minHeight: 36, padding: '0 14px', fontSize: 13 }}
+            style={{ alignSelf: 'flex-start', minHeight: 36, padding: '0 14px', fontSize: 14 }}
           >
             {loading ? 'Reading the dots…' : 'Generate'}
           </button>
           {error && (
-            <p role="alert" style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>
+            <p role="alert" style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
               {error}
             </p>
           )}
