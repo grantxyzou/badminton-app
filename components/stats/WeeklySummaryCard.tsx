@@ -7,26 +7,32 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
 
 /**
- * One-shot daily AI summary card for the Stats tab. Calls Claude (Haiku) at
- * most once per (name, today's date) — the result is cached in localStorage
- * so refreshing the page or reopening tomorrow doesn't re-spend tokens.
+ * Weekly AI summary card for the Stats tab. Calls Claude (Haiku) at most
+ * once per (name, current week) — the result is cached in localStorage so
+ * revisits within the week are zero-token. Mondays roll the cache key
+ * forward, so the first visit of the new week is the next paid call.
  *
- * The cache key is intentionally per-day (not per-week or per-session) so:
- *   - revisits within the same day cost zero tokens
- *   - tomorrow brings a fresh prompt anyway (one new data point)
+ * "Week" is the Monday-of-this-week as a YYYY-MM-DD key. Aligns with how
+ * the playing group thinks about cadence (one session per week, results
+ * settle by end of week).
  *
  * Resolves the active name in the same order as `AttendanceCardLive`:
- * identity → stats-preview-pick → null. If null, the card hides (no summary
- * to generate without a name).
+ * identity → stats-preview-pick → null. If null, the card hides.
  */
 
-function todayKey(): string {
+function mondayOfThisWeek(): string {
   const d = new Date();
+  // getDay(): 0 = Sunday, 1 = Monday, ..., 6 = Saturday.
+  // For Sunday (0), step back 6 days to get last Monday; otherwise step back
+  // (day - 1) days. Result is always the Monday at or before today.
+  const day = d.getDay();
+  const stepBack = day === 0 ? 6 : day - 1;
+  d.setDate(d.getDate() - stepBack);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function cacheKey(name: string): string {
-  return `bpm_stats_summary_${name.toLowerCase()}_${todayKey()}`;
+  return `bpm_stats_summary_${name.toLowerCase()}_week_${mondayOfThisWeek()}`;
 }
 
 function resolveActiveName(): string | null {
@@ -41,7 +47,7 @@ function resolveActiveName(): string | null {
   return null;
 }
 
-export default function DailySummaryCard() {
+export default function WeeklySummaryCard() {
   const [activeName, setActiveName] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -127,7 +133,7 @@ export default function DailySummaryCard() {
             auto_fix_high
           </span>
           <h3 className="text-base font-semibold m-0" style={{ color: 'var(--text-primary)', lineHeight: 1.2 }}>
-            Today&rsquo;s quick read
+            This week&rsquo;s quick read
           </h3>
         </div>
         <span
@@ -154,7 +160,7 @@ export default function DailySummaryCard() {
       ) : (
         <>
           <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.45 }}>
-            One-tap AI read of your last year, generated once per day.
+            One-tap AI read of your last year, generated once per week.
           </p>
           <button
             type="button"
