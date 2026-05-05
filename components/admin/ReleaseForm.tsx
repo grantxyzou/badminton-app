@@ -25,6 +25,14 @@ interface ChangelogUnreleased {
   suggestedVersion: string;
   generatedAt: string;
   text: string;
+  /**
+   * Where the pre-fill content came from:
+   *   - "unreleased"          — Unreleased section had bullets; standard flow
+   *   - "published-fallback"  — Unreleased was empty; using the most recent
+   *                              published version's notes (post-cut scenario)
+   *   - "empty"               — neither has content; form starts blank
+   */
+  source?: 'unreleased' | 'published-fallback' | 'empty';
 }
 
 export default function ReleaseForm({ latestVersion, initialRecord, onPublished, onCancel }: ReleaseFormProps) {
@@ -34,7 +42,10 @@ export default function ReleaseForm({ latestVersion, initialRecord, onPublished,
   const [rawNotes, setRawNotes] = useState('');
   // Tracks when the Unreleased section was baked at build time, so the admin
   // can see at a glance whether the pre-filled bullets are current.
-  const [changelogMeta, setChangelogMeta] = useState<{ generatedAt: string } | null>(null);
+  const [changelogMeta, setChangelogMeta] = useState<{
+    generatedAt: string;
+    source?: 'unreleased' | 'published-fallback' | 'empty';
+  } | null>(null);
 
   // Pull the CHANGELOG Unreleased section baked by scripts/extract-unreleased.mjs
   // and pre-fill the form. Admin can edit before running the AI draft.
@@ -46,7 +57,7 @@ export default function ReleaseForm({ latestVersion, initialRecord, onPublished,
       const data = (await res.json()) as ChangelogUnreleased;
       if (data.suggestedVersion) setVersion(data.suggestedVersion);
       if (data.text) setRawNotes(data.text);
-      if (data.generatedAt) setChangelogMeta({ generatedAt: data.generatedAt });
+      if (data.generatedAt) setChangelogMeta({ generatedAt: data.generatedAt, source: data.source });
     } catch {
       /* swallow — changelog is optional */
     }
@@ -190,7 +201,9 @@ ${rawNotes}`;
           />
           {changelogFreshness && (
             <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
-              Pre-filled from CHANGELOG.md Unreleased (baked {changelogFreshness}). Edit freely — AI will polish on next step.
+              {changelogMeta?.source === 'published-fallback'
+                ? `Pre-filled from the most recent published version (Unreleased section was empty; baked ${changelogFreshness}). Override the version above if you're drafting the next release instead.`
+                : `Pre-filled from CHANGELOG.md Unreleased (baked ${changelogFreshness}). Edit freely — AI will polish on next step.`}
             </p>
           )}
         </div>
