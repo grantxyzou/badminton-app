@@ -6,11 +6,11 @@ import BottomNav from '../../components/BottomNav';
 import enMessages from '../../messages/en.json';
 import zhMessages from '../../messages/zh-CN.json';
 
-function renderWithLocale(locale: 'en' | 'zh-CN', showAdmin = true) {
+function renderWithLocale(locale: 'en' | 'zh-CN') {
   const messages = locale === 'en' ? enMessages : zhMessages;
   return render(
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <BottomNav activeTab="home" onTabChange={vi.fn()} showAdmin={showAdmin} />
+      <BottomNav activeTab="home" onTabChange={vi.fn()} />
     </NextIntlClientProvider>,
   );
 }
@@ -37,14 +37,8 @@ describe('BottomNav — auth-revamp permanent state', () => {
   });
 
   it('does NOT render an Admin tab — admin is reachable via Profile', () => {
-    renderWithLocale('en', true);
+    renderWithLocale('en');
     expect(screen.queryByRole('button', { name: 'Admin' })).toBeNull();
-  });
-
-  it('Profile is visible regardless of showAdmin', () => {
-    renderWithLocale('en', false);
-    expect(screen.getByRole('button', { name: 'Profile' })).toBeTruthy();
-    expect(screen.getAllByRole('button').length).toBe(4);
   });
 
   it('renders EN stats label as a single line', () => {
