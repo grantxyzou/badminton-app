@@ -2,7 +2,7 @@
   "home": {
     "signup": {
       "heading": "报名",
-      "button": "报名",
+      "button": "本周参加",
       "waitlist": "加入候补",
       "full": "名额已满",
       "confirmed": "已报名：{name}",
@@ -25,7 +25,7 @@
       "allSpotsTaken": "全部 {total} 个名额已满。",
       "closesOn": "报名截止于 {date}",
       "closedPreviously": "报名已于 {date} 截止",
-      "alreadyPlayer": "已经是球员？登录 →",
+      "alreadyPlayer": "账号登录 →",
       "pinRequired": "该名字已设置 PIN，请登录。",
       "pinPrompt": {
         "cardTitle": "添加恢复 PIN",
@@ -181,11 +181,11 @@
   },
   "stats": {
     "heading": "你的数据",
-    "subhead": "即将上线 — 了解你的打球、付款和出勤情况。",
+    "subhead": "你没问过但很有趣的数据(beta)",
     "comingSoon": "即将推出",
     "progression": {
-      "title": "技能进展",
-      "subtitle": "你的 ACE 分数随时间变化。"
+      "title": "技能进展(自我追踪)",
+      "subtitle": "你的进步轨迹"
     },
     "attendance": {
       "title": "您的出勤记录",

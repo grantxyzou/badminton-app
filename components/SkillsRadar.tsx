@@ -46,9 +46,14 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 export default function SkillsRadar({
   players,
   onScoresChanged,
+  showOverlay = true,
 }: {
   players: PlayerSkills[];
   onScoresChanged?: () => void;
+  /** When false, hide the solo/overlay toggle and the multi-player picker
+   *  list. Forces solo mode (single player view). Default true preserves
+   *  the original admin-facing behavior. */
+  showOverlay?: boolean;
 }) {
   const [mode, setMode] = useState<'solo' | 'overlay'>('solo');
   const [activePlayerId, setActivePlayerId] = useState(players[0]?.id ?? '');
@@ -121,24 +126,29 @@ export default function SkillsRadar({
 
   return (
     <div className="space-y-4 pb-4">
-      {/* Solo / Overlay toggle */}
-      <div className="flex justify-center">
-        <div className="segment-control flex" style={{ width: 200 }}>
-          {(['solo', 'overlay'] as const).map(m => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              className={`flex-1 flex items-center justify-center text-xs capitalize transition-all ${
-                mode === m ? 'segment-tab-active' : 'segment-tab-inactive'
-              }`}
-            >
-              {m}
-            </button>
-          ))}
+      {/* Solo / Overlay toggle — gated on showOverlay prop. Hidden on the
+          user-facing Stats tab, kept for any admin/internal surface. */}
+      {showOverlay && (
+        <div className="flex justify-center">
+          <div className="segment-control flex" style={{ width: 200 }}>
+            {(['solo', 'overlay'] as const).map(m => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`flex-1 flex items-center justify-center text-xs capitalize transition-all ${
+                  mode === m ? 'segment-tab-active' : 'segment-tab-inactive'
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Player pills */}
+      {/* Player pills — also hidden when showOverlay is false (single-player
+          view doesn't need a picker). */}
+      {showOverlay && (
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
         {players.map((p, i) => {
           const color = PLAYER_COLORS[i % PLAYER_COLORS.length];
@@ -176,6 +186,7 @@ export default function SkillsRadar({
           );
         })}
       </div>
+      )}
 
       {/* Radar chart */}
       <div className="glass-card p-3">

@@ -8,9 +8,15 @@ import ShuttleLoader from '@/components/ShuttleLoader';
 import StatsPlaceholder from '@/components/stats/StatsPlaceholder';
 import AttendanceCardLive from '@/components/stats/cards/AttendanceCardLive';
 import StatsStreakHero from '@/components/stats/StatsStreakHero';
-import { isFlagOn } from '@/lib/flags';
 
 const SkillsRadar = dynamic(() => import('@/components/SkillsRadar'), { ssr: false });
+
+// Hidden for now — admin Add Player + SkillsRadar overlay/compare mode are
+// scoped out of the user-facing Stats tab while we figure out whether self-
+// tracking is the right product direction. Flip these back to true to bring
+// them back; the underlying components still support both features.
+const SHOW_ADD_PLAYER_FORM = false;
+const SHOW_SKILLS_OVERLAY = false;
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -81,9 +87,9 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
     }
   }
 
-  const attendanceOn = isFlagOn('NEXT_PUBLIC_FLAG_STATS_ATTENDANCE');
-  const attendanceContent = attendanceOn ? <AttendanceCardLive /> : undefined;
-  const heroSlot = attendanceOn ? <StatsStreakHero /> : undefined;
+  // Live attendance + streak hero are now always-on (flag retired post-v1.3).
+  const attendanceContent = <AttendanceCardLive />;
+  const heroSlot = <StatsStreakHero />;
 
   if (!isAdmin) {
     return <StatsPlaceholder attendanceContent={attendanceContent} heroSlot={heroSlot} />;
@@ -103,44 +109,45 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
     <div className="space-y-4">
       {players.length === 0 ? (
         <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>
-          No skill profiles yet. Add a player below to create one.
+          No skill profiles yet.
         </p>
       ) : (
-        <SkillsRadar players={players} onScoresChanged={refresh} />
+        <SkillsRadar players={players} onScoresChanged={refresh} showOverlay={SHOW_SKILLS_OVERLAY} />
       )}
 
-      {/* Inline add-player form — only shown to admins inside the live card. */}
-      <form onSubmit={handleAddPlayer} className="glass-card-soft p-3 space-y-2">
-        <p className="section-label">ADD PLAYER</p>
-        <div className="flex gap-2">
-          <input
-            id="skills-player-name"
-            name="playerName"
-            type="text"
-            placeholder="Player name"
-            aria-label="Player name"
-            aria-describedby={addError ? 'skills-add-error' : undefined}
-            value={name}
-            onChange={(e) => { setName(e.target.value); setAddError(''); }}
-            maxLength={50}
-            autoComplete="off"
-            className="flex-1"
-          />
-          <button
-            type="submit"
-            disabled={adding || !name.trim()}
-            className="btn-primary"
-            style={{ whiteSpace: 'nowrap', minHeight: 44 }}
-          >
-            {adding ? '…' : 'Add'}
-          </button>
-        </div>
-        {addError && (
-          <p id="skills-add-error" role="alert" className="text-red-400 text-xs">
-            {addError}
-          </p>
-        )}
-      </form>
+      {SHOW_ADD_PLAYER_FORM && (
+        <form onSubmit={handleAddPlayer} className="glass-card-soft p-3 space-y-2">
+          <p className="section-label">ADD PLAYER</p>
+          <div className="flex gap-2">
+            <input
+              id="skills-player-name"
+              name="playerName"
+              type="text"
+              placeholder="Player name"
+              aria-label="Player name"
+              aria-describedby={addError ? 'skills-add-error' : undefined}
+              value={name}
+              onChange={(e) => { setName(e.target.value); setAddError(''); }}
+              maxLength={50}
+              autoComplete="off"
+              className="flex-1"
+            />
+            <button
+              type="submit"
+              disabled={adding || !name.trim()}
+              className="btn-primary"
+              style={{ whiteSpace: 'nowrap', minHeight: 44 }}
+            >
+              {adding ? '…' : 'Add'}
+            </button>
+          </div>
+          {addError && (
+            <p id="skills-add-error" role="alert" className="text-red-400 text-xs">
+              {addError}
+            </p>
+          )}
+        </form>
+      )}
     </div>
   );
 

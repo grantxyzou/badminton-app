@@ -352,7 +352,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
         {isSessionFinished ? (
           /* ── State: Session finished ── */
           <div className="space-y-4">
-            <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
+            <p className="bpm-h2">{t('signup.heading')}</p>
             <StatusBanner tone="success" icon="celebration" title={tStates('finishedTitle')} body={tStates('finishedBody')} />
           </div>
         ) : isSignupClosed && !effectiveIsSignedUp && !isWaitlisted ? (
@@ -376,7 +376,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           /* ── State 1: Active sign-up ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">
-              <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
+              <p className="bpm-h2">{t('signup.heading')}</p>
               <p className="text-sm text-gray-400">{t('signup.spotsRemaining', { count: activePlayers.length, remaining: spotsTotal - activePlayers.length })}</p>
             </div>
             <StatusBanner
@@ -393,7 +393,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           /* ── State 2: On waitlist ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">
-              <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
+              <p className="bpm-h2">{t('signup.heading')}</p>
               <div className="text-right">
                 <p className="text-xs text-gray-400">{tStates('waitlistLabel')}</p>
                 <p className="text-2xl font-bold text-amber-400 leading-none mt-0.5">
@@ -415,7 +415,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           /* ── State 3: Full — join waitlist form ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">
-              <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
+              <p className="bpm-h2">{t('signup.heading')}</p>
               <p className="text-sm text-gray-400">{t('signup.spotsFull', { count: activePlayers.length })}</p>
             </div>
             <StatusBanner tone="warn" icon="lock" title={t('signup.full')} body={t('signup.allSpotsTaken', { total: spotsTotal })} />
@@ -472,7 +472,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           /* ── State 4: Open — normal sign-up ── */
           <div className="space-y-4">
             <div className="flex items-start justify-between">
-              <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
+              <p className="bpm-h2">{t('signup.heading')}</p>
               <p className="text-sm text-gray-400">{t('signup.spotsRemaining', { count: activePlayers.length, remaining: spotsTotal - activePlayers.length })}</p>
             </div>
             <form onSubmit={handleSignUp} className="space-y-3">
@@ -523,16 +523,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
                 {!isSubmitting && <span className="material-icons icon-sm" aria-hidden="true">how_to_reg</span>}
                 {isSubmitting ? t('signup.submitting') : t('signup.button')}
               </button>
-              {!hasIdentity && (
-                <button
-                  type="button"
-                  onClick={() => setSignInOpen(true)}
-                  className="text-center text-xs underline"
-                  style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px 12px', minHeight: 44, alignSelf: 'center' }}
-                >
-                  {t('signup.alreadyPlayer')}
-                </button>
-              )}
               {session?.deadline && (
                 <p className={`text-center text-xs font-medium ${isDeadlineApproaching ? 'text-red-400' : 'text-gray-400'}`}>
                   {t('signup.closesOn', { date: format.dateTime(new Date(session.deadline), DAY_LONG) })}
@@ -542,6 +532,21 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
           </div>
         )}
       </div>
+      {/* Account sign-in link — sits outside the sign-up card, bottom-left,
+          aligned to the card's 20px inner padding. Hidden once the user has
+          an identity (no point showing "sign in" to someone already signed in). */}
+      {!hasIdentity && !isSessionFinished && (
+        <div style={{ paddingLeft: 20, paddingTop: 4 }}>
+          <button
+            type="button"
+            onClick={() => setSignInOpen(true)}
+            className="text-xs underline"
+            style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px 0', minHeight: 44 }}
+          >
+            {t('signup.alreadyPlayer')}
+          </button>
+        </div>
+      )}
       <RecoverySheet
         open={signInOpen}
         onClose={() => {

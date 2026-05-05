@@ -62,9 +62,12 @@ interface LiveCardProps {
   title: string;
   subtitle: string;
   children: React.ReactNode;
+  /** Pill text in the header. Defaults to "Live"; pass "Beta" or other
+   *  short label to denote work-in-progress live content. */
+  badge?: string;
 }
 
-function LiveCard({ icon, title, subtitle, children }: LiveCardProps) {
+function LiveCard({ icon, title, subtitle, children, badge = 'Live' }: LiveCardProps) {
   return (
     <div className="glass-card p-5 space-y-3">
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
@@ -99,7 +102,7 @@ function LiveCard({ icon, title, subtitle, children }: LiveCardProps) {
             color: 'var(--accent, #22c55e)',
           }}
         >
-          Live
+          {badge}
         </span>
       </div>
       {children}
@@ -112,8 +115,9 @@ interface Props {
    *  When provided, the card renders full-width at the bottom of the page.
    *  Admins get this (SkillsRadar + inline Add Player). */
   skillProgressionContent?: React.ReactNode;
-  /** Optional live content for the Attendance card — gated behind
-   *  NEXT_PUBLIC_FLAG_STATS_ATTENDANCE. Renders prominent up top. */
+  /** Optional live content for the Attendance card. When provided, renders
+   *  prominent up top as a full-width LiveCard. (Always-on as of v1.3
+   *  hotfix; the FLAG_STATS_ATTENDANCE gate has been retired.) */
   attendanceContent?: React.ReactNode;
   /** Optional hero slot — rendered between the page heading and the
    *  primary live section. Used for the attendance streak hero. */
@@ -147,6 +151,18 @@ export default function StatsPlaceholder({
           subtitle={t('attendance.subtitle')}
         >
           {attendanceContent}
+        </LiveCard>
+      )}
+
+      {/* ── Skill progression (moved from below the grid in v1.3 hotfix) ── */}
+      {skillLive && (
+        <LiveCard
+          icon="trending_up"
+          title={t('progression.title')}
+          subtitle={t('progression.subtitle')}
+          badge="Beta"
+        >
+          {skillProgressionContent}
         </LiveCard>
       )}
 
@@ -201,17 +217,6 @@ export default function StatsPlaceholder({
           />
         )}
       </div>
-
-      {/* ── Live skill progression (admin only, needs its own width) ── */}
-      {skillLive && (
-        <LiveCard
-          icon="trending_up"
-          title={t('progression.title')}
-          subtitle={t('progression.subtitle')}
-        >
-          {skillProgressionContent}
-        </LiveCard>
-      )}
     </div>
   );
 }

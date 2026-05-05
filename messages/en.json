@@ -2,7 +2,7 @@
   "home": {
     "signup": {
       "heading": "Sign up",
-      "button": "Sign Up",
+      "button": "I'm in this week",
       "waitlist": "Join Waitlist",
       "full": "Session Full",
       "confirmed": "Signed up as {name}",
@@ -25,7 +25,7 @@
       "allSpotsTaken": "All {total} spots are taken.",
       "closesOn": "Sign up closes on {date}",
       "closedPreviously": "Sign-ups closed on {date}",
-      "alreadyPlayer": "Already a player? Sign in →",
+      "alreadyPlayer": "Account sign in →",
       "pinRequired": "This name has a PIN. Sign in instead.",
       "pinPrompt": {
         "cardTitle": "Add a recovery PIN",
@@ -181,11 +181,11 @@
   },
   "stats": {
     "heading": "Your stats",
-    "subhead": "Soon — a quick read on how you're playing, paying, and showing up.",
+    "subhead": "Interesting metrics that you didn't ask for (beta)",
     "comingSoon": "Coming soon",
     "progression": {
-      "title": "Skill progression",
-      "subtitle": "Your ACE scores over time."
+      "title": "Skill progression (self tracking)",
+      "subtitle": "Progression over time"
     },
     "attendance": {
       "title": "Your Attendance",
