@@ -9,6 +9,7 @@ import ShuttleLoader from '@/components/ShuttleLoader';
 import StatsPlaceholder from '@/components/stats/StatsPlaceholder';
 import AttendanceCardLive from '@/components/stats/cards/AttendanceCardLive';
 import StatsStreakHero from '@/components/stats/StatsStreakHero';
+import DailySummaryCard from '@/components/stats/DailySummaryCard';
 
 const SkillsRadar = dynamic(() => import('@/components/SkillsRadar'), { ssr: false });
 
@@ -91,7 +92,14 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
 
   // Live attendance + streak hero are now always-on (flag retired post-v1.3).
   const attendanceContent = <AttendanceCardLive />;
-  const heroSlot = <StatsStreakHero />;
+  // Hero slot stacks the streak then the daily AI summary card so both sit
+  // above the heatmap. DailySummaryCard self-hides when no active name.
+  const heroSlot = (
+    <>
+      <StatsStreakHero />
+      <DailySummaryCard />
+    </>
+  );
 
   if (!isAdmin) {
     return <StatsPlaceholder attendanceContent={attendanceContent} heroSlot={heroSlot} />;

@@ -87,28 +87,20 @@ export default function AttendanceHeatmap({ history, weeks }: Props) {
     columns.push(col);
   }
 
-  // Sizing: cap cell size so 3M/6M zooms don't blow up cells to ~21px and
-  // make the card visually huge. Cells are clamped to MAX_CELL; on narrower
-  // zooms (3M = 13 weeks) the heatmap is content-sized + centered rather
-  // than stretched to fill the card. MIN_CELL keeps 1Y readable.
-  const MAX_CELL = 9;
+  // Sizing for the fixed-1Y view (zoom toggle removed in v1.3 hotfix).
+  // Cells are sized to fit the target width; the SVG scales via viewBox to
+  // fill the card horizontally. MIN_CELL keeps cells legible on narrow
+  // viewports.
   const MIN_CELL = 4;
   const gap = 2;
   const leftLabelW = 22;
   const topLabelH = 14;
   const targetW = 320;
-  const cell = Math.max(
-    MIN_CELL,
-    Math.min(MAX_CELL, Math.floor((targetW - leftLabelW - (weeks - 1) * gap) / weeks)),
-  );
+  const cell = Math.max(MIN_CELL, Math.floor((targetW - leftLabelW - (weeks - 1) * gap) / weeks));
   const gridW = weeks * cell + (weeks - 1) * gap;
   const gridH = 7 * cell + 6 * gap;
   const svgW = leftLabelW + gridW;
   const svgH = topLabelH + gridH;
-  // Stabilize card height so 3M/6M/1Y don't reflow the parent. 7×MAX_CELL +
-  // 6×gap + topLabelH = 89px is the tallest possible heatmap; we use it as
-  // the wrapper min-height regardless of zoom.
-  const STABLE_HEIGHT = 7 * MAX_CELL + 6 * gap + topLabelH;
 
   // Month labels along the top.
   const monthTicks: { x: number; label: string }[] = [];
@@ -122,20 +114,12 @@ export default function AttendanceHeatmap({ history, weeks }: Props) {
   });
 
   return (
-    <div
-      style={{
-        minHeight: STABLE_HEIGHT,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
     <svg
       viewBox={`0 0 ${svgW} ${svgH}`}
       width="100%"
       role="img"
       aria-label="Attendance heatmap"
-      style={{ display: 'block', maxWidth: svgW, margin: '0 auto' }}
+      style={{ display: 'block' }}
     >
       {/* Month labels */}
       {monthTicks.map((t, i) => (
@@ -206,6 +190,5 @@ export default function AttendanceHeatmap({ history, weeks }: Props) {
         }),
       )}
     </svg>
-    </div>
   );
 }
