@@ -175,11 +175,11 @@ export default function StatsPlaceholder({
             fontSize: 10,
             letterSpacing: '0.08em',
             color: 'var(--text-muted)',
-            textTransform: 'uppercase',
+            textTransform: 'none',
             margin: 0,
           }}
         >
-          More coming
+          {t('moreComing')}
         </p>
       </div>
       <div
@@ -189,14 +189,6 @@ export default function StatsPlaceholder({
           gap: 12,
         }}
       >
-        {!attendanceLive && (
-          <CompactComingSoonCard
-            icon="calendar_today"
-            title={t('attendance.title')}
-            subtitle={t('attendance.subtitle')}
-            comingSoon={comingSoon}
-          />
-        )}
         <CompactComingSoonCard
           icon="payments"
           title={t('cost.title')}
@@ -209,14 +201,12 @@ export default function StatsPlaceholder({
           subtitle={t('partners.subtitle')}
           comingSoon={comingSoon}
         />
-        {!skillLive && (
-          <CompactComingSoonCard
-            icon="trending_up"
-            title={t('progression.title')}
-            subtitle={t('progression.subtitle')}
-            comingSoon={comingSoon}
-          />
-        )}
+        <CompactComingSoonCard
+          icon="sports_tennis"
+          title={t('equipment.title')}
+          subtitle={t('equipment.subtitle')}
+          comingSoon={comingSoon}
+        />
       </div>
     </div>
   );

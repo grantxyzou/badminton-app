@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import type { PlayerSkills as PersistedPlayerSkills } from '@/lib/types';
 import type { PlayerSkills } from '@/components/SkillsRadar';
 import ShuttleLoader from '@/components/ShuttleLoader';
@@ -25,6 +26,7 @@ function toRadarShape(records: PersistedPlayerSkills[]): PlayerSkills[] {
 }
 
 export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean; onTabChange?: (tab: 'home' | 'players' | 'skills' | 'admin' | 'profile') => void }) {
+  const tStats = useTranslations('stats');
   const [loading, setLoading] = useState(true);
   const [players, setPlayers] = useState<PlayerSkills[]>([]);
 
@@ -107,6 +109,20 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
 
   const skillProgressionContent = (
     <div className="space-y-4">
+      <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, lineHeight: 1.45 }}>
+        {tStats.rich('progression.disclaimer', {
+          link: (chunks) => (
+            <a
+              href="https://www.acesports.ca/skills-matrix"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'var(--accent)', textDecoration: 'underline' }}
+            >
+              {chunks}
+            </a>
+          ),
+        })}
+      </p>
       {players.length === 0 ? (
         <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>
           No skill profiles yet.
