@@ -4,17 +4,18 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer } from '@/lib/cosmos';
 
 /**
- * Player-facing one-shot daily summary. Generates a 1-2 sentence read of
- * the player's recent attendance via Claude Haiku (cheapest model). The
- * client is expected to cache the result in localStorage by (name, date)
- * so we make at most one API call per friend per day.
+ * Player-facing weekly summary. Generates a 1-2 sentence read of the
+ * player's recent attendance via Claude Haiku (cheapest model). The client
+ * caches the result in localStorage by (name, week-of-year) so we make at
+ * most one API call per friend per week.
  *
  * Token budget per call:
  *   - input: ~120 tokens (prompt + stats summary)
  *   - output: ≤80 tokens (capped via max_tokens)
- *   - 12 friends × 1 call/day × 200 tokens ≈ 2.4k tokens/day → trivial spend
+ *   - 12 friends × 1 call/week × 200 tokens ≈ 2.4k tokens/week → trivial
  *
- * Rate limit: 5/hr per (name, IP). Prevents accidental looping.
+ * Rate limit: 5/hr per (name, IP). The weekly cache makes this mostly a
+ * backstop against accidental loops; legitimate users hit it once per week.
  *
  * Auth: this is player-facing (not admin). We rely on the rate limit + the
  * fact that identity-claiming is already trust-based in localStorage. No
@@ -124,14 +125,14 @@ export async function POST(req: NextRequest) {
   }
 
   // Tight prompt — most of the spend would be on context if we let it.
-  const prompt = `You're writing a one-time friendly daily quick-read for a casual badminton player named ${name}.
+  const prompt = `You're writing a friendly weekly quick-read for a casual badminton player named ${name}.
 
 Stats from the last ${totalSessions} sessions (past year):
 - Attended: ${attended} (${attendanceRate}%)
 - Current streak: ${currentStreak} ${currentStreak === 1 ? 'session' : 'sessions'}
 - Longest streak: ${longestStreak} ${longestStreak === 1 ? 'session' : 'sessions'}
 
-Write a single 1-2 sentence summary in plain text. Friendly and honest tone, no jargon, no emoji, no markdown. Avoid generic praise — anchor on the specific numbers.`;
+Write a single 1-2 sentence summary in plain text. Friendly and honest tone, no jargon, no emoji, no markdown. Avoid generic praise — anchor on the specific numbers. Frame it as a week-in-review observation.`;
 
   let summary = '';
   try {
