@@ -235,10 +235,31 @@ async function handlePost(req: NextRequest) {
     event: 'recovered-via-code',
     at: new Date().toISOString(),
   });
+
+  // Clear the member's canonical PIN hash — the user reached this path
+  // because they forgot the PIN and asked admin for a reset. Leaving the
+  // old hash active means (a) `hasPin: true` blocks them from setting a
+  // new one (RecoveryPinSheet demands the current PIN they don't know),
+  // and (b) anyone who knew the pre-reset PIN could still authenticate.
+  // Clearing here makes the next Profile → "Set PIN" flow render in 2-
+  // field mode (no current-PIN prompt).
+  const { resources: members } = await membersContainer.items
+    .query({
+      query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
+      parameters: [{ name: '@name', value: name }],
+    })
+    .fetchAll();
+  const member = members[0] ?? null;
+  if (member) {
+    await membersContainer.items.upsert({ ...member, pinHash: '' });
+  }
+
   await playersContainer.items.upsert({
     ...player,
     deleteToken: newDeleteToken,
     recoveryEvents: updatedEvents,
+    // Keep the per-player mirror in sync with the canonical store.
+    pinHash: '',
   });
 
   return NextResponse.json({ deleteToken: newDeleteToken });

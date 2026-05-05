@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { getIdentity, clearIdentity, type Identity } from '@/lib/identity';
+import { getIdentity, clearIdentity, IDENTITY_EVENT, type Identity } from '@/lib/identity';
 import type { Release } from '@/lib/types';
 import EnterCodeSheet from './EnterCodeSheet';
 import CreateAccountSheet from './CreateAccountSheet';
@@ -56,6 +56,18 @@ export default function ProfileTab({
       .then((r) => (r.ok ? r.json() : []))
       .then((data: Release[]) => setReleases(Array.isArray(data) ? data : []))
       .catch(() => setReleases([]));
+  }, []);
+
+  // Listen for identity mutations from any other component (e.g. EnterCodeSheet
+  // completing the recovery-code flow, RecoverySheet finishing PIN sign-in).
+  // Without this, ProfileTab's local `identity` state stays stale after a
+  // recovery and the downstream `hasPin` fetch never refires — leaving users
+  // stuck in 3-field "Update PIN" mode after a code redemption that should
+  // have cleared their PIN.
+  useEffect(() => {
+    function refresh() { setLocalIdentity(getIdentity()); }
+    window.addEventListener(IDENTITY_EVENT, refresh);
+    return () => window.removeEventListener(IDENTITY_EVENT, refresh);
   }, []);
 
   // Reflect server-side pin status whenever identity changes (mount, sign-in,
