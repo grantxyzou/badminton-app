@@ -183,21 +183,27 @@
     "heading": "你的数据",
     "subhead": "你没问过但很有趣的数据(beta)",
     "comingSoon": "即将推出",
+    "moreComing": "更多指标制作中",
     "progression": {
       "title": "技能进展(自我追踪)",
-      "subtitle": "你的进步轨迹"
+      "subtitle": "仅为预览 — 数据可能丢失。",
+      "disclaimer": "点击类别查看你的技能等级描述。来源：<link>Ace 羽毛球俱乐部</link>"
     },
     "attendance": {
       "title": "您的出勤记录",
       "subtitle": "本月参加的场次。"
     },
     "cost": {
-      "title": "费用趋势",
-      "subtitle": "近期每人每场的费用分摊。"
+      "title": "费用相关",
+      "subtitle": "每场花费、已付与未付、转账记录。"
     },
     "partners": {
-      "title": "搭档频率",
-      "subtitle": "你最常一起打球的人。"
+      "title": "搭档与打法",
+      "subtitle": "最常一起打的人和惯用打法。"
+    },
+    "equipment": {
+      "title": "你的装备",
+      "subtitle": "球拍、拍线、球的偏好。"
     }
   },
   "players": {

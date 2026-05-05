@@ -18,18 +18,17 @@ function renderWithLocale(locale: 'en' | 'zh-CN') {
 describe('StatsPlaceholder', () => {
   afterEach(cleanup);
 
-  it('renders four skeleton cards with titles in English', () => {
+  it('renders three skeleton cards in the grid in English', () => {
     renderWithLocale('en');
-    expect(screen.getByText('Skill progression (self tracking)')).toBeTruthy();
-    expect(screen.getByText('Your Attendance')).toBeTruthy();
-    expect(screen.getByText('Cost trend')).toBeTruthy();
-    expect(screen.getByText('Partner frequency')).toBeTruthy();
+    expect(screen.getByText('Cost related')).toBeTruthy();
+    expect(screen.getByText('Partner and play style')).toBeTruthy();
+    expect(screen.getByText('Your equipment')).toBeTruthy();
   });
 
-  it('renders one "Coming soon" pill per card (4 total)', () => {
+  it('renders one "Coming soon" pill per card (3 total)', () => {
     renderWithLocale('en');
     const pills = screen.getAllByText(/Coming soon/i);
-    expect(pills.length).toBe(4);
+    expect(pills.length).toBe(3);
   });
 
   it('renders the page heading', () => {
@@ -37,11 +36,15 @@ describe('StatsPlaceholder', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Your stats' })).toBeTruthy();
   });
 
+  it('renders the "more coming" section label', () => {
+    renderWithLocale('en');
+    expect(screen.getByText('other metrics in the making')).toBeTruthy();
+  });
+
   it('renders Chinese titles when locale is zh-CN', () => {
     renderWithLocale('zh-CN');
-    expect(screen.getByText('技能进展(自我追踪)')).toBeTruthy();
-    expect(screen.getByText('您的出勤记录')).toBeTruthy();
-    expect(screen.getByText('费用趋势')).toBeTruthy();
-    expect(screen.getByText('搭档频率')).toBeTruthy();
+    expect(screen.getByText('费用相关')).toBeTruthy();
+    expect(screen.getByText('搭档与打法')).toBeTruthy();
+    expect(screen.getByText('你的装备')).toBeTruthy();
   });
 });

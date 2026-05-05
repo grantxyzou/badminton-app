@@ -183,21 +183,27 @@
     "heading": "Your stats",
     "subhead": "Interesting metrics that you didn't ask for (beta)",
     "comingSoon": "Coming soon",
+    "moreComing": "other metrics in the making",
     "progression": {
       "title": "Skill progression (self tracking)",
-      "subtitle": "Progression over time"
+      "subtitle": "Preview only — data may get lost.",
+      "disclaimer": "Tap a category to see your skill level description. Source: <link>Ace Badminton Club</link>"
     },
     "attendance": {
       "title": "Your Attendance",
       "subtitle": "Sessions played this month."
     },
     "cost": {
-      "title": "Cost trend",
-      "subtitle": "Per-person price across recent sessions."
+      "title": "Cost related",
+      "subtitle": "Spend per session, paid vs. owed, e-transfer recap."
     },
     "partners": {
-      "title": "Partner frequency",
-      "subtitle": "Who you play with most."
+      "title": "Partner and play style",
+      "subtitle": "Who you play with most + favoured patterns."
+    },
+    "equipment": {
+      "title": "Your equipment",
+      "subtitle": "Rackets, strings, shuttle preferences."
     }
   },
   "players": {
