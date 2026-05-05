@@ -1,0 +1,20 @@
+# One-shot backfill of historical attendance for the BPM badminton group.
+# Run via: ADMIN_COOKIE=<your_cookie> node scripts/backfill-attendance.mjs
+# See scripts/backfill-attendance.mjs for the cookie-extraction steps.
+#
+# Format:
+#   date,names
+#   YYYY-MM-DD,SpaceSeparatedNames
+#
+# Names must match member records in Cosmos exactly (case-insensitive).
+# Lines starting with `#` and blank lines are ignored.
+#
+# IMPORTANT: this is the entire group's history dating back 2026-02-19.
+# Edit this file with each session date + who attended that night, then
+# run the script. Re-running is safe (idempotent).
+#
+# Example rows (replace with real data):
+#   2026-02-19,Grant Bruce Chris David Desmond Ethan
+#   2026-02-26,Grant Chris David Ethan
+#   2026-03-05,Grant Bruce David Desmond
+date,names
