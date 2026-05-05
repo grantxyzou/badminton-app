@@ -11,7 +11,8 @@ import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import DevPanel, { type DevOverrides } from '@/components/DevPanel';
-import { getIdentity } from '@/lib/identity';
+import DemoMode from '@/components/DemoMode';
+import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
@@ -23,6 +24,7 @@ export default function Page() {
   const [devMode, setDevMode] = useState(false);
   const [devOverrides, setDevOverrides] = useState<DevOverrides>({});
   const [profileSession, setProfileSession] = useState<{ id: string; label: string }>({ id: '', label: '' });
+  const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -49,8 +51,11 @@ export default function Page() {
       .catch(() => undefined);
   }, []);
 
-  useEffect(() => {
-    // Show admin tab if user has admin role OR already has a valid admin cookie
+  // Show admin tab if user has admin role OR already has a valid admin cookie.
+  // Re-runs on mount, after any identity change (sign-in / sign-out from any
+  // component), and on window focus (covers cross-tab sign-out and admin-cookie
+  // expiry while the tab was backgrounded).
+  const refreshAdminAccess = useCallback(() => {
     Promise.all([
       fetch(`${BASE}/api/admin`).then(r => r.json()).catch(() => ({ authed: false })),
       (() => {
@@ -64,16 +69,28 @@ export default function Page() {
     });
   }, []);
 
-  // 5-tap easter egg on title to reveal admin tab
+  useEffect(() => {
+    refreshAdminAccess();
+    window.addEventListener(IDENTITY_EVENT, refreshAdminAccess);
+    window.addEventListener('focus', refreshAdminAccess);
+    return () => {
+      window.removeEventListener(IDENTITY_EVENT, refreshAdminAccess);
+      window.removeEventListener('focus', refreshAdminAccess);
+    };
+  }, [refreshAdminAccess]);
+
+  // 7-tap easter egg on title — opens the demo mode overlay. (Previously
+  // unlocked admin, but admin now flows through Profile sign-in for actual
+  // admins; the easter egg's role is curiosity/preview, not privilege.)
   const tapCount = useRef(0);
   const tapTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const handleTitleTap = useCallback(() => {
     tapCount.current += 1;
     clearTimeout(tapTimer.current);
-    if (tapCount.current >= 5) {
+    if (tapCount.current >= 7) {
       tapCount.current = 0;
-      setShowAdmin(true);
+      setDemoMode(true);
     } else {
       tapTimer.current = setTimeout(() => { tapCount.current = 0; }, 2000);
     }
@@ -118,8 +135,9 @@ export default function Page() {
           )}
         </div>
         {devMode && <DevPanel overrides={devOverrides} onChange={setDevOverrides} />}
-        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} showAdmin={showAdmin} />
+        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
+      {demoMode && <DemoMode onClose={() => setDemoMode(false)} />}
     </>
   );
 }

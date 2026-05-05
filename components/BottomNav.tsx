@@ -6,12 +6,6 @@ import { Tab } from '@/app/page';
 interface Props {
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
-  /**
-   * When true, Admin appears as a 5th nav slot between Stats and Profile.
-   * Computed in `app/page.tsx` from `/api/admin` cookie + `members.me.role`,
-   * or via the 5-tap easter egg on the title.
-   */
-  showAdmin?: boolean;
 }
 
 type NavItem = { id: Tab; label: string; icon: string };
@@ -29,18 +23,15 @@ type NavItem = { id: Tab; label: string; icon: string };
  *
  * All styling lives in `globals.css`.
  *
- * Slot count: 4 by default (Home, Sign-Ups, Stats, Profile); 5 when
- * `showAdmin` is true (Admin inserted between Stats and Profile). Admin sits
- * adjacent to Profile because both are management surfaces — Stats and the
- * three primary tabs stay grouped on the left.
+ * Slot count: always 4. Admin is reachable via Profile → "Admin tools →"
+ * (gated on `isAdmin`) or the `?tab=admin` deep link — never the bottom nav.
  */
-export default function BottomNav({ activeTab, onTabChange, showAdmin = false }: Props) {
+export default function BottomNav({ activeTab, onTabChange }: Props) {
   const t = useTranslations('nav');
   const visibleTabs: NavItem[] = [
     { id: 'home',    label: t('home'),    icon: 'home' },
     { id: 'players', label: t('signups'), icon: 'group' },
     { id: 'skills',  label: t('skills'),  icon: 'bar_chart' },
-    ...(showAdmin ? [{ id: 'admin' as Tab, label: t('admin'), icon: 'shield' }] : []),
     { id: 'profile', label: t('profile'), icon: 'person' },
   ];
 

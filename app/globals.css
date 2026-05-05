@@ -20,11 +20,6 @@
   --accent-dark: #16a34a;
   --color-scheme: dark;
 
-  /* Brand-forest scale — port of docs/design-system/colors_and_type.css:49-50.
-     Theme-invariant: admin uses --bpm-forest-900 in both themes. */
-  --bpm-forest-900: #050f07;
-  --bpm-forest-800: #0a1f0e;
-
   /* ── Motion ── */
   --ease-glass: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -630,22 +625,18 @@ html[data-tab="skills"][data-theme="light"] .court-bg::before {
     radial-gradient(circle at 50% 50%, rgba(22, 163, 74, 0.18) 1.5px, transparent 2px);
 }
 
-/* ── Admin tab — solid forest-black ──
+/* ── Admin tab — flat page-bg ──
    Admin is a power-user surface, intentionally divorced from the rest of the
-   app's visual register (aurora, court, dot field). Uses --bpm-forest-900,
-   the design system's deepest forest token (docs/design-system/colors_and_type
-   .css:49) — same color in both themes so admin reads as "tool mode" rather
-   than honoring user theme preference. */
+   app's atmospheric chrome (no aurora, no court, no dot field). Sits on the
+   plain --page-bg token so it stays in-theme without competing for attention. */
 html[data-tab="admin"] .aurora-blob-1,
 html[data-tab="admin"] .aurora-blob-2,
 html[data-tab="admin"] .aurora-blob-3 {
   display: none;
 }
 
-html[data-tab="admin"] .court-bg,
-[data-theme="light"] html[data-tab="admin"] .court-bg,
-html[data-tab="admin"][data-theme="light"] .court-bg {
-  background: var(--bpm-forest-900);
+html[data-tab="admin"] .court-bg {
+  background: var(--page-bg);
 }
 
 /* ── Stats-tab glass highlight ──

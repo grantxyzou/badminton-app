@@ -26,7 +26,11 @@ import { getContainer } from '@/lib/cosmos';
 import type { Member } from '@/lib/types';
 
 const COOKIE_NAME = 'admin_session';
-const COOKIE_MAX_AGE_S = 60 * 60 * 8; // 8 hours
+// 30 days — matches the longevity users expect from their `badminton_identity`
+// localStorage entry. The original 8h TTL was too conservative for a friend-
+// group admin role, causing "I'm signed in as Grant but Admin asks for PIN
+// again" friction. Re-PIN on Profile logout or natural 30d expiry.
+const COOKIE_MAX_AGE_S = 60 * 60 * 24 * 30;
 
 /**
  * Returns the HMAC secret. In production, the env var must be set or we

@@ -51,10 +51,25 @@ export function getIdentity(): Identity | null {
   }
 }
 
+/**
+ * Custom event dispatched on identity mutation. Lets page-level subscribers
+ * (e.g. the admin-nav-slot check in app/page.tsx) react to sign-in / sign-out
+ * within the same tab — `storage` events only fire in OTHER tabs, so a custom
+ * event is needed for intra-tab updates.
+ */
+export const IDENTITY_EVENT = 'badminton:identity-changed';
+
+function dispatchIdentityChange(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(IDENTITY_EVENT));
+}
+
 export function setIdentity(id: Identity): void {
   localStorage.setItem(IDENTITY_KEY, JSON.stringify(id));
+  dispatchIdentityChange();
 }
 
 export function clearIdentity(): void {
   localStorage.removeItem(IDENTITY_KEY);
+  dispatchIdentityChange();
 }

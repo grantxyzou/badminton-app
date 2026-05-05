@@ -47,11 +47,7 @@ function fmtSessionNav(datetime: string) {
 
 /* ── Main component ── */
 
-interface Props {
-  onLogout: () => void;
-}
-
-export default function AdminDashboard({ onLogout }: Props) {
+export default function AdminDashboard() {
   const [view, setView] = useState<AdminView>('dashboard');
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -68,18 +64,17 @@ export default function AdminDashboard({ onLogout }: Props) {
   if (view === 'advance') return <div className="animate-slideInRight"><AdvanceSessionForm onBack={goBack} /></div>;
   if (view === 'releases') return <div className="animate-slideInRight"><ReleasesView onBack={goBack} /></div>;
 
-  return <Dashboard onLogout={onLogout} refreshKey={refreshKey} setView={setView} />;
+  return <Dashboard refreshKey={refreshKey} setView={setView} />;
 }
 
 /* ── Dashboard view ── */
 
 interface DashboardProps {
-  onLogout: () => void;
   refreshKey: number;
   setView: (v: AdminView) => void;
 }
 
-function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
+function Dashboard({ refreshKey, setView }: DashboardProps) {
   const pageT = useTranslations('pages.admin');
   const anno = useAnnouncements(refreshKey);
 
@@ -117,22 +112,7 @@ function Dashboard({ onLogout, refreshKey, setView }: DashboardProps) {
 
   return (
     <div className="space-y-5 w-full">
-      <PageHeader
-        action={
-          <button
-            type="button"
-            onClick={onLogout}
-            aria-label="Sign out of admin"
-            className="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1 px-3"
-            style={{ minHeight: 44 }}
-          >
-            <span className="material-icons" style={{ fontSize: 18 }}>logout</span>
-            Sign out
-          </button>
-        }
-      >
-        {pageT('title')}
-      </PageHeader>
+      <PageHeader>{pageT('title')}</PageHeader>
 
       {/* Session context */}
       <SessionContextBar session={nav.session} onEditDates={() => setView('date-time')} />

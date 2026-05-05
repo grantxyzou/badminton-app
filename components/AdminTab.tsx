@@ -55,12 +55,6 @@ export default function AdminTab() {
     }
   }
 
-  async function handleLogout() {
-    await fetch(`${BASE}/api/admin`, { method: 'DELETE' });
-    setIsAuthed(false);
-    setPin('');
-  }
-
   if (isAuthed === null) {
     return (
       <div className="space-y-5">
@@ -122,5 +116,5 @@ export default function AdminTab() {
   // Dashboard renders its own h1 when on the dashboard view so the header
   // disappears when the user drills into a sub-editor (Session Details,
   // Members, etc.) — those render AdminBackHeader instead.
-  return <AdminDashboard onLogout={handleLogout} />;
+  return <AdminDashboard />;
 }
