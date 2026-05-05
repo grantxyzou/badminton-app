@@ -7,9 +7,9 @@ interface Props {
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
   /**
-   * Retained for the page-level state machine (Admin tab is still reachable
-   * via Profile → "Admin tools" or `?tab=admin` deep link), but no longer
-   * gates a slot in the bottom nav. Profile is always the 4th slot.
+   * When true, Admin appears as a 5th nav slot between Stats and Profile.
+   * Computed in `app/page.tsx` from `/api/admin` cookie + `members.me.role`,
+   * or via the 5-tap easter egg on the title.
    */
   showAdmin?: boolean;
 }
@@ -29,15 +29,18 @@ type NavItem = { id: Tab; label: string; icon: string };
  *
  * All styling lives in `globals.css`.
  *
- * Per the auth revamp (PR C), the recovery-flag conditional is gone. Profile
- * is unconditionally the 4th slot; Admin is reachable from inside Profile.
+ * Slot count: 4 by default (Home, Sign-Ups, Stats, Profile); 5 when
+ * `showAdmin` is true (Admin inserted between Stats and Profile). Admin sits
+ * adjacent to Profile because both are management surfaces — Stats and the
+ * three primary tabs stay grouped on the left.
  */
-export default function BottomNav({ activeTab, onTabChange }: Props) {
+export default function BottomNav({ activeTab, onTabChange, showAdmin = false }: Props) {
   const t = useTranslations('nav');
   const visibleTabs: NavItem[] = [
     { id: 'home',    label: t('home'),    icon: 'home' },
     { id: 'players', label: t('signups'), icon: 'group' },
     { id: 'skills',  label: t('skills'),  icon: 'bar_chart' },
+    ...(showAdmin ? [{ id: 'admin' as Tab, label: t('admin'), icon: 'shield' }] : []),
     { id: 'profile', label: t('profile'), icon: 'person' },
   ];
 

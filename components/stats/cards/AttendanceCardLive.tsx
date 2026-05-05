@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { getIdentity } from '@/lib/identity';
-import RecoverySheet from '@/components/RecoverySheet';
 import AttendanceHeatmap from './AttendanceHeatmap';
 
 type Zoom = { label: string; weeks: number };
@@ -39,11 +38,7 @@ function resolveActiveName(): string | null {
   return null;
 }
 
-interface AttendanceCardLiveProps {
-  onSignUp?: () => void;
-}
-
-export default function AttendanceCardLive({ onSignUp }: AttendanceCardLiveProps = {}) {
+export default function AttendanceCardLive() {
   const [activeName, setActiveName] = useState<string | null>(null);
   const [resolved, setResolved] = useState(false);
   const [zoomIdx, setZoomIdx] = useState(0); // default 3M
@@ -52,8 +47,6 @@ export default function AttendanceCardLive({ onSignUp }: AttendanceCardLiveProps
   const [members, setMembers] = useState<string[]>([]);
   const [pickerValue, setPickerValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [recoveryOpen, setRecoveryOpen] = useState(false);
-  const [activeSessionId, setActiveSessionId] = useState('');
 
   const weeks = ZOOMS[zoomIdx].weeks;
 
@@ -62,17 +55,6 @@ export default function AttendanceCardLive({ onSignUp }: AttendanceCardLiveProps
     setActiveName(resolveActiveName());
     setResolved(true);
   }, []);
-
-  // Lazily fetch active session id only if we'll need to open RecoverySheet.
-  useEffect(() => {
-    if (activeName) return;
-    fetch(`${BASE}/api/session`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((s: { id?: string } | null) => {
-        if (s?.id) setActiveSessionId(s.id);
-      })
-      .catch(() => undefined);
-  }, [activeName]);
 
   // Load member names for autocomplete (public endpoint, no auth needed).
   useEffect(() => {
@@ -158,7 +140,8 @@ export default function AttendanceCardLive({ onSignUp }: AttendanceCardLiveProps
     return <LoadingStrip weeks={weeks} />;
   }
 
-  // No active name — your stats only. No look-up affordance for other players.
+  // No active name — passive prompt only. Sign-in / create-account live in
+  // Profile; this card just describes what the user gets when authed.
   if (!activeName) {
     return (
       <div style={{ display: 'grid', gap: 10 }}>
@@ -166,33 +149,8 @@ export default function AttendanceCardLive({ onSignUp }: AttendanceCardLiveProps
           Your stats
         </p>
         <p style={{ margin: 0, fontSize: 12, color: MUTED, lineHeight: 1.45 }}>
-          Sign up for a session to start tracking your attendance, or sign in if you played here before.
+          Sign in or create an account to see your personalized stats.
         </p>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {onSignUp && (
-            <button
-              type="button"
-              onClick={onSignUp}
-              className="btn-primary"
-              style={{ minHeight: 36, padding: '0 14px', fontSize: 13 }}
-            >
-              Sign up
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setRecoveryOpen(true)}
-            className="btn-ghost"
-            style={{ minHeight: 36, padding: '0 14px', fontSize: 13 }}
-          >
-            Sign in
-          </button>
-        </div>
-        <RecoverySheet
-          open={recoveryOpen}
-          onClose={() => setRecoveryOpen(false)}
-          sessionId={activeSessionId}
-        />
       </div>
     );
   }

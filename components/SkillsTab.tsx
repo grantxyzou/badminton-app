@@ -82,7 +82,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   }
 
   const attendanceOn = isFlagOn('NEXT_PUBLIC_FLAG_STATS_ATTENDANCE');
-  const attendanceContent = attendanceOn ? <AttendanceCardLive onSignUp={() => onTabChange?.('players')} /> : undefined;
+  const attendanceContent = attendanceOn ? <AttendanceCardLive /> : undefined;
   const heroSlot = attendanceOn ? <StatsStreakHero /> : undefined;
 
   if (!isAdmin) {
