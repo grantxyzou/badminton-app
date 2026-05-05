@@ -590,6 +590,129 @@ html[data-tab="players"][data-theme="light"] .court-bg::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'><g fill='none' stroke='%2316a34a' stroke-width='0.5' opacity='0.20' vector-effect='non-scaling-stroke'><rect x='0' y='0' width='100' height='220'/><line x1='7.54' y1='0' x2='7.54' y2='220'/><line x1='92.46' y1='0' x2='92.46' y2='220'/><line x1='0' y1='77.5' x2='100' y2='77.5'/><line x1='0' y1='142.5' x2='100' y2='142.5'/><line x1='0' y1='12.5' x2='100' y2='12.5'/><line x1='0' y1='207.5' x2='100' y2='207.5'/><line x1='50' y1='0' x2='50' y2='77.5'/><line x1='50' y1='142.5' x2='50' y2='220'/></g><line x1='0' y1='110' x2='100' y2='110' stroke='%2316a34a' stroke-width='0.9' stroke-dasharray='2 2' opacity='0.32' vector-effect='non-scaling-stroke'/></svg>");
 }
 
+/* ── 05 Tempo Field — per-tab override for Stats ──
+   Stats tab (data-tab="skills" — id kept for backcompat per CLAUDE.md) gets
+   the dot-grid backdrop that extends the BPM logo's tempo-dot motif at a
+   42px rhythm. Per docs/design-system/preview/24-app-background bg-5: a
+   single repeating radial-gradient dot, then a soft radial vignette via
+   ::before that fades dots into the page edges so charts at the top/sides
+   stay legible. Static (no animation) — the rhythm comes from the grid. */
+html[data-tab="skills"] .aurora-blob-1,
+html[data-tab="skills"] .aurora-blob-2,
+html[data-tab="skills"] .aurora-blob-3 {
+  display: none;
+}
+
+html[data-tab="skills"] .court-bg {
+  background: var(--page-bg);
+}
+
+html[data-tab="skills"] .court-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(74, 222, 128, 0.22) 1.5px, transparent 2px);
+  background-size: 42px 42px;
+  -webkit-mask-image: radial-gradient(60% 60% at 50% 50%, black 0%, transparent 85%);
+  mask-image: radial-gradient(60% 60% at 50% 50%, black 0%, transparent 85%);
+}
+
+[data-theme="light"] html[data-tab="skills"] .court-bg::before,
+html[data-tab="skills"][data-theme="light"] .court-bg::before {
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(22, 163, 74, 0.18) 1.5px, transparent 2px);
+}
+
+/* ── Stats-tab glass highlight ──
+   On Stats, the cursor-tracked highlight uses a desaturated neutral grey at
+   ~half the global alpha so the cards read as ambient-lit, not spotlit.
+   Other tabs keep the canonical .glass-card highlight (line 634-639). */
+html[data-tab="skills"] .glass-card {
+  /* Four independent levers for tuning the glass on Stats:
+     - DISPERSION (blur radius):  how diffuse the dots become through the card.
+     - FRAY      (hue-rotate):    chromatic aberration; 0 = neutral glass.
+     - FROST     (gradient alpha): milkiness of the glass body — also the
+                                  readable-surface lever for card content.
+     - DEPTH     (box-shadow stack): physicality — drop shadow lifts card off
+                                  page, inset top highlight + inset bottom
+                                  shadow give the glass apparent thickness. */
+  background:
+    radial-gradient(
+      ellipse at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
+      rgba(200, 210, 205, 0.04) 0%,
+      transparent 70%
+    ),
+    /* FROST — bumped to 0.07/0.03 so card surface holds text without forcing
+       readers to lean on backdrop-filter alone. */
+    linear-gradient(
+      160deg,
+      rgba(var(--glass-tint), 0.07) 0%,
+      rgba(var(--glass-tint), 0.03) 100%
+    );
+  /* DISPERSION = 22, FRAY = 3deg — pulled back slightly because depth shadows
+     now carry the "this is glass" signal that filter alone was doing. */
+  -webkit-backdrop-filter: blur(22px) saturate(220%) contrast(1.05) hue-rotate(3deg);
+  backdrop-filter: blur(22px) saturate(220%) contrast(1.05) hue-rotate(3deg);
+  /* DEPTH stack (top → bottom of stacking order):
+       1. inset top highlight   — ambient light catches the upper edge
+       2. inset bottom shadow   — refractive shadow inside lower edge (thickness)
+       3. tight outer shadow    — defines contact with page
+       4. broad outer shadow    — lifts card off the dot field */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.18),
+    0 1px 2px rgba(0, 0, 0, 0.25),
+    0 12px 32px -8px rgba(0, 0, 0, 0.45);
+}
+
+@media (hover: hover) {
+  html[data-tab="skills"] .glass-card:hover {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.24),
+      inset 0 -1px 1px rgba(0, 0, 0, 0.20),
+      0 1px 2px rgba(0, 0, 0, 0.28),
+      0 18px 40px -8px rgba(0, 0, 0, 0.55);
+  }
+}
+
+[data-theme="light"] html[data-tab="skills"] .glass-card,
+html[data-tab="skills"][data-theme="light"] .glass-card {
+  background:
+    radial-gradient(
+      ellipse at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
+      rgba(60, 70, 65, 0.04) 0%,
+      transparent 70%
+    ),
+    /* FROST — light theme keeps the higher wash so cream-on-cream stays legible. */
+    linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.62) 0%,
+      rgba(255, 255, 255, 0.48) 100%
+    );
+  /* DISPERSION = 26, FRAY = -3deg */
+  -webkit-backdrop-filter: blur(26px) saturate(180%) contrast(1.04) hue-rotate(-3deg);
+  backdrop-filter: blur(26px) saturate(180%) contrast(1.04) hue-rotate(-3deg);
+  /* DEPTH — softer stack on cream; light surfaces show shadow more readily. */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 1px rgba(22, 33, 27, 0.06),
+    0 1px 2px rgba(22, 33, 27, 0.08),
+    0 12px 28px -8px rgba(22, 33, 27, 0.18);
+}
+
+@media (hover: hover) {
+  [data-theme="light"] html[data-tab="skills"] .glass-card:hover,
+  html[data-tab="skills"][data-theme="light"] .glass-card:hover {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      inset 0 -1px 1px rgba(22, 33, 27, 0.08),
+      0 1px 2px rgba(22, 33, 27, 0.10),
+      0 18px 36px -8px rgba(22, 33, 27, 0.24);
+  }
+}
+
 /* ── Liquid Glass card ── */
 .glass-card {
   /* Canonical per docs/design-system/preview/14-glass-card.html —
