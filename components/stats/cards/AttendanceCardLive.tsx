@@ -4,12 +4,11 @@ import { useEffect, useState, useMemo } from 'react';
 import { getIdentity } from '@/lib/identity';
 import AttendanceHeatmap from './AttendanceHeatmap';
 
-type Zoom = { label: string; weeks: number };
-const ZOOMS: Zoom[] = [
-  { label: '3M', weeks: 13 },
-  { label: '6M', weeks: 26 },
-  { label: '1Y', weeks: 52 },
-];
+// 1Y window is the only view post-v1.3 hotfix — the 3M/6M zoom toggle was
+// removed because cells got visually huge at narrow week counts and the
+// zoom UI itself was occupying card real-estate. Heatmap is sized for the
+// card area at this fixed window.
+const WEEKS = 52;
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
@@ -41,14 +40,13 @@ function resolveActiveName(): string | null {
 export default function AttendanceCardLive() {
   const [activeName, setActiveName] = useState<string | null>(null);
   const [resolved, setResolved] = useState(false);
-  const [zoomIdx, setZoomIdx] = useState(0); // default 3M
   const [data, setData] = useState<AttendanceResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [members, setMembers] = useState<string[]>([]);
   const [pickerValue, setPickerValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const weeks = ZOOMS[zoomIdx].weeks;
+  const weeks = WEEKS;
 
   // Resolve active name once from localStorage.
   useEffect(() => {
@@ -186,35 +184,6 @@ export default function AttendanceCardLive() {
             </button>
           </span>
         )}
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4 }} role="tablist" aria-label="Time window">
-        {ZOOMS.map((z, i) => {
-          const active = i === zoomIdx;
-          return (
-            <button
-              key={z.label}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setZoomIdx(i)}
-              style={{
-                minHeight: 28,
-                padding: '2px 10px',
-                borderRadius: 100,
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: '0.04em',
-                border: `1px solid ${active ? ACCENT : 'var(--inner-card-border)'}`,
-                background: active ? 'color-mix(in oklab, var(--accent, #22c55e) 15%, transparent)' : 'transparent',
-                color: active ? ACCENT : MUTED,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
-            >
-              {z.label}
-            </button>
-          );
-        })}
       </div>
       <AttendanceHeatmap history={data.history} weeks={w} />
       {buildSubText(attended, w, streak, longestStreak) && (
