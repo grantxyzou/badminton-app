@@ -62,6 +62,55 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ---
 
+## v1.3.1 — Stats polish + AI weekly read + attendance backfill (2026-05-05)
+
+Same-day patch on top of v1.3. Tightens the Stats tab redesign based on smoke feedback (heatmap was too tall at 3M/6M; zoom UI was eating space; copy needed work) and adds two new pieces: a once-per-week AI summary card and a one-shot tool to backfill historical attendance for groups that played before adopting the app.
+
+### Added — Stats tab
+
+- **Weekly AI quick-read card** on Stats — single click generates a 1-2 sentence Claude Haiku summary of your last-year attendance. Cached in localStorage by (name, week) so revisits within the week are zero-token. Self-hides for anonymous viewers.
+- **Skill progression disclaimer** with a hyperlink to the [ACE Skills Matrix](https://www.acesports.ca/skills-matrix) so players know where the radar dimensions come from.
+- **`Beta` badge** replaces `Live` on the Stats live cards (Your Attendance + Skill progression). Sets accurate expectations while features mature.
+- **`Your equipment`** coming-soon card joins Cost and Partner — gestures toward future tracking of rackets, strings, shuttle preferences.
+
+### Added — admin tooling
+
+- **One-shot attendance backfill** — new admin-only `POST /api/admin/backfill-attendance` endpoint + `scripts/backfill-attendance.mjs` import script. Reads a CSV of `date,names` rows and creates the historical session/player records that populate the Stats heatmap. Idempotent. Used to capture pre-app group history dating back to Feb 19 2026.
+
+### Changed — Home tab
+
+- **"Sign up" heading uses `.bpm-h2`** (Space Grotesk display font) instead of an ad-hoc `text-xl font-bold text-green-400` — visually similar but properly on the design system.
+- **CTA copy**: "Sign Up" → "I'm in this week" / "本周参加" — friendlier, more committal.
+- **"Already a player? Sign in" → "Account sign in"**, relocated from inside the sign-up card to outside it (bottom-left, aligned to the card's inner padding). Cleaner card, no false-CTA noise inside the form.
+
+### Changed — Stats tab
+
+- **Heatmap dropped the 3M / 6M / 1Y zoom selector** — always shows 1Y now. The zoom toggle was eating card real-estate and the small-window cells looked oversized at 3M (21px). Heatmap now scales to fit the card width via viewBox.
+- **Skill progression card moved** above the "more coming" grid (was below). Matches user mental model of progression as a primary stat.
+- **Coming-soon grid relabeled** to "other metrics in the making" (was "MORE COMING"). Three tiles now: Cost related, Partner and play style, Your equipment.
+- **Header subhead** rewritten to "Interesting metrics that you didn't ask for (beta)" — sets a more honest, less-hyped expectation.
+- **Live attendance always-on** — `NEXT_PUBLIC_FLAG_STATS_ATTENDANCE` retired across `lib/flags.ts`, both deploy workflows, and docs. Heatmap + streak hero ship to all friends without opt-in.
+
+### Changed — admin
+
+- **AdminTab Sign-out button removed** — single auth surface lives in Profile only. Profile logout already calls `DELETE /api/admin` to clear the cookie; the second button on AdminTab was redundant.
+- **Admin tab background** is now flat `var(--page-bg)` with the aurora hidden — admin reads as its own visual register without atmospheric chrome competing for attention.
+
+### Changed — auth
+
+- **Admin cookie TTL bumped 8h → 30 days** in `lib/auth.ts:29`. Eliminates the "I'm signed in as Grant but Admin asks for PIN again" friction that came from cookies expiring while localStorage identity persisted.
+- **`IDENTITY_EVENT`** dispatched from `lib/identity.ts` on `setIdentity` / `clearIdentity`. Page-level admin-access check + ProfileTab subscribe so the "Admin tools →" link in Profile appears/disappears reactively on sign-in/out without a page refresh.
+
+### Fixed — auth
+
+- **Recovery code → set new PIN** dead-end fixed. `POST /api/players/recover` code-path now clears `members.pinHash` on success, so the post-recovery `RecoveryPinSheet` renders in 2-field mode (no current-PIN prompt). Without this, users who reset their PIN via admin code couldn't set a new one because the sheet still demanded the old PIN they'd forgotten.
+
+### Fixed — Release Form
+
+- **Auto-fill works post-cut now** — when `## Unreleased` is empty (right after a stable cut), `extract-unreleased.mjs` falls back to the most-recent-published-version's content + version. Previously the form opened blank with the next-bumped version, useless for the "publish notes for what we just shipped" flow.
+
+---
+
 ## v1.3 — Stats redesign + design system tier-2 + UI primitives (2026-05-05)
 
 Shipped as `bpm-stable-v1.3`. Stats tab visual overhaul (Tempo Field dot-grid background + refractive glass cards), three new UI primitives sweeping ~25 duplicated bits across the app, the design system's two-tier surface model formalized, dark-mode AA contrast lift, and a 7-tap demo placeholder.
