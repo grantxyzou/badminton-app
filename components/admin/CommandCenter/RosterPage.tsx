@@ -535,7 +535,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                     )}
                     {r.hasAlias && (
                       <span className="material-icons" style={{ fontSize: 12, color: 'var(--ink-faint)' }} title="E-transfer alias linked">
-                        link
+                        article_person
                       </span>
                     )}
                   </div>
