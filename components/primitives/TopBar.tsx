@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 
 /**
  * Sticky, scroll-condensed top bar. Implements `TopBar Spec.html`
@@ -41,6 +41,16 @@ function findScroller(el: HTMLElement): HTMLElement | Window {
 export default function TopBar({ title, crumb, onBack, right, backLabel = 'Back' }: TopBarProps) {
   const ref = useRef<HTMLDivElement>(null);
 
+  // Sync the initial state in a layout effect so we don't paint at-rest
+  // for one frame when navigating to a screen that's already scrolled.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || typeof window === 'undefined') return;
+    const scroller = findScroller(el);
+    const top = scroller === window ? window.scrollY : (scroller as HTMLElement).scrollTop;
+    el.classList.toggle('scrolled', top > 8);
+  }, []);
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -48,7 +58,6 @@ export default function TopBar({ title, crumb, onBack, right, backLabel = 'Back'
     const getTop = () =>
       scroller === window ? window.scrollY : (scroller as HTMLElement).scrollTop;
     const update = () => el.classList.toggle('scrolled', getTop() > 8);
-    update();
     scroller.addEventListener('scroll', update, { passive: true } as AddEventListenerOptions);
     return () => scroller.removeEventListener('scroll', update);
   }, []);
