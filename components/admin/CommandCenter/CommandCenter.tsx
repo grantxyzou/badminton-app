@@ -6,8 +6,7 @@ import PageHeader from '../../primitives/PageHeader';
 import AnomalyFeed from './AnomalyFeed';
 import NextSessionCard from './NextSessionCard';
 import PaymentsCard from './PaymentsCard';
-import BirdInventoryCard from './BirdInventoryCard';
-import RosterHealthCard from './RosterHealthCard';
+import AdminDashTiles from './AdminDashTiles';
 import RecentSessionsStrip from './RecentSessionsStrip';
 import AnnouncementsCard from './AnnouncementsCard';
 import PlayerProfileSheet from './PlayerProfileSheet';
@@ -115,14 +114,16 @@ export default function CommandCenter({ refreshKey, setView }: CommandCenterProp
         onAdvance={() => setView('advance')}
         onShareCost={() => openReceipt({ mode: 'group' })}
       />
+      <AdminDashTiles
+        onOpenBirds={() => setView('birds')}
+        onOpenRoster={() => setView('members')}
+      />
       <AnnouncementsCard refreshKey={composedRefresh} />
       <PaymentsCard
         refreshKey={composedRefresh}
         onOpenPlayer={openPlayer}
         onSendIndividualReceipt={(name) => openReceipt({ mode: 'individual', playerName: name })}
       />
-      <BirdInventoryCard onOpen={() => setView('birds')} />
-      <RosterHealthCard onOpen={() => setView('members')} />
       <RecentSessionsStrip />
       <ETransferRecipientEditor />
       <SkipDatesEditor />

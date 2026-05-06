@@ -1649,3 +1649,170 @@ html[data-hydrated="true"] .splash {
 .cc-no-scrollbar::-webkit-scrollbar {
   display: none; /* Chrome/Safari */
 }
+
+/* ── Admin Command Center: hero + dashboard tiles ── */
+/* Defined here so ProfileTab's admin-hero card and the Admin dashboard's
+   dgrid tiles share one source of truth. */
+
+:root {
+  --amber: #fbbf24;
+  --orange: #fb923c;
+  --red-soft: #f87171;
+  --ink-faint: rgba(255, 255, 255, 0.42);
+}
+[data-theme="light"] {
+  --ink-faint: rgba(0, 0, 0, 0.42);
+}
+
+/* Profile-screen Admin Console hero */
+.admin-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgba(74, 222, 128, 0.16), transparent 60%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid rgba(74, 222, 128, 0.22);
+  padding: 16px;
+}
+.admin-hero .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display, 'Space Grotesk'), system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.admin-hero .badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+.admin-hero .ah-title {
+  font-family: var(--font-display, 'Space Grotesk'), system-ui, sans-serif;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 8px 0 0;
+}
+.admin-hero .ah-subtitle {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin: 2px 0 0;
+}
+
+/* Tile grid — 3-up small stat tiles inside the hero */
+.cc-grid3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.cc-tile {
+  padding: 12px 13px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.cc-tile:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+.cc-tile .num {
+  font-family: var(--font-display, 'Space Grotesk'), system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.cc-tile .lbl {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.cc-tile .delta {
+  font-family: var(--font-mono, 'JetBrains Mono'), ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--ink-faint);
+}
+.cc-tile.warn .num { color: var(--amber); }
+.cc-tile.bad .num { color: var(--orange); }
+.cc-tile.info .num { color: #60a5fa; }
+
+[data-theme="light"] .cc-tile {
+  background: rgba(0, 0, 0, 0.025);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+[data-theme="light"] .cc-tile:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.14);
+}
+
+/* Dashboard 2-up grid for Birds + Roster cards on the admin home */
+.cc-dgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.cc-dcard {
+  padding: 13px;
+  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 96px;
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+.cc-dcard:hover { border-color: rgba(255, 255, 255, 0.22); }
+.cc-dcard .htitle {
+  font-family: var(--font-display, 'Space Grotesk'), system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cc-dcard .htitle .material-icons { font-size: 14px; }
+.cc-dcard .big {
+  font-family: var(--font-display, 'Space Grotesk'), system-ui, sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.cc-dcard .small {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.cc-dcard.alert {
+  border-color: rgba(251, 146, 60, 0.28);
+  background: linear-gradient(160deg, rgba(251, 146, 60, 0.08), rgba(255, 255, 255, 0.02));
+}
+.cc-dcard.alert .big { color: var(--orange); }
+.cc-dcard.warn {
+  border-color: rgba(251, 191, 36, 0.28);
+  background: linear-gradient(160deg, rgba(251, 191, 36, 0.08), rgba(255, 255, 255, 0.02));
+}
+.cc-dcard.warn .big { color: var(--amber); }
+
+[data-theme="light"] .cc-dcard {
+  background: linear-gradient(160deg, rgba(0, 0, 0, 0.04) 0%, rgba(0, 0, 0, 0.01) 100%);
+  border-color: rgba(0, 0, 0, 0.10);
+}

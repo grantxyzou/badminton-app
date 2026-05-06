@@ -8,6 +8,8 @@ import CreateAccountSheet from './CreateAccountSheet';
 import RecoveryPinSheet from './RecoveryPinSheet';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
 import PinInput from './PinInput';
+import AdminConsoleHero from './admin/CommandCenter/AdminConsoleHero';
+import { isFlagOn } from '@/lib/flags';
 // PinInput is used by the inline anonymous sign-in form below. The signed-in
 // state's PIN management lives in RecoveryPinSheet now (opened via Settings).
 
@@ -281,6 +283,7 @@ export default function ProfileTab({
   }
 
   // Player (and possibly admin) state
+  const showAdminHero = isAdmin && isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER');
   return (
     <div className="animate-fadeIn flex flex-col gap-4">
       <h1 className="bpm-h1">{tNav('profile')}</h1>
@@ -294,6 +297,25 @@ export default function ProfileTab({
             </p>
           )}
         </div>
+
+        {showAdminHero && (
+          <>
+            <p
+              style={{
+                fontFamily: 'var(--font-display, "Space Grotesk")',
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                color: 'var(--ink-faint)',
+                margin: '8px 4px 0',
+              }}
+            >
+              Admin
+            </p>
+            <AdminConsoleHero onOpenAdmin={onAdminTools} />
+          </>
+        )}
 
         <SettingsList
           title={tSettings('title')}
