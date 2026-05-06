@@ -16,7 +16,8 @@
  */
 
 export type FlagName =
-  | 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW';
+  | 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW'
+  | 'NEXT_PUBLIC_FLAG_COMMAND_CENTER';
 
 interface FlagMeta {
   description: string;
@@ -30,12 +31,19 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'after design system decisions (logo / fonts / background) finalize',
   },
+  NEXT_PUBLIC_FLAG_COMMAND_CENTER: {
+    description: 'Replaces the AdminDashboard landing screen with the new card-based Command Center (anomaly feed, payment grid, recent sessions, etc.). On for bpm-next + dev once cards are populated; off on bpm-stable until promoted.',
+    owner: 'grant',
+    plannedRemoval: 'after command center is promoted to stable + lived-in for 2 weeks',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
   switch (name) {
     case 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW':
       return process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
+    case 'NEXT_PUBLIC_FLAG_COMMAND_CENTER':
+      return process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER;
   }
 }
 

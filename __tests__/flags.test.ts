@@ -6,6 +6,7 @@ const originalEnv = { ...process.env };
 describe('feature flags', () => {
   beforeEach(() => {
     delete process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
+    delete process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER;
     delete process.env.NEXT_PUBLIC_ENV;
   });
 
@@ -34,6 +35,14 @@ describe('feature flags', () => {
     expect(isFlagOn('NEXT_PUBLIC_FLAG_DESIGN_PREVIEW')).toBe(false);
     process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW = 'TRUE';
     expect(isFlagOn('NEXT_PUBLIC_FLAG_DESIGN_PREVIEW')).toBe(false);
+  });
+
+  it('recognizes NEXT_PUBLIC_FLAG_COMMAND_CENTER', () => {
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER')).toBe(false);
+    process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER = 'true';
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER')).toBe(true);
+    process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER = '1';
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER')).toBe(false);
   });
 
   it('recognizes NEXT_PUBLIC_FLAG_DESIGN_PREVIEW', () => {

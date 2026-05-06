@@ -20,6 +20,8 @@ import { useSessionNavigation } from './hooks/useSessionNavigation';
 import { usePlayerManagement } from './hooks/usePlayerManagement';
 import ResetAccessSheet from './ResetAccessSheet';
 import PageHeader from '../primitives/PageHeader';
+import CommandCenter from './CommandCenter/CommandCenter';
+import { isFlagOn } from '@/lib/flags';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -64,6 +66,9 @@ export default function AdminDashboard() {
   if (view === 'advance') return <div className="animate-slideInRight"><AdvanceSessionForm onBack={goBack} /></div>;
   if (view === 'releases') return <div className="animate-slideInRight"><ReleasesView onBack={goBack} /></div>;
 
+  if (isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER')) {
+    return <CommandCenter refreshKey={refreshKey} setView={setView} />;
+  }
   return <Dashboard refreshKey={refreshKey} setView={setView} />;
 }
 
