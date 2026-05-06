@@ -85,6 +85,12 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
       setSessions(sorted);
       setActiveSessionId(current?.id ?? null);
       setViewedSessionId((prev) => prev ?? current?.id ?? sorted[0]?.id ?? null);
+    } catch (err) {
+      // Network error / server down — render empty state rather than
+      // surfacing as an unhandled rejection.
+      console.warn('PaymentsCard load failed:', err);
+      setSessions([]);
+      setActiveSessionId(null);
     } finally {
       setLoading(false);
     }
@@ -100,7 +106,8 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
       }
       const data = (await res.json()) as Player[];
       setAllPlayers(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (err) {
+      console.warn('PaymentsCard loadPlayers failed:', err);
       setAllPlayers([]);
     }
   }, []);
