@@ -425,7 +425,12 @@ h1, h2, h3, h4 {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 4px 14px;
+  /* Bleed past the parent's 16px horizontal padding (app shell uses px-4)
+     so the frosted bg reaches the column edges, then put the inner padding
+     back at 16px so the back-button hit target sits where it would in the
+     un-bled layout. Per spec: margin: 0 -16px; padding-x: 20px. */
+  margin: 0 -16px;
+  padding: 8px 16px 14px;
   background: transparent;
   border-bottom: 1px solid transparent;
   transition:
@@ -514,8 +519,11 @@ h1, h2, h3, h4 {
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 8px 14px;
-  margin: 0 -8px;
+  /* Same bleed strategy as .bpm-topbar — extend past the px-4 shell padding
+     so the frosted backdrop spans the column. Inner padding stays 16px so
+     content alignment with the rest of the page is preserved. */
+  margin: 0 -16px;
+  padding: 8px 16px 14px;
   background: transparent;
   border-bottom: 1px solid transparent;
   transition:
