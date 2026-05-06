@@ -12,13 +12,9 @@ import {
 interface ReceiptSheetProps {
   open: boolean;
   onClose: () => void;
-  /** All data needed to render the receipt. */
   input: ReceiptInput | null;
-  /** Surface-level error from the caller (e.g. missing recipient). */
   error?: string;
-  /** Initial mode. Group is the primary use case. */
   initialMode?: 'group' | 'individual';
-  /** Pre-selected player when opening in individual mode. */
   initialPlayerName?: string;
 }
 
@@ -29,7 +25,6 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string>('');
 
-  // Reset state when sheet opens or input changes.
   useEffect(() => {
     if (open) {
       setMode(initialMode);
@@ -40,23 +35,18 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
 
   const text = useMemo(() => {
     if (!input) return '';
-    if (mode === 'group') {
-      return renderGroupText(input);
-    }
+    if (mode === 'group') return renderGroupText(input);
     if (!selectedPlayer) return '';
     return renderIndividualText({ ...input, playerName: selectedPlayer });
   }, [input, mode, selectedPlayer]);
 
-  // Render canvas (group only — individual stays text-only for v1).
   useEffect(() => {
     if (!open || !input || mode !== 'group') return;
     let cancelled = false;
     (async () => {
       try {
         await (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready;
-      } catch {
-        // continue without font wait
-      }
+      } catch {}
       if (cancelled) return;
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -71,14 +61,11 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // ignore — fall back to manual select
-    }
+    } catch {}
   }
 
   async function shareImage() {
     if (!imageDataUrl) return;
-    // Try Web Share API with files first.
     try {
       const blob = await (await fetch(imageDataUrl)).blob();
       const file = new File([blob], `bpm-receipt.png`, { type: 'image/png' });
@@ -87,116 +74,150 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
         await navAny.share({ files: [file] });
         return;
       }
-    } catch {
-      // fall through to download
-    }
-    // Fallback: download.
+    } catch {}
     const a = document.createElement('a');
     a.href = imageDataUrl;
     a.download = 'bpm-receipt.png';
     a.click();
   }
 
-  // Even when input is null, render the sheet shell so we can show an error
-  // message if the caller passed one (e.g. "set an e-transfer recipient first").
-  if (!input && !error) {
-    return null;
-  }
+  if (!input && !error) return null;
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel="Receipt" maxHeight="80vh">
-      <BottomSheetHeader>
-        <div className="flex items-center justify-between px-4 py-3">
-          <h2 className="bpm-h3">Receipt</h2>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-200" aria-label="Close">
-            <span className="material-icons">close</span>
-          </button>
-        </div>
+    <BottomSheet open={open} onClose={onClose} ariaLabel="Receipt" maxHeight="80vh" className="max-w-lg mx-auto">
+      <BottomSheetHeader className="flex items-center justify-between p-4">
+        <span style={{ fontSize: 16, fontWeight: 600 }}>Share session cost</span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          style={{
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            minWidth: 44,
+            minHeight: 44,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <span className="material-icons" style={{ fontSize: 20 }}>close</span>
+        </button>
       </BottomSheetHeader>
-      <BottomSheetBody>
-        <div className="space-y-4 pb-6">
+
+      <BottomSheetBody className="p-5 pb-8">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {error && (
-            <div
-              className="rounded-lg p-3 text-sm"
-              style={{ background: 'rgba(239, 68, 68, 0.10)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fca5a5' }}
+            <p
               role="alert"
+              style={{
+                color: 'var(--color-red, #ef4444)',
+                fontSize: 13,
+                lineHeight: 1.5,
+                margin: 0,
+              }}
             >
               {error}
-            </div>
-          )}
-          {!input ? null : <>
-          {/* Mode toggle */}
-          <div className="segment-control">
-            <button
-              type="button"
-              className={mode === 'group' ? 'segment-tab-active' : 'segment-tab-inactive'}
-              onClick={() => setMode('group')}
-            >
-              Group
-            </button>
-            <button
-              type="button"
-              className={mode === 'individual' ? 'segment-tab-active' : 'segment-tab-inactive'}
-              onClick={() => setMode('individual')}
-              disabled={input.playerNames.length === 0}
-            >
-              Individual
-            </button>
-          </div>
-
-          {/* Individual: pick a player */}
-          {mode === 'individual' && (
-            <div className="space-y-2">
-              <label className="text-xs text-gray-400">Recipient</label>
-              <select
-                value={selectedPlayer ?? ''}
-                onChange={(e) => setSelectedPlayer(e.target.value || null)}
-                className="w-full text-sm rounded-lg p-2"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}
-              >
-                <option value="">Choose a player…</option>
-                {input.playerNames.map((name) => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-              </select>
-            </div>
+            </p>
           )}
 
-          {/* Image preview (group only) — capped width on mobile so the
-              390px native canvas doesn't push past the viewport. */}
-          {mode === 'group' && (
-            <div className="rounded-lg overflow-hidden flex justify-center" style={{ background: 'rgba(255,255,255,0.02)' }}>
-              <canvas
-                ref={canvasRef}
-                aria-label="Receipt image preview"
-                style={{ maxWidth: '100%', height: 'auto' }}
-              />
-            </div>
+          {input && (
+            <>
+              {/* Mode toggle — uses canonical .segment-control */}
+              <div className="segment-control">
+                <button
+                  type="button"
+                  className={mode === 'group' ? 'segment-tab-active' : 'segment-tab-inactive'}
+                  onClick={() => setMode('group')}
+                >
+                  Group
+                </button>
+                <button
+                  type="button"
+                  className={mode === 'individual' ? 'segment-tab-active' : 'segment-tab-inactive'}
+                  onClick={() => setMode('individual')}
+                  disabled={input.playerNames.length === 0}
+                >
+                  Individual
+                </button>
+              </div>
+
+              {mode === 'individual' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, color: 'var(--text-muted)' }}>Recipient</label>
+                  <select
+                    value={selectedPlayer ?? ''}
+                    onChange={(e) => setSelectedPlayer(e.target.value || null)}
+                  >
+                    <option value="">Choose a player…</option>
+                    {input.playerNames.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {mode === 'group' && (
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <canvas
+                    ref={canvasRef}
+                    aria-label="Receipt image preview"
+                    style={{ maxWidth: '100%', height: 'auto', borderRadius: 12 }}
+                  />
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 12, color: 'var(--text-muted)' }}>Text version</label>
+                <pre
+                  style={{
+                    fontFamily: 'var(--font-mono), ui-monospace, monospace',
+                    fontSize: 12,
+                    lineHeight: 1.55,
+                    whiteSpace: 'pre-wrap',
+                    margin: 0,
+                    padding: 12,
+                    borderRadius: 12,
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--input-border, rgba(255,255,255,0.08))',
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  {text || (mode === 'individual' ? 'Pick a player to render.' : '')}
+                </pre>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={copyText}
+                  disabled={!text}
+                  className="cc-btn cc-btn-secondary"
+                >
+                  {copied ? 'Copied ✓' : 'Copy text'}
+                </button>
+                {mode === 'group' && (
+                  <button
+                    type="button"
+                    onClick={shareImage}
+                    disabled={!imageDataUrl}
+                    className="btn-primary"
+                    style={{ minWidth: 140 }}
+                  >
+                    Share image
+                  </button>
+                )}
+              </div>
+            </>
           )}
-
-          {/* Text */}
-          <div className="space-y-2">
-            <label className="text-xs text-gray-400">Text version</label>
-            <pre
-              className="text-xs leading-relaxed whitespace-pre-wrap rounded-lg p-3 font-mono"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}
-            >
-              {text || (mode === 'individual' ? 'Pick a player to render.' : '')}
-            </pre>
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={copyText} disabled={!text} className="cc-btn cc-btn-secondary">
-              {copied ? 'Copied ✓' : 'Copy text'}
-            </button>
-            {mode === 'group' && (
-              <button type="button" onClick={shareImage} disabled={!imageDataUrl} className="cc-btn cc-btn-primary">
-                Share image
-              </button>
-            )}
-          </div>
-          </>}
         </div>
       </BottomSheetBody>
     </BottomSheet>

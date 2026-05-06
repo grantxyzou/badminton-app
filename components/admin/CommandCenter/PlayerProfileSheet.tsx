@@ -25,11 +25,15 @@ interface PlayerProfileSheetProps {
   memberId: string | null;
 }
 
-/**
- * Find the player record for a given (sessionId, memberId) and PATCH paid.
- * The history endpoint exposes session ids but not player ids, so we fetch
- * the session's roster, find the matching player, then PATCH.
- */
+function fmtDate(iso: string): string {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch {
+    return iso.slice(0, 10);
+  }
+}
+
 async function togglePaidForPastSession(sessionId: string, memberId: string, nextPaid: boolean): Promise<boolean> {
   const url = `${BASE}/api/players?sessionId=${encodeURIComponent(sessionId)}&all=true`;
   const res = await fetch(url, { cache: 'no-store' });
@@ -45,54 +49,11 @@ async function togglePaidForPastSession(sessionId: string, memberId: string, nex
   return patchRes.ok;
 }
 
-function fmtDate(iso: string): string {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  } catch {
-    return iso.slice(0, 10);
-  }
-}
-
 export default function PlayerProfileSheet({ open, onClose, memberId }: PlayerProfileSheetProps) {
   const [history, setHistory] = useState<History | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [updatingSession, setUpdatingSession] = useState<string | null>(null);
-
-  async function handleTogglePaid(entry: SessionEntry) {
-    if (!memberId || updatingSession) return;
-    if (!entry.attended) return; // can't pay for a session you didn't attend
-    setUpdatingSession(entry.sessionId);
-    const nextPaid = !entry.paid;
-    // Optimistic
-    setHistory((prev) => prev ? {
-      ...prev,
-      sessions: prev.sessions.map((s) =>
-        s.sessionId === entry.sessionId ? { ...s, paid: nextPaid } : s,
-      ),
-      lifetime: {
-        ...prev.lifetime,
-        totalPaid: prev.lifetime.totalPaid + (nextPaid ? 1 : -1),
-      },
-    } : prev);
-
-    const ok = await togglePaidForPastSession(entry.sessionId, memberId, nextPaid);
-    if (!ok) {
-      // Rollback
-      setHistory((prev) => prev ? {
-        ...prev,
-        sessions: prev.sessions.map((s) =>
-          s.sessionId === entry.sessionId ? { ...s, paid: !nextPaid } : s,
-        ),
-        lifetime: {
-          ...prev.lifetime,
-          totalPaid: prev.lifetime.totalPaid + (nextPaid ? -1 : 1),
-        },
-      } : prev);
-    }
-    setUpdatingSession(null);
-  }
 
   useEffect(() => {
     if (!open || !memberId) {
@@ -120,42 +81,113 @@ export default function PlayerProfileSheet({ open, onClose, memberId }: PlayerPr
     return () => { cancelled = true; };
   }, [open, memberId]);
 
+  async function handleTogglePaid(entry: SessionEntry) {
+    if (!memberId || updatingSession) return;
+    if (!entry.attended) return;
+    setUpdatingSession(entry.sessionId);
+    const nextPaid = !entry.paid;
+
+    setHistory((prev) => prev ? {
+      ...prev,
+      sessions: prev.sessions.map((s) =>
+        s.sessionId === entry.sessionId ? { ...s, paid: nextPaid } : s,
+      ),
+      lifetime: {
+        ...prev.lifetime,
+        totalPaid: prev.lifetime.totalPaid + (nextPaid ? 1 : -1),
+      },
+    } : prev);
+
+    const ok = await togglePaidForPastSession(entry.sessionId, memberId, nextPaid);
+    if (!ok) {
+      setHistory((prev) => prev ? {
+        ...prev,
+        sessions: prev.sessions.map((s) =>
+          s.sessionId === entry.sessionId ? { ...s, paid: !nextPaid } : s,
+        ),
+        lifetime: {
+          ...prev.lifetime,
+          totalPaid: prev.lifetime.totalPaid + (nextPaid ? -1 : 1),
+        },
+      } : prev);
+    }
+    setUpdatingSession(null);
+  }
+
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel="Player profile" maxHeight="85vh">
-      <BottomSheetHeader>
-        <div className="flex items-center justify-between px-4 py-3">
-          <h2 className="bpm-h3">{history?.member.name ?? 'Player'}</h2>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-200" aria-label="Close">
-            <span className="material-icons">close</span>
-          </button>
-        </div>
+    <BottomSheet open={open} onClose={onClose} ariaLabel="Player profile" maxHeight="85vh" className="max-w-lg mx-auto">
+      <BottomSheetHeader className="flex items-center justify-between p-4">
+        <span style={{ fontSize: 16, fontWeight: 600 }}>{history?.member.name ?? 'Player'}</span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          style={{
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            minWidth: 44,
+            minHeight: 44,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <span className="material-icons" style={{ fontSize: 20 }}>close</span>
+        </button>
       </BottomSheetHeader>
-      <BottomSheetBody>
-        <div className="space-y-4 pb-6">
-          {loading && <p className="text-sm text-gray-400">Loading…</p>}
-          {error && <p className="text-sm text-red-400" role="alert">{error}</p>}
+
+      <BottomSheetBody className="p-5 pb-8">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {loading && <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>Loading…</p>}
+          {error && (
+            <p role="alert" style={{ fontSize: 13, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+              {error}
+            </p>
+          )}
 
           {history && !loading && (
             <>
-              <div className="grid grid-cols-2 gap-3">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <Stat label="Sessions attended" value={history.lifetime.attended} />
                 <Stat label="Times paid" value={history.lifetime.totalPaid} />
               </div>
 
-              <div>
-                <h4 className="text-xs text-gray-400 uppercase tracking-wide mb-2">Recent sessions</h4>
+              <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <h4 style={{
+                  fontSize: 11,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  color: 'var(--text-muted)',
+                  margin: 0,
+                  fontWeight: 600,
+                }}>
+                  Recent sessions
+                </h4>
                 {history.sessions.length === 0 ? (
-                  <p className="text-sm text-gray-400">No sessions on record yet.</p>
+                  <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
+                    No sessions on record yet.
+                  </p>
                 ) : (
-                  <ul className="space-y-1" role="list">
-                    {history.sessions.slice(0, 12).map((s) => (
+                  <ul role="list" style={{ display: 'flex', flexDirection: 'column', gap: 0, listStyle: 'none', margin: 0, padding: 0 }}>
+                    {history.sessions.slice(0, 12).map((s, i, arr) => (
                       <li
                         key={s.sessionId}
-                        className="flex items-center justify-between gap-3 py-2 text-sm"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 12,
+                          padding: '12px 0',
+                          borderBottom: i < arr.length - 1 ? '1px solid var(--border-subtle, rgba(255,255,255,0.06))' : 'none',
+                          fontSize: 14,
+                        }}
                       >
-                        <span className="text-gray-200">{fmtDate(s.date)}</span>
-                        <span className="flex items-center gap-2">
-                          {!s.attended && <span className="text-xs text-gray-500">Missed</span>}
+                        <span style={{ color: 'var(--text-primary)' }}>{fmtDate(s.date)}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {!s.attended && (
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Missed</span>
+                          )}
                           {s.attended && (
                             <button
                               type="button"
@@ -175,11 +207,11 @@ export default function PlayerProfileSheet({ open, onClose, memberId }: PlayerPr
                   </ul>
                 )}
                 {history.sessions.length > 12 && (
-                  <p className="text-xs text-gray-400 mt-2">
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
                     +{history.sessions.length - 12} more older sessions
                   </p>
                 )}
-              </div>
+              </section>
             </>
           )}
         </div>
@@ -190,9 +222,16 @@ export default function PlayerProfileSheet({ open, onClose, memberId }: PlayerPr
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg p-3" style={{ background: 'rgba(255,255,255,0.04)' }}>
-      <p className="bpm-h2">{value}</p>
-      <p className="text-xs text-gray-400 mt-0.5">{label}</p>
+    <div
+      style={{
+        padding: 12,
+        borderRadius: 12,
+        background: 'var(--input-bg)',
+        border: '1px solid var(--border-subtle, rgba(255,255,255,0.06))',
+      }}
+    >
+      <p style={{ fontSize: 28, fontWeight: 600, lineHeight: 1.1, margin: 0, color: 'var(--text-primary)' }}>{value}</p>
+      <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0 0' }}>{label}</p>
     </div>
   );
 }
