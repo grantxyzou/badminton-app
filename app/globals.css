@@ -403,6 +403,147 @@ h1, h2, h3, h4 {
   letter-spacing: -0.01em;
 }
 
+/* ── TopBar / PageHeader (sticky scroll-condensed) ──
+   Per `TopBar Spec.html` design handoff (2026-05-06). At-rest is
+   transparent; on `.scrolled` (scrollY > 8) the bar gets a frosted
+   backdrop, hairline divider, the crumb collapses, and the title
+   shrinks. `--topbar-bg-scrolled` defaults to dark; light-theme
+   override below uses a cream tint that reads on light backgrounds. */
+:root {
+  --topbar-bg-scrolled: rgba(20, 20, 20, 0.72);
+  --topbar-border-scrolled: rgba(255, 255, 255, 0.06);
+}
+[data-theme="light"] {
+  --topbar-bg-scrolled: rgba(248, 246, 240, 0.78);
+  --topbar-border-scrolled: rgba(20, 30, 50, 0.08);
+}
+
+.bpm-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px 14px;
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition:
+    background 0.25s ease,
+    backdrop-filter 0.25s ease,
+    padding 0.25s ease,
+    border-color 0.25s ease;
+}
+.bpm-topbar.scrolled {
+  background: var(--topbar-bg-scrolled);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border-bottom-color: var(--topbar-border-scrolled);
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.bpm-topbar__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: -10px -8px -10px -10px;
+  color: var(--text-muted, #a3a3a3);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: color 0.15s ease, transform 0.1s ease;
+}
+.bpm-topbar__back:active { transform: scale(0.94); }
+.bpm-topbar__back:hover { color: var(--text-primary); }
+.bpm-topbar__back:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.bpm-topbar__back .material-icons { font-size: 24px; }
+.bpm-topbar__col {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.bpm-topbar__crumb {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted, #737373);
+  transition: opacity 0.2s ease, max-height 0.25s ease;
+  max-height: 1.5em;
+  line-height: 1.4;
+}
+.bpm-topbar.scrolled .bpm-topbar__crumb {
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+}
+.bpm-topbar__title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--text-primary);
+  margin: 0;
+  transition: font-size 0.25s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bpm-topbar.scrolled .bpm-topbar__title { font-size: 1rem; }
+.bpm-topbar__right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bpm-page-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 8px 14px;
+  margin: 0 -8px;
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition:
+    background 0.25s ease,
+    backdrop-filter 0.25s ease,
+    padding 0.25s ease,
+    border-color 0.25s ease;
+}
+.bpm-page-header.scrolled {
+  background: var(--topbar-bg-scrolled);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border-bottom-color: var(--topbar-border-scrolled);
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.bpm-page-header__title { transition: font-size 0.25s ease; }
+.bpm-page-header.scrolled .bpm-page-header__title { font-size: 1.125rem; }
+.bpm-page-header__action { display: flex; align-items: center; gap: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bpm-topbar,
+  .bpm-topbar__title,
+  .bpm-topbar__crumb,
+  .bpm-page-header,
+  .bpm-page-header__title { transition-duration: 0ms; }
+}
+
 /* ── 02 Aurora background ──
    Bundle variant 02 (per docs/design-system/preview/24-app-background.html +
    assets/aurora-bg.css). Three breathing blobs: slate-blue + court-green +
