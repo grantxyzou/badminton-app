@@ -23,6 +23,9 @@ interface Player {
 
 interface NextSessionCardProps {
   refreshKey?: number;
+  onEdit?: () => void;
+  onAdvance?: () => void;
+  onEditDateTime?: () => void;
 }
 
 function fmtDate(iso: string | undefined): string {
@@ -51,7 +54,7 @@ function fmtCountdown(deadline: string | undefined): string | null {
   return `${mins}m`;
 }
 
-export default function NextSessionCard({ refreshKey = 0 }: NextSessionCardProps) {
+export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onEditDateTime }: NextSessionCardProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [activeCount, setActiveCount] = useState<number>(0);
   const [waitlistCount, setWaitlistCount] = useState<number>(0);
@@ -135,6 +138,39 @@ export default function NextSessionCard({ refreshKey = 0 }: NextSessionCardProps
           Deadline: <span className="text-gray-200">{countdown === 'closed' ? 'Passed' : countdown + ' left'}</span>
         </p>
       )}
+
+      <div className="flex flex-wrap gap-2 pt-1">
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="text-xs px-3 py-1.5 rounded-full"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
+          >
+            Edit details
+          </button>
+        )}
+        {onEditDateTime && (
+          <button
+            type="button"
+            onClick={onEditDateTime}
+            className="text-xs px-3 py-1.5 rounded-full"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
+          >
+            Date & time
+          </button>
+        )}
+        {onAdvance && (
+          <button
+            type="button"
+            onClick={onAdvance}
+            className="text-xs px-3 py-1.5 rounded-full"
+            style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', color: '#86efac' }}
+          >
+            Advance →
+          </button>
+        )}
+      </div>
     </section>
   );
 }

@@ -10,7 +10,11 @@ interface BirdSummary {
   totalUsed: number;
 }
 
-export default function BirdInventoryCard() {
+interface BirdInventoryCardProps {
+  onOpen?: () => void;
+}
+
+export default function BirdInventoryCard({ onOpen }: BirdInventoryCardProps = {}) {
   const [summary, setSummary] = useState<BirdSummary | null>(null);
   const [weeksOfBurnRate, setWeeksOfBurnRate] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,6 +88,15 @@ export default function BirdInventoryCard() {
         <p className="text-xs" style={{ color: '#fca5a5' }}>
           Low stock — consider ordering soon.
         </p>
+      )}
+      {onOpen && (
+        <button
+          type="button"
+          onClick={onOpen}
+          className="text-xs text-gray-300 hover:text-gray-100 underline-offset-2 hover:underline pt-1"
+        >
+          Manage inventory →
+        </button>
       )}
     </section>
   );

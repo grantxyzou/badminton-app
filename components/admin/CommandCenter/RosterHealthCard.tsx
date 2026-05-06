@@ -22,7 +22,11 @@ interface RosterHealth {
   recentRemovals: number;
 }
 
-export default function RosterHealthCard() {
+interface RosterHealthCardProps {
+  onOpen?: () => void;
+}
+
+export default function RosterHealthCard({ onOpen }: RosterHealthCardProps = {}) {
   const [health, setHealth] = useState<RosterHealth | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -80,6 +84,15 @@ export default function RosterHealthCard() {
           tone={health.recentRemovals >= 3 ? 'warning' : 'neutral'}
         />
       </div>
+      {onOpen && (
+        <button
+          type="button"
+          onClick={onOpen}
+          className="text-xs text-gray-300 hover:text-gray-100 underline-offset-2 hover:underline"
+        >
+          Manage roster →
+        </button>
+      )}
     </section>
   );
 }
