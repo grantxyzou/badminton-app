@@ -13,8 +13,12 @@
 # Edit this file with each session date + who attended that night, then
 # run the script. Re-running is safe (idempotent).
 #
-# Example rows (replace with real data):
-#   2026-02-19,Grant Bruce Chris David Desmond Ethan
-#   2026-02-26,Grant Chris David Ethan
-#   2026-03-05,Grant Bruce David Desmond
+
 date,names
+2026-02-19,Michelle Will Zac Joshark Bruce Desmond Nick Johnson Ethan Thomas Chantel
+2026-02-26,Michelle Jammy Sophia Zac Josh Bruce Patrick Molly Stephen Angel
+2026-03-05,Michelle Jammy Sophia Josh Bruce Patrick Molly Desmond Nick Johnson Ethan
+2026-03-12,Michelle Jammy Sophia Josh Patrick Molly Hao
+2026-03-19,Michelle Jammy Sophia Karen Will Josh Patrick Molly Rachel Desmond Jason Jimmy
+2026-03-26,Michelle Jammy Sophia Karen Will Josh Stephen Nick Ethan Jimmy
+2026-04-02,Jammy Sophia Karen Will Zac Bruce Rachel Stephen Desmond Jason

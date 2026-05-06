@@ -100,7 +100,7 @@ export default function ReceiptSheet({ open, onClose, input, initialMode = 'grou
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel="Receipt" maxHeight="90vh">
+    <BottomSheet open={open} onClose={onClose} ariaLabel="Receipt" maxHeight="80vh">
       <BottomSheetHeader>
         <div className="flex items-center justify-between px-4 py-3">
           <h2 className="bpm-h3">Receipt</h2>
@@ -148,10 +148,15 @@ export default function ReceiptSheet({ open, onClose, input, initialMode = 'grou
             </div>
           )}
 
-          {/* Image preview (group only) */}
+          {/* Image preview (group only) — capped width on mobile so the
+              390px native canvas doesn't push past the viewport. */}
           {mode === 'group' && (
             <div className="rounded-lg overflow-hidden flex justify-center" style={{ background: 'rgba(255,255,255,0.02)' }}>
-              <canvas ref={canvasRef} aria-label="Receipt image preview" />
+              <canvas
+                ref={canvasRef}
+                aria-label="Receipt image preview"
+                style={{ maxWidth: '100%', height: 'auto' }}
+              />
             </div>
           )}
 
@@ -168,23 +173,11 @@ export default function ReceiptSheet({ open, onClose, input, initialMode = 'grou
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={copyText}
-              disabled={!text}
-              className="text-sm px-4 py-2 rounded-full disabled:opacity-50"
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
-            >
+            <button type="button" onClick={copyText} disabled={!text} className="cc-btn cc-btn-secondary">
               {copied ? 'Copied ✓' : 'Copy text'}
             </button>
             {mode === 'group' && (
-              <button
-                type="button"
-                onClick={shareImage}
-                disabled={!imageDataUrl}
-                className="text-sm px-4 py-2 rounded-full disabled:opacity-50"
-                style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', color: '#86efac' }}
-              >
+              <button type="button" onClick={shareImage} disabled={!imageDataUrl} className="cc-btn cc-btn-primary">
                 Share image
               </button>
             )}

@@ -90,11 +90,7 @@ export default function BirdInventoryCard({ onOpen }: BirdInventoryCardProps = {
         </p>
       )}
       {onOpen && (
-        <button
-          type="button"
-          onClick={onOpen}
-          className="text-xs text-gray-300 hover:text-gray-100 underline-offset-2 hover:underline pt-1"
-        >
+        <button type="button" onClick={onOpen} className="cc-btn cc-btn-secondary self-start">
           Manage inventory →
         </button>
       )}

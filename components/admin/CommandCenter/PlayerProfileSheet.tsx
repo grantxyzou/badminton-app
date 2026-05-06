@@ -25,6 +25,26 @@ interface PlayerProfileSheetProps {
   memberId: string | null;
 }
 
+/**
+ * Find the player record for a given (sessionId, memberId) and PATCH paid.
+ * The history endpoint exposes session ids but not player ids, so we fetch
+ * the session's roster, find the matching player, then PATCH.
+ */
+async function togglePaidForPastSession(sessionId: string, memberId: string, nextPaid: boolean): Promise<boolean> {
+  const url = `${BASE}/api/players?sessionId=${encodeURIComponent(sessionId)}&all=true`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) return false;
+  const players = (await res.json()) as Array<{ id: string; memberId?: string; name?: string }>;
+  const target = players.find((p) => p.memberId === memberId);
+  if (!target) return false;
+  const patchRes = await fetch(`${BASE}/api/players`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: target.id, paid: nextPaid, sessionId }),
+  });
+  return patchRes.ok;
+}
+
 function fmtDate(iso: string): string {
   if (!iso) return '—';
   try {
@@ -38,6 +58,41 @@ export default function PlayerProfileSheet({ open, onClose, memberId }: PlayerPr
   const [history, setHistory] = useState<History | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [updatingSession, setUpdatingSession] = useState<string | null>(null);
+
+  async function handleTogglePaid(entry: SessionEntry) {
+    if (!memberId || updatingSession) return;
+    if (!entry.attended) return; // can't pay for a session you didn't attend
+    setUpdatingSession(entry.sessionId);
+    const nextPaid = !entry.paid;
+    // Optimistic
+    setHistory((prev) => prev ? {
+      ...prev,
+      sessions: prev.sessions.map((s) =>
+        s.sessionId === entry.sessionId ? { ...s, paid: nextPaid } : s,
+      ),
+      lifetime: {
+        ...prev.lifetime,
+        totalPaid: prev.lifetime.totalPaid + (nextPaid ? 1 : -1),
+      },
+    } : prev);
+
+    const ok = await togglePaidForPastSession(entry.sessionId, memberId, nextPaid);
+    if (!ok) {
+      // Rollback
+      setHistory((prev) => prev ? {
+        ...prev,
+        sessions: prev.sessions.map((s) =>
+          s.sessionId === entry.sessionId ? { ...s, paid: !nextPaid } : s,
+        ),
+        lifetime: {
+          ...prev.lifetime,
+          totalPaid: prev.lifetime.totalPaid + (nextPaid ? -1 : 1),
+        },
+      } : prev);
+    }
+    setUpdatingSession(null);
+  }
 
   useEffect(() => {
     if (!open || !memberId) {
@@ -102,11 +157,17 @@ export default function PlayerProfileSheet({ open, onClose, memberId }: PlayerPr
                         <span className="flex items-center gap-2">
                           {!s.attended && <span className="text-xs text-gray-500">Missed</span>}
                           {s.attended && (
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded-full ${s.paid ? 'pill-paid' : 'pill-unpaid'}`}
+                            <button
+                              type="button"
+                              onClick={() => handleTogglePaid(s)}
+                              disabled={updatingSession === s.sessionId}
+                              className={`text-xs font-medium px-3 py-1.5 rounded-full ${s.paid ? 'pill-paid' : 'pill-unpaid'} disabled:opacity-50`}
+                              aria-pressed={s.paid}
+                              aria-label={`Mark ${s.paid ? 'unpaid' : 'paid'} for ${fmtDate(s.date)}`}
+                              title="Tap to toggle paid status"
                             >
-                              {s.paid ? 'Paid' : 'Unpaid'}
-                            </span>
+                              {updatingSession === s.sessionId ? '…' : s.paid ? 'Paid' : 'Unpaid'}
+                            </button>
                           )}
                         </span>
                       </li>

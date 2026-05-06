@@ -100,8 +100,7 @@ export default function SkipDatesEditor() {
           type="button"
           onClick={addDate}
           disabled={saving || !adding}
-          className="text-xs px-3 py-1.5 rounded-full disabled:opacity-50"
-          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
+          className="cc-btn cc-btn-secondary"
         >
           Add
         </button>

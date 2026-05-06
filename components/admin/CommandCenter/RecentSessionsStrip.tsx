@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -25,6 +25,8 @@ function fmtDate(iso: string): string {
 export default function RecentSessionsStrip() {
   const [sessions, setSessions] = useState<RecentSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeDot, setActiveDot] = useState(0);
+  const scrollRef = useRef<HTMLUListElement | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,6 +47,16 @@ export default function RecentSessionsStrip() {
 
   useEffect(() => { void load(); }, [load]);
 
+  // Update dot indicator from scroll position.
+  function handleScroll() {
+    const el = scrollRef.current;
+    if (!el || sessions.length === 0) return;
+    const itemWidth = el.scrollWidth / sessions.length;
+    if (itemWidth <= 0) return;
+    const idx = Math.round(el.scrollLeft / itemWidth);
+    setActiveDot(Math.max(0, Math.min(sessions.length - 1, idx)));
+  }
+
   if (loading) return null;
   if (sessions.length === 0) {
     return (
@@ -58,7 +70,12 @@ export default function RecentSessionsStrip() {
   return (
     <section className="glass-card p-4 space-y-3" aria-label="Recent sessions">
       <h3 className="bpm-h3">Recent sessions</h3>
-      <ul className="flex gap-3 overflow-x-auto -mx-1 px-1 pb-1 snap-x snap-mandatory" role="list">
+      <ul
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="cc-no-scrollbar flex gap-3 overflow-x-auto -mx-1 px-1 pb-1 snap-x snap-mandatory"
+        role="list"
+      >
         {sessions.map((s) => (
           <li
             key={s.sessionId}
@@ -69,7 +86,9 @@ export default function RecentSessionsStrip() {
             }}
           >
             <p className="text-xs text-gray-400">{fmtDate(s.date)}</p>
-            <p className="bpm-h3 mt-1">{s.attendanceCount} <span className="text-xs text-gray-400 font-normal">players</span></p>
+            <p className="bpm-h3 mt-1">
+              {s.attendanceCount} <span className="text-xs text-gray-400 font-normal">players</span>
+            </p>
             <p className="text-xs text-gray-400 mt-1">{s.paidPercent}% paid</p>
             {s.anomalyCodes.length > 0 && (
               <p className="text-xs mt-1" style={{ color: '#fcd34d' }}>
@@ -79,6 +98,21 @@ export default function RecentSessionsStrip() {
           </li>
         ))}
       </ul>
+      {sessions.length > 1 && (
+        <div className="flex justify-center gap-1.5 pt-1" aria-hidden="true">
+          {sessions.map((_, i) => (
+            <span
+              key={i}
+              className="rounded-full transition-all"
+              style={{
+                width: i === activeDot ? '14px' : '6px',
+                height: '6px',
+                background: i === activeDot ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)',
+              }}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

@@ -141,32 +141,17 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onE
 
       <div className="flex flex-wrap gap-2 pt-1">
         {onEdit && (
-          <button
-            type="button"
-            onClick={onEdit}
-            className="text-xs px-3 py-1.5 rounded-full"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
-          >
+          <button type="button" onClick={onEdit} className="cc-btn cc-btn-secondary">
             Edit details
           </button>
         )}
         {onEditDateTime && (
-          <button
-            type="button"
-            onClick={onEditDateTime}
-            className="text-xs px-3 py-1.5 rounded-full"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
-          >
+          <button type="button" onClick={onEditDateTime} className="cc-btn cc-btn-secondary">
             Date & time
           </button>
         )}
         {onAdvance && (
-          <button
-            type="button"
-            onClick={onAdvance}
-            className="text-xs px-3 py-1.5 rounded-full"
-            style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', color: '#86efac' }}
-          >
+          <button type="button" onClick={onAdvance} className="cc-btn cc-btn-primary">
             Advance →
           </button>
         )}
