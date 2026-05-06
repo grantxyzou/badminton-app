@@ -89,15 +89,29 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Detect anomalies: cost changes between advances
+      // Detect anomalies: settings drift between advances
       const newCostPerCourt = typeof body.costPerCourt === 'number' ? Math.max(0, Math.min(500, body.costPerCourt)) : (currentSession.costPerCourt ?? 0);
       const newCourts = Math.max(1, Math.min(20, parseInt(body.courts, 10) || 2));
+      const newMaxPlayers = Math.max(1, Math.min(100, parseInt(body.maxPlayers, 10) || 12));
 
       if (newCostPerCourt !== prevSnapshot.costPerCourt) {
         anomaliesAtAdvance.push('cost_changed');
       }
       if (newCourts !== prevSnapshot.courtCount) {
         anomaliesAtAdvance.push('courts_changed');
+      }
+      if (newMaxPlayers !== prevSnapshot.maxPlayers) {
+        anomaliesAtAdvance.push('max_players_changed');
+      }
+
+      // long_break: gap between previous session start and new session start > 21 days
+      if (currentSession.datetime) {
+        const prevStartMs = new Date(currentSession.datetime).getTime();
+        const newStartMs = new Date(datetime).getTime();
+        if (Number.isFinite(prevStartMs) && Number.isFinite(newStartMs)
+            && (newStartMs - prevStartMs) > 21 * 86_400_000) {
+          anomaliesAtAdvance.push('long_break');
+        }
       }
     }
 
@@ -116,8 +130,7 @@ export async function POST(req: NextRequest) {
       ...(typeof body.costPerCourt === 'number' ? { costPerCourt: Math.max(0, Math.min(500, body.costPerCourt)) } : {}),
       ...(prevSessionDate ? { prevSessionDate } : {}),
       ...(prevCostPerPerson ? { prevCostPerPerson } : {}),
-      ...(prevSnapshot ? { prevSnapshot } : {}),
-      ...(anomaliesAtAdvance.length > 0 ? { anomaliesAtAdvance } : {}),
+      ...(prevSnapshot ? { prevSnapshot, anomaliesAtAdvance } : {}),
     };
 
     await container.items.upsert(newSession);
