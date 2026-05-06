@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import PageHeader from '../../primitives/PageHeader';
 import AnomalyFeed from './AnomalyFeed';
@@ -12,12 +12,20 @@ import RecentSessionsStrip from './RecentSessionsStrip';
 import AnnouncementsCard from './AnnouncementsCard';
 import PlayerProfileSheet from './PlayerProfileSheet';
 import SkipDatesEditor from './SkipDatesEditor';
+import ReceiptSheet from './ReceiptSheet';
 import type { AdminView } from '../types';
+import type { ReceiptInput } from '@/lib/receiptTemplate';
+import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
+
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+
+export interface OpenReceiptOpts {
+  mode: 'group' | 'individual';
+  playerName?: string;
+}
 
 interface CommandCenterProps {
-  /** Same prop the legacy Dashboard uses — bumped when admin returns from a drill-in. */
   refreshKey: number;
-  /** Same drill-in router as the legacy Dashboard. */
   setView: (v: AdminView) => void;
 }
 
@@ -25,24 +33,74 @@ interface CommandCenterProps {
  * The new admin landing surface — a stack of cards that surfaces state
  * across every admin domain (session, payments, birds, roster) so the
  * organizer can confirm "everything looks right" in 30 seconds.
- *
- * Currently behind NEXT_PUBLIC_FLAG_COMMAND_CENTER. Cards are added one at
- * a time; until they're all live, this component renders alongside the
- * legacy Dashboard depending on the flag.
  */
 export default function CommandCenter({ refreshKey, setView }: CommandCenterProps) {
   const pageT = useTranslations('pages.admin');
-  // Local refresh — bumped when an action inside a card needs the feed to refetch.
   const [localRefresh, setLocalRefresh] = useState(0);
   const composedRefresh = refreshKey + localRefresh;
 
   const [profileMemberId, setProfileMemberId] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
 
+  // Receipt state lifted to CommandCenter so both NextSession (group share)
+  // and Payments (per-player nudge) can trigger the same sheet.
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [receiptMode, setReceiptMode] = useState<'group' | 'individual'>('group');
+  const [receiptPlayer, setReceiptPlayer] = useState<string | null>(null);
+  const [receiptInput, setReceiptInput] = useState<ReceiptInput | null>(null);
+  const [receiptError, setReceiptError] = useState('');
+
   function openPlayer(memberId: string) {
     setProfileMemberId(memberId);
     setProfileOpen(true);
   }
+
+  const openReceipt = useCallback(async (opts: OpenReceiptOpts) => {
+    setReceiptError('');
+    setReceiptMode(opts.mode);
+    setReceiptPlayer(opts.playerName ?? null);
+    setReceiptOpen(true);
+
+    // Fetch the latest data each time so the receipt reflects current state.
+    try {
+      const [sessionRes, playersRes, membersRes] = await Promise.all([
+        fetch(`${BASE}/api/session`, { cache: 'no-store' }),
+        fetch(`${BASE}/api/players`, { cache: 'no-store' }),
+        fetch(`${BASE}/api/members`, { cache: 'no-store' }),
+      ]);
+      const session = sessionRes.ok ? await sessionRes.json() : null;
+      const players = playersRes.ok ? (await playersRes.json()) as Array<{ name: string; removed?: boolean; waitlisted?: boolean }> : [];
+      const members = membersRes.ok ? (await membersRes.json()) as Array<{ role?: string; eTransferRecipient?: { name: string; email: string; memo?: string } }> : [];
+      const adminMember = Array.isArray(members) ? members.find((m) => m.role === 'admin') : null;
+
+      const recipient = session?.eTransferRecipient ?? adminMember?.eTransferRecipient ?? null;
+      if (!recipient || !session?.datetime) {
+        setReceiptError('Set an e-transfer recipient first (admin settings) before sharing.');
+        setReceiptInput(null);
+        return;
+      }
+      const active = players.filter((p) => !p.removed && !p.waitlisted);
+      const courtTotal = (session.costPerCourt ?? 0) * (session.courts ?? 0);
+      const birdTotal = totalBirdCost(normalizeBirdUsages(session));
+      const totalCost = courtTotal + birdTotal;
+      const costPerPerson = active.length > 0 && totalCost > 0
+        ? Math.round((totalCost / active.length) * 100) / 100
+        : 0;
+
+      setReceiptInput({
+        datetime: session.datetime,
+        costPerPerson,
+        courts: session.courts ?? 0,
+        totalCost,
+        playerNames: active.map((p) => p.name),
+        recipient: { name: recipient.name, email: recipient.email },
+        memoTemplate: recipient.memo,
+      });
+    } catch {
+      setReceiptError('Failed to load receipt data.');
+      setReceiptInput(null);
+    }
+  }, []);
 
   return (
     <div className="space-y-5 w-full">
@@ -54,9 +112,14 @@ export default function CommandCenter({ refreshKey, setView }: CommandCenterProp
         onEdit={() => setView('session-details')}
         onEditDateTime={() => setView('date-time')}
         onAdvance={() => setView('advance')}
+        onShareCost={() => openReceipt({ mode: 'group' })}
       />
       <AnnouncementsCard refreshKey={composedRefresh} />
-      <PaymentsCard refreshKey={composedRefresh} onOpenPlayer={openPlayer} />
+      <PaymentsCard
+        refreshKey={composedRefresh}
+        onOpenPlayer={openPlayer}
+        onSendIndividualReceipt={(name) => openReceipt({ mode: 'individual', playerName: name })}
+      />
       <BirdInventoryCard onOpen={() => setView('birds')} />
       <RosterHealthCard onOpen={() => setView('members')} />
       <RecentSessionsStrip />
@@ -78,9 +141,16 @@ export default function CommandCenter({ refreshKey, setView }: CommandCenterProp
         memberId={profileMemberId}
       />
 
-      {/* Hidden bump, exposed via window for test/dev — not used in real flow. */}
+      <ReceiptSheet
+        open={receiptOpen}
+        onClose={() => setReceiptOpen(false)}
+        input={receiptInput}
+        error={receiptError}
+        initialMode={receiptMode}
+        initialPlayerName={receiptPlayer ?? undefined}
+      />
+
       <button type="button" hidden onClick={() => setLocalRefresh((n) => n + 1)} />
     </div>
   );
 }
-

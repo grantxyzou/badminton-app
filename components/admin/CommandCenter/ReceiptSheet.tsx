@@ -14,13 +14,15 @@ interface ReceiptSheetProps {
   onClose: () => void;
   /** All data needed to render the receipt. */
   input: ReceiptInput | null;
+  /** Surface-level error from the caller (e.g. missing recipient). */
+  error?: string;
   /** Initial mode. Group is the primary use case. */
   initialMode?: 'group' | 'individual';
   /** Pre-selected player when opening in individual mode. */
   initialPlayerName?: string;
 }
 
-export default function ReceiptSheet({ open, onClose, input, initialMode = 'group', initialPlayerName }: ReceiptSheetProps) {
+export default function ReceiptSheet({ open, onClose, input, error, initialMode = 'group', initialPlayerName }: ReceiptSheetProps) {
   const [mode, setMode] = useState<'group' | 'individual'>(initialMode);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(initialPlayerName ?? null);
   const [copied, setCopied] = useState(false);
@@ -95,7 +97,9 @@ export default function ReceiptSheet({ open, onClose, input, initialMode = 'grou
     a.click();
   }
 
-  if (!input) {
+  // Even when input is null, render the sheet shell so we can show an error
+  // message if the caller passed one (e.g. "set an e-transfer recipient first").
+  if (!input && !error) {
     return null;
   }
 
@@ -111,6 +115,16 @@ export default function ReceiptSheet({ open, onClose, input, initialMode = 'grou
       </BottomSheetHeader>
       <BottomSheetBody>
         <div className="space-y-4 pb-6">
+          {error && (
+            <div
+              className="rounded-lg p-3 text-sm"
+              style={{ background: 'rgba(239, 68, 68, 0.10)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fca5a5' }}
+              role="alert"
+            >
+              {error}
+            </div>
+          )}
+          {!input ? null : <>
           {/* Mode toggle */}
           <div className="segment-control">
             <button
@@ -182,6 +196,7 @@ export default function ReceiptSheet({ open, onClose, input, initialMode = 'grou
               </button>
             )}
           </div>
+          </>}
         </div>
       </BottomSheetBody>
     </BottomSheet>
