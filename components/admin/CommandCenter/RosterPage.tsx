@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import AdminBackHeader from '../AdminBackHeader';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import type { Member, Alias } from '@/lib/types';
@@ -101,6 +102,10 @@ export default function RosterPage({ onBack }: RosterPageProps) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterKey>('all');
+
+  // SSR-safe portal mount guard
+  const [portalReady, setPortalReady] = useState(false);
+  useEffect(() => { setPortalReady(true); }, []);
 
   // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -567,31 +572,36 @@ export default function RosterPage({ onBack }: RosterPageProps) {
         ))}
       </div>
 
-      {/* FAB — add new member */}
-      <button
-        type="button"
-        onClick={openAddSheet}
-        aria-label="Add member"
-        style={{
-          position: 'fixed',
-          bottom: 96,
-          right: 22,
-          width: 56,
-          height: 56,
-          borderRadius: '50%',
-          background: 'var(--accent)',
-          color: '#0a1f10',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 12px 28px rgba(74,222,128,0.4), 0 2px 6px rgba(0,0,0,0.4)',
-          border: 0,
-          cursor: 'pointer',
-          zIndex: 6,
-        }}
-      >
-        <span className="material-icons" style={{ fontSize: 26 }}>person_add</span>
-      </button>
+      {/* FAB — add new member. Rendered via portal so the page-level
+          translateX animation (which creates a containing block) doesn't
+          turn `position: fixed` into "scrolls with the page". */}
+      {portalReady && createPortal(
+        <button
+          type="button"
+          onClick={openAddSheet}
+          aria-label="Add member"
+          style={{
+            position: 'fixed',
+            bottom: 96,
+            right: 22,
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: 'var(--accent)',
+            color: '#0a1f10',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 12px 28px rgba(74,222,128,0.4), 0 2px 6px rgba(0,0,0,0.4)',
+            border: 0,
+            cursor: 'pointer',
+            zIndex: 6,
+          }}
+        >
+          <span className="material-icons" style={{ fontSize: 26 }}>person_add</span>
+        </button>,
+        document.body,
+      )}
 
       {/* Add / Edit sheet */}
       <BottomSheet
