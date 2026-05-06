@@ -12,6 +12,7 @@ import RecentSessionsStrip from './RecentSessionsStrip';
 import AnnouncementsCard from './AnnouncementsCard';
 import PlayerProfileSheet from './PlayerProfileSheet';
 import SkipDatesEditor from './SkipDatesEditor';
+import ETransferRecipientEditor from './ETransferRecipientEditor';
 import ReceiptSheet from './ReceiptSheet';
 import type { AdminView } from '../types';
 import type { ReceiptInput } from '@/lib/receiptTemplate';
@@ -123,6 +124,7 @@ export default function CommandCenter({ refreshKey, setView }: CommandCenterProp
       <BirdInventoryCard onOpen={() => setView('birds')} />
       <RosterHealthCard onOpen={() => setView('members')} />
       <RecentSessionsStrip />
+      <ETransferRecipientEditor />
       <SkipDatesEditor />
 
       <div className="flex justify-center pt-2">
