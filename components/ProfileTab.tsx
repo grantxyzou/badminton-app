@@ -34,6 +34,8 @@ export default function ProfileTab({
   // 5xx on /api/members/me silently rendered "Recovery PIN: Not set" and
   // pushed users into a re-create loop that 409'd on `account_exists`.
   const [pinIsSet, setPinIsSet] = useState<boolean | null>(null);
+  const [memberCreatedAt, setMemberCreatedAt] = useState<string | null>(null);
+  const [isSignedUp, setIsSignedUp] = useState<boolean>(false);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
   const [createAccountOpen, setCreateAccountOpen] = useState(false);
   // Anonymous-state inline sign-in form. Replaces the old RecoverySheet path
@@ -89,8 +91,22 @@ export default function ProfileTab({
         if (!r.ok) throw new Error(`hasPin fetch ${r.status}`);
         return r.json();
       })
-      .then((data: { hasPin?: boolean }) => {
-        if (!cancelled) setPinIsSet(data.hasPin === true);
+      .then((data: { hasPin?: boolean; createdAt?: string | null }) => {
+        if (cancelled) return;
+        setPinIsSet(data.hasPin === true);
+        setMemberCreatedAt(typeof data.createdAt === 'string' ? data.createdAt : null);
+      })
+      .then(() => fetch(`${BASE}/api/players`, { cache: 'no-store' }))
+      .then(async (r) => {
+        if (!r || !r.ok) return null;
+        return r.json() as Promise<Array<{ name?: string; removed?: boolean; waitlisted?: boolean }>>;
+      })
+      .then((players) => {
+        if (cancelled || !Array.isArray(players)) return;
+        const here = players.find(
+          (p) => !p.removed && !p.waitlisted && typeof p.name === 'string' && p.name.toLowerCase() === identity.name.toLowerCase(),
+        );
+        setIsSignedUp(!!here);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -288,15 +304,13 @@ export default function ProfileTab({
     <div className="animate-fadeIn flex flex-col gap-4">
       <h1 className="bpm-h1">{tNav('profile')}</h1>
       <div className="glass-card" style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div className="glass-card-soft" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('playerName')}</p>
-          <p style={{ fontSize: 24, fontWeight: 600 }}>{identity.name}</p>
-          {sessionLabel && (
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-              {t('playerSession')} {sessionLabel}
-            </p>
-          )}
-        </div>
+        <ProfileIdentityCard
+          name={identity.name}
+          memberCreatedAt={memberCreatedAt}
+          isSignedUp={isSignedUp}
+          isAdmin={isAdmin}
+          nameLabel={t('playerName')}
+        />
 
         {showAdminHero && (
           <>
@@ -439,6 +453,145 @@ function SettingsList({ title, rows }: { title: string; rows: SettingsRow[] }) {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/* ── Identity card (avatar + name + member-since + In/Admin pills) ── */
+
+const PROFILE_AVA_PALETTE: Array<[string, string]> = [
+  ['#1f3b5c', '#86b4e6'],
+  ['#2c4a2c', '#9ee6a4'],
+  ['#5c3a1f', '#f4c089'],
+  ['#4a2a4a', '#e29ee2'],
+  ['#1f4a4a', '#86d4d4'],
+  ['#5c1f3b', '#f487a9'],
+  ['#3a3a1f', '#e2e289'],
+  ['#3b2c4a', '#b89ee2'],
+];
+
+function profileAvaColors(name: string): { bg: string; fg: string } {
+  const i = (name.charCodeAt(0) || 0) % PROFILE_AVA_PALETTE.length;
+  const [bg, fg] = PROFILE_AVA_PALETTE[i];
+  return { bg, fg };
+}
+
+function fmtMemberSince(iso: string | null): string | null {
+  if (!iso) return null;
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+  } catch {
+    return null;
+  }
+}
+
+interface ProfileIdentityCardProps {
+  name: string;
+  memberCreatedAt: string | null;
+  isSignedUp: boolean;
+  isAdmin: boolean;
+  nameLabel: string;
+}
+
+function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameLabel }: ProfileIdentityCardProps) {
+  const ava = profileAvaColors(name);
+  const memberSince = fmtMemberSince(memberCreatedAt);
+
+  return (
+    <div
+      className="glass-card-soft"
+      style={{
+        padding: 16,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+      }}
+    >
+      <p
+        style={{
+          fontFamily: 'var(--font-display, "Space Grotesk")',
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: '0.16em',
+          textTransform: 'uppercase',
+          color: 'var(--ink-faint, rgba(255,255,255,0.42))',
+          margin: 0,
+        }}
+      >
+        {nameLabel}
+      </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <span
+          aria-hidden="true"
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: '50%',
+            background: ava.bg,
+            color: ava.fg,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontFamily: 'var(--font-display, "Space Grotesk")',
+            fontWeight: 600,
+            fontSize: 20,
+            flexShrink: 0,
+            border: '1px solid rgba(255,255,255,0.10)',
+          }}
+        >
+          {name.slice(0, 1).toUpperCase()}
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p
+            style={{
+              fontFamily: 'var(--font-display, "Space Grotesk")',
+              fontSize: 22,
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
+              margin: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {name}
+          </p>
+          {memberSince && (
+            <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+              Member since {memberSince}
+            </p>
+          )}
+        </div>
+        <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end', flexShrink: 0 }}>
+          {isSignedUp && (
+            <span
+              className="pill-paid"
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              In
+            </span>
+          )}
+          {isAdmin && (
+            <span
+              style={{
+                whiteSpace: 'nowrap',
+                background: 'rgba(167,139,250,0.13)',
+                color: '#a78bfa',
+                border: '1px solid rgba(167,139,250,0.28)',
+                padding: '3px 10px',
+                borderRadius: 999,
+                fontSize: 10.5,
+                fontFamily: 'var(--font-display, "Space Grotesk")',
+                fontWeight: 600,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Admin
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
