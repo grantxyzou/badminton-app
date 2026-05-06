@@ -5,6 +5,7 @@ import type { Session } from '@/lib/types';
 import AdminBackHeader from './AdminBackHeader';
 import DatePicker from '../DatePicker';
 import StatusBanner from '../primitives/StatusBanner';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -45,6 +46,8 @@ export default function AdvanceSessionForm({ onBack }: Props) {
   const [advancing, setAdvancing] = useState(false);
   const [advanceError, setAdvanceError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [skipDates, setSkipDates] = useState<string[]>([]);
+  const [showSkipBlock, setShowSkipBlock] = useState(false);
 
   useEffect(() => {
     fetch(`${BASE}/api/session`, { cache: 'no-store' })
@@ -62,10 +65,30 @@ export default function AdvanceSessionForm({ onBack }: Props) {
       .then(r => r.json())
       .then((data: { costs: number[] }) => setRecentCosts(data.costs ?? []))
       .catch(() => {});
+    // Skip dates for the blocking-anomaly check.
+    fetch(`${BASE}/api/members`, { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : [])
+      .then((list: Array<{ role?: string; skipDates?: string[] }>) => {
+        const me = Array.isArray(list) ? list.find(m => m.role === 'admin') : null;
+        setSkipDates(me?.skipDates ?? []);
+      })
+      .catch(() => {});
   }, []);
 
   async function handleAdvance(e: React.FormEvent) {
     e.preventDefault();
+    // Blocking-anomaly check: if the chosen date is on the skip list,
+    // surface a confirmation sheet before submitting. Lets a user override
+    // ("advance anyway") but prevents accidental advances on holidays
+    // or known-bad dates.
+    if (date && skipDates.includes(date)) {
+      setShowSkipBlock(true);
+      return;
+    }
+    await performAdvance();
+  }
+
+  async function performAdvance() {
     setAdvancing(true);
     setAdvanceError('');
     try {
@@ -198,6 +221,59 @@ export default function AdvanceSessionForm({ onBack }: Props) {
           )}
         </div>
       </form>
+
+      <BottomSheet
+        open={showSkipBlock}
+        onClose={() => setShowSkipBlock(false)}
+        ariaLabel="Skip date warning"
+        maxHeight="50vh"
+      >
+        <BottomSheetHeader>
+          <div className="flex items-center justify-between px-4 py-3">
+            <h2 className="bpm-h3" style={{ color: '#fca5a5' }}>Date is on your skip list</h2>
+            <button
+              type="button"
+              onClick={() => setShowSkipBlock(false)}
+              className="text-gray-400 hover:text-gray-200"
+              aria-label="Close"
+            >
+              <span className="material-icons">close</span>
+            </button>
+          </div>
+        </BottomSheetHeader>
+        <BottomSheetBody>
+          <div className="space-y-4 pb-6">
+            <p className="text-sm text-gray-200">
+              <strong>{date}</strong> is on your skip list — typically a holiday, travel date, or
+              known venue closure.
+            </p>
+            <p className="text-xs text-gray-400">
+              You can advance anyway if this is intentional. The skip date stays on the list.
+            </p>
+            <div className="flex flex-wrap gap-2 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowSkipBlock(false)}
+                className="text-sm px-4 py-2 rounded-full"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setShowSkipBlock(false);
+                  await performAdvance();
+                }}
+                className="text-sm px-4 py-2 rounded-full"
+                style={{ background: 'rgba(239,68,68,0.18)', border: '1px solid rgba(239,68,68,0.4)', color: '#fca5a5' }}
+              >
+                Advance anyway
+              </button>
+            </div>
+          </div>
+        </BottomSheetBody>
+      </BottomSheet>
     </div>
   );
 }
