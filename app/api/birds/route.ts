@@ -18,20 +18,41 @@ export async function GET(req: NextRequest) {
     const totalPurchased = resources.reduce((sum: number, p: { tubes: number }) => sum + p.tubes, 0);
 
     const sessionsContainer = getContainer('sessions');
-    // Pull both legacy and new fields so the normalizer can handle mixed shapes.
+    // Pull datetime alongside the usage shapes so we can compute recent-window
+    // stats (last 60 days). Burn rate consumers should use those, not
+    // totalUsed / recentSessionCount, which mixes time scales.
     const { resources: sessions } = await sessionsContainer.items
-      .query({ query: 'SELECT c.birdUsage, c.birdUsages FROM c WHERE IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)' })
+      .query({ query: 'SELECT c.birdUsage, c.birdUsages, c.datetime FROM c WHERE IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)' })
       .fetchAll();
+
     const totalUsed = (sessions as Pick<Session, 'birdUsage' | 'birdUsages'>[]).reduce(
       (sum, s) => sum + totalTubes(normalizeBirdUsages(s)),
       0,
     );
+
+    const sixtyDaysAgo = Date.now() - 60 * 86_400_000;
+    let recentSessionsLast60d = 0;
+    let recentUsedLast60d = 0;
+    for (const s of sessions as Array<Pick<Session, 'birdUsage' | 'birdUsages'> & { datetime?: string }>) {
+      if (typeof s.datetime !== 'string') continue;
+      const t = new Date(s.datetime).getTime();
+      if (!Number.isFinite(t) || t < sixtyDaysAgo) continue;
+      recentSessionsLast60d++;
+      recentUsedLast60d += totalTubes(normalizeBirdUsages(s));
+    }
+    const burnPerSession = recentSessionsLast60d > 0
+      ? recentUsedLast60d / recentSessionsLast60d
+      : 0;
 
     return NextResponse.json({
       purchases: resources,
       currentStock: totalPurchased - totalUsed,
       totalPurchased,
       totalUsed,
+      // Last-60-day stats — apples-to-apples for burn rate
+      recentSessionsLast60d,
+      recentUsedLast60d,
+      burnPerSession,
     });
   } catch (error) {
     console.error('GET birds error:', error);
