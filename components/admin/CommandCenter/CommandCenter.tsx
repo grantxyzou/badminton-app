@@ -4,7 +4,10 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import PageHeader from '../../primitives/PageHeader';
 import AnomalyFeed from './AnomalyFeed';
+import NextSessionCard from './NextSessionCard';
 import PaymentsCard from './PaymentsCard';
+import BirdInventoryCard from './BirdInventoryCard';
+import RosterHealthCard from './RosterHealthCard';
 import RecentSessionsStrip from './RecentSessionsStrip';
 
 interface CommandCenterProps {
@@ -34,24 +37,10 @@ export default function CommandCenter({ refreshKey, setView: _setView }: Command
       <PageHeader>{pageT('title')}</PageHeader>
 
       <AnomalyFeed refreshKey={composedRefresh} />
-
-      <CommandCenterPlaceholder
-        title="Next session"
-        hint="Coming soon — capacity, deadline, signup status at a glance."
-      />
-
+      <NextSessionCard refreshKey={composedRefresh} />
       <PaymentsCard refreshKey={composedRefresh} />
-
-      <CommandCenterPlaceholder
-        title="Bird inventory"
-        hint="Coming soon — tubes on hand, weeks remaining at current burn rate."
-      />
-
-      <CommandCenterPlaceholder
-        title="Roster health"
-        hint="Coming soon — invite list, waitlist, recent removals."
-      />
-
+      <BirdInventoryCard />
+      <RosterHealthCard />
       <RecentSessionsStrip />
 
       {/* Hidden bump, exposed via window for test/dev — not used in real flow. */}
@@ -60,11 +49,3 @@ export default function CommandCenter({ refreshKey, setView: _setView }: Command
   );
 }
 
-function CommandCenterPlaceholder({ title, hint }: { title: string; hint: string }) {
-  return (
-    <section className="glass-card p-4 space-y-1 opacity-60" aria-label={title}>
-      <h3 className="bpm-h3">{title}</h3>
-      <p className="text-xs text-gray-400">{hint}</p>
-    </section>
-  );
-}
