@@ -1,14 +1,23 @@
-import type { ReactNode } from 'react';
+'use client';
+
+import { useEffect, useRef, type ReactNode } from 'react';
 
 /**
  * Tab-level page header. Wraps the canonical `<h1 className="bpm-h1">`
- * defined in `app/globals.css:368` (30px Space Grotesk, weight 700,
+ * defined in `app/globals.css:382` (30px Space Grotesk, weight 700,
  * letter-spacing -0.02em, color from `--text-primary`).
+ *
+ * As of the 2026-05-06 TopBar Spec handoff, this is also a sticky
+ * scroll-condensed bar — the spec's PageHeader variant used on
+ * Profile / Home / Sign-Ups / Stats. Behavior: at-rest shows the
+ * full bpm-h1 over a transparent bg; once scrollY > 8 the bar gets
+ * a frosted backdrop and the title shrinks. See `bpm-page-header`
+ * styles in `app/globals.css`.
  *
  * Replaces the previously duplicated literal:
  *   <h1 className="text-3xl font-bold text-gray-200 leading-tight px-2">
  * which appeared in 8+ tab-level files and bypassed the design-system
- * token layer (the same disease as the BottomNav active-state pre-PR-#32).
+ * token layer.
  *
  * If you need a new variant (e.g. centered on a sub-page), add a prop
  * here — DO NOT override styles inline at the call site, that's the
@@ -25,13 +34,21 @@ export interface PageHeaderProps {
 }
 
 export default function PageHeader({ children, action }: PageHeaderProps) {
-  if (!action) {
-    return <h1 className="bpm-h1 leading-tight px-2">{children}</h1>;
-  }
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => el.classList.toggle('scrolled', window.scrollY > 8);
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    return () => window.removeEventListener('scroll', update);
+  }, []);
+
   return (
-    <div className="flex items-baseline justify-between gap-3 px-2">
-      <h1 className="bpm-h1 leading-tight">{children}</h1>
-      <div className="shrink-0">{action}</div>
+    <div ref={ref} className="bpm-page-header">
+      <h1 className="bpm-h1 bpm-page-header__title leading-tight">{children}</h1>
+      {action && <div className="bpm-page-header__action shrink-0">{action}</div>}
     </div>
   );
 }
