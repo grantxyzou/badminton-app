@@ -113,7 +113,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
                     aria-label={`Send receipt to ${player.name}`}
                     title="Send individual receipt"
                   >
-                    <span className="material-icons text-base align-middle">receipt</span>
+                    <span className="material-icons text-base align-middle">receipt_long</span>
                   </button>
                 )}
                 <button

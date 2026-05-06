@@ -146,7 +146,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onE
       <div className="flex flex-wrap gap-2 pt-1">
         {onShareCost && (
           <button type="button" onClick={onShareCost} className="cc-btn cc-btn-primary">
-            <span className="material-icons text-base align-middle">share</span>
+            <span className="material-icons text-base align-middle">request_quote</span>
             Share cost
           </button>
         )}
