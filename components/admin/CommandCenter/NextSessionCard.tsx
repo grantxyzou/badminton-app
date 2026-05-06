@@ -26,6 +26,10 @@ interface NextSessionCardProps {
   onEdit?: () => void;
   onAdvance?: () => void;
   onEditDateTime?: () => void;
+  /** Opens the receipt sheet in group mode — the "share cost breakdown
+   *  to the group chat" action. Belongs alongside session details since
+   *  it's about the session, not about whose payment has come in. */
+  onShareCost?: () => void;
 }
 
 function fmtDate(iso: string | undefined): string {
@@ -54,7 +58,7 @@ function fmtCountdown(deadline: string | undefined): string | null {
   return `${mins}m`;
 }
 
-export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onEditDateTime }: NextSessionCardProps) {
+export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onEditDateTime, onShareCost }: NextSessionCardProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [activeCount, setActiveCount] = useState<number>(0);
   const [waitlistCount, setWaitlistCount] = useState<number>(0);
@@ -140,6 +144,12 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onE
       )}
 
       <div className="flex flex-wrap gap-2 pt-1">
+        {onShareCost && (
+          <button type="button" onClick={onShareCost} className="cc-btn cc-btn-primary">
+            <span className="material-icons text-base align-middle">share</span>
+            Share cost
+          </button>
+        )}
         {onEdit && (
           <button type="button" onClick={onEdit} className="cc-btn cc-btn-secondary">
             Edit details
@@ -151,7 +161,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onE
           </button>
         )}
         {onAdvance && (
-          <button type="button" onClick={onAdvance} className="cc-btn cc-btn-primary">
+          <button type="button" onClick={onAdvance} className="cc-btn cc-btn-secondary">
             Advance →
           </button>
         )}
