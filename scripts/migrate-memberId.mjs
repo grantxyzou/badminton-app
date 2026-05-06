@@ -17,8 +17,11 @@
  */
 
 const dryRun = process.argv.includes('--dry-run');
-const baseUrl = process.env.BASE_URL;
-const adminCookie = process.env.ADMIN_COOKIE;
+const baseUrl = process.env.BASE_URL?.trim();
+// Strip ALL whitespace (including embedded newlines) — terminal copy-paste
+// often wraps long cookie values with extra spaces/newlines that would
+// otherwise break fetch's header validation.
+const adminCookie = process.env.ADMIN_COOKIE?.replace(/\s+/g, '');
 
 if (!baseUrl) {
   console.error('BASE_URL env var required (e.g., https://bpm-next.azurewebsites.net or http://localhost:3000/bpm)');
