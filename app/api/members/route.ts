@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer } from '@/lib/cosmos';
+import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { randomBytes } from 'crypto';
 
@@ -100,7 +100,50 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.active === 'boolean') updates.active = body.active;
     if (typeof body.role === 'string' && ['admin', 'member'].includes(body.role)) updates.role = body.role;
 
-    const { resource: updated } = await container.items.upsert({ ...existing, ...updates });
+    // Admin can clear a member's PIN — deletes both the canonical
+    // members.pinHash AND the legacy mirror on the active session's
+    // player record (if any). Used when a player loses their PIN and
+    // needs to set a new one without going through the recovery-code
+    // flow. Only accepts `clearPin: true`; admins can never SET a PIN
+    // on someone else's behalf.
+    let clearPin = false;
+    if (body.clearPin === true) {
+      clearPin = true;
+    }
+
+    const baseDoc: Record<string, unknown> = { ...existing, ...updates };
+    if (clearPin) {
+      delete baseDoc.pinHash;
+    }
+    const { resource: updated } = await container.items.upsert(baseDoc);
+
+    // Mirror clearing to the legacy players.pinHash field for parity
+    // with /api/players PIN updates.
+    if (clearPin && typeof existing?.name === 'string') {
+      try {
+        const playersContainer = getContainer('players');
+        const sessionId = await getActiveSessionId();
+        const { resources: matches } = await playersContainer.items
+          .query({
+            query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name)',
+            parameters: [
+              { name: '@sessionId', value: sessionId },
+              { name: '@name', value: existing.name },
+            ],
+          })
+          .fetchAll();
+        for (const p of matches as Array<Record<string, unknown>>) {
+          if ('pinHash' in p) {
+            const mirror = { ...p };
+            delete mirror.pinHash;
+            await playersContainer.items.upsert(mirror);
+          }
+        }
+      } catch {
+        // Best-effort — member-side clear already succeeded.
+      }
+    }
+
     return NextResponse.json(updated);
   } catch (error) {
     console.error('PATCH members error:', error);

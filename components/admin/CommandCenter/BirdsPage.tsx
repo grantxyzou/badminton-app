@@ -5,6 +5,7 @@ import AdminBackHeader from '../AdminBackHeader';
 import { parseBirdName } from '@/lib/birdBrand';
 import { normalizeBirdUsages } from '@/lib/birdUsages';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import AssignUsageSheet from '../AssignUsageSheet';
 import type { BirdPurchase, Session } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -58,6 +59,8 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
   // means Add mode; non-null means Edit mode for that purchase.
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Assign-to-sessions sheet (allows retro-assigning tubes to past sessions).
+  const [assignTarget, setAssignTarget] = useState<BirdPurchase | null>(null);
   const [formName, setFormName] = useState('');
   const [formTubes, setFormTubes] = useState<number | ''>('');
   const [formCost, setFormCost] = useState<number | ''>('');
@@ -714,6 +717,25 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
               </p>
             )}
 
+            {editingId && (() => {
+              const target = purchases.find((p) => p.id === editingId);
+              if (!target) return null;
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSheetOpen(false);
+                    setAssignTarget(target);
+                  }}
+                  className="cc-btn cc-btn-secondary"
+                  style={{ alignSelf: 'flex-start' }}
+                >
+                  <span className="material-icons" style={{ fontSize: 16 }}>event</span>
+                  Assign tubes to sessions
+                </button>
+              );
+            })()}
+
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {editingId && (
                 <button
@@ -748,6 +770,14 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           </div>
         </BottomSheetBody>
       </BottomSheet>
+
+      {/* Retro-assign tubes to past sessions */}
+      <AssignUsageSheet
+        open={assignTarget !== null}
+        onClose={() => setAssignTarget(null)}
+        purchase={assignTarget}
+        onSaved={() => { void load(); }}
+      />
     </div>
   );
 }
