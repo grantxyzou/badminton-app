@@ -16,15 +16,13 @@ export default function SkipDatesEditor() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch from /api/members admin list since /api/members/me only returns role/hasPin.
-      const res = await fetch(`${BASE}/api/members`, { cache: 'no-store' });
+      const res = await fetch(`${BASE}/api/admin/settings`, { cache: 'no-store' });
       if (res.ok) {
-        const list = (await res.json()) as Array<{ role?: string; skipDates?: string[] }>;
-        const me = list.find((m) => m.role === 'admin');
-        setDates(me?.skipDates ?? []);
+        const data = (await res.json()) as { skipDates?: string[] };
+        setDates(Array.isArray(data.skipDates) ? data.skipDates : []);
       }
     } catch {
-      // ignore
+      // ignore — empty list is correct fallback
     } finally {
       setLoading(false);
     }

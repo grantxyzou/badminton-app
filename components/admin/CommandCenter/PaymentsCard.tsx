@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import ResetAccessSheet from '../ResetAccessSheet';
+import { fmtSessionLabel } from '@/lib/fmt';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -30,22 +31,15 @@ interface PaymentsCardProps {
   onSendIndividualReceipt?: (playerName: string) => void;
 }
 
-function fmtSessionLabel(iso: string | undefined): string {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-  } catch {
-    return iso.slice(0, 10);
-  }
-}
-
 export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndividualReceipt }: PaymentsCardProps) {
   const [sessions, setSessions] = useState<SessionLite[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [viewedSessionId, setViewedSessionId] = useState<string | null>(null);
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [toggleError, setToggleError] = useState<string | null>(null);
 
   // Add player
   const [addName, setAddName] = useState('');
@@ -70,13 +64,22 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const [sessionRes, sessionsRes] = await Promise.all([
         fetch(`${BASE}/api/session`, { cache: 'no-store' }),
         fetch(`${BASE}/api/sessions`, { cache: 'no-store' }),
       ]);
-      const current = sessionRes.ok ? await sessionRes.json() as SessionLite : null;
-      const archived = sessionsRes.ok ? await sessionsRes.json() as SessionLite[] : [];
+      // If either critical fetch failed, mark load error so we don't render
+      // confident "0 of 0 paid" / empty list as if it were truth.
+      if (!sessionRes.ok || !sessionsRes.ok) {
+        setLoadError(true);
+        setSessions([]);
+        setActiveSessionId(null);
+        return;
+      }
+      const current = await sessionRes.json() as SessionLite;
+      const archived = await sessionsRes.json() as SessionLite[];
 
       const all = current ? [current, ...archived.filter((s) => s.id !== current.id)] : archived;
       const sorted = all
@@ -86,9 +89,8 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
       setActiveSessionId(current?.id ?? null);
       setViewedSessionId((prev) => prev ?? current?.id ?? sorted[0]?.id ?? null);
     } catch (err) {
-      // Network error / server down — render empty state rather than
-      // surfacing as an unhandled rejection.
       console.warn('PaymentsCard load failed:', err);
+      setLoadError(true);
       setSessions([]);
       setActiveSessionId(null);
     } finally {
@@ -148,6 +150,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
   async function togglePaid(player: Player) {
     if (togglingId) return;
     setTogglingId(player.id);
+    setToggleError(null);
     const next = !player.paid;
     setAllPlayers((prev) => prev.map((p) => (p.id === player.id ? { ...p, paid: next } : p)));
     try {
@@ -157,10 +160,14 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
         body: JSON.stringify({ id: player.id, paid: next, ...(isCurrentSession ? {} : { sessionId: viewedSessionId }) }),
       });
       if (!res.ok) {
+        // Roll back + surface so admin doesn't think they misclicked.
         setAllPlayers((prev) => prev.map((p) => (p.id === player.id ? { ...p, paid: !next } : p)));
+        const data = await res.json().catch(() => ({}));
+        setToggleError(`Couldn't update ${player.name}: ${data.error ?? `HTTP ${res.status}`}`);
       }
     } catch {
       setAllPlayers((prev) => prev.map((p) => (p.id === player.id ? { ...p, paid: !next } : p)));
+      setToggleError(`Couldn't update ${player.name}: network error`);
     } finally {
       setTogglingId(null);
     }
@@ -309,9 +316,10 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
 
   return (
     <section className="glass-card p-4 space-y-3" aria-label="Payments">
-      {/* Session navigator */}
+      {/* Session navigator — no hard divider per project rule. The chevrons
+          + dim 'Past session' label provide visual separation. */}
       {sessions.length > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 2px', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 2px 6px' }}>
           <button
             type="button"
             onClick={() => navSession('prev')}
@@ -342,10 +350,29 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
       {/* Header */}
       <header>
         <h3 className="bpm-h3">Payments</h3>
-        <p className="text-xs text-gray-400 mt-0.5">
-          {total === 0 ? 'No active players' : `${paidCount} of ${total} paid`}
+        <p className="text-xs mt-0.5" style={{ color: loadError ? 'var(--color-red, #ef4444)' : 'var(--text-muted)' }}>
+          {loadError
+            ? "Couldn't load — refresh to retry"
+            : total === 0 ? 'No active players' : `${paidCount} of ${total} paid`}
         </p>
       </header>
+
+      {toggleError && (
+        <p
+          role="alert"
+          style={{
+            fontSize: 12,
+            color: 'var(--color-red, #ef4444)',
+            margin: 0,
+            padding: '8px 12px',
+            background: 'rgba(239,68,68,0.06)',
+            border: '1px solid rgba(239,68,68,0.2)',
+            borderRadius: 8,
+          }}
+        >
+          {toggleError}
+        </p>
+      )}
 
       {/* Active list */}
       {total > 0 && (
@@ -404,16 +431,19 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
         </ul>
       )}
 
-      {/* Add player (current session only) */}
+      {/* Add player (current session only). No hard divider — visual
+          break is the form's own layout. Input inherits the canonical
+          form styles from globals.css (which include focus ring + light
+          mode); we only set flex on the wrapper. */}
       {isCurrentSession && (
-        <form onSubmit={handleAdd} className="flex gap-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: 4, paddingTop: 12 }}>
+        <form onSubmit={handleAdd} style={{ display: 'flex', gap: 8, paddingTop: 8 }}>
           <input
             type="text"
             value={addName}
             onChange={(e) => { setAddName(e.target.value); setAddError(''); }}
             placeholder="Add player by name"
             maxLength={50}
-            style={{ flex: 1, fontSize: 13, padding: '8px 10px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: 'var(--text-primary)' }}
+            style={{ flex: 1 }}
           />
           <button
             type="submit"

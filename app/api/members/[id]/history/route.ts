@@ -64,15 +64,29 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       );
     }
 
-    // Look up the matching sessions.
+    // Look up the matching sessions + per-session attendance counts.
     const sessionIds = Array.from(new Set(players.map((p) => p.sessionId).filter(Boolean)));
     const sessionMap = new Map<string, Session>();
+    const attendanceBySession = new Map<string, number>();
     if (sessionIds.length > 0) {
       const { resources: allSessions } = await sessionsContainer.items
         .query({ query: 'SELECT * FROM c' })
         .fetchAll();
       for (const s of allSessions as Session[]) {
         if (sessionIds.includes(s.id)) sessionMap.set(s.id, s);
+      }
+      // Count active players per session so cost-per-person uses the right
+      // denominator. Previously this read session.prevCostPerPerson, which
+      // is the PREVIOUS session's frozen cost — every history row showed
+      // last week's number.
+      const { resources: allPlayers } = await playersContainer.items
+        .query({ query: 'SELECT c.sessionId, c.removed, c.waitlisted FROM c' })
+        .fetchAll();
+      for (const p of allPlayers as Array<{ sessionId?: string; removed?: boolean; waitlisted?: boolean }>) {
+        if (typeof p.sessionId !== 'string') continue;
+        if (!sessionIds.includes(p.sessionId)) continue;
+        if (p.removed === true || p.waitlisted === true) continue;
+        attendanceBySession.set(p.sessionId, (attendanceBySession.get(p.sessionId) ?? 0) + 1);
       }
     }
 
@@ -85,7 +99,10 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
         const courtTotal = (session.costPerCourt ?? 0) * (session.courts ?? 0);
         const birdTotal = totalBirdCost(normalizeBirdUsages(session));
         const totalCost = courtTotal + birdTotal;
-        costPerPerson = session.prevCostPerPerson ?? (totalCost > 0 ? Math.round(totalCost * 100) / 100 : 0);
+        const playerCount = attendanceBySession.get(player.sessionId) ?? 0;
+        if (totalCost > 0 && playerCount > 0) {
+          costPerPerson = Math.round((totalCost / playerCount) * 100) / 100;
+        }
       }
 
       return {

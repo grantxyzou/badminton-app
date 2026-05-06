@@ -40,6 +40,7 @@ export default function CommandCenter({ refreshKey, setView }: CommandCenterProp
   const composedRefresh = refreshKey + localRefresh;
 
   const [profileMemberId, setProfileMemberId] = useState<string | null>(null);
+  const [profileMemberName, setProfileMemberName] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
 
   // Receipt state lifted to CommandCenter so both NextSession (group share)
@@ -50,8 +51,9 @@ export default function CommandCenter({ refreshKey, setView }: CommandCenterProp
   const [receiptInput, setReceiptInput] = useState<ReceiptInput | null>(null);
   const [receiptError, setReceiptError] = useState('');
 
-  function openPlayer(memberId: string) {
+  function openPlayer(memberId: string, name?: string) {
     setProfileMemberId(memberId);
+    setProfileMemberName(name ?? null);
     setProfileOpen(true);
   }
 
@@ -63,17 +65,16 @@ export default function CommandCenter({ refreshKey, setView }: CommandCenterProp
 
     // Fetch the latest data each time so the receipt reflects current state.
     try {
-      const [sessionRes, playersRes, membersRes] = await Promise.all([
+      const [sessionRes, playersRes, settingsRes] = await Promise.all([
         fetch(`${BASE}/api/session`, { cache: 'no-store' }),
         fetch(`${BASE}/api/players`, { cache: 'no-store' }),
-        fetch(`${BASE}/api/members`, { cache: 'no-store' }),
+        fetch(`${BASE}/api/admin/settings`, { cache: 'no-store' }),
       ]);
       const session = sessionRes.ok ? await sessionRes.json() : null;
       const players = playersRes.ok ? (await playersRes.json()) as Array<{ name: string; removed?: boolean; waitlisted?: boolean }> : [];
-      const members = membersRes.ok ? (await membersRes.json()) as Array<{ role?: string; eTransferRecipient?: { name: string; email: string; memo?: string } }> : [];
-      const adminMember = Array.isArray(members) ? members.find((m) => m.role === 'admin') : null;
+      const settings = settingsRes.ok ? (await settingsRes.json()) as { eTransferRecipient?: { name: string; email: string; memo?: string } | null } : null;
 
-      const recipient = session?.eTransferRecipient ?? adminMember?.eTransferRecipient ?? null;
+      const recipient = session?.eTransferRecipient ?? settings?.eTransferRecipient ?? null;
       if (!recipient || !session?.datetime) {
         setReceiptError('Set an e-transfer recipient first (admin settings) before sharing.');
         setReceiptInput(null);
@@ -141,6 +142,7 @@ export default function CommandCenter({ refreshKey, setView }: CommandCenterProp
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
         memberId={profileMemberId}
+        initialName={profileMemberName ?? undefined}
       />
 
       <ReceiptSheet

@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import AdminBackHeader from '../AdminBackHeader';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { fmtShortDate } from '@/lib/fmt';
+import { avatarColors } from '@/lib/avatar';
 import type { Member, Alias } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -24,25 +26,8 @@ interface RowData {
 
 type FilterKey = 'all' | 'recent' | 'regulars' | 'casual' | 'dormant';
 
-const AVA_PALETTE: Array<[string, string]> = [
-  ['#1f3b5c', '#86b4e6'],
-  ['#2c4a2c', '#9ee6a4'],
-  ['#5c3a1f', '#f4c089'],
-  ['#4a2a4a', '#e29ee2'],
-  ['#1f4a4a', '#86d4d4'],
-  ['#5c1f3b', '#f487a9'],
-  ['#3a3a1f', '#e2e289'],
-  ['#3b2c4a', '#b89ee2'],
-];
-
-function avaColors(name: string): { bg: string; fg: string } {
-  const i = (name.charCodeAt(0) || 0) % AVA_PALETTE.length;
-  const [bg, fg] = AVA_PALETTE[i];
-  return { bg, fg };
-}
-
 function Avatar({ name, size = 32 }: { name: string; size?: number }) {
-  const c = avaColors(name);
+  const c = avatarColors(name);
   return (
     <span
       style={{
@@ -84,14 +69,6 @@ function Sparkline({ presence }: { presence: Array<1 | null> }) {
   );
 }
 
-function fmtShortDate(iso: string): string {
-  if (!iso) return '';
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  } catch {
-    return iso.slice(0, 10);
-  }
-}
 
 export default function RosterPage({ onBack }: RosterPageProps) {
   const [members, setMembers] = useState<Member[]>([]);
@@ -288,27 +265,39 @@ export default function RosterPage({ onBack }: RosterPageProps) {
           setFormError(data.error ?? 'Failed to save.');
           return;
         }
-        // Sync alias: if formAlias non-empty, ensure an alias row exists; if empty, delete it.
+        // Sync alias: if formAlias non-empty, ensure an alias row exists; if
+        // empty, delete it. Aliases are payment-data (CLAUDE.md security
+        // rule 10) — failed writes here cause receipts to go to the wrong
+        // person, so we surface the error rather than fire-and-forget.
         const existing = aliases.find((a) => a.appName.toLowerCase() === name.toLowerCase());
         const aliasValue = formAlias.trim();
+        let aliasOk = true;
         if (aliasValue && !existing) {
-          await fetch(`${BASE}/api/aliases`, {
+          const r = await fetch(`${BASE}/api/aliases`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ appName: name, etransferName: aliasValue }),
           });
+          aliasOk = r.ok;
         } else if (aliasValue && existing && existing.etransferName !== aliasValue) {
-          await fetch(`${BASE}/api/aliases`, {
+          const r = await fetch(`${BASE}/api/aliases`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: existing.id, appName: name, etransferName: aliasValue }),
           });
+          aliasOk = r.ok;
         } else if (!aliasValue && existing) {
-          await fetch(`${BASE}/api/aliases`, {
+          const r = await fetch(`${BASE}/api/aliases`, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: existing.id }),
           });
+          aliasOk = r.ok;
+        }
+        if (!aliasOk) {
+          setFormError('Saved member, but alias update failed — please retry.');
+          await load();
+          return;
         }
       } else {
         // POST new member
@@ -322,14 +311,19 @@ export default function RosterPage({ onBack }: RosterPageProps) {
           setFormError(data.error ?? 'Failed to add.');
           return;
         }
-        // Optional: also save alias on creation
+        // Optional: also save alias on creation. Same payment-data rules.
         const aliasValue = formAlias.trim();
         if (aliasValue) {
-          await fetch(`${BASE}/api/aliases`, {
+          const r = await fetch(`${BASE}/api/aliases`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ appName: name, etransferName: aliasValue }),
           });
+          if (!r.ok) {
+            setFormError('Member added, but alias save failed — please add it from the edit sheet.');
+            await load();
+            return;
+          }
         }
       }
       setSheetOpen(false);

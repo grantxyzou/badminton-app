@@ -10,6 +10,7 @@ import ReleaseNotesSheet from './ReleaseNotesSheet';
 import PinInput from './PinInput';
 import AdminConsoleHero from './admin/CommandCenter/AdminConsoleHero';
 import { isFlagOn } from '@/lib/flags';
+import { avatarColors as profileAvaColors } from '@/lib/avatar';
 // PinInput is used by the inline anonymous sign-in form below. The signed-in
 // state's PIN management lives in RecoveryPinSheet now (opened via Settings).
 
@@ -129,9 +130,16 @@ export default function ProfileTab({
     setLocalIdentity(null);
     setPinIsSet(null);
     try {
-      await fetch(`${BASE}/api/admin`, { method: 'DELETE' });
-    } catch {
-      // best-effort — local identity is already cleared
+      const res = await fetch(`${BASE}/api/admin`, { method: 'DELETE' });
+      if (!res.ok) {
+        // Cookie clear is the difference between "fully logged out" and
+        // "next person on this browser inherits admin powers" — log so a
+        // future bug investigation can find it. Local identity is already
+        // cleared so the user-facing state is consistent.
+        console.warn('Admin cookie clear failed:', res.status);
+      }
+    } catch (err) {
+      console.warn('Admin cookie clear failed (network):', err);
     }
   }
 
@@ -447,23 +455,6 @@ function SettingsList({ title, rows }: { title?: string; rows: SettingsRow[] }) 
 }
 
 /* ── Identity card (avatar + name + member-since + In/Admin pills) ── */
-
-const PROFILE_AVA_PALETTE: Array<[string, string]> = [
-  ['#1f3b5c', '#86b4e6'],
-  ['#2c4a2c', '#9ee6a4'],
-  ['#5c3a1f', '#f4c089'],
-  ['#4a2a4a', '#e29ee2'],
-  ['#1f4a4a', '#86d4d4'],
-  ['#5c1f3b', '#f487a9'],
-  ['#3a3a1f', '#e2e289'],
-  ['#3b2c4a', '#b89ee2'],
-];
-
-function profileAvaColors(name: string): { bg: string; fg: string } {
-  const i = (name.charCodeAt(0) || 0) % PROFILE_AVA_PALETTE.length;
-  const [bg, fg] = PROFILE_AVA_PALETTE[i];
-  return { bg, fg };
-}
 
 function fmtMemberSince(iso: string | null): string | null {
   if (!iso) return null;

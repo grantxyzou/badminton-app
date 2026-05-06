@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 
+import { fmtShortDate as fmtDate } from '@/lib/fmt';
+
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 interface RecentSession {
@@ -11,15 +13,6 @@ interface RecentSession {
   totalCost: number;
   paidPercent: number;
   anomalyCodes: string[];
-}
-
-function fmtDate(iso: string): string {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  } catch {
-    return iso.slice(0, 10);
-  }
 }
 
 export default function RecentSessionsStrip() {

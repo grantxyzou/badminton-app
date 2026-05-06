@@ -4,22 +4,13 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import AdminBackHeader from '../AdminBackHeader';
 import { normalizeBirdUsages } from '@/lib/birdUsages';
 import { renderGroupCanvas, renderGroupText, type ReceiptInput } from '@/lib/receiptTemplate';
+import { withLocalTz } from '@/lib/fmt';
 import type { BirdPurchase, Session } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 interface SetupPageProps {
   onBack: () => void;
-}
-
-function withLocalTz(date: string, time: string): string {
-  if (!date || !time) return '';
-  const offset = new Date().getTimezoneOffset();
-  const sign = offset <= 0 ? '+' : '-';
-  const abs = Math.abs(offset);
-  const hh = String(Math.floor(abs / 60)).padStart(2, '0');
-  const mm = String(abs % 60).padStart(2, '0');
-  return `${date}T${time}:00${sign}${hh}:${mm}`;
 }
 
 function splitIso(iso?: string): { date: string; time: string } {

@@ -94,15 +94,21 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
 
   async function handleDelete(id: string) {
     if (!confirm('Delete this announcement?')) return;
+    setError('');
     try {
       const res = await fetch(`${BASE}/api/announcements`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
-      if (res.ok) await load();
+      if (res.ok) {
+        await load();
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? 'Failed to delete announcement');
     } catch {
-      // ignore
+      setError('Network error — announcement not deleted');
     }
   }
 

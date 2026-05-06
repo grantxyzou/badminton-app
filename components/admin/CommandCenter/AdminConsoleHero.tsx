@@ -17,7 +17,7 @@ interface HeroData {
 }
 
 interface AdminConsoleHeroProps {
-  /** Tap "Open admin home →" or any tile → routes to the Admin tab */
+  /** Tap "Open admin home →" — routes to the Admin tab dashboard. */
   onOpenAdmin: () => void;
 }
 
@@ -40,8 +40,10 @@ function fmtCountdown(hours: number | null): string {
 
 export default function AdminConsoleHero({ onOpenAdmin }: AdminConsoleHeroProps) {
   const [data, setData] = useState<HeroData | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(async () => {
+    setLoadError(false);
     try {
       // Fetch session, players (with removed for dormant proxy), birds, members
       const [sessionRes, playersRes, birdsRes, membersRes] = await Promise.all([
@@ -50,10 +52,18 @@ export default function AdminConsoleHero({ onOpenAdmin }: AdminConsoleHeroProps)
         fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
         fetch(`${BASE}/api/members`, { cache: 'no-store' }),
       ]);
-      const session = sessionRes.ok ? await sessionRes.json() : null;
-      const players = playersRes.ok ? (await playersRes.json()) as Array<{ paid?: boolean; removed?: boolean; waitlisted?: boolean }> : [];
-      const birds = birdsRes.ok ? (await birdsRes.json()) as { currentStock?: number; burnPerSession?: number } : null;
-      const members = membersRes.ok ? (await membersRes.json()) as Array<{ active?: boolean; sessionCount?: number; lastSeen?: string }> : [];
+      // If any critical fetch failed, treat the hero as unable-to-load rather
+      // than rendering a confidently empty 'all clear this week' state — the
+      // exact lying-empty-state pattern that bit v1.3 (see MEMORY.md).
+      if (!sessionRes.ok || !playersRes.ok || !birdsRes.ok || !membersRes.ok) {
+        setLoadError(true);
+        setData(null);
+        return;
+      }
+      const session = await sessionRes.json();
+      const players = (await playersRes.json()) as Array<{ paid?: boolean; removed?: boolean; waitlisted?: boolean }>;
+      const birds = (await birdsRes.json()) as { currentStock?: number; burnPerSession?: number };
+      const members = (await membersRes.json()) as Array<{ active?: boolean; sessionCount?: number; lastSeen?: string; createdAt?: string }>;
 
       const active = players.filter((p) => !p.removed && !p.waitlisted);
       const unpaid = active.filter((p) => p.paid !== true).length;
@@ -98,18 +108,36 @@ export default function AdminConsoleHero({ onOpenAdmin }: AdminConsoleHeroProps)
         dormantCount: dormant,
       });
     } catch {
+      setLoadError(true);
       setData(null);
     }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
 
+  if (loadError) {
+    return (
+      <div
+        className="admin-hero"
+        style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'linear-gradient(160deg, rgba(239,68,68,0.06), rgba(255,255,255,0.02))' }}
+      >
+        <span className="badge" style={{ color: 'var(--color-red, #ef4444)' }}>Admin console</span>
+        <p className="ah-title">Couldn&apos;t load</p>
+        <p className="ah-subtitle">Refresh to retry — your stats aren&apos;t available right now.</p>
+      </div>
+    );
+  }
+
   if (!data) return null;
 
-  // "X things need you" — count the actionable signals.
+  // "X things need you" — count the actionable signals. Birds with NO
+  // burn-rate data (fresh install, no usage logged yet) get an 'awaiting'
+  // signal rather than 'all clear', because we genuinely don't know.
+  const birdsAwaitingData = data.birdWeeksLeft === null;
+  const birdsLow = data.birdWeeksLeft !== null && data.birdWeeksLeft <= 4;
   const needsYou = [
     data.unpaidCount > 0,
-    data.birdWeeksLeft !== null && data.birdWeeksLeft <= 4,
+    birdsLow,
     data.dormantCount > 0,
   ].filter(Boolean).length;
 
@@ -117,7 +145,11 @@ export default function AdminConsoleHero({ onOpenAdmin }: AdminConsoleHeroProps)
     <div className="admin-hero">
       <span className="badge">Admin console</span>
       <p className="ah-title">
-        {needsYou === 0 ? 'All clear this week' : `${needsYou} thing${needsYou === 1 ? '' : 's'} need you`}
+        {needsYou === 0
+          ? birdsAwaitingData
+            ? 'Awaiting bird data'
+            : 'All clear this week'
+          : `${needsYou} thing${needsYou === 1 ? '' : 's'} need you`}
       </p>
       <p className="ah-subtitle">
         {fmtSessionDate(data.sessionDate)}
@@ -126,47 +158,31 @@ export default function AdminConsoleHero({ onOpenAdmin }: AdminConsoleHeroProps)
       </p>
 
       <div className="cc-grid3" style={{ marginTop: 12 }}>
-        <button type="button" className="cc-tile warn" onClick={onOpenAdmin} aria-label="Unpaid players">
+        {/* Tiles are read-only stats — three buttons going to the same
+            destination read as broken affordance. Real navigation is the
+            single green CTA below. */}
+        <div className="cc-tile cc-tile-static warn">
           <span className="num">{data.unpaidCount}</span>
           <span className="lbl">Unpaid</span>
           <span className="delta">/ {data.totalActive} players</span>
-        </button>
-        <button type="button" className="cc-tile bad" onClick={onOpenAdmin} aria-label="Bird inventory">
+        </div>
+        <div className="cc-tile cc-tile-static bad">
           <span className="num">{data.birdStock}</span>
           <span className="lbl">Bird tubes</span>
           <span className="delta">{data.birdWeeksLeft !== null ? `~${data.birdWeeksLeft} wk${data.birdWeeksLeft === 1 ? '' : 's'}` : '—'}</span>
-        </button>
-        <button type="button" className="cc-tile info" onClick={onOpenAdmin} aria-label="Dormant members">
+        </div>
+        <div className="cc-tile cc-tile-static info">
           <span className="num">{data.dormantCount}</span>
           <span className="lbl">Dormant</span>
-          <span className="delta">review →</span>
-        </button>
+          <span className="delta">in last 60d</span>
+        </div>
       </div>
 
       <button
         type="button"
         onClick={onOpenAdmin}
-        style={{
-          marginTop: 14,
-          width: '100%',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-          padding: '14px 16px',
-          borderRadius: 14,
-          background: 'var(--accent)',
-          color: '#0a1f10',
-          border: 'none',
-          cursor: 'pointer',
-          fontFamily: 'var(--font-display, "Space Grotesk")',
-          fontWeight: 700,
-          fontSize: 15,
-          letterSpacing: '-0.005em',
-          transition: 'filter 120ms ease',
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(1.06)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.filter = 'none'; }}
+        className="cc-btn cc-btn-primary cc-btn-lg"
+        style={{ marginTop: 14, gap: 8 }}
       >
         Open admin home
         <span className="material-icons" style={{ fontSize: 18 }}>arrow_forward</span>

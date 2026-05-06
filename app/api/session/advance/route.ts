@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     let prevSessionDate: string | undefined;
     let prevCostPerPerson: number | undefined;
     let prevSnapshot: any = undefined;
-    let anomaliesAtAdvance: string[] = [];
+    const anomaliesAtAdvance: import('@/lib/anomalies').AnomalyCode[] = [];
 
     if (currentSession) {
       // Build the frozen snapshot of current session's settings
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
         const playersContainer = getContainer('players');
         const { resources: prevPlayers } = await playersContainer.items
           .query({
-            query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND c.removed != true AND c.waitlisted != true',
+            query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
             parameters: [{ name: '@sessionId', value: currentId }],
           })
           .fetchAll();

@@ -23,6 +23,31 @@ function isValidSkipDates(value: unknown): value is string[] {
   return value.every((d) => typeof d === 'string' && SKIP_DATE_RE.test(d));
 }
 
+/**
+ * Returns the calling admin's own settings (eTransferRecipient, skipDates).
+ * Reading from /api/members and finding `role === 'admin'` is fragile when
+ * there are multiple admins and breaks if the public list changes shape.
+ * This endpoint is auth-gated and scoped to the calling admin's memberId.
+ */
+export async function GET(req: NextRequest) {
+  const auth = await isAdminAuthedWithMember(req);
+  if (!auth.authed) return unauthorized();
+
+  try {
+    const container = getContainer('members');
+    const { resource: existing } = await container.item(auth.memberId, auth.memberId).read();
+    if (!existing) return NextResponse.json({ eTransferRecipient: null, skipDates: [] });
+    const member = existing as Record<string, unknown> & { eTransferRecipient?: ETransferRecipient; skipDates?: string[] };
+    return NextResponse.json({
+      eTransferRecipient: member.eTransferRecipient ?? null,
+      skipDates: Array.isArray(member.skipDates) ? member.skipDates : [],
+    });
+  } catch (error) {
+    console.error('GET /api/admin/settings error:', error);
+    return NextResponse.json({ error: 'Failed to load settings' }, { status: 500 });
+  }
+}
+
 export async function PATCH(req: NextRequest) {
   const auth = await isAdminAuthedWithMember(req);
   if (!auth.authed) return unauthorized();

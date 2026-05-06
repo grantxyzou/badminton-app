@@ -5,6 +5,7 @@ import AdminBackHeader from '../AdminBackHeader';
 import { normalizeBirdUsages } from '@/lib/birdUsages';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import AssignUsageSheet from '../AssignUsageSheet';
+import { fmtShortDate as fmtDate } from '@/lib/fmt';
 import type { BirdPurchase, Session } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -20,15 +21,6 @@ interface BrandSummary {
   speed: number | null;
   quality: number | null;
   weeksLeft: number | null;
-}
-
-function fmtDate(iso: string): string {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  } catch {
-    return iso.slice(0, 10);
-  }
 }
 
 function Stars({ n }: { n: number }) {
@@ -434,7 +426,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
               justifyContent: 'space-between',
               marginTop: 6,
               fontFamily: 'var(--font-mono, "JetBrains Mono")',
-              fontSize: 10,
+              fontSize: 11,
               color: 'var(--ink-faint)',
             }}
           >

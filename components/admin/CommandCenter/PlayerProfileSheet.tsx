@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { fmtFullDate as fmtDate } from '@/lib/fmt';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -23,15 +24,10 @@ interface PlayerProfileSheetProps {
   open: boolean;
   onClose: () => void;
   memberId: string | null;
-}
-
-function fmtDate(iso: string): string {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  } catch {
-    return iso.slice(0, 10);
-  }
+  /** Name from the row that opened the sheet — shown in the header
+   *  immediately so the title doesn't show 'Player' until the history
+   *  fetch resolves. */
+  initialName?: string;
 }
 
 async function togglePaidForPastSession(sessionId: string, memberId: string, nextPaid: boolean): Promise<boolean> {
@@ -49,7 +45,7 @@ async function togglePaidForPastSession(sessionId: string, memberId: string, nex
   return patchRes.ok;
 }
 
-export default function PlayerProfileSheet({ open, onClose, memberId }: PlayerProfileSheetProps) {
+export default function PlayerProfileSheet({ open, onClose, memberId, initialName }: PlayerProfileSheetProps) {
   const [history, setHistory] = useState<History | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -117,7 +113,9 @@ export default function PlayerProfileSheet({ open, onClose, memberId }: PlayerPr
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel="Player profile" maxHeight="85vh" className="max-w-sm mx-auto">
       <BottomSheetHeader className="flex items-center justify-between p-4">
-        <span style={{ fontSize: 16, fontWeight: 600 }}>{history?.member.name ?? 'Player'}</span>
+        <span style={{ fontSize: 16, fontWeight: 600 }}>
+          {history?.member.name ?? initialName ?? 'Player'}
+        </span>
         <button
           type="button"
           onClick={onClose}

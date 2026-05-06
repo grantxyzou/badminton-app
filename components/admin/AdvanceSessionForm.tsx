@@ -48,10 +48,14 @@ export default function AdvanceSessionForm({ onBack }: Props) {
   const [success, setSuccess] = useState(false);
   const [skipDates, setSkipDates] = useState<string[]>([]);
   const [showSkipBlock, setShowSkipBlock] = useState(false);
+  const [prefillFailed, setPrefillFailed] = useState(false);
 
   useEffect(() => {
     fetch(`${BASE}/api/session`, { cache: 'no-store' })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`session fetch ${r.status}`);
+        return r.json();
+      })
       .then((data: Session) => {
         setTime(data.datetime ? data.datetime.slice(11, 16) : '');
         setEndTime(data.endDatetime ? data.endDatetime.slice(11, 16) : '');
@@ -60,17 +64,23 @@ export default function AdvanceSessionForm({ onBack }: Props) {
         setMaxPlayers(data.maxPlayers ?? 12);
         setCostPerCourt(data.costPerCourt ?? null);
       })
-      .catch(() => {});
+      .catch(() => {
+        // Critical fetch — without it the form shows generic defaults
+        // (2 courts / 12 / no cost) and admin advances thinking the
+        // form was prefilled from current state.
+        setPrefillFailed(true);
+      });
     fetch(`${BASE}/api/sessions/costs`, { cache: 'no-store' })
       .then(r => r.json())
       .then((data: { costs: number[] }) => setRecentCosts(data.costs ?? []))
       .catch(() => {});
-    // Skip dates for the blocking-anomaly check.
-    fetch(`${BASE}/api/members`, { cache: 'no-store' })
-      .then(r => r.ok ? r.json() : [])
-      .then((list: Array<{ role?: string; skipDates?: string[] }>) => {
-        const me = Array.isArray(list) ? list.find(m => m.role === 'admin') : null;
-        setSkipDates(me?.skipDates ?? []);
+    // Skip dates from the auth-gated admin endpoint (not the public
+    // /api/members list, which leaks admin attributes if the response
+    // shape ever loosens).
+    fetch(`${BASE}/api/admin/settings`, { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { skipDates?: string[] } | null) => {
+        setSkipDates(Array.isArray(data?.skipDates) ? data!.skipDates! : []);
       })
       .catch(() => {});
   }, []);
@@ -111,6 +121,11 @@ export default function AdvanceSessionForm({ onBack }: Props) {
         const data = await res.json().catch(() => ({}));
         setAdvanceError(data.error ?? 'Failed to advance. Please try again.');
       }
+    } catch {
+      // Network failures used to fall through silently — the button got
+      // re-enabled by `finally` but no error appeared. Surface so the
+      // admin doesn't think the click was a no-op.
+      setAdvanceError('Network error. Please try again.');
     } finally {
       setAdvancing(false);
     }
@@ -119,6 +134,22 @@ export default function AdvanceSessionForm({ onBack }: Props) {
   return (
     <div className="space-y-4 w-full">
       <AdminBackHeader onBack={onBack} title="Next Session" />
+
+      {prefillFailed && (
+        <div
+          role="alert"
+          style={{
+            padding: '10px 14px',
+            borderRadius: 12,
+            background: 'rgba(239,68,68,0.06)',
+            border: '1px solid rgba(239,68,68,0.25)',
+            color: 'var(--color-red, #ef4444)',
+            fontSize: 13,
+          }}
+        >
+          Couldn&apos;t load current session — fields below show defaults, not your last week&apos;s settings. Refresh before advancing.
+        </div>
+      )}
 
       <form onSubmit={handleAdvance}>
         <div className="glass-card p-5 space-y-3">
