@@ -62,6 +62,44 @@ export default function TopBar({ title, crumb, onBack, right, backLabel = 'Back'
     return () => window.removeEventListener('keydown', onKey);
   }, [onBack]);
 
+  // Edge swipe-back gesture: a touch that starts in the left 24px gutter,
+  // travels mostly horizontally rightward more than 60px in under 600ms,
+  // triggers onBack. Mirrors the iOS interactive-pop affordance for our
+  // in-app sub-pages (which use prop-driven navigation, not browser history).
+  useEffect(() => {
+    if (!onBack) return;
+    let startX = 0;
+    let startY = 0;
+    let startT = 0;
+    let tracking = false;
+    const onStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (!t || t.clientX > 24) { tracking = false; return; }
+      tracking = true;
+      startX = t.clientX;
+      startY = t.clientY;
+      startT = Date.now();
+    };
+    const onEnd = (e: TouchEvent) => {
+      if (!tracking) return;
+      tracking = false;
+      const t = e.changedTouches[0];
+      if (!t) return;
+      const dx = t.clientX - startX;
+      const dy = Math.abs(t.clientY - startY);
+      const dt = Date.now() - startT;
+      if (dx > 60 && dy < 40 && dt < 600) onBack();
+    };
+    document.addEventListener('touchstart', onStart, { passive: true });
+    document.addEventListener('touchend', onEnd, { passive: true });
+    document.addEventListener('touchcancel', onEnd, { passive: true });
+    return () => {
+      document.removeEventListener('touchstart', onStart);
+      document.removeEventListener('touchend', onEnd);
+      document.removeEventListener('touchcancel', onEnd);
+    };
+  }, [onBack]);
+
   return (
     <div ref={ref} className="bpm-topbar">
       {onBack && (

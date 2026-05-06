@@ -8,6 +8,7 @@ import CreateAccountSheet from './CreateAccountSheet';
 import RecoveryPinSheet from './RecoveryPinSheet';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
 import PinInput from './PinInput';
+import PageHeader from './primitives/PageHeader';
 import AdminConsoleHero from './admin/CommandCenter/AdminConsoleHero';
 import { isFlagOn } from '@/lib/flags';
 import { avatarColors as profileAvaColors } from '@/lib/avatar';
@@ -188,7 +189,7 @@ export default function ProfileTab({
     const canSubmit = signInName.trim().length > 0 && signInPin.length === 4 && !signInSubmitting;
     return (
       <div className="animate-fadeIn flex flex-col gap-4">
-        <h1 className="bpm-h1">{t('anonymousTitle')}</h1>
+        <PageHeader>{t('anonymousTitle')}</PageHeader>
         <p style={{ color: 'var(--text-secondary)' }}>{t('anonymousBody')}</p>
         <div className="glass-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <form onSubmit={submitSignIn} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -310,7 +311,7 @@ export default function ProfileTab({
   const showAdminHero = isAdmin && isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER');
   return (
     <div className="animate-fadeIn flex flex-col gap-4">
-      <h1 className="bpm-h1">{tNav('profile')}</h1>
+      <PageHeader>{tNav('profile')}</PageHeader>
 
       <ProfileIdentityCard
         name={identity.name}

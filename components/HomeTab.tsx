@@ -13,6 +13,7 @@ import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
 import WelcomeCard from './WelcomeCard';
 import StatusBanner from '@/components/primitives/StatusBanner';
+import PageHeader from '@/components/primitives/PageHeader';
 import RecoverySheet from './RecoverySheet';
 import { renderMarkdown } from '@/lib/miniMarkdown';
 
@@ -271,19 +272,18 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onT
       )}
 
       {/* Page title + release trigger — grouped so no space-y-5 gap sits
-          between them; the version stamp sits tight under the title. */}
+          between them; the version stamp sits tight under the title. The
+          easter-egg `onTitleTap` handler lives on the inner span so PageHeader
+          can own the sticky scroll-condense behavior. */}
       <div>
-        {/* Wordmark uses the same `bpm-h1` token as PageHeader but stays
-            inline because of the easter-egg `onTitleTap` handler. The
-            font-family + letter-spacing are now sourced from the class
-            instead of duplicated inline. */}
-        <h1
-          className="bpm-h1 leading-tight px-2"
-          onClick={onTitleTap}
-          style={{ cursor: 'default', userSelect: 'none' }}
-        >
-          BPM Badminton
-        </h1>
+        <PageHeader>
+          <span
+            onClick={onTitleTap}
+            style={{ cursor: 'default', userSelect: 'none' }}
+          >
+            BPM Badminton
+          </span>
+        </PageHeader>
         <ReleaseNotesTrigger
           releases={releases}
           onOpen={openReleaseSheet}
