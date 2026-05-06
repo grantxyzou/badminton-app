@@ -53,6 +53,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
   const [currentStock, setCurrentStock] = useState(0);
   const [usedByPurchase, setUsedByPurchase] = useState<Map<string, number>>(new Map());
   const [recentSessionCount, setRecentSessionCount] = useState(0);
+  const [recentUsedTotal, setRecentUsedTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
   // Purchase sheet state — used for both Add and Edit. editingId === null
@@ -82,9 +83,17 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
       const birds = birdsRes.ok ? await birdsRes.json() as { purchases: BirdPurchase[]; currentStock: number } : { purchases: [], currentStock: 0 };
       const sessions = sessionsRes.ok ? await sessionsRes.json() as Session[] : [];
 
-      // Build per-purchase usage map.
+      // Build two independent quantities:
+      //   - `used` is all-time per-purchase usage (used to compute remaining
+      //     stock per purchase / per brand).
+      //   - `recentUsed` is total tubes consumed in the last 60 days only,
+      //     paired with `recent` (count of sessions in that same window).
+      // Burn rate is `recentUsed / recent` — apples-to-apples. Mixing
+      // all-time usage with recent session count was inflating the burn
+      // rate and shrinking `weeksRunway`.
       const used = new Map<string, number>();
-      let recent = 0;
+      let recentSessions = 0;
+      let recentUsed = 0;
       const sixtyDaysAgo = Date.now() - 60 * 86_400_000;
       for (const s of sessions) {
         const usages = normalizeBirdUsages(s);
@@ -93,13 +102,17 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         }
         if (s.datetime) {
           const t = new Date(s.datetime).getTime();
-          if (Number.isFinite(t) && t >= sixtyDaysAgo) recent++;
+          if (Number.isFinite(t) && t >= sixtyDaysAgo) {
+            recentSessions++;
+            for (const u of usages) recentUsed += u.tubes;
+          }
         }
       }
       setPurchases(birds.purchases ?? []);
       setCurrentStock(birds.currentStock ?? 0);
       setUsedByPurchase(used);
-      setRecentSessionCount(recent);
+      setRecentSessionCount(recentSessions);
+      setRecentUsedTotal(recentUsed);
     } finally {
       setLoading(false);
     }
@@ -197,12 +210,11 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
     }
   }
 
-  // Burn rate: total tubes used ÷ recent sessions.
+  // Burn rate: tubes used in the last 60 days ÷ sessions in the same window.
   const burnPerSession = useMemo(() => {
     if (recentSessionCount === 0) return 0;
-    const total = Array.from(usedByPurchase.values()).reduce((sum, v) => sum + v, 0);
-    return total / recentSessionCount;
-  }, [usedByPurchase, recentSessionCount]);
+    return recentUsedTotal / recentSessionCount;
+  }, [recentUsedTotal, recentSessionCount]);
 
   const weeksRunway = burnPerSession > 0 ? currentStock / burnPerSession : null;
 

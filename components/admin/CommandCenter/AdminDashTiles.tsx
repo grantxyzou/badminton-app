@@ -22,20 +22,18 @@ export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashT
 
   const load = useCallback(async () => {
     try {
-      const [birdsRes, membersRes, recentRes] = await Promise.all([
+      const [birdsRes, membersRes] = await Promise.all([
         fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
         fetch(`${BASE}/api/members`, { cache: 'no-store' }),
-        fetch(`${BASE}/api/sessions/recent?limit=6`, { cache: 'no-store' }),
       ]);
-      const birds = birdsRes.ok ? await birdsRes.json() as { currentStock?: number; totalUsed?: number } : null;
+      const birds = birdsRes.ok ? await birdsRes.json() as { currentStock?: number; burnPerSession?: number } : null;
       const members = membersRes.ok ? await membersRes.json() as Array<{ active?: boolean; sessionCount?: number; lastSeen?: string }> : [];
-      const recent = recentRes.ok ? await recentRes.json() as Array<unknown> : [];
 
       let weeksLeft: number | null = null;
-      if (birds && typeof birds.currentStock === 'number' && typeof birds.totalUsed === 'number') {
-        const sessionsCount = Math.max(1, recent.length);
-        const avgPerSession = birds.totalUsed / sessionsCount;
-        if (avgPerSession > 0) weeksLeft = Math.floor(birds.currentStock / avgPerSession);
+      const stock = birds?.currentStock ?? 0;
+      const burn = birds?.burnPerSession ?? 0;
+      if (burn > 0 && stock > 0) {
+        weeksLeft = Math.floor(stock / burn);
       }
 
       const activeList = Array.isArray(members) ? members.filter((m) => m.active !== false) : [];

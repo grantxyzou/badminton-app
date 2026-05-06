@@ -44,18 +44,16 @@ export default function AdminConsoleHero({ onOpenAdmin }: AdminConsoleHeroProps)
   const load = useCallback(async () => {
     try {
       // Fetch session, players (with removed for dormant proxy), birds, members
-      const [sessionRes, playersRes, birdsRes, membersRes, recentRes] = await Promise.all([
+      const [sessionRes, playersRes, birdsRes, membersRes] = await Promise.all([
         fetch(`${BASE}/api/session`, { cache: 'no-store' }),
         fetch(`${BASE}/api/players?all=true`, { cache: 'no-store' }),
         fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
         fetch(`${BASE}/api/members`, { cache: 'no-store' }),
-        fetch(`${BASE}/api/sessions/recent?limit=6`, { cache: 'no-store' }),
       ]);
       const session = sessionRes.ok ? await sessionRes.json() : null;
       const players = playersRes.ok ? (await playersRes.json()) as Array<{ paid?: boolean; removed?: boolean; waitlisted?: boolean }> : [];
-      const birds = birdsRes.ok ? (await birdsRes.json()) as { currentStock?: number; totalUsed?: number } : null;
+      const birds = birdsRes.ok ? (await birdsRes.json()) as { currentStock?: number; burnPerSession?: number } : null;
       const members = membersRes.ok ? (await membersRes.json()) as Array<{ active?: boolean; sessionCount?: number; lastSeen?: string }> : [];
-      const recent = recentRes.ok ? (await recentRes.json()) as Array<{ sessionId: string }> : [];
 
       const active = players.filter((p) => !p.removed && !p.waitlisted);
       const unpaid = active.filter((p) => p.paid !== true).length;
@@ -66,14 +64,12 @@ export default function AdminConsoleHero({ onOpenAdmin }: AdminConsoleHeroProps)
         if (Number.isFinite(ms)) hoursToDeadline = ms / 3_600_000;
       }
 
-      // Bird burn rate proxy: totalUsed / count(recent sessions). Same heuristic
-      // as BirdInventoryCard; intentionally rough — the Birds page in plan 2
-      // will surface the precise figure.
+      // Burn rate now comes from the API (last-60d window). Apples-to-apples.
       let weeksLeft: number | null = null;
-      if (birds && typeof birds.currentStock === 'number' && typeof birds.totalUsed === 'number') {
-        const sessionsCount = Math.max(1, recent.length);
-        const avgPerSession = birds.totalUsed / sessionsCount;
-        if (avgPerSession > 0) weeksLeft = Math.floor(birds.currentStock / avgPerSession);
+      const stock = birds?.currentStock ?? 0;
+      const burn = birds?.burnPerSession ?? 0;
+      if (burn > 0 && stock > 0) {
+        weeksLeft = Math.floor(stock / burn);
       }
 
       // Dormant proxy: members.active=true with sessionCount === 0 OR lastSeen > 60d ago.
