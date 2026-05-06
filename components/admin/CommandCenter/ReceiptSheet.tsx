@@ -84,7 +84,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
   if (!input && !error) return null;
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel="Receipt" maxHeight="80vh" className="max-w-lg mx-auto">
+    <BottomSheet open={open} onClose={onClose} ariaLabel="Receipt" maxHeight="80vh" className="max-w-sm mx-auto">
       <BottomSheetHeader className="flex items-center justify-between p-4">
         <span style={{ fontSize: 16, fontWeight: 600 }}>Share session cost</span>
         <button

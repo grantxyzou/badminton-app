@@ -227,6 +227,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
         onClose={() => setShowSkipBlock(false)}
         ariaLabel="Skip date warning"
         maxHeight="50vh"
+        className="max-w-sm mx-auto"
       >
         <BottomSheetHeader>
           <div className="flex items-center justify-between px-4 py-3">

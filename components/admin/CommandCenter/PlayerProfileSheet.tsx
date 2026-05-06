@@ -115,7 +115,7 @@ export default function PlayerProfileSheet({ open, onClose, memberId }: PlayerPr
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel="Player profile" maxHeight="85vh" className="max-w-lg mx-auto">
+    <BottomSheet open={open} onClose={onClose} ariaLabel="Player profile" maxHeight="85vh" className="max-w-sm mx-auto">
       <BottomSheetHeader className="flex items-center justify-between p-4">
         <span style={{ fontSize: 16, fontWeight: 600 }}>{history?.member.name ?? 'Player'}</span>
         <button
