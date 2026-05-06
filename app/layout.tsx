@@ -80,8 +80,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // Allow user pinch-zoom — disabling it is a WCAG 1.4.4 violation and was
+  // flagged by Lighthouse a11y. Low-vision users rely on zoom; the tradeoff
+  // (occasional accidental zoom on form inputs) is worth the access.
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
