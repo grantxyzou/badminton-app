@@ -1869,6 +1869,66 @@ html[data-hydrated="true"] .splash {
   background: rgba(0, 0, 0, 0.04);
 }
 
+/* Styled checkbox primitive — pairs with cc-btn family. The native
+   `<input type=checkbox>` on dark themes paints as a tiny white square
+   that fights the rest of the design language. We restyle the box and
+   the checkmark via a custom appearance so the control reads as part
+   of the same family as cc-btn / segmented controls. */
+.cc-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+.cc-checkbox input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border-radius: 5px;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+}
+.cc-checkbox input[type="checkbox"]::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  transform: scale(0);
+  transition: transform 0.12s ease-out;
+  background: currentColor;
+  /* Sharp checkmark via clip-path so it stays crisp at 10px. */
+  clip-path: polygon(14% 47%, 0 60%, 39% 100%, 100% 22%, 84% 9%, 39% 73%);
+  color: #fff;
+}
+.cc-checkbox input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.cc-checkbox input[type="checkbox"]:checked::before { transform: scale(1); }
+.cc-checkbox input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.cc-checkbox:hover input[type="checkbox"]:not(:checked) {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+[data-theme="light"] .cc-checkbox input[type="checkbox"] {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+[data-theme="light"] .cc-checkbox:hover input[type="checkbox"]:not(:checked) {
+  border-color: rgba(0, 0, 0, 0.35);
+}
+
 /* Hide the OS scrollbar on horizontal carousels — we render our own dot indicator. */
 .cc-no-scrollbar {
   scrollbar-width: none; /* Firefox */
