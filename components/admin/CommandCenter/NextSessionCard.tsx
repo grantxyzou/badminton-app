@@ -25,7 +25,6 @@ interface NextSessionCardProps {
   refreshKey?: number;
   onEdit?: () => void;
   onAdvance?: () => void;
-  onEditDateTime?: () => void;
   /** Opens the receipt sheet in group mode — the "share cost breakdown
    *  to the group chat" action. Belongs alongside session details since
    *  it's about the session, not about whose payment has come in. */
@@ -58,7 +57,7 @@ function fmtCountdown(deadline: string | undefined): string | null {
   return `${mins}m`;
 }
 
-export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onEditDateTime, onShareCost }: NextSessionCardProps) {
+export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onShareCost }: NextSessionCardProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [activeCount, setActiveCount] = useState<number>(0);
   const [waitlistCount, setWaitlistCount] = useState<number>(0);
@@ -153,11 +152,6 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onE
         {onEdit && (
           <button type="button" onClick={onEdit} className="cc-btn cc-btn-secondary">
             Edit details
-          </button>
-        )}
-        {onEditDateTime && (
-          <button type="button" onClick={onEditDateTime} className="cc-btn cc-btn-secondary">
-            Date & time
           </button>
         )}
         {onAdvance && (

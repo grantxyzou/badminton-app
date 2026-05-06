@@ -110,7 +110,6 @@ export default function CommandCenter({ refreshKey, setView }: CommandCenterProp
       <NextSessionCard
         refreshKey={composedRefresh}
         onEdit={() => setView('session-details')}
-        onEditDateTime={() => setView('date-time')}
         onAdvance={() => setView('advance')}
         onShareCost={() => openReceipt({ mode: 'group' })}
       />
