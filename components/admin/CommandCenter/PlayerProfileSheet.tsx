@@ -154,7 +154,7 @@ export default function PlayerProfileSheet({ open, onClose, memberId }: PlayerPr
               </div>
 
               <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <h4 style={{
+                <p style={{
                   fontSize: 11,
                   letterSpacing: '0.06em',
                   textTransform: 'uppercase',
@@ -163,7 +163,7 @@ export default function PlayerProfileSheet({ open, onClose, memberId }: PlayerPr
                   fontWeight: 600,
                 }}>
                   Recent sessions
-                </h4>
+                </p>
                 {history.sessions.length === 0 ? (
                   <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
                     No sessions on record yet.
