@@ -307,24 +307,32 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
             </Label>
           </div>
 
-          <div className="flex items-center justify-between pt-1">
-            <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Sign-ups</p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                {form.signupOpen ? 'Open — players can sign up' : 'Closed — players cannot sign up'}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setForm(f => ({ ...f, signupOpen: !f.signupOpen }))}
-              className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${form.signupOpen ? 'bg-green-500' : 'bg-white/20'}`}
-              role="switch"
-              aria-checked={form.signupOpen}
-              aria-label="Toggle sign-ups"
-            >
-              <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200 ${form.signupOpen ? 'translate-x-5' : 'translate-x-0'}`} />
-            </button>
-          </div>
+          {(() => {
+            const isSessionFinished = fullSession?.endDatetime ? new Date() > new Date(fullSession.endDatetime) : false;
+            return (
+              <div className="flex items-center justify-between pt-1">
+                <div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Sign-ups</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    {isSessionFinished
+                      ? 'This session has ended — advance to start a new one'
+                      : form.signupOpen ? 'Open — players can sign up' : 'Closed — players cannot sign up'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={isSessionFinished}
+                  onClick={() => setForm(f => ({ ...f, signupOpen: !f.signupOpen }))}
+                  className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${form.signupOpen ? 'bg-green-500' : 'bg-white/20'} ${isSessionFinished ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  role="switch"
+                  aria-checked={form.signupOpen}
+                  aria-label="Toggle sign-ups"
+                >
+                  <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200 ${form.signupOpen ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+            );
+          })()}
         </div>
 
         {/* ── Card 2: Cost Details ── */}
