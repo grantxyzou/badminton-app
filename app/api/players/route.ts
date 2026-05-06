@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
         createdAt: new Date().toISOString(),
       };
       const { resource } = await membersContainer.items.create(newMember);
-      matchedMember = resource as typeof matchedMember;
+      matchedMember = (resource ?? null) as typeof matchedMember;
     }
 
     // PIN-protected member: the signup path is anonymous (just a name) and

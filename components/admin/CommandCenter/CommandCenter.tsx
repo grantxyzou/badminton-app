@@ -9,12 +9,13 @@ import PaymentsCard from './PaymentsCard';
 import BirdInventoryCard from './BirdInventoryCard';
 import RosterHealthCard from './RosterHealthCard';
 import RecentSessionsStrip from './RecentSessionsStrip';
+import type { AdminView } from '../types';
 
 interface CommandCenterProps {
   /** Same prop the legacy Dashboard uses — bumped when admin returns from a drill-in. */
   refreshKey: number;
   /** Same drill-in router as the legacy Dashboard. */
-  setView: (v: string) => void;
+  setView: (v: AdminView) => void;
 }
 
 /**
