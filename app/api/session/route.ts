@@ -1,7 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId, POINTER_ID, DEFAULT_SESSION } from '@/lib/cosmos';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
-import type { BirdUsage } from '@/lib/types';
+import type { BirdUsage, ETransferRecipient } from '@/lib/types';
+
+function isValidETransferRecipient(value: unknown): value is ETransferRecipient {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as { name?: unknown; email?: unknown; memo?: unknown };
+  if (typeof v.name !== 'string' || !v.name.trim() || v.name.length > 100) return false;
+  if (typeof v.email !== 'string' || !v.email.trim() || v.email.length > 200) return false;
+  if (v.memo !== undefined && (typeof v.memo !== 'string' || v.memo.length > 200)) return false;
+  return true;
+}
+
+function isValidAnomalyDismissedList(value: unknown): value is string[] {
+  if (!Array.isArray(value)) return false;
+  if (value.length > 20) return false;
+  return value.every((c) => typeof c === 'string' && c.length > 0 && c.length <= 50);
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -85,12 +100,25 @@ export async function PUT(req: NextRequest) {
       birdUsages = entries;
     }
 
+    if (body.eTransferRecipient !== undefined && !isValidETransferRecipient(body.eTransferRecipient)) {
+      return NextResponse.json({ error: 'Invalid eTransferRecipient' }, { status: 400 });
+    }
+    if (body.anomaliesDismissed !== undefined && !isValidAnomalyDismissedList(body.anomaliesDismissed)) {
+      return NextResponse.json({ error: 'Invalid anomaliesDismissed' }, { status: 400 });
+    }
+
     const sessionData: Record<string, unknown> = { ...session };
     if (birdUsages !== undefined) {
       sessionData.birdUsages = birdUsages;
       // Drop legacy single-object field so it doesn't linger alongside the array.
       // Cosmos upsert replaces the whole doc, so simply omitting would also work,
       // but setting undefined makes the intent explicit.
+    }
+    if (body.eTransferRecipient !== undefined) {
+      sessionData.eTransferRecipient = body.eTransferRecipient;
+    }
+    if (body.anomaliesDismissed !== undefined) {
+      sessionData.anomaliesDismissed = body.anomaliesDismissed;
     }
 
     const container = getContainer('sessions');
