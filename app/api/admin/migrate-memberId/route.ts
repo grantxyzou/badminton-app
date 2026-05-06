@@ -79,9 +79,11 @@ export async function POST(req: NextRequest) {
           summary.wouldCreate++;
         } else {
           const { resource } = await membersContainer.items.create(newMember);
-          target = resource as Record<string, unknown>;
-          membersByName.set(key, [target]);
-          summary.created++;
+          if (resource) {
+            target = resource as unknown as Record<string, unknown>;
+            membersByName.set(key, [target]);
+            summary.created++;
+          }
         }
       }
 
