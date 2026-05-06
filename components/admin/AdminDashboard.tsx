@@ -21,6 +21,7 @@ import { usePlayerManagement } from './hooks/usePlayerManagement';
 import ResetAccessSheet from './ResetAccessSheet';
 import PageHeader from '../primitives/PageHeader';
 import CommandCenter from './CommandCenter/CommandCenter';
+import BirdsPage from './CommandCenter/BirdsPage';
 import { isFlagOn } from '@/lib/flags';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -62,7 +63,12 @@ export default function AdminDashboard() {
   if (view === 'session-details') return <div className="animate-slideInRight"><SessionDetailsEditor onBack={goBack} /></div>;
   if (view === 'date-time') return <div className="animate-slideInRight"><DateTimeEditor onBack={goBack} /></div>;
   if (view === 'members') return <div className="animate-slideInRight"><MembersView onBack={goBack} /></div>;
-  if (view === 'birds') return <div className="animate-slideInRight"><BirdInventoryView onBack={goBack} /></div>;
+  if (view === 'birds') {
+    if (isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER')) {
+      return <div className="animate-slideInRight"><BirdsPage onBack={goBack} /></div>;
+    }
+    return <div className="animate-slideInRight"><BirdInventoryView onBack={goBack} /></div>;
+  }
   if (view === 'advance') return <div className="animate-slideInRight"><AdvanceSessionForm onBack={goBack} /></div>;
   if (view === 'releases') return <div className="animate-slideInRight"><ReleasesView onBack={goBack} /></div>;
 
