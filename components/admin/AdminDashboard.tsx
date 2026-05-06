@@ -23,6 +23,7 @@ import PageHeader from '../primitives/PageHeader';
 import CommandCenter from './CommandCenter/CommandCenter';
 import BirdsPage from './CommandCenter/BirdsPage';
 import RosterPage from './CommandCenter/RosterPage';
+import SetupPage from './CommandCenter/SetupPage';
 import { isFlagOn } from '@/lib/flags';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -61,8 +62,14 @@ export default function AdminDashboard() {
   }, []);
 
   /* ── Drill-down routing ── */
-  if (view === 'session-details') return <div className="animate-slideInRight"><SessionDetailsEditor onBack={goBack} /></div>;
-  if (view === 'date-time') return <div className="animate-slideInRight"><DateTimeEditor onBack={goBack} /></div>;
+  if (view === 'session-details' || view === 'date-time') {
+    if (isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER')) {
+      return <div className="animate-slideInRight"><SetupPage onBack={goBack} /></div>;
+    }
+    return view === 'session-details'
+      ? <div className="animate-slideInRight"><SessionDetailsEditor onBack={goBack} /></div>
+      : <div className="animate-slideInRight"><DateTimeEditor onBack={goBack} /></div>;
+  }
   if (view === 'members') {
     if (isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER')) {
       return <div className="animate-slideInRight"><RosterPage onBack={goBack} /></div>;
