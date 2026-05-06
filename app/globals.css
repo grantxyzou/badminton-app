@@ -1673,7 +1673,7 @@ html[data-hydrated="true"] .splash {
     radial-gradient(120% 80% at 100% 0%, rgba(74, 222, 128, 0.16), transparent 60%),
     linear-gradient(160deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%);
   border: 1px solid rgba(74, 222, 128, 0.22);
-  padding: 16px;
+  padding: 20px;
 }
 .admin-hero .badge {
   display: inline-flex;
@@ -1696,15 +1696,17 @@ html[data-hydrated="true"] .splash {
 }
 .admin-hero .ah-title {
   font-family: var(--font-display, 'Space Grotesk'), system-ui, sans-serif;
-  font-size: 19px;
+  font-size: 26px;
   font-weight: 700;
-  letter-spacing: -0.015em;
-  margin: 8px 0 0;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 10px 0 0;
 }
 .admin-hero .ah-subtitle {
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--text-secondary);
-  margin: 2px 0 0;
+  margin: 4px 0 0;
+  line-height: 1.4;
 }
 
 /* Tile grid — 3-up small stat tiles inside the hero */
@@ -1715,15 +1717,16 @@ html[data-hydrated="true"] .splash {
 }
 
 .cc-tile {
-  padding: 12px 13px;
+  padding: 14px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   cursor: pointer;
   transition: background 120ms ease, border-color 120ms ease;
+  text-align: left;
 }
 .cc-tile:hover {
   background: rgba(255, 255, 255, 0.06);
@@ -1731,14 +1734,14 @@ html[data-hydrated="true"] .splash {
 }
 .cc-tile .num {
   font-family: var(--font-display, 'Space Grotesk'), system-ui, sans-serif;
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.02em;
   color: var(--text-primary);
 }
 .cc-tile .lbl {
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--text-secondary);
   font-weight: 500;
 }
