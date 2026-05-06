@@ -1,3 +1,20 @@
+export interface PrevSessionSnapshot {
+  courtCount: number;
+  costPerCourt: number;
+  maxPlayers: number;
+  /** Hours between session start and the deadline at the time of advance. */
+  deadlineOffsetHours: number;
+  /** Hours before session start that signup-open was set (if recorded). 0 if signup was opened immediately. */
+  signupOpensOffsetHours: number;
+}
+
+export interface ETransferRecipient {
+  name: string;
+  email: string;
+  /** Optional default memo template — supports `{date}` and `{name}` placeholders. */
+  memo?: string;
+}
+
 export interface Session {
   id: string;
   sessionId?: string;
@@ -18,6 +35,14 @@ export interface Session {
   showCostBreakdown?: boolean;
   prevSessionDate?: string;
   prevCostPerPerson?: number;
+  /** Frozen snapshot of the previous session's settings, written at advance time. */
+  prevSnapshot?: PrevSessionSnapshot;
+  /** Anomaly codes detected at the moment of advance (e.g. 'cost_changed'). Frozen. */
+  anomaliesAtAdvance?: string[];
+  /** Anomaly codes the admin dismissed for this session (live, mutable). */
+  anomaliesDismissed?: string[];
+  /** Per-session override of the e-transfer recipient. Falls back to the admin member's setting if absent. */
+  eTransferRecipient?: ETransferRecipient;
 }
 
 export interface BirdUsage {
@@ -72,6 +97,10 @@ export interface Member {
    * a PIN cannot use admin login.
    */
   pinHash?: string;
+  /** Admin-only: organizer's default e-transfer recipient, used by the receipt export. */
+  eTransferRecipient?: ETransferRecipient;
+  /** Admin-only: dates (YYYY-MM-DD) the admin has marked as skipped. Used by the skip_date anomaly. */
+  skipDates?: string[];
 }
 
 export interface Alias {

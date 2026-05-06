@@ -174,6 +174,22 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Admin-bypass auto-create: when admin signs up a name we've never seen,
+    // create the members doc now so the player record can link via memberId.
+    // Keeps the "every player has a member" invariant the command center relies on.
+    if (!matchedMember && isAdminAuthed(req)) {
+      const newMember = {
+        id: randomBytes(12).toString('hex'),
+        name: trimmedName,
+        role: 'member' as const,
+        sessionCount: 0,
+        active: true,
+        createdAt: new Date().toISOString(),
+      };
+      const { resource } = await membersContainer.items.create(newMember);
+      matchedMember = resource as typeof matchedMember;
+    }
+
     // PIN-protected member: the signup path is anonymous (just a name) and
     // can't tell whether the requester is the legitimate owner. Forcing
     // them through the sign-in flow (which verifies PIN against
