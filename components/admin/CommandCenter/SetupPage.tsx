@@ -89,6 +89,11 @@ export default function SetupPage({ onBack }: SetupPageProps) {
   const [birdUsedByPurchase, setBirdUsedByPurchase] = useState<Map<string, number>>(new Map());
   const [tubePurchaseId, setTubePurchaseId] = useState<string | null>(null);
   const [tubes, setTubes] = useState(0);
+  // Snapshot of what THIS session had logged at load time, keyed by
+  // purchaseId. Lets the cap math credit back the session's own existing
+  // allocation when computing "how many more can I take from this
+  // purchase right now?" — without double-counting it.
+  const [originalSessionTubes, setOriginalSessionTubes] = useState<Map<string, number>>(new Map());
 
   // Live data for the Share preview.
   const [activePlayerCount, setActivePlayerCount] = useState(0);
@@ -139,6 +144,9 @@ export default function SetupPage({ onBack }: SetupPageProps) {
           setTubePurchaseId(existingUsages[0].purchaseId);
           setTubes(existingUsages[0].tubes);
         }
+        const orig = new Map<string, number>();
+        for (const u of existingUsages) orig.set(u.purchaseId, u.tubes);
+        setOriginalSessionTubes(orig);
       }
 
       if (birds?.purchases) {
@@ -192,14 +200,31 @@ export default function SetupPage({ onBack }: SetupPageProps) {
     return hoursBetween({ date, time }, { date: deadlineDate, time: deadlineTime });
   }, [date, time, deadlineDate, deadlineTime]);
 
+  // Max tubes this session can take from the selected purchase:
+  //   purchase.tubes - (used across all OTHER sessions for this purchase)
+  // Where "other" = total used minus whatever THIS session originally had
+  // for this purchase (so editing in place doesn't artificially shrink the
+  // ceiling).
+  const maxTubesForThisSession = useMemo(() => {
+    if (!tubePurchase) return 0;
+    const totalUsed = birdUsedByPurchase.get(tubePurchase.id) ?? 0;
+    const ownOriginal = originalSessionTubes.get(tubePurchase.id) ?? 0;
+    const usedElsewhere = Math.max(0, totalUsed - ownOriginal);
+    return Math.max(0, tubePurchase.tubes - usedElsewhere);
+  }, [tubePurchase, birdUsedByPurchase, originalSessionTubes]);
+
   const remainingAfter = useMemo(() => {
     if (!tubePurchase) return null;
-    const used = birdUsedByPurchase.get(tubePurchase.id) ?? 0;
-    return Math.max(0, tubePurchase.tubes - used - tubes);
-  }, [tubePurchase, birdUsedByPurchase, tubes]);
+    return Math.max(0, maxTubesForThisSession - tubes);
+  }, [tubePurchase, maxTubesForThisSession, tubes]);
+
+  const atMax = tubePurchase !== null && tubes >= maxTubesForThisSession;
 
   function bumpTubes(delta: number) {
-    setTubes((prev) => Math.max(0, Math.min(100, Math.round((prev + delta) * 4) / 4)));
+    setTubes((prev) => {
+      const next = Math.round((prev + delta) * 4) / 4;
+      return Math.max(0, Math.min(maxTubesForThisSession, next));
+    });
   }
 
   async function save() {
@@ -440,12 +465,18 @@ export default function SetupPage({ onBack }: SetupPageProps) {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, minWidth: 0 }}>
               <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{tubes} tubes {tubePurchase.name}</span>
-              <span style={{ fontSize: 10.5, color: 'var(--ink-faint)' }}>
+              <span style={{ fontSize: 10.5, color: atMax ? 'var(--amber)' : 'var(--ink-faint)' }}>
                 at ${tubePurchase.costPerTube.toFixed(2)}/tube
                 {remainingAfter !== null && ` · ${remainingAfter} left after`}
+                {atMax && ' · max for this purchase'}
               </span>
             </div>
-            <Stepper value={tubes} onDec={() => bumpTubes(-0.25)} onInc={() => bumpTubes(0.25)} />
+            <Stepper
+              value={tubes}
+              onDec={() => bumpTubes(-0.25)}
+              onInc={() => bumpTubes(0.25)}
+              incDisabled={atMax}
+            />
           </div>
         )}
 
@@ -605,7 +636,19 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
   );
 }
 
-function Stepper({ value, onDec, onInc }: { value: number; onDec: () => void; onInc: () => void }) {
+function Stepper({
+  value,
+  onDec,
+  onInc,
+  decDisabled,
+  incDisabled,
+}: {
+  value: number;
+  onDec: () => void;
+  onInc: () => void;
+  decDisabled?: boolean;
+  incDisabled?: boolean;
+}) {
   return (
     <div
       style={{
@@ -619,13 +662,43 @@ function Stepper({ value, onDec, onInc }: { value: number; onDec: () => void; on
         flexShrink: 0,
       }}
     >
-      <button type="button" onClick={onDec} aria-label="Decrease" style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.04)', border: 0, borderRadius: 7, color: 'var(--text-primary)', cursor: 'pointer' }}>
+      <button
+        type="button"
+        onClick={onDec}
+        disabled={decDisabled || value <= 0}
+        aria-label="Decrease"
+        style={{
+          width: 28,
+          height: 28,
+          background: 'rgba(255,255,255,0.04)',
+          border: 0,
+          borderRadius: 7,
+          color: 'var(--text-primary)',
+          cursor: decDisabled || value <= 0 ? 'not-allowed' : 'pointer',
+          opacity: decDisabled || value <= 0 ? 0.4 : 1,
+        }}
+      >
         <span className="material-icons" style={{ fontSize: 14 }}>remove</span>
       </button>
       <span style={{ minWidth: 36, textAlign: 'center', fontFamily: 'var(--font-display, "Space Grotesk")', fontWeight: 600, fontSize: 12 }}>
         {value}
       </span>
-      <button type="button" onClick={onInc} aria-label="Increase" style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.04)', border: 0, borderRadius: 7, color: 'var(--text-primary)', cursor: 'pointer' }}>
+      <button
+        type="button"
+        onClick={onInc}
+        disabled={incDisabled}
+        aria-label="Increase"
+        style={{
+          width: 28,
+          height: 28,
+          background: 'rgba(255,255,255,0.04)',
+          border: 0,
+          borderRadius: 7,
+          color: 'var(--text-primary)',
+          cursor: incDisabled ? 'not-allowed' : 'pointer',
+          opacity: incDisabled ? 0.4 : 1,
+        }}
+      >
         <span className="material-icons" style={{ fontSize: 14 }}>add</span>
       </button>
     </div>
