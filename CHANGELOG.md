@@ -56,9 +56,22 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ### Added
 
+- **Admin Command Center** *(flag-gated `NEXT_PUBLIC_FLAG_COMMAND_CENTER`)* — new card-based admin landing surface that replaces the legacy AdminDashboard when enabled. Six cards: Anomaly Feed (settings drift, long break, skip date), Next Session (capacity bar, signup state, deadline countdown), Announcements (inline composer), Payments (paid/pending toggle, group + individual receipt export), Bird Inventory (stock + low-stock warning + burn-rate weeks), Roster Health (invite list, waitlist, recent removals), Recent Sessions strip (last 6 with attendance + paid %), Skip Dates editor.
+- **Receipt export** — group format (image + text, 390×520 PNG with design-system fonts) and individual format (text only) shareable via Web Share API or download. Auto-renders cost/players/recipient from current session + admin's e-transfer setting.
+- **Player profile sheet** — tap any player name in the Payments card to see lifetime stats + last 12 sessions with paid/missed status. Backed by new `GET /api/members/[id]/history`.
+- **Anomaly blocking sheet on advance** — when admin tries to advance to a date on their `members.skipDates` list, a confirmation sheet pops up asking "advance anyway?" Prevents accidental holiday/closure advances.
+- **memberId stable identity** — every `players` record now links to a `members` doc via `memberId`. One-shot backfill migration ran on shared production Cosmos (156 records linked, 16 new members auto-created, 0 collisions).
+- **Schema additions** *(additive, optional)* — `Session.prevSnapshot` (frozen previous session settings), `Session.anomaliesAtAdvance` / `anomaliesDismissed`, `Session.eTransferRecipient`, `Member.eTransferRecipient`, `Member.skipDates`.
+- **New admin APIs** — `GET /api/sessions/recent`, `GET /api/admin/anomalies`, `GET /api/members/[id]/history`, `POST /api/admin/migrate-memberId`, `PATCH /api/admin/settings`.
+
 ### Changed
 
+- **Advance route** now writes `prevSnapshot` and `anomaliesAtAdvance` (cost_changed, courts_changed, max_players_changed, long_break) at advance time. Existing `prevSessionDate`/`prevCostPerPerson` writes preserved for legacy readers.
+- **PUT /api/session** now accepts `eTransferRecipient` (per-session override) and `anomaliesDismissed` (live mutable list).
+
 ### Fixed
+
+- **Admin signup auto-creates a member** — closes a write-path gap where admin-bypass signups produced player records with no `memberId` because no matching member existed. Every admin-initiated signup now links to a member, restoring the "every player has a member" invariant the command-center history view depends on.
 
 ---
 
