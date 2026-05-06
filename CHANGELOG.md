@@ -56,6 +56,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ### Added
 
+- **`GET /api/admin/settings`** — auth-gated read of the calling admin's own settings (e-transfer recipient, skip dates). Replaces the previous "scan public `/api/members` for `role:admin`" pattern that leaked admin attributes if the response shape ever loosened.
+- **`POST /api/session/dismiss-anomaly`** — atomic per-code append on the active session's `anomaliesDismissed` array. Replaces a client-side read-modify-write-via-PUT that could nuke the session doc if the read step failed.
+- **`lib/fmt.ts`** — shared `withLocalTz`, `fmtShortDate`, `fmtSessionLabel`, `fmtFullDate` (extracted from 6+ duplicated callsites).
+- **`lib/avatar.ts`** — shared deterministic avatar palette (RosterPage rows + Profile identity card now agree on the same color per name).
 - **Admin Command Center** *(flag-gated `NEXT_PUBLIC_FLAG_COMMAND_CENTER`)* — new card-based admin landing surface that replaces the legacy AdminDashboard when enabled. Six cards: Anomaly Feed (settings drift, long break, skip date), Next Session (capacity bar, signup state, deadline countdown), Announcements (inline composer), Payments (paid/pending toggle, group + individual receipt export), Bird Inventory (stock + low-stock warning + burn-rate weeks), Roster Health (invite list, waitlist, recent removals), Recent Sessions strip (last 6 with attendance + paid %), Skip Dates editor.
 - **Receipt export** — group format (image + text, 390×520 PNG with design-system fonts) and individual format (text only) shareable via Web Share API or download. Auto-renders cost/players/recipient from current session + admin's e-transfer setting.
 - **Player profile sheet** — tap any player name in the Payments card to see lifetime stats + last 12 sessions with paid/missed status. Backed by new `GET /api/members/[id]/history`.
@@ -72,6 +76,18 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 ### Fixed
 
 - **Admin signup auto-creates a member** — closes a write-path gap where admin-bypass signups produced player records with no `memberId` because no matching member existed. Every admin-initiated signup now links to a member, restoring the "every player has a member" invariant the command-center history view depends on.
+- **`pinHash` strip-canary enforced on `/api/members`** — POST/PATCH/DELETE/GET-admin all now strip the scrypt hash from responses. Surfaced by the 2026-05-06 audit; admin clients had been receiving the hash on PATCH and full-list GET.
+- **Burn-rate denominator/numerator window matched** — Bird tube "weeks left" was previously `totalUsedAcrossAllSessions ÷ recentSessionCount` which inflated burn rate ~12× for groups with 2 years of history. Now uses `recentTubesUsed ÷ recentSessions` (matching 60-day window). API exposes `burnPerSession` so the three callers (Birds page, Profile hero, dashboard tile) all agree.
+- **`prevCostPerPerson` advance-time snapshot fixed** — `/api/session/advance` player-count query was missing the `IS_DEFINED` guard, silently undercounting legacy player records and writing a wrong frozen cost.
+- **`members/[id]/history` per-session cost now correct** — was reading `session.prevCostPerPerson` (last week's cost frozen at advance), so every history row showed last week's number. Now computes `totalCost / attendanceBySession[sessionId]`.
+- **"Lying empty state" eliminated** — the `catch { setX([]) }` pattern across all admin cards was rendering confidently empty UI on fetch failure (replicating the v1.3 Cosmos misconfig disaster). Each card now distinguishes loaded-empty from load-failed and surfaces an explicit error pill.
+- **Payment-data integrity (alias writes)** — Roster sheet alias POST/PATCH/DELETE were fire-and-forget; admin saw "saved" but failed alias updates silently desynced receipt routing. Now checks `res.ok` and surfaces specific failure copy.
+- **Advance form prefill failure surfaced** — silent default values (2 courts, $0 cost) on a destructive action are now blocked by a red banner.
+- **Anomaly dismiss timezone correctness** — `detectSkipDate` was timezone-naive (`.slice(0,10)` of the ISO string), risking a day-off bug for sessions stored with a UTC offset. Now extracts the local calendar date from `withLocalTz` output.
+- **`Anomaly` type narrowed to closed `AnomalyCode` union** — typo'd dismissal codes used to silently never match; now caught at compile time. The `(severity:'blocking', dismissable:true)` illegal pair is structurally unrepresentable.
+- **AdminConsoleHero CTA uses `cc-btn cc-btn-primary cc-btn-lg`** — was inline-styled, dropping the `:focus-visible` ring (a11y miss).
+- **Light-mode overrides** for `.admin-hero` and `.cc-dcard` (both rendered near-invisible on cream theme).
+- **`PaymentsCard` divider line removed** + add-player input switched to canonical class — both fix project-rule violations (no hard dividers between list items; inputs inherit the canonical input style).
 
 ---
 
