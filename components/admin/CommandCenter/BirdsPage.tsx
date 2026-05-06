@@ -54,17 +54,20 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
   const [recentSessionCount, setRecentSessionCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // Add Purchase sheet state
-  const [addOpen, setAddOpen] = useState(false);
-  const [addName, setAddName] = useState('');
-  const [addTubes, setAddTubes] = useState<number | ''>('');
-  const [addCost, setAddCost] = useState<number | ''>('');
-  const [addSpeed, setAddSpeed] = useState<number | ''>('');
-  const [addQuality, setAddQuality] = useState<number>(0);
-  const [addDate, setAddDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [addNotes, setAddNotes] = useState('');
-  const [adding, setAdding] = useState(false);
-  const [addError, setAddError] = useState('');
+  // Purchase sheet state — used for both Add and Edit. editingId === null
+  // means Add mode; non-null means Edit mode for that purchase.
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formName, setFormName] = useState('');
+  const [formTubes, setFormTubes] = useState<number | ''>('');
+  const [formCost, setFormCost] = useState<number | ''>('');
+  const [formSpeed, setFormSpeed] = useState<number | ''>('');
+  const [formQuality, setFormQuality] = useState<number>(0);
+  const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [formNotes, setFormNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [formError, setFormError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -101,54 +104,93 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
 
   useEffect(() => { void load(); }, [load]);
 
-  function resetAddForm() {
-    setAddName('');
-    setAddTubes('');
-    setAddCost('');
-    setAddSpeed('');
-    setAddQuality(0);
-    setAddDate(new Date().toISOString().slice(0, 10));
-    setAddNotes('');
-    setAddError('');
+  function openAddSheet() {
+    setEditingId(null);
+    setFormName('');
+    setFormTubes('');
+    setFormCost('');
+    setFormSpeed('');
+    setFormQuality(0);
+    setFormDate(new Date().toISOString().slice(0, 10));
+    setFormNotes('');
+    setFormError('');
+    setSheetOpen(true);
   }
 
-  async function handleAdd() {
-    const name = addName.trim();
-    const tubes = typeof addTubes === 'number' ? addTubes : 0;
-    const totalCost = typeof addCost === 'number' ? addCost : 0;
-    if (!name) { setAddError('Brand / model required.'); return; }
-    if (tubes <= 0) { setAddError('Tubes must be > 0.'); return; }
-    if (totalCost <= 0) { setAddError('Total cost must be > 0.'); return; }
+  function openEditSheet(p: BirdPurchase) {
+    setEditingId(p.id);
+    setFormName(p.name);
+    setFormTubes(p.tubes);
+    setFormCost(p.totalCost);
+    setFormSpeed(typeof p.speed === 'number' ? p.speed : '');
+    setFormQuality(typeof p.qualityRating === 'number' ? p.qualityRating : 0);
+    setFormDate(p.date.slice(0, 10));
+    setFormNotes(p.notes ?? '');
+    setFormError('');
+    setSheetOpen(true);
+  }
 
-    setAdding(true);
-    setAddError('');
+  async function handleSave() {
+    const name = formName.trim();
+    const tubes = typeof formTubes === 'number' ? formTubes : 0;
+    const totalCost = typeof formCost === 'number' ? formCost : 0;
+    if (!name) { setFormError('Brand / model required.'); return; }
+    if (tubes <= 0) { setFormError('Tubes must be > 0.'); return; }
+    if (totalCost <= 0) { setFormError('Total cost must be > 0.'); return; }
+
+    setSaving(true);
+    setFormError('');
     try {
       const body: Record<string, unknown> = {
         name,
         tubes,
         totalCost,
-        date: addDate,
-        ...(typeof addSpeed === 'number' ? { speed: addSpeed } : {}),
-        ...(addQuality > 0 ? { qualityRating: addQuality } : {}),
-        ...(addNotes.trim() ? { notes: addNotes.trim() } : {}),
+        date: formDate,
+        ...(typeof formSpeed === 'number' ? { speed: formSpeed } : {}),
+        ...(formQuality > 0 ? { qualityRating: formQuality } : {}),
+        ...(formNotes.trim() ? { notes: formNotes.trim() } : {}),
       };
       const res = await fetch(`${BASE}/api/birds`, {
-        method: 'POST',
+        method: editingId ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(editingId ? { id: editingId, ...body } : body),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setAddError(data.error ?? 'Failed to add purchase.');
+        setFormError(data.error ?? `Failed to ${editingId ? 'save' : 'add'} purchase.`);
         return;
       }
-      setAddOpen(false);
-      resetAddForm();
+      setSheetOpen(false);
       await load();
     } catch {
-      setAddError('Network error.');
+      setFormError('Network error.');
     } finally {
-      setAdding(false);
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!editingId) return;
+    if (!confirm('Delete this purchase? This cannot be undone.')) return;
+    setDeleting(true);
+    setFormError('');
+    try {
+      const res = await fetch(`${BASE}/api/birds`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setFormError(data.error ?? 'Failed to delete.');
+        return;
+      }
+      setSheetOpen(false);
+      await load();
+    } catch {
+      setFormError('Network error.');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -379,7 +421,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             type="button"
             className="btn-primary"
             style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-            onClick={() => { resetAddForm(); setAddOpen(true); }}
+            onClick={openAddSheet}
           >
             <span className="material-icons" style={{ fontSize: 18 }}>add_shopping_cart</span>
             Log purchase
@@ -474,12 +516,24 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             const left = Math.max(0, p.tubes - used);
             const { brand } = parseBirdName(p.name);
             return (
-              <div
+              <button
                 key={p.id}
+                type="button"
+                onClick={() => openEditSheet(p)}
+                aria-label={`Edit purchase: ${brand || p.name} on ${fmtDate(p.date)}`}
                 style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  background: 'transparent',
+                  cursor: 'pointer',
                   padding: '12px 16px',
+                  border: 'none',
                   borderTop: i ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                  transition: 'background 120ms ease',
                 }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
@@ -532,25 +586,25 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                     </span>
                   )}
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
       )}
 
-      {/* Add purchase sheet */}
+      {/* Add / Edit purchase sheet */}
       <BottomSheet
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
-        ariaLabel="Log purchase"
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        ariaLabel={editingId ? 'Edit purchase' : 'Log purchase'}
         maxHeight="80vh"
         className="max-w-sm mx-auto"
       >
         <BottomSheetHeader className="flex items-center justify-between p-4">
-          <span style={{ fontSize: 16, fontWeight: 600 }}>Log purchase</span>
+          <span style={{ fontSize: 16, fontWeight: 600 }}>{editingId ? 'Edit purchase' : 'Log purchase'}</span>
           <button
             type="button"
-            onClick={() => setAddOpen(false)}
+            onClick={() => setSheetOpen(false)}
             aria-label="Close"
             style={{
               background: 'transparent',
@@ -571,8 +625,8 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             <Field label="Brand / model">
               <input
                 type="text"
-                value={addName}
-                onChange={(e) => setAddName(e.target.value)}
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
                 placeholder="e.g. Ling-Mei 60"
                 maxLength={120}
               />
@@ -583,8 +637,8 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                   type="number"
                   inputMode="decimal"
                   step={0.5}
-                  value={addTubes}
-                  onChange={(e) => setAddTubes(e.target.value === '' ? '' : Number(e.target.value))}
+                  value={formTubes}
+                  onChange={(e) => setFormTubes(e.target.value === '' ? '' : Number(e.target.value))}
                 />
               </Field>
               <Field label="Total cost" style={{ flex: 1 }}>
@@ -592,8 +646,8 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                   type="number"
                   inputMode="decimal"
                   step={0.01}
-                  value={addCost}
-                  onChange={(e) => setAddCost(e.target.value === '' ? '' : Number(e.target.value))}
+                  value={formCost}
+                  onChange={(e) => setFormCost(e.target.value === '' ? '' : Number(e.target.value))}
                 />
               </Field>
             </div>
@@ -601,16 +655,16 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
               <Field label="Date" style={{ flex: 1 }}>
                 <input
                   type="date"
-                  value={addDate}
-                  onChange={(e) => setAddDate(e.target.value)}
+                  value={formDate}
+                  onChange={(e) => setFormDate(e.target.value)}
                 />
               </Field>
               <Field label="Speed" style={{ flex: 1 }}>
                 <input
                   type="number"
                   inputMode="numeric"
-                  value={addSpeed}
-                  onChange={(e) => setAddSpeed(e.target.value === '' ? '' : Number(e.target.value))}
+                  value={formSpeed}
+                  onChange={(e) => setFormSpeed(e.target.value === '' ? '' : Number(e.target.value))}
                   placeholder="e.g. 76"
                 />
               </Field>
@@ -621,7 +675,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                   <button
                     key={i}
                     type="button"
-                    onClick={() => setAddQuality(addQuality === i ? 0 : i)}
+                    onClick={() => setFormQuality(formQuality === i ? 0 : i)}
                     aria-label={`${i} stars`}
                     style={{
                       background: 'transparent',
@@ -635,7 +689,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                       className="material-icons"
                       style={{
                         fontSize: 24,
-                        color: i <= addQuality ? 'var(--amber)' : 'rgba(255,255,255,0.18)',
+                        color: i <= formQuality ? 'var(--amber)' : 'rgba(255,255,255,0.18)',
                       }}
                     >
                       star
@@ -647,36 +701,48 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             <Field label="Notes (optional)">
               <input
                 type="text"
-                value={addNotes}
-                onChange={(e) => setAddNotes(e.target.value)}
+                value={formNotes}
+                onChange={(e) => setFormNotes(e.target.value)}
                 placeholder="e.g. Same as last batch"
                 maxLength={200}
               />
             </Field>
 
-            {addError && (
+            {formError && (
               <p role="alert" style={{ fontSize: 13, color: 'var(--color-red, #ef4444)', margin: 0 }}>
-                {addError}
+                {formError}
               </p>
             )}
 
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={saving || deleting}
+                  className="cc-btn cc-btn-danger"
+                  aria-label="Delete this purchase"
+                >
+                  {deleting ? 'Deleting…' : 'Delete'}
+                </button>
+              )}
+              <div style={{ flex: 1 }} />
               <button
                 type="button"
-                onClick={() => setAddOpen(false)}
+                onClick={() => setSheetOpen(false)}
                 className="cc-btn cc-btn-ghost"
-                disabled={adding}
+                disabled={saving || deleting}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={handleAdd}
+                onClick={handleSave}
                 className="btn-primary"
-                disabled={adding}
+                disabled={saving || deleting}
                 style={{ minWidth: 100 }}
               >
-                {adding ? 'Saving…' : 'Save'}
+                {saving ? 'Saving…' : editingId ? 'Save' : 'Add'}
               </button>
             </div>
           </div>
