@@ -20,17 +20,19 @@ export async function GET(req: NextRequest) {
     const container = getContainer('members');
     const { resources } = await container.items
       .query({
-        query: 'SELECT c.role, c.pinHash FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
+        query: 'SELECT c.role, c.pinHash, c.createdAt FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
         parameters: [{ name: '@name', value: name }],
       })
       .fetchAll();
 
-    const role = resources[0]?.role ?? 'member';
-    const hasPin = typeof resources[0]?.pinHash === 'string' && resources[0].pinHash.length > 0;
-    return NextResponse.json({ role, hasPin });
+    const me = resources[0];
+    const role = me?.role ?? 'member';
+    const hasPin = typeof me?.pinHash === 'string' && me.pinHash.length > 0;
+    const createdAt = typeof me?.createdAt === 'string' ? me.createdAt : null;
+    return NextResponse.json({ role, hasPin, createdAt });
   } catch (error) {
     console.error('GET members/me error:', error);
-    return NextResponse.json({ role: 'member', hasPin: false });
+    return NextResponse.json({ role: 'member', hasPin: false, createdAt: null });
   }
 }
 
