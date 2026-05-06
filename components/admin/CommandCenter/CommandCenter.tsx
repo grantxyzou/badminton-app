@@ -9,6 +9,7 @@ import PaymentsCard from './PaymentsCard';
 import BirdInventoryCard from './BirdInventoryCard';
 import RosterHealthCard from './RosterHealthCard';
 import RecentSessionsStrip from './RecentSessionsStrip';
+import AnnouncementsCard from './AnnouncementsCard';
 import type { AdminView } from '../types';
 
 interface CommandCenterProps {
@@ -27,7 +28,7 @@ interface CommandCenterProps {
  * a time; until they're all live, this component renders alongside the
  * legacy Dashboard depending on the flag.
  */
-export default function CommandCenter({ refreshKey, setView: _setView }: CommandCenterProps) {
+export default function CommandCenter({ refreshKey, setView }: CommandCenterProps) {
   const pageT = useTranslations('pages.admin');
   // Local refresh — bumped when an action inside a card needs the feed to refetch.
   const [localRefresh, setLocalRefresh] = useState(0);
@@ -38,11 +39,27 @@ export default function CommandCenter({ refreshKey, setView: _setView }: Command
       <PageHeader>{pageT('title')}</PageHeader>
 
       <AnomalyFeed refreshKey={composedRefresh} />
-      <NextSessionCard refreshKey={composedRefresh} />
+      <NextSessionCard
+        refreshKey={composedRefresh}
+        onEdit={() => setView('session-details')}
+        onEditDateTime={() => setView('date-time')}
+        onAdvance={() => setView('advance')}
+      />
+      <AnnouncementsCard refreshKey={composedRefresh} />
       <PaymentsCard refreshKey={composedRefresh} />
-      <BirdInventoryCard />
-      <RosterHealthCard />
+      <BirdInventoryCard onOpen={() => setView('birds')} />
+      <RosterHealthCard onOpen={() => setView('members')} />
       <RecentSessionsStrip />
+
+      <div className="flex justify-center pt-2">
+        <button
+          type="button"
+          onClick={() => setView('releases')}
+          className="text-xs text-gray-400 hover:text-gray-200 underline-offset-2 hover:underline"
+        >
+          Release notes →
+        </button>
+      </div>
 
       {/* Hidden bump, exposed via window for test/dev — not used in real flow. */}
       <button type="button" hidden onClick={() => setLocalRefresh((n) => n + 1)} />
