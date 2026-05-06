@@ -137,23 +137,12 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
   }
 
   return (
-    <section className="glass-card p-4 space-y-3" aria-label="Announcements">
-      <header className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="bpm-h3">Announcements</h3>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {items.length === 0 ? 'No announcements posted' : `${items.length} posted`}
-          </p>
-        </div>
-        {!composing && (
-          <button
-            type="button"
-            onClick={() => setComposing(true)}
-            className="cc-btn cc-btn-secondary"
-          >
-            Compose
-          </button>
-        )}
+    <section className="glass-card p-4 space-y-3 flex flex-col" aria-label="Announcements">
+      <header>
+        <h3 className="bpm-h3">Announcements</h3>
+        <p className="text-xs text-gray-400 mt-0.5">
+          {items.length === 0 ? 'No announcements posted' : `${items.length} posted`}
+        </p>
       </header>
 
       {composing && (
@@ -284,6 +273,16 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
             </li>
           ))}
         </ul>
+      )}
+
+      {!composing && (
+        <button
+          type="button"
+          onClick={() => setComposing(true)}
+          className="cc-btn cc-btn-secondary self-start"
+        >
+          Compose
+        </button>
       )}
     </section>
   );
