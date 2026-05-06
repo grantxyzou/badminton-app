@@ -10,6 +10,8 @@ import BirdInventoryCard from './BirdInventoryCard';
 import RosterHealthCard from './RosterHealthCard';
 import RecentSessionsStrip from './RecentSessionsStrip';
 import AnnouncementsCard from './AnnouncementsCard';
+import PlayerProfileSheet from './PlayerProfileSheet';
+import SkipDatesEditor from './SkipDatesEditor';
 import type { AdminView } from '../types';
 
 interface CommandCenterProps {
@@ -34,6 +36,14 @@ export default function CommandCenter({ refreshKey, setView }: CommandCenterProp
   const [localRefresh, setLocalRefresh] = useState(0);
   const composedRefresh = refreshKey + localRefresh;
 
+  const [profileMemberId, setProfileMemberId] = useState<string | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  function openPlayer(memberId: string) {
+    setProfileMemberId(memberId);
+    setProfileOpen(true);
+  }
+
   return (
     <div className="space-y-5 w-full">
       <PageHeader>{pageT('title')}</PageHeader>
@@ -46,10 +56,11 @@ export default function CommandCenter({ refreshKey, setView }: CommandCenterProp
         onAdvance={() => setView('advance')}
       />
       <AnnouncementsCard refreshKey={composedRefresh} />
-      <PaymentsCard refreshKey={composedRefresh} />
+      <PaymentsCard refreshKey={composedRefresh} onOpenPlayer={openPlayer} />
       <BirdInventoryCard onOpen={() => setView('birds')} />
       <RosterHealthCard onOpen={() => setView('members')} />
       <RecentSessionsStrip />
+      <SkipDatesEditor />
 
       <div className="flex justify-center pt-2">
         <button
@@ -60,6 +71,12 @@ export default function CommandCenter({ refreshKey, setView }: CommandCenterProp
           Release notes →
         </button>
       </div>
+
+      <PlayerProfileSheet
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        memberId={profileMemberId}
+      />
 
       {/* Hidden bump, exposed via window for test/dev — not used in real flow. */}
       <button type="button" hidden onClick={() => setLocalRefresh((n) => n + 1)} />
