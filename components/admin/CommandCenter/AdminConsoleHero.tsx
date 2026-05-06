@@ -150,8 +150,27 @@ export default function AdminConsoleHero({ onOpenAdmin }: AdminConsoleHeroProps)
       <button
         type="button"
         onClick={onOpenAdmin}
-        className="btn-primary"
-        style={{ marginTop: 12, width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+        style={{
+          marginTop: 14,
+          width: '100%',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          padding: '14px 16px',
+          borderRadius: 14,
+          background: 'var(--accent)',
+          color: '#0a1f10',
+          border: 'none',
+          cursor: 'pointer',
+          fontFamily: 'var(--font-display, "Space Grotesk")',
+          fontWeight: 700,
+          fontSize: 15,
+          letterSpacing: '-0.005em',
+          transition: 'filter 120ms ease',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(1.06)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.filter = 'none'; }}
       >
         Open admin home
         <span className="material-icons" style={{ fontSize: 18 }}>arrow_forward</span>
