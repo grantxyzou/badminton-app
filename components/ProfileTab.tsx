@@ -303,37 +303,25 @@ export default function ProfileTab({
   return (
     <div className="animate-fadeIn flex flex-col gap-4">
       <h1 className="bpm-h1">{tNav('profile')}</h1>
-      <div className="glass-card" style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <ProfileIdentityCard
-          name={identity.name}
-          memberCreatedAt={memberCreatedAt}
-          isSignedUp={isSignedUp}
-          isAdmin={isAdmin}
-          nameLabel={t('playerName')}
-        />
 
-        {showAdminHero && (
-          <>
-            <p
-              style={{
-                fontFamily: 'var(--font-display, "Space Grotesk")',
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: '0.16em',
-                textTransform: 'uppercase',
-                color: 'var(--ink-faint)',
-                margin: '8px 4px 0',
-              }}
-            >
-              Admin
-            </p>
-            <AdminConsoleHero onOpenAdmin={onAdminTools} />
-          </>
-        )}
+      <ProfileIdentityCard
+        name={identity.name}
+        memberCreatedAt={memberCreatedAt}
+        isSignedUp={isSignedUp}
+        isAdmin={isAdmin}
+        nameLabel={t('playerName')}
+      />
 
-        <SettingsList
-          title={tSettings('title')}
-          rows={[
+      {showAdminHero && (
+        <>
+          <ProfileEyebrow>Admin</ProfileEyebrow>
+          <AdminConsoleHero onOpenAdmin={onAdminTools} />
+        </>
+      )}
+
+      <ProfileEyebrow>{tSettings('title')}</ProfileEyebrow>
+      <SettingsList
+        rows={[
             // Batch B (expanded): PIN management is now member-scoped via
             // PATCH /api/members/me — works regardless of whether the user
             // has a session player. The previous "Sign up for a session
@@ -363,7 +351,6 @@ export default function ProfileTab({
             { icon: 'logout', label: tSettings('logout'), onClick: handleLogout, destructive: true },
           ]}
         />
-      </div>
 
       <RecoveryPinSheet
         open={recoveryPinOpen}
@@ -396,21 +383,23 @@ interface SettingsRow {
   meta?: string;
 }
 
-function SettingsList({ title, rows }: { title: string; rows: SettingsRow[] }) {
+function SettingsList({ title, rows }: { title?: string; rows: SettingsRow[] }) {
   return (
     <div className="glass-card-soft" style={{ padding: 0, overflow: 'hidden' }}>
-      <p
-        style={{
-          padding: '14px 16px 8px',
-          fontSize: 11,
-          fontWeight: 600,
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          color: 'var(--text-secondary)',
-        }}
-      >
-        {title}
-      </p>
+      {title && (
+        <p
+          style={{
+            padding: '14px 16px 8px',
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            color: 'var(--text-secondary)',
+          }}
+        >
+          {title}
+        </p>
+      )}
       <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
         {rows.map((row, idx) => (
           <li key={row.label} style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--divider)' }}>
@@ -593,5 +582,26 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameL
         </div>
       </div>
     </div>
+  );
+}
+
+/* Section eyebrow — uppercase label that sits OUTSIDE a card,
+   above the content it labels. Matches the design's 'ADMIN' /
+   'ACCOUNT' pattern. */
+function ProfileEyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      style={{
+        fontFamily: 'var(--font-display, "Space Grotesk")',
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: '0.16em',
+        textTransform: 'uppercase',
+        color: 'var(--ink-faint, rgba(255,255,255,0.42))',
+        margin: '8px 4px -2px',
+      }}
+    >
+      {children}
+    </p>
   );
 }
