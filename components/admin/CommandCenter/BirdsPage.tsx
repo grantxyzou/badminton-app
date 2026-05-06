@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import AdminBackHeader from '../AdminBackHeader';
-import { parseBirdName } from '@/lib/birdBrand';
 import { normalizeBirdUsages } from '@/lib/birdUsages';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import AssignUsageSheet from '../AssignUsageSheet';
@@ -218,12 +217,13 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
 
   const weeksRunway = burnPerSession > 0 ? currentStock / burnPerSession : null;
 
-  // Brand summaries.
+  // Brand summaries — grouped by FULL name (e.g. 'Ling-Mei 60' stays
+  // distinct from 'Ling-Mei 76'). Empty rows (remaining === 0) are
+  // filtered out so the In-stock list only shows what's actually on hand.
   const brands = useMemo<BrandSummary[]>(() => {
     const map = new Map<string, BrandSummary & { speedSum: number; speedCount: number; qualitySum: number; qualityCount: number }>();
     for (const p of purchases) {
-      const { brand } = parseBirdName(p.name);
-      const key = brand || p.name || '—';
+      const key = p.name?.trim() || '—';
       const used = usedByPurchase.get(p.id) ?? 0;
       const remaining = Math.max(0, p.tubes - used);
       const existing = map.get(key) ?? {
@@ -244,12 +244,14 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
       if (typeof p.qualityRating === 'number') { existing.qualitySum += p.qualityRating; existing.qualityCount++; }
       map.set(key, existing);
     }
-    const out: BrandSummary[] = Array.from(map.values()).map((v) => {
-      const speed = v.speedCount > 0 ? Math.round(v.speedSum / v.speedCount) : null;
-      const quality = v.qualityCount > 0 ? Math.round(v.qualitySum / v.qualityCount) : null;
-      const weeksLeft = burnPerSession > 0 ? Math.max(0, Math.round((v.remaining / burnPerSession) * 10) / 10) : null;
-      return { brand: v.brand, remaining: v.remaining, bought: v.bought, speed, quality, weeksLeft };
-    });
+    const out: BrandSummary[] = Array.from(map.values())
+      .filter((v) => v.remaining > 0)
+      .map((v) => {
+        const speed = v.speedCount > 0 ? Math.round(v.speedSum / v.speedCount) : null;
+        const quality = v.qualityCount > 0 ? Math.round(v.qualitySum / v.qualityCount) : null;
+        const weeksLeft = burnPerSession > 0 ? Math.max(0, Math.round((v.remaining / burnPerSession) * 10) / 10) : null;
+        return { brand: v.brand, remaining: v.remaining, bought: v.bought, speed, quality, weeksLeft };
+      });
     return out.sort((a, b) => b.remaining - a.remaining);
   }, [purchases, usedByPurchase, burnPerSession]);
 
@@ -340,10 +342,23 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           <strong style={{ color: 'var(--text-primary)' }}>{currentStock} tubes</strong> on hand
           {burnPerSession > 0 && (
             <>
-              {' '}· burning <strong style={{ color: 'var(--text-primary)' }}>{burnPerSession.toFixed(1)}/session</strong>
+              {' '}· burning <strong style={{ color: 'var(--text-primary)' }}>{burnPerSession.toFixed(2)}/session</strong>
             </>
           )}
         </p>
+        {burnPerSession > 0 && recentSessionCount > 0 && (
+          <p
+            style={{
+              fontSize: 11,
+              color: 'var(--ink-faint)',
+              margin: '4px 0 0',
+              fontFamily: 'var(--font-mono, "JetBrains Mono")',
+            }}
+            title="Burn rate = recent tubes used ÷ recent sessions (last 60 days)"
+          >
+            {recentUsedTotal.toFixed(2)} tubes ÷ {recentSessionCount} session{recentSessionCount === 1 ? '' : 's'} (last 60d)
+          </p>
+        )}
 
         {/* Timeline */}
         <div style={{ marginTop: 18, position: 'relative' }}>
@@ -529,13 +544,12 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           {recentPurchases.map((p, i) => {
             const used = usedByPurchase.get(p.id) ?? 0;
             const left = Math.max(0, p.tubes - used);
-            const { brand } = parseBirdName(p.name);
             return (
               <button
                 key={p.id}
                 type="button"
                 onClick={() => openEditSheet(p)}
-                aria-label={`Edit purchase: ${brand || p.name} on ${fmtDate(p.date)}`}
+                aria-label={`Edit purchase: ${p.name} on ${fmtDate(p.date)}`}
                 style={{
                   display: 'block',
                   width: '100%',
@@ -553,7 +567,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
                     <p style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 13.5, fontWeight: 600, margin: 0 }}>
-                      {brand || p.name}
+                      {p.name}
                     </p>
                     <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>
                       {fmtDate(p.date)} · {p.tubes} tube{p.tubes === 1 ? '' : 's'}
