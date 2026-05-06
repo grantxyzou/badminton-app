@@ -668,14 +668,13 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                   </div>
                 </Field>
 
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, color: 'var(--text-primary)' }}>
+                <label className="cc-checkbox">
                   <input
                     type="checkbox"
                     checked={formActive}
                     onChange={(e) => setFormActive(e.target.checked)}
-                    style={{ width: 18, height: 18 }}
                   />
-                  Active
+                  <span>Active</span>
                 </label>
               </>
             )}
