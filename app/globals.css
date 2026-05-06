@@ -1617,6 +1617,18 @@ html[data-hydrated="true"] .splash {
   background: rgba(255, 255, 255, 0.04);
 }
 
+/* Large variant — for prominent CTAs (hero buttons, etc.). Pair with
+   any of the color variants (e.g. `cc-btn cc-btn-primary cc-btn-lg`). */
+.cc-btn-lg {
+  padding: 14px 16px;
+  font-size: 15px;
+  border-radius: 14px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  width: 100%;
+  justify-content: center;
+}
+
 /* Danger — destructive override (advance-anyway, etc.) */
 .cc-btn-danger {
   background: rgba(239, 68, 68, 0.18);
@@ -1668,12 +1680,19 @@ html[data-hydrated="true"] .splash {
 .admin-hero {
   position: relative;
   overflow: hidden;
-  border-radius: 20px;
+  /* 16px cap per CLAUDE.md corner-radius ladder for rectangular surfaces. */
+  border-radius: 16px;
   background:
     radial-gradient(120% 80% at 100% 0%, rgba(74, 222, 128, 0.16), transparent 60%),
     linear-gradient(160deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%);
   border: 1px solid rgba(74, 222, 128, 0.22);
   padding: 20px;
+}
+[data-theme="light"] .admin-hero {
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgba(22, 163, 74, 0.10), transparent 60%),
+    linear-gradient(160deg, rgba(0, 0, 0, 0.04) 0%, rgba(0, 0, 0, 0.01) 100%);
+  border-color: rgba(22, 163, 74, 0.30);
 }
 .admin-hero .badge {
   display: inline-flex;
@@ -1754,6 +1773,21 @@ html[data-hydrated="true"] .splash {
 .cc-tile.bad .num { color: var(--orange); }
 .cc-tile.info .num { color: #60a5fa; }
 
+/* Stat-only variant — no hover, no pointer; the tile shows a number,
+   not a target. Use when the cell is a glanceable stat rather than a
+   navigation affordance. */
+.cc-tile-static {
+  cursor: default;
+}
+.cc-tile-static:hover {
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme="light"] .cc-tile-static:hover {
+  background: rgba(0, 0, 0, 0.025);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
 [data-theme="light"] .cc-tile {
   background: rgba(0, 0, 0, 0.025);
   border-color: rgba(0, 0, 0, 0.08);
@@ -1818,4 +1852,16 @@ html[data-hydrated="true"] .splash {
 [data-theme="light"] .cc-dcard {
   background: linear-gradient(160deg, rgba(0, 0, 0, 0.04) 0%, rgba(0, 0, 0, 0.01) 100%);
   border-color: rgba(0, 0, 0, 0.10);
+}
+[data-theme="light"] .cc-dcard .htitle { color: var(--text-secondary); }
+[data-theme="light"] .cc-dcard .big { color: var(--text-primary); }
+[data-theme="light"] .cc-dcard .small { color: var(--text-secondary); }
+[data-theme="light"] .cc-dcard:hover { border-color: rgba(0, 0, 0, 0.18); }
+[data-theme="light"] .cc-dcard.alert {
+  border-color: rgba(234, 88, 12, 0.30);
+  background: linear-gradient(160deg, rgba(234, 88, 12, 0.06), rgba(0, 0, 0, 0.01));
+}
+[data-theme="light"] .cc-dcard.warn {
+  border-color: rgba(202, 138, 4, 0.32);
+  background: linear-gradient(160deg, rgba(202, 138, 4, 0.07), rgba(0, 0, 0, 0.01));
 }

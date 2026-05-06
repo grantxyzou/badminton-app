@@ -19,15 +19,22 @@ interface TileData {
 
 export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashTilesProps) {
   const [data, setData] = useState<TileData | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(async () => {
+    setLoadError(false);
     try {
       const [birdsRes, membersRes] = await Promise.all([
         fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
         fetch(`${BASE}/api/members`, { cache: 'no-store' }),
       ]);
-      const birds = birdsRes.ok ? await birdsRes.json() as { currentStock?: number; burnPerSession?: number } : null;
-      const members = membersRes.ok ? await membersRes.json() as Array<{ active?: boolean; sessionCount?: number; lastSeen?: string }> : [];
+      if (!birdsRes.ok || !membersRes.ok) {
+        setLoadError(true);
+        setData(null);
+        return;
+      }
+      const birds = await birdsRes.json() as { currentStock?: number; burnPerSession?: number };
+      const members = await membersRes.json() as Array<{ active?: boolean; sessionCount?: number; lastSeen?: string }>;
 
       let weeksLeft: number | null = null;
       const stock = birds?.currentStock ?? 0;
@@ -55,11 +62,26 @@ export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashT
         dormantMembers: dormant,
       });
     } catch {
+      setLoadError(true);
       setData(null);
     }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  if (loadError) {
+    return (
+      <div
+        className="cc-dgrid"
+        role="alert"
+        style={{ gridColumn: '1 / -1', display: 'block', padding: '12px 14px', borderRadius: 16, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}
+      >
+        <p style={{ fontSize: 12, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+          Couldn&apos;t load Birds + Roster summaries — refresh to retry.
+        </p>
+      </div>
+    );
+  }
 
   if (!data) return null;
 

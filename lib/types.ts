@@ -33,14 +33,20 @@ export interface Session {
   /** @deprecated Legacy single-object shape; read via normalizeBirdUsages. */
   birdUsage?: BirdUsage;
   showCostBreakdown?: boolean;
+  /** prev* fields are written together at advance time; they're related
+   *  but kept as flat fields rather than nested because existing prod
+   *  records already have the flat shape and the schema rule forbids
+   *  renames while bpm-stable + bpm-next share the DB. Treat as a
+   *  logical group. */
   prevSessionDate?: string;
   prevCostPerPerson?: number;
-  /** Frozen snapshot of the previous session's settings, written at advance time. */
   prevSnapshot?: PrevSessionSnapshot;
-  /** Anomaly codes detected at the moment of advance (e.g. 'cost_changed'). Frozen. */
-  anomaliesAtAdvance?: string[];
+  /** Anomaly codes detected at the moment of advance. Frozen. Runtime
+   *  may read legacy strings outside the union from older records;
+   *  consumers should ignore unknown codes (they don't match anything). */
+  anomaliesAtAdvance?: import('./anomalies').AnomalyCode[];
   /** Anomaly codes the admin dismissed for this session (live, mutable). */
-  anomaliesDismissed?: string[];
+  anomaliesDismissed?: import('./anomalies').AnomalyCode[];
   /** Per-session override of the e-transfer recipient. Falls back to the admin member's setting if absent. */
   eTransferRecipient?: ETransferRecipient;
 }

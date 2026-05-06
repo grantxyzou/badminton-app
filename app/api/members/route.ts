@@ -19,7 +19,12 @@ export async function GET(req: NextRequest) {
     if (!isAdmin) {
       return NextResponse.json(resources.map((m: { name: string; active: boolean }) => ({ name: m.name, active: m.active })));
     }
-    return NextResponse.json(resources);
+    // Strip pinHash even for admins — it's a strip-canary per CLAUDE.md.
+    // Admin clients have no use for the scrypt hash; if they need to verify
+    // a PIN, they go through /api/admin (server-side timingSafeEqual).
+    return NextResponse.json(
+      (resources as Array<Record<string, unknown>>).map(({ pinHash: _ph, ...m }) => m),
+    );
   } catch (error) {
     console.error('GET members error:', error);
     return NextResponse.json([]);
@@ -54,7 +59,8 @@ export async function POST(req: NextRequest) {
       if (inactive) {
         const reactivated = { ...inactive, active: true };
         const { resource } = await container.items.upsert(reactivated);
-        return NextResponse.json(resource, { status: 200 });
+        const { pinHash: _ph, ...safe } = (resource ?? {}) as Record<string, unknown>;
+        return NextResponse.json(safe, { status: 200 });
       }
       return NextResponse.json({ error: 'Member already exists' }, { status: 409 });
     }
@@ -71,7 +77,8 @@ export async function POST(req: NextRequest) {
     };
 
     const { resource } = await container.items.create(member);
-    return NextResponse.json(resource, { status: 201 });
+    const { pinHash: _ph, ...safe } = (resource ?? {}) as Record<string, unknown>;
+    return NextResponse.json(safe, { status: 201 });
   } catch (error) {
     console.error('POST members error:', error);
     return NextResponse.json({ error: 'Failed to create member' }, { status: 500 });
@@ -144,7 +151,8 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    return NextResponse.json(updated);
+    const { pinHash: _ph, ...safe } = (updated ?? {}) as Record<string, unknown>;
+    return NextResponse.json(safe);
   } catch (error) {
     console.error('PATCH members error:', error);
     return NextResponse.json({ error: 'Failed to update member' }, { status: 500 });
@@ -173,7 +181,8 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
     const { resource: updated } = await container.items.upsert({ ...existing, active: false });
-    return NextResponse.json(updated);
+    const { pinHash: _ph, ...safe } = (updated ?? {}) as Record<string, unknown>;
+    return NextResponse.json(safe);
   } catch (error) {
     console.error('DELETE members error:', error);
     return NextResponse.json({ error: 'Failed to delete member' }, { status: 500 });

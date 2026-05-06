@@ -77,13 +77,18 @@ export async function POST(req: NextRequest) {
         };
         if (dryRun) {
           summary.wouldCreate++;
-        } else {
-          const { resource } = await membersContainer.items.create(newMember);
-          if (resource) {
-            target = resource as unknown as Record<string, unknown>;
-            membersByName.set(key, [target]);
-            summary.created++;
-          }
+          // Record the would-link inline and continue. Equivalent to the
+          // bottom block firing (it would set wouldLink++ unconditionally
+          // in dry-run mode), but explicit here so the create-and-link
+          // pairing is local + readable.
+          summary.wouldLink++;
+          continue;
+        }
+        const { resource } = await membersContainer.items.create(newMember);
+        if (resource) {
+          target = resource as unknown as Record<string, unknown>;
+          membersByName.set(key, [target]);
+          summary.created++;
         }
       }
 

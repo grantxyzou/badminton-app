@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { fmtSessionLabel as fmtDate } from '@/lib/fmt';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -29,19 +30,6 @@ interface NextSessionCardProps {
    *  to the group chat" action. Belongs alongside session details since
    *  it's about the session, not about whose payment has come in. */
   onShareCost?: () => void;
-}
-
-function fmtDate(iso: string | undefined): string {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
-  } catch {
-    return iso.slice(0, 10);
-  }
 }
 
 function fmtCountdown(deadline: string | undefined): string | null {

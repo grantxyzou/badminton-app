@@ -27,14 +27,13 @@ export default function ETransferRecipientEditor() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${BASE}/api/members`, { cache: 'no-store' });
+      const res = await fetch(`${BASE}/api/admin/settings`, { cache: 'no-store' });
       if (res.ok) {
-        const list = (await res.json()) as Array<{ role?: string; eTransferRecipient?: Recipient }>;
-        const me = list.find((m) => m.role === 'admin');
-        setRecipient(me?.eTransferRecipient ?? null);
+        const data = (await res.json()) as { eTransferRecipient?: Recipient | null };
+        setRecipient(data.eTransferRecipient ?? null);
       }
     } catch {
-      // ignore
+      // ignore — null state renders the empty-state copy
     } finally {
       setLoading(false);
     }

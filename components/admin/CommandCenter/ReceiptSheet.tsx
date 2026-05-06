@@ -22,6 +22,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
   const [mode, setMode] = useState<'group' | 'individual'>(initialMode);
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(initialPlayerName ?? null);
   const [copied, setCopied] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string>('');
 
@@ -57,28 +58,44 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
   }, [open, input, mode]);
 
   async function copyText() {
+    setActionError(null);
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {}
+    } catch {
+      setActionError('Couldn’t copy — long-press the text below to copy manually.');
+    }
   }
 
   async function shareImage() {
     if (!imageDataUrl) return;
+    setActionError(null);
+    let nativeShareTried = false;
     try {
       const blob = await (await fetch(imageDataUrl)).blob();
       const file = new File([blob], `bpm-receipt.png`, { type: 'image/png' });
       const navAny = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean; share?: (data: { files: File[] }) => Promise<void> };
       if (navAny.canShare?.({ files: [file] }) && navAny.share) {
+        nativeShareTried = true;
         await navAny.share({ files: [file] });
         return;
       }
-    } catch {}
-    const a = document.createElement('a');
-    a.href = imageDataUrl;
-    a.download = 'bpm-receipt.png';
-    a.click();
+    } catch (err) {
+      // Native share failure (user dismissed, or platform error). If we
+      // had a native path available, the dismissal isn't an error worth
+      // surfacing — fall through to download silently. Anything else gets
+      // logged so debugging is possible.
+      if (!nativeShareTried) console.warn('shareImage:', err);
+    }
+    try {
+      const a = document.createElement('a');
+      a.href = imageDataUrl;
+      a.download = 'bpm-receipt.png';
+      a.click();
+    } catch {
+      setActionError('Couldn’t download — try Copy text instead.');
+    }
   }
 
   if (!input && !error) return null;
@@ -195,6 +212,11 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
                 </pre>
               </div>
 
+              {actionError && (
+                <p role="alert" style={{ fontSize: 12, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+                  {actionError}
+                </p>
+              )}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
