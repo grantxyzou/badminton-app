@@ -118,7 +118,7 @@ export default function Page() {
         <GlassPhysics />
         <ThemeToggle />
         <LanguageToggle />
-        <div className="max-w-lg mx-auto px-4 pt-6">
+        <div data-page-shell className="max-w-lg mx-auto px-4 pt-6">
           {activeTab === 'home' && <div key="home" className="animate-fadeIn"><HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} /></div>}
           {activeTab === 'players' && <div key="players" className="animate-fadeIn"><PlayersTab /></div>}
           {activeTab === 'skills' && <div key="skills" className="animate-fadeIn"><SkillsTab isAdmin={showAdmin} onTabChange={setActiveTab} /></div>}

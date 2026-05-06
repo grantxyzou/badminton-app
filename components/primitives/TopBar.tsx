@@ -71,16 +71,58 @@ export default function TopBar({ title, crumb, onBack, right, backLabel = 'Back'
     return () => window.removeEventListener('keydown', onKey);
   }, [onBack]);
 
-  // Edge swipe-back gesture: a touch that starts in the left 24px gutter,
-  // travels mostly horizontally rightward more than 60px in under 600ms,
-  // triggers onBack. Mirrors the iOS interactive-pop affordance for our
-  // in-app sub-pages (which use prop-driven navigation, not browser history).
+  // Edge swipe-back gesture with live micro-interaction. A touch that
+  // starts in the left 24px gutter and travels mostly horizontally
+  // rightward triggers onBack on release if it crosses the threshold.
+  //
+  // During the drag we write a 0..1 progress to `--swipe-back` on
+  // `<html>` and toggle `data-swiping="true"`. CSS rules consume these
+  // to nudge the back chevron, glow the left edge, and dim the page —
+  // giving the gesture rubber-band feel without rendering a back-stack.
+  // On commit we navigate; on cancel we drop `data-swiping` so the
+  // springback transition runs.
+  // Edge swipe-back gesture with live micro-interaction. A touch that
+  // starts in the left 24px gutter and travels mostly horizontally
+  // rightward triggers onBack on release if it crosses the threshold.
+  //
+  // State machine on `<html>`:
+  //   - `data-swiping="active"` during the drag (no CSS transition;
+  //     transforms track the finger 1:1).
+  //   - `data-swiping="release"` for ~230ms after release while the
+  //     springback transition runs.
+  //   - attribute absent at rest. CRITICAL: the gating attribute is
+  //     what lets us *omit* `transform` on the page shell at rest —
+  //     even `translateX(0)` would establish a containing block and
+  //     break `position: fixed` descendants (the project's documented
+  //     "containing-block trap").
   useEffect(() => {
     if (!onBack) return;
+    const root = document.documentElement;
+    const RELEASE_MS = 230;
     let startX = 0;
     let startY = 0;
     let startT = 0;
     let tracking = false;
+    let releaseTimer: number | null = null;
+    const setVar = (n: number) => root.style.setProperty('--swipe-back', String(n));
+    const clearRelease = () => {
+      if (releaseTimer !== null) {
+        window.clearTimeout(releaseTimer);
+        releaseTimer = null;
+      }
+    };
+    const settle = () => {
+      clearRelease();
+      root.removeAttribute('data-swiping');
+      setVar(0);
+      tracking = false;
+    };
+    const beginRelease = () => {
+      tracking = false;
+      root.setAttribute('data-swiping', 'release');
+      setVar(0);
+      releaseTimer = window.setTimeout(settle, RELEASE_MS);
+    };
     const onStart = (e: TouchEvent) => {
       const t = e.touches[0];
       if (!t || t.clientX > 24) { tracking = false; return; }
@@ -88,24 +130,54 @@ export default function TopBar({ title, crumb, onBack, right, backLabel = 'Back'
       startX = t.clientX;
       startY = t.clientY;
       startT = Date.now();
+      clearRelease();
+      root.setAttribute('data-swiping', 'active');
+      setVar(0);
     };
-    const onEnd = (e: TouchEvent) => {
+    const onMove = (e: TouchEvent) => {
       if (!tracking) return;
-      tracking = false;
-      const t = e.changedTouches[0];
+      const t = e.touches[0];
       if (!t) return;
       const dx = t.clientX - startX;
       const dy = Math.abs(t.clientY - startY);
-      const dt = Date.now() - startT;
-      if (dx > 60 && dy < 40 && dt < 600) onBack();
+      // If the gesture goes vertical, hand off to scroll.
+      if (dy > 40 && dy > Math.abs(dx)) {
+        beginRelease();
+        return;
+      }
+      const progress = Math.max(0, Math.min(1, dx / 120));
+      setVar(progress);
     };
+    const onEnd = (e: TouchEvent) => {
+      if (!tracking) return;
+      const t = e.changedTouches[0];
+      const dx = t ? t.clientX - startX : 0;
+      const dy = t ? Math.abs(t.clientY - startY) : 0;
+      const dt = Date.now() - startT;
+      const committed = dx > 60 && dy < 40 && dt < 600;
+      if (committed) {
+        // Visual full-commit hold for one frame; the new screen will
+        // mount with the attribute absent on next layout pass.
+        setVar(1);
+        requestAnimationFrame(() => {
+          settle();
+          onBack();
+        });
+      } else {
+        beginRelease();
+      }
+    };
+    const onCancel = () => beginRelease();
     document.addEventListener('touchstart', onStart, { passive: true });
+    document.addEventListener('touchmove', onMove, { passive: true });
     document.addEventListener('touchend', onEnd, { passive: true });
-    document.addEventListener('touchcancel', onEnd, { passive: true });
+    document.addEventListener('touchcancel', onCancel, { passive: true });
     return () => {
       document.removeEventListener('touchstart', onStart);
+      document.removeEventListener('touchmove', onMove);
       document.removeEventListener('touchend', onEnd);
-      document.removeEventListener('touchcancel', onEnd);
+      document.removeEventListener('touchcancel', onCancel);
+      settle();
     };
   }, [onBack]);
 

@@ -552,6 +552,73 @@ h1, h2, h3, h4 {
   .bpm-page-header__title { transition-duration: 0ms; }
 }
 
+/* ── Swipe-back micro-interaction ──
+   `--swipe-back` is a 0..1 progress value written by TopBar during an
+   edge drag. The visual rules below ALL gate on `html[data-swiping]`
+   — at rest the attribute is absent and no transform/opacity is
+   applied to the page shell. This matters: even `translateX(0)` would
+   establish a containing block and break `position: fixed` descendants
+   (the documented "containing-block trap"). The attribute has two
+   values: "active" during the drag (no transition; tracks finger 1:1)
+   and "release" during the springback (transition runs). */
+:root { --swipe-back: 0; }
+
+/* Left-edge glow as a fixed pseudo-element on <html>, only painted
+   while a swipe is in flight so it doesn't sit invisibly at all times. */
+html[data-swiping]::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 32px;
+  pointer-events: none;
+  z-index: 9;
+  background: linear-gradient(
+    to right,
+    rgba(74, 222, 128, calc(var(--swipe-back, 0) * 0.32)),
+    transparent
+  );
+  opacity: var(--swipe-back, 0);
+}
+html[data-swiping="release"]::before {
+  transition: opacity 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Back chevron tracks the finger up to ~10px and tints toward accent
+   as the drag crosses the commit threshold. */
+html[data-swiping] .bpm-topbar__back {
+  transform: translateX(calc(var(--swipe-back, 0) * 10px));
+}
+html[data-swiping] .bpm-topbar__back .material-icons {
+  color: color-mix(
+    in srgb,
+    var(--text-muted, #a3a3a3) calc(100% - var(--swipe-back, 0) * 100%),
+    var(--accent)
+  );
+}
+html[data-swiping="release"] .bpm-topbar__back {
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+              color 0.15s ease;
+}
+
+/* Page shell nudges right + dims slightly, so the gesture reads as
+   "pushing the screen aside" even though no back-stack renders under. */
+html[data-swiping] [data-page-shell] {
+  transform: translateX(calc(var(--swipe-back, 0) * 18px));
+  opacity: calc(1 - var(--swipe-back, 0) * 0.18);
+}
+html[data-swiping="release"] [data-page-shell] {
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+              opacity 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-swiping="release"]::before,
+  html[data-swiping="release"] .bpm-topbar__back,
+  html[data-swiping="release"] [data-page-shell] { transition-duration: 0ms; }
+}
+
 /* ── 02 Aurora background ──
    Bundle variant 02 (per docs/design-system/preview/24-app-background.html +
    assets/aurora-bg.css). Three breathing blobs: slate-blue + court-green +
