@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dark-mode contrast tuner — BPM Badminton</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    --page-bg: #100F0F;
+    --accent: #4ade80;
+    --amber: #fbbf24;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: var(--font-sans);
+    background: var(--page-bg);
+    color: rgba(255,255,255,0.95);
+    min-height: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { padding: 24px 16px 40px; }
+  .stage { max-width: 1200px; margin: 0 auto; display: grid; gap: 16px; }
+  .header { display: flex; flex-direction: column; gap: 12px; }
+  .title { font-family: var(--font-display); font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+  .subtitle { font-size: 13px; color: rgba(255,255,255,0.6); }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; }
+  .preset {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    color: rgba(255,255,255,0.85);
+    border-radius: 100px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .preset:hover { background: rgba(255,255,255,0.08); }
+  .preset[data-active="true"] {
+    background: linear-gradient(160deg, rgba(74,222,128,0.16), rgba(22,163,74,0.06));
+    border-color: rgba(74,222,128,0.35);
+    color: var(--accent);
+  }
+  .body-grid {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    margin-top: 8px;
+  }
+  @media (max-width: 880px) { .body-grid { grid-template-columns: 1fr; } }
+  .controls {
+    display: grid;
+    gap: 18px;
+    align-content: start;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .control-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+  }
+  .control-label .name {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.85);
+  }
+  .control-label .value {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+  }
+  .control-help {
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+  .control-group-title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(255,255,255,0.45);
+    padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .control-group-title:first-child { padding-top: 0; border-top: none; }
+  .blob-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    align-items: end;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.02);
+  }
+  .blob-row .name { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; }
+  .blob-row .swatch {
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.14);
+  }
+  .blob-row .mini-control { display: grid; gap: 2px; }
+  .blob-row .mini-control label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.45);
+  }
+  .blob-row .mini-control .v {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--accent);
+    text-align: right;
+  }
+  input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: rgba(255,255,255,0.14);
+    border-radius: 100px;
+    cursor: pointer;
+    margin: 4px 0;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--page-bg);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--page-bg);
+  }
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+  }
+  .toggle-row input { cursor: pointer; }
+  .preview {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    min-height: 600px;
+    padding: 24px;
+    border: 1px solid rgba(255,255,255,0.08);
+    isolation: isolate;
+  }
+  /* Real aurora — three positioned blob divs that mirror app/globals.css.
+     The preview area is the "page" so the blobs render relative to it.
+     Dark-mode dark page color matches --aurora-bg = #100F0F. */
+  /* Real aurora — three positioned blob divs that 1:1 mirror
+     app/globals.css :437-468 with dark-mode #100F0F page bg. The preview
+     area is the "page" so the blobs render relative to it.
+     Aurora intensity is scaled via the --pg-aurora-mul CSS var (default 1)
+     applied as a multiplier on each gradient's alpha stops via opacity. */
+  .preview-aurora { position: absolute; inset: 0; z-index: 0; pointer-events: none; background: #100F0F; overflow: hidden; }
+  .aurora-blob-1, .aurora-blob-2, .aurora-blob-3 {
+    position: absolute;
+    pointer-events: none;
+    will-change: transform;
+    opacity: var(--pg-aurora-mul, 1);
+    animation: pg-aurora-drift 14s ease-in-out infinite alternate;
+  }
+  /* Blob 1 — slate-blue (cool atmospheric) */
+  .aurora-blob-1 {
+    width: 110%; height: 80%;
+    left: -10%; top: 4%;
+    background: radial-gradient(ellipse 50% 50% at 50% 50%,
+      rgba(120, 158, 196, 0.50) 0%,
+      rgba(74, 120, 170, 0.22) 32%,
+      rgba(74, 120, 170, 0.06) 58%,
+      transparent 80%);
+    opacity: var(--blob-1-opacity, 1);
+    filter: hue-rotate(var(--blob-1-hue, 0deg)) saturate(var(--blob-1-sat, 1));
+  }
+  /* Blob 2 — brand court-green (warm accent) */
+  .aurora-blob-2 {
+    width: 100%; height: 72%;
+    right: -15%; bottom: 4%;
+    background: radial-gradient(ellipse 50% 50% at 50% 50%,
+      rgba(74, 222, 128, 0.32) 0%,
+      rgba(74, 222, 128, 0.14) 34%,
+      rgba(74, 222, 128, 0.04) 60%,
+      transparent 80%);
+    animation-delay: -5s;
+    opacity: var(--blob-2-opacity, 1);
+    filter: hue-rotate(var(--blob-2-hue, 0deg)) saturate(var(--blob-2-sat, 1));
+  }
+  /* Blob 3 — warm-yellow (midtone glow) */
+  .aurora-blob-3 {
+    width: 85%; height: 65%;
+    right: 10%; top: 22%;
+    background: radial-gradient(ellipse 50% 50% at 50% 50%,
+      rgba(232, 210, 160, 0.34) 0%,
+      rgba(210, 185, 130, 0.14) 36%,
+      rgba(210, 185, 130, 0.04) 62%,
+      transparent 80%);
+    animation-delay: -9s;
+    opacity: var(--blob-3-opacity, 1);
+    filter: hue-rotate(var(--blob-3-hue, 0deg)) saturate(var(--blob-3-sat, 1));
+  }
+  /* Stress-test mode: slide blob-2 (court-green, the brand accent) into
+     dead-center behind the cards and scale it up. Mirrors the worst-case
+     reported failure mode where the green blob drifts behind a card. */
+  .preview-aurora.stress .aurora-blob-2 {
+    right: auto; bottom: auto;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  @keyframes pg-aurora-drift {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to   { transform: translate3d(-4%, 3%, 0) scale(1.05); }
+  }
+  .preview-cards {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: 20px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  .card-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(255,255,255,0.45);
+    margin-bottom: 6px;
+    padding-left: 4px;
+  }
+  .gcard {
+    border-radius: 16px;
+    padding: 16px;
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    backdrop-filter: blur(10px) saturate(140%);
+    box-shadow:
+      0 8px 40px rgba(0,0,0,0.35),
+      0 2px 8px rgba(0,0,0,0.18),
+      inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .gcard h2 {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: rgba(255,255,255,0.95);
+  }
+  .gcard p.body { font-size: 13px; line-height: 1.5; }
+  .gcard p.caption { font-size: 11px; margin-top: 6px; }
+  .banner {
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    margin-top: 12px;
+    align-items: flex-start;
+  }
+  .banner.success {
+    background: linear-gradient(160deg, rgba(74,222,128,0.18), rgba(22,163,74,0.08));
+    border: 1px solid rgba(74,222,128,0.3);
+  }
+  .banner.warn {
+    background: linear-gradient(160deg, rgba(251,191,36,0.16), rgba(217,119,6,0.06));
+    border: 1px solid rgba(251,191,36,0.28);
+  }
+  .banner .ic {
+    font-family: 'Apple Symbols', 'Segoe UI Symbol', sans-serif;
+    font-size: 18px;
+    line-height: 1.2;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .banner.success .ic { color: var(--accent); }
+  .banner.warn .ic { color: var(--amber); }
+  .banner-title { font-size: 13px; font-weight: 600; line-height: 1.3; }
+  .banner-body { font-size: 11px; margin-top: 2px; line-height: 1.4; }
+  .banner.success .banner-title { color: var(--accent); }
+  .banner.warn .banner-title { color: var(--amber); }
+  .prompt-section {
+    margin-top: 20px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .prompt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .prompt-header h3 {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .copy-btn {
+    background: linear-gradient(160deg, rgba(74,222,128,0.55), rgba(22,163,74,0.4));
+    border: 1px solid rgba(74,222,128,0.45);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .copy-btn:active { transform: scale(0.97); }
+  .prompt-body {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: rgba(255,255,255,0.85);
+  }
+</style>
+</head>
+<body>
+<main class="stage">
+  <header class="header">
+    <h1 class="title">Dark-mode contrast tuner</h1>
+    <p class="subtitle">A/B the proposed glass + text + aurora values against current production. Adjust sliders to feel the trade-offs.</p>
+    <div class="presets" id="presets"></div>
+  </header>
+
+  <div class="body-grid">
+    <aside class="controls" id="controls"></aside>
+
+    <section class="preview" id="preview">
+      <div class="preview-aurora" id="aurora">
+        <div class="aurora-blob-1"></div>
+        <div class="aurora-blob-2"></div>
+        <div class="aurora-blob-3"></div>
+      </div>
+      <div class="preview-cards">
+        <div>
+          <div class="card-label">Current production</div>
+          <div class="gcard" id="card-current">
+            <h2>Profile</h2>
+            <p class="body" id="body-current">You're signed in. Recovery PIN saved on this device.</p>
+            <p class="caption" id="caption-current">Last seen Tuesday · 7 sessions this month</p>
+            <div class="banner success">
+              <span class="ic">✓</span>
+              <div>
+                <div class="banner-title">You're signed up, Grant</div>
+                <div class="banner-body" id="banner-body-current">Mon May 5 · spot 7 of 12</div>
+              </div>
+            </div>
+            <div class="banner warn">
+              <span class="ic">◷</span>
+              <div>
+                <div class="banner-title">Sign-ups closed</div>
+                <div class="banner-body" id="banner-warn-current">Reopens Monday at 8am</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card-label">Proposed</div>
+          <div class="gcard" id="card-proposed">
+            <h2>Profile</h2>
+            <p class="body" id="body-proposed">You're signed in. Recovery PIN saved on this device.</p>
+            <p class="caption" id="caption-proposed">Last seen Tuesday · 7 sessions this month</p>
+            <div class="banner success">
+              <span class="ic">✓</span>
+              <div>
+                <div class="banner-title">You're signed up, Grant</div>
+                <div class="banner-body" id="banner-body-proposed">Mon May 5 · spot 7 of 12</div>
+              </div>
+            </div>
+            <div class="banner warn">
+              <span class="ic">◷</span>
+              <div>
+                <div class="banner-title">Sign-ups closed</div>
+                <div class="banner-body" id="banner-warn-proposed">Reopens Monday at 8am</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="prompt-section">
+    <div class="prompt-header">
+      <h3>Proposed CSS — copy into <code>app/globals.css</code> dark-mode block</h3>
+      <button class="copy-btn" id="copy-btn">Copy</button>
+    </div>
+    <pre class="prompt-body" id="prompt"></pre>
+  </section>
+</main>
+
+<script>
+  // Per-blob production values (taken from app/globals.css :437-468).
+  const BLOB_DEFS = [
+    { id: 1, name: 'Slate-blue',  swatch: '#789EC4', defaultOpacity: 1.0 },
+    { id: 2, name: 'Court-green', swatch: '#4ade80', defaultOpacity: 1.0 },
+    { id: 3, name: 'Warm-yellow', swatch: '#E8D2A0', defaultOpacity: 1.0 },
+  ];
+  // Production (locked) values
+  const CURRENT = {
+    glassHigh: 0.06, glassLow: 0.02, textSec: 0.6, textMuted: 0.35,
+    blobs: [{ opacity: 1, hue: 0, sat: 1 }, { opacity: 1, hue: 0, sat: 1 }, { opacity: 1, hue: 0, sat: 1 }],
+  };
+  // Proposed defaults match what landed in PR #49
+  const DEFAULTS = {
+    glassHigh: 0.03, glassLow: 0.01, glassTied: true,
+    textSec: 0.7, textMuted: 0.55,
+    blobs: [{ opacity: 1, hue: 0, sat: 1 }, { opacity: 1, hue: 0, sat: 1 }, { opacity: 1, hue: 0, sat: 1 }],
+    stress: true,
+  };
+  const blob = (o, h, s) => ({ opacity: o, hue: h, sat: s });
+  const allBlobs = (o, h, s) => [blob(o, h, s), blob(o, h, s), blob(o, h, s)];
+  const PRESETS = [
+    { id: 'current',      label: 'Current production', glassHigh: 0.06, glassLow: 0.02, textSec: 0.6,  textMuted: 0.35, blobs: allBlobs(1, 0, 1) },
+    { id: 'pr49',         label: 'PR #49 (shipped)',   glassHigh: 0.03, glassLow: 0.01, textSec: 0.7,  textMuted: 0.55, blobs: allBlobs(1, 0, 1) },
+    { id: 'aurora-down',  label: 'Aurora-down',        glassHigh: 0.06, glassLow: 0.02, textSec: 0.65, textMuted: 0.45, blobs: allBlobs(0.6, 0, 1) },
+    { id: 'cooler',       label: 'Cooler aurora',      glassHigh: 0.03, glassLow: 0.01, textSec: 0.7,  textMuted: 0.55, blobs: [blob(1.2, 10, 1.1), blob(0.8, -30, 0.8), blob(0.4, 0, 0.6)] },
+    { id: 'warmer',       label: 'Warmer aurora',      glassHigh: 0.03, glassLow: 0.01, textSec: 0.7,  textMuted: 0.55, blobs: [blob(0.6, 30, 0.8), blob(1.0, 20, 1.0), blob(1.2, 0, 1.2)] },
+    { id: 'monochrome',   label: 'Mono (one blob only)', glassHigh: 0.03, glassLow: 0.01, textSec: 0.7,  textMuted: 0.55, blobs: [blob(0, 0, 1), blob(1.2, 0, 1), blob(0, 0, 1)] },
+  ];
+  const GLOBAL_SLIDERS = [
+    { key: 'glassHigh', label: 'Glass refraction (high stop)', min: 0.02, max: 0.20, step: 0.005, format: (v) => v.toFixed(3),
+      help: '--glass-bg gradient high alpha. Higher = more frosted = blocks more aurora; lower = more transparent = aurora reads more vivid.' },
+    { key: 'textMuted', label: 'Text muted alpha',             min: 0.20, max: 0.85, step: 0.01,  format: (v) => v.toFixed(2),
+      help: 'Captions, hints, footnotes. The most-failing token at production levels (was 0.35).' },
+    { key: 'textSec',   label: 'Text secondary alpha',         min: 0.40, max: 0.95, step: 0.01,  format: (v) => v.toFixed(2),
+      help: 'Body copy and descriptions inside cards.' },
+  ];
+
+  // Deep-copy of DEFAULTS so per-blob mutations don't share refs.
+  const state = JSON.parse(JSON.stringify(DEFAULTS));
+
+  const controlsEl = document.getElementById('controls');
+  function makeNode(tag, attrs) {
+    const el = document.createElement(tag);
+    if (attrs) for (const [k, v] of Object.entries(attrs)) {
+      if (k === 'text') el.textContent = v;
+      else if (k === 'class') el.className = v;
+      else el.setAttribute(k, String(v));
+    }
+    return el;
+  }
+
+  // Group title: GLASS & TEXT
+  controlsEl.appendChild(makeNode('div', { class: 'control-group-title', text: 'Glass & text' }));
+
+  for (const s of GLOBAL_SLIDERS) {
+    const wrap = makeNode('div');
+    const labelRow = makeNode('div', { class: 'control-label' });
+    labelRow.appendChild(makeNode('span', { class: 'name', text: s.label }));
+    const valSpan = makeNode('span', { class: 'value', id: 'val-' + s.key, text: s.format(state[s.key]) });
+    labelRow.appendChild(valSpan);
+    wrap.appendChild(labelRow);
+    const input = makeNode('input', { type: 'range', min: s.min, max: s.max, step: s.step, value: state[s.key], id: 'slider-' + s.key });
+    wrap.appendChild(input);
+    wrap.appendChild(makeNode('div', { class: 'control-help', text: s.help }));
+    controlsEl.appendChild(wrap);
+    input.addEventListener('input', () => {
+      state[s.key] = parseFloat(input.value);
+      valSpan.textContent = s.format(state[s.key]);
+      if (s.key === 'glassHigh' && state.glassTied) {
+        state.glassLow = +(state.glassHigh / 2.5).toFixed(3);
+      }
+      clearActivePreset();
+      updateAll();
+    });
+  }
+
+  // Glass-tied checkbox
+  const tiedRow = makeNode('div', { class: 'toggle-row' });
+  const tiedInput = makeNode('input', { type: 'checkbox', id: 'tied' });
+  tiedInput.checked = state.glassTied;
+  const tiedLabel = makeNode('label', { for: 'tied', text: 'Tie glass low-stop to high-stop ÷ 2.5' });
+  tiedRow.appendChild(tiedInput);
+  tiedRow.appendChild(tiedLabel);
+  controlsEl.appendChild(tiedRow);
+  tiedInput.addEventListener('change', (e) => {
+    state.glassTied = e.target.checked;
+    if (state.glassTied) state.glassLow = +(state.glassHigh / 2.5).toFixed(3);
+    updateAll();
+  });
+
+  // Group title: AURORA
+  controlsEl.appendChild(makeNode('div', { class: 'control-group-title', text: 'Aurora — per blob' }));
+  controlsEl.appendChild(makeNode('div', { class: 'control-help', text: 'Each blob is a positioned radial gradient at 20%/80%/mid-right. Opacity is a uniform multiplier on all alpha stops; hue rotates the whole gradient; saturation scales the chroma.' }));
+
+  for (const def of BLOB_DEFS) {
+    const idx = def.id - 1;
+    const row = makeNode('div', { class: 'blob-row' });
+    // Name + swatch column
+    const nameCol = makeNode('div', { class: 'mini-control' });
+    const nameRow = makeNode('div', { class: 'name' });
+    const swatch = makeNode('span', { class: 'swatch' });
+    swatch.style.background = def.swatch;
+    nameRow.appendChild(swatch);
+    nameRow.appendChild(makeNode('span', { text: def.name }));
+    nameCol.appendChild(nameRow);
+    row.appendChild(nameCol);
+
+    // Three mini sliders: opacity, hue, saturation
+    const subSliders = [
+      { key: 'opacity', label: 'OPACITY', min: 0,    max: 1.5,  step: 0.05, format: (v) => v.toFixed(2) },
+      { key: 'hue',     label: 'HUE',     min: -180, max: 180,  step: 1,    format: (v) => v.toFixed(0) + '°' },
+      { key: 'sat',     label: 'SAT',     min: 0,    max: 2,    step: 0.05, format: (v) => v.toFixed(2) },
+    ];
+    // Stack opacity + hue + sat vertically inside the row using a 3-row grid
+    const stack = makeNode('div', { class: 'mini-control' });
+    stack.style.gridColumn = '2 / span 2';
+    stack.style.display = 'grid';
+    stack.style.gap = '6px';
+    for (const ss of subSliders) {
+      const sub = makeNode('div', { class: 'mini-control' });
+      const labelRow = makeNode('div');
+      labelRow.style.display = 'flex';
+      labelRow.style.justifyContent = 'space-between';
+      labelRow.style.alignItems = 'baseline';
+      labelRow.appendChild(makeNode('label', { text: ss.label }));
+      const valSpan = makeNode('span', { class: 'v', id: `val-blob-${def.id}-${ss.key}`, text: ss.format(state.blobs[idx][ss.key]) });
+      labelRow.appendChild(valSpan);
+      sub.appendChild(labelRow);
+      const input = makeNode('input', { type: 'range', min: ss.min, max: ss.max, step: ss.step, value: state.blobs[idx][ss.key], id: `slider-blob-${def.id}-${ss.key}` });
+      sub.appendChild(input);
+      input.addEventListener('input', () => {
+        state.blobs[idx][ss.key] = parseFloat(input.value);
+        valSpan.textContent = ss.format(state.blobs[idx][ss.key]);
+        clearActivePreset();
+        updateAll();
+      });
+      stack.appendChild(sub);
+    }
+    row.appendChild(stack);
+    controlsEl.appendChild(row);
+  }
+
+  // Stress test toggle
+  const stressRow = makeNode('div', { class: 'toggle-row' });
+  const stressInput = makeNode('input', { type: 'checkbox', id: 'stress' });
+  stressInput.checked = state.stress;
+  const stressLabel = makeNode('label', { for: 'stress', text: 'Hot-spot stress test (slide green blob behind cards)' });
+  stressRow.appendChild(stressInput);
+  stressRow.appendChild(stressLabel);
+  controlsEl.appendChild(stressRow);
+  stressInput.addEventListener('change', (e) => {
+    state.stress = e.target.checked;
+    updateAll();
+  });
+
+  // Presets
+  const presetsEl = document.getElementById('presets');
+  for (const p of PRESETS) {
+    const btn = makeNode('button', { class: 'preset', text: p.label });
+    btn.dataset.id = p.id;
+    btn.addEventListener('click', () => applyPreset(p));
+    presetsEl.appendChild(btn);
+  }
+
+  function applyPreset(p) {
+    state.glassHigh = p.glassHigh;
+    state.glassLow  = p.glassLow;
+    state.glassTied = Math.abs(p.glassLow - p.glassHigh / 2.5) < 0.005;
+    state.textSec   = p.textSec;
+    state.textMuted = p.textMuted;
+    state.blobs     = p.blobs.map((b) => ({ ...b }));
+    for (const s of GLOBAL_SLIDERS) {
+      const slider = document.getElementById('slider-' + s.key);
+      slider.value = state[s.key];
+      document.getElementById('val-' + s.key).textContent = s.format(state[s.key]);
+    }
+    document.getElementById('tied').checked = state.glassTied;
+    // Sync per-blob sliders
+    for (const def of BLOB_DEFS) {
+      const idx = def.id - 1;
+      for (const k of ['opacity', 'hue', 'sat']) {
+        const slider = document.getElementById(`slider-blob-${def.id}-${k}`);
+        const val = document.getElementById(`val-blob-${def.id}-${k}`);
+        if (slider) slider.value = state.blobs[idx][k];
+        if (val) {
+          if (k === 'hue') val.textContent = state.blobs[idx][k].toFixed(0) + '°';
+          else val.textContent = state.blobs[idx][k].toFixed(2);
+        }
+      }
+    }
+    document.querySelectorAll('.preset').forEach((el) => {
+      el.dataset.active = el.dataset.id === p.id ? 'true' : 'false';
+    });
+    updateAll();
+  }
+  function clearActivePreset() {
+    document.querySelectorAll('.preset').forEach((el) => { el.dataset.active = 'false'; });
+  }
+
+  function renderCard(card, body, caption, bannerBody, bannerWarn, glassHigh, glassLow, textSec, textMuted) {
+    card.style.background = `linear-gradient(160deg, rgba(255,255,255,${glassHigh}) 0%, rgba(255,255,255,${glassLow}) 100%)`;
+    card.style.border = `1px solid rgba(255,255,255,${Math.min(0.20, glassHigh + 0.04)})`;
+    body.style.color = `rgba(255,255,255,${textSec})`;
+    caption.style.color = `rgba(255,255,255,${textMuted})`;
+    bannerBody.style.color = `rgba(255,255,255,${textMuted})`;
+    bannerWarn.style.color = `rgba(255,255,255,${textMuted})`;
+  }
+
+  function renderAurora() {
+    // Per-blob CSS vars drive opacity / hue rotation / saturation directly
+    // on each .aurora-blob-N element. The blob CSS (above in <style>) wires
+    // these vars into `opacity` and `filter`. No JS gradient rebuilding —
+    // CSS does the work, JS just sets variable values.
+    const aurora = document.getElementById('aurora');
+    for (let i = 0; i < state.blobs.length; i++) {
+      const b = state.blobs[i];
+      aurora.style.setProperty(`--blob-${i + 1}-opacity`, b.opacity.toFixed(2));
+      aurora.style.setProperty(`--blob-${i + 1}-hue`, b.hue.toFixed(0) + 'deg');
+      aurora.style.setProperty(`--blob-${i + 1}-sat`, b.sat.toFixed(2));
+    }
+    aurora.classList.toggle('stress', state.stress);
+  }
+
+  function renderAll() {
+    renderCard(
+      document.getElementById('card-current'),
+      document.getElementById('body-current'),
+      document.getElementById('caption-current'),
+      document.getElementById('banner-body-current'),
+      document.getElementById('banner-warn-current'),
+      CURRENT.glassHigh, CURRENT.glassLow, CURRENT.textSec, CURRENT.textMuted,
+    );
+    renderCard(
+      document.getElementById('card-proposed'),
+      document.getElementById('body-proposed'),
+      document.getElementById('caption-proposed'),
+      document.getElementById('banner-body-proposed'),
+      document.getElementById('banner-warn-proposed'),
+      state.glassHigh, state.glassLow, state.textSec, state.textMuted,
+    );
+    renderAurora();
+  }
+
+  function buildPrompt() {
+    const tokenLines = [];
+    const blobLines = [];
+    const changed = [];
+    if (state.glassHigh !== CURRENT.glassHigh || state.glassLow !== CURRENT.glassLow) {
+      tokenLines.push(`  --glass-bg: linear-gradient(160deg,`);
+      tokenLines.push(`    rgba(var(--glass-tint), ${state.glassHigh.toFixed(2)}) 0%,`);
+      tokenLines.push(`    rgba(var(--glass-tint), ${state.glassLow.toFixed(2)}) 100%);`);
+      changed.push('glass refraction');
+    }
+    if (state.textSec !== CURRENT.textSec) {
+      tokenLines.push(`  --text-secondary: rgba(255, 255, 255, ${state.textSec.toFixed(2)});`);
+      changed.push('text-secondary alpha');
+    }
+    if (state.textMuted !== CURRENT.textMuted) {
+      tokenLines.push(`  --text-muted: rgba(255, 255, 255, ${state.textMuted.toFixed(2)});`);
+      changed.push('text-muted alpha');
+    }
+    // Per-blob — output as additional rules tacked onto each .aurora-blob-N.
+    for (let i = 0; i < state.blobs.length; i++) {
+      const b = state.blobs[i];
+      const opChanged  = Math.abs(b.opacity - 1) > 0.005;
+      const hueChanged = Math.abs(b.hue) > 0.5;
+      const satChanged = Math.abs(b.sat - 1) > 0.005;
+      if (!opChanged && !hueChanged && !satChanged) continue;
+      blobLines.push(`.aurora-blob-${i + 1} {`);
+      if (opChanged) blobLines.push(`  opacity: ${b.opacity.toFixed(2)};`);
+      if (hueChanged || satChanged) {
+        const filters = [];
+        if (hueChanged) filters.push(`hue-rotate(${b.hue.toFixed(0)}deg)`);
+        if (satChanged) filters.push(`saturate(${b.sat.toFixed(2)})`);
+        blobLines.push(`  filter: ${filters.join(' ')};`);
+      }
+      blobLines.push(`}`);
+      changed.push(`blob ${i + 1}`);
+    }
+    if (changed.length === 0) return 'No changes from current production. Move some sliders.';
+    let out = `/* Update app/globals.css (${changed.join(', ')}) */\n\n`;
+    if (tokenLines.length) {
+      out += `/* Inside the dark-mode :root { ... } block */\n` + tokenLines.join('\n') + '\n';
+    }
+    if (blobLines.length) {
+      if (tokenLines.length) out += '\n';
+      out += `/* Append to each blob rule (or merge into existing) */\n` + blobLines.join('\n');
+    }
+    return out;
+  }
+  function renderPrompt() {
+    document.getElementById('prompt').textContent = buildPrompt();
+  }
+  function updateAll() {
+    renderAll();
+    renderPrompt();
+  }
+
+  document.getElementById('copy-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('copy-btn');
+    const original = btn.textContent;
+    try {
+      await navigator.clipboard.writeText(buildPrompt());
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = original; }, 1200);
+    } catch {
+      btn.textContent = 'Press Cmd+C';
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    }
+  });
+
+  applyPreset(PRESETS.find((p) => p.id === 'pr49'));
+</script>
+</body>
+</html>
