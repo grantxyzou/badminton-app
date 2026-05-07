@@ -1,23 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { readActiveAnnouncements } from '@/lib/announcements';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { randomBytes } from 'crypto';
 
 export async function GET() {
-  try {
-    const sessionId = await getActiveSessionId();
-    const container = getContainer('announcements');
-    const { resources } = await container.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.sessionId = @sessionId ORDER BY c.time DESC',
-        parameters: [{ name: '@sessionId', value: sessionId }],
-      })
-      .fetchAll();
-    return NextResponse.json(resources);
-  } catch (error) {
-    console.error('GET announcements error:', error);
-    return NextResponse.json([]);
-  }
+  // Delegates to the shared lib so the server-rendered home page
+  // (`app/page.tsx`) and this REST endpoint stay in lockstep.
+  const resources = await readActiveAnnouncements();
+  return NextResponse.json(resources);
 }
 
 export async function DELETE(req: NextRequest) {
