@@ -8,15 +8,17 @@ import HydrationMark from '@/components/HydrationMark';
 import { APP_TIME_ZONE } from '@/i18n/request';
 import './globals.css';
 
-// Locked type system (design-system bundle v3):
-//   Space Grotesk  — display / headlines  (self-hosted variable, wght 300–700)
-//   IBM Plex Sans  — body / UI            (self-hosted variable, wght 100–700 + width 85–100, + italic)
+// Locked type system (design-system bundle v3, subset 2026-05-07):
+//   Space Grotesk  — display / headlines  (variable wght 400–700, Latin Ext WOFF2 ~40 KB)
+//   IBM Plex Sans  — body / UI            (variable wght 400–700, wdth pinned 100, Latin Ext WOFF2 ~58 KB)
 //   JetBrains Mono — data (PINs, $, time) (Google Fonts subset)
-// Self-hosted via `next/font/local` so first paint never waits on the Google
-// Fonts CDN and the app works on restricted networks. Mono stays on Google
-// since it's below-the-fold on first load and the subset is tiny.
+// Subsetting from upstream variable TTFs: see `docs/subset-fonts.md` for the
+// pyftsubset / fonttools.varLib.instancer pipeline. We dropped the IBM Plex
+// italic font (~150 KB transfer) — `<em>` falls back to algorithmic italic,
+// which is indistinguishable for body emphasis. Self-hosted (not Google
+// Fonts) so first paint never waits on a third-party CDN.
 const spaceGrotesk = localFont({
-  src: './fonts/SpaceGrotesk-VariableFont_wght.ttf',
+  src: './fonts/SpaceGrotesk-Subset.woff2',
   display: 'swap',
   variable: '--ff-space-grotesk',
   // Preload off: Turbopack dev-mode hashed filenames can desync between the
@@ -24,21 +26,17 @@ const spaceGrotesk = localFont({
   // Chrome to flag "preloaded but not used." Metric-matched fallback keeps
   // first-paint stable (zero CLS); the font swaps in on the next tick.
   preload: false,
-  weight: '300 700',
+  weight: '400 700',
 });
 const ibmPlexSans = localFont({
-  src: [
-    { path: './fonts/IBMPlexSans-VariableFont_wdth_wght.ttf',        style: 'normal', weight: '100 700' },
-    { path: './fonts/IBMPlexSans-Italic-VariableFont_wdth_wght.ttf', style: 'italic', weight: '100 700' },
-  ],
+  src: './fonts/IBMPlexSans-Subset.woff2',
   display: 'swap',
   variable: '--ff-ibm-plex',
-  // Preload off: `preload: true` forces every src entry (incl. italic) into the
-  // <link rel="preload"> head. Italic isn't in the above-the-fold content on
-  // any live page, so Chrome warns "preloaded but not used within a few seconds
-  // of the window's load event". Dropping preload keeps the FOUT brief (metric-
-  // matched fallback = zero CLS) while silencing the warning on production.
+  // Preload off: avoids the "preloaded but not used within a few seconds"
+  // Chrome warning. Metric-matched fallback (system-ui at 16/24) keeps
+  // CLS at zero during the brief FOUT window before the WOFF2 lands.
   preload: false,
+  weight: '400 700',
 });
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
