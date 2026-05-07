@@ -1,18 +1,26 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import BottomNav from '@/components/BottomNav';
 import HomeTab from '@/components/HomeTab';
 import PlayersTab from '@/components/PlayersTab';
-import AdminTab from '@/components/AdminTab';
 import SkillsTab from '@/components/SkillsTab';
 import ProfileTab from '@/components/ProfileTab';
 import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
-import DevPanel, { type DevOverrides } from '@/components/DevPanel';
-import DemoMode from '@/components/DemoMode';
+import type { DevOverrides } from '@/components/DevPanel';
 import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
+
+// AdminTab + DemoMode + DevPanel are lazy-loaded — most users never trigger
+// these surfaces (admin requires sign-in, DemoMode is URL-gated, DevPanel
+// is `?dev`-gated), so eager-importing them was bloating the initial JS
+// bundle for everyone. Lighthouse flagged ~100 KB of unused JS in the home
+// payload; this is the cheap chunk of that.
+const AdminTab = dynamic(() => import('@/components/AdminTab'), { ssr: false });
+const DevPanel = dynamic(() => import('@/components/DevPanel'), { ssr: false });
+const DemoMode = dynamic(() => import('@/components/DemoMode'), { ssr: false });
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
