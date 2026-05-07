@@ -160,53 +160,15 @@ async function handlePost(req: NextRequest) {
       return res;
     }
 
-    // No session player yet — auto-sign-up for this week if signup is
-    // open + capacity allows. Otherwise return identity-only.
-    const sessionContainer = getContainer('sessions');
-    const { resources: sessions } = await sessionContainer.items
-      .query({ query: 'SELECT * FROM c WHERE c.id = @id', parameters: [{ name: '@id', value: sessionId }] })
-      .fetchAll();
-    const sessionData = sessions[0];
-    const maxPlayers = sessionData?.maxPlayers ?? parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12', 10);
-    const signupBlocked =
-      sessionData?.signupOpen === false ||
-      (sessionData?.deadline && new Date() > new Date(sessionData.deadline));
-
-    if (signupBlocked) {
-      const res = NextResponse.json({ deleteToken: null });
-      syncAdminCookie(res, member);
-      return res;
-    }
-
-    const { resources: active } = await playersContainer.items
-      .query({
-        query:
-          'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
-        parameters: [{ name: '@sessionId', value: sessionId }],
-      })
-      .fetchAll();
-    if (active.length >= maxPlayers) {
-      const res = NextResponse.json({ deleteToken: null });
-      syncAdminCookie(res, member);
-      return res;
-    }
-
-    const newDeleteToken = randomBytes(16).toString('hex');
-    const newPlayer = {
-      id: randomBytes(12).toString('hex'),
-      name: member.name,
-      sessionId,
-      timestamp: new Date().toISOString(),
-      deleteToken: newDeleteToken,
-      paid: false,
-      removed: false,
-      waitlisted: false,
-      memberId: member.id,
-      pinHash: member.pinHash,
-      recoveryEvents: [{ event: 'recovered-via-pin', at: new Date().toISOString() }],
-    };
-    await playersContainer.items.create(newPlayer);
-    const res = NextResponse.json({ deleteToken: newDeleteToken });
+    // No session player exists. PIN sign-in is purely an authentication
+    // operation — it does NOT auto-register the user for the current
+    // session. That separation is the auth taxonomy in CLAUDE.md:
+    // "Sign in" ≠ "Sign up". Returning `deleteToken: null` tells the
+    // client "you're authenticated but not registered" — the user can
+    // tap the explicit Sign-up CTA on Home if they want a spot. The
+    // admin cookie still syncs because admin status is a property of
+    // the member, independent of session participation.
+    const res = NextResponse.json({ deleteToken: null });
     syncAdminCookie(res, member);
     return res;
   }
