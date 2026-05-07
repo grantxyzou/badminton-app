@@ -18,7 +18,9 @@ Omit `COSMOS_CONNECTION_STRING` from `.env.local` to use the in-memory mock stor
 ## Key Architecture
 
 ### Single-Page App
-`app/page.tsx` is the only browser route. Tabs: Home, Sign-Ups, Skills (admin-functional, "Coming Soon" placeholder for non-admins), Admin. All data via API routes under `app/api/`. Every fetch uses `{ cache: 'no-store' }`.
+`app/page.tsx` is the only browser route. **It is an async server component** (since 2026-05-07): it server-renders the announcement (the LCP element on Home) into the initial HTML payload and delegates all client state to `<HomeShell>`. `HomeShell` is the `'use client'` boundary — owns tab routing, identity, dev mode, admin gating, the easter egg, etc. Tabs: Home, Sign-Ups, Skills (admin-functional, "Coming Soon" placeholder for non-admins), Admin. All client-fetched data via API routes under `app/api/` with `{ cache: 'no-store' }`; server-side reads go through `lib/announcements.ts` etc. (single source of truth shared with API routes).
+
+**If you need to add another server-rendered initial value to `<HomeShell>`:** extract the read into a `lib/<thing>.ts` server-only function, call it from the async `Page()` in `app/page.tsx`, pass it as a prop to `HomeShell`, and have the client component receiving it use it as `useState` initial value (with a useEffect refresh in background). Don't add the lib function to a `'use client'` file — it imports from `@azure/cosmos` which is server-only.
 
 ### Session Pointer
 Sessions are date-keyed (`session-YYYY-MM-DD`). A pointer document (`id: 'active-session-pointer'`) tracks the current session. **Always use `getActiveSessionId()`** — never `SESSION_ID` directly (legacy compat only). The pointer falls back to `'current-session'` if no pointer doc exists — do not remove this fallback.
