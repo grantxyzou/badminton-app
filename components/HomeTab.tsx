@@ -22,13 +22,27 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
 const TIME_SHORT = { hour: '2-digit', minute: '2-digit' } as const;
 
-export default function HomeTab({ onTabChange, onTitleTap, devOverrides }: { onTabChange?: (tab: 'home' | 'players' | 'admin') => void; onTitleTap?: () => void; devOverrides?: DevOverrides }) {
+interface HomeTabProps {
+  onTabChange?: (tab: 'home' | 'players' | 'admin') => void;
+  onTitleTap?: () => void;
+  devOverrides?: DevOverrides;
+  /**
+   * Server-rendered initial announcement, plumbed through from
+   * `app/page.tsx` via `<HomeShell>`. Used as the seed value for
+   * the announcement state so the LCP element is in the initial HTML
+   * payload — the loadData useEffect still re-fetches in the
+   * background to keep things fresh on long-lived tabs.
+   */
+  initialAnnouncement?: Announcement | null;
+}
+
+export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initialAnnouncement = null }: HomeTabProps) {
   const t = useTranslations('home');
   const tStates = useTranslations('home.states');
   const format = useFormatter();
   const [session, setSession] = useState<Session | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
-  const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+  const [announcement, setAnnouncement] = useState<Announcement | null>(initialAnnouncement);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
