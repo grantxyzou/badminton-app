@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Tab } from '@/app/page';
+import type { Tab } from '@/components/HomeShell';
 
 interface Props {
   activeTab: Tab;
