@@ -203,7 +203,12 @@ describe('POST /api/players/recover', () => {
   // retired. The endpoint is now unconditionally active.
 
   describe('member-only fallback (no session player)', () => {
-    it('verifies against members.pinHash and auto-creates a session player when signup is open', async () => {
+    it('verifies against members.pinHash and returns identity-only — does NOT auto-create a session player', async () => {
+      // Per the auth taxonomy (CLAUDE.md): "Sign in" authenticates the
+      // user; "Sign up" registers them for the active session. They are
+      // distinct operations. Sign-in (PIN auth) must NOT auto-add the
+      // user to the player list — that conflated the two and surprised
+      // users into appearing as signed up just from logging in.
       const pinHash = await hashPin('4827');
       const { seedMember } = await import('./helpers');
       seedMember('Riley', { pinHash });
@@ -214,14 +219,14 @@ describe('POST /api/players/recover', () => {
       );
       expect(res.status).toBe(200);
       const data = await res.json();
-      expect(data.deleteToken).toMatch(/^[0-9a-f]{32}$/);
+      // No player record → no deleteToken (nothing to delete).
+      expect(data.deleteToken).toBeNull();
 
-      // Session player was created on-the-fly
+      // Crucially: no session player was created.
       const store = getStore();
-      const players = (store['players'] ?? []) as Array<{ name: string; sessionId: string; deleteToken: string }>;
+      const players = (store['players'] ?? []) as Array<{ name: string; sessionId: string }>;
       const created = players.find((p) => p.name === 'Riley' && p.sessionId === SESSION);
-      expect(created).toBeDefined();
-      expect(created?.deleteToken).toBe(data.deleteToken);
+      expect(created).toBeUndefined();
     });
 
     it('returns identity-only (deleteToken: null) when signup is closed', async () => {

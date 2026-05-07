@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations, useFormatter } from 'next-intl';
 import type { Player, Session } from '@/lib/types';
-import { getIdentity, clearIdentity } from '@/lib/identity';
+import { getIdentity, setIdentity } from '@/lib/identity';
 import ShuttleLoader from '@/components/ShuttleLoader';
 import ShuttleIcon from '@/components/ShuttleIcon';
 import PageHeader from '@/components/primitives/PageHeader';
@@ -55,7 +55,17 @@ export default function PlayersTab() {
         body: JSON.stringify({ name: currentUser, deleteToken: id?.token }),
       });
       if (res.ok) {
-        clearIdentity();
+        // Cancelling a session spot is NOT signing out — per the auth
+        // taxonomy in CLAUDE.md, "Sign in" and "Sign up" are distinct
+        // operations and so are "Sign out" and "Cancel spot". The user
+        // remains identified (name + sessionId stay in localStorage) so
+        // they can re-sign-up with one tap or stay PIN-authenticated.
+        // The deleteToken is wiped because the server already consumed
+        // it — leaving it would mean a stale token in localStorage that
+        // can't authorize anything.
+        if (id) {
+          setIdentity({ ...id, token: '' });
+        }
         setCurrentUser(null);
         setCancelError('');
         setConfirmingCancel(false);
