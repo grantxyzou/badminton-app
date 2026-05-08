@@ -72,20 +72,29 @@ export async function POST(req: NextRequest) {
         signupOpensOffsetHours: calculateSignupOpensOffset(currentSession),
       };
 
-      const courtTotal = (currentSession.costPerCourt ?? 0) * (currentSession.courts ?? 0);
-      const birdTotal = totalBirdCost(normalizeBirdUsages(currentSession));
-      const totalCost = courtTotal + birdTotal;
-      if (totalCost > 0) {
-        const playersContainer = getContainer('players');
-        const { resources: prevPlayers } = await playersContainer.items
-          .query({
-            query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
-            parameters: [{ name: '@sessionId', value: currentId }],
-          })
-          .fetchAll();
-        if (prevPlayers.length > 0) {
-          prevCostPerPerson = Math.round((totalCost / prevPlayers.length) * 100) / 100;
-          prevSessionDate = currentSession.datetime;
+      // Prefer the frozen settle snapshot when present — it's the canonical
+      // cost-per-person at the moment the admin closed the books, immune to
+      // any retro edits to courts/birds since. Falls back to live compute for
+      // legacy sessions that were never settled.
+      if (currentSession.settled) {
+        prevCostPerPerson = currentSession.settled.costPerPerson;
+        prevSessionDate = currentSession.datetime;
+      } else {
+        const courtTotal = (currentSession.costPerCourt ?? 0) * (currentSession.courts ?? 0);
+        const birdTotal = totalBirdCost(normalizeBirdUsages(currentSession));
+        const totalCost = courtTotal + birdTotal;
+        if (totalCost > 0) {
+          const playersContainer = getContainer('players');
+          const { resources: prevPlayers } = await playersContainer.items
+            .query({
+              query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
+              parameters: [{ name: '@sessionId', value: currentId }],
+            })
+            .fetchAll();
+          if (prevPlayers.length > 0) {
+            prevCostPerPerson = Math.round((totalCost / prevPlayers.length) * 100) / 100;
+            prevSessionDate = currentSession.datetime;
+          }
         }
       }
 
