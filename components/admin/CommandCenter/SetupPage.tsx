@@ -498,7 +498,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
             <button type="button" onClick={copyText} className="cc-btn cc-btn-secondary" style={{ flex: 1, justifyContent: 'center' }}>
               {copied ? 'Copied ✓' : 'Copy'}
             </button>
-            <button type="button" onClick={shareImage} className="btn-primary" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <button type="button" onClick={shareImage} className="cc-btn cc-btn-primary" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
               <span className="material-icons" style={{ fontSize: 16 }}>image</span>
               Share image
             </button>
@@ -543,7 +543,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
             type="button"
             onClick={save}
             disabled={saving}
-            className="btn-primary"
+            className="cc-btn cc-btn-primary"
             style={{ flex: 2, justifyContent: 'center' }}
           >
             {saving ? 'Saving…' : 'Save'}
