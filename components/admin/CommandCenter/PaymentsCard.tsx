@@ -123,6 +123,15 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
   }, []);
 
   useEffect(() => { void load(); }, [load, refreshKey]);
+
+  // Auto-dismiss the paid-toggle error after 4.5s. Without this, the banner
+  // sticks around until the next toggle attempt, which can read as
+  // "still failing" after a successful retry. Closes #62.
+  useEffect(() => {
+    if (!toggleError) return;
+    const t = setTimeout(() => setToggleError(null), 4500);
+    return () => clearTimeout(t);
+  }, [toggleError]);
   useEffect(() => {
     if (!viewedSessionId) return;
     void loadPlayers(viewedSessionId);

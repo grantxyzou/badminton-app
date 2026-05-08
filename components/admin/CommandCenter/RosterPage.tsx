@@ -576,7 +576,10 @@ export default function RosterPage({ onBack }: RosterPageProps) {
           aria-label="Add member"
           style={{
             position: 'fixed',
-            bottom: 96,
+            // 96px clears the bottom nav (~68px) + breathing room. Add the
+            // iOS home-indicator inset so devices with a home bar don't
+            // clip the FAB. Closes #61.
+            bottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
             right: 22,
             width: 56,
             height: 56,
