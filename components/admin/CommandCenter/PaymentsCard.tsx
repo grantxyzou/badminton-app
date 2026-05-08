@@ -382,9 +382,9 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
               color: '#d8b4fe',
               border: '1px solid rgba(168, 85, 247, 0.3)',
             }}
-            title={`Locked at $${viewedSession?.settled?.costPerPerson} / person · ${viewedSession?.settled?.playerCount} players`}
+            title={`Bill sent — $${viewedSession?.settled?.costPerPerson} each · ${viewedSession?.settled?.playerCount} of us`}
           >
-            Final · ${viewedSession?.settled?.costPerPerson}
+            Sent · ${viewedSession?.settled?.costPerPerson}
           </span>
         )}
       </header>
@@ -446,7 +446,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
                       color: '#d8b4fe',
                       fontFamily: 'var(--font-mono), ui-monospace, monospace',
                     }}
-                    title={`Owed at lock time. Frozen.`}
+                    title="What they owe — frozen when the bill went out."
                   >
                     ${player.owedAmount}
                   </span>

@@ -71,39 +71,37 @@ function fmtMemo(template: string, dateIso: string, name: string): string {
 
 const DEFAULT_MEMO = 'BPM {date} - {name}';
 
-/** Group-format text: posted once after signups close. No paid status. */
+/** Group-format text: posted to the friend-group chat once the bill is sent.
+ *  Lead with the headline ("$X each"), keep the bookkeeping in a parenthetical
+ *  at the bottom. People stop reading after the dollar amount; everything
+ *  load-bearing should be before that line. */
 export function renderGroupText(input: ReceiptInput): string {
   const { datetime, costPerPerson, courts, totalCost, playerNames, recipient, memoTemplate, note } = input;
   const memo = fmtMemo(memoTemplate ?? DEFAULT_MEMO, datetime, '{your name}');
+  const courtLabel = `${courts} court${courts === 1 ? '' : 's'}`;
+  const playerLabel = `${playerNames.length} of us`;
   const lines = [
-    `BPM Badminton — ${fmtDate(datetime)} · ${fmtTime(datetime)}`,
+    `Badminton on ${fmtDate(datetime)} was $${costPerPerson} each.`,
     '',
-    `  $${costPerPerson} / person`,
-    '',
-    `${courts} court${courts === 1 ? '' : 's'} · ${playerNames.length} player${playerNames.length === 1 ? '' : 's'} · $${totalCost} total`,
-    '',
-    `E-transfer to: ${recipient.email}`,
+    `E-transfer me at ${recipient.email}`,
     `Memo: ${memo}`,
+    '',
+    `(${courtLabel} · ${playerLabel} · $${totalCost} total)`,
   ];
-  if (playerNames.length > 0) {
-    lines.push('', 'Players this week:', playerNames.join(', '));
-  }
   if (note?.trim()) {
     lines.push('', note.trim());
   }
   return lines.join('\n');
 }
 
-/** Individual-format text: nudge for a single player. */
+/** Individual-format text: friendly nudge for a single player. */
 export function renderIndividualText(input: IndividualReceiptInput): string {
   const { datetime, costPerPerson, recipient, memoTemplate, playerName, note } = input;
   const memo = fmtMemo(memoTemplate ?? DEFAULT_MEMO, datetime, playerName);
   const lines = [
-    `Hi ${playerName} — for BPM on ${fmtDate(datetime)} (${fmtTime(datetime)}):`,
+    `Hey ${playerName} — badminton on ${fmtDate(datetime)} was $${costPerPerson}.`,
     '',
-    `  $${costPerPerson}`,
-    '',
-    `E-transfer to: ${recipient.email}`,
+    `E-transfer me at ${recipient.email}`,
     `Memo: ${memo}`,
   ];
   if (note?.trim()) {
@@ -132,29 +130,29 @@ export function renderGroupCanvas(input: ReceiptInput, canvas: HTMLCanvasElement
   ctx.fillStyle = '#0c0c14';
   ctx.fillRect(0, 0, W, H);
 
-  // Wordmark
+  // Wordmark — small label, sets context
   ctx.fillStyle = '#9ca3af';
   ctx.font = '500 12px "IBM Plex Sans", system-ui, sans-serif';
-  ctx.fillText('BPM BADMINTON', 24, 36);
+  ctx.fillText(`Badminton · ${fmtDate(input.datetime)}`, 24, 36);
 
-  // Date
+  // Lead line — "was $X each"
   ctx.fillStyle = '#f3f4f6';
-  ctx.font = '600 16px "IBM Plex Sans", system-ui, sans-serif';
-  ctx.fillText(`${fmtDate(input.datetime)} · ${fmtTime(input.datetime)}`, 24, 60);
+  ctx.font = '600 18px "IBM Plex Sans", system-ui, sans-serif';
+  ctx.fillText('today was', 24, 70);
 
-  // Amount (display font)
+  // Amount (display font, prominent)
   ctx.fillStyle = '#86efac';
   ctx.font = '700 56px "Space Grotesk", system-ui, sans-serif';
   ctx.fillText(`$${input.costPerPerson}`, 24, 130);
   ctx.fillStyle = '#9ca3af';
   ctx.font = '400 14px "IBM Plex Sans", system-ui, sans-serif';
-  ctx.fillText('per person', 24, 152);
+  ctx.fillText('each', 24, 152);
 
-  // Totals line
+  // Totals line — admin transparency, smaller
   ctx.fillStyle = '#d1d5db';
   ctx.font = '400 13px "IBM Plex Sans", system-ui, sans-serif';
   ctx.fillText(
-    `${input.courts} court${input.courts === 1 ? '' : 's'} · ${input.playerNames.length} players · $${input.totalCost} total`,
+    `${input.courts} court${input.courts === 1 ? '' : 's'} · ${input.playerNames.length} of us · $${input.totalCost} total`,
     24, 184,
   );
 
@@ -168,7 +166,7 @@ export function renderGroupCanvas(input: ReceiptInput, canvas: HTMLCanvasElement
   // E-transfer block
   ctx.fillStyle = '#9ca3af';
   ctx.font = '500 11px "IBM Plex Sans", system-ui, sans-serif';
-  ctx.fillText('E-TRANSFER TO', 24, 230);
+  ctx.fillText('E-TRANSFER ME AT', 24, 230);
   ctx.fillStyle = '#f3f4f6';
   ctx.font = '500 14px "JetBrains Mono", monospace';
   ctx.fillText(input.recipient.email, 24, 252);
@@ -184,7 +182,7 @@ export function renderGroupCanvas(input: ReceiptInput, canvas: HTMLCanvasElement
   if (input.playerNames.length > 0) {
     ctx.fillStyle = '#9ca3af';
     ctx.font = '500 11px "IBM Plex Sans", system-ui, sans-serif';
-    ctx.fillText('PLAYERS', 24, 350);
+    ctx.fillText('WHO PLAYED', 24, 350);
     ctx.fillStyle = '#d1d5db';
     ctx.font = '400 13px "IBM Plex Sans", system-ui, sans-serif';
     const players = wrapLine(ctx, input.playerNames.join(', '), W - 48);
