@@ -73,3 +73,42 @@ export function clearIdentity(): void {
   localStorage.removeItem(IDENTITY_KEY);
   dispatchIdentityChange();
 }
+
+/** Decision returned by `resolveStaleIdentity`. */
+export type StaleIdentityAction =
+  /** No change — stored identity already matches the active session, or no identity stored. */
+  | { action: 'keep' }
+  /** PIN-protected member crossing a session boundary. Preserve name, refresh
+   *  sessionId, drop the deleteToken (which was bound to the old session). */
+  | { action: 'preserve'; identity: Identity }
+  /** Anonymous user crossing a session boundary. Both deleteToken and identity
+   *  are stale because they're session-bound. Clear all. */
+  | { action: 'clear' };
+
+/**
+ * Decide what to do with a stored identity when the active session has
+ * advanced. Pure function so the logic can be unit-tested without mounting
+ * HomeTab or stubbing localStorage. Caller is responsible for actually
+ * applying the decision (set vs clear).
+ *
+ * Pre-2026-05-08 the rule was "always clear on session-id mismatch," which
+ * was correct under the old single-tier auth model where identity = a
+ * session-player record + deleteToken. With the auth taxonomy split, a
+ * PIN-protected member is validly authenticated even between sessions —
+ * clearing forced them to PIN-auth weekly. Closes #60.
+ */
+export function resolveStaleIdentity(
+  stored: Identity | null,
+  activeSessionId: string,
+  hasPin: boolean,
+): StaleIdentityAction {
+  if (!stored || !stored.sessionId) return { action: 'keep' };
+  if (stored.sessionId === activeSessionId) return { action: 'keep' };
+  if (hasPin) {
+    return {
+      action: 'preserve',
+      identity: { name: stored.name, sessionId: activeSessionId },
+    };
+  }
+  return { action: 'clear' };
+}

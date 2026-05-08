@@ -5,7 +5,7 @@ import { useTranslations, useFormatter } from 'next-intl';
 import type { Session, Player, Announcement, Release } from '@/lib/types';
 import type { DevOverrides } from '@/components/DevPanel';
 import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
-import { getIdentity, setIdentity, clearIdentity } from '@/lib/identity';
+import { getIdentity, setIdentity, clearIdentity, resolveStaleIdentity } from '@/lib/identity';
 import ShuttleLoader from '@/components/ShuttleLoader';
 import CostCard from '@/components/CostCard';
 import PrevPaymentReminder from '@/components/PrevPaymentReminder';
@@ -78,12 +78,34 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       if (sRes.ok) {
         const s: Session = await sRes.json();
         setSession(s);
-        // Clear stale identity from a previous session
-        const id = getIdentity();
-        if (id && id.sessionId && id.sessionId !== s.id) {
-          clearIdentity();
-          setCurrentUser(null);
-          setHasIdentity(false);
+        const stored = getIdentity();
+        if (stored && stored.sessionId && stored.sessionId !== s.id) {
+          // Stale identity. Probe /api/members/me to learn if this name is
+          // a PIN-protected member (auth survives session boundaries) or
+          // anonymous (deleteToken bound to old session, both stale).
+          let hasPin = false;
+          try {
+            const meRes = await fetch(
+              `${BASE}/api/members/me?name=${encodeURIComponent(stored.name)}`,
+              { cache: 'no-store' },
+            );
+            if (meRes.ok) {
+              const me = (await meRes.json()) as { hasPin?: boolean };
+              hasPin = me.hasPin === true;
+            }
+          } catch {
+            // Network failure → resolveStaleIdentity falls through to clear.
+          }
+          const decision = resolveStaleIdentity(stored, s.id, hasPin);
+          if (decision.action === 'preserve') {
+            setIdentity(decision.identity);
+            setCurrentUser(decision.identity.name);
+            setHasIdentity(true);
+          } else if (decision.action === 'clear') {
+            clearIdentity();
+            setCurrentUser(null);
+            setHasIdentity(false);
+          }
         }
       }
       if (pRes.ok) setPlayers(await pRes.json());
