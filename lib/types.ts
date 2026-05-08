@@ -49,6 +49,23 @@ export interface Session {
   anomaliesDismissed?: import('./anomalies').AnomalyCode[];
   /** Per-session override of the e-transfer recipient. Falls back to the admin member's setting if absent. */
   eTransferRecipient?: ETransferRecipient;
+  /** Frozen receipt snapshot. Set by POST /api/session/settle, cleared by DELETE.
+   *  When present, ReceiptSheet and PaymentsCard prefer these values over live compute,
+   *  so retro edits to courts/birds don't redefine what already-paid players paid for. */
+  settled?: SettledSnapshot;
+}
+
+export interface SettledSnapshot {
+  /** ISO timestamp of the settle action. */
+  at: string;
+  costPerPerson: number;
+  totalCost: number;
+  courtTotal: number;
+  birdTotal: number;
+  /** Active player count at settle time (denominator used for costPerPerson). */
+  playerCount: number;
+  /** Frozen list of active player names — receipt source of truth, immune to later removals. */
+  playerNames: string[];
 }
 
 export interface BirdUsage {
@@ -74,6 +91,13 @@ export interface Player {
   deleteToken?: string; // DB-only — never sent to clients
   pinHash?: string;
   recoveryEvents?: RecoveryEvent[];
+  /** Dollar amount frozen on this player at settle time. Stable across retro edits. */
+  owedAmount?: number;
+  /** ISO timestamp when owedAmount was stamped. */
+  settledAt?: string;
+  /** Admin opted to write off this player's debt when removing them post-settle.
+   *  When true, ledger views exclude their owedAmount from "expected to collect." */
+  writtenOff?: boolean;
 }
 
 export type RecoveryEvent =
