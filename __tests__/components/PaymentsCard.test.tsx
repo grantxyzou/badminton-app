@@ -148,7 +148,7 @@ describe('<PaymentsCard />', () => {
       });
     }
 
-    it('hides Final badge and per-row $ when flag is off', async () => {
+    it('hides Sent badge and per-row $ when flag is off', async () => {
       const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
       process.env.NEXT_PUBLIC_FLAG_SETTLE = 'false';
       try {
@@ -157,14 +157,14 @@ describe('<PaymentsCard />', () => {
         ]);
         render(<PaymentsCard />);
         await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
-        expect(screen.queryByText(/Final/)).toBeNull();
+        expect(screen.queryByText(/Sent ·/)).toBeNull();
         expect(screen.queryByText('$15')).toBeNull();
       } finally {
         process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
       }
     });
 
-    it('shows Final badge with $X / person and per-row owedAmount when flag on', async () => {
+    it('shows Sent badge and per-row owedAmount when flag on', async () => {
       const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
       process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
       try {
@@ -174,7 +174,7 @@ describe('<PaymentsCard />', () => {
         ]);
         render(<PaymentsCard />);
         await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
-        expect(screen.getByText(/Final · \$15/)).toBeTruthy();
+        expect(screen.getByText(/Sent · \$15/)).toBeTruthy();
         // Two rows × $15 = two matching texts
         expect(screen.getAllByText('$15').length).toBe(2);
       } finally {

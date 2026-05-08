@@ -11,29 +11,33 @@ const baseInput: ReceiptInput = {
 };
 
 describe('renderGroupText', () => {
-  it('contains amount, recipient email, default memo, and player list', () => {
+  it('leads with the amount in friend-group voice and includes recipient + memo', () => {
     const text = renderGroupText(baseInput);
-    expect(text).toContain('$9 / person');
-    expect(text).toContain('grant@example.com');
+    expect(text).toMatch(/^Badminton on .* was \$9 each\./);
+    expect(text).toContain('E-transfer me at grant@example.com');
     expect(text).toMatch(/Memo: BPM .* - \{your name\}/);
-    expect(text).toContain('Daisy, Mei, Ken');
-    expect(text).toContain('3 courts · 3 players · $108 total');
+    expect(text).toContain('3 courts · 3 of us · $108 total');
   });
 
-  it('handles single court / single player pluralization', () => {
+  it('handles single court pluralization in the parenthetical', () => {
     const text = renderGroupText({ ...baseInput, courts: 1, playerNames: ['Daisy'] });
     expect(text).toContain('1 court ·');
-    expect(text).toContain('1 player ·');
-  });
-
-  it('omits the players block when playerNames is empty', () => {
-    const text = renderGroupText({ ...baseInput, playerNames: [] });
-    expect(text).not.toContain('Players this week');
+    expect(text).toContain('1 of us ·');
   });
 
   it('appends optional admin note when present', () => {
     const text = renderGroupText({ ...baseInput, note: 'Bring water!' });
     expect(text).toContain('Bring water!');
+  });
+
+  it('does NOT list individual player names (friends already know who played)', () => {
+    // Names previously appeared as "Players this week: Daisy, Mei, Ken" — that
+    // line was dropped to keep the message short. Count stays in the
+    // parenthetical. Adding it back is a regression to fight.
+    const text = renderGroupText(baseInput);
+    expect(text).not.toContain('Daisy');
+    expect(text).not.toContain('Mei');
+    expect(text).not.toContain('Ken');
   });
 
   it('respects custom memoTemplate with {date} interpolation', () => {
@@ -45,11 +49,10 @@ describe('renderGroupText', () => {
 });
 
 describe('renderIndividualText', () => {
-  it('greets the named player and includes amount/recipient/memo', () => {
+  it('greets the named player in friend voice and includes amount/recipient/memo', () => {
     const text = renderIndividualText({ ...baseInput, playerName: 'Daisy' });
-    expect(text).toContain('Hi Daisy');
-    expect(text).toContain('$9');
-    expect(text).toContain('grant@example.com');
+    expect(text).toMatch(/^Hey Daisy — badminton on .* was \$9\./);
+    expect(text).toContain('E-transfer me at grant@example.com');
     expect(text).toContain('Memo: BPM');
   });
 

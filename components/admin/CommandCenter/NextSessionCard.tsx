@@ -76,33 +76,39 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
     }
   }, []);
 
-  const settle = useCallback(async () => {
+  // "Send the bill" — single action that locks the math AND opens the
+  // share sheet. Mirrors the social act ("I told the group what they
+  // owe"); the lock is invisible plumbing. If sharing happens later
+  // (admin presses again to share to a different chat), only the
+  // share-sheet step runs.
+  const sendBill = useCallback(async () => {
     setSettleError(null);
     setSettling(true);
     try {
       const res = await fetch(`${BASE}/api/session/settle`, { method: 'POST' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setSettleError(data?.error ?? `Couldn't lock cost (HTTP ${res.status}).`);
+        setSettleError(data?.error ?? `Couldn't send the bill (HTTP ${res.status}).`);
         return;
       }
       await load();
+      onShareCost?.();
     } catch {
       setSettleError("Couldn't reach server. Try again.");
     } finally {
       setSettling(false);
     }
-  }, [load]);
+  }, [load, onShareCost]);
 
-  const unsettle = useCallback(async () => {
-    if (!confirm('Unlock the cost for this session? Paid markings stay; owed amounts clear.')) return;
+  const editBill = useCallback(async () => {
+    if (!confirm("Edit the bill? This clears what each person owes (paid checkmarks stay).")) return;
     setSettleError(null);
     setSettling(true);
     try {
       const res = await fetch(`${BASE}/api/session/settle`, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setSettleError(data?.error ?? `Couldn't unlock (HTTP ${res.status}).`);
+        setSettleError(data?.error ?? `Couldn't edit the bill (HTTP ${res.status}).`);
         return;
       }
       await load();
@@ -147,9 +153,9 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
                 color: '#d8b4fe',
                 border: '1px solid rgba(168, 85, 247, 0.3)',
               }}
-              title={`Locked at $${session.settled?.costPerPerson} / person`}
+              title={`Bill sent — $${session.settled?.costPerPerson} each`}
             >
-              Final · ${session.settled?.costPerPerson}
+              Sent · ${session.settled?.costPerPerson}
             </span>
           )}
           <span
@@ -190,27 +196,40 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       )}
 
       <div className="flex flex-wrap gap-2 pt-1">
-        {settleFlagOn && !isSettled && (
-          <button
-            type="button"
-            onClick={settle}
-            disabled={settling}
-            className="cc-btn cc-btn-primary"
-            title="Freeze cost-per-person and per-player owed amount. Use after the session has ended, before sharing the receipt."
-          >
-            <span className="material-icons text-base align-middle">lock</span>
-            {settling ? 'Locking…' : 'Lock cost'}
-          </button>
-        )}
-        {onShareCost && (
-          <button
-            type="button"
-            onClick={onShareCost}
-            className={isSettled ? 'cc-btn cc-btn-primary' : 'cc-btn cc-btn-secondary'}
-          >
-            <span className="material-icons text-base align-middle">request_quote</span>
-            Share cost
-          </button>
+        {settleFlagOn ? (
+          // Unified "Send the bill" flow. One primary action — pre-send it
+          // settles + opens share; post-send it just opens share again.
+          !isSettled ? (
+            <button
+              type="button"
+              onClick={sendBill}
+              disabled={settling}
+              className="cc-btn cc-btn-primary"
+              title="Locks tonight's cost and opens the share sheet for the group chat."
+            >
+              <span className="material-icons text-base align-middle">send</span>
+              {settling ? 'Sending…' : 'Send the bill'}
+            </button>
+          ) : (
+            onShareCost && (
+              <button
+                type="button"
+                onClick={onShareCost}
+                className="cc-btn cc-btn-primary"
+              >
+                <span className="material-icons text-base align-middle">share</span>
+                Share again — ${session.settled?.costPerPerson} each
+              </button>
+            )
+          )
+        ) : (
+          // Pre-flag stable users keep the simple "Share cost" affordance.
+          onShareCost && (
+            <button type="button" onClick={onShareCost} className="cc-btn cc-btn-primary">
+              <span className="material-icons text-base align-middle">request_quote</span>
+              Share cost
+            </button>
+          )
         )}
         {onEdit && (
           <button type="button" onClick={onEdit} className="cc-btn cc-btn-secondary">
@@ -225,12 +244,12 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
         {isSettled && (
           <button
             type="button"
-            onClick={unsettle}
+            onClick={editBill}
             disabled={settling}
             className="cc-btn cc-btn-ghost text-xs"
-            title="Clears the frozen cost. Per-player paid markings are preserved. Use only to fix a typo."
+            title="Made a typo? Clears the bill so you can re-send. Paid checkmarks stay."
           >
-            {settling ? 'Unlocking…' : 'Unlock'}
+            {settling ? 'Editing…' : 'Edit bill'}
           </button>
         )}
       </div>

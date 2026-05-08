@@ -101,42 +101,46 @@ describe('<NextSessionCard />', () => {
       },
     };
 
-    it('hides the Lock button and Final badge when flag is off', async () => {
+    it('hides Send the bill and Sent badge when flag is off (stable users keep "Share cost")', async () => {
       const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
       process.env.NEXT_PUBLIC_FLAG_SETTLE = 'false';
       try {
         mockFetch(makeFetcher(settledSession, []));
         render(<NextSessionCard onShareCost={() => {}} />);
         await waitFor(() => expect(screen.getByText(/Sunday/)).toBeTruthy());
-        expect(screen.queryByText(/Lock cost/)).toBeNull();
-        expect(screen.queryByText(/Final/)).toBeNull();
+        expect(screen.queryByText(/Send the bill/)).toBeNull();
+        expect(screen.queryByText(/Sent ·/)).toBeNull();
+        // Legacy button stays for unflagged users.
+        expect(screen.getByText(/Share cost/)).toBeTruthy();
       } finally {
         process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
       }
     });
 
-    it('shows Lock button when flag on and session not settled', async () => {
+    it('shows "Send the bill" when flag on and session not yet settled', async () => {
       const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
       process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
       try {
         mockFetch(makeFetcher(session, []));
         render(<NextSessionCard onShareCost={() => {}} />);
-        await waitFor(() => expect(screen.getByText(/Lock cost/)).toBeTruthy());
-        expect(screen.queryByText(/Final/)).toBeNull();
+        await waitFor(() => expect(screen.getByText(/Send the bill/)).toBeTruthy());
+        expect(screen.queryByText(/Sent ·/)).toBeNull();
+        expect(screen.queryByText(/Share cost/)).toBeNull();
       } finally {
         process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
       }
     });
 
-    it('shows Final badge with $X and Unlock when flag on and session settled', async () => {
+    it('shows "Sent · $X" badge and "Share again" + "Edit bill" when flag on and session settled', async () => {
       const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
       process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
       try {
         mockFetch(makeFetcher(settledSession, []));
         render(<NextSessionCard onShareCost={() => {}} />);
-        await waitFor(() => expect(screen.getByText(/Final · \$15/)).toBeTruthy());
-        expect(screen.getByText(/Unlock/)).toBeTruthy();
-        expect(screen.queryByText(/Lock cost/)).toBeNull();
+        await waitFor(() => expect(screen.getByText(/Sent · \$15/)).toBeTruthy());
+        expect(screen.getByText(/Share again — \$15 each/)).toBeTruthy();
+        expect(screen.getByText(/Edit bill/)).toBeTruthy();
+        expect(screen.queryByText(/Send the bill/)).toBeNull();
       } finally {
         process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
       }
