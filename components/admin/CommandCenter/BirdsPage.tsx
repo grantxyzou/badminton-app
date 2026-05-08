@@ -10,6 +10,13 @@ import type { BirdPurchase, Session } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
+// Runway timeline geometry. The "now" and "empty" markers overflow the
+// gradient bar above and below — keeping these as named constants means
+// changing the bar height (or marker prominence) doesn't desync the markers.
+const TIMELINE_BAR_H = 32;
+const TIMELINE_NOW_OVERFLOW = 6;
+const TIMELINE_EMPTY_OVERFLOW = 10;
+
 interface BirdsPageProps {
   onBack: () => void;
 }
@@ -356,7 +363,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         <div style={{ marginTop: 18, position: 'relative' }}>
           <div
             style={{
-              height: 32,
+              height: TIMELINE_BAR_H,
               position: 'relative',
               borderRadius: 8,
               background: 'linear-gradient(to right, rgba(74,222,128,0.4) 0%, rgba(251,191,36,0.4) 60%, rgba(248,113,113,0.4) 100%)',
@@ -381,8 +388,8 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
               style={{
                 position: 'absolute',
                 left: '0%',
-                top: -6,
-                bottom: -6,
+                top: -TIMELINE_NOW_OVERFLOW,
+                bottom: -TIMELINE_NOW_OVERFLOW,
                 width: 3,
                 background: 'var(--text-primary)',
                 borderRadius: 2,
@@ -396,8 +403,8 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                 style={{
                   position: 'absolute',
                   left: `${runwayPct}%`,
-                  top: -10,
-                  bottom: -10,
+                  top: -TIMELINE_EMPTY_OVERFLOW,
+                  bottom: -TIMELINE_EMPTY_OVERFLOW,
                   width: 2,
                   background: 'var(--red-soft)',
                 }}
