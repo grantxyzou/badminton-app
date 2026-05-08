@@ -441,7 +441,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
           <button
             type="button"
-            className="btn-primary"
+            className="cc-btn cc-btn-primary"
             style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
             onClick={openAddSheet}
           >
@@ -778,7 +778,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
               <button
                 type="button"
                 onClick={handleSave}
-                className="btn-primary"
+                className="cc-btn cc-btn-primary"
                 disabled={saving || deleting}
                 style={{ minWidth: 100 }}
               >
