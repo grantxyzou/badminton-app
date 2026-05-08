@@ -121,44 +121,33 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel="Assign tubes to sessions">
-      <BottomSheetHeader>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Assign to session
-            </h2>
-            {purchase && (
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                {purchase.name} · ${purchase.costPerTube.toFixed(2)}/tube
-              </p>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              minHeight: 44,
-              minWidth: 44,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-muted)',
-            }}
-          >
-            <span className="material-icons">close</span>
-          </button>
+    <BottomSheet open={open} onClose={onClose} ariaLabel="Assign tubes to sessions" className="max-w-lg mx-auto">
+      <BottomSheetHeader className="flex items-center justify-between p-4">
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+            Assign to session
+          </h2>
+          {purchase && (
+            <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>
+              {purchase.name} · ${purchase.costPerTube.toFixed(2)}/tube
+            </p>
+          )}
         </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <span className="material-icons" style={{ fontSize: 20 }}>close</span>
+        </button>
       </BottomSheetHeader>
 
-      <BottomSheetBody>
-        {loading && <p className="text-sm text-gray-400 p-3">Loading sessions…</p>}
+      <BottomSheetBody className="p-5 pb-8">
+        {loading && <p className="text-sm text-gray-400">Loading sessions…</p>}
 
         {!loading && rows.length === 0 && (
-          <p className="text-sm text-gray-400 p-3">No sessions yet.</p>
+          <p className="text-sm text-gray-400">No sessions yet.</p>
         )}
 
         {!loading && rows.length > 0 && (
