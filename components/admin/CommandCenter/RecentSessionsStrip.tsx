@@ -40,14 +40,26 @@ export default function RecentSessionsStrip() {
 
   useEffect(() => { void load(); }, [load]);
 
-  // Update dot indicator from scroll position.
+  // Update dot indicator from scroll position. Picks whichever card's
+  // left edge is closest to scrollLeft. Robust to variable-width cards
+  // (longer session titles, future content variants), unlike the prior
+  // scrollWidth/length proportion which assumed equal widths.
   function handleScroll() {
     const el = scrollRef.current;
     if (!el || sessions.length === 0) return;
-    const itemWidth = el.scrollWidth / sessions.length;
-    if (itemWidth <= 0) return;
-    const idx = Math.round(el.scrollLeft / itemWidth);
-    setActiveDot(Math.max(0, Math.min(sessions.length - 1, idx)));
+    const children = Array.from(el.children) as HTMLElement[];
+    if (children.length === 0) return;
+    const scrollLeft = el.scrollLeft;
+    let closestIdx = 0;
+    let closestDist = Infinity;
+    for (let i = 0; i < children.length; i++) {
+      const dist = Math.abs(children[i].offsetLeft - scrollLeft);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestIdx = i;
+      }
+    }
+    setActiveDot(closestIdx);
   }
 
   if (loading) return null;
