@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import ResetAccessSheet from '../ResetAccessSheet';
 import { fmtSessionLabel } from '@/lib/fmt';
+import { isFlagOn } from '@/lib/flags';
+import type { SettledSnapshot } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -17,12 +19,16 @@ interface Player {
   cancelledBySelf?: boolean;
   waitlisted?: boolean;
   memberId?: string;
+  /** Stamped at settle time. Frozen — survives retro edits to court/bird costs. */
+  owedAmount?: number;
 }
 
 interface SessionLite {
   id: string;
   datetime?: string;
   maxPlayers?: number;
+  /** Present when the session was settled. PaymentsCard reads costPerPerson off this. */
+  settled?: SettledSnapshot;
 }
 
 interface PaymentsCardProps {
@@ -61,6 +67,8 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
 
   const isCurrentSession = activeSessionId === viewedSessionId;
   const viewedSession = sessions.find((s) => s.id === viewedSessionId);
+  const settleFlagOn = isFlagOn('NEXT_PUBLIC_FLAG_SETTLE');
+  const isViewedSettled = settleFlagOn && !!viewedSession?.settled;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -348,13 +356,28 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
       )}
 
       {/* Header */}
-      <header>
-        <h3 className="bpm-h3">Payments</h3>
-        <p className="text-xs mt-0.5" style={{ color: loadError ? 'var(--color-red, #ef4444)' : 'var(--text-muted)' }}>
-          {loadError
-            ? "Couldn't load — refresh to retry"
-            : total === 0 ? 'No active players' : `${paidCount} of ${total} paid`}
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="bpm-h3">Payments</h3>
+          <p className="text-xs mt-0.5" style={{ color: loadError ? 'var(--color-red, #ef4444)' : 'var(--text-muted)' }}>
+            {loadError
+              ? "Couldn't load — refresh to retry"
+              : total === 0 ? 'No active players' : `${paidCount} of ${total} paid`}
+          </p>
+        </div>
+        {isViewedSettled && (
+          <span
+            className="text-xs px-2 py-1 rounded-full flex-shrink-0"
+            style={{
+              background: 'rgba(168, 85, 247, 0.15)',
+              color: '#d8b4fe',
+              border: '1px solid rgba(168, 85, 247, 0.3)',
+            }}
+            title={`Locked at $${viewedSession?.settled?.costPerPerson} / person · ${viewedSession?.settled?.playerCount} players`}
+          >
+            Final · ${viewedSession?.settled?.costPerPerson}
+          </span>
+        )}
       </header>
 
       {toggleError && (
@@ -406,6 +429,18 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
                   >
                     <span className="material-icons text-base align-middle">receipt_long</span>
                   </button>
+                )}
+                {settleFlagOn && typeof player.owedAmount === 'number' && (
+                  <span
+                    className="text-xs font-medium px-2"
+                    style={{
+                      color: '#d8b4fe',
+                      fontFamily: 'var(--font-mono), ui-monospace, monospace',
+                    }}
+                    title={`Owed at lock time. Frozen.`}
+                  >
+                    ${player.owedAmount}
+                  </span>
                 )}
                 <button
                   type="button"

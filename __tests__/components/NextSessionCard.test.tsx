@@ -81,4 +81,65 @@ describe('<NextSessionCard />', () => {
       expect(screen.getByText(/Passed/)).toBeTruthy();
     });
   });
+
+  describe('settle UI (NEXT_PUBLIC_FLAG_SETTLE)', () => {
+    const session = {
+      id: 's', title: 'Sunday', datetime: new Date(Date.now() + 86_400_000).toISOString(),
+      deadline: new Date(Date.now() + 3_600_000).toISOString(),
+      courts: 2, maxPlayers: 12, signupOpen: false,
+    };
+    const settledSession = {
+      ...session,
+      settled: {
+        at: '2026-05-08T20:00:00.000Z',
+        costPerPerson: 15,
+        totalCost: 90,
+        courtTotal: 60,
+        birdTotal: 30,
+        playerCount: 6,
+        playerNames: ['Alice', 'Bob', 'Carol', 'Dan', 'Eve', 'Frank'],
+      },
+    };
+
+    it('hides the Lock button and Final badge when flag is off', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'false';
+      try {
+        mockFetch(makeFetcher(settledSession, []));
+        render(<NextSessionCard onShareCost={() => {}} />);
+        await waitFor(() => expect(screen.getByText(/Sunday/)).toBeTruthy());
+        expect(screen.queryByText(/Lock cost/)).toBeNull();
+        expect(screen.queryByText(/Final/)).toBeNull();
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+
+    it('shows Lock button when flag on and session not settled', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      try {
+        mockFetch(makeFetcher(session, []));
+        render(<NextSessionCard onShareCost={() => {}} />);
+        await waitFor(() => expect(screen.getByText(/Lock cost/)).toBeTruthy());
+        expect(screen.queryByText(/Final/)).toBeNull();
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+
+    it('shows Final badge with $X and Unlock when flag on and session settled', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      try {
+        mockFetch(makeFetcher(settledSession, []));
+        render(<NextSessionCard onShareCost={() => {}} />);
+        await waitFor(() => expect(screen.getByText(/Final · \$15/)).toBeTruthy());
+        expect(screen.getByText(/Unlock/)).toBeTruthy();
+        expect(screen.queryByText(/Lock cost/)).toBeNull();
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+  });
 });
