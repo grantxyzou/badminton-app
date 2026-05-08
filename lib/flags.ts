@@ -17,7 +17,8 @@
 
 export type FlagName =
   | 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW'
-  | 'NEXT_PUBLIC_FLAG_COMMAND_CENTER';
+  | 'NEXT_PUBLIC_FLAG_COMMAND_CENTER'
+  | 'NEXT_PUBLIC_FLAG_SETTLE';
 
 interface FlagMeta {
   description: string;
@@ -36,6 +37,11 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'after command center is promoted to stable + lived-in for 2 weeks',
   },
+  NEXT_PUBLIC_FLAG_SETTLE: {
+    description: 'Surfaces the admin Settle action (lock cost) on Command Center. Backend POST/DELETE /api/session/settle is always available; this flag only gates the button + the read paths in ReceiptSheet/PaymentsCard that prefer session.settled over live recompute. On for bpm-next + dev; off on bpm-stable until promoted.',
+    owner: 'grant',
+    plannedRemoval: 'after settle is promoted to stable + lived-in for 2 weeks',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -44,6 +50,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
     case 'NEXT_PUBLIC_FLAG_COMMAND_CENTER':
       return process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER;
+    case 'NEXT_PUBLIC_FLAG_SETTLE':
+      return process.env.NEXT_PUBLIC_FLAG_SETTLE;
   }
 }
 

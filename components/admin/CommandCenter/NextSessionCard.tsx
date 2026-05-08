@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { fmtSessionLabel as fmtDate } from '@/lib/fmt';
+import { isFlagOn } from '@/lib/flags';
+import type { SettledSnapshot } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -14,6 +16,7 @@ interface Session {
   maxPlayers?: number;
   signupOpen?: boolean;
   costPerCourt?: number;
+  settled?: SettledSnapshot;
 }
 
 interface Player {
@@ -50,6 +53,9 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const [activeCount, setActiveCount] = useState<number>(0);
   const [waitlistCount, setWaitlistCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const [settling, setSettling] = useState(false);
+  const [settleError, setSettleError] = useState<string | null>(null);
+  const settleFlagOn = isFlagOn('NEXT_PUBLIC_FLAG_SETTLE');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,6 +76,43 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
     }
   }, []);
 
+  const settle = useCallback(async () => {
+    setSettleError(null);
+    setSettling(true);
+    try {
+      const res = await fetch(`${BASE}/api/session/settle`, { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSettleError(data?.error ?? `Couldn't lock cost (HTTP ${res.status}).`);
+        return;
+      }
+      await load();
+    } catch {
+      setSettleError("Couldn't reach server. Try again.");
+    } finally {
+      setSettling(false);
+    }
+  }, [load]);
+
+  const unsettle = useCallback(async () => {
+    if (!confirm('Unlock the cost for this session? Paid markings stay; owed amounts clear.')) return;
+    setSettleError(null);
+    setSettling(true);
+    try {
+      const res = await fetch(`${BASE}/api/session/settle`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSettleError(data?.error ?? `Couldn't unlock (HTTP ${res.status}).`);
+        return;
+      }
+      await load();
+    } catch {
+      setSettleError("Couldn't reach server. Try again.");
+    } finally {
+      setSettling(false);
+    }
+  }, [load]);
+
   useEffect(() => { void load(); }, [load, refreshKey]);
 
   if (loading) return null;
@@ -86,6 +129,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const capacityPct = cap > 0 ? Math.min(100, Math.round((activeCount / cap) * 100)) : 0;
   const countdown = fmtCountdown(session.deadline);
   const open = session.signupOpen === true;
+  const isSettled = settleFlagOn && !!session.settled;
 
   return (
     <section className="glass-card p-4 space-y-3" aria-label="Next session">
@@ -94,16 +138,31 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
           <h3 className="bpm-h3">{fmtDate(session.datetime)}</h3>
           <p className="text-xs text-gray-400 mt-0.5">{session.title ?? 'Session'}</p>
         </div>
-        <span
-          className="text-xs px-2 py-1 rounded-full"
-          style={{
-            background: open ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.06)',
-            color: open ? '#86efac' : '#9ca3af',
-            border: open ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255, 255, 255, 0.12)',
-          }}
-        >
-          {open ? 'Signup open' : 'Signup closed'}
-        </span>
+        <div className="flex items-center gap-2">
+          {isSettled && (
+            <span
+              className="text-xs px-2 py-1 rounded-full"
+              style={{
+                background: 'rgba(168, 85, 247, 0.15)',
+                color: '#d8b4fe',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+              }}
+              title={`Locked at $${session.settled?.costPerPerson} / person`}
+            >
+              Final · ${session.settled?.costPerPerson}
+            </span>
+          )}
+          <span
+            className="text-xs px-2 py-1 rounded-full"
+            style={{
+              background: open ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.06)',
+              color: open ? '#86efac' : '#9ca3af',
+              border: open ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255, 255, 255, 0.12)',
+            }}
+          >
+            {open ? 'Signup open' : 'Signup closed'}
+          </span>
+        </div>
       </header>
 
       <div className="space-y-2">
@@ -131,8 +190,24 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       )}
 
       <div className="flex flex-wrap gap-2 pt-1">
+        {settleFlagOn && !isSettled && (
+          <button
+            type="button"
+            onClick={settle}
+            disabled={settling}
+            className="cc-btn cc-btn-primary"
+            title="Freeze cost-per-person and per-player owed amount. Use after the session has ended, before sharing the receipt."
+          >
+            <span className="material-icons text-base align-middle">lock</span>
+            {settling ? 'Locking…' : 'Lock cost'}
+          </button>
+        )}
         {onShareCost && (
-          <button type="button" onClick={onShareCost} className="cc-btn cc-btn-primary">
+          <button
+            type="button"
+            onClick={onShareCost}
+            className={isSettled ? 'cc-btn cc-btn-primary' : 'cc-btn cc-btn-secondary'}
+          >
             <span className="material-icons text-base align-middle">request_quote</span>
             Share cost
           </button>
@@ -147,7 +222,24 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
             Advance →
           </button>
         )}
+        {isSettled && (
+          <button
+            type="button"
+            onClick={unsettle}
+            disabled={settling}
+            className="cc-btn cc-btn-ghost text-xs"
+            title="Clears the frozen cost. Per-player paid markings are preserved. Use only to fix a typo."
+          >
+            {settling ? 'Unlocking…' : 'Unlock'}
+          </button>
+        )}
       </div>
+
+      {settleError && (
+        <p role="alert" className="text-xs" style={{ color: 'var(--color-red, #ef4444)' }}>
+          {settleError}
+        </p>
+      )}
     </section>
   );
 }

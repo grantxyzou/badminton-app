@@ -80,6 +80,24 @@ export default function CommandCenter({ refreshKey, setView }: CommandCenterProp
         setReceiptInput(null);
         return;
       }
+
+      // When the session is settled, every field comes from the frozen
+      // snapshot — including playerNames, which means removed-after-settle
+      // players still appear on the receipt with the amount they owe. Live
+      // recompute is only used for unsettled (in-progress) sessions.
+      if (session.settled) {
+        setReceiptInput({
+          datetime: session.datetime,
+          costPerPerson: session.settled.costPerPerson,
+          courts: session.courts ?? 0,
+          totalCost: session.settled.totalCost,
+          playerNames: session.settled.playerNames,
+          recipient: { name: recipient.name, email: recipient.email },
+          memoTemplate: recipient.memo,
+        });
+        return;
+      }
+
       const active = players.filter((p) => !p.removed && !p.waitlisted);
       const courtTotal = (session.costPerCourt ?? 0) * (session.courts ?? 0);
       const birdTotal = totalBirdCost(normalizeBirdUsages(session));

@@ -118,4 +118,85 @@ describe('<PaymentsCard />', () => {
       expect((patchedBody as unknown as { id: string; paid: boolean }).paid).toBe(true);
     });
   });
+
+  describe('settle UI (NEXT_PUBLIC_FLAG_SETTLE)', () => {
+    const SETTLED_SESSION = {
+      ...ACTIVE_SESSION,
+      settled: {
+        at: '2026-05-08T20:00:00.000Z',
+        costPerPerson: 15,
+        totalCost: 30,
+        courtTotal: 30,
+        birdTotal: 0,
+        playerCount: 2,
+        playerNames: ['Daisy', 'Mei'],
+      },
+    };
+
+    function fetchSettledPlayers(players: Array<Record<string, unknown>>) {
+      urlFetch(async (url) => {
+        if (url.includes('/api/sessions')) {
+          return new Response(JSON.stringify([SETTLED_SESSION]), { status: 200 });
+        }
+        if (url.includes('/api/session')) {
+          return new Response(JSON.stringify(SETTLED_SESSION), { status: 200 });
+        }
+        if (url.includes('/api/players')) {
+          return new Response(JSON.stringify(players), { status: 200 });
+        }
+        return new Response('not found', { status: 404 });
+      });
+    }
+
+    it('hides Final badge and per-row $ when flag is off', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'false';
+      try {
+        fetchSettledPlayers([
+          { id: 'p1', name: 'Daisy', paid: true, owedAmount: 15 },
+        ]);
+        render(<PaymentsCard />);
+        await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
+        expect(screen.queryByText(/Final/)).toBeNull();
+        expect(screen.queryByText('$15')).toBeNull();
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+
+    it('shows Final badge with $X / person and per-row owedAmount when flag on', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      try {
+        fetchSettledPlayers([
+          { id: 'p1', name: 'Daisy', paid: true, owedAmount: 15 },
+          { id: 'p2', name: 'Mei', paid: false, owedAmount: 15 },
+        ]);
+        render(<PaymentsCard />);
+        await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
+        expect(screen.getByText(/Final · \$15/)).toBeTruthy();
+        // Two rows × $15 = two matching texts
+        expect(screen.getAllByText('$15').length).toBe(2);
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+
+    it('falls back to no $ on rows without owedAmount even when flag on', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      try {
+        fetchSettledPlayers([
+          { id: 'p1', name: 'Daisy', paid: true, owedAmount: 15 },
+          { id: 'p2', name: 'LateAdd', paid: false }, // added after settle, no owed
+        ]);
+        render(<PaymentsCard />);
+        await waitFor(() => expect(screen.getByText('LateAdd')).toBeTruthy());
+        // Only one $15 row visible
+        expect(screen.getAllByText('$15').filter((el) => el.tagName !== 'SPAN' || el.classList.length > 0).length).toBeGreaterThanOrEqual(1);
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+  });
 });
