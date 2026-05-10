@@ -231,7 +231,7 @@ Shipped as `bpm-stable-v1.2`. Bundles content-side polish (markdown announcement
 
 ### Infra
 
-- `NEXT_PUBLIC_FLAG_STATS_ATTENDANCE` registered in `lib/flags.ts` (first Arc 1 live card; retires two weeks after full Arc 1 promotion).
+- `NEXT_PUBLIC_FLAG_STATS_ATTENDANCE` registered in `lib/flags.ts` (first Arc 1 live card). Retired unconditional in v1.3.1 after two-week bpm-next soak (soak verified 2026-05-10; zero related bug reports; flag removed from registry + both workflows).
 - Material Symbols Rounded subset URL gains 17 new glyphs: `bar_chart`, `bolt`, `emoji_events`, `event`, `format_list_bulleted`, `format_list_numbered`, `groups`, `local_fire_department`, `paid`, `payments`, `radio_button_unchecked`, `receipt_long`, `star`, `subdirectory_arrow_left`, `trending_up`, `verified`, `visibility`. (~43 → ~60 glyphs; URL bundle still ~20 KB.)
 - i18n: new `stats.{heading,subhead,comingSoon,progression,attendance,cost,partners}.*` keys in both `en.json` and `zh-CN.json`; `nav.skills` value updated ("Coming Soon" → "Stats" / "即将推出" → "数据").
 
