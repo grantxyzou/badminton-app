@@ -37,8 +37,9 @@ describe('ProfileTab', () => {
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeDefined();
     // Create-an-account opens the action sheet
     expect(screen.getByRole('button', { name: 'Create an account' })).toBeDefined();
-    // Recovery-code fallback still present
-    expect(screen.getByText(/Have a recovery code/i)).toBeDefined();
+    // Recovery-code path now reached via SignInForm's "Forgot your PIN?" link
+    // (the standalone "Have a recovery code" link was removed in #93).
+    expect(screen.getByText(/Forgot your PIN/i)).toBeDefined();
   });
 
   it('shows player profile + PIN row when identity exists', () => {
