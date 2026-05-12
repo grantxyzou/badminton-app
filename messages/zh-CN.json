@@ -114,8 +114,8 @@
     "profile": "档案"
   },
   "profile": {
-    "anonymousTitle": "档案",
-    "anonymousBody": "仅限受邀创建账号 — 如有疑问请联系管理员（测试版）。",
+    "anonymousTitle": "欢迎回来",
+    "anonymousBody": "用名字和 PIN 登录，或创建账号。",
     "anonymousCreateCta": "创建账号",
     "anonymousNamePlaceholder": "你叫什么名字？",
     "anonymousPinLabel": "PIN",

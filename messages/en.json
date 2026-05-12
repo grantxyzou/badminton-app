@@ -114,8 +114,8 @@
     "profile": "Profile"
   },
   "profile": {
-    "anonymousTitle": "Profile",
-    "anonymousBody": "Account creation is invite only — contact admin for inquiries (beta).",
+    "anonymousTitle": "Welcome back",
+    "anonymousBody": "Sign in with your name and PIN, or set up an account.",
     "anonymousCreateCta": "Create an account",
     "anonymousNamePlaceholder": "What is your name?",
     "anonymousPinLabel": "PIN",

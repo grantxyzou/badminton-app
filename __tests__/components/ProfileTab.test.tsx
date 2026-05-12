@@ -27,8 +27,10 @@ describe('ProfileTab', () => {
 
   it('shows anonymous identity-only state: inline sign-in form + Create account + recovery code link', () => {
     renderWith();
-    expect(screen.getByRole('heading', { name: 'Profile' })).toBeDefined();
-    expect(screen.getByText(/invite only/i)).toBeDefined();
+    // Anonymous-state copy was refreshed in #91 — "Profile" was meaningless
+    // for signed-out users and "invite only" read as gatekeeping.
+    expect(screen.getByRole('heading', { name: 'Welcome back' })).toBeDefined();
+    expect(screen.getByText(/Sign in with your name and PIN/i)).toBeDefined();
     // Inline sign-in form (now shared via <SignInForm>) has a name input
     // (placeholder "Your name" from recovery.nameLabel) + PIN input + Sign in button.
     expect(screen.getByPlaceholderText('Your name')).toBeDefined();
