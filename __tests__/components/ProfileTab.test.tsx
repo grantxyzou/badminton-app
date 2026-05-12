@@ -29,8 +29,9 @@ describe('ProfileTab', () => {
     renderWith();
     expect(screen.getByRole('heading', { name: 'Profile' })).toBeDefined();
     expect(screen.getByText(/invite only/i)).toBeDefined();
-    // Inline sign-in form has a name input + PIN input + Sign in button
-    expect(screen.getByPlaceholderText('What is your name?')).toBeDefined();
+    // Inline sign-in form (now shared via <SignInForm>) has a name input
+    // (placeholder "Your name" from recovery.nameLabel) + PIN input + Sign in button.
+    expect(screen.getByPlaceholderText('Your name')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeDefined();
     // Create-an-account opens the action sheet
     expect(screen.getByRole('button', { name: 'Create an account' })).toBeDefined();
