@@ -41,7 +41,6 @@ export default function ProfileTab({
   // Signed-in state PIN management: tap the Settings "Recovery PIN" row to
   // open RecoveryPinSheet (set / change / remove + forgot-it handoff).
   const [recoveryPinOpen, setRecoveryPinOpen] = useState(false);
-  const tRecovery = useTranslations('recovery');
   const [releaseSheetOpen, setReleaseSheetOpen] = useState(false);
   const [releases, setReleases] = useState<Release[]>([]);
   const tSettings = useTranslations('profile.settings');
@@ -151,7 +150,11 @@ export default function ProfileTab({
         <PageHeader>{t('anonymousTitle')}</PageHeader>
         <p style={{ color: 'var(--text-secondary)' }}>{t('anonymousBody')}</p>
         <div className="glass-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <SignInForm sessionId={sessionId} onSuccess={handleSignInSuccess} />
+          <SignInForm
+            sessionId={sessionId}
+            onSuccess={handleSignInSuccess}
+            onForgotPin={() => setEnterCodeOpen(true)}
+          />
           <div
             aria-hidden="true"
             style={{
@@ -176,25 +179,8 @@ export default function ProfileTab({
           >
             {t('anonymousCreateCta')}
           </button>
-          <button
-            type="button"
-            onClick={() => setEnterCodeOpen(true)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-secondary)',
-              fontSize: 12,
-              textDecoration: 'underline',
-              cursor: 'pointer',
-              padding: '8px 12px',
-              minHeight: 44,
-              display: 'inline-flex',
-              alignItems: 'center',
-              alignSelf: 'center',
-            }}
-          >
-            {tRecovery('haveCodeLink')}
-          </button>
+          {/* Standalone "Have a recovery code" link removed — the SignInForm's
+              "Forgot your PIN?" link is the single entry to EnterCodeSheet now. #93 */}
         </div>
         <CreateAccountSheet
           open={createAccountOpen}
