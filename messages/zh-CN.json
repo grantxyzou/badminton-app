@@ -25,7 +25,7 @@
       "allSpotsTaken": "全部 {total} 个名额已满。",
       "closesOn": "报名截止于 {date}",
       "closedPreviously": "报名已于 {date} 截止",
-      "alreadyPlayer": "账号登录 →",
+      "alreadyPlayer": "已注册？登录账号。",
       "pinRequired": "该名字已设置 PIN，请登录。",
       "pinPrompt": {
         "cardTitle": "添加恢复 PIN",
