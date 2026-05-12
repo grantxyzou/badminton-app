@@ -16,6 +16,7 @@ import StatusBanner from '@/components/primitives/StatusBanner';
 import PageHeader from '@/components/primitives/PageHeader';
 import SignInForm from './SignInForm';
 import EnterCodeSheet from './EnterCodeSheet';
+import { useHasPin } from '@/lib/useHasPin';
 import { renderMarkdown } from '@/lib/miniMarkdown';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -47,6 +48,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Auto-detect PIN'd name during sign-up — debounced probe of /api/members/me.
+  // When true, render an inline hint pointing PIN'd friends at the sign-in
+  // card below instead of letting them submit and bounce off a 401. #92
+  const hasPin = useHasPin(name);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -552,6 +557,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 )}
               </div>
               {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
+              {hasPin === true && !error && (
+                <p role="status" className="text-amber-400 text-xs">
+                  {t('signup.pinRequired')}
+                </p>
+              )}
               <button
                 type="submit"
                 disabled={isSubmitting || !name.trim()}
