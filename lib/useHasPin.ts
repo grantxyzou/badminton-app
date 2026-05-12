@@ -4,34 +4,38 @@ import { useEffect, useState } from 'react';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
+export interface MemberProbe {
+  /** Member exists in the directory (createdAt present in response). */
+  exists: boolean;
+  /** Member exists AND has a PIN set. */
+  hasPin: boolean;
+}
+
 /**
- * Debounced probe of /api/members/me?name=X to learn whether `name` is a
- * PIN-protected member. Used by the sign-up form to nudge PIN'd friends
- * toward the sign-in form before they submit and bounce off a 401.
+ * Debounced probe of /api/members/me?name=X. Drives the HomeTab sign-up
+ * form's three modes:
+ *   - `null` → unknown / probing / network failed → anon mode (default)
+ *   - `{exists: false, hasPin: false}` → no member → anon mode (default)
+ *   - `{exists: true, hasPin: true}` → member with PIN → sign-in mode
+ *   - `{exists: true, hasPin: false}` → member without PIN → create-account mode
  *
- * Returns:
- *   - `true`  → name is a member AND has a PIN set
- *   - `false` → name is unknown or has no PIN
- *   - `null`  → probing in flight, or input too short, or network failed
- *
- * Network/server failures fall through to `null` so the caller's UI is
- * non-blocking — the server-side 401 check on submit is the authoritative
- * gate. This is purely a UX hint.
+ * Server failures fall through to `null` so the caller's UI is non-blocking
+ * — the server-side check on submit is the authoritative gate.
  *
  * Probe is debounced (500ms default). Trimmed names shorter than 2 chars
  * are skipped to keep the rate limiter (10/min on /api/members/me) happy
  * while the user is mid-typing.
  */
-export function useHasPin(name: string, debounceMs = 500): boolean | null {
-  const [hasPin, setHasPin] = useState<boolean | null>(null);
+export function useMemberProbe(name: string, debounceMs = 500): MemberProbe | null {
+  const [probe, setProbe] = useState<MemberProbe | null>(null);
 
   useEffect(() => {
     const trimmed = name.trim();
     if (trimmed.length < 2) {
-      setHasPin(null);
+      setProbe(null);
       return;
     }
-    setHasPin(null);
+    setProbe(null);
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
@@ -40,10 +44,13 @@ export function useHasPin(name: string, debounceMs = 500): boolean | null {
           { cache: 'no-store' },
         );
         if (cancelled) return;
-        if (!res.ok) return; // 5xx / 429 → leave null
-        const data = (await res.json()) as { hasPin?: boolean };
+        if (!res.ok) return;
+        const data = (await res.json()) as { hasPin?: boolean; createdAt?: string | null };
         if (cancelled) return;
-        setHasPin(data.hasPin === true);
+        // createdAt presence is the canonical exists signal — pinHash is
+        // stripped from responses, but createdAt comes from the member doc.
+        const exists = typeof data.createdAt === 'string';
+        setProbe({ exists, hasPin: data.hasPin === true });
       } catch {
         // Network failure → leave null. Server-side check on submit is
         // the authoritative gate.
@@ -55,5 +62,15 @@ export function useHasPin(name: string, debounceMs = 500): boolean | null {
     };
   }, [name, debounceMs]);
 
-  return hasPin;
+  return probe;
+}
+
+/**
+ * @deprecated Use `useMemberProbe` instead, which also exposes whether
+ * the member exists. Kept as a thin shim during the auth-flow refactor.
+ */
+export function useHasPin(name: string, debounceMs = 500): boolean | null {
+  const probe = useMemberProbe(name, debounceMs);
+  if (probe === null) return null;
+  return probe.hasPin;
 }

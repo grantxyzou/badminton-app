@@ -27,6 +27,13 @@
       "closedPreviously": "Sign-ups closed on {date}",
       "alreadyPlayer": "Already a player? Sign in.",
       "pinRequired": "This name has a PIN. Sign in instead.",
+      "pinLabel": "PIN",
+      "pinCreateLabel": "Create a PIN",
+      "pinConfirmLabel": "Confirm PIN",
+      "pinMismatch": "PINs don't match.",
+      "pinIncorrect": "That didn't match. Try again.",
+      "pinTooCommon": "Pick a different PIN — try something less common.",
+      "forgotPin": "Forgot your PIN?",
       "pinPrompt": {
         "cardTitle": "Add a recovery PIN",
         "cardBody": "Use this to manage your account and access your stats.",
