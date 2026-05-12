@@ -14,7 +14,8 @@ import ReleaseNotesSheet from './ReleaseNotesSheet';
 import WelcomeCard from './WelcomeCard';
 import StatusBanner from '@/components/primitives/StatusBanner';
 import PageHeader from '@/components/primitives/PageHeader';
-import RecoverySheet from './RecoverySheet';
+import SignInForm from './SignInForm';
+import EnterCodeSheet from './EnterCodeSheet';
 import { renderMarkdown } from '@/lib/miniMarkdown';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -61,7 +62,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   });
   const [releases, setReleases] = useState<Release[]>([]);
   const [releaseSheetOpen, setReleaseSheetOpen] = useState(false);
-  const [signInOpen, setSignInOpen] = useState(false);
+  // Forgot-PIN handoff from the inline sign-in form opens this code-entry sheet.
+  const [enterCodeOpen, setEnterCodeOpen] = useState(false);
 
   const maxPlayers = parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12');
 
@@ -224,10 +226,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         if (data.error === 'invite_list_not_found') {
           setError(t('signup.inviteError', { name: name.trim() }));
         } else if (data.error === 'pin_required') {
-          // Member is PIN-protected — open Sign In sheet instead of letting
-          // an anonymous request claim their session slot.
-          setSignInOpen(true);
-          setError('');
+          // PIN-protected member tried the anonymous sign-up form. Point them
+          // at the inline sign-in form directly below this card; no more
+          // modal context-switch. (#92 will pre-empt this via blur probe.)
+          setError(t('signup.pinRequired'));
         } else {
           setError(data.error ?? t('signup.genericFailure'));
         }
@@ -270,8 +272,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         if (data.error === 'invite_list_not_found') {
           setError(t('signup.inviteError', { name: name.trim() }));
         } else if (data.error === 'pin_required') {
-          setSignInOpen(true);
-          setError('');
+          setError(t('signup.pinRequired'));
         } else {
           setError(data.error ?? t('signup.waitlistFailure'));
         }
@@ -568,26 +569,29 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           </div>
         )}
       </div>
-      {/* Account sign-in link — sits outside the sign-up card, bottom-left,
-          aligned to the card's 20px inner padding. Hidden once the user has
-          an identity (no point showing "sign in" to someone already signed in). */}
-      {!hasIdentity && !isSessionFinished && (
-        <div style={{ paddingLeft: 20, paddingTop: 4 }}>
-          <button
-            type="button"
-            onClick={() => setSignInOpen(true)}
-            className="text-xs underline"
-            style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px 0', minHeight: 44 }}
-          >
-            {t('signup.alreadyPlayer')}
-          </button>
+      {/* Inline sign-in card — sibling to the sign-up card, visible whenever
+          the user is anonymous (no identity yet) and the session isn't done.
+          Both Sign-up and Sign-in are now first-class options at a glance,
+          rather than one big primary CTA + a tiny link. (#89) */}
+      {!hasIdentity && !isSessionFinished && session?.id && (
+        <div className="glass-card p-5 space-y-3">
+          <p className="bpm-h3">{t('signup.alreadyPlayer')}</p>
+          <SignInForm
+            sessionId={session.id}
+            onSuccess={({ name: signedInName, token }) => {
+              setIdentity({ name: signedInName, token, sessionId: session.id });
+              setCurrentUser(signedInName);
+              setHasIdentity(true);
+              loadData();
+            }}
+            onForgotPin={() => setEnterCodeOpen(true)}
+          />
         </div>
       )}
-      <RecoverySheet
-        open={signInOpen}
+      <EnterCodeSheet
+        open={enterCodeOpen}
         onClose={() => {
-          setSignInOpen(false);
-          // Refresh identity and active player after sign-in.
+          setEnterCodeOpen(false);
           const fresh = getIdentity();
           if (fresh) {
             setHasIdentity(true);
