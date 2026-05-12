@@ -13,7 +13,16 @@ interface Props {
   sessionId: string;
 }
 
-type ErrorKind = 'mismatch' | 'too_common' | 'invalid' | 'rate_limited' | 'network' | 'name_required' | 'account_exists' | 'invite_only' | null;
+/**
+ * Consolidated error states. Internal server errors (mismatch / too_common /
+ * invalid PIN format) collapse to one "pin_problem" message — friends just
+ * need to pick a different PIN, they don't need to know which check failed.
+ * Transient failures (rate_limited / network) collapse to "try_later".
+ * account_exists and invite_only stay distinct because they have specific
+ * next-step CTAs. name_required is form-level validation — disable submit
+ * instead of erroring. #94
+ */
+type ErrorKind = 'pin_problem' | 'try_later' | 'account_exists' | 'invite_only' | null;
 
 export default function CreateAccountSheet({ open, onClose, sessionId }: Props) {
   const t = useTranslations('profile.createAccount');
@@ -30,8 +39,10 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
 
   async function submit() {
     setError(null);
-    if (!trimmed) { setError('name_required'); return; }
-    if (pin !== confirmPin) { setError('mismatch'); return; }
+    // canSubmit gates the trimmed-name + matching-PIN cases; we never reach
+    // submit() when those fail. Keep the mismatch check as a belt-and-
+    // suspenders safety net since the PinInput allows submit-via-Enter.
+    if (pin !== confirmPin) { setError('pin_problem'); return; }
     setSubmitting(true);
     try {
       const res = await fetch(`${BASE}/api/players`, {
@@ -39,7 +50,7 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: trimmed, pin, sessionSignup: false }),
       });
-      if (res.status === 429) { setError('rate_limited'); return; }
+      if (res.status === 429) { setError('try_later'); return; }
       if (!res.ok) {
         // Batch C M4: clone the response so we can both attempt JSON
         // parse AND log the raw body if parsing fails. The previous
@@ -54,11 +65,14 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
           const raw = await cloned.text().catch(() => '');
           console.warn(`POST /api/players ${res.status} non-JSON body:`, raw.slice(0, 200));
         }
-        if (data.error === 'pin_too_common') { setError('too_common'); return; }
-        if (data.error === 'Invalid PIN format') { setError('invalid'); return; }
+        // PIN-shape failures all collapse to "pin_problem" — the friend's
+        // next action is the same regardless: pick a different PIN.
+        if (data.error === 'pin_too_common' || data.error === 'Invalid PIN format') {
+          setError('pin_problem'); return;
+        }
         if (data.error === 'account_exists') { setError('account_exists'); return; }
         if (data.error === 'invite_list_not_found') { setError('invite_only'); return; }
-        setError('network');
+        setError('try_later');
         return;
       }
       setIdentity({ name: trimmed, sessionId });
@@ -71,7 +85,7 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
         setConfirmPin('');
       }, 1500);
     } catch {
-      setError('network');
+      setError('try_later');
     } finally {
       setSubmitting(false);
     }
@@ -109,11 +123,11 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
             />
             <div>
               <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('pinLabel')}</p>
-              <PinInput value={pin} onChange={setPin} digits={4} label={t('pinLabel')} ariaInvalid={error === 'invalid' || error === 'too_common'} />
+              <PinInput value={pin} onChange={setPin} digits={4} label={t('pinLabel')} ariaInvalid={error === 'pin_problem'} />
             </div>
             <div>
               <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('confirmPinLabel')}</p>
-              <PinInput value={confirmPin} onChange={setConfirmPin} digits={4} label={t('confirmPinLabel')} ariaInvalid={error === 'mismatch'} />
+              <PinInput value={confirmPin} onChange={setConfirmPin} digits={4} label={t('confirmPinLabel')} ariaInvalid={error === 'pin_problem'} />
             </div>
             <button
               type="button"
@@ -124,20 +138,11 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
             >
               {submitting ? t('submitting') : t('submit')}
             </button>
-            {error === 'mismatch' && (
-              <p role="alert" style={{ color: 'var(--color-red, #ef4444)', fontSize: 12 }}>{t('errorMismatch')}</p>
+            {error === 'pin_problem' && (
+              <p role="alert" style={{ color: 'var(--color-red, #ef4444)', fontSize: 12 }}>{t('errorPinProblem')}</p>
             )}
-            {error === 'too_common' && (
-              <p role="alert" style={{ color: 'var(--color-red, #ef4444)', fontSize: 12 }}>{t('errorTooCommon')}</p>
-            )}
-            {error === 'invalid' && (
-              <p role="alert" style={{ color: 'var(--color-red, #ef4444)', fontSize: 12 }}>{t('errorInvalid')}</p>
-            )}
-            {error === 'rate_limited' && (
-              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>{t('errorRateLimited')}</p>
-            )}
-            {error === 'network' && (
-              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>{t('errorNetwork')}</p>
+            {error === 'try_later' && (
+              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>{t('errorTryLater')}</p>
             )}
             {error === 'account_exists' && (
               <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>{t('errorAccountExists')}</p>

@@ -142,6 +142,8 @@
       "errorInvalid": "PIN must be 4 digits",
       "errorRateLimited": "Too many tries. Try again in an hour.",
       "errorNetwork": "Network error. Please try again.",
+      "errorPinProblem": "Pick a different PIN — try something less common that you'll remember.",
+      "errorTryLater": "Couldn't save right now. Try again in a moment.",
       "errorAccountExists": "An account with this name already exists. Sign in instead.",
       "errorInviteOnly": "This name isn't on the invite list. Ask the admin to add you."
     },

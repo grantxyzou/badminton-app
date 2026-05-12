@@ -40,7 +40,7 @@ describe('CreateAccountSheet', () => {
     const submit = screen.getByRole('button', { name: 'Create account' });
     fireEvent.click(submit);
     await waitFor(() => {
-      expect(screen.getByText("PINs don't match")).toBeDefined();
+      expect(screen.getByText(/Pick a different PIN/i)).toBeDefined();
     });
   });
 
@@ -94,7 +94,7 @@ describe('CreateAccountSheet', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Pick a less common PIN/i)).toBeDefined();
+      expect(screen.getByText(/Pick a different PIN/i)).toBeDefined();
     });
     expect(localStorage.getItem('badminton_identity')).toBeNull();
   });
@@ -111,7 +111,7 @@ describe('CreateAccountSheet', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Too many tries/i)).toBeDefined();
+      expect(screen.getByText(/Couldn't save right now/i)).toBeDefined();
     });
   });
 });
