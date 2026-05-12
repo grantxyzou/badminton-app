@@ -20,7 +20,7 @@
       "joining": "Joining…",
       "submitting": "Signing up…",
       "viewList": "View Sign Up List",
-      "spotsRemaining": "Signed-up: {count} · {remaining} spots left",
+      "spotsRemaining": "{remaining} of {total} spots left",
       "spotsFull": "Signed-up: {count} · Full",
       "allSpotsTaken": "All {total} spots are taken.",
       "closesOn": "Sign up closes on {date}",

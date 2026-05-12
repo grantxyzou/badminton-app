@@ -419,7 +419,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="bpm-h2">{t('signup.heading')}</p>
-              <p className="text-sm text-gray-400">{t('signup.spotsRemaining', { count: activePlayers.length, remaining: spotsTotal - activePlayers.length })}</p>
+              <p className="text-sm text-gray-400">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
             </div>
             <StatusBanner
               tone="success"
@@ -478,7 +478,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   autoComplete="off"
                 />
                 {showSuggestions && suggestions.length > 0 && (
-                  <ul className="absolute left-0 right-0 top-full mt-1 z-10 rounded-xl overflow-hidden animate-scaleIn"
+                  <ul className="absolute left-0 right-0 top-full mt-1 z-50 rounded-xl max-h-60 overflow-y-auto animate-scaleIn"
                       style={{
                         background: 'var(--dropdown-bg)',
                         backdropFilter: 'blur(12px)',
@@ -515,7 +515,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="bpm-h2">{t('signup.heading')}</p>
-              <p className="text-sm text-gray-400">{t('signup.spotsRemaining', { count: activePlayers.length, remaining: spotsTotal - activePlayers.length })}</p>
+              <p className="text-sm text-gray-400">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
             </div>
             <form onSubmit={handleSignUp} className="space-y-3">
               <div className="relative">
@@ -534,7 +534,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   autoComplete="off"
                 />
                 {showSuggestions && suggestions.length > 0 && (
-                  <ul className="absolute left-0 right-0 top-full mt-1 z-10 rounded-xl overflow-hidden animate-scaleIn"
+                  <ul className="absolute left-0 right-0 top-full mt-1 z-50 rounded-xl max-h-60 overflow-y-auto animate-scaleIn"
                       style={{
                         background: 'var(--dropdown-bg)',
                         backdropFilter: 'blur(12px)',

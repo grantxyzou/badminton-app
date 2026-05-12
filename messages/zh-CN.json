@@ -20,7 +20,7 @@
       "joining": "正在加入…",
       "submitting": "正在报名…",
       "viewList": "查看报名列表",
-      "spotsRemaining": "已报名 {count} 人 · 剩余 {remaining} 个名额",
+      "spotsRemaining": "剩余 {remaining}/{total} 个名额",
       "spotsFull": "已报名 {count} 人 · 满员",
       "allSpotsTaken": "全部 {total} 个名额已满。",
       "closesOn": "报名截止于 {date}",
