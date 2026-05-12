@@ -27,6 +27,13 @@
       "closedPreviously": "报名已于 {date} 截止",
       "alreadyPlayer": "已注册？登录账号。",
       "pinRequired": "该名字已设置 PIN，请登录。",
+      "pinLabel": "PIN",
+      "pinCreateLabel": "设置 PIN",
+      "pinConfirmLabel": "确认 PIN",
+      "pinMismatch": "两次 PIN 不一致。",
+      "pinIncorrect": "信息不匹配，请重试。",
+      "pinTooCommon": "请换一个 PIN——选一个不那么常见的。",
+      "forgotPin": "忘记 PIN？",
       "pinPrompt": {
         "cardTitle": "添加恢复 PIN",
         "cardBody": "用于管理账号和查看个人数据。",

@@ -14,9 +14,9 @@ import ReleaseNotesSheet from './ReleaseNotesSheet';
 import WelcomeCard from './WelcomeCard';
 import StatusBanner from '@/components/primitives/StatusBanner';
 import PageHeader from '@/components/primitives/PageHeader';
-import SignInForm from './SignInForm';
 import EnterCodeSheet from './EnterCodeSheet';
-import { useHasPin } from '@/lib/useHasPin';
+import PinInput from './PinInput';
+import { useMemberProbe } from '@/lib/useHasPin';
 import { renderMarkdown } from '@/lib/miniMarkdown';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -48,10 +48,16 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Auto-detect PIN'd name during sign-up — debounced probe of /api/members/me.
-  // When true, render an inline hint pointing PIN'd friends at the sign-in
-  // card below instead of letting them submit and bounce off a 401. #92
-  const hasPin = useHasPin(name);
+  // Unified sign-up form auth state. PIN inputs reveal inline based on
+  // the member probe — no separate sign-in card, no Create Account sheet
+  // on Home. (Per Figma 138 + 139, supersedes #89.)
+  const [pin, setPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const memberProbe = useMemberProbe(name);
+  const authMode: 'anon' | 'sign-in' | 'create' =
+    memberProbe?.hasPin ? 'sign-in'
+    : memberProbe?.exists ? 'create'
+    : 'anon';
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -217,40 +223,90 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) { setError(t('signup.nameRequired')); return; }
+    const trimmed = name.trim();
+    if (!trimmed) { setError(t('signup.nameRequired')); return; }
+
+    // Per-mode pre-flight validation. The probe drives form shape but the
+    // server-side check is still authoritative — the modes here just save
+    // round-trips when the client already knows what's missing.
+    if (authMode === 'sign-in' && pin.length !== 4) {
+      setError(t('signup.nameRequired'));
+      return;
+    }
+    if (authMode === 'create') {
+      if (pin.length !== 4 || confirmPin.length !== 4) {
+        setError(t('signup.nameRequired'));
+        return;
+      }
+      if (pin !== confirmPin) {
+        setError(t('signup.pinMismatch'));
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     setError('');
     try {
-      const res = await fetch(`${BASE}/api/players`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.error === 'invite_list_not_found') {
-          setError(t('signup.inviteError', { name: name.trim() }));
-        } else if (data.error === 'pin_required') {
-          // PIN-protected member tried the anonymous sign-up form. Point them
-          // at the inline sign-in form directly below this card; no more
-          // modal context-switch. (#92 will pre-empt this via blur probe.)
-          setError(t('signup.pinRequired'));
-        } else {
-          setError(data.error ?? t('signup.genericFailure'));
-        }
-        if (res.status === 409) loadData();
-      } else {
-        // Batch C M2: refuse to write identity without a real sessionId.
-        // The previous `session?.id ?? ''` defaulted to empty string and
-        // silently corrupted identity for every downstream fetch (the
-        // RecoveryPinSheet PATCH lookup, attendance card resolution, etc.)
-        // until a manual logout cleared it.
-        if (!session?.id) {
-          setError(t('signup.networkError'));
+      if (authMode === 'sign-in') {
+        // Step 1: verify PIN via /recover (returns identity, no session player).
+        const recRes = await fetch(`${BASE}/api/players/recover`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: trimmed, sessionId: session?.id ?? '', pin }),
+        });
+        if (!recRes.ok) {
+          if (recRes.status === 429) setError(t('signup.networkError'));
+          else if (recRes.status >= 500) setError(t('signup.networkError'));
+          else setError(t('signup.pinIncorrect'));
           return;
         }
-        setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session.id });
-        setCurrentUser(name.trim());
+        // Step 2: register for this week's session (no PIN — server already
+        // knows the member from /recover).
+        const signupRes = await fetch(`${BASE}/api/players`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: trimmed }),
+        });
+        const signupData = await signupRes.json();
+        if (!signupRes.ok) {
+          setError(signupData.error ?? t('signup.genericFailure'));
+          if (signupRes.status === 409) loadData();
+          return;
+        }
+        if (!session?.id) { setError(t('signup.networkError')); return; }
+        setIdentity({ name: trimmed, token: signupData.deleteToken ?? '', sessionId: session.id });
+        setCurrentUser(trimmed);
+        setHasIdentity(true);
+        await loadData();
+      } else {
+        // 'anon' and 'create' both go through POST /api/players. The only
+        // difference is whether `pin` is included. The server validates
+        // (e.g. rejects 'pin_too_common', enforces invite list).
+        const body: Record<string, unknown> = { name: trimmed };
+        if (authMode === 'create') body.pin = pin;
+        const res = await fetch(`${BASE}/api/players`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          if (data.error === 'invite_list_not_found') {
+            setError(t('signup.inviteError', { name: trimmed }));
+          } else if (data.error === 'pin_required') {
+            // Server insists on PIN — probe may have been stale.
+            setError(t('signup.pinRequired'));
+          } else if (data.error === 'pin_too_common' || data.error === 'Invalid PIN format') {
+            setError(t('signup.pinTooCommon'));
+          } else {
+            setError(data.error ?? t('signup.genericFailure'));
+          }
+          if (res.status === 409) loadData();
+          return;
+        }
+        if (!session?.id) { setError(t('signup.networkError')); return; }
+        setIdentity({ name: trimmed, token: data.deleteToken ?? '', sessionId: session.id });
+        setCurrentUser(trimmed);
         setHasIdentity(true);
         await loadData();
       }
@@ -556,21 +612,61 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   </ul>
                 )}
               </div>
-              {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
-              {hasPin === true && !error && (
-                <p role="status" className="text-amber-400 text-xs">
-                  {t('signup.pinRequired')}
-                </p>
+              {/* PIN inputs — revealed inline based on the member probe.
+                  sign-in: single PIN field.
+                  create:  PIN + Confirm PIN.
+                  anon:    nothing (default, just name + button). */}
+              {authMode === 'sign-in' && (
+                <PinInput
+                  value={pin}
+                  onChange={(v) => { setPin(v); setError(''); }}
+                  digits={4}
+                  label={t('signup.pinLabel')}
+                  ariaInvalid={!!error}
+                />
               )}
+              {authMode === 'create' && (
+                <>
+                  <PinInput
+                    value={pin}
+                    onChange={(v) => { setPin(v); setError(''); }}
+                    digits={4}
+                    label={t('signup.pinCreateLabel')}
+                    ariaInvalid={!!error}
+                  />
+                  <PinInput
+                    value={confirmPin}
+                    onChange={(v) => { setConfirmPin(v); setError(''); }}
+                    digits={4}
+                    label={t('signup.pinConfirmLabel')}
+                    ariaInvalid={!!error}
+                  />
+                </>
+              )}
+              {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
               <button
                 type="submit"
-                disabled={isSubmitting || !name.trim()}
+                disabled={
+                  isSubmitting || !name.trim()
+                  || (authMode === 'sign-in' && pin.length !== 4)
+                  || (authMode === 'create' && (pin.length !== 4 || confirmPin.length !== 4))
+                }
                 className="btn-primary w-full"
               >
                 {!isSubmitting && <span className="material-icons icon-sm" aria-hidden="true">how_to_reg</span>}
                 {isSubmitting ? t('signup.submitting') : t('signup.button')}
               </button>
-              {session?.deadline && (
+              {authMode === 'sign-in' && (
+                <button
+                  type="button"
+                  onClick={() => setEnterCodeOpen(true)}
+                  className="text-xs underline mx-auto"
+                  style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px 12px', minHeight: 44 }}
+                >
+                  {t('signup.forgotPin')}
+                </button>
+              )}
+              {session?.deadline && authMode === 'anon' && (
                 <p className={`text-center text-xs font-medium ${isDeadlineApproaching ? 'text-red-400' : 'text-gray-400'}`}>
                   {t('signup.closesOn', { date: format.dateTime(new Date(session.deadline), DAY_LONG) })}
                 </p>
@@ -579,25 +675,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           </div>
         )}
       </div>
-      {/* Inline sign-in card — sibling to the sign-up card, visible whenever
-          the user is anonymous (no identity yet) and the session isn't done.
-          Both Sign-up and Sign-in are now first-class options at a glance,
-          rather than one big primary CTA + a tiny link. (#89) */}
-      {!hasIdentity && !isSessionFinished && session?.id && (
-        <div className="glass-card p-5 space-y-3">
-          <p className="bpm-h3">{t('signup.alreadyPlayer')}</p>
-          <SignInForm
-            sessionId={session.id}
-            onSuccess={({ name: signedInName, token }) => {
-              setIdentity({ name: signedInName, token, sessionId: session.id });
-              setCurrentUser(signedInName);
-              setHasIdentity(true);
-              loadData();
-            }}
-            onForgotPin={() => setEnterCodeOpen(true)}
-          />
-        </div>
-      )}
       <EnterCodeSheet
         open={enterCodeOpen}
         onClose={() => {
