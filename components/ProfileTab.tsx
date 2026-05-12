@@ -7,13 +7,11 @@ import EnterCodeSheet from './EnterCodeSheet';
 import CreateAccountSheet from './CreateAccountSheet';
 import RecoveryPinSheet from './RecoveryPinSheet';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
-import PinInput from './PinInput';
+import SignInForm from './SignInForm';
 import PageHeader from './primitives/PageHeader';
 import AdminConsoleHero from './admin/CommandCenter/AdminConsoleHero';
 import { isFlagOn } from '@/lib/flags';
 import { avatarColors as profileAvaColors } from '@/lib/avatar';
-// PinInput is used by the inline anonymous sign-in form below. The signed-in
-// state's PIN management lives in RecoveryPinSheet now (opened via Settings).
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -40,12 +38,6 @@ export default function ProfileTab({
   const [isSignedUp, setIsSignedUp] = useState<boolean>(false);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
   const [createAccountOpen, setCreateAccountOpen] = useState(false);
-  // Anonymous-state inline sign-in form. Replaces the old RecoverySheet path
-  // for fresh visitors per the auth taxonomy split.
-  const [signInName, setSignInName] = useState('');
-  const [signInPin, setSignInPin] = useState('');
-  const [signInError, setSignInError] = useState<'invalid' | 'rate_limited' | 'admin_logged_in' | 'network' | null>(null);
-  const [signInSubmitting, setSignInSubmitting] = useState(false);
   // Signed-in state PIN management: tap the Settings "Recovery PIN" row to
   // open RecoveryPinSheet (set / change / remove + forgot-it handoff).
   const [recoveryPinOpen, setRecoveryPinOpen] = useState(false);
@@ -147,97 +139,19 @@ export default function ProfileTab({
   // Anonymous state — Profile is identity-only. Inline sign-in form (name +
   // PIN) sits in the glass card; "Create an account" lives below an "or"
   // divider and opens an action sheet. Session signup belongs on Home, not
-  // here.
-  async function submitSignIn(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = signInName.trim();
-    if (!trimmed || signInPin.length !== 4) return;
-    setSignInError(null);
-    setSignInSubmitting(true);
-    try {
-      const res = await fetch(`${BASE}/api/players/recover`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: trimmed, sessionId, pin: signInPin }),
-      });
-      if (res.status === 429) { setSignInError('rate_limited'); return; }
-      if (res.status === 403) { setSignInError('admin_logged_in'); return; }
-      // Distinguish 5xx (server/DB failure) from 4xx (bad credentials).
-      // Without this, a Cosmos throttle or a /api/players/recover 500
-      // looks identical to "wrong PIN" — user retries 5x and rate-limits
-      // themselves out of recovery for an hour.
-      if (res.status >= 500) { setSignInError('network'); return; }
-      if (!res.ok) { setSignInError('invalid'); return; }
-      const body = await res.json();
-      if (!body || typeof body.deleteToken === 'undefined') {
-        setSignInError('network');
-        return;
-      }
-      const { setIdentity } = await import('@/lib/identity');
-      setIdentity({ name: trimmed, token: body.deleteToken, sessionId });
-      setLocalIdentity(getIdentity());
-    } catch {
-      // fetch threw (offline, DNS, CORS) or res.json() threw on malformed
-      // response. Surface a distinct error so user knows to retry vs.
-      // double-checking PIN.
-      setSignInError('network');
-    } finally {
-      setSignInSubmitting(false);
-    }
+  // here. The form itself is shared with HomeTab via <SignInForm>.
+  async function handleSignInSuccess({ name, token }: { name: string; token?: string }) {
+    const { setIdentity } = await import('@/lib/identity');
+    setIdentity({ name, token, sessionId });
+    setLocalIdentity(getIdentity());
   }
   if (!identity) {
-    const canSubmit = signInName.trim().length > 0 && signInPin.length === 4 && !signInSubmitting;
     return (
       <div className="animate-fadeIn flex flex-col gap-4">
         <PageHeader>{t('anonymousTitle')}</PageHeader>
         <p style={{ color: 'var(--text-secondary)' }}>{t('anonymousBody')}</p>
         <div className="glass-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <form onSubmit={submitSignIn} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <input
-              type="text"
-              aria-label={t('anonymousNamePlaceholder')}
-              placeholder={t('anonymousNamePlaceholder')}
-              value={signInName}
-              onChange={(e) => { setSignInName(e.target.value); setSignInError(null); }}
-              autoComplete="nickname"
-              maxLength={50}
-            />
-            <PinInput
-              value={signInPin}
-              onChange={(v) => { setSignInPin(v); setSignInError(null); }}
-              digits={4}
-              label={t('anonymousPinLabel')}
-              ariaInvalid={signInError === 'invalid'}
-            />
-            <button
-              type="submit"
-              disabled={!canSubmit}
-              className="btn-primary"
-              style={{ width: '100%' }}
-            >
-              {signInSubmitting ? t('anonymousSignInChecking') : t('anonymousSignInButton')}
-            </button>
-            {signInError === 'invalid' && (
-              <p role="alert" style={{ color: 'var(--color-red, #ef4444)', fontSize: 12, margin: 0 }}>
-                {t('anonymousSignInErrorInvalid')}
-              </p>
-            )}
-            {signInError === 'rate_limited' && (
-              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12, margin: 0 }}>
-                {t('anonymousSignInErrorRateLimited')}
-              </p>
-            )}
-            {signInError === 'admin_logged_in' && (
-              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12, margin: 0 }}>
-                {t('anonymousSignInErrorAdminLogged')}
-              </p>
-            )}
-            {signInError === 'network' && (
-              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12, margin: 0 }}>
-                {t('anonymousSignInErrorNetwork')}
-              </p>
-            )}
-          </form>
+          <SignInForm sessionId={sessionId} onSuccess={handleSignInSuccess} />
           <div
             aria-hidden="true"
             style={{
