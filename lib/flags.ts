@@ -18,7 +18,8 @@
 export type FlagName =
   | 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW'
   | 'NEXT_PUBLIC_FLAG_COMMAND_CENTER'
-  | 'NEXT_PUBLIC_FLAG_SETTLE';
+  | 'NEXT_PUBLIC_FLAG_SETTLE'
+  | 'NEXT_PUBLIC_FLAG_LEDGER';
 
 interface FlagMeta {
   description: string;
@@ -42,6 +43,11 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'after settle is promoted to stable + lived-in for 2 weeks',
   },
+  NEXT_PUBLIC_FLAG_LEDGER: {
+    description: 'Surfaces the v1.5 ledger page + "Cover their $X" action on PaymentsCard. Backend PATCH writtenOff is always available; this flag only gates the UI entry points. On for bpm-next + dev once landed; off on bpm-stable until promoted.',
+    owner: 'grant',
+    plannedRemoval: 'after v1.5 is promoted to stable + lived-in for 2 weeks',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -52,6 +58,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER;
     case 'NEXT_PUBLIC_FLAG_SETTLE':
       return process.env.NEXT_PUBLIC_FLAG_SETTLE;
+    case 'NEXT_PUBLIC_FLAG_LEDGER':
+      return process.env.NEXT_PUBLIC_FLAG_LEDGER;
   }
 }
 
