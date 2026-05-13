@@ -1,15 +1,72 @@
 import { CosmosClient, Container } from '@azure/cosmos';
+import { randomBytes, scryptSync } from 'node:crypto';
 
 // ---------------------------------------------------------------------------
 // In-memory mock — used when COSMOS_CONNECTION_STRING is not set (local dev)
 // Stored on `global` so Next.js HMR doesn't wipe it between reloads.
 // ---------------------------------------------------------------------------
-const g = global as typeof globalThis & { _mockStore?: Record<string, Record<string, unknown>[]> };
+const g = global as typeof globalThis & {
+  _mockStore?: Record<string, Record<string, unknown>[]>;
+  _devAdminSeeded?: boolean;
+};
 if (!g._mockStore) g._mockStore = {};
 const mockStore = g._mockStore;
 
+/**
+ * Dev-only admin seed for headless audits (#68).
+ *
+ * Set `SEED_DEV_ADMIN=Name:NNNN` (e.g. `SEED_DEV_ADMIN=Grant:1130`) when
+ * starting the dev server with no `COSMOS_CONNECTION_STRING`. On first
+ * access to the mock `members` container, this seeds a single admin
+ * member with the given PIN hashed via the same scrypt params as
+ * `lib/recoveryHash.ts`, so `POST /api/admin` works without going
+ * through the player-signup chicken-and-egg.
+ *
+ * Idempotent across HMR reloads (the `_devAdminSeeded` flag lives on
+ * `global` alongside the mock store).
+ *
+ * Refuses to fire when real Cosmos is configured — the seed is a
+ * development affordance, not a production migration.
+ */
+function seedDevAdminIfRequested(containerName: string) {
+  if (containerName !== 'members') return;
+  if (g._devAdminSeeded) return;
+  if (process.env.COSMOS_CONNECTION_STRING) return;
+  const spec = process.env.SEED_DEV_ADMIN;
+  if (!spec) return;
+
+  const [name, pin] = spec.split(':');
+  if (!name || !pin || !/^[0-9]{4}$/.test(pin)) {
+    console.warn(
+      '[dev] SEED_DEV_ADMIN format invalid — expected "Name:NNNN" with a 4-digit PIN. ' +
+        `Got "${spec}". Skipping admin seed.`,
+    );
+    g._devAdminSeeded = true;
+    return;
+  }
+
+  const salt = randomBytes(16);
+  const hash = scryptSync(pin, salt, 32, { N: 16384, r: 8, p: 1 });
+  mockStore.members ??= [];
+  mockStore.members.push({
+    id: 'dev-admin-seed',
+    name,
+    role: 'admin',
+    active: true,
+    sessionCount: 0,
+    createdAt: new Date().toISOString(),
+    pinHash: `${salt.toString('hex')}:${hash.toString('hex')}`,
+  });
+  g._devAdminSeeded = true;
+  console.warn(
+    `[dev] SEED_DEV_ADMIN: seeded admin member "${name}" with the given PIN ` +
+      '(mock store only — not for production use).',
+  );
+}
+
 function getMockContainer(name: string) {
   if (!mockStore[name]) mockStore[name] = [];
+  seedDevAdminIfRequested(name);
   const store = mockStore[name];
 
   return {
