@@ -102,4 +102,81 @@ describe('<CoverSheet />', () => {
 
     fetchSpy.mockRestore();
   });
+
+  it('"Cover & remove" PATCHes writtenOff then removed', async () => {
+    const onCovered = vi.fn();
+    const onClose = vi.fn();
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ id: 'anna-1' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+
+    try {
+      wrap(
+        <CoverSheet
+          open
+          mode="cover-and-remove"
+          playerName="Anna"
+          amount={16}
+          playerId="anna-1"
+          sessionId="session-2026-05-14"
+          onClose={onClose}
+          onCovered={onCovered}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /Cover & remove/i }));
+      await waitFor(() => expect(onCovered).toHaveBeenCalledOnce());
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      const firstBody = JSON.parse(String((fetchSpy.mock.calls[0][1] as RequestInit).body));
+      const secondBody = JSON.parse(String((fetchSpy.mock.calls[1][1] as RequestInit).body));
+      expect(firstBody.writtenOff).toBe(true);
+      expect(secondBody.removed).toBe(true);
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
+  it('"Remove without covering" only PATCHes removed', async () => {
+    const onCovered = vi.fn();
+    const onClose = vi.fn();
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ id: 'anna-1' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+
+    try {
+      wrap(
+        <CoverSheet
+          open
+          mode="cover-and-remove"
+          playerName="Anna"
+          amount={16}
+          playerId="anna-1"
+          sessionId="session-2026-05-14"
+          onClose={onClose}
+          onCovered={onCovered}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /Remove without covering/i }));
+      await waitFor(() => expect(onCovered).toHaveBeenCalledOnce());
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const body = JSON.parse(String((fetchSpy.mock.calls[0][1] as RequestInit).body));
+      expect(body.removed).toBe(true);
+      expect(body.writtenOff).toBeUndefined();
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
 });
