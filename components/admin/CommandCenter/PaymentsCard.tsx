@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import ResetAccessSheet from '../ResetAccessSheet';
+import CoverSheet from '../CoverSheet';
 import { fmtSessionLabel } from '@/lib/fmt';
 import { isFlagOn } from '@/lib/flags';
 import type { SettledSnapshot } from '@/lib/types';
@@ -21,6 +22,7 @@ interface Player {
   memberId?: string;
   /** Stamped at settle time. Frozen — survives retro edits to court/bird costs. */
   owedAmount?: number;
+  writtenOff?: boolean;
 }
 
 interface SessionLite {
@@ -59,6 +61,8 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
   // Action sheet state — per-row actions
   const [actionTarget, setActionTarget] = useState<Player | null>(null);
   const [actionError, setActionError] = useState('');
+  const [coverTarget, setCoverTarget] = useState<Player | null>(null);
+  const ledgerFlagOn = isFlagOn('NEXT_PUBLIC_FLAG_LEDGER');
 
   // Reset-access display
   const [resetSheet, setResetSheet] = useState<{ open: boolean; playerName: string; code: string; expiresAt: number }>({
@@ -598,6 +602,16 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
                 {actionError}
               </p>
             )}
+            {ledgerFlagOn && typeof actionTarget?.owedAmount === 'number' && actionTarget.owedAmount > 0 && !actionTarget.writtenOff && (
+              <ActionRow
+                icon="paid"
+                label={`Cover their $${actionTarget.owedAmount}`}
+                onClick={() => {
+                  setCoverTarget(actionTarget);
+                  setActionTarget(null);
+                }}
+              />
+            )}
             {isCurrentSession && (
               <ActionRow icon="person_remove" label="Remove from session" onClick={actionRemove} />
             )}
@@ -614,6 +628,22 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
         </BottomSheetBody>
       </BottomSheet>
 
+      {coverTarget && (
+        <CoverSheet
+          open
+          mode="cover-only"
+          playerId={coverTarget.id}
+          playerName={coverTarget.name}
+          amount={coverTarget.owedAmount ?? 0}
+          sessionId={viewedSessionId ?? ''}
+          sessionLabel={fmtSessionLabel(viewedSession?.datetime)}
+          onClose={() => setCoverTarget(null)}
+          onCovered={() => {
+            setCoverTarget(null);
+            void load();
+          }}
+        />
+      )}
       {resetSheet.open && (
         <ResetAccessSheet
           open={resetSheet.open}
