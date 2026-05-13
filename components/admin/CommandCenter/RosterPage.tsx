@@ -712,7 +712,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
               <button
                 type="button"
                 onClick={handleSave}
-                className="btn-primary"
+                className="cc-btn cc-btn-primary"
                 disabled={savingForm || deletingForm}
                 style={{ minWidth: 100 }}
               >

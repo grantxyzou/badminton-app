@@ -245,7 +245,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
             <button
               type="submit"
               disabled={advancing || !date || !time || !deadlineDate}
-              className="btn-primary w-full"
+              className="cc-btn cc-btn-primary cc-btn-lg"
             >
               {advancing ? 'Creating...' : 'Create Next Session \u2192'}
             </button>

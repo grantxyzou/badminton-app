@@ -95,8 +95,8 @@ export default function EnterCodeSheet({ open, onClose, sessionId }: Props) {
               type="button"
               disabled={submitting || !name.trim() || code.length !== 6}
               onClick={submit}
-              className="btn-primary"
-              style={{ marginTop: 4, width: '100%' }}
+              className="cc-btn cc-btn-primary cc-btn-lg"
+              style={{ marginTop: 4 }}
             >
               {t('submitCode')}
             </button>

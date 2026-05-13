@@ -102,7 +102,7 @@ export default function AdminTab() {
               <button
                 type="submit"
                 disabled={checking || !name.trim() || pin.length !== 4}
-                className="btn-primary w-full"
+                className="cc-btn cc-btn-primary cc-btn-lg"
               >
                 {checking ? pageT('signInChecking') : pageT('signInButton')}
               </button>

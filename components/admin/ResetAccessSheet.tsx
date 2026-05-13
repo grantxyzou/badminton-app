@@ -67,7 +67,7 @@ export default function ResetAccessSheet({ open, onClose, playerName, code, expi
             <button type="button" onClick={copy} className="btn-ghost" style={{ flex: 1 }}>
               {t('copy')}
             </button>
-            <button type="button" onClick={onClose} className="btn-primary" style={{ flex: 1 }}>
+            <button type="button" onClick={onClose} className="cc-btn cc-btn-primary" style={{ flex: 1 }}>
               {t('done')}
             </button>
           </div>

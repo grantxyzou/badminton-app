@@ -452,7 +452,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                       <button
                         onClick={handleSaveEdit}
                         disabled={savingEdit || !editForm.name?.trim() || !editForm.tubes || editForm.tubes <= 0 || !editForm.totalCost || editForm.totalCost <= 0}
-                        className="btn-primary flex-1"
+                        className="cc-btn cc-btn-primary flex-1"
                         style={{ minHeight: 44 }}
                       >
                         {savingEdit ? 'Saving...' : 'Save'}
@@ -630,7 +630,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
           <button
             type="submit"
             disabled={adding || !shuttleName.trim() || tubes <= 0}
-            className="btn-primary w-full"
+            className="cc-btn cc-btn-primary cc-btn-lg"
             style={{ minHeight: 44 }}
           >
             {adding ? 'Adding...' : 'Add Purchase'}

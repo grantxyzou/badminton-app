@@ -245,7 +245,7 @@ ${rawNotes}`;
 
       <div className="flex gap-2">
         <button type="button" onClick={onCancel} className="btn-ghost flex-1">Cancel</button>
-        <button type="button" onClick={save} disabled={publishing} className="btn-primary flex-1">
+        <button type="button" onClick={save} disabled={publishing} className="cc-btn cc-btn-primary flex-1">
           {publishing ? (isEdit ? 'Saving…' : 'Publishing…') : (isEdit ? 'Save changes' : t('publish'))}
         </button>
       </div>
