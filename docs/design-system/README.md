@@ -73,6 +73,7 @@ preview/
   25-type-pairings.html
   26-perf-audit.html
   27-cc-buttons.html            ← Command-center button family (primary/secondary/ghost/danger × dark/light)
+  28-cc-pills.html              ← Pills (success/muted/purple/amber) + mini-card scroll strip + dot indicator × dark/light
 
 ui_kits/
   bpm-app/

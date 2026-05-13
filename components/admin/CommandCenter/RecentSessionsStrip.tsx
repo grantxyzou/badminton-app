@@ -84,11 +84,7 @@ export default function RecentSessionsStrip() {
         {sessions.map((s) => (
           <li
             key={s.sessionId}
-            className="flex-shrink-0 snap-start rounded-lg px-3 py-3 min-w-[140px]"
-            style={{
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-            }}
+            className="cc-mini-card flex-shrink-0 snap-start rounded-lg px-3 py-3 min-w-[140px]"
           >
             <p className="text-xs text-gray-400">{fmtDate(s.date)}</p>
             <p className="bpm-h3 mt-1">
@@ -108,11 +104,10 @@ export default function RecentSessionsStrip() {
           {sessions.map((_, i) => (
             <span
               key={i}
-              className="rounded-full transition-all"
+              className={`rounded-full transition-all ${i === activeDot ? 'cc-dot-active' : 'cc-dot'}`}
               style={{
                 width: i === activeDot ? '14px' : '6px',
                 height: '6px',
-                background: i === activeDot ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)',
               }}
             />
           ))}

@@ -147,25 +147,13 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
         <div className="flex items-center gap-2">
           {isSettled && (
             <span
-              className="text-xs px-2 py-1 rounded-full"
-              style={{
-                background: 'rgba(168, 85, 247, 0.15)',
-                color: '#d8b4fe',
-                border: '1px solid rgba(168, 85, 247, 0.3)',
-              }}
+              className="cc-pill cc-pill-purple"
               title={`Bill sent — $${session.settled?.costPerPerson} each`}
             >
               Sent · ${session.settled?.costPerPerson}
             </span>
           )}
-          <span
-            className="text-xs px-2 py-1 rounded-full"
-            style={{
-              background: open ? 'rgba(34, 197, 94, 0.15)' : 'rgba(255, 255, 255, 0.06)',
-              color: open ? '#86efac' : '#9ca3af',
-              border: open ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(255, 255, 255, 0.12)',
-            }}
-          >
+          <span className={open ? 'cc-pill cc-pill-success' : 'cc-pill cc-pill-muted'}>
             {open ? 'Signup open' : 'Signup closed'}
           </span>
         </div>
@@ -178,7 +166,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
             <span className="text-xs text-gray-400">+{waitlistCount} waitlist</span>
           )}
         </div>
-        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255, 255, 255, 0.08)' }}>
+        <div className="h-1.5 rounded-full overflow-hidden cc-progress-track">
           <div
             className="h-full transition-all"
             style={{
