@@ -1,0 +1,39 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import {
+  resetMockStore,
+  setupAdminPin,
+  seedPointer,
+  seedSession,
+  seedPlayer,
+  seedTestAdminMember,
+  makeAdminRequest,
+} from './helpers';
+import { PATCH } from '@/app/api/players/route';
+
+setupAdminPin();
+
+describe('PATCH /api/players writtenOff (v1.5/A)', () => {
+  const sessionId = 'session-2026-05-13';
+
+  beforeEach(async () => {
+    resetMockStore();
+    await seedTestAdminMember();
+    seedPointer(sessionId);
+    seedSession(sessionId, { maxPlayers: 12 });
+  });
+
+  it('admin can set writtenOff: true on a player', async () => {
+    const player = seedPlayer(sessionId, 'Bruce', { owedAmount: 8, paid: false });
+    const req = makeAdminRequest('PATCH', 'http://localhost:3000/api/players', {
+      id: player.id,
+      sessionId,
+      writtenOff: true,
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.writtenOff).toBe(true);
+    expect(body.deleteToken).toBeUndefined();
+    expect(body.pinHash).toBeUndefined();
+  });
+});
