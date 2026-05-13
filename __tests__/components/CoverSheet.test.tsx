@@ -70,4 +70,36 @@ describe('<CoverSheet />', () => {
 
     fetchSpy.mockRestore();
   });
+
+  it('shows error and keeps sheet open when PATCH fails', async () => {
+    const onCovered = vi.fn();
+    const onClose = vi.fn();
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response('boom', { status: 500 }),
+    );
+
+    wrap(
+      <CoverSheet
+        open
+        mode="cover-only"
+        playerName="Bruce"
+        amount={8}
+        sessionLabel="Tue, May 14"
+        playerId="bruce-1"
+        sessionId="session-2026-05-14"
+        onClose={onClose}
+        onCovered={onCovered}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /I got it/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeTruthy();
+    });
+    expect(onCovered).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+
+    fetchSpy.mockRestore();
+  });
 });
