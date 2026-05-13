@@ -443,7 +443,13 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.paid === 'boolean') updates.paid = body.paid;
     if (typeof body.removed === 'boolean') updates.removed = body.removed;
     if (typeof body.waitlisted === 'boolean') updates.waitlisted = body.waitlisted;
-    if (typeof body.writtenOff === 'boolean') updates.writtenOff = body.writtenOff;
+    if (typeof body.writtenOff === 'boolean') {
+      updates.writtenOff = body.writtenOff;
+      // Mutual exclusion: writtenOff:true forces paid:false. If the client
+      // sent both writtenOff:true and paid:true in one body, writtenOff
+      // wins (more explicit intent). See v1.5 design §2 "Setter rule".
+      if (body.writtenOff === true) updates.paid = false;
+    }
 
     const sessionContainer = getContainer('sessions');
     const { resources: sessions } = await sessionContainer.items
