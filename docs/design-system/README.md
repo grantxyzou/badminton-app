@@ -69,6 +69,10 @@ preview/
   21-logo.html
   22-aurora-bg.html
   23-material-icons.html
+  24-app-background.html
+  25-type-pairings.html
+  26-perf-audit.html
+  27-cc-buttons.html            ← Command-center button family (primary/secondary/ghost/danger × dark/light)
 
 ui_kits/
   bpm-app/
