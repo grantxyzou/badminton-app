@@ -117,7 +117,7 @@ export default function CoverSheet({
       className="max-w-sm mx-auto"
     >
       <BottomSheetHeader className="p-4">
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, margin: 0 }}>{title}</h2>
+        <h2 className="bpm-h3" style={{ margin: 0 }}>{title}</h2>
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>{subtitle}</p>
       </BottomSheetHeader>
       <BottomSheetBody className="p-4 pb-8" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
