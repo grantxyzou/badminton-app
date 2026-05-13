@@ -440,7 +440,14 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Player not found' }, { status: 404 });
     }
     const updates: Record<string, unknown> = {};
-    if (typeof body.paid === 'boolean') updates.paid = body.paid;
+    if (typeof body.paid === 'boolean') {
+      updates.paid = body.paid;
+      // Mutex: setting paid:true clears writtenOff. Existing behavior
+      // when only paid is sent.
+      if (body.paid === true && typeof body.writtenOff !== 'boolean') {
+        updates.writtenOff = false;
+      }
+    }
     if (typeof body.removed === 'boolean') updates.removed = body.removed;
     if (typeof body.waitlisted === 'boolean') updates.waitlisted = body.waitlisted;
     if (typeof body.writtenOff === 'boolean') {

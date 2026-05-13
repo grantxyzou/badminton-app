@@ -50,4 +50,18 @@ describe('PATCH /api/players writtenOff (v1.5/A)', () => {
     expect(body.writtenOff).toBe(true);
     expect(body.paid).toBe(false);
   });
+
+  it('setting paid: true also forces writtenOff: false', async () => {
+    const player = seedPlayer(sessionId, 'Bruce', { owedAmount: 8, paid: false, writtenOff: true });
+    const req = makeAdminRequest('PATCH', 'http://localhost:3000/api/players', {
+      id: player.id,
+      sessionId,
+      paid: true,
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.paid).toBe(true);
+    expect(body.writtenOff).toBe(false);
+  });
 });
