@@ -237,7 +237,7 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
             type="button"
             onClick={handleSave}
             disabled={saving || !dirty}
-            className="btn-primary flex-1"
+            className="cc-btn cc-btn-primary flex-1"
             style={{ minHeight: 44 }}
           >
             {saving ? 'Saving…' : 'Save'}

@@ -297,7 +297,7 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
                   </div>
                   {editError && <p className="text-red-400 text-xs" role="alert">{editError}</p>}
                   <div className="flex gap-2">
-                    <button onClick={() => handleSaveEdit(alias.id)} className="btn-primary text-xs px-3 py-1.5" style={{ minHeight: 44 }}>Save</button>
+                    <button onClick={() => handleSaveEdit(alias.id)} className="cc-btn cc-btn-primary text-xs" style={{ minHeight: 44 }}>Save</button>
                     <button onClick={() => setEditingId(null)} className="btn-ghost text-xs px-3 py-1.5" style={{ minHeight: 44 }}>Cancel</button>
                   </div>
                 </div>
@@ -377,7 +377,7 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
             />
           </div>
           {aliasAddError && <p className="text-red-400 text-xs" role="alert">{aliasAddError}</p>}
-          <button type="submit" disabled={aliasAdding} className="btn-primary w-full" style={{ minHeight: 44 }}>
+          <button type="submit" disabled={aliasAdding} className="cc-btn cc-btn-primary cc-btn-lg" style={{ minHeight: 44 }}>
             {aliasAdding ? 'Adding...' : 'Add Alias'}
           </button>
         </form>

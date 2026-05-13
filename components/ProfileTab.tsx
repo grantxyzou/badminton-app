@@ -198,7 +198,7 @@ export default function ProfileTab({
         />
         {isAdmin && (
           <div className="glass-card p-5">
-            <button type="button" onClick={onAdminTools} className="btn-primary" style={{ width: '100%' }}>
+            <button type="button" onClick={onAdminTools} className="cc-btn cc-btn-primary cc-btn-lg">
               {t('adminToolsButton')}
             </button>
           </div>

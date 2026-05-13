@@ -165,7 +165,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
               <button
                 onClick={() => anno.handlePost(anno.polished)}
                 disabled={anno.posting}
-                className="btn-primary w-full text-sm"
+                className="cc-btn cc-btn-primary cc-btn-lg text-sm"
               >
                 {anno.posting ? 'Posting\u2026' : 'Post to Home'}
               </button>
@@ -177,7 +177,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
             <button
               onClick={() => anno.handlePost(anno.draft)}
               disabled={anno.posting}
-              className="btn-primary w-full"
+              className="cc-btn cc-btn-primary cc-btn-lg"
             >
               {anno.posting ? 'Posting\u2026' : 'Post to Home'}
             </button>
@@ -208,7 +208,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                       <button
                         onClick={() => anno.handleSaveAnno(a.id)}
                         disabled={anno.savingAnno || !anno.editAnnoText.trim()}
-                        className="btn-primary text-xs px-3 py-1.5"
+                        className="cc-btn cc-btn-primary text-xs"
                       >
                         {anno.savingAnno ? 'Saving\u2026' : 'Save'}
                       </button>
@@ -408,7 +408,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
               maxLength={50}
               autoComplete="off"
             />
-            <button type="submit" disabled={pm.adding || !pm.name.trim()} className="btn-primary" style={{ whiteSpace: 'nowrap' }}>
+            <button type="submit" disabled={pm.adding || !pm.name.trim()} className="cc-btn cc-btn-primary" style={{ whiteSpace: 'nowrap' }}>
               {pm.adding ? '\u2026' : 'Add'}
             </button>
           </div>
@@ -549,7 +549,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
       {/* Next Week */}
       <button
         onClick={() => setView('advance')}
-        className="btn-primary w-full"
+        className="cc-btn cc-btn-primary cc-btn-lg"
       >
         Next Week &rarr;
       </button>
@@ -592,7 +592,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
               )}
               <button
                 onClick={pm.clearMode === 'soft' ? pm.handleClearSession : pm.handlePurgeAll}
-                className="btn-primary w-full"
+                className="cc-btn cc-btn-primary cc-btn-lg"
                 style={pm.clearMode === 'soft'
                   ? { background: 'rgba(239,68,68,0.18)', color: '#f87171', border: '1px solid rgba(239,68,68,0.25)' }
                   : { background: 'rgba(239,68,68,0.30)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.45)' }

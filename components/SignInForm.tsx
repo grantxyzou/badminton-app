@@ -103,8 +103,8 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin }: SignIn
         type="button"
         disabled={!canSubmit}
         onClick={submit}
-        className="btn-primary"
-        style={{ marginTop: 4, width: '100%' }}
+        className="cc-btn cc-btn-primary cc-btn-lg"
+        style={{ marginTop: 4 }}
       >
         {submitting ? t('submitting') : t('submitPin')}
       </button>

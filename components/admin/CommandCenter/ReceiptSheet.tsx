@@ -231,7 +231,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
                     type="button"
                     onClick={shareImage}
                     disabled={!imageDataUrl}
-                    className="btn-primary"
+                    className="cc-btn cc-btn-primary"
                     style={{ minWidth: 140 }}
                   >
                     Share image

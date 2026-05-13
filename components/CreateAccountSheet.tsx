@@ -133,8 +133,8 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
               type="button"
               disabled={!canSubmit}
               onClick={submit}
-              className="btn-primary"
-              style={{ marginTop: 4, width: '100%' }}
+              className="cc-btn cc-btn-primary cc-btn-lg"
+              style={{ marginTop: 4 }}
             >
               {submitting ? t('submitting') : t('submit')}
             </button>

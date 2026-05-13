@@ -560,7 +560,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <button
                 type="submit"
                 disabled={isSubmitting || !name.trim()}
-                className="btn-primary w-full"
+                className="cc-btn cc-btn-primary cc-btn-lg"
               >
                 {isSubmitting ? t('signup.joining') : t('signup.waitlist')}
               </button>
@@ -651,7 +651,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   || (authMode === 'sign-in' && pin.length !== 4)
                   || (authMode === 'create' && (pin.length !== 4 || confirmPin.length !== 4))
                 }
-                className="btn-primary w-full"
+                className="cc-btn cc-btn-primary cc-btn-lg"
               >
                 {!isSubmitting && <span className="material-icons icon-sm" aria-hidden="true">how_to_reg</span>}
                 {isSubmitting ? t('signup.submitting') : t('signup.button')}

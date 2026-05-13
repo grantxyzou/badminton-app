@@ -169,10 +169,9 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, onSa
           )}
           <button
             type="button"
-            className="btn-primary"
+            className="cc-btn cc-btn-primary cc-btn-lg"
             disabled={!canSubmit}
             onClick={() => savePin(newPin)}
-            style={{ width: '100%' }}
           >
             {submitLabel}
           </button>

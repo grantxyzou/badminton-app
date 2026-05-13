@@ -64,7 +64,7 @@ export default function ReleasesView({ onBack }: Props) {
           <button
             type="button"
             onClick={() => setForm({ kind: 'new' })}
-            className="btn-primary w-full"
+            className="cc-btn cc-btn-primary cc-btn-lg"
           >
             {t('newButton')}
           </button>

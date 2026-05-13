@@ -159,7 +159,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
             <button
               type="submit"
               disabled={adding || !name.trim()}
-              className="btn-primary"
+              className="cc-btn cc-btn-primary"
               style={{ whiteSpace: 'nowrap', minHeight: 44 }}
             >
               {adding ? '…' : 'Add'}
