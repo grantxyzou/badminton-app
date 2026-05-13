@@ -56,6 +56,7 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ### Added
 
+- **`writtenOff` on `PATCH /api/players` + "Cover their $X" action** *(flag-gated `NEXT_PUBLIC_FLAG_LEDGER`)* — admin can cover a player's debt via the existing PaymentsCard per-player action sheet. Sets `Player.writtenOff: true` and clears `paid`. Mutually exclusive with `paid` at the route handler (writtenOff wins if both flags are sent in one body). Friend-voice confirm copy: "I got it." First piece of v1.5; ledger view + remove-after-settle prompt land in subsequent PRs. Ships with `<CoverSheet>` component supporting both `cover-only` and `cover-and-remove` modes (latter wired in v1.5/C).
 - **`GET /api/admin/settings`** — auth-gated read of the calling admin's own settings (e-transfer recipient, skip dates). Replaces the previous "scan public `/api/members` for `role:admin`" pattern that leaked admin attributes if the response shape ever loosened.
 - **`POST /api/session/dismiss-anomaly`** — atomic per-code append on the active session's `anomaliesDismissed` array. Replaces a client-side read-modify-write-via-PUT that could nuke the session doc if the read step failed.
 - **`lib/fmt.ts`** — shared `withLocalTz`, `fmtShortDate`, `fmtSessionLabel`, `fmtFullDate` (extracted from 6+ duplicated callsites).
