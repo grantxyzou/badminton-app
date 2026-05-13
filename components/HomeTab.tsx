@@ -16,6 +16,7 @@ import StatusBanner from '@/components/primitives/StatusBanner';
 import PageHeader from '@/components/primitives/PageHeader';
 import EnterCodeSheet from './EnterCodeSheet';
 import PinInput from './PinInput';
+import NameAutocompleteInput from './home/NameAutocompleteInput';
 import { useMemberProbe } from '@/lib/useHasPin';
 import { renderMarkdown } from '@/lib/miniMarkdown';
 
@@ -60,7 +61,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     : 'anon';
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [memberNames, setMemberNames] = useState<string[]>([]);
   const [hasIdentity, setHasIdentity] = useState(false);
   // Sign up = session signup only (auth taxonomy split). PIN is no longer
@@ -518,44 +518,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
             </div>
             <StatusBanner tone="warn" icon="lock" title={t('signup.full')} body={t('signup.allSpotsTaken', { total: spotsTotal })} />
             <form onSubmit={handleJoinWaitlist} className="space-y-3">
-              <div className="relative">
-                <input
-                  id="waitlist-name"
-                  name="name"
-                  type="text"
-                  placeholder={t('signup.namePlaceholder')}
-                  aria-label={t('signup.nameAriaLabel')}
-                  aria-describedby={error ? 'signup-error' : undefined}
-                  value={name}
-                  onChange={(e) => { setName(e.target.value); setError(''); setShowSuggestions(true); }}
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 100)}
-                  maxLength={50}
-                  autoComplete="off"
-                />
-                {showSuggestions && suggestions.length > 0 && (
-                  <ul className="absolute left-0 right-0 top-full mt-1 z-50 rounded-xl max-h-60 overflow-y-auto animate-scaleIn"
-                      style={{
-                        background: 'var(--dropdown-bg)',
-                        backdropFilter: 'blur(12px)',
-                        WebkitBackdropFilter: 'blur(12px)',
-                        border: '1px solid var(--glass-border)',
-                      }}>
-                    {suggestions.map((s) => (
-                      <li key={s}>
-                        <button
-                          type="button"
-                          onMouseDown={() => { setName(s); setShowSuggestions(false); setError(''); }}
-                          className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5"
-                          style={{ color: 'var(--text-primary)' }}
-                        >
-                          {s}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <NameAutocompleteInput
+                id="waitlist-name"
+                value={name}
+                onValueChange={(v) => { setName(v); setError(''); }}
+                suggestions={suggestions}
+                placeholder={t('signup.namePlaceholder')}
+                ariaLabel={t('signup.nameAriaLabel')}
+                errorId={error ? 'signup-error' : undefined}
+              />
               {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
               <button
                 type="submit"
@@ -574,44 +545,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <p className="text-sm text-gray-400">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
             </div>
             <form onSubmit={handleSignUp} className="space-y-3">
-              <div className="relative">
-                <input
-                  id="signup-name"
-                  name="name"
-                  type="text"
-                  placeholder={t('signup.namePlaceholder')}
-                  aria-label={t('signup.nameAriaLabel')}
-                  aria-describedby={error ? 'signup-error' : undefined}
-                  value={name}
-                  onChange={(e) => { setName(e.target.value); setError(''); setShowSuggestions(true); }}
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 100)}
-                  maxLength={50}
-                  autoComplete="off"
-                />
-                {showSuggestions && suggestions.length > 0 && (
-                  <ul className="absolute left-0 right-0 top-full mt-1 z-50 rounded-xl max-h-60 overflow-y-auto animate-scaleIn"
-                      style={{
-                        background: 'var(--dropdown-bg)',
-                        backdropFilter: 'blur(12px)',
-                        WebkitBackdropFilter: 'blur(12px)',
-                        border: '1px solid var(--glass-border)',
-                      }}>
-                    {suggestions.map((s) => (
-                      <li key={s}>
-                        <button
-                          type="button"
-                          onMouseDown={() => { setName(s); setShowSuggestions(false); setError(''); }}
-                          className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5"
-                          style={{ color: 'var(--text-primary)' }}
-                        >
-                          {s}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <NameAutocompleteInput
+                id="signup-name"
+                value={name}
+                onValueChange={(v) => { setName(v); setError(''); }}
+                suggestions={suggestions}
+                placeholder={t('signup.namePlaceholder')}
+                ariaLabel={t('signup.nameAriaLabel')}
+                errorId={error ? 'signup-error' : undefined}
+              />
               {/* PIN inputs — revealed inline based on the member probe.
                   sign-in: single PIN field.
                   create:  PIN + Confirm PIN.
