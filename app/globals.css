@@ -2091,6 +2091,97 @@ html[data-hydrated="true"] .splash {
   border-color: rgba(0, 0, 0, 0.14);
 }
 
+/* Status pill family — pairs with cc-btn / cc-tile.
+   Replaces inline-style pills that broke in light mode (pale green text
+   on a green-tinted rgba bg over a near-white page = ~1.5:1 contrast).
+   Each variant has explicit light-mode overrides. */
+.cc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background: transparent;
+}
+.cc-pill-success {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #86efac;
+}
+.cc-pill-muted {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #9ca3af;
+}
+.cc-pill-purple {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: rgba(168, 85, 247, 0.3);
+  color: #d8b4fe;
+}
+.cc-pill-amber {
+  background: rgba(251, 191, 36, 0.15);
+  border-color: rgba(251, 191, 36, 0.30);
+  color: #fbbf24;
+}
+[data-theme="light"] .cc-pill-success {
+  background: rgba(22, 163, 74, 0.10);
+  border-color: rgba(22, 163, 74, 0.32);
+  color: #15803d;
+}
+[data-theme="light"] .cc-pill-muted {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: rgba(26, 35, 50, 0.6);
+}
+[data-theme="light"] .cc-pill-purple {
+  background: rgba(126, 34, 206, 0.10);
+  border-color: rgba(126, 34, 206, 0.32);
+  color: #6b21a8;
+}
+[data-theme="light"] .cc-pill-amber {
+  background: rgba(180, 83, 9, 0.10);
+  border-color: rgba(180, 83, 9, 0.32);
+  color: #b45309;
+}
+
+/* Mini chip — small flat surface for horizontally-scrolled card lists
+   (recent-sessions strip, etc.). Theme-aware so chips don't disappear
+   against the light page-bg. */
+.cc-mini-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+[data-theme="light"] .cc-mini-card {
+  background: rgba(0, 0, 0, 0.025);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Dot indicator — scroll-position pagination markers. Same theme split
+   as cc-mini-card so they don't vanish over light backgrounds. */
+.cc-dot {
+  background: rgba(255, 255, 255, 0.2);
+}
+.cc-dot-active {
+  background: rgba(255, 255, 255, 0.6);
+}
+[data-theme="light"] .cc-dot {
+  background: rgba(0, 0, 0, 0.15);
+}
+[data-theme="light"] .cc-dot-active {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Progress track — used by capacity bars. */
+.cc-progress-track {
+  background: rgba(255, 255, 255, 0.08);
+}
+[data-theme="light"] .cc-progress-track {
+  background: rgba(0, 0, 0, 0.08);
+}
+
 /* Dashboard 2-up grid for Birds + Roster cards on the admin home */
 .cc-dgrid {
   display: grid;

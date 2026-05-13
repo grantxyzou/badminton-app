@@ -351,7 +351,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                     <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">{i + 1}</span>
                     <span className="flex-1 text-sm text-gray-200 font-medium">{player.name}</span>
                     {player.selfReportedPaid && !player.paid && (
-                      <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24' }}>
+                      <span className="cc-pill cc-pill-amber" style={{ fontSize: 9, padding: '2px 6px' }}>
                         reported
                       </span>
                     )}

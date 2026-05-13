@@ -1,0 +1,217 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Command-center pills, chips, dots</title>
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: var(--font-sans); min-height: 100%; }
+  body { padding: 14px; background: #050806; display: flex; justify-content: center; }
+
+  .dual { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; max-width: 1060px; }
+  .pane { padding: 16px; border-radius: 12px; border: 1px solid; }
+  .pane[data-theme="dark"]  { background: #100F0F; border-color: rgba(255,255,255,0.08); color: #e2e8f0; }
+  .pane[data-theme="light"] { background: #FAF8F5; border-color: rgba(0,0,0,0.08);   color: #1a2332; }
+
+  .pane-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .pane[data-theme="dark"]  .pane-title { color: #86efac; }
+  .pane[data-theme="light"] .pane-title { color: #16a34a; }
+  .pane-title .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .pane[data-theme="dark"]  .pane-title .dot { background: #4ade80; }
+  .pane[data-theme="light"] .pane-title .dot { background: #16a34a; }
+
+  .group { margin-top: 14px; }
+  .group:first-of-type { margin-top: 0; }
+  .group-lbl {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    opacity: 0.6;
+    margin-bottom: 6px;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .row.chips { gap: 10px; }
+
+  /* ---- cc-pill family (mirrors app/globals.css :2094–2166) ---- */
+  .cc-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    background: transparent;
+  }
+
+  .pane[data-theme="dark"] .cc-pill-success {
+    background: rgba(34, 197, 94, 0.15);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #86efac;
+  }
+  .pane[data-theme="dark"] .cc-pill-muted {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #9ca3af;
+  }
+  .pane[data-theme="dark"] .cc-pill-purple {
+    background: rgba(168, 85, 247, 0.15);
+    border-color: rgba(168, 85, 247, 0.3);
+    color: #d8b4fe;
+  }
+  .pane[data-theme="dark"] .cc-pill-amber {
+    background: rgba(251, 191, 36, 0.15);
+    border-color: rgba(251, 191, 36, 0.30);
+    color: #fbbf24;
+  }
+
+  .pane[data-theme="light"] .cc-pill-success {
+    background: rgba(22, 163, 74, 0.10);
+    border-color: rgba(22, 163, 74, 0.32);
+    color: #15803d;
+  }
+  .pane[data-theme="light"] .cc-pill-muted {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: rgba(26, 35, 50, 0.6);
+  }
+  .pane[data-theme="light"] .cc-pill-purple {
+    background: rgba(126, 34, 206, 0.10);
+    border-color: rgba(126, 34, 206, 0.32);
+    color: #6b21a8;
+  }
+  .pane[data-theme="light"] .cc-pill-amber {
+    background: rgba(180, 83, 9, 0.10);
+    border-color: rgba(180, 83, 9, 0.32);
+    color: #b45309;
+  }
+
+  /* ---- cc-mini-card (chip surface for scroll-strips) ---- */
+  .cc-mini-card {
+    border-radius: 8px; padding: 12px; min-width: 140px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .pane[data-theme="dark"] .cc-mini-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .pane[data-theme="light"] .cc-mini-card {
+    background: rgba(0, 0, 0, 0.025);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+  }
+  .cc-mini-card .d  { font-size: 11px; opacity: 0.65; }
+  .cc-mini-card .n  { font-size: 17px; font-weight: 700; }
+  .cc-mini-card .m  { font-size: 11px; opacity: 0.65; }
+
+  /* ---- cc-dot indicator ---- */
+  .dotset { display: flex; gap: 6px; align-items: center; padding: 6px 0; }
+  .cc-dot, .cc-dot-active {
+    border-radius: 9999px; height: 6px; width: 6px; display: inline-block;
+    transition: width 120ms ease, background 120ms ease;
+  }
+  .cc-dot-active { width: 14px; }
+  .pane[data-theme="dark"] .cc-dot        { background: rgba(255,255,255,0.2); }
+  .pane[data-theme="dark"] .cc-dot-active { background: rgba(255,255,255,0.6); }
+  .pane[data-theme="light"] .cc-dot        { background: rgba(0,0,0,0.15); }
+  .pane[data-theme="light"] .cc-dot-active { background: rgba(0,0,0,0.5);  }
+
+  .wcag {
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px solid;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    line-height: 1.6;
+  }
+  .pane[data-theme="dark"]  .wcag { border-color: rgba(255,255,255,0.1); color: rgba(226,232,240,0.7); }
+  .pane[data-theme="light"] .wcag { border-color: rgba(0,0,0,0.08);    color: rgba(26,35,50,0.72); }
+  .wcag .pass { color: #16a34a; font-weight: 700; }
+  .pane[data-theme="dark"] .wcag .pass { color: #86efac; }
+  .wcag .row-w { display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+<div class="dual">
+
+  <div class="pane" data-theme="dark">
+    <div class="pane-title"><span class="dot"></span>Dark</div>
+
+    <div class="group">
+      <div class="group-lbl">Pills</div>
+      <div class="row">
+        <span class="cc-pill cc-pill-success">Signup open</span>
+        <span class="cc-pill cc-pill-muted">Signup closed</span>
+        <span class="cc-pill cc-pill-purple">Sent &middot; $8</span>
+        <span class="cc-pill cc-pill-amber">reported</span>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-lbl">Mini-card scroll strip</div>
+      <div class="row chips">
+        <div class="cc-mini-card"><span class="d">May 14</span><span class="n">12 <small>players</small></span><span class="m">0% paid</span></div>
+        <div class="cc-mini-card"><span class="d">May 7</span><span class="n">11 <small>players</small></span><span class="m">18% paid</span></div>
+        <div class="cc-mini-card"><span class="d">Apr 30</span><span class="n">12 <small>players</small></span><span class="m">75% paid</span></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-lbl">Dot indicator</div>
+      <div class="dotset">
+        <span class="cc-dot-active"></span>
+        <span class="cc-dot"></span>
+        <span class="cc-dot"></span>
+        <span class="cc-dot"></span>
+      </div>
+    </div>
+
+    <div class="wcag">
+      <div class="row-w"><span>#86efac on rgba(34,197,94,.15) bg over #100F0F</span><span class="pass">~7.0 : 1</span></div>
+      <div class="row-w"><span>#d8b4fe on rgba(168,85,247,.15) bg over #100F0F</span><span class="pass">~6.5 : 1</span></div>
+      <div class="row-w"><span>#fbbf24 on rgba(251,191,36,.15) bg over #100F0F</span><span class="pass">~7.6 : 1</span></div>
+    </div>
+  </div>
+
+  <div class="pane" data-theme="light">
+    <div class="pane-title"><span class="dot"></span>Light</div>
+
+    <div class="group">
+      <div class="group-lbl">Pills</div>
+      <div class="row">
+        <span class="cc-pill cc-pill-success">Signup open</span>
+        <span class="cc-pill cc-pill-muted">Signup closed</span>
+        <span class="cc-pill cc-pill-purple">Sent &middot; $8</span>
+        <span class="cc-pill cc-pill-amber">reported</span>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-lbl">Mini-card scroll strip</div>
+      <div class="row chips">
+        <div class="cc-mini-card"><span class="d">May 14</span><span class="n">12 <small>players</small></span><span class="m">0% paid</span></div>
+        <div class="cc-mini-card"><span class="d">May 7</span><span class="n">11 <small>players</small></span><span class="m">18% paid</span></div>
+        <div class="cc-mini-card"><span class="d">Apr 30</span><span class="n">12 <small>players</small></span><span class="m">75% paid</span></div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-lbl">Dot indicator</div>
+      <div class="dotset">
+        <span class="cc-dot-active"></span>
+        <span class="cc-dot"></span>
+        <span class="cc-dot"></span>
+        <span class="cc-dot"></span>
+      </div>
+    </div>
+
+    <div class="wcag">
+      <div class="row-w"><span>#15803d on rgba(22,163,74,.10) bg over #FAF8F5</span><span class="pass">~6.5 : 1</span></div>
+      <div class="row-w"><span>#6b21a8 on rgba(126,34,206,.10) bg over #FAF8F5</span><span class="pass">~7.8 : 1</span></div>
+      <div class="row-w"><span>#b45309 on rgba(180,83,9,.10) bg over #FAF8F5</span><span class="pass">~5.6 : 1</span></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
