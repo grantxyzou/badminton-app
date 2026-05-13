@@ -443,6 +443,7 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.paid === 'boolean') updates.paid = body.paid;
     if (typeof body.removed === 'boolean') updates.removed = body.removed;
     if (typeof body.waitlisted === 'boolean') updates.waitlisted = body.waitlisted;
+    if (typeof body.writtenOff === 'boolean') updates.writtenOff = body.writtenOff;
 
     const sessionContainer = getContainer('sessions');
     const { resources: sessions } = await sessionContainer.items
