@@ -1857,6 +1857,15 @@ html[data-hydrated="true"] .splash {
   border-color: rgba(239, 68, 68, 0.6);
 }
 
+[data-theme="light"] .cc-btn-primary {
+  background: rgba(22, 163, 74, 0.12);
+  border-color: rgba(22, 163, 74, 0.45);
+  color: #15803d;
+}
+[data-theme="light"] .cc-btn-primary:hover:not(:disabled) {
+  background: rgba(22, 163, 74, 0.2);
+  border-color: rgba(22, 163, 74, 0.6);
+}
 [data-theme="light"] .cc-btn-secondary {
   background: rgba(0, 0, 0, 0.04);
   border-color: rgba(0, 0, 0, 0.12);
@@ -1867,6 +1876,15 @@ html[data-hydrated="true"] .splash {
 }
 [data-theme="light"] .cc-btn-ghost:hover:not(:disabled) {
   background: rgba(0, 0, 0, 0.04);
+}
+[data-theme="light"] .cc-btn-danger {
+  background: rgba(220, 38, 38, 0.1);
+  border-color: rgba(220, 38, 38, 0.45);
+  color: #b91c1c;
+}
+[data-theme="light"] .cc-btn-danger:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.18);
+  border-color: rgba(220, 38, 38, 0.6);
 }
 
 /* Styled checkbox primitive — pairs with cc-btn family. The native
