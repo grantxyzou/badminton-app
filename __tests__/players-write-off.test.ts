@@ -7,6 +7,7 @@ import {
   seedPlayer,
   seedTestAdminMember,
   makeAdminRequest,
+  makeRequest,
 } from './helpers';
 import { PATCH } from '@/app/api/players/route';
 
@@ -78,5 +79,17 @@ describe('PATCH /api/players writtenOff (v1.5/A)', () => {
     const body = await res.json();
     expect(body.writtenOff).toBe(true);
     expect(body.paid).toBe(false);
+  });
+
+  it('non-admin self-call via deleteToken cannot set writtenOff', async () => {
+    const player = seedPlayer(sessionId, 'Bruce', { owedAmount: 8, paid: false, deleteToken: 'self-token-bruce' });
+    const req = makeRequest('PATCH', 'http://localhost:3000/api/players', {
+      id: player.id,
+      sessionId,
+      writtenOff: true,
+      deleteToken: 'self-token-bruce',
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(401);
   });
 });
