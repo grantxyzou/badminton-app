@@ -19,13 +19,41 @@
  *   0 — synced (silent)
  *   1 — drift detected (prints actionable diff)
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FLAGS_FILE = join(ROOT, 'lib/flags.ts');
-const WORKFLOW_FILE = join(ROOT, '.github/workflows/deploy-next.yml');
+const SETTINGS_FILE = join(ROOT, '.claude/flag-sync.local.md');
+const DEFAULT_WORKFLOW = '.github/workflows/deploy-next.yml';
+
+/**
+ * Plugin-settings pattern: read `.claude/flag-sync.local.md` for per-project
+ * overrides. Returns null if no file (use defaults), returns a frontmatter map
+ * otherwise. Quietly tolerates malformed input — silence > noise for a
+ * config file most contributors won't think about.
+ */
+function readSettings() {
+  if (!existsSync(SETTINGS_FILE)) return null;
+  try {
+    const src = readFileSync(SETTINGS_FILE, 'utf8');
+    const m = src.match(/^---\n([\s\S]*?)\n---/);
+    if (!m) return {};
+    const out = {};
+    for (const line of m[1].split('\n')) {
+      const kv = line.match(/^([a-z_]+):\s*(.+?)\s*$/);
+      if (!kv) continue;
+      let value = kv[2];
+      if (value === 'true') value = true;
+      else if (value === 'false') value = false;
+      out[kv[1]] = value;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
 
 function extractFromFlagsTs(src) {
   const unionMatch = src.match(/export type FlagName\s*=([\s\S]*?);/);
@@ -46,10 +74,15 @@ function extractFromWorkflow(src) {
 }
 
 function main() {
+  const settings = readSettings() ?? {};
+  if (settings.enabled === false) process.exit(0);
+  const workflowPath = settings.workflow_path || DEFAULT_WORKFLOW;
+  const workflowFile = join(ROOT, workflowPath);
+
   let registered, deployed;
   try {
     registered = extractFromFlagsTs(readFileSync(FLAGS_FILE, 'utf8'));
-    deployed = extractFromWorkflow(readFileSync(WORKFLOW_FILE, 'utf8'));
+    deployed = extractFromWorkflow(readFileSync(workflowFile, 'utf8'));
   } catch (err) {
     console.error(`[flag-sync] could not read source files: ${err.message}`);
     process.exit(0);
