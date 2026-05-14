@@ -72,10 +72,11 @@ function seedDevAdminIfRequested(containerName: string) {
  * Set `SEED_DEV_SCENARIO=fresh-thursday` to seed:
  *   - one active session 48h in the future (signupOpen: true, deadline 24h out)
  *   - the active-session-pointer document
- *   - 6 invite-list members covering all three sign-up modes:
- *       Bruce  (PIN 2468)   → sign-in flow
- *       Sophia (no PIN)     → create-account flow
- *       Josh, Karen, Patrick, Molly (no PIN) → autocomplete fodder
+ *   - 6 invite-list members named after famous badminton players, covering
+ *     all three sign-up modes:
+ *       Lin     (PIN 2468) → sign-in flow
+ *       Viktor  (no PIN)   → create-account flow
+ *       Carolina, Akane, Kento, Sindhu (no PIN) → autocomplete fodder
  *
  * Players container stays empty by design — the test scenario starts
  * "no one signed up yet."
@@ -126,20 +127,25 @@ function seedDevScenarioIfRequested(containerName: string) {
     });
   }
 
-  // Members container: invite list with mixed PIN states
+  // Members container: invite list with mixed PIN states.
+  //
+  // Famous badminton player first names — recognizable as fixtures by anyone
+  // who plays the sport, and deliberately non-overlapping with any real
+  // friend-group roster. Covers single-name (Lin), conventional first names
+  // (Viktor, Carolina, Akane, Kento), and last-name-as-first (Sindhu).
   mockStore.members ??= [];
-  const bruceSalt = randomBytes(16);
-  const bruceHash = scryptSync('2468', bruceSalt, 32, { N: 16384, r: 8, p: 1 });
+  const linSalt = randomBytes(16);
+  const linHash = scryptSync('2468', linSalt, 32, { N: 16384, r: 8, p: 1 });
   const seedMembers = [
     {
-      name: 'Bruce',
-      pinHash: `${bruceSalt.toString('hex')}:${bruceHash.toString('hex')}`,
+      name: 'Lin',  // Lin Dan, CHN. PIN 2468 → sign-in flow.
+      pinHash: `${linSalt.toString('hex')}:${linHash.toString('hex')}`,
     },
-    { name: 'Sophia' },
-    { name: 'Josh' },
-    { name: 'Karen' },
-    { name: 'Patrick' },
-    { name: 'Molly' },
+    { name: 'Viktor' },    // Viktor Axelsen, DEN. No PIN → create-account flow.
+    { name: 'Carolina' },  // Carolina Marin, ESP.
+    { name: 'Akane' },     // Akane Yamaguchi, JPN.
+    { name: 'Kento' },     // Kento Momota, JPN.
+    { name: 'Sindhu' },    // P. V. Sindhu, IND.
   ];
   for (const m of seedMembers) {
     if (mockStore.members.find((existing) => (existing as { name?: string }).name === m.name)) {
@@ -159,7 +165,7 @@ function seedDevScenarioIfRequested(containerName: string) {
   g._devScenarioSeeded = true;
   console.warn(
     `[dev] SEED_DEV_SCENARIO=fresh-thursday: seeded session ${sessionId} (signupOpen, 0/12, deadline ${deadline.slice(0, 10)}) ` +
-      `+ 6 invite-list members (Bruce has PIN 2468, others have no PIN). Mock store only.`,
+      `+ 6 famous-player invite-list members (Lin has PIN 2468, others have no PIN). Mock store only.`,
   );
 }
 
