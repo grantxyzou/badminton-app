@@ -8,6 +8,7 @@ import { randomBytes, scryptSync } from 'node:crypto';
 const g = global as typeof globalThis & {
   _mockStore?: Record<string, Record<string, unknown>[]>;
   _devAdminSeeded?: boolean;
+  _devScenarioSeeded?: boolean;
 };
 if (!g._mockStore) g._mockStore = {};
 const mockStore = g._mockStore;
@@ -64,9 +65,108 @@ function seedDevAdminIfRequested(containerName: string) {
   );
 }
 
+/**
+ * Dev-only scenario seed for end-to-end testing of the signup → settle →
+ * cover flow without touching real Cosmos data.
+ *
+ * Set `SEED_DEV_SCENARIO=fresh-thursday` to seed:
+ *   - one active session 48h in the future (signupOpen: true, deadline 24h out)
+ *   - the active-session-pointer document
+ *   - 6 invite-list members covering all three sign-up modes:
+ *       Bruce  (PIN 2468)   → sign-in flow
+ *       Sophia (no PIN)     → create-account flow
+ *       Josh, Karen, Patrick, Molly (no PIN) → autocomplete fodder
+ *
+ * Players container stays empty by design — the test scenario starts
+ * "no one signed up yet."
+ *
+ * Plays well with SEED_DEV_ADMIN — they seed different docs and both can
+ * be active simultaneously. Refuses when real Cosmos is configured.
+ */
+function seedDevScenarioIfRequested(containerName: string) {
+  if (g._devScenarioSeeded) return;
+  if (process.env.COSMOS_CONNECTION_STRING) return;
+  if (process.env.SEED_DEV_SCENARIO !== 'fresh-thursday') return;
+  // Only seed once, on first access to any container we care about.
+  if (containerName !== 'sessions' && containerName !== 'members') return;
+
+  const now = new Date();
+  const sessionDate = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000); // +48h
+  const deadlineDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // +24h
+  const datetime = sessionDate.toISOString();
+  const deadline = deadlineDate.toISOString();
+  const sessionId = sessionIdFromDate(datetime);
+
+  // Sessions container: session doc + pointer doc
+  mockStore.sessions ??= [];
+  if (!mockStore.sessions.find((s) => s.id === sessionId)) {
+    mockStore.sessions.push({
+      id: sessionId,
+      sessionId,
+      title: 'Thursday Badminton',
+      datetime,
+      endDatetime: new Date(sessionDate.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+      deadline,
+      courts: 2,
+      costPerCourt: 60,
+      maxPlayers: 12,
+      signupOpen: true,
+      locationVenue: "Wing's Badminton",
+      locationAddress: '11820 Horseshoe Way, Richmond',
+      showCostBreakdown: true,
+      createdAt: now.toISOString(),
+    });
+  }
+  if (!mockStore.sessions.find((s) => s.id === POINTER_ID)) {
+    mockStore.sessions.push({
+      id: POINTER_ID,
+      sessionId: POINTER_ID,
+      activeSessionId: sessionId,
+      updatedAt: now.toISOString(),
+    });
+  }
+
+  // Members container: invite list with mixed PIN states
+  mockStore.members ??= [];
+  const bruceSalt = randomBytes(16);
+  const bruceHash = scryptSync('2468', bruceSalt, 32, { N: 16384, r: 8, p: 1 });
+  const seedMembers = [
+    {
+      name: 'Bruce',
+      pinHash: `${bruceSalt.toString('hex')}:${bruceHash.toString('hex')}`,
+    },
+    { name: 'Sophia' },
+    { name: 'Josh' },
+    { name: 'Karen' },
+    { name: 'Patrick' },
+    { name: 'Molly' },
+  ];
+  for (const m of seedMembers) {
+    if (mockStore.members.find((existing) => (existing as { name?: string }).name === m.name)) {
+      continue;
+    }
+    mockStore.members.push({
+      id: `dev-member-${m.name.toLowerCase()}`,
+      name: m.name,
+      role: 'member',
+      active: true,
+      sessionCount: 0,
+      createdAt: now.toISOString(),
+      ...(m.pinHash ? { pinHash: m.pinHash } : {}),
+    });
+  }
+
+  g._devScenarioSeeded = true;
+  console.warn(
+    `[dev] SEED_DEV_SCENARIO=fresh-thursday: seeded session ${sessionId} (signupOpen, 0/12, deadline ${deadline.slice(0, 10)}) ` +
+      `+ 6 invite-list members (Bruce has PIN 2468, others have no PIN). Mock store only.`,
+  );
+}
+
 function getMockContainer(name: string) {
   if (!mockStore[name]) mockStore[name] = [];
   seedDevAdminIfRequested(name);
+  seedDevScenarioIfRequested(name);
   const store = mockStore[name];
 
   return {
