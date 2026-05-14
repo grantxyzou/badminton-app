@@ -80,25 +80,32 @@ let skipped = 0;
 let failed = 0;
 
 for (const item of items) {
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      cookie: `admin_session=${cookie}`,
-    },
-    body: JSON.stringify(item),
-  });
-  if (res.status === 201) {
-    inserted += 1;
-    process.stdout.write('+');
-  } else if (res.status === 409) {
-    skipped += 1;
-    process.stdout.write('.');
-  } else {
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: `admin_session=${cookie}`,
+      },
+      body: JSON.stringify(item),
+    });
+    if (res.status === 201) {
+      inserted += 1;
+      process.stdout.write('+');
+    } else if (res.status === 409) {
+      skipped += 1;
+      process.stdout.write('.');
+    } else {
+      failed += 1;
+      process.stdout.write('!');
+      let body = '';
+      try { body = await res.text(); } catch { /* body read failed; status is enough */ }
+      console.error(`\n[seed-catalog] ${item.id} → ${res.status}: ${body.slice(0, 200)}`);
+    }
+  } catch (err) {
     failed += 1;
     process.stdout.write('!');
-    const body = await res.text();
-    console.error(`\n[seed-catalog] ${item.id} → ${res.status}: ${body.slice(0, 200)}`);
+    console.error(`\n[seed-catalog] ${item.id} → network error: ${err?.message ?? err}`);
   }
 }
 

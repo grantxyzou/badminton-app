@@ -69,4 +69,15 @@ describe('equipment-catalog seed data', () => {
       expect(item.seeded).toBe(true);
     }
   });
+
+  it('seed entries omit createdAt — the API is the source of truth for that field', () => {
+    // The catalog isn't a temporal event log. Seed rows can't honestly know
+    // when each model was first manufactured/curated. The type marks createdAt
+    // optional and the API stamps it on admin-created rows; seed rows leave
+    // it unset. If a future seed entry hardcodes a createdAt, this assertion
+    // forces the author to defend that choice explicitly.
+    for (const item of parsed.items as Array<CatalogItem & { createdAt?: string }>) {
+      expect(item.createdAt).toBeUndefined();
+    }
+  });
 });

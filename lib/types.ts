@@ -224,7 +224,11 @@ export interface CatalogItem {
   sources?: CatalogSource[];
   /** Auto-curated catalog seed (e.g. from scripts/seed-equipment-catalog.mjs) vs admin-added. */
   seeded?: boolean;
-  createdAt: string;
+  /** ISO timestamp the row was first persisted. Optional because seed entries
+   *  legitimately don't know it — the catalog isn't a temporal event log.
+   *  The API stamps this on admin-created rows; seed-imported rows leave it
+   *  unset, and downstream readers must not rely on it for sort. */
+  createdAt?: string;
 }
 
 export interface GearItem {
