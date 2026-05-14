@@ -19,7 +19,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW'
   | 'NEXT_PUBLIC_FLAG_COMMAND_CENTER'
   | 'NEXT_PUBLIC_FLAG_SETTLE'
-  | 'NEXT_PUBLIC_FLAG_LEDGER';
+  | 'NEXT_PUBLIC_FLAG_LEDGER'
+  | 'NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE';
 
 interface FlagMeta {
   description: string;
@@ -48,6 +49,11 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'after v1.5 is promoted to stable + lived-in for 2 weeks',
   },
+  NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE: {
+    description: 'Slice-0 of the Value-Hub plan (`/root/.claude/plans/system-reminder-you-re-running-in-fizzy-river.md`): a thin end-to-end vertical of equipment catalog (rackets only, seeded ~15 models), one-tap "What\'s your racket?" on Profile, a 30s post-session game-result logger, a single deterministic recommendation card, and the partner-frequency Stats card. Gates the player-facing UI surfaces; the backend containers (`equipmentCatalog`, `playerGear`, `gameResults`) are bootstrapped lazily via `ensureContainer` regardless, so they exist before the flag flips on. On for bpm-next + dev once landed; off on bpm-stable until the 4-week kill-criterion gate clears.',
+    owner: 'grant',
+    plannedRemoval: 'after Slice-0 kill-criterion gate decides — either promoted to stable + lived-in 2 weeks, or torn down and the flag deleted along with the player-facing UI',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -60,6 +66,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_SETTLE;
     case 'NEXT_PUBLIC_FLAG_LEDGER':
       return process.env.NEXT_PUBLIC_FLAG_LEDGER;
+    case 'NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE':
+      return process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
   }
 }
 

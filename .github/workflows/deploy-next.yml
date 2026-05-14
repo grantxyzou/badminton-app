@@ -43,6 +43,7 @@ jobs:
           NEXT_PUBLIC_FLAG_COMMAND_CENTER: 'true'
           NEXT_PUBLIC_FLAG_SETTLE: 'true'
           NEXT_PUBLIC_FLAG_LEDGER: 'true'
+          NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE: 'true'
 
       - name: Package standalone build
         run: |
