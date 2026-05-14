@@ -3,7 +3,7 @@ import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isAdminAuthed } from '@/lib/auth';
-import { hashPin } from '@/lib/recoveryHash';
+import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import { appendEvent } from '@/lib/recoveryAudit';
 import type { RecoveryEvent } from '@/lib/types';
 
@@ -190,12 +190,35 @@ export async function POST(req: NextRequest) {
       matchedMember = (resource ?? null) as typeof matchedMember;
     }
 
-    // PIN-protected member: the signup path is anonymous (just a name) and
-    // can't tell whether the requester is the legitimate owner. Forcing
-    // them through the sign-in flow (which verifies PIN against
-    // members.pinHash) closes the impersonation hole. Admins bypass.
+    // PIN-protected member: the caller must prove ownership before we
+    // register them for a session. Three accepted proofs, in order:
+    //   1. Admin cookie (admins bypass everywhere)
+    //   2. Valid body.pin matching member.pinHash (unified Home sign-in path
+    //      sends pin alongside name in one call — see HomeTab.handleSignUp)
+    //   3. Nothing → 401 pin_required, client falls back to /recover-then-POST
+    //
+    // PIN verification on this path is rate-limited per (name, IP) at the
+    // same strictness as /api/players/recover (5/hr) so this endpoint can't
+    // be used to bypass the stricter recover-side rate limit.
     if (matchedMember && typeof matchedMember.pinHash === 'string' && matchedMember.pinHash.length > 0 && !isAdminAuthed(req)) {
-      return NextResponse.json({ error: 'pin_required' }, { status: 401 });
+      const candidate = typeof body.pin === 'string' ? body.pin : null;
+      if (!candidate) {
+        // Constant-time miss against FAKE_HASH so "no pin provided" and
+        // "wrong pin" return at the same wall-clock.
+        await verifyPin('0000', FAKE_HASH);
+        return NextResponse.json({ error: 'pin_required' }, { status: 401 });
+      }
+      if (!checkRateLimit(`signup-pin:${trimmedName.toLowerCase()}:${ip}`, 5, 60 * 60 * 1000)) {
+        return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
+      }
+      const ok = await verifyPin(candidate, matchedMember.pinHash);
+      if (!ok) {
+        return NextResponse.json({ error: 'pin_incorrect' }, { status: 401 });
+      }
+      // Verified — fall through to the normal signup path. pinHash from
+      // body.pin is intentionally NOT mirrored back to the player record
+      // (the client wasn't asking to change the PIN, just to authenticate).
+      pinHash = undefined;
     }
 
     const anyExisting = existingRes.resources;

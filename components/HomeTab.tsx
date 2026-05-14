@@ -260,12 +260,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           else setError(t('signup.pinIncorrect'));
           return;
         }
-        // Step 2: register for this week's session (no PIN — server already
-        // knows the member from /recover).
+        // Step 2: register for this week's session. Re-send the PIN so the
+        // /api/players anti-impersonation guard accepts the request — without
+        // it, the route sees a PIN'd member + no PIN + no admin cookie and
+        // returns 401 pin_required. /recover doesn't grant any auth cookie,
+        // so each call needs its own credential.
         const signupRes = await fetch(`${BASE}/api/players`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: trimmed }),
+          body: JSON.stringify({ name: trimmed, pin }),
         });
         const signupData = await signupRes.json();
         if (!signupRes.ok) {
