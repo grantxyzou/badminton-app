@@ -65,6 +65,7 @@ Through **v1.4** — see `CHANGELOG.md` for the full per-version record (v1.0 �
 ## 4. Planned / next initiatives
 
 - **Value-Hub** (post-merge of #95) — 4 tracks (Insight / Equipment / Learning+Rec / Reach), decisions A–G ratified 2026-05-16. Slice-0 first, kill-criteria gated. See the plan doc.
+- **In-app feedback / bug report (stable)** — regular friends on stable can't file GitHub issues; need a dead-simple in-app "tell the admin something's wrong" path (no GitHub account, no jargon). Serves the cost-automation/value-hub pillar (closes the feedback loop the value-hub plan flagged as missing). Tracked: GH issue under Operational hardening.
 - **Offline backlog** (deferred, tracked) — per-card `loadError` pills for the ~16 remaining CommandCenter cards; PWA/service-worker only if "loads while offline" becomes a real requirement.
 - **P1.5/A2 — identity recovery bridge** — still pending. Plan `docs/superpowers/plans/2026-04-27-a2-identity-recovery.md`.
 - **v1.5/B–D** — ledger page + Command Center row + remove-after-settle. Plan `docs/superpowers/plans/2026-05-13-v1.5a-write-off-cover.md`.
