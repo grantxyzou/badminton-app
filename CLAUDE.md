@@ -154,6 +154,8 @@ Canonical bundle mirrored at `docs/design-system/` (43 files — tokens, 28 spec
 - **Announcements are stored as raw markdown text**: the API accepts any string (up to 800 chars) and `HomeTab` / `AdminDashboard` list rendering both route through `renderMarkdown()` from `lib/miniMarkdown.tsx`. Legacy plain-text announcements render identically (no markdown tokens in them). Server does not parse, normalize, or sanitize the string — the parser is JSX-only with no raw-HTML injection API, so XSS cannot originate from this path even with hostile input.
 - **`PATCH /api/session/bird-usage` vs `PUT /api/session`**: `/api/session` PUT replaces the entire active-session doc and only targets the active session. `/api/session/bird-usage` PATCH is additive: it upserts a single purchase's entry in a specific session's `birdUsages` array, by `sessionId`, so admins can retro-assign tubes to archived sessions from the bird inventory page. Posting `tubes: 0` removes the entry (undo). Both paths validate tubes ∈ [0, 100] in 0.25 increments and look up the purchase for authoritative cost snapshotting.
 - **Stats preview-name is separate from identity**: `badminton_stats_preview_name` stores a name picked for viewing someone else's stats (admin browsing, incognito). It is NEVER written into `badminton_identity` because that would fake a `deleteToken` and break self-cancel semantics. `AttendanceCardLive` and `StatsStreakHero` both resolve identity → preview-name → picker in that order. Signing up for a session upgrades the preview-name to a real identity and the preview key is ignored from that point forward.
+- **Offline posture is "legible-fail"** (`lib/useOnline.ts`). New network-mutating UI MUST gate on `useOnline()` (disable + the app-wide banner explains why) — never execute-then-break. The admin subtree is wrapped in `<AdminErrorBoundary>` (render-throw + ChunkLoadError net; auto-reloads on reconnect; "Reload now" disabled while offline). Full-reload-while-offline is unsupported by design (no service worker). See `docs/plans/offline-legible-fail.md`.
+- **Unknown ≠ known-false** (the auth twin of the lying-empty-state rule): a failed/pending probe must not render as a confirmed negative. Tri-state it — e.g. HomeShell's `adminKnown` gates the admin-tab bounce so a reload on `?tab=admin` doesn't kick you off before auth resolves.
 
 ## Feature Flags
 
@@ -175,6 +177,8 @@ Two deployments from one `main` branch (trunk-based + tag promotion):
 - **`bpm-stable`** — friend-facing production. Deploys only when `.github/workflows/deploy-stable.yml` is manually dispatched with a `tag` input (e.g., `bpm-stable-v1.0`). Runs with `NEXT_PUBLIC_ENV=stable` and flags `off` by default.
 
 **Promotion runbook**: update `CHANGELOG.md` → tag `main` as `bpm-stable-vN.0` → push tag → dispatch `deploy-stable` with the tag → smoke test → announce.
+
+**Stable-tag footgun**: the promotion tags a commit, and `main` auto-deploys to `bpm-next` — so `main` routinely contains post-soak work ahead of what's ready for stable. Tag the *specific* intended commit, never blindly `main`, or unsoaked work rides to stable. (2026-05-16: deliberately tagged `ab566e0` for `bpm-stable-v1.4` to keep the just-merged offline work off the stable cut.)
 
 **Rollback**: re-dispatch `deploy-stable` with a previous tag. For data rollback, Cosmos point-in-time restore (7-day retention).
 
