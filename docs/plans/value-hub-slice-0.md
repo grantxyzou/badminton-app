@@ -1,5 +1,12 @@
 # BPM Badminton — Strategic Plan: Value-Hub Expansion
 
+> **Ratified 2026-05-16.** Decisions A–G are accepted as recommended:
+> A2 (first-class catalog + gear containers) · B2 engine + B1 explainer ·
+> C1 self-report 48h sheet · D1 deferred (design for affiliate, ship `null`,
+> revisit after 3 mo engagement data) · E2 spine + E1 shuffle button ·
+> F1 (only equipment + drills public) · G2 (tracks + thin slice).
+> Slice-0 may now proceed; track fan-out gated on Slice-0's kill criterion.
+
 ## Context
 
 The app is a mature, single-club operations tool: sign-ups, waitlist, payments, settle workflow, attendance stats, ACE skills radar, bird inventory. The CLAUDE.md taxonomy is comprehensive at the **operations** layer.
