@@ -8,6 +8,7 @@ import ShuttleLoader from '@/components/ShuttleLoader';
 import ShuttleIcon from '@/components/ShuttleIcon';
 import PageHeader from '@/components/primitives/PageHeader';
 import ConfirmInline from '@/components/primitives/ConfirmInline';
+import { useOnline } from '@/lib/useOnline';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
@@ -15,6 +16,7 @@ const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
 export default function PlayersTab() {
   const pageT = useTranslations('pages.signup');
   const t = useTranslations('players');
+  const online = useOnline();
   const format = useFormatter();
   const [players, setPlayers] = useState<Player[]>([]);
   const [session, setSession] = useState<Session | null>(null);
@@ -47,6 +49,7 @@ export default function PlayersTab() {
 
   async function handleCancel() {
     if (!currentUser) return;
+    if (!online) return; // legible-fail: banner explains; don't fire a doomed DELETE
     const id = getIdentity();
     try {
       const res = await fetch(`${BASE}/api/players`, {
@@ -154,6 +157,7 @@ export default function PlayersTab() {
                         <button
                           type="button"
                           onClick={() => setConfirmingCancel(true)}
+                          disabled={!online}
                           className="text-xs text-red-400 hover:text-red-300 transition-colors ml-1"
                         >
                           {t('cancelAction')}
@@ -212,6 +216,7 @@ export default function PlayersTab() {
                           <button
                             type="button"
                             onClick={() => setConfirmingCancel(true)}
+                            disabled={!online}
                             className="text-xs text-red-400 hover:text-red-300 transition-colors ml-1"
                           >
                             {t('leaveAction')}

@@ -1,4 +1,5 @@
 import HomeShell from '@/components/HomeShell';
+import { OnlineProvider } from '@/lib/useOnline';
 import { readActiveAnnouncements } from '@/lib/announcements';
 
 // Force dynamic rendering — the announcement read hits Cosmos at request
@@ -24,5 +25,9 @@ export const dynamic = 'force-dynamic';
 export default async function Page() {
   const announcements = await readActiveAnnouncements();
   const initialAnnouncement = announcements[0] ?? null;
-  return <HomeShell initialAnnouncement={initialAnnouncement} />;
+  return (
+    <OnlineProvider>
+      <HomeShell initialAnnouncement={initialAnnouncement} />
+    </OnlineProvider>
+  );
 }

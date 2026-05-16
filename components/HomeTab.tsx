@@ -18,6 +18,7 @@ import EnterCodeSheet from './EnterCodeSheet';
 import PinInput from './PinInput';
 import NameAutocompleteInput from './home/NameAutocompleteInput';
 import { useMemberProbe } from '@/lib/useHasPin';
+import { useOnline } from '@/lib/useOnline';
 import { renderMarkdown } from '@/lib/miniMarkdown';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -43,6 +44,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const t = useTranslations('home');
   const tStates = useTranslations('home.states');
   const format = useFormatter();
+  const online = useOnline();
   const [session, setSession] = useState<Session | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [announcement, setAnnouncement] = useState<Announcement | null>(initialAnnouncement);
@@ -223,6 +225,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
+    // Legible-fail: refuse the mutation with a clear reason instead of
+    // firing a fetch that throws and leaves the form in limbo.
+    if (!online) { setError(t('signup.offline')); return; }
     const trimmed = name.trim();
     if (!trimmed) { setError(t('signup.nameRequired')); return; }
 
@@ -533,7 +538,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
               <button
                 type="submit"
-                disabled={isSubmitting || !name.trim()}
+                disabled={isSubmitting || !name.trim() || !online}
                 className="cc-btn cc-btn-primary cc-btn-lg"
               >
                 {isSubmitting ? t('signup.joining') : t('signup.waitlist')}
@@ -592,7 +597,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <button
                 type="submit"
                 disabled={
-                  isSubmitting || !name.trim()
+                  isSubmitting || !name.trim() || !online
                   || (authMode === 'sign-in' && pin.length !== 4)
                   || (authMode === 'create' && (pin.length !== 4 || confirmPin.length !== 4))
                 }
