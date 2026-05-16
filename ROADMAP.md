@@ -3,7 +3,11 @@
 > **Stable:** https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm
 > **Next (preview):** https://vnext-badminton-app-enhcave5djcvafe9.canadacentral-01.azurewebsites.net/bpm
 > **Stack:** Next.js 16 · Azure App Service (dual) · Cosmos DB · Anthropic Claude API
-> **Last updated:** 2026-04-24
+> **Last updated:** 2026-05-14
+>
+> ⚠️ **Live planning lives in GitHub issues + milestones (since 2026-05-08).**
+> This file is a historical record of priority bands P0 → P1.7 (v1.0 → v1.3).
+> For current sprint state see GH milestones (v1.4, v1.5, v1.6) and `.claude/soak.local.md`.
 
 Ranking runs P0 (foundation) → P4 (polish). **P1.5** and **P1.6** were inserted after the user-research simulation revealed 7 of 10 top unmet needs had zero coverage. **P1.7** landed as the formalized design-system pass.
 
