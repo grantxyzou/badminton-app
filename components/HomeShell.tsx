@@ -10,6 +10,8 @@ import ProfileTab from '@/components/ProfileTab';
 import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
+import StatusBanner from '@/components/primitives/StatusBanner';
+import AdminErrorBoundary from '@/components/AdminErrorBoundary';
 import type { DevOverrides } from '@/components/DevPanel';
 import type { Announcement } from '@/lib/types';
 import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
@@ -44,6 +46,11 @@ export default function HomeShell({ initialAnnouncement }: Props) {
   const [devOverrides, setDevOverrides] = useState<DevOverrides>({});
   const [profileSession, setProfileSession] = useState<{ id: string; label: string }>({ id: '', label: '' });
   const [demoMode, setDemoMode] = useState(false);
+  // `offline` is "we couldn't reach the API to verify state" — NOT "the
+  // user is not an admin". Keeping these distinct is the whole point: a
+  // failed fetch must never masquerade as a confirmed negative answer
+  // (the auth twin of the forbidden `catch { setX([]) }` lying-empty-state).
+  const [offline, setOffline] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -75,26 +82,51 @@ export default function HomeShell({ initialAnnouncement }: Props) {
   // component), and on window focus (covers cross-tab sign-out and admin-cookie
   // expiry while the tab was backgrounded).
   const refreshAdminAccess = useCallback(() => {
+    let netFailed = false;
+    const NET_FAIL = Symbol('net-fail');
     Promise.all([
-      fetch(`${BASE}/api/admin`).then(r => r.json()).catch(() => ({ authed: false })),
+      fetch(`${BASE}/api/admin`).then(r => r.json()).catch(() => NET_FAIL),
       (() => {
         const name = getIdentity()?.name ?? null;
         if (!name) return Promise.resolve({ role: 'member' });
         return fetch(`${BASE}/api/members/me?name=${encodeURIComponent(name)}`)
-          .then(r => r.json()).catch(() => ({ role: 'member' }));
+          .then(r => r.json()).catch(() => NET_FAIL);
       })(),
     ]).then(([auth, member]) => {
-      setShowAdmin(auth.authed === true || member.role === 'admin');
+      // A network failure on EITHER probe means we can't make an
+      // authoritative admin decision. Preserve last-known showAdmin and
+      // flag offline — never downgrade to not-admin on an unverifiable
+      // signal (that's what bounced users out of /admin on a wifi blip).
+      if (auth === NET_FAIL || member === NET_FAIL) {
+        netFailed = true;
+        setOffline(true);
+        return;
+      }
+      setOffline(false);
+      setShowAdmin(
+        (auth as { authed?: boolean }).authed === true ||
+        (member as { role?: string }).role === 'admin',
+      );
+    }).catch(() => {
+      if (!netFailed) setOffline(true);
     });
   }, []);
 
   useEffect(() => {
     refreshAdminAccess();
+    // `online` re-probes (which clears the banner on success and restores
+    // the real admin verdict). `offline` flips the banner immediately so
+    // the user isn't left wondering why actions silently fail.
+    const goOffline = () => setOffline(true);
     window.addEventListener(IDENTITY_EVENT, refreshAdminAccess);
     window.addEventListener('focus', refreshAdminAccess);
+    window.addEventListener('online', refreshAdminAccess);
+    window.addEventListener('offline', goOffline);
     return () => {
       window.removeEventListener(IDENTITY_EVENT, refreshAdminAccess);
       window.removeEventListener('focus', refreshAdminAccess);
+      window.removeEventListener('online', refreshAdminAccess);
+      window.removeEventListener('offline', goOffline);
     };
   }, [refreshAdminAccess]);
 
@@ -138,10 +170,20 @@ export default function HomeShell({ initialAnnouncement }: Props) {
         <ThemeToggle />
         <LanguageToggle />
         <main data-page-shell className="max-w-lg mx-auto px-4 pt-6">
+          {offline && (
+            <div className="mb-3">
+              <StatusBanner
+                tone="warn"
+                icon="warning"
+                title="You're offline"
+                body="Showing your last-known view. Some data may be stale until you reconnect."
+              />
+            </div>
+          )}
           {activeTab === 'home' && <div key="home" className="animate-fadeIn"><HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} /></div>}
           {activeTab === 'players' && <div key="players" className="animate-fadeIn"><PlayersTab /></div>}
           {activeTab === 'skills' && <div key="skills" className="animate-fadeIn"><SkillsTab isAdmin={showAdmin} onTabChange={setActiveTab} /></div>}
-          {activeTab === 'admin' && showAdmin && <div key="admin" className="animate-fadeIn"><AdminTab /></div>}
+          {activeTab === 'admin' && showAdmin && <div key="admin" className="animate-fadeIn"><AdminErrorBoundary><AdminTab /></AdminErrorBoundary></div>}
           {activeTab === 'profile' && (
             <div key="profile" className="animate-fadeIn">
               <ProfileTab
