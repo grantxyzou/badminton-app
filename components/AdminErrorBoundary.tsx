@@ -8,6 +8,7 @@ interface Props {
 interface State {
   hasError: boolean;
   isChunkError: boolean;
+  isOffline: boolean;
 }
 
 function looksLikeChunkError(error: unknown): boolean {
@@ -38,9 +39,9 @@ function looksLikeChunkError(error: unknown): boolean {
  * in a `void load()` effect) — those need the per-card `catch` pass.
  */
 export default class AdminErrorBoundary extends Component<Props, State> {
-  state: State = { hasError: false, isChunkError: false };
+  state: State = { hasError: false, isChunkError: false, isOffline: false };
 
-  static getDerivedStateFromError(error: unknown): State {
+  static getDerivedStateFromError(error: unknown): Partial<State> {
     return { hasError: true, isChunkError: looksLikeChunkError(error) };
   }
 
@@ -50,11 +51,16 @@ export default class AdminErrorBoundary extends Component<Props, State> {
   }
 
   componentDidMount() {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      this.setState({ isOffline: true });
+    }
     window.addEventListener('online', this.handleOnline);
+    window.addEventListener('offline', this.handleOffline);
   }
 
   componentWillUnmount() {
     window.removeEventListener('online', this.handleOnline);
+    window.removeEventListener('offline', this.handleOffline);
   }
 
   // Reconnecting is the natural recovery point for a chunk that failed to
@@ -64,10 +70,20 @@ export default class AdminErrorBoundary extends Component<Props, State> {
   handleOnline = () => {
     if (this.state.hasError && this.state.isChunkError) {
       window.location.reload();
+      return;
     }
+    this.setState({ isOffline: false });
+  };
+
+  handleOffline = () => {
+    this.setState({ isOffline: true });
   };
 
   handleReload = () => {
+    // Guard: a full reload is a server round-trip — doomed while offline
+    // and it replaces the contained fallback with a hard browser error
+    // page (the "reload breaks the site" report). Only act when online.
+    if (this.state.isOffline) return;
     window.location.reload();
   };
 
@@ -91,8 +107,10 @@ export default class AdminErrorBoundary extends Component<Props, State> {
             className="cc-btn cc-btn-ghost"
             style={{ marginTop: 14 }}
             onClick={this.handleReload}
+            disabled={this.state.isOffline}
+            aria-disabled={this.state.isOffline}
           >
-            Reload now
+            {this.state.isOffline ? 'Reconnect to reload' : 'Reload now'}
           </button>
         </div>
       );

@@ -8,6 +8,7 @@
       "confirmed": "Signed up as {name}",
       "inviteError": "We don't have \"{name}\" on our invite list. Check the spelling, or ask the friend who shared this app with you to add you.",
       "networkError": "Network error. Please try again.",
+      "offline": "You're offline — reconnect to sign up.",
       "nameRequired": "Enter your name to sign up",
       "pinRequired": "Set a 4-digit PIN to sign up",
       "pinTooCommon": "Pick a less common PIN",
