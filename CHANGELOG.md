@@ -54,6 +54,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
      Format: `- **Short title** — one-sentence what + why.` See v1.3 below for examples.
      Empty subheadings are fine; delete a section if you don't end up using it. -->
 
+---
+
+## v1.4 — Command Center + unified Home auth + Send-the-bill (2026-05-16)
+
 ### Added
 
 - **`writtenOff` on `PATCH /api/players` + "Cover their $X" action** *(flag-gated `NEXT_PUBLIC_FLAG_LEDGER`)* — admin can cover a player's debt via the existing PaymentsCard per-player action sheet. Sets `Player.writtenOff: true` and clears `paid`. Mutually exclusive with `paid` at the route handler (writtenOff wins if both flags are sent in one body). Friend-voice confirm copy: "I got it." First piece of v1.5; ledger view + remove-after-settle prompt land in subsequent PRs. Ships with `<CoverSheet>` component supporting both `cover-only` and `cover-and-remove` modes (latter wired in v1.5/C).
