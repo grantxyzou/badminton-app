@@ -37,6 +37,7 @@ Through **v1.4** — see `CHANGELOG.md` for the full per-version record (v1.0 �
 
 - **#95** value-hub Slice-0 (`claude/plan-app-design-NneJV`) — ratified strategy + scaffolding. Plan `docs/plans/value-hub-slice-0.md` (⚠ only on this branch — not on main until merged).
 - **#96** audit fixes (`fix/audit-followups`) — ProfileTab lying-empty fix + doc accuracy.
+- **#97** dependabot `next 16.2.1→16.2.6` — deferred; don't merge during the v1.4-promoted / offline-soaking window. Review post-soak.
 
 ## 4. Planned / next initiatives
 
