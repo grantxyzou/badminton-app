@@ -75,6 +75,8 @@ Through **v1.4** — see `CHANGELOG.md` for the full per-version record (v1.0 �
 
 Constraint: bpm-stable just took v1.4 the day before a real sign-up; bpm-next carries v1.4+offline.
 
+**▶ NEXT SESSION — FIRST TASK (parked 2026-05-16):** GitHub organization pass — merge #95 (`bpm confirm`) so the grand plan lands on main; create a `Value-Hub` milestone + 4 track epics; create the in-app-feedback issue; triage the ~19 open issues / 7 milestones to this locked critical path. Makes the grand plan + all work live and organized on GH. See `docs/OWNER-KB.md`.
+
 1. **Smoke stable v1.4** (sign-up flow on the real site) — highest priority, real event imminent.
 2. **Let offline soak on bpm-next** (beta friends) — no action; gather signal.
 3. **Merge #96** (small, corrects misleading CLAUDE.md/ROADMAP) — low risk, anytime.
