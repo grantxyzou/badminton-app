@@ -2,7 +2,7 @@
 /**
  * One-shot seed: load scripts/data/equipment-catalog.json and POST each item
  * to /api/equipment/catalog (admin-only). Designed for the Value-Hub Slice-0
- * bootstrap — see /root/.claude/plans/system-reminder-you-re-running-in-fizzy-river.md.
+ * bootstrap — see docs/plans/value-hub-slice-0.md.
  *
  * Idempotent: items have deterministic `id` fields, so re-running skips
  * existing rows and only inserts new ones. The endpoint MUST honour the
