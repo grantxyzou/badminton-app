@@ -1,5 +1,28 @@
 # BPM Badminton — Roadmap & Status (single source of truth)
 
+## 🔒 LOCKED — North Star / Non-Goals / Change Rule
+
+*Editing anything in this block is a deliberate strategy change. If you're doing it by accident, stop.*
+
+**North Star:** a value-hub for the recreational **badminton** player — between-session engagement, enabled learning, admin cost-automation, and traffic/recommendations strong enough to suggest equipment purchases. Critical path: merge #95 → build value-hub Slice-0 → prove engagement (kill-criteria) → capture game/win-loss data → fan out tracks 1–3 → track 4 last.
+
+**Non-Goals (drift = building these):**
+- ❌ Multi-sport / generic "sports app" (it is badminton-specific, on purpose)
+- ❌ Generic court/venue booking platform
+- ❌ Multi-tenant / SaaS — until Stage-2 (#81) is *explicitly* chosen as the active initiative
+- ❌ Any new user-facing surface that doesn't serve a named track below
+- ❌ Real-offline/PWA, native app, payments processing, social feed
+
+**Change Rule (the gate):** every new work item must name the track or critical-path step it serves. **Names none → it's drift → GitHub issue in a `later`/parking milestone, NOT started.**
+
+**WIP cap:** one active workstream carried to *shipped-on-stable* before the next starts. Unmerged branches are where drift hides (this is enforced by observation: >2 in-flight branches = stop and converge).
+
+**Kill-criteria honored:** do NOT fan out value-hub tracks 1–4 until Slice-0 passes its written kill-criterion in `docs/plans/value-hub-slice-0.md`. No speculative multi-track building.
+
+**30-day checkpoint:** scheduled drift review (see `/schedule`). The question: *"Is what shipped in the last 30 days on the critical path above?"* >1 off-path item shipped = drift; re-read this block.
+
+---
+
 > **Stable:** https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm
 > **Next (preview):** https://vnext-badminton-app-enhcave5djcvafe9.canadacentral-01.azurewebsites.net/bpm
 > **Stack:** Next.js 16 · Azure App Service (dual) · Cosmos DB · Anthropic Claude API
