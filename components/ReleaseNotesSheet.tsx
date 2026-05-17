@@ -6,7 +6,7 @@ import type { Release } from '@/lib/types';
 
 interface ReleaseNotesSheetProps {
   open: boolean;
-  releases: Release[];
+  releases: Release[] | null;
   onClose: () => void;
 }
 
@@ -18,7 +18,7 @@ export default function ReleaseNotesSheet({ open, releases, onClose }: ReleaseNo
   const format = useFormatter();
 
   function handleClose() {
-    if (releases.length > 0) {
+    if (releases && releases.length > 0) {
       localStorage.setItem('badminton_last_read_release', releases[0].version);
     }
     onClose();
@@ -44,6 +44,11 @@ export default function ReleaseNotesSheet({ open, releases, onClose }: ReleaseNo
       </BottomSheetHeader>
       <BottomSheetBody className="p-5 pb-20">
         <p className="terminal-prompt mb-4">$ bpm --changelog</p>
+        {releases === null ? (
+          <p className="terminal-body" role="alert">
+            Couldn&apos;t load — refresh to retry
+          </p>
+        ) : (
         <ul className="space-y-6">
           {releases.map((r) => (
             <li key={r.id}>
@@ -56,6 +61,7 @@ export default function ReleaseNotesSheet({ open, releases, onClose }: ReleaseNo
             </li>
           ))}
         </ul>
+        )}
       </BottomSheetBody>
     </BottomSheet>
   );
