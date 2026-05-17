@@ -42,7 +42,7 @@ export default function ProfileTab({
   // open RecoveryPinSheet (set / change / remove + forgot-it handoff).
   const [recoveryPinOpen, setRecoveryPinOpen] = useState(false);
   const [releaseSheetOpen, setReleaseSheetOpen] = useState(false);
-  const [releases, setReleases] = useState<Release[]>([]);
+  const [releases, setReleases] = useState<Release[] | null>([]);
   const tSettings = useTranslations('profile.settings');
   const tNav = useTranslations('nav');
 
@@ -50,9 +50,12 @@ export default function ProfileTab({
     const id = getIdentity();
     setLocalIdentity(id);
     fetch(`${BASE}/api/releases`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: Release[]) => setReleases(Array.isArray(data) ? data : []))
-      .catch(() => setReleases([]));
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`releases fetch ${r.status}`);
+        return r.json();
+      })
+      .then((data: Release[]) => setReleases(Array.isArray(data) ? data : null))
+      .catch(() => setReleases(null));
   }, []);
 
   // Listen for identity mutations from any other component (e.g. EnterCodeSheet
