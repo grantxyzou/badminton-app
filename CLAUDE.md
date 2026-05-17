@@ -58,6 +58,7 @@ Canonical bundle mirrored at `docs/design-system/` (43 files — tokens, 28 spec
 - **Corner radii ladder** — rectangular surfaces capped at **16px**. 6/8/10/12/16 for rect; 100px for pill. Glass-card was at 24px historically (self-inflicted spec violation); now 16.
 - **Button family** — prefer the `cc-btn` family (`cc-btn-primary` / `-secondary` / `-ghost` / `-danger`) for command-center actions. Compose with size modifier `cc-btn-lg` for prominent hero CTAs. The legacy `.btn-primary` (gradient, larger weight) is kept for back-compat but new admin code should use `cc-btn` for the focus ring + a11y. All defined in `app/globals.css`.
 - **Stat tiles** — `.cc-tile` with severity variant (`warn` / `bad` / `info`) is interactive (cursor:pointer, hover). Use `.cc-tile-static` for read-only stat displays so you don't render three buttons that all go to the same place.
+- **Design system first — always**: Use established patterns from `globals.css` for all interactive element states. When no explicit rule exists for a new case, derive from the nearest existing principle rather than inventing ad-hoc values. Example: a list row that will be tappable in a future sub-issue uses `opacity: 0.5; pointer-events: none` — same principle as `.cc-btn:disabled`. If a genuinely new pattern is needed, name the principle and define it in `globals.css` before using it inline.
 
 ## Coding Conventions
 

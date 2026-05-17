@@ -24,6 +24,11 @@ import CommandCenter from './CommandCenter/CommandCenter';
 import BirdsPage from './CommandCenter/BirdsPage';
 import RosterPage from './CommandCenter/RosterPage';
 import SetupPage from './CommandCenter/SetupPage';
+import LedgerPage from './LedgerPage';
+import AdminBackHeader from './AdminBackHeader';
+import AnnouncementsCard from './CommandCenter/AnnouncementsCard';
+import ETransferRecipientEditor from './CommandCenter/ETransferRecipientEditor';
+import SkipDatesEditor from './CommandCenter/SkipDatesEditor';
 import { isFlagOn } from '@/lib/flags';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -84,6 +89,38 @@ export default function AdminDashboard() {
   }
   if (view === 'advance') return <div className="animate-slideInRight"><AdvanceSessionForm onBack={goBack} /></div>;
   if (view === 'releases') return <div className="animate-slideInRight"><ReleasesView onBack={goBack} /></div>;
+  if (view === 'ledger') {
+    // Flag gates the UI entry point; the GET endpoint is always available
+    // (admin-auth is its own gate). If the flag is off, fall through to the
+    // dashboard rather than rendering an orphan page.
+    if (isFlagOn('NEXT_PUBLIC_FLAG_LEDGER')) {
+      return <div className="animate-slideInRight"><LedgerPage onBack={goBack} /></div>;
+    }
+  }
+  if (view === 'announcements') {
+    return (
+      <div className="animate-slideInRight space-y-3">
+        <AdminBackHeader onBack={goBack} title="Announcements" />
+        <AnnouncementsCard refreshKey={refreshKey} />
+      </div>
+    );
+  }
+  if (view === 'etransfer') {
+    return (
+      <div className="animate-slideInRight space-y-3">
+        <AdminBackHeader onBack={goBack} title="E-transfer recipient" />
+        <ETransferRecipientEditor />
+      </div>
+    );
+  }
+  if (view === 'skip-dates') {
+    return (
+      <div className="animate-slideInRight space-y-3">
+        <AdminBackHeader onBack={goBack} title="Skip dates" />
+        <SkipDatesEditor />
+      </div>
+    );
+  }
 
   if (isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER')) {
     return <CommandCenter refreshKey={refreshKey} setView={setView} />;

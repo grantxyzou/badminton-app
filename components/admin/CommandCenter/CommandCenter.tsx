@@ -8,10 +8,7 @@ import NextSessionCard from './NextSessionCard';
 import PaymentsCard from './PaymentsCard';
 import AdminDashTiles from './AdminDashTiles';
 import RecentSessionsStrip from './RecentSessionsStrip';
-import AnnouncementsCard from './AnnouncementsCard';
 import PlayerProfileSheet from './PlayerProfileSheet';
-import SkipDatesEditor from './SkipDatesEditor';
-import ETransferRecipientEditor from './ETransferRecipientEditor';
 import ReceiptSheet from './ReceiptSheet';
 import type { AdminView } from '../types';
 import type { ReceiptInput } from '@/lib/receiptTemplate';
@@ -136,24 +133,65 @@ export default function CommandCenter({ refreshKey, setView }: CommandCenterProp
         onOpenBirds={() => setView('birds')}
         onOpenRoster={() => setView('members')}
       />
-      <AnnouncementsCard refreshKey={composedRefresh} />
       <PaymentsCard
         refreshKey={composedRefresh}
         onOpenPlayer={openPlayer}
         onSendIndividualReceipt={(name) => openReceipt({ mode: 'individual', playerName: name })}
       />
       <RecentSessionsStrip />
-      <ETransferRecipientEditor />
-      <SkipDatesEditor />
 
-      <div className="flex justify-center pt-2">
-        <button
-          type="button"
-          onClick={() => setView('releases')}
-          className="text-xs text-gray-400 hover:text-gray-200 underline-offset-2 hover:underline"
-        >
-          Release notes →
-        </button>
+      {/* Profile-style settings list (mirrors ProfileTab's SettingsList).
+          Announcements / E-transfer / Skip dates / Ledger / Release notes
+          are drill-in sub-pages (AdminBackHeader) wired in AdminDashboard. */}
+      <div className="glass-card-soft" style={{ padding: 0, overflow: 'hidden' }}>
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          {[
+            { icon: 'campaign', label: 'Announcements', onClick: () => setView('announcements') },
+            { icon: 'payments', label: 'E-transfer recipient', onClick: () => setView('etransfer') },
+            { icon: 'calendar_today', label: 'Skip dates', onClick: () => setView('skip-dates') },
+            { icon: 'receipt_long', label: 'Ledger', onClick: () => setView('ledger') },
+            { icon: 'bolt', label: 'Release notes', onClick: () => setView('releases') },
+          ].map((row, idx) => (
+            <li
+              key={row.label}
+              style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--divider)' }}
+            >
+              <button
+                type="button"
+                onClick={row.onClick}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '14px 16px',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-primary)',
+                  fontSize: 15,
+                  textAlign: 'left',
+                }}
+              >
+                <span
+                  className="material-icons"
+                  aria-hidden="true"
+                  style={{ fontSize: 20, color: 'var(--text-secondary)' }}
+                >
+                  {row.icon}
+                </span>
+                <span style={{ flex: 1 }}>{row.label}</span>
+                <span
+                  className="material-icons"
+                  aria-hidden="true"
+                  style={{ fontSize: 18, color: 'var(--text-secondary)' }}
+                >
+                  chevron_right
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <PlayerProfileSheet

@@ -6,7 +6,11 @@ export type AdminView =
   | 'birds'
   | 'advance'
   | 'players-full'
-  | 'releases';
+  | 'releases'
+  | 'ledger'
+  | 'announcements'
+  | 'etransfer'
+  | 'skip-dates';
 
 export interface AdminNavProps {
   onBack: () => void;
