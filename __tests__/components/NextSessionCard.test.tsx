@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
 import NextSessionCard from '@/components/admin/CommandCenter/NextSessionCard';
 
 const originalFetch = global.fetch;
@@ -79,6 +79,44 @@ describe('<NextSessionCard />', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Passed/)).toBeTruthy();
+    });
+  });
+
+  describe('advance mis-click guard', () => {
+    const session = {
+      id: 's', title: 'Wednesday',
+      datetime: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+      deadline: new Date(Date.now() + 3_600_000).toISOString(),
+      courts: 2, maxPlayers: 12, signupOpen: true,
+    };
+
+    it('a single tap on "Advance →" does NOT advance — it asks to confirm', async () => {
+      let advanced = 0;
+      mockFetch(makeFetcher(session, []));
+      render(<NextSessionCard onAdvance={() => { advanced += 1; }} />);
+      await waitFor(() => expect(screen.getByText('Advance →')).toBeTruthy());
+
+      fireEvent.click(screen.getByText('Advance →'));
+
+      expect(advanced).toBe(0);
+      expect(screen.getByText(/Advance to next week\?/)).toBeTruthy();
+      expect(screen.getByText('Confirm advance →')).toBeTruthy();
+    });
+
+    it('Cancel reverts without advancing; Confirm calls onAdvance once', async () => {
+      let advanced = 0;
+      mockFetch(makeFetcher(session, []));
+      render(<NextSessionCard onAdvance={() => { advanced += 1; }} />);
+      await waitFor(() => expect(screen.getByText('Advance →')).toBeTruthy());
+
+      fireEvent.click(screen.getByText('Advance →'));
+      fireEvent.click(screen.getByText('Cancel'));
+      expect(advanced).toBe(0);
+      expect(screen.getByText('Advance →')).toBeTruthy();
+
+      fireEvent.click(screen.getByText('Advance →'));
+      fireEvent.click(screen.getByText('Confirm advance →'));
+      expect(advanced).toBe(1);
     });
   });
 

@@ -55,6 +55,9 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const [loading, setLoading] = useState(true);
   const [settling, setSettling] = useState(false);
   const [settleError, setSettleError] = useState<string | null>(null);
+  // Advancing archives the week and is hard to reverse; a single stray tap
+  // (it used to sit next to "Edit details") shouldn't trigger it.
+  const [confirmingAdvance, setConfirmingAdvance] = useState(false);
   const settleFlagOn = isFlagOn('NEXT_PUBLIC_FLAG_SETTLE');
 
   const load = useCallback(async () => {
@@ -224,11 +227,6 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
             Edit details
           </button>
         )}
-        {onAdvance && (
-          <button type="button" onClick={onAdvance} className="cc-btn cc-btn-secondary">
-            Advance →
-          </button>
-        )}
         {isSettled && (
           <button
             type="button"
@@ -241,6 +239,49 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
           </button>
         )}
       </div>
+
+      {/* Advance lives apart from the action row: a stray tap meant for
+          "Edit details" must not start a new week. Ghost-weight + a
+          two-step inline confirm (heavy, hard-to-reverse action). */}
+      {onAdvance && (
+        <div
+          className="flex justify-end items-center gap-2 pt-3 mt-1"
+          style={{ borderTop: '1px solid var(--divider)' }}
+        >
+          {confirmingAdvance ? (
+            <>
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Advance to next week?
+              </span>
+              <button
+                type="button"
+                onClick={() => setConfirmingAdvance(false)}
+                className="cc-btn cc-btn-ghost text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmingAdvance(false);
+                  onAdvance();
+                }}
+                className="cc-btn cc-btn-danger text-xs"
+              >
+                Confirm advance →
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmingAdvance(true)}
+              className="cc-btn cc-btn-ghost text-xs"
+            >
+              Advance →
+            </button>
+          )}
+        </div>
+      )}
 
       {settleError && (
         <p role="alert" className="text-xs" style={{ color: 'var(--color-red, #ef4444)' }}>
