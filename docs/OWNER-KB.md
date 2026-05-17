@@ -70,10 +70,12 @@ Things not derivable from the codebase — provide when relevant:
 
 ## Parked — next session first task
 
-GitHub organization pass: merge #95 (`bpm confirm`) → grand plan on main;
-create `Value-Hub` milestone + 4 track epics; create in-app-feedback issue;
-triage ~19 issues / 7 milestones to the locked critical path. (Also in
-ROADMAP §5.)
+✅ **Org pass complete (2026-05-17):** #95 + #96 merged; Value-Hub milestone (#8)
++ Slice-0/Track epics (#101–105) created; in-app-feedback (#100) + flag-sync
+guard (#106) filed; #59 closed; drift triage notes on #76–78.
+
+**Next:** Smoke stable v1.4 (Command Center live since re-deploy `de46b41`) →
+Value-Hub Slice-0 build kickoff.
 
 ## Key commands
 
