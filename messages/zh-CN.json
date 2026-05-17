@@ -8,6 +8,7 @@
       "confirmed": "已报名：{name}",
       "inviteError": "邀请名单上没有\"{name}\"。请检查拼写，或联系分享此应用的朋友将您添加。",
       "networkError": "网络错误，请重试。",
+      "offline": "您已离线 — 重新连接后即可报名。",
       "nameRequired": "请输入您的姓名以报名",
       "pinRequired": "请设置 4 位 PIN 后报名",
       "pinTooCommon": "请使用不太常见的 PIN",

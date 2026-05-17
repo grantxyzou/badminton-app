@@ -53,6 +53,9 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
   const [recentSessionCount, setRecentSessionCount] = useState(0);
   const [recentUsedTotal, setRecentUsedTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  // Distinct from "loaded but empty": a failed fetch must not render the
+  // same UI as a real zero-state (the forbidden lying-empty pattern).
+  const [loadError, setLoadError] = useState(false);
 
   // Purchase sheet state — used for both Add and Edit. editingId === null
   // means Add mode; non-null means Edit mode for that purchase.
@@ -73,6 +76,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const [birdsRes, sessionsRes] = await Promise.all([
         fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
@@ -111,6 +115,12 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
       setUsedByPurchase(used);
       setRecentSessionCount(recentSessions);
       setRecentUsedTotal(recentUsed);
+    } catch {
+      // Offline / network failure: fetch() rejects before returning a
+      // Response, so the res.ok guards above never run. Flag it explicitly
+      // rather than letting the rejection float (it was surfacing as the
+      // Next dev overlay) or zeroing the stats (lying-empty).
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -284,6 +294,26 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         : { tone: 'green', label: 'Healthy' };
 
   if (loading) return null;
+
+  if (loadError) {
+    return (
+      <div className="animate-slideInRight space-y-3">
+        <AdminBackHeader onBack={onBack} title="Birds" />
+        <div role="alert" style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+          <p style={{ fontWeight: 600, color: 'var(--text)' }}>Couldn&apos;t load birds</p>
+          <p style={{ fontSize: 13, marginTop: 6 }}>You may be offline. Reconnect, then retry.</p>
+          <button
+            type="button"
+            className="cc-btn cc-btn-ghost"
+            style={{ marginTop: 14 }}
+            onClick={() => void load()}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-slideInRight space-y-3">

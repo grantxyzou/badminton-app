@@ -10,9 +10,12 @@ import ProfileTab from '@/components/ProfileTab';
 import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
+import StatusBanner from '@/components/primitives/StatusBanner';
+import AdminErrorBoundary from '@/components/AdminErrorBoundary';
 import type { DevOverrides } from '@/components/DevPanel';
 import type { Announcement } from '@/lib/types';
 import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
+import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
 
 // AdminTab + DemoMode + DevPanel are lazy-loaded — most users never trigger
 // these surfaces (admin requires sign-in, DemoMode is URL-gated, DevPanel
@@ -40,10 +43,22 @@ interface Props {
 export default function HomeShell({ initialAnnouncement }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [showAdmin, setShowAdmin] = useState(false);
+  // Tri-state: `showAdmin` alone can't tell "confirmed not-admin" from
+  // "not determined yet". On a reload landing on ?tab=admin, the bounce
+  // effect would fire on the initial `false` BEFORE the async probe
+  // resolves — kicking you off the tab you were on. Only bounce once the
+  // verdict is actually KNOWN (a successful probe), never on the unknown.
+  const [adminKnown, setAdminKnown] = useState(false);
   const [devMode, setDevMode] = useState(false);
   const [devOverrides, setDevOverrides] = useState<DevOverrides>({});
   const [profileSession, setProfileSession] = useState<{ id: string; label: string }>({ id: '', label: '' });
   const [demoMode, setDemoMode] = useState(false);
+  // Connectivity is one app-wide signal now (lib/useOnline). `online` is
+  // "server believed reachable" — NEVER conflated with "user is not an
+  // admin": a failed probe must not masquerade as a confirmed negative
+  // (the auth twin of the forbidden `catch { setX([]) }` lying-empty).
+  const online = useOnline();
+  const reportFetchFailure = useReportFetchFailure();
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -75,26 +90,48 @@ export default function HomeShell({ initialAnnouncement }: Props) {
   // component), and on window focus (covers cross-tab sign-out and admin-cookie
   // expiry while the tab was backgrounded).
   const refreshAdminAccess = useCallback(() => {
+    let netFailed = false;
+    const NET_FAIL = Symbol('net-fail');
     Promise.all([
-      fetch(`${BASE}/api/admin`).then(r => r.json()).catch(() => ({ authed: false })),
+      fetch(`${BASE}/api/admin`).then(r => r.json()).catch(() => NET_FAIL),
       (() => {
         const name = getIdentity()?.name ?? null;
         if (!name) return Promise.resolve({ role: 'member' });
         return fetch(`${BASE}/api/members/me?name=${encodeURIComponent(name)}`)
-          .then(r => r.json()).catch(() => ({ role: 'member' }));
+          .then(r => r.json()).catch(() => NET_FAIL);
       })(),
     ]).then(([auth, member]) => {
-      setShowAdmin(auth.authed === true || member.role === 'admin');
+      // A network failure on EITHER probe means we can't make an
+      // authoritative admin decision. Preserve last-known showAdmin and
+      // flag offline — never downgrade to not-admin on an unverifiable
+      // signal (that's what bounced users out of /admin on a wifi blip).
+      if (auth === NET_FAIL || member === NET_FAIL) {
+        netFailed = true;
+        reportFetchFailure();
+        return; // preserve last-known showAdmin — do NOT downgrade
+      }
+      setShowAdmin(
+        (auth as { authed?: boolean }).authed === true ||
+        (member as { role?: string }).role === 'admin',
+      );
+      setAdminKnown(true); // verdict is now authoritative
+    }).catch(() => {
+      if (!netFailed) reportFetchFailure();
     });
-  }, []);
+  }, [reportFetchFailure]);
 
   useEffect(() => {
     refreshAdminAccess();
+    // The offline *signal* is owned by OnlineProvider now. HomeShell only
+    // still needs to RE-CONFIRM the admin verdict when connectivity or
+    // identity changes (a cookie may have expired while offline).
     window.addEventListener(IDENTITY_EVENT, refreshAdminAccess);
     window.addEventListener('focus', refreshAdminAccess);
+    window.addEventListener('online', refreshAdminAccess);
     return () => {
       window.removeEventListener(IDENTITY_EVENT, refreshAdminAccess);
       window.removeEventListener('focus', refreshAdminAccess);
+      window.removeEventListener('online', refreshAdminAccess);
     };
   }, [refreshAdminAccess]);
 
@@ -115,15 +152,28 @@ export default function HomeShell({ initialAnnouncement }: Props) {
     }
   }, []);
 
-  // Reset tab if admin access is revoked
+  // Reset tab only on a KNOWN loss of admin access — never on the
+  // not-yet-determined initial state (that race ate the admin tab on
+  // reload before the probe could resolve).
   useEffect(() => {
-    if (activeTab === 'admin' && !showAdmin) setActiveTab('home');
-  }, [showAdmin, activeTab]);
+    if (activeTab === 'admin' && adminKnown && !showAdmin) setActiveTab('home');
+  }, [showAdmin, adminKnown, activeTab]);
 
   // Expose the active tab to CSS so per-tab background variants can react
   // (e.g. Sign-Ups tab swaps the global aurora for 03 Court markings).
   useEffect(() => {
     document.documentElement.setAttribute('data-tab', activeTab);
+    // Persist the tab in the URL so a reload lands you back where you
+    // were (the mount effect above already READS ?tab=). replaceState,
+    // not push — switching tabs shouldn't pollute the back-stack — and
+    // preserve any other params (?dev, ?tab=admin deep-link, etc.).
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('tab') !== activeTab) {
+        url.searchParams.set('tab', activeTab);
+        window.history.replaceState(window.history.state, '', url);
+      }
+    }
     return () => {
       // Fallback — if the page unmounts, leave the attribute cleared so any
       // future /design preview routes don't inherit a stale tab value.
@@ -138,10 +188,20 @@ export default function HomeShell({ initialAnnouncement }: Props) {
         <ThemeToggle />
         <LanguageToggle />
         <main data-page-shell className="max-w-lg mx-auto px-4 pt-6">
+          {!online && (
+            <div className="mb-3">
+              <StatusBanner
+                tone="warn"
+                icon="warning"
+                title="You're offline"
+                body="Showing your last-known view. Some data may be stale until you reconnect."
+              />
+            </div>
+          )}
           {activeTab === 'home' && <div key="home" className="animate-fadeIn"><HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} /></div>}
           {activeTab === 'players' && <div key="players" className="animate-fadeIn"><PlayersTab /></div>}
           {activeTab === 'skills' && <div key="skills" className="animate-fadeIn"><SkillsTab isAdmin={showAdmin} onTabChange={setActiveTab} /></div>}
-          {activeTab === 'admin' && showAdmin && <div key="admin" className="animate-fadeIn"><AdminTab /></div>}
+          {activeTab === 'admin' && showAdmin && <div key="admin" className="animate-fadeIn"><AdminErrorBoundary><AdminTab /></AdminErrorBoundary></div>}
           {activeTab === 'profile' && (
             <div key="profile" className="animate-fadeIn">
               <ProfileTab
