@@ -1,0 +1,206 @@
+{
+  "_meta": {
+    "purpose": "Seed data for the Value-Hub Slice-0 equipment catalog. ~15 rackets only — strings / shoes / shuttles / bags / grips arrive in the Equipment track (Track 2) if Slice-0 survives its 4-week kill criterion.",
+    "schema": "Each entry matches CatalogItem in lib/types.ts. `id` is stable and deterministic so re-runs are idempotent. `skillRange` follows the ACE stage scale [1-6] from lib/skills-data.ts.",
+    "sources": "Each item carries non-affiliate retailer links (Yumo, RacquetGuys, BadmintonHQ) for now. Per Decision D in the plan, affiliateTag fields ship null in Slice-0; the field exists so flipping monetization on later is schema-free.",
+    "curation": "Top ~5 popular models each from Yonex, Victor, Li-Ning. Hand-picked from public best-sellers + recreational-player community recommendations — not authoritative, will be revised once admin can edit the catalog (Track 2).",
+    "last_updated": "2026-05-14"
+  },
+  "items": [
+    {
+      "id": "racket-yonex-astrox-88d-pro",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox 88D Pro",
+      "msrp": 309,
+      "skillRange": [4, 6],
+      "attributes": { "weight": "4U", "balance": "head-heavy", "flex": "stiff", "playStyle": "doubles back-court attack" },
+      "sources": [
+        { "retailer": "Yumo", "url": "https://yumosports.com/products/astrox-88d-pro", "affiliateTag": null }
+      ],
+      "seeded": true
+    },
+    {
+      "id": "racket-yonex-astrox-88s-pro",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox 88S Pro",
+      "msrp": 309,
+      "skillRange": [4, 6],
+      "attributes": { "weight": "4U", "balance": "even", "flex": "stiff", "playStyle": "doubles front-court control" },
+      "sources": [
+        { "retailer": "Yumo", "url": "https://yumosports.com/products/astrox-88s-pro", "affiliateTag": null }
+      ],
+      "seeded": true
+    },
+    {
+      "id": "racket-yonex-astrox-99-pro",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox 99 Pro",
+      "msrp": 329,
+      "skillRange": [5, 6],
+      "attributes": { "weight": "3U", "balance": "head-heavy", "flex": "extra-stiff", "playStyle": "singles power" },
+      "sources": [
+        { "retailer": "RacquetGuys", "url": "https://www.racquetguys.ca/yonex-astrox-99-pro.html", "affiliateTag": null }
+      ],
+      "seeded": true
+    },
+    {
+      "id": "racket-yonex-nanoflare-700",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Nanoflare 700",
+      "msrp": 249,
+      "skillRange": [3, 5],
+      "attributes": { "weight": "4U", "balance": "head-light", "flex": "medium", "playStyle": "speed + drives" },
+      "sources": [
+        { "retailer": "Yumo", "url": "https://yumosports.com/products/nanoflare-700", "affiliateTag": null }
+      ],
+      "seeded": true
+    },
+    {
+      "id": "racket-yonex-arcsaber-11-pro",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Arcsaber 11 Pro",
+      "msrp": 309,
+      "skillRange": [4, 6],
+      "attributes": { "weight": "3U", "balance": "even", "flex": "stiff", "playStyle": "all-rounder control" },
+      "sources": [
+        { "retailer": "RacquetGuys", "url": "https://www.racquetguys.ca/yonex-arcsaber-11-pro.html", "affiliateTag": null }
+      ],
+      "seeded": true
+    },
+    {
+      "id": "racket-victor-thruster-ryuga-ii",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Thruster Ryuga II",
+      "msrp": 269,
+      "skillRange": [4, 6],
+      "attributes": { "weight": "4U", "balance": "head-heavy", "flex": "stiff", "playStyle": "smash-oriented offense" },
+      "sources": [
+        { "retailer": "Yumo", "url": "https://yumosports.com/products/thruster-ryuga-ii", "affiliateTag": null }
+      ],
+      "seeded": true
+    },
+    {
+      "id": "racket-victor-thruster-falcon",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Thruster Falcon",
+      "msrp": 189,
+      "skillRange": [2, 4],
+      "attributes": { "weight": "4U", "balance": "head-heavy", "flex": "medium", "playStyle": "entry-level attack" },
+      "sources": [
+        { "retailer": "BadmintonHQ", "url": "https://www.badmintonhq.co.uk/victor-thruster-falcon", "affiliateTag": null }
+      ],
+      "seeded": true
+    },
+    {
+      "id": "racket-victor-auraspeed-90k",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Auraspeed 90K",
+      "msrp": 259,
+      "skillRange": [4, 6],
+      "attributes": { "weight": "3U", "balance": "head-light", "flex": "stiff", "playStyle": "doubles speed + defense" },
+      "sources": [
+        { "retailer": "RacquetGuys", "url": "https://www.racquetguys.ca/victor-auraspeed-90k.html", "affiliateTag": null }
+      ],
+      "seeded": true
+    },
+    {
+      "id": "racket-victor-jetspeed-12",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Jetspeed 12",
+      "msrp": 259,
+      "skillRange": [3, 5],
+      "attributes": { "weight": "4U", "balance": "head-light", "flex": "medium", "playStyle": "fast swings + drives" },
+      "sources": [
+        { "retailer": "Yumo", "url": "https://yumosports.com/products/jetspeed-12", "affiliateTag": null }
+      ],
+      "seeded": true
+    },
+    {
+      "id": "racket-victor-drivex-9x",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "DriveX 9X",
+      "msrp": 219,
+      "skillRange": [3, 5],
+      "attributes": { "weight": "4U", "balance": "even", "flex": "medium", "playStyle": "all-rounder" },
+      "sources": [
+        { "retailer": "BadmintonHQ", "url": "https://www.badmintonhq.co.uk/victor-drivex-9x", "affiliateTag": null }
+      ],
+      "seeded": true
+    },
+    {
+      "id": "racket-li-ning-aeronaut-9000",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "Aeronaut 9000",
+      "msrp": 249,
+      "skillRange": [4, 6],
+      "attributes": { "weight": "3U", "balance": "head-heavy", "flex": "stiff", "playStyle": "aerodynamic smash" },
+      "sources": [
+        { "retailer": "RacquetGuys", "url": "https://www.racquetguys.ca/li-ning-aeronaut-9000.html", "affiliateTag": null }
+      ],
+      "seeded": true
+    },
+    {
+      "id": "racket-li-ning-axforce-90-dragon",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "AxForce 90 Dragon",
+      "msrp": 279,
+      "skillRange": [4, 6],
+      "attributes": { "weight": "3U", "balance": "head-heavy", "flex": "stiff", "playStyle": "Chen Long signature, singles power" },
+      "sources": [
+        { "retailer": "Yumo", "url": "https://yumosports.com/products/axforce-90-dragon", "affiliateTag": null }
+      ],
+      "seeded": true
+    },
+    {
+      "id": "racket-li-ning-bladex-700",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "BladeX 700",
+      "msrp": 239,
+      "skillRange": [3, 5],
+      "attributes": { "weight": "4U", "balance": "even", "flex": "medium", "playStyle": "all-rounder control" },
+      "sources": [
+        { "retailer": "RacquetGuys", "url": "https://www.racquetguys.ca/li-ning-bladex-700.html", "affiliateTag": null }
+      ],
+      "seeded": true
+    },
+    {
+      "id": "racket-li-ning-3d-calibar-900",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "3D Calibar 900",
+      "msrp": 209,
+      "skillRange": [3, 5],
+      "attributes": { "weight": "4U", "balance": "head-light", "flex": "medium", "playStyle": "doubles speed" },
+      "sources": [
+        { "retailer": "BadmintonHQ", "url": "https://www.badmintonhq.co.uk/li-ning-3d-calibar-900", "affiliateTag": null }
+      ],
+      "seeded": true
+    },
+    {
+      "id": "racket-yonex-nanoflare-001-ability",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Nanoflare 001 Ability",
+      "msrp": 79,
+      "skillRange": [1, 3],
+      "attributes": { "weight": "5U", "balance": "even", "flex": "medium-flexible", "playStyle": "beginner-friendly all-rounder" },
+      "sources": [
+        { "retailer": "Yumo", "url": "https://yumosports.com/products/nanoflare-001-ability", "affiliateTag": null }
+      ],
+      "seeded": true
+    }
+  ]
+}
