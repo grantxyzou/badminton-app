@@ -45,6 +45,10 @@ jobs:
           NEXT_PUBLIC_ENV: stable
           NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
           NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: 'false'
+          NEXT_PUBLIC_FLAG_COMMAND_CENTER: 'true'
+          NEXT_PUBLIC_FLAG_SETTLE: 'true'
+          # LEDGER omitted on purpose — v1.5/A ships to stable dormant until v1.5/B–D land.
+          NEXT_PUBLIC_FLAG_LEDGER: 'false'
 
       - name: Package standalone build
         run: |
