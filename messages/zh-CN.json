@@ -201,7 +201,7 @@
     },
     "attendance": {
       "title": "您的出勤记录",
-      "subtitle": "本月参加的场次。"
+      "subtitle": "过去一年的参赛场次。"
     },
     "cost": {
       "title": "费用相关",
