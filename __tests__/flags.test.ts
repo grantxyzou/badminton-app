@@ -7,6 +7,7 @@ describe('feature flags', () => {
   beforeEach(() => {
     delete process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
     delete process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER;
+    delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
     delete process.env.NEXT_PUBLIC_ENV;
   });
 
@@ -57,6 +58,14 @@ describe('feature flags', () => {
     expect(isFlagOn('NEXT_PUBLIC_FLAG_LEDGER')).toBe(true);
     process.env.NEXT_PUBLIC_FLAG_LEDGER = '1';
     expect(isFlagOn('NEXT_PUBLIC_FLAG_LEDGER')).toBe(false);
+  });
+
+  it('recognizes NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE', () => {
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')).toBe(false);
+    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')).toBe(true);
+    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = '1';
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')).toBe(false);
   });
 });
 

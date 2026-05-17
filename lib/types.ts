@@ -184,3 +184,99 @@ export interface Release {
   editedAt?: string;
   env?: 'stable' | 'next' | 'dev';
 }
+
+// ---------------------------------------------------------------------------
+// Value-hub Slice-0: equipment catalog, player gear, game results.
+// Additive + optional per the CLAUDE.md schema rule (bpm-stable and bpm-next
+// share one DB). Containers created lazily via `ensureContainer` on the first
+// handler call, same pattern as `skills`.
+// ---------------------------------------------------------------------------
+
+export type EquipmentCategory =
+  | 'racket'
+  | 'string'
+  | 'shoe'
+  | 'shuttle'
+  | 'bag'
+  | 'grip';
+
+export interface CatalogSource {
+  /** Retailer label shown to the user (e.g. "Yumo", "RacquetGuys", "Amazon"). */
+  retailer: string;
+  url: string;
+  /** Affiliate tag, if any. Null/absent = direct link, no monetization. */
+  affiliateTag?: string | null;
+}
+
+export interface CatalogItem {
+  id: string;
+  /** Partition key — global catalog is partitioned by category for cheap per-category scans. */
+  category: EquipmentCategory;
+  brand: string;
+  model: string;
+  /** Manufacturer's suggested retail price in CAD. Optional — community items may not have MSRP. */
+  msrp?: number;
+  /** ACE skill stage range this item is appropriate for. `[1, 6]` = all stages. */
+  skillRange: [number, number];
+  /** Free-form category-specific spec map (e.g. racket → balance/weight/flex). Kept loose for now. */
+  attributes?: Record<string, string | number>;
+  /** Optional retailer links. Affiliate tags ship null in Slice-0 per Decision D. */
+  sources?: CatalogSource[];
+  /** Auto-curated catalog seed (e.g. from scripts/seed-equipment-catalog.mjs) vs admin-added. */
+  seeded?: boolean;
+  /** ISO timestamp the row was first persisted. Optional because seed entries
+   *  legitimately don't know it — the catalog isn't a temporal event log.
+   *  The API stamps this on admin-created rows; seed-imported rows leave it
+   *  unset, and downstream readers must not rely on it for sort. */
+  createdAt?: string;
+}
+
+export interface GearItem {
+  /** Stable ID for this gear entry on the player's gear doc. */
+  id: string;
+  /** References CatalogItem.id; nullable so free-text "Other" entries can exist before admin promotes them. */
+  catalogId: string | null;
+  category: EquipmentCategory;
+  /** Free-text label, used when catalogId is null. Otherwise mirrors CatalogItem.brand + model. */
+  label: string;
+  acquiredAt?: string;
+  retiredAt?: string;
+  /** String-specific: tension in lbs at last restring. */
+  tensionLbs?: number;
+  notes?: string;
+}
+
+export interface StringLogEntry {
+  at: string;
+  tensionLbs: number;
+  /** CatalogItem.id for the string used, or null if not from catalog. */
+  catalogId: string | null;
+}
+
+export interface PlayerGear {
+  /** Doc id — `gear-<memberId>` for easy lookup. */
+  id: string;
+  /** Partition key — one doc per member. */
+  memberId: string;
+  items: GearItem[];
+  /** String-tension history. Drives the "time to restring" refresh nudge in P7. */
+  stringLog?: StringLogEntry[];
+  /** Sessions logged since current shoes were acquired — drives shoe-mileage nudge. */
+  shoesMileageSessions?: number;
+  updatedAt: string;
+}
+
+export interface GameResult {
+  id: string;
+  /** Partition key. */
+  sessionId: string;
+  /** 1-indexed for the human-readable label; not used as a join key. Optional — Slice-0 logger doesn't capture it. */
+  courtNumber?: number;
+  teamA: string[];
+  teamB: string[];
+  scoreA: number;
+  scoreB: number;
+  /** Who logged the result — player name (self-report) or 'admin' (admin-logged). */
+  loggedBy: string;
+  loggedAt: string;
+}
