@@ -201,7 +201,7 @@
     },
     "attendance": {
       "title": "Your Attendance",
-      "subtitle": "Sessions played this month."
+      "subtitle": "Sessions played in the past year."
     },
     "cost": {
       "title": "Cost related",
