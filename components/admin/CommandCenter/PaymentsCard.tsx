@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import ResetAccessSheet from '../ResetAccessSheet';
-import CoverSheet from '../CoverSheet';
+import CoverSheet, { type CoverSheetMode } from '../CoverSheet';
 import { fmtSessionLabel } from '@/lib/fmt';
 import { isFlagOn } from '@/lib/flags';
 import type { SettledSnapshot } from '@/lib/types';
@@ -37,9 +37,12 @@ interface PaymentsCardProps {
   refreshKey?: number;
   onOpenPlayer?: (memberId: string, name: string) => void;
   onSendIndividualReceipt?: (playerName: string) => void;
+  /** When rendered standalone (e.g. drilled in from the Ledger), preselect
+   *  this session's chip instead of defaulting to the active session. */
+  initialSessionId?: string | null;
 }
 
-export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndividualReceipt }: PaymentsCardProps) {
+export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndividualReceipt, initialSessionId }: PaymentsCardProps) {
   const [sessions, setSessions] = useState<SessionLite[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [viewedSessionId, setViewedSessionId] = useState<string | null>(null);
@@ -62,6 +65,9 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
   const [actionTarget, setActionTarget] = useState<Player | null>(null);
   const [actionError, setActionError] = useState('');
   const [coverTarget, setCoverTarget] = useState<Player | null>(null);
+  // cover-only = "Cover their $X" ActionRow (v1.5/A). cover-and-remove =
+  // intercepting a remove that would orphan a settled, unpaid debt (v1.5/C).
+  const [coverMode, setCoverMode] = useState<CoverSheetMode>('cover-only');
   const ledgerFlagOn = isFlagOn('NEXT_PUBLIC_FLAG_LEDGER');
 
   // Reset-access display
@@ -98,7 +104,13 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
         .sort((a, b) => (a.id < b.id ? 1 : -1));
       setSessions(sorted);
       setActiveSessionId(current?.id ?? null);
-      setViewedSessionId((prev) => prev ?? current?.id ?? sorted[0]?.id ?? null);
+      // Honor a drilled-in target only if it's a real, known session — a
+      // stale id shouldn't strand the card on an empty roster.
+      const wanted =
+        initialSessionId && sorted.some((s) => s.id === initialSessionId)
+          ? initialSessionId
+          : null;
+      setViewedSessionId((prev) => prev ?? wanted ?? current?.id ?? sorted[0]?.id ?? null);
     } catch (err) {
       console.warn('PaymentsCard load failed:', err);
       setLoadError(true);
@@ -107,7 +119,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [initialSessionId]);
 
   // Fetch players for the viewed session.
   const loadPlayers = useCallback(async (sessionId: string) => {
@@ -252,6 +264,22 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
 
   async function actionRemove() {
     if (!actionTarget) return;
+    // Removing a player who still owes a settled (frozen) amount would leave
+    // an orphan debt on the ledger. Offer "Cover & remove" first instead of a
+    // plain confirm — same predicate as the "Cover their $X" ActionRow so the
+    // two surfaces agree on what counts as an outstanding debt (v1.5/C).
+    if (
+      ledgerFlagOn &&
+      typeof actionTarget.owedAmount === 'number' &&
+      actionTarget.owedAmount > 0 &&
+      !actionTarget.writtenOff &&
+      !actionTarget.paid
+    ) {
+      setCoverMode('cover-and-remove');
+      setCoverTarget(actionTarget);
+      setActionTarget(null);
+      return;
+    }
     if (!confirm(`Remove ${actionTarget.name} from this session?`)) return;
     setActionError('');
     try {
@@ -605,6 +633,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
                 icon="paid"
                 label={`Cover their $${actionTarget.owedAmount}`}
                 onClick={() => {
+                  setCoverMode('cover-only');
                   setCoverTarget(actionTarget);
                   setActionTarget(null);
                 }}
@@ -629,7 +658,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
       {coverTarget && (
         <CoverSheet
           open
-          mode="cover-only"
+          mode={coverMode}
           playerId={coverTarget.id}
           playerName={coverTarget.name}
           amount={coverTarget.owedAmount ?? 0}
@@ -638,6 +667,9 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
           onClose={() => setCoverTarget(null)}
           onCovered={() => {
             setCoverTarget(null);
+            // Refresh the roster too — in cover-and-remove the player must
+            // visibly drop out of the active list, not just flip covered.
+            if (viewedSessionId) void loadPlayers(viewedSessionId);
             void load();
           }}
         />

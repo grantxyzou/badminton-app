@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
 import LedgerPage from '@/components/admin/LedgerPage';
 
@@ -126,6 +126,49 @@ describe('<LedgerPage />', () => {
     await waitFor(() => {
       expect(screen.getByText('Cara')).toBeTruthy();
       expect(screen.getByText('1 unpaid session')).toBeTruthy();
+    });
+  });
+
+  // ── v1.5/D drill-ins ──
+
+  it('D: tapping a session row calls onOpenSession with its id', async () => {
+    mockLedger(HAPPY);
+    const onOpenSession = vi.fn();
+    render(<LedgerPage onBack={() => {}} onOpenSession={onOpenSession} />);
+    await waitFor(() => expect(screen.getByText('Collected')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: /Payments for/i }));
+    expect(onOpenSession).toHaveBeenCalledWith('s1');
+  });
+
+  it('D: tapping a player row opens the profile sheet (member history)', async () => {
+    const HAPPY_MEMBER = {
+      ...HAPPY,
+      byPlayer: [{ memberId: 'm1', name: 'Cara', sessionCount: 1, owedAmount: 15 }],
+    };
+    const HISTORY = {
+      member: { id: 'm1', name: 'Cara' },
+      sessions: [],
+      lifetime: { attended: 4, totalPaid: 3 },
+    };
+    global.fetch = (async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : (input as Request).url;
+      if (url.includes('/history')) {
+        return new Response(JSON.stringify(HISTORY), { status: 200 });
+      }
+      return new Response(JSON.stringify(HAPPY_MEMBER), { status: 200 });
+    }) as typeof fetch;
+
+    render(<LedgerPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'By player' })).toBeTruthy());
+    fireEvent.click(screen.getByRole('tab', { name: 'By player' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: /Cara's history/i }));
+
+    // Sheet content only appears once the history fetch resolves.
+    await waitFor(() => {
+      expect(screen.getByText('Sessions attended')).toBeTruthy();
+      expect(screen.getByText('Recent sessions')).toBeTruthy();
     });
   });
 });

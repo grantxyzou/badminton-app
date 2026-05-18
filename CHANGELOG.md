@@ -54,6 +54,12 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
      Format: `- **Short title** — one-sentence what + why.` See v1.3 below for examples.
      Empty subheadings are fine; delete a section if you don't end up using it. -->
 
+### Added
+
+- **Ledger** *(flag-gated `NEXT_PUBLIC_FLAG_LEDGER`)* — a "Ledger" entry in the Command Center opens a who-owes-what page (Collected / Spent / Gap, an honest "$X covered by you" sub-line, By-session / By-player views, and 30-day / 12-week / All-time ranges) so the organizer can answer "did anyone forget to pay me back?" without scrolling session history. Backed by `GET /api/admin/ledger`. (v1.5/B + v1.5/D)
+- **Ledger drill-ins** — tap a session row to jump straight into that session's Payments, or a player row to open their profile + history. (v1.5/D)
+- **Cover & remove** — removing a player who still owes a settled, unpaid amount now offers "Cover & remove" (you eat the cost, they leave history clean) or "Remove without covering," instead of silently orphaning the debt on the ledger. (v1.5/C)
+
 ---
 
 ## v1.4 — Command Center + unified Home auth + Send-the-bill (2026-05-16)
