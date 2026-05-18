@@ -7,7 +7,6 @@ import AnomalyFeed from './AnomalyFeed';
 import NextSessionCard from './NextSessionCard';
 import PaymentsCard from './PaymentsCard';
 import AdminDashTiles from './AdminDashTiles';
-import RecentSessionsStrip from './RecentSessionsStrip';
 import PlayerProfileSheet from './PlayerProfileSheet';
 import ReceiptSheet from './ReceiptSheet';
 import type { AdminView } from '../types';
@@ -138,7 +137,6 @@ export default function CommandCenter({ refreshKey, setView }: CommandCenterProp
         onOpenPlayer={openPlayer}
         onSendIndividualReceipt={(name) => openReceipt({ mode: 'individual', playerName: name })}
       />
-      <RecentSessionsStrip />
 
       {/* Profile-style settings list (mirrors ProfileTab's SettingsList).
           Announcements / E-transfer / Skip dates / Ledger / Release notes

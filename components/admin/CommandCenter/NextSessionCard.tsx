@@ -251,7 +251,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
           {confirmingAdvance ? (
             <>
               <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Advance to next week?
+                Can&apos;t go back to the previous week once you advance.
               </span>
               <button
                 type="button"
@@ -277,7 +277,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
               onClick={() => setConfirmingAdvance(true)}
               className="cc-btn cc-btn-ghost text-xs"
             >
-              Advance →
+              Advance to next week
             </button>
           )}
         </div>

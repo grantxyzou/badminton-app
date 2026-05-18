@@ -153,18 +153,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
     return { active, waitlisted, removed };
   }, [allPlayers]);
 
-  const paidCount = lists.active.filter((p) => p.paid === true).length;
   const total = lists.active.length;
-
-  const navIndex = useMemo(() => sessions.findIndex((s) => s.id === viewedSessionId), [sessions, viewedSessionId]);
-  const canPrev = navIndex >= 0 && navIndex < sessions.length - 1;
-  const canNext = navIndex > 0;
-
-  function navSession(dir: 'prev' | 'next') {
-    if (navIndex < 0) return;
-    const target = dir === 'prev' ? sessions[navIndex + 1] : sessions[navIndex - 1];
-    if (target) setViewedSessionId(target.id);
-  }
 
   /* ── Actions ── */
 
@@ -337,48 +326,53 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
 
   return (
     <section className="glass-card p-4 space-y-3" aria-label="Payments">
-      {/* Session navigator — no hard divider per project rule. The chevrons
-          + dim 'Past session' label provide visual separation. */}
-      {sessions.length > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 2px 6px' }}>
-          <button
-            type="button"
-            onClick={() => navSession('prev')}
-            disabled={!canPrev}
-            aria-label="Previous session"
-            style={{ background: 'transparent', border: 0, cursor: 'pointer', color: canPrev ? 'var(--text-primary)' : 'rgba(255,255,255,0.18)', padding: 4 }}
-          >
-            <span className="material-icons" style={{ fontSize: 22 }}>chevron_left</span>
-          </button>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>{fmtSessionLabel(viewedSession?.datetime)}</p>
-            <p style={{ fontSize: 11, margin: '2px 0 0', color: isCurrentSession ? 'var(--accent)' : 'var(--text-muted)' }}>
-              {isCurrentSession ? 'Current session' : 'Past session'}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navSession('next')}
-            disabled={!canNext}
-            aria-label="Next session"
-            style={{ background: 'transparent', border: 0, cursor: 'pointer', color: canNext ? 'var(--text-primary)' : 'rgba(255,255,255,0.18)', padding: 4 }}
-          >
-            <span className="material-icons" style={{ fontSize: 22 }}>chevron_right</span>
-          </button>
+      {/* Session selector — horizontal chips replace the old prev/next
+          chevrons AND the standalone RecentSessionsStrip card (merged here).
+          Built from the already-loaded `sessions` list (newest-first by id),
+          so every past session stays reachable with no extra fetch. The
+          "Payments / X of Y paid" header was removed by design — per-row
+          Paid/Pending pills already carry that signal. */}
+      {sessions.length > 0 && (
+        <div
+          role="tablist"
+          aria-label="Session"
+          className="cc-no-scrollbar flex gap-2 overflow-x-auto -mx-1 px-1 pb-1"
+        >
+          {sessions.map((s) => {
+            const selected = s.id === viewedSessionId;
+            const isActive = s.id === activeSessionId;
+            const sent = settleFlagOn && !!s.settled;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                aria-selected={selected ? 'true' : 'false'}
+                onClick={() => setViewedSessionId(s.id)}
+                className="cc-session-chip flex-shrink-0"
+              >
+                <span style={{ fontSize: 13, fontWeight: 600, display: 'block' }}>
+                  {fmtSessionLabel(s.datetime)}
+                </span>
+                <span style={{ fontSize: 10.5, display: 'block', marginTop: 2, opacity: 0.7 }}>
+                  {isActive ? 'Current' : sent ? 'Sent' : 'Past'}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
 
-      {/* Header */}
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="bpm-h3">Payments</h3>
-          <p className="text-xs mt-0.5" style={{ color: loadError ? 'var(--color-red, #ef4444)' : 'var(--text-muted)' }}>
-            {loadError
-              ? "Couldn't load — refresh to retry"
-              : total === 0 ? 'No active players' : `${paidCount} of ${total} paid`}
-          </p>
-        </div>
-        {isViewedSettled && (
+      {/* Load-error affordance preserved from the removed header (the
+          lying-empty-state rule forbids dropping it). */}
+      {loadError && (
+        <p role="alert" className="text-xs" style={{ color: 'var(--color-red, #ef4444)', margin: 0 }}>
+          Couldn&apos;t load — refresh to retry
+        </p>
+      )}
+
+      {isViewedSettled && (
+        <div className="flex justify-end">
           <span
             className="text-xs px-2 py-1 rounded-full flex-shrink-0"
             style={{
@@ -390,8 +384,17 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
           >
             Sent · ${viewedSession?.settled?.costPerPerson}
           </span>
-        )}
-      </header>
+        </div>
+      )}
+
+      {/* Empty state — kept distinct from loadError (lying-empty-state
+          rule). The "X of Y paid" count was removed by design; this is
+          the no-roster case, not the count. */}
+      {!loadError && total === 0 && (
+        <p className="text-xs" style={{ color: 'var(--text-muted)', margin: 0 }}>
+          No active players
+        </p>
+      )}
 
       {toggleError && (
         <p
