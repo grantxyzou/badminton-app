@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BPM Roadmap Explorer</title>
+<style>
+  :root{
+    --bg:#0c1115; --panel:#131a21; --panel-2:#0f161c; --line:#222e38;
+    --ink:#e8eef2; --ink-dim:#8da0ad; --ink-faint:#5f7280;
+    --court:#9ee84b;          /* the single accent */
+    --court-deep:#3f6b16;
+    --now:#9ee84b;            /* you-are-here = the accent (differentiated by fill+glow, not hue) */
+    --risk:#e0a23c;           /* the single alert hue */
+    --done:#7f8c99;           /* shipped = de-emphasised neutral, not green */
+    --queued:#566571;         /* parked = fainter neutral */
+    --p1:#e0a23c; --p2:#9aa7b2; --p3:#647483;   /* priority by weight, not rainbow */
+    --radius:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:radial-gradient(1200px 700px at 78% -10%, #16222b 0%, var(--bg) 55%);
+    color:var(--ink);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace}
+  .wrap{display:grid;grid-template-columns:248px 1fr;grid-template-rows:1fr auto;
+    grid-template-areas:"side main" "side prompt";height:100vh;gap:1px;background:var(--line)}
+
+  .side{grid-area:side;background:var(--panel-2);overflow-y:auto;padding:20px 16px}
+  .brand{font-weight:700;font-size:15px;letter-spacing:-.2px;margin-bottom:2px}
+  .brand b{color:var(--court)}
+  .sub{color:var(--ink-faint);font-size:11px;margin-bottom:20px}
+  .grp{margin-bottom:20px}
+  .grp h3{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;
+    color:var(--ink-faint);margin-bottom:9px}
+  .preset{display:block;width:100%;text-align:left;background:var(--panel);
+    border:1px solid var(--line);color:var(--ink-dim);padding:8px 11px;
+    border-radius:9px;margin-bottom:6px;cursor:pointer;font-size:12.5px;transition:.12s}
+  .preset:hover{border-color:#33424e;color:var(--ink)}
+  .preset.on{background:rgba(158,232,75,.12);border-color:var(--court);color:var(--court)}
+  .preset small{display:block;color:var(--ink-faint);font-size:10.5px;margin-top:1px;font-weight:400}
+  .preset.on small{color:#9bbf6c}
+  .chip-row{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{background:var(--panel);border:1px solid var(--line);color:var(--ink-dim);
+    padding:4px 10px;border-radius:100px;cursor:pointer;font-size:11px;transition:.12s}
+  .chip.on{color:var(--ink);border-color:#3a4a57;background:#1a242d}
+  .chip[data-p="p1"].on{border-color:var(--p1);color:var(--p1)}
+  .chip[data-p="p2"].on{border-color:var(--p2);color:var(--p2)}
+  .chip[data-p="p3"].on{border-color:var(--p3);color:var(--p3)}
+  .tog{display:flex;align-items:center;justify-content:space-between;
+    padding:7px 0;color:var(--ink-dim);font-size:12.5px;cursor:pointer}
+  .tog:hover{color:var(--ink)}
+  .sw{width:34px;height:19px;border-radius:100px;background:#27333d;position:relative;transition:.15s;flex:0 0 auto}
+  .sw::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;
+    border-radius:50%;background:#6b7a86;transition:.15s}
+  .tog.on .sw{background:rgba(158,232,75,.35)}
+  .tog.on .sw::after{left:17px;background:var(--court)}
+
+  .main{grid-area:main;background:var(--bg);overflow-y:auto;padding:26px 30px 40px}
+  .hdr{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:6px}
+  .hdr h1{font-size:20px;font-weight:700;letter-spacing:-.4px}
+  .hdr .meta{color:var(--ink-faint);font-size:11px;text-align:right}
+
+  .nextbar{display:flex;gap:13px;align-items:flex-start;background:linear-gradient(100deg,rgba(55,182,255,.13),rgba(55,182,255,.02));
+    border:1px solid rgba(55,182,255,.4);border-radius:var(--radius);padding:14px 16px;margin:16px 0 26px}
+  .nextbar .dot{width:9px;height:9px;border-radius:50%;background:var(--now);margin-top:5px;
+    box-shadow:0 0 0 4px rgba(55,182,255,.18);flex:0 0 auto}
+  .nextbar .k{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--now);font-weight:700}
+  .nextbar .v{font-size:13.5px;margin-top:3px;color:var(--ink)}
+  .nextbar .v b{color:#fff}
+
+  .lane-title{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;
+    color:var(--ink-faint);margin:30px 0 14px;display:flex;align-items:center;gap:10px}
+  .lane-title::after{content:"";flex:1;height:1px;background:var(--line)}
+  .lane-title:first-of-type{margin-top:4px}
+
+  .spine{position:relative;padding-left:30px}
+  .spine::before{content:"";position:absolute;left:10px;top:26px;bottom:26px;width:2px;
+    background:#2b3a47;border-radius:2px}
+  .node{position:relative;margin-bottom:8px}
+  .node::before{content:"";position:absolute;left:-24px;top:21px;width:11px;height:11px;
+    border-radius:50%;background:var(--bg);border:2px solid var(--ink-faint);z-index:1;
+    box-shadow:0 0 0 3px var(--bg)}
+  .node[data-st="now"]::before{border-color:var(--now);background:var(--now);box-shadow:0 0 0 3px var(--bg),0 0 0 6px rgba(158,232,75,.22)}
+  .node[data-st="done"]::before{border-color:var(--done);background:var(--done)}
+  .node[data-st="next"]::before{border-color:var(--court);background:var(--bg)}
+  .node[data-st="risk"]::before{border-color:var(--risk);background:var(--risk)}
+  .node[data-st="gate"]::before{width:9px;height:9px;border-color:var(--court);background:var(--court);border-radius:2px;transform:rotate(45deg)}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    cursor:pointer;transition:.13s;overflow:hidden}
+  .card:hover{border-color:#33424e}
+  .card.sel{border-color:var(--court);box-shadow:inset 2px 0 0 var(--court)}
+  .card.goal{background:linear-gradient(150deg,rgba(158,232,75,.055),var(--panel) 55%)}
+  .crow{display:flex;align-items:center;gap:11px;padding:9px 13px}
+  .badge{font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+    padding:2px 6px;border-radius:5px;flex:0 0 auto;background:rgba(255,255,255,.045);color:var(--ink-faint)}
+  .b-now{background:rgba(158,232,75,.10);color:var(--now)}
+  .b-done{color:var(--done)}
+  .b-next{background:rgba(158,232,75,.10);color:var(--court)}
+  .b-queued{color:var(--queued)}
+  .b-risk{background:rgba(224,162,60,.12);color:var(--risk)}
+  .b-gate{background:rgba(158,232,75,.12);color:var(--court);border:1px dashed var(--court-deep)}
+  .ttl{font-weight:600;font-size:13.5px;flex:1}
+  .ttl small{display:block;color:var(--ink-faint);font-weight:400;font-size:11px;margin-top:2px}
+  .cnt{color:var(--ink-faint);font-size:11px;flex:0 0 auto}
+  .chev{color:var(--ink-faint);font-size:11px;transition:.15s;flex:0 0 auto}
+  .card.open .chev{transform:rotate(90deg)}
+  .body{display:none;border-top:1px solid var(--line);padding:4px 13px 10px;background:var(--panel-2)}
+  .card.open .body{display:block}
+  .issue{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-bottom:1px solid rgba(34,46,56,.5)}
+  .issue:last-child{border-bottom:0}
+  .inum{color:var(--court);font-size:11.5px;flex:0 0 42px}
+  .itxt{flex:1;font-size:12.5px;color:var(--ink-dim)}
+  .iprio{font-size:9px;font-weight:700;letter-spacing:.5px;flex:0 0 auto;text-transform:uppercase}
+  .pp-p1{color:var(--p1)}
+  .pp-p2{color:var(--p2)}
+  .pp-p3{color:var(--p3)}
+  .gnote{padding:0 0 6px;color:var(--ink-faint);font-size:11.5px;font-style:italic}
+
+  .themes{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .branchwrap{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  @media(max-width:880px){.themes,.branchwrap{grid-template-columns:1fr}}
+
+  .prompt{grid-area:prompt;background:var(--panel-2);border-top:1px solid var(--line);
+    padding:14px 30px 16px;display:flex;gap:16px;align-items:flex-start}
+  .prompt .lbl{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink-faint);
+    margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .prompt .lbl b{color:var(--court)}
+  .ptext{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:10px;
+    padding:12px 14px;font-size:12.5px;line-height:1.55;color:var(--ink);max-height:118px;overflow-y:auto;white-space:pre-wrap}
+  .copy{flex:0 0 auto;align-self:stretch;background:var(--court);color:#0c1115;border:0;
+    border-radius:10px;padding:0 22px;font-weight:700;font-size:13px;cursor:pointer;transition:.13s}
+  .copy:hover{filter:brightness(1.08)}
+  .copy.ok{filter:brightness(1.14)}
+  .hint{color:var(--ink-faint);font-size:11px;margin-top:5px}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:#26333d;border-radius:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <aside class="side">
+    <div class="brand"><b>BPM</b> Roadmap</div>
+    <div class="sub">path to the Value-Hub goal &middot; live GH issues</div>
+
+    <div class="grp">
+      <h3>View</h3>
+      <div id="presets"></div>
+    </div>
+
+    <div class="grp">
+      <h3>Show</h3>
+      <div class="tog on" data-tog="ongoing"><span>Ongoing themes</span><span class="sw"></span></div>
+      <div class="tog on" data-tog="branches"><span>Side-tracks &amp; risk</span><span class="sw"></span></div>
+      <div class="tog" data-tog="autoexpand"><span>Expand all cards</span><span class="sw"></span></div>
+    </div>
+
+    <div class="grp">
+      <h3>Priority filter</h3>
+      <div class="chip-row" id="prios">
+        <span class="chip on" data-p="p1">p1</span>
+        <span class="chip on" data-p="p2">p2</span>
+        <span class="chip on" data-p="p3">p3</span>
+      </div>
+      <div class="hint" style="margin-top:8px">Dims issues outside the selected priorities.</div>
+    </div>
+
+    <div class="grp">
+      <h3>Legend</h3>
+      <div style="display:flex;flex-direction:column;gap:7px;font-size:11.5px;color:var(--ink-dim)">
+        <span><span style="color:var(--now)">&#9679;</span> you are here</span>
+        <span><span style="color:var(--done)">&#9679;</span> shipped (soaking)</span>
+        <span><span style="color:var(--court)">&#9670;</span> kill-criteria gate</span>
+        <span><span style="color:var(--court)">&#9675;</span> next on the path</span>
+        <span><span style="color:var(--risk)">&#9679;</span> high-risk</span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="hdr">
+      <h1>The path to "recreational player on steroids"</h1>
+      <div class="meta">snapshot 2026-05-18<br>tap any card to expand &middot; click to focus a prompt</div>
+    </div>
+
+    <div class="nextbar">
+      <div class="dot"></div>
+      <div>
+        <div class="k">Literal next action</div>
+        <div class="v">Smoke <b>bpm-next</b> through 2026-05-20, rotate <b>SESSION_SECRET / ANTHROPIC_API_KEY / Cosmos key</b>, then tag &amp; dispatch <b>bpm-stable-v1.4</b>. After that the path opens onto <b>Slice-0 (#101)</b> &mdash; the gate to the whole Value-Hub.</div>
+      </div>
+    </div>
+
+    <div class="lane-title">Path to goal &mdash; sequential spine</div>
+    <div class="spine" id="spine"></div>
+
+    <div id="branchLane">
+      <div class="lane-title">Side-tracks &amp; the one big risk</div>
+      <div class="branchwrap" id="branches"></div>
+    </div>
+
+    <div id="themeLane">
+      <div class="lane-title">Ongoing themes &mdash; opportunistic, no ship date</div>
+      <div class="themes" id="themes"></div>
+    </div>
+  </main>
+
+  <div class="prompt">
+    <div style="flex:1">
+      <div class="lbl">Copy back to Claude <b id="focusName">&mdash; pick a card to focus</b></div>
+      <div class="ptext mono" id="ptext"></div>
+      <div class="hint" id="phint">Click cards on the spine to stack them into a "let's start this" prompt.</div>
+    </div>
+    <button class="copy" id="copyBtn">Copy</button>
+  </div>
+</div>
+
+<script>
+const SPINE = [
+  { id:"now", st:"now", badge:"now", bcls:"b-now", title:"Promote v1.4 + v1.5/A to stable",
+    sub:"soaking on bpm-next until 2026-05-20 (2 days)", issues:[],
+    note:"Gate: clean smoke window + rotate SESSION_SECRET / ANTHROPIC_API_KEY / Cosmos AccountKey before the cut." },
+  { id:"v15", st:"done", badge:"code done / issue stale", bcls:"b-done", title:"v1.5 — Ledger & write-offs",
+    sub:"B/C/D landed in commit 211583e — but #72 never closed", issues:[
+      {n:72,t:"[settle] Phase 3 — remove-after-settle prompt + owner-ledger view (work shipped; close/verify this)",p:"p2"} ],
+    note:"Visibility gap: the milestone shows 1 open issue, but the code is in. Close #72 so the board stops lying." },
+  { id:"goal", st:"gate", badge:"the goal", bcls:"b-gate", title:"Value-Hub — \"player on steroids\"", goal:true,
+    sub:"4 parallel tracks behind a thin gated vertical", issues:[], note:"Plan: docs/plans/value-hub-slice-0.md · decisions A–G ratified 2026-05-16 (PR #95)." },
+  { id:"slice0", st:"next", badge:"next on path", bcls:"b-next", title:"Slice-0 — the gated vertical",
+    sub:"racket pick → 1 deterministic rec → game logger → partner card", issues:[
+      {n:101,t:"Slice-0 foundation: racket preference capture + kill-criteria gate",p:"p2"} ],
+    note:"Flag NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE. This is the real \"what's next\" after the 05-20 promotion." },
+  { id:"gate", st:"gate", badge:"decision gate", bcls:"b-gate", title:"Kill-criteria gate",
+    sub:"4 weeks live · ≥40% rec-card repeat · ≥30% game-log", issues:[],
+    note:"Decide-with-data: tracks only fan out if Slice-0 clears this. Otherwise kill, don't sink cost." },
+  { id:"tracks", st:"queued", badge:"on pass", bcls:"b-queued", title:"Tracks 1–3 (parallel)",
+    sub:"open in parallel once the gate passes", issues:[
+      {n:102,t:"Track 1 — Insight: between-session personal analytics",p:"p2"},
+      {n:103,t:"Track 2 — Equipment: racket catalog + gear recommendations",p:"p2"},
+      {n:104,t:"Track 3 — Learning+Rec: drills, technique tips, skill progression",p:"p2"} ],
+    note:"Each track carries its own written kill criterion." },
+  { id:"reach", st:"queued", badge:"last", bcls:"b-queued", title:"Track 4 — Reach",
+    sub:"traffic, discoverability, purchase recommendations", issues:[
+      {n:105,t:"Track 4 — Reach: traffic, discoverability, purchase recommendations (last)",p:"p2"} ],
+    note:"Sequenced last — depends on the other tracks producing recommendable signal." }
+];
+
+const BRANCHES = [
+  { id:"v16", st:"queued", badge:"interleave-able", bcls:"b-queued", title:"v1.6 — Cleanup & type safety",
+    sub:"tech debt only, no new features — fold into adjacent PRs", issues:[
+      {n:67,t:"Member.skipDates → branded IsoDate type",p:"p2"},
+      {n:69,t:"Clean up 5 pre-existing TS errors in test files",p:"p3"},
+      {n:70,t:"Split HomeTab (594) and SkillsRadar (525) when next touched",p:"p3"},
+      {n:73,t:"[settle] Phase 4 — drop individual-receipt code path",p:"p3"} ],
+    note:"Not blocking the goal — pick up when you're already in the file." },
+  { id:"stage2", st:"risk", badge:"high risk", bcls:"b-risk", title:"Stage-2 — orgId migration",
+    sub:"multi-tenant enabler · stable + next share ONE Cosmos", issues:[
+      {n:81,t:"Stage-2 orgId migration playbook",p:"p2"} ],
+    note:"The single biggest architectural risk. Schema rule: additive-only while stable & next share the DB. Playbook first, execution standalone." }
+];
+
+const THEMES = [
+  { id:"polish", title:"Polish sweep", issues:[
+      {n:79,t:"Race condition on signup — capacity check + insert not atomic",p:"p1"},
+      {n:80,t:"In-memory rate limiter resets on cold start",p:"p2"} ] },
+  { id:"design", title:"Design system v2", issues:[
+      {n:74,t:"Build primitives + wire unused token classes",p:"p2"},
+      {n:75,t:"Inline-style sweep — replace ad-hoc style props with primitives",p:"p2"},
+      {n:76,t:"Per-tab visual identity (extend data-tab background system)",p:"p2"},
+      {n:77,t:"Light-mode preview parity for /design gallery",p:"p2"},
+      {n:78,t:"Aurora differentiation — break the 'three blobs' monoculture",p:"p3"},
+      {n:87,t:"Bake BottomSheet defaults into the primitive",p:"p3"} ] },
+  { id:"ops", title:"Operational hardening", issues:[
+      {n:82,t:"Real Cosmos integration test for settle path",p:"p2"},
+      {n:83,t:"Add Playwright E2E coverage",p:"p2"},
+      {n:84,t:"Cosmos point-in-time restore drill",p:"p2"},
+      {n:85,t:"Decide on Sentry — enable or remove",p:"p3"},
+      {n:98,t:"Offline: per-card loadError pills for remaining CommandCenter cards",p:"p3"},
+      {n:99,t:"Offline: soak→stable decision + PWA-if-needed",p:"p3"},
+      {n:100,t:"In-app feedback / bug report for stable (non-GitHub friends)",p:"p3"},
+      {n:106,t:"Extend check-flag-sync.mjs to guard deploy-stable.yml",p:"p3"} ] },
+  { id:"stage2t", title:"Stage-2 orgId migration", issues:[
+      {n:81,t:"Stage-2 orgId migration playbook (high-risk, standalone)",p:"p2"} ] }
+];
+
+const PRESETS = [
+  { id:"path", label:"Path to goal", desc:"just the spine to the Value-Hub",
+    state:{ongoing:false,branches:false,autoexpand:false,prios:["p1","p2","p3"]} },
+  { id:"next2w", label:"What's next (<=2 wk)", desc:"promotion + Slice-0 only",
+    state:{ongoing:false,branches:false,autoexpand:true,prios:["p1","p2","p3"],focus:["now","slice0"]} },
+  { id:"all", label:"Everything", desc:"spine + branches + themes",
+    state:{ongoing:true,branches:true,autoexpand:false,prios:["p1","p2","p3"]} },
+  { id:"risk", label:"Risk lens", desc:"p1 bugs + the big migration",
+    state:{ongoing:true,branches:true,autoexpand:true,prios:["p1"],focus:["stage2","v15"]} },
+  { id:"ongoing", label:"Ongoing only", desc:"opportunistic theme backlog",
+    state:{ongoing:true,branches:false,autoexpand:true,prios:["p1","p2","p3"]} }
+];
+
+const state = { ongoing:true, branches:true, autoexpand:false,
+  prios:["p1","p2","p3"], open:new Set(), focus:[], preset:null };
+
+var spineEl=document.getElementById("spine"),
+    branchEl=document.getElementById("branches"),
+    themeEl=document.getElementById("themes");
+
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+function issueRow(it){
+  var dim = !state.prios.includes(it.p) ? ' style="opacity:.3"' : '';
+  return '<div class="issue"'+dim+'>'+
+    '<span class="inum mono">#'+it.n+'</span>'+
+    '<span class="itxt">'+esc(it.t)+'</span>'+
+    '<span class="iprio pp-'+it.p+'">'+it.p+'</span></div>';
+}
+function cardHTML(n, kindClass){
+  kindClass=kindClass||"";
+  var opened = state.open.has(n.id) || state.autoexpand;
+  var sel = state.focus.includes(n.id);
+  var issues = n.issues.length ? n.issues.map(issueRow).join("") : "";
+  var note = n.note ? '<div class="gnote">'+esc(n.note)+'</div>' : "";
+  var cnt = n.issues.length ? '<span class="cnt mono">'+n.issues.length+' issue'+(n.issues.length>1?"s":"")+'</span>' : "";
+  return '<div class="card '+(opened?"open":"")+' '+(sel?"sel":"")+' '+(n.goal?"goal":"")+' '+kindClass+'" data-id="'+n.id+'">'+
+    '<div class="crow">'+
+      '<span class="badge '+n.bcls+'">'+esc(n.badge)+'</span>'+
+      '<span class="ttl">'+esc(n.title)+'<small>'+esc(n.sub)+'</small></span>'+
+      cnt+'<span class="chev">&#9658;</span>'+
+    '</div>'+
+    '<div class="body">'+note+issues+'</div></div>';
+}
+function render(){
+  spineEl.innerHTML = SPINE.map(function(n){
+    return '<div class="node" data-st="'+n.st+'">'+cardHTML(n)+'</div>'; }).join("");
+  branchEl.innerHTML = BRANCHES.map(function(n){ return cardHTML(n); }).join("");
+  themeEl.innerHTML = THEMES.map(function(t){
+    var opened = state.open.has(t.id) || state.autoexpand;
+    var sel = state.focus.includes(t.id);
+    return '<div class="card '+(opened?"open":"")+' '+(sel?"sel":"")+'" data-id="'+t.id+'">'+
+      '<div class="crow">'+
+        '<span class="badge b-queued">theme</span>'+
+        '<span class="ttl">'+esc(t.title)+'<small>'+t.issues.length+' open</small></span>'+
+        '<span class="chev">&#9658;</span>'+
+      '</div>'+
+      '<div class="body">'+t.issues.map(issueRow).join("")+'</div></div>';
+  }).join("");
+  document.getElementById("branchLane").style.display = state.branches?"":"none";
+  document.getElementById("themeLane").style.display = state.ongoing?"":"none";
+  bindCards();
+}
+function bindCards(){
+  document.querySelectorAll(".card").forEach(function(c){
+    c.onclick=function(e){
+      var id=c.dataset.id;
+      if(e.target.classList.contains("chev")||e.target.closest(".crow")){
+        state.open.has(id)?state.open.delete(id):state.open.add(id);
+      }
+      var i=state.focus.indexOf(id);
+      if(e.target.closest(".crow") && !e.target.classList.contains("chev")){
+        i>=0?state.focus.splice(i,1):state.focus.push(id);
+      }
+      render(); updatePrompt();
+    };
+  });
+}
+
+var ALL = SPINE.concat(BRANCHES).concat(THEMES.map(function(t){
+  return {id:t.id,title:t.title,sub:t.issues.length+" open",issues:t.issues,
+    note:"opportunistic ongoing theme — fold into adjacent work"}; }));
+function lookup(id){ return ALL.find(function(x){return x.id===id;}); }
+
+function updatePrompt(){
+  var fn=document.getElementById("focusName"), pt=document.getElementById("ptext"), ph=document.getElementById("phint");
+  if(state.focus.length===0){
+    fn.textContent="— pick a card to focus";
+    pt.textContent="Orient me on the badminton-app: BPM is past its ops layer (signups/payments/settle/stats) and aiming at a \"recreational player on steroids\" Value-Hub. Tell me where we are and the literal next action.";
+    ph.textContent="Click cards on the spine to stack them into a \"let's start this\" prompt.";
+    return;
+  }
+  var picks=state.focus.map(lookup).filter(Boolean);
+  fn.textContent = "→ " + picks.map(function(p){return p.title;}).join("  +  ");
+  var lines=[];
+  lines.push("Let's work on the following on the badminton-app, in order:");
+  picks.forEach(function(p,idx){
+    var iss = (p.issues&&p.issues.length)? " ["+p.issues.map(function(i){return "#"+i.n;}).join(", ")+"]" : "";
+    lines.push("\n"+(idx+1)+". "+p.title+iss+"\n   "+p.sub+"."+(p.note?" "+p.note:""));
+  });
+  lines.push("\nStart by confirming current state against GitHub issues + project_status memory, then propose a plan before touching code.");
+  pt.textContent=lines.join("");
+  ph.textContent=picks.length+" item"+(picks.length>1?"s":"")+" stacked · click a focused card's title again to remove it";
+}
+
+var presetWrap=document.getElementById("presets");
+presetWrap.innerHTML=PRESETS.map(function(p){
+  return '<button class="preset" data-preset="'+p.id+'">'+esc(p.label)+'<small>'+esc(p.desc)+'</small></button>'; }).join("");
+
+function applyPreset(p){
+  state.ongoing=p.state.ongoing; state.branches=p.state.branches; state.autoexpand=p.state.autoexpand;
+  state.prios=p.state.prios.slice(); state.focus=p.state.focus?p.state.focus.slice():[]; state.preset=p.id;
+  if(p.state.focus) p.state.focus.forEach(function(id){state.open.add(id);});
+  syncToggles(); syncPrios(); syncPresets(); render(); updatePrompt();
+}
+function syncPresets(){ document.querySelectorAll("[data-preset]").forEach(function(b){
+  b.classList.toggle("on", b.dataset.preset===state.preset); }); }
+function syncToggles(){ document.querySelectorAll("[data-tog]").forEach(function(t){
+  t.classList.toggle("on", state[t.dataset.tog]); }); }
+function syncPrios(){ document.querySelectorAll("#prios .chip").forEach(function(c){
+  c.classList.toggle("on", state.prios.includes(c.dataset.p)); }); }
+
+document.querySelectorAll("[data-preset]").forEach(function(b){
+  b.onclick=function(){ applyPreset(PRESETS.find(function(p){return p.id===b.dataset.preset;})); }; });
+document.querySelectorAll("[data-tog]").forEach(function(t){ t.onclick=function(){
+  var k=t.dataset.tog; state[k]=!state[k]; state.preset=null;
+  syncToggles(); syncPresets(); render(); }; });
+document.querySelectorAll("#prios .chip").forEach(function(c){ c.onclick=function(){
+  var p=c.dataset.p, i=state.prios.indexOf(p);
+  if(i>=0){ if(state.prios.length>1) state.prios.splice(i,1); } else { state.prios.push(p); }
+  state.preset=null; syncPrios(); syncPresets(); render(); }; });
+
+document.getElementById("copyBtn").onclick=function(){
+  var txt=document.getElementById("ptext").textContent;
+  navigator.clipboard.writeText(txt).then(function(){
+    var b=document.getElementById("copyBtn");
+    b.textContent="Copied!"; b.classList.add("ok");
+    setTimeout(function(){b.textContent="Copy";b.classList.remove("ok");},1400);
+  });
+};
+
+applyPreset(PRESETS[2]);
+</script>
+</body>
+</html>
