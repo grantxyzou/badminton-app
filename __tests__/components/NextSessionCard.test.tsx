@@ -90,16 +90,16 @@ describe('<NextSessionCard />', () => {
       courts: 2, maxPlayers: 12, signupOpen: true,
     };
 
-    it('a single tap on "Advance →" does NOT advance — it asks to confirm', async () => {
+    it('a single tap on "Advance to next week" does NOT advance — it warns + asks to confirm', async () => {
       let advanced = 0;
       mockFetch(makeFetcher(session, []));
       render(<NextSessionCard onAdvance={() => { advanced += 1; }} />);
-      await waitFor(() => expect(screen.getByText('Advance →')).toBeTruthy());
+      await waitFor(() => expect(screen.getByText('Advance to next week')).toBeTruthy());
 
-      fireEvent.click(screen.getByText('Advance →'));
+      fireEvent.click(screen.getByText('Advance to next week'));
 
       expect(advanced).toBe(0);
-      expect(screen.getByText(/Advance to next week\?/)).toBeTruthy();
+      expect(screen.getByText(/Can.t go back to the previous week once you advance/)).toBeTruthy();
       expect(screen.getByText('Confirm advance →')).toBeTruthy();
     });
 
@@ -107,14 +107,14 @@ describe('<NextSessionCard />', () => {
       let advanced = 0;
       mockFetch(makeFetcher(session, []));
       render(<NextSessionCard onAdvance={() => { advanced += 1; }} />);
-      await waitFor(() => expect(screen.getByText('Advance →')).toBeTruthy());
+      await waitFor(() => expect(screen.getByText('Advance to next week')).toBeTruthy());
 
-      fireEvent.click(screen.getByText('Advance →'));
+      fireEvent.click(screen.getByText('Advance to next week'));
       fireEvent.click(screen.getByText('Cancel'));
       expect(advanced).toBe(0);
-      expect(screen.getByText('Advance →')).toBeTruthy();
+      expect(screen.getByText('Advance to next week')).toBeTruthy();
 
-      fireEvent.click(screen.getByText('Advance →'));
+      fireEvent.click(screen.getByText('Advance to next week'));
       fireEvent.click(screen.getByText('Confirm advance →'));
       expect(advanced).toBe(1);
     });

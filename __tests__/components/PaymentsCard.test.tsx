@@ -64,7 +64,7 @@ describe('<PaymentsCard />', () => {
     });
   });
 
-  it('shows paid count in header', async () => {
+  it('no longer renders the "X of Y paid" header (removed by design); per-row paid state still shows', async () => {
     fetchPlayers([
       { id: 'p1', name: 'Daisy', paid: true },
       { id: 'p2', name: 'Mei', paid: true },
@@ -74,8 +74,12 @@ describe('<PaymentsCard />', () => {
     render(<PaymentsCard />);
 
     await waitFor(() => {
-      expect(screen.getByText(/2 of 3 paid/i)).toBeTruthy();
+      expect(screen.getByText('Daisy')).toBeTruthy();
     });
+    // The summary header is intentionally gone — the strip + per-row
+    // pills carry payment state now.
+    expect(screen.queryByText(/of 3 paid/i)).toBeNull();
+    expect(screen.queryByText('Payments')).toBeNull();
   });
 
   it('toggles paid optimistically and PATCHes the API', async () => {

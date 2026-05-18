@@ -2159,6 +2159,37 @@ html[data-hydrated="true"] .splash {
   border-color: rgba(0, 0, 0, 0.08);
 }
 
+/* Session selector chip — horizontal session nav for PaymentsCard
+   (replaced the prev/next chevrons + the standalone RecentSessionsStrip).
+   Selected = accent-filled, matching how the app signals an active choice
+   elsewhere (segment-tab-active / inner-card-green). */
+.cc-session-chip {
+  border-radius: 10px;
+  padding: 7px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.cc-session-chip:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+.cc-session-chip[aria-selected="true"] {
+  background: var(--inner-card-green-bg, rgba(74, 222, 128, 0.13));
+  border-color: var(--inner-card-green-border, rgba(74, 222, 128, 0.3));
+  color: var(--text-primary);
+}
+[data-theme="light"] .cc-session-chip {
+  background: rgba(0, 0, 0, 0.025);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+[data-theme="light"] .cc-session-chip:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
 /* Dot indicator — scroll-position pagination markers. Same theme split
    as cc-mini-card so they don't vanish over light backgrounds. */
 .cc-dot {
