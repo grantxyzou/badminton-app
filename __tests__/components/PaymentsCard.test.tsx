@@ -187,6 +187,56 @@ describe('<PaymentsCard />', () => {
       }
     });
 
+    it('v1.5/C: removing a settled debtor opens Cover & remove, not a plain confirm', async () => {
+      const prevSettle = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      const prevLedger = process.env.NEXT_PUBLIC_FLAG_LEDGER;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      process.env.NEXT_PUBLIC_FLAG_LEDGER = 'true';
+      try {
+        fetchSettledPlayers([
+          { id: 'anna-1', name: 'Anna', paid: false, owedAmount: 16, writtenOff: false },
+        ]);
+        render(<PaymentsCard />);
+        await waitFor(() => expect(screen.getByText('Anna')).toBeTruthy());
+
+        fireEvent.click(screen.getByRole('button', { name: /More actions for Anna/i }));
+        fireEvent.click(await screen.findByText(/Remove from session/i));
+
+        // The cover-and-remove CoverSheet should take over — never a window.confirm.
+        await waitFor(() => {
+          expect(screen.getByRole('button', { name: /Cover & remove/i })).toBeTruthy();
+        });
+        expect(screen.getByText(/Anna owes \$16/i)).toBeTruthy();
+        expect(screen.getByRole('button', { name: /Remove without covering/i })).toBeTruthy();
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prevSettle;
+        process.env.NEXT_PUBLIC_FLAG_LEDGER = prevLedger;
+      }
+    });
+
+    it('v1.5/C: a paid (no-debt) player still removes via plain confirm path (no CoverSheet)', async () => {
+      const prevSettle = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      const prevLedger = process.env.NEXT_PUBLIC_FLAG_LEDGER;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      process.env.NEXT_PUBLIC_FLAG_LEDGER = 'true';
+      try {
+        fetchSettledPlayers([
+          { id: 'p1', name: 'Daisy', paid: true, owedAmount: 15, writtenOff: false },
+        ]);
+        render(<PaymentsCard />);
+        await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
+
+        fireEvent.click(screen.getByRole('button', { name: /More actions for Daisy/i }));
+        fireEvent.click(await screen.findByText(/Remove from session/i));
+
+        // Paid players have no orphan-debt risk → no cover-and-remove sheet.
+        expect(screen.queryByRole('button', { name: /Cover & remove/i })).toBeNull();
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prevSettle;
+        process.env.NEXT_PUBLIC_FLAG_LEDGER = prevLedger;
+      }
+    });
+
     it('falls back to no $ on rows without owedAmount even when flag on', async () => {
       const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
       process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';

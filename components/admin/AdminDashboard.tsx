@@ -25,6 +25,7 @@ import BirdsPage from './CommandCenter/BirdsPage';
 import RosterPage from './CommandCenter/RosterPage';
 import SetupPage from './CommandCenter/SetupPage';
 import LedgerPage from './LedgerPage';
+import PaymentsCard from './CommandCenter/PaymentsCard';
 import AdminBackHeader from './AdminBackHeader';
 import AnnouncementsCard from './CommandCenter/AnnouncementsCard';
 import ETransferRecipientEditor from './CommandCenter/ETransferRecipientEditor';
@@ -60,10 +61,19 @@ function fmtSessionNav(datetime: string) {
 export default function AdminDashboard() {
   const [view, setView] = useState<AdminView>('dashboard');
   const [refreshKey, setRefreshKey] = useState(0);
+  // Session the Ledger drilled into; PaymentsCard preselects its chip.
+  const [paymentsSessionId, setPaymentsSessionId] = useState<string | null>(null);
 
   const goBack = useCallback(() => {
     setRefreshKey(k => k + 1);
     setView('dashboard');
+  }, []);
+
+  // Payments is reached from the Ledger, so Back returns there (not the
+  // dashboard) — preserving the drill-in trail.
+  const goBackToLedger = useCallback(() => {
+    setRefreshKey(k => k + 1);
+    setView('ledger');
   }, []);
 
   /* ── Drill-down routing ── */
@@ -94,7 +104,29 @@ export default function AdminDashboard() {
     // (admin-auth is its own gate). If the flag is off, fall through to the
     // dashboard rather than rendering an orphan page.
     if (isFlagOn('NEXT_PUBLIC_FLAG_LEDGER')) {
-      return <div className="animate-slideInRight"><LedgerPage onBack={goBack} /></div>;
+      return (
+        <div className="animate-slideInRight">
+          <LedgerPage
+            onBack={goBack}
+            onOpenSession={(sessionId) => {
+              setPaymentsSessionId(sessionId);
+              setView('payments');
+            }}
+          />
+        </div>
+      );
+    }
+  }
+  if (view === 'payments') {
+    // Only reachable via the flag-gated Ledger drill-in; mirror its gate so
+    // a stale view state can't orphan this page.
+    if (isFlagOn('NEXT_PUBLIC_FLAG_LEDGER')) {
+      return (
+        <div className="animate-slideInRight space-y-3">
+          <AdminBackHeader onBack={goBackToLedger} title="Payments" />
+          <PaymentsCard refreshKey={refreshKey} initialSessionId={paymentsSessionId} />
+        </div>
+      );
     }
   }
   if (view === 'announcements') {

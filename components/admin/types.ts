@@ -8,6 +8,7 @@ export type AdminView =
   | 'players-full'
   | 'releases'
   | 'ledger'
+  | 'payments'
   | 'announcements'
   | 'etransfer'
   | 'skip-dates';

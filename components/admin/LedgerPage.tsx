@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import AdminBackHeader from './AdminBackHeader';
+import PlayerProfileSheet from './CommandCenter/PlayerProfileSheet';
 import { fmtSessionLabel } from '@/lib/fmt';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -51,15 +52,21 @@ interface LedgerData {
 
 interface LedgerPageProps {
   onBack: () => void;
+  /** Drill into a session's payments. Omitted in contexts (e.g. tests)
+   *  that render the page in isolation — rows stay inert then. */
+  onOpenSession?: (sessionId: string) => void;
 }
 
 function money(n: number): string {
   return `$${n.toFixed(2)}`;
 }
 
-export default function LedgerPage({ onBack }: LedgerPageProps) {
+export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
   const [range, setRange] = useState<RangeKey>('12w');
   const [tab, setTab] = useState<'session' | 'player'>('session');
+  // Player drill-in opens a self-contained sheet owned here (LedgerPage is a
+  // routed page, not a child of CommandCenter where the shared sheet lives).
+  const [profile, setProfile] = useState<{ memberId: string | null; name: string } | null>(null);
   const [data, setData] = useState<LedgerData | null>(null);
   const [loading, setLoading] = useState(true);
   // Distinct from "loaded but empty": a failed fetch must not render the same
@@ -241,23 +248,34 @@ export default function LedgerPage({ onBack }: LedgerPageProps) {
             )}
           </div>
 
-          {/* Lists are read-only static rows (cc-tile-static principle): the
-              session/player drill-in lands in sub-issue D. They don't signal
-              tappability, so no disabled-dim treatment is needed. */}
+          {/* Rows are drill-ins (v1.5/D): a session opens its Payments
+              page, a player opens their profile sheet. They're real
+              <button>s now — the cc-tile-static "don't fake tappability"
+              caveat no longer applies because they ARE tappable. The
+              trailing chevron is the same affordance the CommandCenter
+              settings list uses to signal a row navigates. */}
           {activeTab === 'session' ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {bySession.map((s) => {
                 const settled = s.unpaidCount === 0;
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={s.sessionId}
                     className="glass-card"
+                    onClick={() => onOpenSession?.(s.sessionId)}
+                    aria-label={`Payments for ${fmtSessionLabel(s.date)}`}
                     style={{
                       padding: '12px 14px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: 12,
+                      width: '100%',
+                      textAlign: 'left',
+                      font: 'inherit',
+                      color: 'inherit',
+                      cursor: 'pointer',
                     }}
                   >
                     <div style={{ minWidth: 0 }}>
@@ -276,67 +294,121 @@ export default function LedgerPage({ onBack }: LedgerPageProps) {
                         {s.attendanceCount === 1 ? '' : 's'}
                       </p>
                     </div>
-                    {settled ? (
-                      <span className="cc-pill cc-pill-success">✓ all settled</span>
-                    ) : (
-                      <span className="cc-pill cc-pill-amber">
-                        {s.unpaidCount} owing · {money(s.unpaidAmount)}
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {settled ? (
+                        <span className="cc-pill cc-pill-success">✓ all settled</span>
+                      ) : (
+                        <span className="cc-pill cc-pill-amber">
+                          {s.unpaidCount} owing · {money(s.unpaidAmount)}
+                        </span>
+                      )}
+                      <span
+                        className="material-icons"
+                        aria-hidden="true"
+                        style={{ fontSize: 18, color: 'var(--ink-faint)' }}
+                      >
+                        chevron_right
                       </span>
-                    )}
-                  </div>
+                    </span>
+                  </button>
                 );
               })}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {byPlayer.map((p) => (
-                <div
-                  key={p.memberId ?? `name:${p.name.toLowerCase()}`}
-                  className="glass-card"
-                  style={{
-                    padding: '12px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 12,
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <p
-                      style={{
-                        fontFamily: 'var(--font-display, "Space Grotesk")',
-                        fontSize: 14,
-                        fontWeight: 600,
-                        margin: 0,
-                      }}
-                    >
-                      {p.name}
-                    </p>
-                    <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: '2px 0 0' }}>
-                      {p.sessionCount} unpaid session{p.sessionCount === 1 ? '' : 's'}
-                    </p>
-                  </div>
-                  {/* Hero number, not a cc-pill: the owed amount IS this
-                      row's primary figure (cf. BirdsPage stock numbers).
-                      The session row uses cc-pill-amber because there the
-                      amount is secondary status, not the headline. */}
-                  <span
-                    style={{
-                      fontFamily: 'var(--font-display, "Space Grotesk")',
-                      fontSize: 18,
-                      fontWeight: 700,
-                      letterSpacing: '-0.02em',
-                      color: 'var(--amber)',
-                    }}
+              {byPlayer.map((p) => {
+                // Only memberId-linked rows drill into a profile. Legacy
+                // pre-migration records (no memberId) have no history to
+                // show — render them inert rather than fake a tap that
+                // opens an empty sheet (design-system "don't signal
+                // tappability you can't honor" principle).
+                const linked = p.memberId !== null;
+                const rowStyle = {
+                  padding: '12px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  width: '100%',
+                  textAlign: 'left' as const,
+                  font: 'inherit',
+                  color: 'inherit',
+                  cursor: linked ? 'pointer' : 'default',
+                };
+                const inner = (
+                  <>
+                    <div style={{ minWidth: 0 }}>
+                      <p
+                        style={{
+                          fontFamily: 'var(--font-display, "Space Grotesk")',
+                          fontSize: 14,
+                          fontWeight: 600,
+                          margin: 0,
+                        }}
+                      >
+                        {p.name}
+                      </p>
+                      <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: '2px 0 0' }}>
+                        {p.sessionCount} unpaid session{p.sessionCount === 1 ? '' : 's'}
+                      </p>
+                    </div>
+                    {/* Hero number, not a cc-pill: the owed amount IS this
+                        row's primary figure (cf. BirdsPage stock numbers).
+                        The session row uses cc-pill-amber because there the
+                        amount is secondary status, not the headline. */}
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span
+                        style={{
+                          fontFamily: 'var(--font-display, "Space Grotesk")',
+                          fontSize: 18,
+                          fontWeight: 700,
+                          letterSpacing: '-0.02em',
+                          color: 'var(--amber)',
+                        }}
+                      >
+                        {money(p.owedAmount)}
+                      </span>
+                      {linked && (
+                        <span
+                          className="material-icons"
+                          aria-hidden="true"
+                          style={{ fontSize: 18, color: 'var(--ink-faint)' }}
+                        >
+                          chevron_right
+                        </span>
+                      )}
+                    </span>
+                  </>
+                );
+                const key = p.memberId ?? `name:${p.name.toLowerCase()}`;
+                return linked ? (
+                  <button
+                    type="button"
+                    key={key}
+                    className="glass-card"
+                    onClick={() => setProfile({ memberId: p.memberId, name: p.name })}
+                    aria-label={`${p.name}'s history`}
+                    style={rowStyle}
                   >
-                    {money(p.owedAmount)}
-                  </span>
-                </div>
-              ))}
+                    {inner}
+                  </button>
+                ) : (
+                  <div key={key} className="glass-card" style={rowStyle}>
+                    {inner}
+                  </div>
+                );
+              })}
             </div>
           )}
         </>
       )}
+
+      <PlayerProfileSheet
+        open={profile !== null}
+        onClose={() => setProfile(null)}
+        memberId={profile?.memberId ?? null}
+        initialName={profile?.name}
+      />
     </div>
   );
 }
