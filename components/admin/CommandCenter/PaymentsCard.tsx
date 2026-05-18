@@ -435,17 +435,6 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
                 )}
               </span>
               <div className="flex items-center gap-1 flex-shrink-0">
-                {onSendIndividualReceipt && (
-                  <button
-                    type="button"
-                    onClick={() => onSendIndividualReceipt(player.name)}
-                    className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1"
-                    aria-label={`Send receipt to ${player.name}`}
-                    title="Send individual receipt"
-                  >
-                    <span className="material-icons text-base align-middle">receipt_long</span>
-                  </button>
-                )}
                 {settleFlagOn && typeof player.owedAmount === 'number' && (
                   <span
                     className="text-xs font-medium px-2"
@@ -462,11 +451,33 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
                   type="button"
                   onClick={() => togglePaid(player)}
                   disabled={togglingId === player.id}
-                  className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors ${player.paid ? 'pill-paid' : 'pill-unpaid'} disabled:opacity-50`}
+                  className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors inline-flex items-center gap-1 ${player.paid ? 'pill-paid' : 'pill-unpaid'} disabled:opacity-50`}
                   aria-pressed={player.paid === true}
                 >
-                  {togglingId === player.id ? '…' : player.paid ? 'Paid' : 'Pending'}
+                  {togglingId === player.id ? (
+                    '…'
+                  ) : player.paid ? (
+                    <>
+                      <span className="material-icons" style={{ fontSize: 14 }} aria-hidden="true">
+                        check_circle
+                      </span>
+                      Paid
+                    </>
+                  ) : (
+                    'Pending'
+                  )}
                 </button>
+                {onSendIndividualReceipt && (
+                  <button
+                    type="button"
+                    onClick={() => onSendIndividualReceipt(player.name)}
+                    className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1"
+                    aria-label={`Send receipt to ${player.name}`}
+                    title="Send individual receipt"
+                  >
+                    <span className="material-icons text-base align-middle">receipt_long</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => { setActionTarget(player); setActionError(''); }}
