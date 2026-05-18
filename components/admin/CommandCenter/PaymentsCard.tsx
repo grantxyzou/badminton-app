@@ -72,7 +72,6 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
   const isCurrentSession = activeSessionId === viewedSessionId;
   const viewedSession = sessions.find((s) => s.id === viewedSessionId);
   const settleFlagOn = isFlagOn('NEXT_PUBLIC_FLAG_SETTLE');
-  const isViewedSettled = settleFlagOn && !!viewedSession?.settled;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -371,21 +370,6 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
         </p>
       )}
 
-      {isViewedSettled && (
-        <div className="flex justify-end">
-          <span
-            className="text-xs px-2 py-1 rounded-full flex-shrink-0"
-            style={{
-              background: 'rgba(168, 85, 247, 0.15)',
-              color: '#d8b4fe',
-              border: '1px solid rgba(168, 85, 247, 0.3)',
-            }}
-            title={`Bill sent — $${viewedSession?.settled?.costPerPerson} each · ${viewedSession?.settled?.playerCount} of us`}
-          >
-            Sent · ${viewedSession?.settled?.costPerPerson}
-          </span>
-        </div>
-      )}
 
       {/* Empty state — kept distinct from loadError (lying-empty-state
           rule). The "X of Y paid" count was removed by design; this is

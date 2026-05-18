@@ -152,7 +152,7 @@ describe('<PaymentsCard />', () => {
       });
     }
 
-    it('hides Sent badge and per-row $ when flag is off', async () => {
+    it('hides per-row $ when flag is off (Sent badge was removed by design)', async () => {
       const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
       process.env.NEXT_PUBLIC_FLAG_SETTLE = 'false';
       try {
@@ -161,6 +161,7 @@ describe('<PaymentsCard />', () => {
         ]);
         render(<PaymentsCard />);
         await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
+        // Settled badge intentionally removed — never rendered now.
         expect(screen.queryByText(/Sent ·/)).toBeNull();
         expect(screen.queryByText('$15')).toBeNull();
       } finally {
@@ -168,7 +169,7 @@ describe('<PaymentsCard />', () => {
       }
     });
 
-    it('shows Sent badge and per-row owedAmount when flag on', async () => {
+    it('shows per-row owedAmount when flag on; no Sent badge (removed by design)', async () => {
       const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
       process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
       try {
@@ -178,7 +179,7 @@ describe('<PaymentsCard />', () => {
         ]);
         render(<PaymentsCard />);
         await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
-        expect(screen.getByText(/Sent · \$15/)).toBeTruthy();
+        expect(screen.queryByText(/Sent · \$15/)).toBeNull();
         // Two rows × $15 = two matching texts
         expect(screen.getAllByText('$15').length).toBe(2);
       } finally {
