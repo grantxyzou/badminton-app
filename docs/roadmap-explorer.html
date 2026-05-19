@@ -186,14 +186,14 @@
   <main class="main">
     <div class="hdr">
       <h1>The path to "recreational player on steroids"</h1>
-      <div class="meta">snapshot 2026-05-18<br>tap any card to expand &middot; click to focus a prompt</div>
+      <div class="meta">snapshot 2026-05-18 &middot; updated: secrets·#72·deps done<br>tap any card to expand &middot; click to focus a prompt</div>
     </div>
 
     <div class="nextbar">
       <div class="dot"></div>
       <div>
         <div class="k">Literal next action</div>
-        <div class="v">Smoke <b>bpm-next</b> through 2026-05-20, rotate <b>SESSION_SECRET / ANTHROPIC_API_KEY / Cosmos key</b>, then tag &amp; dispatch <b>bpm-stable-v1.4</b>. After that the path opens onto <b>Slice-0 (#101)</b> &mdash; the gate to the whole Value-Hub.</div>
+        <div class="v">✓ Secrets rotated &middot; ✓ #72 closed &middot; ✓ deps security batch merged (#97 next, #111 picomatch +3). Remaining: smoke <b>bpm-next</b> through 2026-05-20, then tag &amp; dispatch <b>bpm-stable-v1.4</b>. After that the path opens onto <b>Slice-0 (#101)</b> &mdash; the gate to the whole Value-Hub.</div>
       </div>
     </div>
 
@@ -225,11 +225,11 @@
 const SPINE = [
   { id:"now", st:"now", badge:"now", bcls:"b-now", title:"Promote v1.4 + v1.5/A to stable",
     sub:"soaking on bpm-next until 2026-05-20 (2 days)", issues:[],
-    note:"Gate: clean smoke window + rotate SESSION_SECRET / ANTHROPIC_API_KEY / Cosmos AccountKey before the cut." },
-  { id:"v15", st:"done", badge:"code done / issue stale", bcls:"b-done", title:"v1.5 — Ledger & write-offs",
-    sub:"B/C/D landed in commit 211583e — but #72 never closed", issues:[
-      {n:72,t:"[settle] Phase 3 — remove-after-settle prompt + owner-ledger view (work shipped; close/verify this)",p:"p2"} ],
-    note:"Visibility gap: the milestone shows 1 open issue, but the code is in. Close #72 so the board stops lying." },
+    note:"Gate: clean smoke window. ✓ Secrets (SESSION_SECRET / ANTHROPIC_API_KEY / Cosmos key) rotated 2026-05-18 — pre-cut hygiene done." },
+  { id:"v15", st:"done", badge:"shipped · #72 closed", bcls:"b-done", title:"v1.5 — Ledger & write-offs",
+    sub:"B/C/D landed (211583e) · #72 closed 2026-05-18 · milestone clean", issues:[
+      {n:72,t:"[settle] Phase 3 — remove-after-settle prompt + owner-ledger view ✓ shipped 211583e, issue closed",p:"p2"} ],
+    note:"✓ Resolved 2026-05-18 — #72 closed, v1.5 milestone now 0 open. Ledger ships dormant behind NEXT_PUBLIC_FLAG_LEDGER until promoted." },
   { id:"goal", st:"gate", badge:"the goal", bcls:"b-gate", title:"Value-Hub — \"player on steroids\"", goal:true,
     sub:"4 parallel tracks behind a thin gated vertical", issues:[], note:"Plan: docs/plans/value-hub-slice-0.md · decisions A–G ratified 2026-05-16 (PR #95)." },
   { id:"slice0", st:"next", badge:"next on path", bcls:"b-next", title:"Slice-0 — the gated vertical",
