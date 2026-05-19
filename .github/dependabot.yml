@@ -1,0 +1,29 @@
+# Grouped Dependabot so updates arrive as a few predictable PRs per week
+# instead of a flood of single-package PRs (each of which can desync the
+# lockfile on squash-merge). Majors still come individually — they
+# deserve individual review. Commit prefixes match the repo convention.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+    groups:
+      production-deps:
+        applies-to: version-updates
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      development-deps:
+        applies-to: version-updates
+        dependency-type: "development"
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
