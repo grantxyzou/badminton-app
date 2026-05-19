@@ -73,6 +73,21 @@
   --nav-active-color: #4ade80;
   --nav-inactive-color: rgba(255, 255, 255, 0.5);
 
+  /* ── Bottom nav · Labeled Rail (spec May 2026) ──
+     Theme-INDEPENDENT on purpose: the rail is a fixed dark chrome surface
+     per the high-fidelity spec, so these are NOT mirrored under
+     [data-theme="light"]. --ease-glass (above) already matches the spec's
+     easing token. --rail-indicator-radius is deliberately separate from
+     --radius-pill (100px, the app-wide pill rung) — the spec's "15px"
+     would have collided with the corner-radii ladder. */
+  --rail-bg: linear-gradient(180deg, rgba(16, 15, 15, 0.84) 0%, rgba(10, 12, 11, 0.98) 100%);
+  --rail-indicator-bg: linear-gradient(160deg, rgba(74, 222, 128, 0.20) 0%, rgba(74, 222, 128, 0.09) 100%);
+  --rail-active: #4ade80;
+  --rail-inactive: rgba(255, 255, 255, 0.5);
+  --rail-border: rgba(255, 255, 255, 0.1);
+  --rail-blur: blur(20px) saturate(150%);
+  --rail-indicator-radius: 15px;
+
   /* ── Inputs ── */
   --input-bg: linear-gradient(160deg, rgba(var(--glass-tint), 0.08) 0%, rgba(var(--glass-tint), 0.04) 100%);
   --input-border: rgba(var(--glass-tint), 0.14);
@@ -191,6 +206,16 @@
   --nav-tab-active-bg: linear-gradient(160deg, rgba(22, 163, 74, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%);
   --nav-active-color: #16a34a;
   --nav-inactive-color: rgba(0, 0, 0, 0.4);
+
+  /* Labeled Rail — light variant. Mirrors the app's established
+     light-nav language: #16a34a active (= light --nav-active-color),
+     near-opaque white glass, hairline dark border. --rail-blur and
+     --rail-indicator-radius inherit from :root (unchanged across themes). */
+  --rail-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.86) 0%, rgba(255, 255, 255, 0.95) 100%);
+  --rail-indicator-bg: linear-gradient(160deg, rgba(22, 163, 74, 0.16) 0%, rgba(22, 163, 74, 0.07) 100%);
+  --rail-active: #16a34a;
+  --rail-inactive: rgba(0, 0, 0, 0.45);
+  --rail-border: rgba(0, 0, 0, 0.08);
 
   --input-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.55) 100%);
   --input-border: rgba(0, 0, 0, 0.1);
@@ -1134,6 +1159,124 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
 }
 [data-theme="light"] .nav-tab-active {
   box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.22);
+}
+
+/* ── Bottom nav · Labeled Rail (spec May 2026) ──
+   Full-width, edge-attached, theme-independent dark surface. The LIVE
+   app's bottom nav. The old .nav-glass pill family above is retained
+   only for the frozen /design preview route. Triple-signal active
+   state: color + tonal pill + bold weight — never color alone. No
+   border-radius / box-shadow: this is a surface, not a floating object. */
+.rail-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  /* The spec mock is a 320px phone, where "full-width" == content
+     width. In the real responsive app, content is capped at the
+     max-w-lg column (32rem, centered) — matching <main data-page-shell>
+     and the old nav. Cap + centre the fixed bar so it aligns with the
+     content column on wide viewports; on phones < 32rem it stays full
+     device width (the spec's actual target). Still edge-attached:
+     no radius / shadow / side float. */
+  max-width: 32rem; /* = Tailwind max-w-lg */
+  margin-inline: auto;
+  display: flex;
+  width: 100%;
+  background: var(--rail-bg);
+  -webkit-backdrop-filter: var(--rail-blur);
+  backdrop-filter: var(--rail-blur);
+  border-top: 1px solid var(--rail-border);
+  /* ≥28px safe strip below the tab row, same surface, no interactive
+     elements — extends on notched devices via env(). README's
+     production guidance: padding-bottom on the container. */
+  padding-bottom: max(28px, env(safe-area-inset-bottom, 0px));
+}
+
+.rail-tab {
+  flex: 1;
+  position: relative; /* stack icons/labels above the sliding indicator */
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 0; /* even rhythm — codebase has no spacing-scale token */
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-sans); /* IBM Plex — body/UI font per design system (spec said display, but small UI labels use --font-sans here) */
+  color: var(--rail-inactive);
+  transition: color 150ms ease;
+}
+
+.rail-icon-wrap {
+  width: 56px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--rail-indicator-radius);
+  background: transparent;
+  transition: background 150ms var(--ease-glass);
+}
+
+.rail-icon {
+  font-size: 24px; /* spec 22 + 2 (design review) */
+  line-height: 1;
+  /* Same glyph active & inactive — NO FILL/outline swap (unlike the old
+     .nav-tab-icon). Colour is inherited from .rail-tab. */
+  font-variation-settings: 'opsz' 24, 'wght' 400, 'FILL' 0, 'GRAD' 0;
+}
+
+.rail-label {
+  font-size: 11px; /* design-system nav-label size (spec was 10.5) */
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.1; /* matches the established .nav-tab-label rhythm */
+}
+
+.rail-tab-active {
+  color: var(--rail-active);
+}
+.rail-tab-active .rail-label {
+  font-weight: 700;
+}
+
+/* Shared sliding indicator — one pill that glides between tabs on
+   switch instead of the active background cross-fading per tab.
+   --ri (0–3, the active tab index) is set inline on .rail-bar from
+   React. 25% / translateX(--ri*100%) is tied to the 4-tab invariant
+   (CLAUDE.md: slot count is always 4). Rail stays fixed — only the
+   pill moves (spec: no rail translate/scale). Triple signal intact:
+   colour + (now travelling) pill + label weight 700. */
+.rail-indicator {
+  position: absolute;
+  top: 8px;            /* = .rail-tab padding-top → the icon-wrap row */
+  left: 0;
+  width: 25%;          /* one of four equal flex:1 columns */
+  height: 30px;        /* = .rail-icon-wrap height */
+  pointer-events: none;
+  z-index: 0;
+  transform: translateX(calc(var(--ri, 0) * 100%));
+  transition: transform 200ms var(--ease-glass);
+}
+.rail-indicator-pill {
+  display: block;
+  width: 56px;         /* = .rail-icon-wrap width */
+  height: 100%;
+  margin: 0 auto;      /* centre in the 25% column → sits over the icon */
+  border-radius: var(--rail-indicator-radius);
+  background: var(--rail-indicator-bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-tab,
+  .rail-icon-wrap,
+  .rail-indicator {
+    transition-duration: 0.01ms;
+  }
 }
 
 /* ── Icon webfont ──
