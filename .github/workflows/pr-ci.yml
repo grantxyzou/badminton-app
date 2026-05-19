@@ -1,0 +1,66 @@
+name: PR CI (strict lockfile + tests + build)
+
+# Shift-left gate. deploy-next.yml runs `npm ci` + `npm test` + build
+# only AFTER a push lands on main — so a Dependabot squash that desyncs
+# package-lock.json (Dependabot's resolver != the runner's npm; squash
+# does not re-resolve) breaks main *post-merge*, before tests even run.
+# This job runs the SAME strict steps on the PR, so the failure surfaces
+# where it is cheap (a red PR) instead of on the deploy branch.
+#
+# Mirrors deploy-next.yml exactly: Node 22, same pinned action SHAs,
+# `npm ci` (strict), `npm test`, `npm run build` with the same public
+# env. Uses NO secrets, so it also runs on Dependabot/bot PRs (unlike
+# claude-code-review.yml, which needs a token and is skipped for bots).
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      # The exact strict install deploy-next uses. If package-lock.json
+      # is out of sync with package.json (the Dependabot-squash trap),
+      # this fails HERE — on the PR — with the same EUSAGE error,
+      # instead of red-ing main after merge.
+      - name: Install dependencies (strict, mirrors deploy)
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      # Build too, so a dependency bump that compiles-but-breaks-build
+      # is caught pre-merge. Same public env as deploy-next (no secrets;
+      # the Azure publish profile is only needed by the deploy step,
+      # which this gate intentionally stops short of).
+      - name: Build Next.js app
+        run: npm run build
+        env:
+          NEXT_PUBLIC_BASE_PATH: /bpm
+          NEXT_PUBLIC_BASE_URL: https://vnext-badminton-app-enhcave5djcvafe9.canadacentral-01.azurewebsites.net/bpm
+          NEXT_PUBLIC_MAX_PLAYERS: '12'
+          NEXT_PUBLIC_ETRANSFER_EMAIL: grantxyzou@gmail.com
+          NEXT_PUBLIC_ENV: next
+          NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
+          NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: 'true'
+          NEXT_PUBLIC_FLAG_COMMAND_CENTER: 'true'
+          NEXT_PUBLIC_FLAG_SETTLE: 'true'
+          NEXT_PUBLIC_FLAG_LEDGER: 'true'
+          NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE: 'true'
