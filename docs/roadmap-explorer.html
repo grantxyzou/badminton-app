@@ -186,14 +186,14 @@
   <main class="main">
     <div class="hdr">
       <h1>The path to "recreational player on steroids"</h1>
-      <div class="meta">snapshot 2026-05-18 &middot; updated: secrets·#72·deps done<br>tap any card to expand &middot; click to focus a prompt</div>
+      <div class="meta">snapshot 2026-05-19 &middot; secrets·#72·deps·nav-rail done<br>tap any card to expand &middot; click to focus a prompt</div>
     </div>
 
     <div class="nextbar">
       <div class="dot"></div>
       <div>
         <div class="k">Literal next action</div>
-        <div class="v">✓ Secrets rotated &middot; ✓ #72 closed &middot; ✓ deps security batch merged (#97 next, #111 picomatch +3). Remaining: smoke <b>bpm-next</b> through 2026-05-20, then tag &amp; dispatch <b>bpm-stable-v1.4</b>. After that the path opens onto <b>Slice-0 (#101)</b> &mdash; the gate to the whole Value-Hub.</div>
+        <div class="v">✓ Secrets rotated &middot; ✓ #72 closed &middot; ✓ deps security batch merged (#97 next, #111 picomatch +3) &middot; ✓ Bottom nav "Labeled Rail" shipped to bpm-next (flag <b>NEXT_PUBLIC_FLAG_NAV_RAIL</b>, soaking; legacy nav stays on stable). Remaining: smoke <b>bpm-next</b> through 2026-05-20, then tag &amp; dispatch <b>bpm-stable-v1.4</b>. After that the path opens onto <b>Slice-0 (#101)</b> &mdash; the gate to the whole Value-Hub.</div>
       </div>
     </div>
 
@@ -270,6 +270,7 @@ const THEMES = [
       {n:79,t:"Race condition on signup — capacity check + insert not atomic",p:"p1"},
       {n:80,t:"In-memory rate limiter resets on cold start",p:"p2"} ] },
   { id:"design", title:"Design system v2", issues:[
+      {n:"RAIL",t:"✓ Bottom nav → Labeled Rail (full-width, sliding indicator, light+dark, a11y triple-signal) — shipped to bpm-next behind NEXT_PUBLIC_FLAG_NAV_RAIL, soaking; legacy nav on stable until promoted",p:"p2"},
       {n:74,t:"Build primitives + wire unused token classes",p:"p2"},
       {n:75,t:"Inline-style sweep — replace ad-hoc style props with primitives",p:"p2"},
       {n:76,t:"Per-tab visual identity (extend data-tab background system)",p:"p2"},
