@@ -1,6 +1,8 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import { useTranslations } from 'next-intl';
+import { isFlagOn } from '@/lib/flags';
 import type { Tab } from '@/components/HomeShell';
 
 interface Props {
@@ -11,20 +13,25 @@ interface Props {
 type NavItem = { id: Tab; label: string; icon: string };
 
 /**
- * Canonical per `docs/design-system/preview/19-bottom-nav.html` +
- * `ui_kits/bpm-app/components.jsx` BottomNav.
+ * Bottom navigation. Two forms, gated by `NEXT_PUBLIC_FLAG_NAV_RAIL`:
  *
- *   Container: glass pill, `inline-flex`, radius 16, 1px rim, padding 4/6/6.
- *   Tab:       `flex: 0 0 auto; min-width: 58px; padding: 5px 8px 3px`.
- *   Icon:      20px. Active tab uses FILL axis = 1 (filled); inactive = 0.
- *   Label:     11px / 500 (active 600) / tracking 0.01em / line-height 1.1.
- *   Active:    tinted pill background (`--nav-tab-active-bg`) + 1px green
- *              rim + color swap (`--nav-active-color`) + filled icon.
+ *  • flag ON  (bpm-next + dev) → "Labeled Rail" (spec May 2026):
+ *    full-width edge-attached bar capped to the max-w-lg content
+ *    column, theme-aware, triple-signal active state (colour + tonal
+ *    pill + bold weight). Styling: `.rail-*` + `--rail-*` in globals.css.
+ *  • flag OFF (bpm-stable)     → legacy floating glass pill (`.nav-glass`
+ *    / `.nav-tab*`). Unchanged; the safe rollback target until promoted.
  *
- * All styling lives in `globals.css`.
+ * Both branches share the SAME contract: `{activeTab, onTabChange}` API,
+ * the four `Tab` ids (`home · players · skills · profile` — `skills`
+ * renders "Stats" via `nav.skills` for backcompat), i18n-driven labels,
+ * `.material-icons` glyphs already in the Material Symbols subset, and
+ * per-tab `aria-label` + `aria-current`. Slot count is always 4 — admin
+ * is reached via Profile → "Admin tools →" or `?tab=admin`, never here.
  *
- * Slot count: always 4. Admin is reachable via Profile → "Admin tools →"
- * (gated on `isAdmin`) or the `?tab=admin` deep link — never the bottom nav.
+ * Retire per `lib/flags.ts` `plannedRemoval`: when the rail promotes to
+ * stable, delete the flag, the OFF branch below, and the `.nav-glass`
+ * family in globals.css (kept now for this branch + the /design route).
  */
 export default function BottomNav({ activeTab, onTabChange }: Props) {
   const t = useTranslations('nav');
@@ -35,6 +42,47 @@ export default function BottomNav({ activeTab, onTabChange }: Props) {
     { id: 'profile', label: t('profile'), icon: 'person' },
   ];
 
+  if (isFlagOn('NEXT_PUBLIC_FLAG_NAV_RAIL')) {
+    // Active index drives the shared sliding indicator (--ri). findIndex
+    // is always 0–3 for a valid Tab; Math.max guards the -1 edge.
+    const activeIndex = Math.max(
+      0,
+      visibleTabs.findIndex((tb) => tb.id === activeTab),
+    );
+    return (
+      <nav
+        className="rail-bar"
+        aria-label="Primary navigation"
+        style={{ '--ri': activeIndex } as CSSProperties}
+      >
+        <span className="rail-indicator" aria-hidden="true">
+          <span className="rail-indicator-pill" />
+        </span>
+        {visibleTabs.map((tab) => {
+          const active = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => onTabChange(tab.id)}
+              aria-label={tab.label}
+              aria-current={active ? 'page' : undefined}
+              className={active ? 'rail-tab rail-tab-active' : 'rail-tab'}
+            >
+              <span className="rail-icon-wrap">
+                <span className="material-icons rail-icon" aria-hidden="true">
+                  {tab.icon}
+                </span>
+              </span>
+              <span className="rail-label">{tab.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+    );
+  }
+
+  // ── Legacy floating glass pill — bpm-stable until the rail promotes ──
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 nav-safe-area" aria-label="Primary navigation">
       <div className="max-w-lg mx-auto px-4 flex justify-center">

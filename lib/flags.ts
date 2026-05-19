@@ -20,7 +20,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_COMMAND_CENTER'
   | 'NEXT_PUBLIC_FLAG_SETTLE'
   | 'NEXT_PUBLIC_FLAG_LEDGER'
-  | 'NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE';
+  | 'NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE'
+  | 'NEXT_PUBLIC_FLAG_NAV_RAIL';
 
 interface FlagMeta {
   description: string;
@@ -54,6 +55,11 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'after Slice-0 kill-criterion gate decides — either promoted to stable + lived-in 2 weeks, or torn down and the flag deleted along with the player-facing UI',
   },
+  NEXT_PUBLIC_FLAG_NAV_RAIL: {
+    description: 'Replaces the floating glass-pill bottom nav with the full-width "Labeled Rail" (spec May 2026): edge-attached, capped to the max-w-lg content column, triple-signal active state, theme-aware. Purely presentational — same Tab ids / routing / i18n / aria. On for bpm-next + dev; off on bpm-stable (legacy .nav-glass) until promoted.',
+    owner: 'grant',
+    plannedRemoval: 'after the nav rail is promoted to stable + lived-in for 2 weeks (then delete the legacy .nav-glass branch + classes)',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -68,6 +74,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_LEDGER;
     case 'NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE':
       return process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
+    case 'NEXT_PUBLIC_FLAG_NAV_RAIL':
+      return process.env.NEXT_PUBLIC_FLAG_NAV_RAIL;
   }
 }
 
