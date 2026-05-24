@@ -105,18 +105,23 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
     </>
   );
 
-  // Value-Hub Slice-0: game logger (self-gates on 48h window + attendance) +
-  // partner-frequency card. Both self-contained; flag-gated as one slot.
-  const valueHubSlot = isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE') ? (
+  // Value-Hub Slice-0 splits across the Stats tab's two registers:
+  //   • Gear view → RacketRow (your racket + recommendation)
+  //   • Game view → game logger (self-gates on 48h window + attendance) +
+  //     partner-frequency card
+  // All self-contained; flag-gated. Passing gearContent is what turns on the
+  // Game/Gear segmented control in StatsPlaceholder.
+  const valueHubOn = isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE');
+  const gearContent = valueHubOn ? <RacketRow /> : undefined;
+  const gamePlaySlot = valueHubOn ? (
     <>
-      <RacketRow />
       <GameLoggerCard />
       <PartnerFrequencyCard />
     </>
   ) : undefined;
 
   if (!isAdmin) {
-    return <StatsPlaceholder attendanceContent={attendanceContent} heroSlot={heroSlot} valueHubSlot={valueHubSlot} />;
+    return <StatsPlaceholder attendanceContent={attendanceContent} heroSlot={heroSlot} gamePlaySlot={gamePlaySlot} gearContent={gearContent} />;
   }
 
   if (loading) {
@@ -125,7 +130,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
         skillProgressionContent={<ShuttleLoader text="Loading skills..." />}
         attendanceContent={attendanceContent}
         heroSlot={heroSlot}
-        valueHubSlot={valueHubSlot}
+        gamePlaySlot={gamePlaySlot} gearContent={gearContent}
       />
     );
   }
@@ -195,7 +200,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
       skillProgressionContent={skillProgressionContent}
       attendanceContent={attendanceContent}
       heroSlot={heroSlot}
-      valueHubSlot={valueHubSlot}
+      gamePlaySlot={gamePlaySlot} gearContent={gearContent}
     />
   );
 }
