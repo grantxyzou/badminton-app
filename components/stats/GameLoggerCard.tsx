@@ -49,7 +49,12 @@ export default function GameLoggerCard() {
         if (!live) return;
         const id = session?.sessionId || session?.id || null;
         const datetime: string | undefined = session?.datetime;
-        const withinWindow = !!datetime && Date.now() < new Date(datetime).getTime() + LOG_WINDOW_MS;
+        // Post-session window: from when the session starts until 48h after.
+        // The lower bound matters — without it the logger would show for an
+        // upcoming (not-yet-played) session, which isn't "log how it went".
+        const start = datetime ? new Date(datetime).getTime() : NaN;
+        const now = Date.now();
+        const withinWindow = !!datetime && now >= start && now < start + LOG_WINDOW_MS;
         const attended = Array.isArray(roster)
           && roster.some((p: { name?: string }) =>
             typeof p?.name === 'string' && p.name.toLowerCase() === activeName.toLowerCase());
