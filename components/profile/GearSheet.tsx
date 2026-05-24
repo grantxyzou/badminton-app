@@ -83,7 +83,7 @@ export default function GearSheet({ name, open, onClose, onSaved }: Props) {
       <BottomSheetBody className="p-5 pb-8">
         {savedLabel ? (
           <p style={{ textAlign: 'center', fontSize: 16, color: 'var(--text-primary)' }}>
-            {t('logGameThanks')}
+            {t('gearSaved')} {savedLabel}
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
