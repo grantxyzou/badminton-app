@@ -279,5 +279,28 @@
     "errorNetwork": "无法连接到服务器，请重试。",
     "welcomeBack": "欢迎回来，{name}",
     "close": "关闭"
+  },
+  "valueHub": {
+    "myRacket": "我的球拍",
+    "addRacket": "选择你的球拍",
+    "racketSheetTitle": "你用什么球拍？",
+    "racketSheetHint": "搜索目录或自行输入。",
+    "save": "保存",
+    "recTitle": "和你水平相近的球友常用",
+    "recCta": "查看装备",
+    "recEmpty": "添加你的球拍以获得推荐。",
+    "recError": "加载失败 — 刷新重试",
+    "partnersTitle": "你的常约搭档",
+    "partnersEmpty": "多打几场就能看到你的常约搭档。",
+    "partnersError": "加载失败 — 刷新重试",
+    "logGameTitle": "记录本场",
+    "logGameHint": "今天打得怎么样？",
+    "you": "你",
+    "partner": "搭档",
+    "opponents": "对手",
+    "yourScore": "你的得分",
+    "theirScore": "对方得分",
+    "logGameSubmit": "记录",
+    "logGameThanks": "已记录 — 谢谢！"
   }
 }

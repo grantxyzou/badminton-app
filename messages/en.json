@@ -279,5 +279,28 @@
     "errorNetwork": "Couldn't reach the server. Try again.",
     "welcomeBack": "Welcome back, {name}",
     "close": "Close"
+  },
+  "valueHub": {
+    "myRacket": "My racket",
+    "addRacket": "Pick your racket",
+    "racketSheetTitle": "What's your racket?",
+    "racketSheetHint": "Search the catalog or type your own.",
+    "save": "Save",
+    "recTitle": "Players like you often use",
+    "recCta": "See gear",
+    "recEmpty": "Add your racket to get a pick.",
+    "recError": "Couldn't load — refresh to retry",
+    "partnersTitle": "Your regular partners",
+    "partnersEmpty": "Play a few sessions to see your regulars.",
+    "partnersError": "Couldn't load — refresh to retry",
+    "logGameTitle": "Log Thursday",
+    "logGameHint": "How did the games go?",
+    "you": "You",
+    "partner": "Partner",
+    "opponents": "Opponents",
+    "yourScore": "Your score",
+    "theirScore": "Their score",
+    "logGameSubmit": "Log it",
+    "logGameThanks": "Logged — thanks!"
   }
 }
