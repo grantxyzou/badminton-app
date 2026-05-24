@@ -10,8 +10,6 @@ import ReleaseNotesSheet from './ReleaseNotesSheet';
 import SignInForm from './SignInForm';
 import PageHeader from './primitives/PageHeader';
 import AdminConsoleHero from './admin/CommandCenter/AdminConsoleHero';
-import RacketRecCard from './profile/RacketRecCard';
-import GearSheet from './profile/GearSheet';
 import { isFlagOn } from '@/lib/flags';
 import { avatarColors as profileAvaColors } from '@/lib/avatar';
 
@@ -45,14 +43,8 @@ export default function ProfileTab({
   const [recoveryPinOpen, setRecoveryPinOpen] = useState(false);
   const [releaseSheetOpen, setReleaseSheetOpen] = useState(false);
   const [releases, setReleases] = useState<Release[] | null>([]);
-  // Value-Hub Slice-0: racket gear pick. gearVersion bumps on save to refresh
-  // dependent cards. ProfileTab already has its own `t`/`tSettings` namespaces,
-  // so the new strings get their own hook (a namespaced `t` can't reach them).
-  const [gearOpen, setGearOpen] = useState(false);
-  const [gearVersion, setGearVersion] = useState(0);
   const tSettings = useTranslations('profile.settings');
   const tNav = useTranslations('nav');
-  const tVH = useTranslations('valueHub');
 
   useEffect(() => {
     const id = getIdentity();
@@ -239,16 +231,6 @@ export default function ProfileTab({
         </>
       )}
 
-      {isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE') && (
-        <>
-          <ProfileEyebrow>{tVH('myRacket')}</ProfileEyebrow>
-          <RacketRecCard key={gearVersion} name={identity.name} />
-          <button type="button" onClick={() => setGearOpen(true)} className="cc-btn cc-btn-secondary">
-            {tVH('addRacket')}
-          </button>
-        </>
-      )}
-
       <ProfileEyebrow>{tSettings('title')}</ProfileEyebrow>
       <SettingsList
         rows={[
@@ -300,15 +282,6 @@ export default function ProfileTab({
         releases={releases}
         onClose={() => setReleaseSheetOpen(false)}
       />
-
-      {isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE') && (
-        <GearSheet
-          name={identity.name}
-          open={gearOpen}
-          onClose={() => setGearOpen(false)}
-          onSaved={() => setGearVersion((v) => v + 1)}
-        />
-      )}
     </div>
   );
 }
