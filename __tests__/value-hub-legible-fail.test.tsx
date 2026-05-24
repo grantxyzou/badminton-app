@@ -3,26 +3,28 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import enMessages from '../messages/en.json';
-import RacketRecCard from '../components/profile/RacketRecCard';
+import RacketRecCard from '../components/stats/cards/RacketRecCard';
 
 function wrap(ui: React.ReactNode) {
   return <NextIntlClientProvider locale="en" messages={enMessages}>{ui}</NextIntlClientProvider>;
 }
 
 // Guards the CLAUDE.md "lying empty state is forbidden" rule for the Value-Hub
-// rec card: while loading it renders nothing (not a confidently-empty card),
-// and on a load failure it renders a distinct error pill (not silent zero).
+// rec card: while loading it shows the card frame but neither a fake pick nor
+// an error; on a load failure it shows a distinct error pill (not silent zero).
 describe('RacketRecCard legible-fail', () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
   });
 
-  it('renders nothing while the recommendation is still loading', () => {
-    // Never-resolving fetch keeps the component in its initial (item === null) state.
+  it('while loading, shows the card title but no recommendation or error', () => {
+    // Never-resolving fetch keeps the component in its initial (loaded === false) state.
     globalThis.fetch = vi.fn(() => new Promise(() => {})) as unknown as typeof fetch;
-    const { container } = render(wrap(<RacketRecCard name="Lin" />));
-    expect(container.firstChild).toBeNull();
+    render(wrap(<RacketRecCard name="Lin" />));
+    expect(screen.getByText('We recommend')).toBeTruthy();
+    // No fake recommendation and no error while still loading.
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('renders an error pill on load failure — not a silent empty card', async () => {

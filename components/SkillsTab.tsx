@@ -11,6 +11,7 @@ import AttendanceCardLive from '@/components/stats/cards/AttendanceCardLive';
 import StatsStreakHero from '@/components/stats/StatsStreakHero';
 import PartnerFrequencyCard from '@/components/stats/cards/PartnerFrequencyCard';
 import GameLoggerCard from '@/components/stats/GameLoggerCard';
+import RacketRow from '@/components/stats/RacketRow';
 import { isFlagOn } from '@/lib/flags';
 import WeeklySummaryCard from '@/components/stats/WeeklySummaryCard';
 
@@ -108,6 +109,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   // partner-frequency card. Both self-contained; flag-gated as one slot.
   const valueHubSlot = isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE') ? (
     <>
+      <RacketRow />
       <GameLoggerCard />
       <PartnerFrequencyCard />
     </>
