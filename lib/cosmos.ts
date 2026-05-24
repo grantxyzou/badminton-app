@@ -1,5 +1,6 @@
 import { CosmosClient, Container } from '@azure/cosmos';
 import { randomBytes, scryptSync } from 'node:crypto';
+import equipmentCatalogSeed from '../scripts/data/equipment-catalog.json';
 
 // ---------------------------------------------------------------------------
 // In-memory mock — used when COSMOS_CONNECTION_STRING is not set (local dev)
@@ -162,10 +163,35 @@ function seedDevScenarioIfRequested(containerName: string) {
     });
   }
 
+  // Value-Hub Slice-0: seed the racket catalog so the recommendation card +
+  // gear picker have data, and one sample game so /api/games isn't empty during
+  // e2e. Seeded here (not on equipmentCatalog/gameResults first-access) because
+  // this whole block runs once, gated on sessions/members access.
+  mockStore.equipmentCatalog ??= [];
+  for (const item of equipmentCatalogSeed.items) {
+    if (!mockStore.equipmentCatalog.find((c) => c.id === (item as { id: string }).id)) {
+      mockStore.equipmentCatalog.push(item as Record<string, unknown>);
+    }
+  }
+  mockStore.gameResults ??= [];
+  if (mockStore.gameResults.length === 0) {
+    mockStore.gameResults.push({
+      id: randomBytes(16).toString('hex'),
+      sessionId,
+      teamA: ['Lin', 'Viktor'],
+      teamB: ['Carolina', 'Akane'],
+      scoreA: 21,
+      scoreB: 17,
+      loggedBy: 'Lin',
+      loggedAt: now.toISOString(),
+    });
+  }
+
   g._devScenarioSeeded = true;
   console.warn(
     `[dev] SEED_DEV_SCENARIO=fresh-thursday: seeded session ${sessionId} (signupOpen, 0/12, deadline ${deadline.slice(0, 10)}) ` +
-      `+ 6 famous-player invite-list members (Lin has PIN 2468, others have no PIN). Mock store only.`,
+      `+ 6 famous-player invite-list members (Lin has PIN 2468, others have no PIN) ` +
+      `+ ${equipmentCatalogSeed.items.length}-racket catalog + 1 sample game. Mock store only.`,
   );
 }
 
