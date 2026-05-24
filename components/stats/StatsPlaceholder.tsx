@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 
 interface CompactCardProps {
@@ -117,23 +118,47 @@ interface Props {
   /** Optional hero slot — rendered between the page heading and the
    *  primary live section. Used for the attendance streak hero. */
   heroSlot?: React.ReactNode;
-  /** Value-Hub Slice-0 live content (partner-frequency card + game logger).
-   *  Rendered below attendance. When present, the compact "partners"
-   *  coming-soon card is dropped (it's now live). */
-  valueHubSlot?: React.ReactNode;
+  /** Game-register value-hub cards (game logger + partner frequency). Shown
+   *  in the "Your game" view. */
+  gamePlaySlot?: React.ReactNode;
+  /** Gear-register content (racket row + future strings/shoes/shuttle). When
+   *  present, a Game/Gear segmented control splits the tab into two views;
+   *  the equipment coming-soon card moves under Gear and the partner
+   *  coming-soon card is dropped (it's live in the Game view). */
+  gearContent?: React.ReactNode;
 }
+
+const sectionLabelStyle: React.CSSProperties = {
+  fontSize: 10,
+  letterSpacing: '0.08em',
+  color: 'var(--text-muted)',
+  textTransform: 'none',
+  margin: 0,
+};
+const gridStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  gap: 12,
+};
 
 export default function StatsPlaceholder({
   skillProgressionContent,
   attendanceContent,
   heroSlot,
-  valueHubSlot,
+  gamePlaySlot,
+  gearContent,
 }: Props = {}) {
   const t = useTranslations('stats');
+  const tVH = useTranslations('valueHub');
   const comingSoon = t('comingSoon');
   const attendanceLive = !!attendanceContent;
   const skillLive = !!skillProgressionContent;
-  const valueHubLive = !!valueHubSlot;
+  // Gear content only arrives when the value-hub flag is on. That's also what
+  // turns on the two-register split — without it the tab renders as before.
+  const hasGear = !!gearContent;
+  const [view, setView] = useState<'game' | 'gear'>('game');
+  const showGame = !hasGear || view === 'game';
+  const showGear = hasGear && view === 'gear';
 
   return (
     <div className="space-y-5 w-full animate-fadeIn">
@@ -142,78 +167,104 @@ export default function StatsPlaceholder({
         <p className="text-sm text-gray-400 mt-1 px-2">{t('subhead')}</p>
       </div>
 
-      {heroSlot}
-
-      {/* ── Primary: live content ──────────────────────────────────── */}
-      {attendanceLive && (
-        <LiveCard
-          icon="calendar_today"
-          title={t('attendance.title')}
-          subtitle={t('attendance.subtitle')}
-          badge="Beta"
-        >
-          {attendanceContent}
-        </LiveCard>
+      {hasGear && (
+        <div className="flex justify-center">
+          <div className="segment-control flex" style={{ width: 240 }}>
+            {(['game', 'gear'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                className={`flex-1 flex items-center justify-center text-xs transition-all ${
+                  view === v ? 'segment-tab-active' : 'segment-tab-inactive'
+                }`}
+              >
+                {v === 'game' ? tVH('viewGame') : tVH('viewGear')}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
-      {/* ── Value-Hub Slice-0: game logger + partner card ──────────── */}
-      {valueHubSlot}
+      {/* ══ Your game ══════════════════════════════════════════════ */}
+      {showGame && (
+        <>
+          {heroSlot}
 
-      {/* ── Skill progression (moved from below the grid in v1.3 hotfix) ── */}
-      {skillLive && (
-        <LiveCard
-          icon="trending_up"
-          title={t('progression.title')}
-          subtitle={t('progression.subtitle')}
-          badge="Beta"
-        >
-          {skillProgressionContent}
-        </LiveCard>
+          {attendanceLive && (
+            <LiveCard
+              icon="calendar_today"
+              title={t('attendance.title')}
+              subtitle={t('attendance.subtitle')}
+              badge="Beta"
+            >
+              {attendanceContent}
+            </LiveCard>
+          )}
+
+          {/* Value-Hub game-register cards: logger + partner frequency. */}
+          {gamePlaySlot}
+
+          {skillLive && (
+            <LiveCard
+              icon="trending_up"
+              title={t('progression.title')}
+              subtitle={t('progression.subtitle')}
+              badge="Beta"
+            >
+              {skillProgressionContent}
+            </LiveCard>
+          )}
+
+          <div className="px-2" style={{ paddingTop: 4 }}>
+            <p className="section-label" style={sectionLabelStyle}>{t('moreComing')}</p>
+          </div>
+          <div style={gridStyle}>
+            <CompactComingSoonCard
+              icon="payments"
+              title={t('cost.title')}
+              subtitle={t('cost.subtitle')}
+              comingSoon={comingSoon}
+            />
+            {/* When gear is its own register, partners is live here and
+                equipment lives under Gear — so neither compact card shows. */}
+            {!hasGear && (
+              <CompactComingSoonCard
+                icon="groups"
+                title={t('partners.title')}
+                subtitle={t('partners.subtitle')}
+                comingSoon={comingSoon}
+              />
+            )}
+            {!hasGear && (
+              <CompactComingSoonCard
+                icon="sports_tennis"
+                title={t('equipment.title')}
+                subtitle={t('equipment.subtitle')}
+                comingSoon={comingSoon}
+              />
+            )}
+          </div>
+        </>
       )}
 
-      {/* ── Secondary: everything not yet live, compact 2-col grid ─── */}
-      <div className="px-2" style={{ paddingTop: 4 }}>
-        <p
-          className="section-label"
-          style={{
-            fontSize: 10,
-            letterSpacing: '0.08em',
-            color: 'var(--text-muted)',
-            textTransform: 'none',
-            margin: 0,
-          }}
-        >
-          {t('moreComing')}
-        </p>
-      </div>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-          gap: 12,
-        }}
-      >
-        <CompactComingSoonCard
-          icon="payments"
-          title={t('cost.title')}
-          subtitle={t('cost.subtitle')}
-          comingSoon={comingSoon}
-        />
-        {!valueHubLive && (
-          <CompactComingSoonCard
-            icon="groups"
-            title={t('partners.title')}
-            subtitle={t('partners.subtitle')}
-            comingSoon={comingSoon}
-          />
-        )}
-        <CompactComingSoonCard
-          icon="sports_tennis"
-          title={t('equipment.title')}
-          subtitle={t('equipment.subtitle')}
-          comingSoon={comingSoon}
-        />
-      </div>
+      {/* ══ Gear ═══════════════════════════════════════════════════ */}
+      {showGear && (
+        <>
+          {gearContent}
+          <div className="px-2" style={{ paddingTop: 4 }}>
+            <p className="section-label" style={sectionLabelStyle}>{t('moreComing')}</p>
+          </div>
+          <div style={gridStyle}>
+            <CompactComingSoonCard
+              icon="sports_tennis"
+              title={t('equipment.title')}
+              subtitle={t('equipment.subtitle')}
+              comingSoon={comingSoon}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }
