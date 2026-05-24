@@ -9,6 +9,9 @@ import ShuttleLoader from '@/components/ShuttleLoader';
 import StatsPlaceholder from '@/components/stats/StatsPlaceholder';
 import AttendanceCardLive from '@/components/stats/cards/AttendanceCardLive';
 import StatsStreakHero from '@/components/stats/StatsStreakHero';
+import PartnerFrequencyCard from '@/components/stats/cards/PartnerFrequencyCard';
+import GameLoggerCard from '@/components/stats/GameLoggerCard';
+import { isFlagOn } from '@/lib/flags';
 import WeeklySummaryCard from '@/components/stats/WeeklySummaryCard';
 
 const SkillsRadar = dynamic(() => import('@/components/SkillsRadar'), { ssr: false });
@@ -101,8 +104,17 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
     </>
   );
 
+  // Value-Hub Slice-0: game logger (self-gates on 48h window + attendance) +
+  // partner-frequency card. Both self-contained; flag-gated as one slot.
+  const valueHubSlot = isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE') ? (
+    <>
+      <GameLoggerCard />
+      <PartnerFrequencyCard />
+    </>
+  ) : undefined;
+
   if (!isAdmin) {
-    return <StatsPlaceholder attendanceContent={attendanceContent} heroSlot={heroSlot} />;
+    return <StatsPlaceholder attendanceContent={attendanceContent} heroSlot={heroSlot} valueHubSlot={valueHubSlot} />;
   }
 
   if (loading) {
@@ -111,6 +123,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
         skillProgressionContent={<ShuttleLoader text="Loading skills..." />}
         attendanceContent={attendanceContent}
         heroSlot={heroSlot}
+        valueHubSlot={valueHubSlot}
       />
     );
   }
@@ -180,6 +193,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
       skillProgressionContent={skillProgressionContent}
       attendanceContent={attendanceContent}
       heroSlot={heroSlot}
+      valueHubSlot={valueHubSlot}
     />
   );
 }

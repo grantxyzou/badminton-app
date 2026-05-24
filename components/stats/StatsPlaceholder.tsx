@@ -117,17 +117,23 @@ interface Props {
   /** Optional hero slot — rendered between the page heading and the
    *  primary live section. Used for the attendance streak hero. */
   heroSlot?: React.ReactNode;
+  /** Value-Hub Slice-0 live content (partner-frequency card + game logger).
+   *  Rendered below attendance. When present, the compact "partners"
+   *  coming-soon card is dropped (it's now live). */
+  valueHubSlot?: React.ReactNode;
 }
 
 export default function StatsPlaceholder({
   skillProgressionContent,
   attendanceContent,
   heroSlot,
+  valueHubSlot,
 }: Props = {}) {
   const t = useTranslations('stats');
   const comingSoon = t('comingSoon');
   const attendanceLive = !!attendanceContent;
   const skillLive = !!skillProgressionContent;
+  const valueHubLive = !!valueHubSlot;
 
   return (
     <div className="space-y-5 w-full animate-fadeIn">
@@ -149,6 +155,9 @@ export default function StatsPlaceholder({
           {attendanceContent}
         </LiveCard>
       )}
+
+      {/* ── Value-Hub Slice-0: game logger + partner card ──────────── */}
+      {valueHubSlot}
 
       {/* ── Skill progression (moved from below the grid in v1.3 hotfix) ── */}
       {skillLive && (
@@ -190,12 +199,14 @@ export default function StatsPlaceholder({
           subtitle={t('cost.subtitle')}
           comingSoon={comingSoon}
         />
-        <CompactComingSoonCard
-          icon="groups"
-          title={t('partners.title')}
-          subtitle={t('partners.subtitle')}
-          comingSoon={comingSoon}
-        />
+        {!valueHubLive && (
+          <CompactComingSoonCard
+            icon="groups"
+            title={t('partners.title')}
+            subtitle={t('partners.subtitle')}
+            comingSoon={comingSoon}
+          />
+        )}
         <CompactComingSoonCard
           icon="sports_tennis"
           title={t('equipment.title')}
