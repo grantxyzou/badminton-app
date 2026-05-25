@@ -12,7 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.96.0",
+    "@anthropic-ai/sdk": "^0.98.0",
     "@azure/cosmos": "^4.9.3",
     "@formatjs/intl-localematcher": "^0.8.8",
     "next": "^16.2.6",
