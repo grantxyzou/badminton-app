@@ -11,6 +11,10 @@ out/
 # environment variables (keep secrets out of git)
 .env.local
 .env*.local
+.env.local.bak
+# the .env*.local glob above is anchored to a .local suffix, so it does NOT
+# match a .bak sibling (e.g. a `sed -i.bak` backup). Catch the whole class:
+*.bak
 
 # debug
 npm-debug.log*
