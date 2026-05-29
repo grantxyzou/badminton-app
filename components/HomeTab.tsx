@@ -75,6 +75,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   });
   const [releases, setReleases] = useState<Release[]>([]);
   const [releaseSheetOpen, setReleaseSheetOpen] = useState(false);
+  // True only for the render right after a successful sign-up, so the success
+  // banner pops once on the *act* of signing up — not on every Home revisit
+  // (it resets to false when the tab remounts). Delight on a rare moment.
+  const [justSignedUp, setJustSignedUp] = useState(false);
   // Forgot-PIN handoff from the inline sign-in form opens this code-entry sheet.
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
 
@@ -285,6 +289,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         setIdentity({ name: trimmed, token: signupData.deleteToken ?? '', sessionId: session.id });
         setCurrentUser(trimmed);
         setHasIdentity(true);
+        setJustSignedUp(true);
         await loadData();
       } else {
         // 'anon' and 'create' both go through POST /api/players. The only
@@ -316,6 +321,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         setIdentity({ name: trimmed, token: data.deleteToken ?? '', sessionId: session.id });
         setCurrentUser(trimmed);
         setHasIdentity(true);
+        setJustSignedUp(true);
         await loadData();
       }
     } catch {
@@ -483,13 +489,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="bpm-h2">{t('signup.heading')}</p>
-              <p className="text-sm text-gray-400">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
+              <p key={spotsTotal - activePlayers.length} className="text-sm text-gray-400 animate-count-tick">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
             </div>
             <StatusBanner
               tone="success"
               icon="check_circle"
               title={currentUser ? tStates('signedUpTitle', { name: currentUser }) : tStates('signedUpTitleGeneric')}
               body={tStates('signedUpBody')}
+              celebrate={justSignedUp}
             />
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
               {t('signup.viewList')}
@@ -522,7 +529,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="bpm-h2">{t('signup.heading')}</p>
-              <p className="text-sm text-gray-400">{t('signup.spotsFull', { count: activePlayers.length })}</p>
+              <p key={activePlayers.length} className="text-sm text-gray-400 animate-count-tick">{t('signup.spotsFull', { count: activePlayers.length })}</p>
             </div>
             <StatusBanner tone="warn" icon="lock" title={t('signup.full')} body={t('signup.allSpotsTaken', { total: spotsTotal })} />
             <form onSubmit={handleJoinWaitlist} className="space-y-3">
@@ -550,7 +557,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="bpm-h2">{t('signup.heading')}</p>
-              <p className="text-sm text-gray-400">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
+              <p key={spotsTotal - activePlayers.length} className="text-sm text-gray-400 animate-count-tick">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
             </div>
             <form onSubmit={handleSignUp} className="space-y-3">
               <NameAutocompleteInput

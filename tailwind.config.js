@@ -1,5 +1,12 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // Gate every `hover:` utility behind `@media (hover: hover)` so hover styles
+  // never stick after a tap on touch devices (this app is mobile-first). Touch
+  // feedback comes from `:active` states instead. Emil Kowalski's touch-hover
+  // rule, applied app-wide in one place rather than per call site.
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',

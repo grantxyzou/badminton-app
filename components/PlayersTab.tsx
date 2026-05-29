@@ -130,7 +130,11 @@ export default function PlayersTab() {
               return (
                 <div
                   key={player.id}
-                  className={`flex items-center px-3 py-2.5 gap-3 rounded-xl${isMe ? ' player-highlight-green' : ''}`}
+                  className={`flex items-center px-3 py-2.5 gap-3 rounded-xl animate-fadeIn${isMe ? ' player-highlight-green' : ''}`}
+                  /* Stagger entrance ~40ms/row, capped so a long list doesn't
+                     crawl in. Stable key → only first mount + genuinely new
+                     rows animate; poll refreshes don't replay it. */
+                  style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                 >
                   <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">
                     {i + 1}
@@ -189,7 +193,8 @@ export default function PlayersTab() {
                 return (
                   <div
                     key={player.id}
-                    className={`flex items-center px-3 py-2.5 gap-3 rounded-xl${isMe ? ' player-highlight-amber' : ''}`}
+                    className={`flex items-center px-3 py-2.5 gap-3 rounded-xl animate-fadeIn${isMe ? ' player-highlight-amber' : ''}`}
+                    style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                   >
                     <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">
                       {activePlayers.length + i + 1}
