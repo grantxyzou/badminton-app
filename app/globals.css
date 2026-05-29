@@ -27,6 +27,10 @@
      docs/design-system/preview/11-motion.html since v3 but only landed in
      globals.css in PR C. Match the live token to the spec. */
   --ease-sheet: cubic-bezier(0.16, 1, 0.3, 1);
+  /* On-screen movement (an already-visible element travelling A→B), not
+     enter/exit. Emil's strong ease-in-out — accelerate then decelerate.
+     Used by the rail nav's sliding indicator pill. */
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --duration-fast: 150ms;
   --duration-normal: 250ms;
   --duration-slow: 400ms;
@@ -304,12 +308,17 @@
 [data-theme="light"] .bg-white\/10 { background: rgba(0, 0, 0, 0.05); }
 [data-theme="light"] .bg-white\/20 { background: rgba(0, 0, 0, 0.08); }
 [data-theme="light"] .bg-green-500 { background: #16a34a; }
-[data-theme="light"] .hover\:bg-white\/10:hover { background: rgba(0, 0, 0, 0.05); }
-[data-theme="light"] .hover\:text-white:hover { color: var(--text-primary); }
-[data-theme="light"] .hover\:text-red-300:hover { color: #b91c1c; }
-[data-theme="light"] .hover\:text-red-400:hover { color: #dc2626; }
-[data-theme="light"] .hover\:text-green-300:hover { color: #22c55e; }
-[data-theme="light"] .hover\:text-amber-300:hover { color: #b45309; }
+/* Light-mode hover-color overrides — gated so they don't stick after a tap on
+   touch (mirrors the Tailwind hoverOnlyWhenSupported flag for these hand-written
+   overrides of the same `hover:` utilities). */
+@media (hover: hover) {
+  [data-theme="light"] .hover\:bg-white\/10:hover { background: rgba(0, 0, 0, 0.05); }
+  [data-theme="light"] .hover\:text-white:hover { color: var(--text-primary); }
+  [data-theme="light"] .hover\:text-red-300:hover { color: #b91c1c; }
+  [data-theme="light"] .hover\:text-red-400:hover { color: #dc2626; }
+  [data-theme="light"] .hover\:text-green-300:hover { color: #22c55e; }
+  [data-theme="light"] .hover\:text-amber-300:hover { color: #b45309; }
+}
 [data-theme="light"] .border-white\/10 { border-color: rgba(0, 0, 0, 0.08); }
 
 /* ── Severity-pill text tokens (theme-adaptive) ──
@@ -483,10 +492,12 @@ h1, h2, h3, h4 {
   background: transparent;
   border: 0;
   cursor: pointer;
-  transition: color 0.15s ease, transform 0.1s ease;
+  transition: color 0.15s var(--ease-glass), transform 0.1s var(--ease-glass);
 }
 .bpm-topbar__back:active { transform: scale(0.94); }
-.bpm-topbar__back:hover { color: var(--text-primary); }
+@media (hover: hover) {
+  .bpm-topbar__back:hover { color: var(--text-primary); }
+}
 .bpm-topbar__back:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -988,8 +999,8 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
   box-shadow:
     inset 0 1px 0 var(--glass-inset),
     var(--glass-shadow);
-  transition: box-shadow 0.4s cubic-bezier(0.23, 1, 0.32, 1),
-              transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: box-shadow var(--duration-normal) var(--ease-glass),
+              transform var(--duration-normal) var(--ease-glass);
 }
 
 @media (hover: hover) {
@@ -1014,15 +1025,17 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
   font-weight: 600;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: opacity 0.15s, transform 0.1s;
+  transition: opacity 0.15s var(--ease-glass), transform 0.1s var(--ease-glass);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
 }
 
-.btn-primary:hover:not(:disabled) {
-  opacity: 0.9;
+@media (hover: hover) {
+  .btn-primary:hover:not(:disabled) {
+    opacity: 0.9;
+  }
 }
 
 .btn-primary:active:not(:disabled) {
@@ -1060,8 +1073,10 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
   gap: 6px;
 }
 
-.btn-ghost:hover:not(:disabled) {
-  background: var(--btn-ghost-hover);
+@media (hover: hover) {
+  .btn-ghost:hover:not(:disabled) {
+    background: var(--btn-ghost-hover);
+  }
 }
 
 .btn-ghost:active:not(:disabled) {
@@ -1260,7 +1275,9 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
   pointer-events: none;
   z-index: 0;
   transform: translateX(calc(var(--ri, 0) * 100%));
-  transition: transform 200ms var(--ease-glass);
+  /* The pill travels A→B on screen (it doesn't enter/exit), so ease-in-out
+     reads more natural than the ease-out used for entrances. */
+  transition: transform 200ms var(--ease-in-out);
 }
 .rail-indicator-pill {
   display: block;
@@ -1501,6 +1518,44 @@ textarea {
   transform-origin: top;
 }
 
+/* ── Visible micro-interactions (Emil motion pass) ──
+   Delight is spent on RARE moments, not frequent ones. Sign-up succeeds
+   occasionally, so a small celebratory pop is earned; the spot counter and
+   list rows get quieter feedback. All collapse to ~instant under the
+   prefers-reduced-motion blanket rule above. */
+
+/* Sign-up success: the banner fades/lifts in, the check icon pops with a
+   subtle overshoot baked into the keyframe (so the easing stays ease-out,
+   no double bounce). Scoped via `celebrate` on StatusBanner — warnings and
+   full/closed banners do NOT pop. */
+.status-celebrate {
+  animation: signupBannerIn var(--duration-normal) var(--ease-glass) both;
+}
+.status-celebrate .icon-status {
+  animation: signupIconPop 420ms var(--ease-glass) both;
+}
+@keyframes signupBannerIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes signupIconPop {
+  /* starts at 0.6 (not 0 — nothing appears from nothing), overshoots, settles */
+  0%   { opacity: 0; transform: scale(0.6); }
+  55%  { opacity: 1; transform: scale(1.14); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Spot counter: when the remaining count changes (someone joined/left), the
+   line re-keys and ticks — a quick fade + tiny settle confirms the change.
+   Purpose = feedback, not decoration. */
+.animate-count-tick {
+  animation: countTick 220ms var(--ease-glass) both;
+}
+@keyframes countTick {
+  from { opacity: 0.35; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ── Reduced motion ──
    The blanket rule below collapses every transition/animation to 0.01ms,
    but GPU-accelerated elements (aurora blobs, wave-bar, shimmer) still
@@ -1726,9 +1781,11 @@ textarea {
 .theme-toggle { right: 16px; }
 .lang-toggle  { right: 60px; }
 
-.theme-toggle:hover,
-.lang-toggle:hover {
-  transform: scale(1.1);
+@media (hover: hover) {
+  .theme-toggle:hover,
+  .lang-toggle:hover {
+    transform: scale(1.1);
+  }
 }
 
 .theme-toggle:focus-visible,
@@ -1929,7 +1986,7 @@ html[data-hydrated="true"] .splash {
   border: 1px solid transparent;
   background: transparent;
   cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease, color 120ms ease, transform 80ms ease;
+  transition: background 120ms var(--ease-glass), border-color 120ms var(--ease-glass), color 120ms var(--ease-glass), transform 80ms var(--ease-glass);
   -webkit-tap-highlight-color: transparent;
 }
 .cc-btn:focus-visible {
@@ -1951,9 +2008,11 @@ html[data-hydrated="true"] .splash {
   color: #86efac;
   font-weight: 600;
 }
-.cc-btn-primary:hover:not(:disabled) {
-  background: rgba(34, 197, 94, 0.28);
-  border-color: rgba(34, 197, 94, 0.6);
+@media (hover: hover) {
+  .cc-btn-primary:hover:not(:disabled) {
+    background: rgba(34, 197, 94, 0.28);
+    border-color: rgba(34, 197, 94, 0.6);
+  }
 }
 
 /* Secondary — neutral action; reads as button, not chip */
@@ -1962,18 +2021,22 @@ html[data-hydrated="true"] .splash {
   border-color: rgba(255, 255, 255, 0.14);
   color: var(--text-primary, #f3f4f6);
 }
-.cc-btn-secondary:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.22);
+@media (hover: hover) {
+  .cc-btn-secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.22);
+  }
 }
 
 /* Ghost — for cancel / dismiss */
 .cc-btn-ghost {
   color: var(--text-muted, #9ca3af);
 }
-.cc-btn-ghost:hover:not(:disabled) {
-  color: var(--text-primary, #f3f4f6);
-  background: rgba(255, 255, 255, 0.04);
+@media (hover: hover) {
+  .cc-btn-ghost:hover:not(:disabled) {
+    color: var(--text-primary, #f3f4f6);
+    background: rgba(255, 255, 255, 0.04);
+  }
 }
 
 /* Large variant — for prominent CTAs (hero buttons, etc.). Pair with
@@ -1995,9 +2058,11 @@ html[data-hydrated="true"] .splash {
   color: #fca5a5;
   font-weight: 600;
 }
-.cc-btn-danger:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.28);
-  border-color: rgba(239, 68, 68, 0.6);
+@media (hover: hover) {
+  .cc-btn-danger:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.28);
+    border-color: rgba(239, 68, 68, 0.6);
+  }
 }
 
 [data-theme="light"] .cc-btn-primary {
@@ -2005,29 +2070,35 @@ html[data-hydrated="true"] .splash {
   border-color: rgba(22, 163, 74, 0.45);
   color: #15803d;
 }
-[data-theme="light"] .cc-btn-primary:hover:not(:disabled) {
-  background: rgba(22, 163, 74, 0.2);
-  border-color: rgba(22, 163, 74, 0.6);
+@media (hover: hover) {
+  [data-theme="light"] .cc-btn-primary:hover:not(:disabled) {
+    background: rgba(22, 163, 74, 0.2);
+    border-color: rgba(22, 163, 74, 0.6);
+  }
 }
 [data-theme="light"] .cc-btn-secondary {
   background: rgba(0, 0, 0, 0.04);
   border-color: rgba(0, 0, 0, 0.12);
   color: var(--text-primary);
 }
-[data-theme="light"] .cc-btn-secondary:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.08);
-}
-[data-theme="light"] .cc-btn-ghost:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.04);
+@media (hover: hover) {
+  [data-theme="light"] .cc-btn-secondary:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.08);
+  }
+  [data-theme="light"] .cc-btn-ghost:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.04);
+  }
 }
 [data-theme="light"] .cc-btn-danger {
   background: rgba(220, 38, 38, 0.1);
   border-color: rgba(220, 38, 38, 0.45);
   color: #b91c1c;
 }
-[data-theme="light"] .cc-btn-danger:hover:not(:disabled) {
-  background: rgba(220, 38, 38, 0.18);
-  border-color: rgba(220, 38, 38, 0.6);
+@media (hover: hover) {
+  [data-theme="light"] .cc-btn-danger:hover:not(:disabled) {
+    background: rgba(220, 38, 38, 0.18);
+    border-color: rgba(220, 38, 38, 0.6);
+  }
 }
 
 /* Styled checkbox primitive — pairs with cc-btn family. The native

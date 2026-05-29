@@ -32,6 +32,12 @@ export interface StatusBannerProps {
   icon: string;
   title: ReactNode;
   body?: ReactNode;
+  /**
+   * Animate the banner in with a celebratory icon pop. Reserve for rare,
+   * positive moments (a successful sign-up) — NOT for warning/closed/full
+   * states, which appear more often and shouldn't draw a victory lap.
+   */
+  celebrate?: boolean;
 }
 
 const TONE_CLASS: Record<StatusTone, string> = {
@@ -52,9 +58,9 @@ const TITLE_TONE_CLASS: Record<StatusTone, string> = {
   danger: 'text-red-400',
 };
 
-export default function StatusBanner({ tone, icon, title, body }: StatusBannerProps) {
+export default function StatusBanner({ tone, icon, title, body, celebrate }: StatusBannerProps) {
   return (
-    <div className={TONE_CLASS[tone]}>
+    <div className={`${TONE_CLASS[tone]}${celebrate ? ' status-celebrate' : ''}`}>
       <span className={`material-icons icon-status ${ICON_TONE_CLASS[tone]}`} aria-hidden="true">
         {icon}
       </span>
