@@ -53,6 +53,18 @@ describe('POST /api/players/recover', () => {
     expect(stored?.deleteToken).not.toBe('old-token');
   });
 
+  it('PIN success issues a member_session cookie (trusts the device)', async () => {
+    const pinHash = await hashPin('1234');
+    const { seedMember } = await import('./helpers');
+    seedMember('Nadia', { pinHash });
+    const res = await POST(
+      makeRequest('POST', URL_PATH, { name: 'Nadia', sessionId: SESSION, pin: '1234' }),
+    );
+    expect(res.status).toBe(200);
+    // The trusted-device cookie lets future sign-ups skip the PIN.
+    expect(res.cookies.get('member_session')?.value).toBeTruthy();
+  });
+
   it('Code success: consumes a valid issued code', async () => {
     const player = seedPlayer(SESSION, 'Sarah', { deleteToken: 'old-token' });
     const { code } = await issueCode(player.id, SESSION);

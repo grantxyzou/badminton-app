@@ -3,10 +3,9 @@ import { randomBytes } from 'crypto';
 import {
   setAdminCookie,
   clearAdminCookie,
-  isAdminAuthed,
+  clearMemberCookie,
   isAdminAuthedWithMember,
   isNameInAdminBootstrap,
-  unauthorized,
 } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer } from '@/lib/cosmos';
@@ -112,10 +111,14 @@ export async function POST(req: NextRequest) {
  * an unauthenticated CSRF can't clear someone else's session — though
  * SameSite=strict already makes that very unlikely).
  */
-export async function DELETE(req: NextRequest) {
-  if (!isAdminAuthed(req)) return unauthorized();
+export async function DELETE(_req: NextRequest) {
+  // Logout — clear BOTH session cookies. Not privileged (you're only clearing
+  // your own browser's cookies), so it MUST succeed for non-admin members too,
+  // otherwise their member_session (trusted-device cookie) would survive
+  // sign-out and the next person on this browser could sign up as them.
   const res = NextResponse.json({ success: true });
   clearAdminCookie(res);
+  clearMemberCookie(res);
   return res;
 }
 

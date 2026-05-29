@@ -9,6 +9,12 @@ export interface MemberProbe {
   exists: boolean;
   /** Member exists AND has a PIN set. */
   hasPin: boolean;
+  /**
+   * This device holds a valid member_session cookie for this name — i.e. the
+   * PIN was already proven here, so sign-up can skip the PIN field. When true
+   * alongside `hasPin`, the form renders one-tap sign-up.
+   */
+  authed: boolean;
 }
 
 /**
@@ -45,12 +51,12 @@ export function useMemberProbe(name: string, debounceMs = 500): MemberProbe | nu
         );
         if (cancelled) return;
         if (!res.ok) return;
-        const data = (await res.json()) as { hasPin?: boolean; createdAt?: string | null };
+        const data = (await res.json()) as { hasPin?: boolean; createdAt?: string | null; authed?: boolean };
         if (cancelled) return;
         // createdAt presence is the canonical exists signal — pinHash is
         // stripped from responses, but createdAt comes from the member doc.
         const exists = typeof data.createdAt === 'string';
-        setProbe({ exists, hasPin: data.hasPin === true });
+        setProbe({ exists, hasPin: data.hasPin === true, authed: data.authed === true });
       } catch {
         // Network failure → leave null. Server-side check on submit is
         // the authoritative gate.

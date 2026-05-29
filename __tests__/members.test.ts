@@ -10,6 +10,15 @@ import {
 import { GET, POST, PATCH, DELETE } from '@/app/api/members/route';
 import { GET as ME_GET, PATCH as ME_PATCH } from '@/app/api/members/me/route';
 import { hashPin, verifyPin } from '@/lib/recoveryHash';
+import { setMemberCookie } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+
+/** Mint a valid signed member_session cookie value for a name. */
+function memberCookie(memberId: string, name: string): string {
+  const r = NextResponse.json({});
+  setMemberCookie(r, memberId, name);
+  return r.cookies.get('member_session')!.value;
+}
 
 setupAdminPin();
 
@@ -130,6 +139,34 @@ describe('GET /api/members/me', () => {
 
     // ASSERT
     expect(data.role).toBe('admin');
+  });
+
+  it('returns authed:true when a matching member_session cookie is present', async () => {
+    seedMember('Trusted', { pinHash: 'x' });
+    const cookie = memberCookie('tid', 'Trusted');
+    const req = makeRequest(
+      'GET',
+      'http://localhost:3000/api/members/me?name=Trusted',
+      undefined,
+      { Cookie: `member_session=${cookie}` },
+    );
+    const data = await (await ME_GET(req)).json();
+    expect(data.authed).toBe(true);
+  });
+
+  it('returns authed:false without a member cookie (and for a different name)', async () => {
+    const noCookie = await (await ME_GET(makeGetRequest('http://localhost:3000/api/members/me?name=Alice'))).json();
+    expect(noCookie.authed).toBe(false);
+
+    const wrongName = memberCookie('vid', 'Viktor');
+    const req = makeRequest(
+      'GET',
+      'http://localhost:3000/api/members/me?name=Alice',
+      undefined,
+      { Cookie: `member_session=${wrongName}` },
+    );
+    const data = await (await ME_GET(req)).json();
+    expect(data.authed).toBe(false);
   });
 
   it('?name=Unknown → { role: "member" }', async () => {

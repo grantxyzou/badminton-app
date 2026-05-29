@@ -190,8 +190,16 @@ describe('DELETE /api/admin (logout)', () => {
     expect(data.success).toBe(true);
   });
 
-  it('returns 401 without a cookie', async () => {
+  it('logout is unprivileged: 200 even without an admin cookie, clears both cookies', async () => {
+    // Changed with the trusted-device feature: logout must succeed for
+    // non-admin members too, so their member_session (trusted-device cookie)
+    // is revoked on sign-out. Clearing your own browser's cookies isn't a
+    // privileged operation, so no admin gate.
     const res = await DELETE(makeRequest('DELETE', URL_PATH));
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    expect((await res.json()).success).toBe(true);
+    // Both session cookies are cleared (set to empty with maxAge 0).
+    expect(res.cookies.get('member_session')).toBeTruthy();
+    expect(res.cookies.get('admin_session')).toBeTruthy();
   });
 });
