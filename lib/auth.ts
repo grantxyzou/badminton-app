@@ -139,6 +139,52 @@ export function clearAdminCookie(res: NextResponse): void {
   });
 }
 
+// ── Member session ──
+// A non-admin "this device is authenticated as <member>" cookie. Same signed
+// payload + flags as the admin cookie, but a DISTINCT name so it NEVER satisfies
+// isAdminAuthed() (that check keys off `admin_session` with no role re-check, so
+// a member cookie under that name would leak admin on read-only routes).
+//
+// Purpose: a PIN'd member proves their PIN once per device (via /recover or the
+// Home sign-in path); this cookie then lets the sign-up endpoint register them
+// for future sessions without re-entering the PIN. 30-day TTL matches the admin
+// cookie and the `badminton_identity` localStorage longevity. Revoked on
+// sign-out (cleared alongside the admin cookie).
+const MEMBER_COOKIE_NAME = 'member_session';
+
+const COOKIE_OPTS = {
+  httpOnly: true as const,
+  sameSite: 'strict' as const,
+  secure: process.env.NODE_ENV === 'production',
+  path: '/',
+};
+
+export function setMemberCookie(res: NextResponse, memberId: string, name: string): void {
+  const now = Math.floor(Date.now() / 1000);
+  const payload: SessionPayload = { memberId, name, iat: now, exp: now + COOKIE_MAX_AGE_S };
+  res.cookies.set(MEMBER_COOKIE_NAME, signPayload(payload), {
+    ...COOKIE_OPTS,
+    maxAge: COOKIE_MAX_AGE_S,
+  });
+}
+
+export function clearMemberCookie(res: NextResponse): void {
+  res.cookies.set(MEMBER_COOKIE_NAME, '', { ...COOKIE_OPTS, maxAge: 0 });
+}
+
+/**
+ * Verifies the `member_session` cookie (signature + expiry only — identity
+ * proof, NO role/authorization). Returns the bound member identity or null.
+ * Never grants admin. Cheap; no Cosmos round-trip.
+ */
+export function verifyMemberAuth(req: NextRequest): { memberId: string; name: string } | null {
+  const cookie = req.cookies.get(MEMBER_COOKIE_NAME)?.value;
+  if (!cookie) return null;
+  const payload = verifyToken(cookie);
+  if (!payload) return null;
+  return { memberId: payload.memberId, name: payload.name };
+}
+
 /**
  * Sync admin check — verifies the cookie's signature and expiry only. Does
  * NOT re-check the Member's role. Cheaper, used by read-only routes.

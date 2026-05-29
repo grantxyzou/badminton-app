@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { setAdminCookie, clearAdminCookie } from '@/lib/auth';
+import { setAdminCookie, clearAdminCookie, setMemberCookie } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer } from '@/lib/cosmos';
 import { verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
@@ -20,6 +20,11 @@ function syncAdminCookie(
   res: NextResponse,
   member: { id: string; name: string; role?: string } | null | undefined,
 ): void {
+  // PIN proven → trust this device as the member for 30 days so future
+  // sign-ups skip the PIN re-entry. Issued for ALL members (admin or not).
+  if (member) {
+    setMemberCookie(res, member.id, member.name);
+  }
   if (member && member.role === 'admin') {
     setAdminCookie(res, member.id, member.name);
   } else {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
+import { verifyMemberAuth } from '@/lib/auth';
 
 const BLOCKLISTED_PINS = new Set(['0000', '1111', '1234', '4321', '1212']);
 
@@ -29,7 +30,12 @@ export async function GET(req: NextRequest) {
     const role = me?.role ?? 'member';
     const hasPin = typeof me?.pinHash === 'string' && me.pinHash.length > 0;
     const createdAt = typeof me?.createdAt === 'string' ? me.createdAt : null;
-    return NextResponse.json({ role, hasPin, createdAt });
+    // Does this device hold a valid member_session cookie for THIS name? If so,
+    // the client can drop the PIN field — the sign-up endpoint accepts the
+    // cookie as identity proof (skip the per-session PIN re-entry).
+    const memberAuth = verifyMemberAuth(req);
+    const authed = !!memberAuth && memberAuth.name.toLowerCase() === name.toLowerCase();
+    return NextResponse.json({ role, hasPin, createdAt, authed });
   } catch (error) {
     console.error('GET members/me error:', error);
     return NextResponse.json({ role: 'member', hasPin: false, createdAt: null });

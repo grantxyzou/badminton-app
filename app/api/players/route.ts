@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { isAdminAuthed } from '@/lib/auth';
+import { isAdminAuthed, verifyMemberAuth, setMemberCookie } from '@/lib/auth';
 import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import { appendEvent } from '@/lib/recoveryAudit';
 import type { RecoveryEvent } from '@/lib/types';
@@ -121,7 +121,11 @@ export async function POST(req: NextRequest) {
       if (!safe || typeof safe.id !== 'string' || typeof safe.name !== 'string') {
         return NextResponse.json({ error: 'Failed to create account' }, { status: 500 });
       }
-      return NextResponse.json({ id: safe.id, name: safe.name, deleteToken: null }, { status: 201 });
+      const out = NextResponse.json({ id: safe.id, name: safe.name, deleteToken: null }, { status: 201 });
+      // Account just created with a PIN → trust this device for future sign-ups
+      // (unless an admin created it on someone else's behalf).
+      if (!isAdminAuthed(req)) setMemberCookie(out, safe.id, safe.name);
+      return out;
     }
 
     const sessionContainer = getContainer('sessions');
@@ -200,7 +204,26 @@ export async function POST(req: NextRequest) {
     // PIN verification on this path is rate-limited per (name, IP) at the
     // same strictness as /api/players/recover (5/hr) so this endpoint can't
     // be used to bypass the stricter recover-side rate limit.
-    if (matchedMember && typeof matchedMember.pinHash === 'string' && matchedMember.pinHash.length > 0 && !isAdminAuthed(req)) {
+    // 4th accepted proof: a device that already proved this member's PIN holds
+    // a signed `member_session` cookie. It's HMAC-signed + name/id bound, so
+    // it's identity proof equivalent to body.pin — the "stay logged in" model
+    // that lets returning members skip the per-session PIN re-entry.
+    const memberAuth = matchedMember ? verifyMemberAuth(req) : null;
+    const trustedAsMember =
+      !!memberAuth &&
+      !!matchedMember &&
+      (memberAuth.memberId === matchedMember.id ||
+        memberAuth.name.toLowerCase() === matchedMember.name.toLowerCase());
+    // Set true when this request itself proves/establishes PIN ownership, so we
+    // can mint the member cookie below and trust this device going forward.
+    let trustDevice = false;
+    if (
+      matchedMember &&
+      typeof matchedMember.pinHash === 'string' &&
+      matchedMember.pinHash.length > 0 &&
+      !isAdminAuthed(req) &&
+      !trustedAsMember
+    ) {
       const candidate = typeof body.pin === 'string' ? body.pin : null;
       if (!candidate) {
         // Constant-time miss against FAKE_HASH so "no pin provided" and
@@ -215,9 +238,10 @@ export async function POST(req: NextRequest) {
       if (!ok) {
         return NextResponse.json({ error: 'pin_incorrect' }, { status: 401 });
       }
-      // Verified — fall through to the normal signup path. pinHash from
-      // body.pin is intentionally NOT mirrored back to the player record
-      // (the client wasn't asking to change the PIN, just to authenticate).
+      // Verified by PIN on this call → trust this device for future sign-ups.
+      // pinHash from body.pin is intentionally NOT mirrored back to the player
+      // record (the client wasn't asking to change the PIN, just to authenticate).
+      trustDevice = true;
       pinHash = undefined;
     }
 
@@ -265,7 +289,11 @@ export async function POST(req: NextRequest) {
       }
 
       const { pinHash: _ph, ...safeResource } = resource as unknown as Record<string, unknown>;
-      return NextResponse.json({ ...safeResource, deleteToken }, { status: 201 });
+      const out = NextResponse.json({ ...safeResource, deleteToken }, { status: 201 });
+      if (matchedMember && (trustDevice || pinHash) && !isAdminAuthed(req)) {
+        setMemberCookie(out, matchedMember.id, matchedMember.name);
+      }
+      return out;
     }
 
     const player = {
@@ -295,7 +323,14 @@ export async function POST(req: NextRequest) {
 
     // Return the deleteToken once so the client can store it for self-cancellation
     const { pinHash: _ph, ...safeResource } = resource as unknown as Record<string, unknown>;
-    return NextResponse.json({ ...safeResource, deleteToken }, { status: 201 });
+    const out = NextResponse.json({ ...safeResource, deleteToken }, { status: 201 });
+    // Trust this device for future sign-ups when this request proved (sign-in)
+    // or created (first PIN) the member's PIN — the "stay logged in" model.
+    // Skip for admins acting on behalf of others and for anon (no-PIN) names.
+    if (matchedMember && (trustDevice || pinHash) && !isAdminAuthed(req)) {
+      setMemberCookie(out, matchedMember.id, matchedMember.name);
+    }
+    return out;
   } catch (error) {
     console.error('POST players error:', error);
     return NextResponse.json({ error: 'Failed to sign up' }, { status: 500 });

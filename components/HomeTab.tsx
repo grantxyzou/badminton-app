@@ -58,7 +58,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const [confirmPin, setConfirmPin] = useState('');
   const memberProbe = useMemberProbe(name);
   const authMode: 'anon' | 'sign-in' | 'create' =
-    memberProbe?.hasPin ? 'sign-in'
+    // Trusted device: the PIN was already proven here (member_session cookie),
+    // so render one-tap sign-up (no PIN field) and POST { name } — the server
+    // accepts the cookie as identity proof. Same form shape as anon.
+    memberProbe?.hasPin && memberProbe?.authed ? 'anon'
+    : memberProbe?.hasPin ? 'sign-in'
     : memberProbe?.exists ? 'create'
     : 'anon';
   const [error, setError] = useState('');

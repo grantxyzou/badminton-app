@@ -9,6 +9,15 @@ import {
 } from './helpers';
 import { POST } from '@/app/api/players/route';
 import { hashPin } from '@/lib/recoveryHash';
+import { setMemberCookie } from '@/lib/auth';
+import { NextResponse } from 'next/server';
+
+/** Mint a valid signed member_session cookie value (the "trusted device" proof). */
+function memberCookie(memberId: string, name: string): string {
+  const res = NextResponse.json({});
+  setMemberCookie(res, memberId, name);
+  return res.cookies.get('member_session')!.value;
+}
 
 setupAdminPin();
 
@@ -95,5 +104,63 @@ describe('POST /api/players with PIN (v1.4 unified Home sign-in fix)', () => {
 
     const storedAfter = (getStore().members?.find((m: { name?: string }) => m.name === 'Lin') as { pinHash?: string })?.pinHash;
     expect(storedAfter).toBe(storedBefore);
+  });
+});
+
+/**
+ * Trusted-device sign-up: once a member has proven their PIN on a device, a
+ * signed `member_session` cookie lets them sign up for future sessions without
+ * re-entering the PIN. The cookie is name/id bound, so it can't be used to sign
+ * up as a different member.
+ */
+describe('POST /api/players with trusted-device cookie (member_session)', () => {
+  const sessionId = 'session-2026-05-20';
+  const pin = '2468';
+  let lin: { id: string };
+
+  beforeEach(async () => {
+    resetMockStore();
+    seedPointer(sessionId);
+    seedSession(sessionId, { maxPlayers: 12, signupOpen: true });
+    const pinHash = await hashPin(pin);
+    lin = seedMember('Lin', { pinHash }) as { id: string };
+  });
+
+  it('valid member_session cookie signs up a PIN member WITHOUT a PIN (201)', async () => {
+    const cookie = memberCookie(lin.id, 'Lin');
+    const req = makeRequest('POST', 'http://localhost:3000/api/players',
+      { name: 'Lin' },
+      { 'X-Client-IP': '10.1.0.1', Cookie: `member_session=${cookie}` });
+    const res = await POST(req);
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.name).toBe('Lin');
+    expect(body.pinHash).toBeUndefined();
+  });
+
+  it('member_session cookie for a DIFFERENT name still requires the PIN', async () => {
+    const cookie = memberCookie('someone-else', 'Viktor');
+    const req = makeRequest('POST', 'http://localhost:3000/api/players',
+      { name: 'Lin' },
+      { 'X-Client-IP': '10.1.0.2', Cookie: `member_session=${cookie}` });
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+    expect((await res.json()).error).toBe('pin_required');
+  });
+
+  it('no cookie + no PIN still returns pin_required (guard intact)', async () => {
+    const req = makeRequest('POST', 'http://localhost:3000/api/players',
+      { name: 'Lin' }, { 'X-Client-IP': '10.1.0.3' });
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+    expect((await res.json()).error).toBe('pin_required');
+  });
+
+  it('signing up with the correct PIN mints a member_session cookie for next time', async () => {
+    const req = makeRequest('POST', 'http://localhost:3000/api/players',
+      { name: 'Lin', pin }, { 'X-Client-IP': '10.1.0.4' });
+    const res = await POST(req);
+    expect(res.status).toBe(201);
+    expect(res.cookies.get('member_session')?.value).toBeTruthy();
   });
 });
