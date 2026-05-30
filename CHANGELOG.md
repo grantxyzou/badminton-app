@@ -56,9 +56,23 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ### Added
 
+- **Trusted-device sign-up** — a member who proves their PIN once on a device stays trusted for 30 days to sign up for future sessions without re-entering it (revoked on sign-out). *(soaking on `bpm-next`)*
+
+### Changed
+
+- **Motion polish pass** — touch-hover gating (hover styles no longer stick after a tap on phones), stronger easing on buttons/cards, plus sign-up-success / spot-counter / list-stagger micro-interactions. *(soaking on `bpm-next`)*
+
+---
+
+## v1.5 — Ledger (who-owes-what) + cover-and-remove (2026-05-30)
+
+### Added
+
 - **Ledger** *(flag-gated `NEXT_PUBLIC_FLAG_LEDGER`)* — a "Ledger" entry in the Command Center opens a who-owes-what page (Collected / Spent / Gap, an honest "$X covered by you" sub-line, By-session / By-player views, and 30-day / 12-week / All-time ranges) so the organizer can answer "did anyone forget to pay me back?" without scrolling session history. Backed by `GET /api/admin/ledger`. (v1.5/B + v1.5/D)
 - **Ledger drill-ins** — tap a session row to jump straight into that session's Payments, or a player row to open their profile + history. (v1.5/D)
 - **Cover & remove** — removing a player who still owes a settled, unpaid amount now offers "Cover & remove" (you eat the cost, they leave history clean) or "Remove without covering," instead of silently orphaning the debt on the ledger. (v1.5/C)
+- **Offline legible-fail** — network-mutating actions disable with a clear app-wide banner when offline (instead of firing and breaking), and the admin subtree is wrapped in an error boundary that auto-reloads on reconnect.
+- **Value-Hub Slice-0** *(flag-gated `NEXT_PUBLIC_FLAG_VALUE_HUB`, dormant on stable)* — foundation for the racket-pick → recommendation → game-logger vertical: types, flag, and racket catalog seed.
 
 ---
 
