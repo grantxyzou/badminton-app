@@ -186,14 +186,14 @@
   <main class="main">
     <div class="hdr">
       <h1>The path to "recreational player on steroids"</h1>
-      <div class="meta">snapshot 2026-05-19 &middot; secrets·#72·deps·nav-rail done<br>tap any card to expand &middot; click to focus a prompt</div>
+      <div class="meta">snapshot 2026-05-30 &middot; v1.5→stable · auth one-tap shipped<br>tap any card to expand &middot; click to focus a prompt</div>
     </div>
 
     <div class="nextbar">
       <div class="dot"></div>
       <div>
         <div class="k">Literal next action</div>
-        <div class="v">✓ Secrets rotated &middot; ✓ #72 closed &middot; ✓ deps security batch merged (#97 next, #111 picomatch +3) &middot; ✓ Bottom nav "Labeled Rail" shipped to bpm-next (flag <b>NEXT_PUBLIC_FLAG_NAV_RAIL</b>, soaking; legacy nav stays on stable). Remaining: smoke <b>bpm-next</b> through 2026-05-20, then tag &amp; dispatch <b>bpm-stable-v1.4</b>. After that the path opens onto <b>Slice-0 (#101)</b> &mdash; the gate to the whole Value-Hub.</div>
+        <div class="v">✓ <b>v1.5 promoted to stable</b> (tag bpm-stable-v1.5 @ 211583e, deployed green, smoke 200) &middot; ✓ deps security batch merged (0 vulns) &middot; ✓ <b>one-tap sign-up</b> for logged-in members shipped to bpm-next (trusted-device cookie + PIN-set trust; PIN-skip after one device proof). Soaking on bpm-next for the next cut: Labeled Rail (<b>NEXT_PUBLIC_FLAG_NAV_RAIL</b>), trusted-device auth, Emil motion. Literal next on the path: <b>Slice-0 (#101)</b> on <b>feat/value-hub-slice-0</b> &mdash; the gate to the whole Value-Hub.</div>
       </div>
     </div>
 
@@ -223,19 +223,19 @@
 
 <script>
 const SPINE = [
-  { id:"now", st:"now", badge:"now", bcls:"b-now", title:"Promote v1.4 + v1.5/A to stable",
-    sub:"soaking on bpm-next until 2026-05-20 (2 days)", issues:[],
-    note:"Gate: clean smoke window. ✓ Secrets (SESSION_SECRET / ANTHROPIC_API_KEY / Cosmos key) rotated 2026-05-18 — pre-cut hygiene done." },
+  { id:"promote", st:"done", badge:"shipped · v1.5 stable", bcls:"b-done", title:"Promote v1.4 + v1.5 to stable",
+    sub:"tag bpm-stable-v1.5 @ 211583e · deployed green 2026-05-30", issues:[],
+    note:"✓ Done 2026-05-30 — full v1.5 (ledger B/C/D + offline + admin) on stable, smoke 200. Secrets rotated 2026-05-18. Ledger-on flip pushed to deploy-stable.yml (d43ad2a); the stable redeploy that enables it is bpm-confirm-gated." },
   { id:"v15", st:"done", badge:"shipped · #72 closed", bcls:"b-done", title:"v1.5 — Ledger & write-offs",
-    sub:"B/C/D landed (211583e) · #72 closed 2026-05-18 · milestone clean", issues:[
+    sub:"B/C/D landed (211583e) · #72 closed · promoted to stable 2026-05-30", issues:[
       {n:72,t:"[settle] Phase 3 — remove-after-settle prompt + owner-ledger view ✓ shipped 211583e, issue closed",p:"p2"} ],
-    note:"✓ Resolved 2026-05-18 — #72 closed, v1.5 milestone now 0 open. Ledger ships dormant behind NEXT_PUBLIC_FLAG_LEDGER until promoted." },
+    note:"✓ Resolved 2026-05-18, promoted to stable 2026-05-30 (bpm-stable-v1.5). Ledger ships dormant behind NEXT_PUBLIC_FLAG_LEDGER until the gated stable redeploy." },
   { id:"goal", st:"gate", badge:"the goal", bcls:"b-gate", title:"Value-Hub — \"player on steroids\"", goal:true,
     sub:"4 parallel tracks behind a thin gated vertical", issues:[], note:"Plan: docs/plans/value-hub-slice-0.md · decisions A–G ratified 2026-05-16 (PR #95)." },
-  { id:"slice0", st:"next", badge:"next on path", bcls:"b-next", title:"Slice-0 — the gated vertical",
+  { id:"slice0", st:"now", badge:"now · in progress", bcls:"b-now", title:"Slice-0 — the gated vertical",
     sub:"racket pick → 1 deterministic rec → game logger → partner card", issues:[
       {n:101,t:"Slice-0 foundation: racket preference capture + kill-criteria gate",p:"p2"} ],
-    note:"Flag NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE. This is the real \"what's next\" after the 05-20 promotion." },
+    note:"Flag NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE. Active on branch feat/value-hub-slice-0 — the literal next step now that v1.5 is on stable." },
   { id:"gate", st:"gate", badge:"decision gate", bcls:"b-gate", title:"Kill-criteria gate",
     sub:"4 weeks live · ≥40% rec-card repeat · ≥30% game-log", issues:[],
     note:"Decide-with-data: tracks only fan out if Slice-0 clears this. Otherwise kill, don't sink cost." },
@@ -293,8 +293,8 @@ const THEMES = [
 const PRESETS = [
   { id:"path", label:"Path to goal", desc:"just the spine to the Value-Hub",
     state:{ongoing:false,branches:false,autoexpand:false,prios:["p1","p2","p3"]} },
-  { id:"next2w", label:"What's next (<=2 wk)", desc:"promotion + Slice-0 only",
-    state:{ongoing:false,branches:false,autoexpand:true,prios:["p1","p2","p3"],focus:["now","slice0"]} },
+  { id:"next2w", label:"What's next (<=2 wk)", desc:"Slice-0 + next-cut soak",
+    state:{ongoing:false,branches:false,autoexpand:true,prios:["p1","p2","p3"],focus:["slice0"]} },
   { id:"all", label:"Everything", desc:"spine + branches + themes",
     state:{ongoing:true,branches:true,autoexpand:false,prios:["p1","p2","p3"]} },
   { id:"risk", label:"Risk lens", desc:"p1 bugs + the big migration",
