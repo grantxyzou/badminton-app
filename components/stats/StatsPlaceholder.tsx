@@ -215,7 +215,7 @@ export default function StatsPlaceholder({
   );
 
   return (
-    <div className="space-y-5 w-full animate-fadeIn">
+    <div className="space-y-5 w-full">
       <div>
         <h1 className="bpm-h1 leading-tight px-2">{t('heading')}</h1>
         <p className="text-sm text-gray-400 mt-1 px-2">{t('subhead')}</p>
