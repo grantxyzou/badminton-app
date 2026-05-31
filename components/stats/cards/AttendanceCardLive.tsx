@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { getIdentity } from '@/lib/identity';
-import AttendanceSessionStrip from './AttendanceSessionStrip';
+import AttendanceSessionStrip, { recentSessions } from './AttendanceSessionStrip';
 
 // 1Y window is the only view post-v1.3 hotfix — the 3M/6M zoom toggle was
 // removed because cells got visually huge at narrow week counts and the
@@ -162,15 +162,20 @@ export default function AttendanceCardLive() {
     );
   }
 
-  const { attended, streak, longestStreak, weeks: w } = data;
+  const { streak } = data;
   const isPreviewPick = getIdentity()?.name?.toLowerCase() !== activeName.toLowerCase();
 
+  // Recent-form framing: the last N sessions, and how many of *those* the
+  // player made — more legible than "12 of 52 weeks" for a weekly game.
+  const RECENT = 8;
+  const recent = recentSessions(data.history, RECENT);
+  const recentAttended = recent.filter((s) => s.attended).length;
+
   return (
-    <div style={{ display: 'grid', gap: 8 }}>
-      <div style={{ display: 'flex', gap: 14, alignItems: 'baseline', flexWrap: 'wrap' }}>
-        <p style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: 26, fontWeight: 700, color: PRIMARY }}>
-          {attended}
-          <span style={{ fontSize: 13, fontWeight: 500, color: MUTED, marginLeft: 6 }}>of {w} weeks</span>
+    <div style={{ display: 'grid', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 14, alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <p style={{ margin: 0, fontSize: 12, color: MUTED, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+          Your recent form
         </p>
         {isPreviewPick && (
           <span style={{ fontSize: 11, color: MUTED }}>
@@ -185,9 +190,12 @@ export default function AttendanceCardLive() {
           </span>
         )}
       </div>
-      <AttendanceSessionStrip history={data.history} />
-      {buildSubText(attended, w, streak, longestStreak) && (
-        <p style={{ margin: 0, fontSize: 11, color: MUTED }}>{buildSubText(attended, w, streak, longestStreak)}</p>
+      <AttendanceSessionStrip history={data.history} limit={RECENT} />
+      {recent.length > 0 && (
+        <p style={{ margin: 0, fontSize: 13, color: PRIMARY }}>
+          <strong>{recentAttended}</strong> of your last {recent.length}
+          {streak >= 2 ? <span style={{ color: MUTED }}> · {streak}-session streak</span> : null}
+        </p>
       )}
     </div>
   );
@@ -206,12 +214,4 @@ function LoadingStrip({ weeks }: { weeks: number }) {
       </div>
     </div>
   );
-}
-
-function buildSubText(attended: number, weeks: number, streak: number, longest: number): string {
-  if (attended === 0) return 'No sessions played yet in this window.';
-  if (streak === weeks) return 'Perfect attendance — every session.';
-  if (longest > streak && longest > 2) return `Longest run: ${longest} in a row.`;
-  if (streak >= 3) return `${streak} sessions in a row — keep it going.`;
-  return '';
 }

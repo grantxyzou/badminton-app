@@ -125,12 +125,14 @@ export default function ProfileTab({
   const [oweThisWeek, setOweThisWeek] = useState<number | null>(null);
   const [paidThisWeek, setPaidThisWeek] = useState(false);
   const [prevOwe, setPrevOwe] = useState<number | null>(null);
+  const [sessionDatetime, setSessionDatetime] = useState<string | null>(null);
 
   useEffect(() => {
     if (!identity) {
       setOweThisWeek(null);
       setPaidThisWeek(false);
       setPrevOwe(null);
+      setSessionDatetime(null);
       return;
     }
     let cancelled = false;
@@ -144,6 +146,7 @@ export default function ProfileTab({
         const session = await sRes.json();
         const players = (await pRes.json()) as Array<{ name?: string; removed?: boolean; waitlisted?: boolean; paid?: boolean }>;
         if (cancelled) return;
+        setSessionDatetime(typeof session.datetime === 'string' ? session.datetime : null);
         const active = players.filter((p) => !p.removed && !p.waitlisted);
         const me = active.find((p) => typeof p.name === 'string' && p.name.toLowerCase() === identity.name.toLowerCase());
         const courtTotal = (session.costPerCourt ?? 0) * (session.courts ?? 0);
@@ -274,6 +277,7 @@ export default function ProfileTab({
         oweThisWeek={oweThisWeek}
         paidThisWeek={paidThisWeek}
         prevOwe={prevOwe}
+        sessionDatetime={sessionDatetime}
       />
 
       {showAdminHero && (
@@ -434,16 +438,31 @@ interface ProfileIdentityCardProps {
   paidThisWeek: boolean;
   /** Frozen last-session per-person snapshot, if public; null otherwise. */
   prevOwe: number | null;
+  /** Active session datetime (ISO) for the cost row's date/time line. */
+  sessionDatetime: string | null;
 }
 
 function fmtMoney(n: number): string {
   return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
 }
 
-function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameLabel, oweThisWeek, paidThisWeek, prevOwe }: ProfileIdentityCardProps) {
+function fmtSessionWhen(iso: string | null): string | null {
+  if (!iso) return null;
+  try {
+    const d = new Date(iso);
+    const day = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    return `${day} · ${time}`;
+  } catch {
+    return null;
+  }
+}
+
+function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameLabel, oweThisWeek, paidThisWeek, prevOwe, sessionDatetime }: ProfileIdentityCardProps) {
   const ava = profileAvaColors(name);
   const memberSince = fmtMemberSince(memberCreatedAt);
   const showCostRow = oweThisWeek !== null || prevOwe !== null;
+  const sessionWhen = fmtSessionWhen(sessionDatetime);
 
   return (
     <div
@@ -552,12 +571,17 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameL
           }}
         >
           {oweThisWeek !== null && (
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>This week</span>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>This week</p>
+                {sessionWhen && (
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{sessionWhen}</p>
+                )}
+              </div>
               {paidThisWeek ? (
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent, #22c55e)' }}>Paid ✓</span>
               ) : (
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                   You owe {fmtMoney(oweThisWeek)}
                 </span>
               )}

@@ -300,6 +300,8 @@
     "partnersEmpty": "Play a few sessions to see your regulars.",
     "partnersError": "Couldn't load — refresh to retry",
     "partnersCount": "{count, plural, one {# session} other {# sessions}}",
+    "partnersMostWith": "You play most with",
+    "partnersTogether": "{count, plural, one {# session together} other {# sessions together}}",
     "logGameTitle": "Log Thursday",
     "logGameHint": "How did the games go?",
     "you": "You",

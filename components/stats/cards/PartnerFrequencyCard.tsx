@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { getIdentity } from '@/lib/identity';
+import { avatarColors } from '@/lib/avatar';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
@@ -77,25 +78,53 @@ export default function PartnerFrequencyCard() {
       ) : partners === null ? null : partners.length === 0 ? (
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>{t('partnersEmpty')}</p>
       ) : (
-        // Ranked by co-attendance, most-played-with first. A proportional bar
-        // makes the ranking legible at a glance (the top row is the longest).
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {partners.map((p) => {
-            const max = partners[0].count || 1;
-            const pct = Math.max(8, Math.round((p.count / max) * 100));
+        // Hero the #1 partner — in doubles your most-frequent partner is the
+        // meaningful relationship, so lead with "who you play most with" rather
+        // than a flat ranked list. The rest trail as a compact line.
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {(() => {
+            const top = partners[0];
+            const ava = avatarColors(top.name);
             return (
-              <li key={p.name} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 14 }}>
-                  <span style={{ color: 'var(--text-primary)' }}>{p.name}</span>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('partnersCount', { count: p.count })}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 46,
+                    height: 46,
+                    borderRadius: '50%',
+                    background: ava.bg,
+                    color: ava.fg,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontFamily: 'var(--font-display, "Space Grotesk")',
+                    fontWeight: 600,
+                    fontSize: 19,
+                    flexShrink: 0,
+                    border: '1px solid rgba(255,255,255,0.10)',
+                  }}
+                >
+                  {top.name.slice(0, 1).toUpperCase()}
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>{t('partnersMostWith')}</p>
+                  <p style={{ margin: 0, fontSize: 19, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                    {top.name}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                    {t('partnersTogether', { count: top.count })}
+                  </p>
                 </div>
-                <div style={{ height: 4, borderRadius: 100, background: 'var(--inner-card-bg)', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${pct}%`, background: ACCENT, borderRadius: 100 }} />
-                </div>
-              </li>
+              </div>
             );
-          })}
-        </ul>
+          })()}
+          {partners.length > 1 && (
+            <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              {partners.slice(1).map((p) => `${p.name} ${p.count}`).join('  ·  ')}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
