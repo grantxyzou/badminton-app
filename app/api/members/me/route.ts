@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
-import { verifyMemberAuth } from '@/lib/auth';
+import { verifyMemberAuth, setMemberCookie } from '@/lib/auth';
 
 const BLOCKLISTED_PINS = new Set(['0000', '1111', '1234', '4321', '1212']);
 
@@ -175,5 +175,14 @@ async function handlePatch(req: NextRequest) {
     console.warn('member PIN: player mirror failed (non-fatal):', err);
   }
 
-  return NextResponse.json({ success: true, hasPin: !clearPin });
+  const out = NextResponse.json({ success: true, hasPin: !clearPin });
+  // Setting or changing a PIN proves ownership on this device — trust it for
+  // future one-tap sign-ups, same as a PIN sign-in via /recover. Skip on clear
+  // (no PIN means nothing to skip). Mirrors the cookie-minting in
+  // POST /api/players so a member who sets their PIN in Profile isn't asked
+  // for it again on the Home sign-up card.
+  if (!clearPin) {
+    setMemberCookie(out, String(member.id), String(member.name));
+  }
+  return out;
 }
