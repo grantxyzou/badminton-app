@@ -135,6 +135,24 @@ export default function HomeShell({ initialAnnouncement }: Props) {
     };
   }, [refreshAdminAccess]);
 
+  // Passive insight pre-warm: on first app entry for a logged-in account,
+  // fire-and-forget the insight endpoint so the account-gated recap+focus are
+  // generated/cached server-side BEFORE the user reaches the Stats tab. The
+  // endpoint dedupes by (member, active session), so this is at most one Claude
+  // call per member per session-cycle no matter how often it's pinged. No CTA.
+  useEffect(() => {
+    function prewarmInsight() {
+      const name = getIdentity()?.name;
+      if (!name) return;
+      fetch(`${BASE}/api/stats/insight?name=${encodeURIComponent(name)}`, { cache: 'no-store' }).catch(() => {
+        /* fire-and-forget — the Stats card will retry on view */
+      });
+    }
+    prewarmInsight();
+    window.addEventListener(IDENTITY_EVENT, prewarmInsight);
+    return () => window.removeEventListener(IDENTITY_EVENT, prewarmInsight);
+  }, []);
+
   // 7-tap easter egg on title — opens the demo mode overlay. (Previously
   // unlocked admin, but admin now flows through Profile sign-in for actual
   // admins; the easter egg's role is curiosity/preview, not privilege.)

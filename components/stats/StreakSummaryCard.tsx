@@ -10,23 +10,25 @@ const MUTED = 'var(--text-muted)';
 const PRIMARY = 'var(--text-primary)';
 
 /**
- * Combined streak + AI "quick read" card for the Stats tab. Merges what were
- * two stacked cards (StatsStreakHero + WeeklySummaryCard) into one: the
- * attendance streak is the headline, the once-weekly AI summary is the body.
+ * Combined streak + AI insight card. The attendance streak is the headline;
+ * the body is the account-gated, server-cached insight (a "last week" recap +
+ * a "this week · focus") fetched from /api/stats/insight.
  *
- * Visibility: renders whenever an active name is known. The streak headline
- * sub-block only appears when the streak is >= 1 (a brand-new player just sees
- * the quick-read prompt). Active name resolves identity -> stats-preview-pick,
- * matching AttendanceCardLive / the old two cards.
- *
- * The AI summary calls Claude (Haiku) at most once per (name, week) and caches
- * the result in localStorage, so revisits within the week are zero-token.
+ * No CTA: the insight is generated passively server-side (once per member per
+ * session) — this card just reads it. Anonymous viewers (non-members) see the
+ * streak only, no insight.
  */
 
 interface StreakData {
   name: string;
   streak: number;
   longestStreak: number;
+}
+
+interface InsightData {
+  account: boolean;
+  recap: string | null;
+  focus: string | null;
 }
 
 function resolveActiveName(): string | null {
@@ -41,109 +43,63 @@ function resolveActiveName(): string | null {
   return null;
 }
 
-function mondayOfThisWeek(): string {
-  const d = new Date();
-  const day = d.getDay(); // 0 = Sunday
-  const stepBack = day === 0 ? 6 : day - 1;
-  d.setDate(d.getDate() - stepBack);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function summaryCacheKey(name: string): string {
-  return `bpm_stats_summary_${name.toLowerCase()}_week_${mondayOfThisWeek()}`;
-}
-
 export default function StreakSummaryCard() {
   const [activeName, setActiveName] = useState<string | null>(null);
   const [streakData, setStreakData] = useState<StreakData | null>(null);
-  const [summary, setSummary] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [insight, setInsight] = useState<InsightData | null>(null);
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [insightError, setInsightError] = useState(false);
 
-  // Resolve the active name (+ cached summary) and re-resolve on identity change.
   useEffect(() => {
     function refresh() {
-      const name = resolveActiveName();
-      setActiveName(name);
-      if (!name) {
-        setSummary(null);
-        setStreakData(null);
-        return;
-      }
-      try {
-        const cached = localStorage.getItem(summaryCacheKey(name));
-        setSummary(cached || null);
-      } catch {
-        setSummary(null);
-      }
+      setActiveName(resolveActiveName());
     }
     refresh();
     window.addEventListener(IDENTITY_EVENT, refresh);
     return () => window.removeEventListener(IDENTITY_EVENT, refresh);
   }, []);
 
-  // Fetch the streak whenever the active name changes.
+  // Streak headline.
   useEffect(() => {
     if (!activeName) return;
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(
-          `${BASE}/api/stats/attendance?name=${encodeURIComponent(activeName)}&weeks=52`,
-          { cache: 'no-store' },
-        );
+        const res = await fetch(`${BASE}/api/stats/attendance?name=${encodeURIComponent(activeName)}&weeks=52`, { cache: 'no-store' });
         if (!res.ok) return;
         const payload = await res.json();
         if (cancelled) return;
-        setStreakData({
-          name: payload.name ?? activeName,
-          streak: payload.streak ?? 0,
-          longestStreak: payload.longestStreak ?? 0,
-        });
+        setStreakData({ name: payload.name ?? activeName, streak: payload.streak ?? 0, longestStreak: payload.longestStreak ?? 0 });
       } catch {
-        /* silent — the streak headline just won't appear */
+        /* silent */
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [activeName]);
 
-  async function generate() {
-    if (!activeName) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${BASE}/api/stats/summary`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: activeName }),
-      });
-      if (res.status === 429) {
-        setError('Too many requests. Try again later.');
-        return;
-      }
-      if (!res.ok) {
-        setError('AI is unavailable. Try again later.');
-        return;
-      }
-      const data = (await res.json()) as { summary?: string };
-      if (!data.summary) {
-        setError('No summary returned.');
-        return;
-      }
-      setSummary(data.summary);
+  // Insight (passive). The endpoint returns cached text or generates once per
+  // member per session — so this fetch is the "passive generation on first
+  // app entry" trigger; repeat views are served from the server cache.
+  useEffect(() => {
+    if (!activeName) { setInsight(null); return; }
+    let cancelled = false;
+    setInsightLoading(true);
+    setInsightError(false);
+    (async () => {
       try {
-        localStorage.setItem(summaryCacheKey(activeName), data.summary);
+        const res = await fetch(`${BASE}/api/stats/insight?name=${encodeURIComponent(activeName)}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error(String(res.status));
+        const data = (await res.json()) as InsightData;
+        if (cancelled) return;
+        setInsight(data);
       } catch {
-        /* ignore — caching is opportunistic */
+        if (!cancelled) setInsightError(true);
+      } finally {
+        if (!cancelled) setInsightLoading(false);
       }
-    } catch {
-      setError('Network error. Check your connection.');
-    } finally {
-      setLoading(false);
-    }
-  }
+    })();
+    return () => { cancelled = true; };
+  }, [activeName]);
 
   if (!activeName) return null;
 
@@ -153,44 +109,27 @@ export default function StreakSummaryCard() {
   const hasStreak = streak >= 1;
   const onPersonalBest = hasStreak && streak >= longestStreak && streak >= 3;
 
+  const hasInsight = insight?.account && (insight.recap || insight.focus);
+  // Show the body section while loading OR when there's an insight to render.
+  const showBody = insightLoading || hasInsight || (insight?.account && insightError);
+
   return (
     <div
       className="glass-card"
-      style={{
-        padding: 16,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 14,
-        borderLeft: `3px solid ${ACCENT}`,
-      }}
-      aria-label={hasStreak ? `${streak} week attendance streak for ${name}` : `Weekly read for ${name}`}
+      style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14, borderLeft: `3px solid ${ACCENT}` }}
+      aria-label={hasStreak ? `${streak} week attendance streak for ${name}` : `Insight for ${name}`}
     >
       {/* ── Headline: attendance streak ── */}
       {hasStreak && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div
             style={{
-              width: 56,
-              height: 56,
-              borderRadius: '50%',
-              background: onPersonalBest
-                ? 'linear-gradient(135deg, #f59e0b, #ef4444)'
-                : 'color-mix(in oklab, var(--accent, #22c55e) 24%, transparent)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
+              width: 56, height: 56, borderRadius: '50%',
+              background: onPersonalBest ? 'linear-gradient(135deg, #f59e0b, #ef4444)' : 'color-mix(in oklab, var(--accent, #22c55e) 24%, transparent)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}
           >
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 22,
-                fontWeight: 700,
-                color: onPersonalBest ? '#fff' : ACCENT,
-                lineHeight: 1,
-              }}
-            >
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 700, color: onPersonalBest ? '#fff' : ACCENT, lineHeight: 1 }}>
               {streak}
             </span>
           </div>
@@ -210,63 +149,48 @@ export default function StreakSummaryCard() {
         </div>
       )}
 
-      {/* ── Body: AI quick read ── */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-          ...(hasStreak ? { borderTop: '1px solid var(--inner-card-border)', paddingTop: 14 } : {}),
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="material-icons" aria-hidden="true" style={{ fontSize: 20, color: ACCENT }}>
-              auto_fix_high
+      {/* ── Body: passive AI insight (recap + focus) ── */}
+      {showBody && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, ...(hasStreak ? { borderTop: '1px solid var(--inner-card-border)', paddingTop: 14 } : {}) }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="material-icons" aria-hidden="true" style={{ fontSize: 20, color: ACCENT }}>auto_fix_high</span>
+              <h3 className="bpm-h3 m-0">Your read</h3>
+            </div>
+            <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 100, whiteSpace: 'nowrap', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', border: `1px solid ${ACCENT}`, color: ACCENT }}>
+              Beta
             </span>
-            <h3 className="bpm-h3 m-0">This week&rsquo;s quick read</h3>
           </div>
-          <span
-            style={{
-              fontSize: 10,
-              padding: '3px 8px',
-              borderRadius: 100,
-              whiteSpace: 'nowrap',
-              fontWeight: 600,
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              border: `1px solid ${ACCENT}`,
-              color: ACCENT,
-            }}
-          >
-            Beta
-          </span>
-        </div>
 
-        {summary ? (
-          <p style={{ margin: 0, fontSize: 15, lineHeight: 1.55, color: PRIMARY }}>{summary}</p>
-        ) : (
-          <>
-            <p style={{ margin: 0, fontSize: 13, color: MUTED, lineHeight: 1.5 }}>
-              One-tap AI read of your last year, generated once per week.
+          {insightLoading && !hasInsight ? (
+            <div aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="animate-pulse" style={{ height: 12, borderRadius: 6, background: 'var(--inner-card-bg)', width: '90%' }} />
+              <div className="animate-pulse" style={{ height: 12, borderRadius: 6, background: 'var(--inner-card-bg)', width: '70%' }} />
+              <p style={{ margin: 0, fontSize: 11, color: MUTED }}>Reading the dots…</p>
+            </div>
+          ) : hasInsight ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {insight?.recap && <InsightSection label="Last week" body={insight.recap} />}
+              {insight?.focus && <InsightSection label="This week · Focus" body={insight.focus} accent />}
+            </div>
+          ) : (
+            <p role="alert" style={{ margin: 0, fontSize: 12, color: MUTED }}>
+              Couldn’t load your read — refresh to retry.
             </p>
-            <button
-              type="button"
-              onClick={generate}
-              disabled={loading}
-              className="btn-ghost"
-              style={{ alignSelf: 'flex-start', minHeight: 36, padding: '0 14px', fontSize: 14 }}
-            >
-              {loading ? 'Reading the dots…' : 'Generate'}
-            </button>
-            {error && (
-              <p role="alert" style={{ margin: 0, fontSize: 12, color: MUTED }}>
-                {error}
-              </p>
-            )}
-          </>
-        )}
-      </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InsightSection({ label, body, accent }: { label: string; body: string; accent?: boolean }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: accent ? ACCENT : MUTED }}>
+        {label}
+      </p>
+      <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.5, color: PRIMARY }}>{body}</p>
     </div>
   );
 }
