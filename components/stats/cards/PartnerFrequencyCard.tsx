@@ -77,13 +77,24 @@ export default function PartnerFrequencyCard() {
       ) : partners === null ? null : partners.length === 0 ? (
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>{t('partnersEmpty')}</p>
       ) : (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {partners.map((p) => (
-            <li key={p.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
-              <span>{p.name}</span>
-              <span style={{ fontFamily: 'var(--font-mono, ui-monospace, monospace)', color: 'var(--text-muted)' }}>×{p.count}</span>
-            </li>
-          ))}
+        // Ranked by co-attendance, most-played-with first. A proportional bar
+        // makes the ranking legible at a glance (the top row is the longest).
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {partners.map((p) => {
+            const max = partners[0].count || 1;
+            const pct = Math.max(8, Math.round((p.count / max) * 100));
+            return (
+              <li key={p.name} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 14 }}>
+                  <span style={{ color: 'var(--text-primary)' }}>{p.name}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('partnersCount', { count: p.count })}</span>
+                </div>
+                <div style={{ height: 4, borderRadius: 100, background: 'var(--inner-card-bg)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: ACCENT, borderRadius: 100 }} />
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

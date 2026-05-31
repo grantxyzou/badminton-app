@@ -18,17 +18,18 @@ function renderWithLocale(locale: 'en' | 'zh-CN') {
 describe('StatsPlaceholder', () => {
   afterEach(cleanup);
 
-  it('renders three skeleton cards in the grid in English', () => {
+  it('renders the remaining skeleton cards in the grid in English (cost moved to Profile)', () => {
     renderWithLocale('en');
-    expect(screen.getByText('Cost related')).toBeTruthy();
+    // Cost moved to the Profile identity card — no longer a coming-soon tile here.
+    expect(screen.queryByText('Cost related')).toBeNull();
     expect(screen.getByText('Partner and play style')).toBeTruthy();
     expect(screen.getByText('Your equipment')).toBeTruthy();
   });
 
-  it('renders one "Coming soon" pill per card (3 total)', () => {
+  it('renders one "Coming soon" pill per card (2 total — cost moved to Profile)', () => {
     renderWithLocale('en');
     const pills = screen.getAllByText(/Coming soon/i);
-    expect(pills.length).toBe(3);
+    expect(pills.length).toBe(2);
   });
 
   it('renders the page heading', () => {
@@ -43,7 +44,7 @@ describe('StatsPlaceholder', () => {
 
   it('renders Chinese titles when locale is zh-CN', () => {
     renderWithLocale('zh-CN');
-    expect(screen.getByText('费用相关')).toBeTruthy();
+    expect(screen.queryByText('费用相关')).toBeNull(); // cost moved to Profile
     expect(screen.getByText('搭档与打法')).toBeTruthy();
     expect(screen.getByText('你的装备')).toBeTruthy();
   });

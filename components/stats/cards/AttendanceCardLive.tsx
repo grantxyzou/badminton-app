@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { getIdentity } from '@/lib/identity';
-import AttendanceHeatmap from './AttendanceHeatmap';
+import AttendanceSessionStrip from './AttendanceSessionStrip';
 
 // 1Y window is the only view post-v1.3 hotfix — the 3M/6M zoom toggle was
 // removed because cells got visually huge at narrow week counts and the
@@ -185,7 +185,7 @@ export default function AttendanceCardLive() {
           </span>
         )}
       </div>
-      <AttendanceHeatmap history={data.history} weeks={w} />
+      <AttendanceSessionStrip history={data.history} />
       {buildSubText(attended, w, streak, longestStreak) && (
         <p style={{ margin: 0, fontSize: 11, color: MUTED }}>{buildSubText(attended, w, streak, longestStreak)}</p>
       )}
@@ -194,13 +194,14 @@ export default function AttendanceCardLive() {
 }
 
 function LoadingStrip({ weeks }: { weeks: number }) {
-  const totalDays = weeks * 7;
+  // Skeleton mirrors the session strip: a wrapping row of session-sized cells.
+  const placeholder = Math.min(weeks, 16);
   return (
     <div style={{ display: 'grid', gap: 8, opacity: 0.4 }}>
       <div style={{ height: 26, background: 'var(--inner-card-bg)', borderRadius: 4, width: '40%' }} />
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${weeks}, 1fr)`, gap: 2 }}>
-        {Array.from({ length: totalDays }).map((_, i) => (
-          <div key={i} style={{ aspectRatio: '1 / 1', background: 'var(--inner-card-bg)', borderRadius: 2 }} />
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+        {Array.from({ length: placeholder }).map((_, i) => (
+          <div key={i} style={{ width: 16, height: 16, background: 'var(--inner-card-bg)', borderRadius: 4, flex: '0 0 auto' }} />
         ))}
       </div>
     </div>
