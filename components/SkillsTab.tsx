@@ -2,18 +2,16 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { useTranslations } from 'next-intl';
 import type { PlayerSkills as PersistedPlayerSkills } from '@/lib/types';
 import type { PlayerSkills } from '@/components/SkillsRadar';
 import ShuttleLoader from '@/components/ShuttleLoader';
 import StatsPlaceholder from '@/components/stats/StatsPlaceholder';
 import AttendanceCardLive from '@/components/stats/cards/AttendanceCardLive';
-import StatsStreakHero from '@/components/stats/StatsStreakHero';
+import StreakSummaryCard from '@/components/stats/StreakSummaryCard';
 import PartnerFrequencyCard from '@/components/stats/cards/PartnerFrequencyCard';
 import GameLoggerCard from '@/components/stats/GameLoggerCard';
 import RacketRow from '@/components/stats/RacketRow';
 import { isFlagOn } from '@/lib/flags';
-import WeeklySummaryCard from '@/components/stats/WeeklySummaryCard';
 
 const SkillsRadar = dynamic(() => import('@/components/SkillsRadar'), { ssr: false });
 
@@ -30,8 +28,27 @@ function toRadarShape(records: PersistedPlayerSkills[]): PlayerSkills[] {
   return records.map((s) => ({ id: s.id, name: s.name, scores: s.scores }));
 }
 
+// Sample profile so the radar always has a shape to draw. Shown ONLY when
+// there's no real skill data, and always behind a visible "Sample" badge —
+// skill scores have no real source yet (player self-rating is deferred), so
+// this is honest demo content, never presented as someone's actual stats.
+const SAMPLE_SKILLS: PlayerSkills[] = [
+  {
+    id: '__sample__',
+    name: 'Sample',
+    scores: {
+      'grip-stroke': 4,
+      'movement': 3,
+      'serve-return': 4,
+      'offense': 3,
+      'defense': 2,
+      'strategy': 3,
+      'knowledge': 4,
+    },
+  },
+];
+
 export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean; onTabChange?: (tab: 'home' | 'players' | 'skills' | 'admin' | 'profile') => void }) {
-  const tStats = useTranslations('stats');
   const [loading, setLoading] = useState(true);
   const [players, setPlayers] = useState<PlayerSkills[]>([]);
 
@@ -96,14 +113,9 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
 
   // Live attendance + streak hero are now always-on (flag retired post-v1.3).
   const attendanceContent = <AttendanceCardLive />;
-  // Hero slot stacks the streak then the weekly AI summary card so both sit
-  // above the heatmap. WeeklySummaryCard self-hides when no active name.
-  const heroSlot = (
-    <>
-      <StatsStreakHero />
-      <WeeklySummaryCard />
-    </>
-  );
+  // Hero slot: one combined card — attendance streak as the headline, the
+  // once-weekly AI summary as the body. Self-hides when no active name.
+  const heroSlot = <StreakSummaryCard />;
 
   // Value-Hub Slice-0 splits across the Stats tab's two registers:
   //   • Gear view → RacketRow (your racket + recommendation)
@@ -135,29 +147,36 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
     );
   }
 
+  // Real skill data when present; otherwise a clearly-badged sample so the
+  // radar isn't a blank "no graph" hole. (Disclaimer/source line removed.)
+  const usingSampleSkills = players.length === 0;
+  const radarPlayers = usingSampleSkills ? SAMPLE_SKILLS : players;
+
   const skillProgressionContent = (
     <div className="space-y-4">
-      <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, lineHeight: 1.45 }}>
-        {tStats.rich('progression.disclaimer', {
-          link: (chunks) => (
-            <a
-              href="https://www.acesports.ca/skills-matrix"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: 'var(--accent)', textDecoration: 'underline' }}
-            >
-              {chunks}
-            </a>
-          ),
-        })}
-      </p>
-      {players.length === 0 ? (
-        <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>
-          No skill profiles yet.
-        </p>
-      ) : (
-        <SkillsRadar players={players} onScoresChanged={refresh} showOverlay={SHOW_SKILLS_OVERLAY} />
+      {usingSampleSkills && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span
+            style={{
+              fontSize: 10,
+              padding: '2px 8px',
+              borderRadius: 100,
+              fontWeight: 600,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              border: '1px solid var(--inner-card-border)',
+              color: 'var(--text-muted)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Sample
+          </span>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>
+            Example profile — self-rating coming soon.
+          </p>
+        </div>
       )}
+      <SkillsRadar players={radarPlayers} onScoresChanged={refresh} showOverlay={SHOW_SKILLS_OVERLAY} />
 
       {SHOW_ADD_PLAYER_FORM && (
         <form onSubmit={handleAddPlayer} className="glass-card-soft p-3 space-y-2">

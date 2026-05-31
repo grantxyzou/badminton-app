@@ -299,6 +299,7 @@
     "partnersTitle": "你的常约搭档",
     "partnersEmpty": "多打几场就能看到你的常约搭档。",
     "partnersError": "加载失败 — 刷新重试",
+    "partnersCount": "{count} 次",
     "logGameTitle": "记录本场",
     "logGameHint": "今天打得怎么样？",
     "you": "你",

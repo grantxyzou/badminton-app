@@ -12,6 +12,7 @@ import PageHeader from './primitives/PageHeader';
 import AdminConsoleHero from './admin/CommandCenter/AdminConsoleHero';
 import { isFlagOn } from '@/lib/flags';
 import { avatarColors as profileAvaColors } from '@/lib/avatar';
+import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -112,6 +113,54 @@ export default function ProfileTab({
         console.warn('hasPin fetch failed:', err);
         setPinIsSet(null);
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [identity]);
+
+  // Cost-to-pay summary for the identity card. Mirrors HomeTab's CostCard calc:
+  // per-person = (court + bird totals) / active count, shown only when the
+  // admin has made the breakdown public (showCostBreakdown). `paid` comes from
+  // the viewer's own player record; `prevOwe` is the frozen last-session snapshot.
+  const [oweThisWeek, setOweThisWeek] = useState<number | null>(null);
+  const [paidThisWeek, setPaidThisWeek] = useState(false);
+  const [prevOwe, setPrevOwe] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!identity) {
+      setOweThisWeek(null);
+      setPaidThisWeek(false);
+      setPrevOwe(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [sRes, pRes] = await Promise.all([
+          fetch(`${BASE}/api/session`, { cache: 'no-store' }),
+          fetch(`${BASE}/api/players`, { cache: 'no-store' }),
+        ]);
+        if (cancelled || !sRes.ok || !pRes.ok) return;
+        const session = await sRes.json();
+        const players = (await pRes.json()) as Array<{ name?: string; removed?: boolean; waitlisted?: boolean; paid?: boolean }>;
+        if (cancelled) return;
+        const active = players.filter((p) => !p.removed && !p.waitlisted);
+        const me = active.find((p) => typeof p.name === 'string' && p.name.toLowerCase() === identity.name.toLowerCase());
+        const courtTotal = (session.costPerCourt ?? 0) * (session.courts ?? 0);
+        const birdTotal = session.showCostBreakdown ? totalBirdCost(normalizeBirdUsages(session)) : 0;
+        const total = courtTotal + birdTotal;
+        const per = session.showCostBreakdown && total > 0 && active.length > 0 ? total / active.length : null;
+        setOweThisWeek(me ? per : null);
+        setPaidThisWeek(!!me?.paid);
+        setPrevOwe(
+          session.showCostBreakdown && typeof session.prevCostPerPerson === 'number' && session.prevCostPerPerson > 0
+            ? session.prevCostPerPerson
+            : null,
+        );
+      } catch {
+        /* leave nulls — the cost row just won't render */
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -222,6 +271,9 @@ export default function ProfileTab({
         isSignedUp={isSignedUp}
         isAdmin={isAdmin}
         nameLabel={t('playerName')}
+        oweThisWeek={oweThisWeek}
+        paidThisWeek={paidThisWeek}
+        prevOwe={prevOwe}
       />
 
       {showAdminHero && (
@@ -375,11 +427,23 @@ interface ProfileIdentityCardProps {
   isSignedUp: boolean;
   isAdmin: boolean;
   nameLabel: string;
+  /** Per-person cost for the active session if the viewer is signed up and the
+   *  breakdown is public; null otherwise (no cost row). */
+  oweThisWeek: number | null;
+  /** Whether the viewer's player record is marked paid for the active session. */
+  paidThisWeek: boolean;
+  /** Frozen last-session per-person snapshot, if public; null otherwise. */
+  prevOwe: number | null;
 }
 
-function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameLabel }: ProfileIdentityCardProps) {
+function fmtMoney(n: number): string {
+  return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
+}
+
+function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameLabel, oweThisWeek, paidThisWeek, prevOwe }: ProfileIdentityCardProps) {
   const ava = profileAvaColors(name);
   const memberSince = fmtMemberSince(memberCreatedAt);
+  const showCostRow = oweThisWeek !== null || prevOwe !== null;
 
   return (
     <div
@@ -476,6 +540,39 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameL
           )}
         </div>
       </div>
+
+      {showCostRow && (
+        <div
+          style={{
+            borderTop: '1px solid var(--inner-card-border)',
+            paddingTop: 12,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+          }}
+        >
+          {oweThisWeek !== null && (
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>This week</span>
+              {paidThisWeek ? (
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent, #22c55e)' }}>Paid ✓</span>
+              ) : (
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>
+                  You owe {fmtMoney(oweThisWeek)}
+                </span>
+              )}
+            </div>
+          )}
+          {prevOwe !== null && (
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Last session</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-muted)' }}>
+                {fmtMoney(prevOwe)}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

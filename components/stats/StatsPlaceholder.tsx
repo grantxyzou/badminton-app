@@ -216,35 +216,31 @@ export default function StatsPlaceholder({
             </LiveCard>
           )}
 
-          <div className="px-2" style={{ paddingTop: 4 }}>
-            <p className="section-label" style={sectionLabelStyle}>{t('moreComing')}</p>
-          </div>
-          <div style={gridStyle}>
-            <CompactComingSoonCard
-              icon="payments"
-              title={t('cost.title')}
-              subtitle={t('cost.subtitle')}
-              comingSoon={comingSoon}
-            />
-            {/* When gear is its own register, partners is live here and
-                equipment lives under Gear — so neither compact card shows. */}
-            {!hasGear && (
-              <CompactComingSoonCard
-                icon="groups"
-                title={t('partners.title')}
-                subtitle={t('partners.subtitle')}
-                comingSoon={comingSoon}
-              />
-            )}
-            {!hasGear && (
-              <CompactComingSoonCard
-                icon="sports_tennis"
-                title={t('equipment.title')}
-                subtitle={t('equipment.subtitle')}
-                comingSoon={comingSoon}
-              />
-            )}
-          </div>
+          {/* Cost moved to the Profile identity card. With the value-hub
+              register on, partners is live and equipment lives under Gear —
+              so the "more coming" grid only appears in the legacy (no-gear)
+              layout for partners + equipment. */}
+          {!hasGear && (
+            <>
+              <div className="px-2" style={{ paddingTop: 4 }}>
+                <p className="section-label" style={sectionLabelStyle}>{t('moreComing')}</p>
+              </div>
+              <div style={gridStyle}>
+                <CompactComingSoonCard
+                  icon="groups"
+                  title={t('partners.title')}
+                  subtitle={t('partners.subtitle')}
+                  comingSoon={comingSoon}
+                />
+                <CompactComingSoonCard
+                  icon="sports_tennis"
+                  title={t('equipment.title')}
+                  subtitle={t('equipment.subtitle')}
+                  comingSoon={comingSoon}
+                />
+              </div>
+            </>
+          )}
         </>
       )}
 
