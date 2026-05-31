@@ -153,12 +153,28 @@ export default function StatsPlaceholder({
   const comingSoon = t('comingSoon');
   const attendanceLive = !!attendanceContent;
   const skillLive = !!skillProgressionContent;
-  // Gear content only arrives when the value-hub flag is on. That's also what
-  // turns on the two-register split — without it the tab renders as before.
+  // Gear content only arrives when the value-hub flag is on. That's what turns
+  // on the three-register split (Summary | Game stats | Equipment); without it
+  // the tab renders as a single legacy scroll.
   const hasGear = !!gearContent;
-  const [view, setView] = useState<'game' | 'gear'>('game');
-  const showGame = !hasGear || view === 'game';
-  const showGear = hasGear && view === 'gear';
+  const [view, setView] = useState<'summary' | 'game' | 'equipment'>('summary');
+
+  const attendanceCard = attendanceLive && (
+    <LiveCard icon="calendar_today" title={t('attendance.title')} subtitle={t('attendance.subtitle')} badge="Beta">
+      {attendanceContent}
+    </LiveCard>
+  );
+  const skillCard = skillLive && (
+    <LiveCard icon="trending_up" title={t('progression.title')} subtitle={t('progression.subtitle')} badge="Beta">
+      {skillProgressionContent}
+    </LiveCard>
+  );
+
+  const TABS = [
+    { id: 'summary', label: tVH('viewSummary') },
+    { id: 'game', label: tVH('viewGameStats') },
+    { id: 'equipment', label: tVH('viewEquipment') },
+  ] as const;
 
   return (
     <div className="space-y-5 w-full animate-fadeIn">
@@ -169,83 +185,54 @@ export default function StatsPlaceholder({
 
       {hasGear && (
         <div className="flex justify-center">
-          <div className="segment-control flex" style={{ width: 240 }}>
-            {(['game', 'gear'] as const).map((v) => (
+          <div className="segment-control flex w-full" style={{ maxWidth: 360 }}>
+            {TABS.map((tab) => (
               <button
-                key={v}
+                key={tab.id}
                 type="button"
-                onClick={() => setView(v)}
+                onClick={() => setView(tab.id)}
                 className={`flex-1 flex items-center justify-center text-xs transition-all ${
-                  view === v ? 'segment-tab-active' : 'segment-tab-inactive'
+                  view === tab.id ? 'segment-tab-active' : 'segment-tab-inactive'
                 }`}
               >
-                {v === 'game' ? tVH('viewGame') : tVH('viewGear')}
+                {tab.label}
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* ══ Your game ══════════════════════════════════════════════ */}
-      {showGame && (
+      {/* ══ Legacy single scroll (value-hub off) ═══════════════════ */}
+      {!hasGear && (
         <>
           {heroSlot}
-
-          {attendanceLive && (
-            <LiveCard
-              icon="calendar_today"
-              title={t('attendance.title')}
-              subtitle={t('attendance.subtitle')}
-              badge="Beta"
-            >
-              {attendanceContent}
-            </LiveCard>
-          )}
-
-          {/* Value-Hub game-register cards: logger + partner frequency. */}
-          {gamePlaySlot}
-
-          {skillLive && (
-            <LiveCard
-              icon="trending_up"
-              title={t('progression.title')}
-              subtitle={t('progression.subtitle')}
-              badge="Beta"
-            >
-              {skillProgressionContent}
-            </LiveCard>
-          )}
-
-          {/* Cost moved to the Profile identity card. With the value-hub
-              register on, partners is live and equipment lives under Gear —
-              so the "more coming" grid only appears in the legacy (no-gear)
-              layout for partners + equipment. */}
-          {!hasGear && (
-            <>
-              <div className="px-2" style={{ paddingTop: 4 }}>
-                <p className="section-label" style={sectionLabelStyle}>{t('moreComing')}</p>
-              </div>
-              <div style={gridStyle}>
-                <CompactComingSoonCard
-                  icon="groups"
-                  title={t('partners.title')}
-                  subtitle={t('partners.subtitle')}
-                  comingSoon={comingSoon}
-                />
-                <CompactComingSoonCard
-                  icon="sports_tennis"
-                  title={t('equipment.title')}
-                  subtitle={t('equipment.subtitle')}
-                  comingSoon={comingSoon}
-                />
-              </div>
-            </>
-          )}
+          {attendanceCard}
+          {skillCard}
+          <div className="px-2" style={{ paddingTop: 4 }}>
+            <p className="section-label" style={sectionLabelStyle}>{t('moreComing')}</p>
+          </div>
+          <div style={gridStyle}>
+            <CompactComingSoonCard icon="groups" title={t('partners.title')} subtitle={t('partners.subtitle')} comingSoon={comingSoon} />
+            <CompactComingSoonCard icon="sports_tennis" title={t('equipment.title')} subtitle={t('equipment.subtitle')} comingSoon={comingSoon} />
+          </div>
         </>
       )}
 
-      {/* ══ Gear ═══════════════════════════════════════════════════ */}
-      {showGear && (
+      {/* ══ Summary — the synthesized read ═════════════════════════ */}
+      {hasGear && view === 'summary' && <>{heroSlot}</>}
+
+      {/* ══ Game stats — the raw performance data ══════════════════ */}
+      {hasGear && view === 'game' && (
+        <>
+          {attendanceCard}
+          {/* Value-Hub: game logger + partner frequency. */}
+          {gamePlaySlot}
+          {skillCard}
+        </>
+      )}
+
+      {/* ══ Equipment ══════════════════════════════════════════════ */}
+      {hasGear && view === 'equipment' && (
         <>
           {gearContent}
           <div className="px-2" style={{ paddingTop: 4 }}>
