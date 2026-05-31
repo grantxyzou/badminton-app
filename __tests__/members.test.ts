@@ -275,6 +275,49 @@ describe('PATCH /api/members/me — member-scoped PIN management', () => {
     expect(data.hasPin).toBe(false);
   });
 
+  it('first-time set mints a member_session cookie — device trusted for one-tap sign-up', async () => {
+    seedMember('Riley');
+    const res = await ME_PATCH(
+      makeRequest('POST', 'http://localhost:3000/api/members/me', {
+        name: 'Riley',
+        newPin: '4827',
+      }),
+    );
+    expect(res.status).toBe(200);
+    // Proving PIN ownership by setting it should trust this device, so the
+    // member doesn't get asked for the PIN again on next Home sign-up.
+    expect(res.cookies.get('member_session')?.value).toBeTruthy();
+  });
+
+  it('change with correct currentPin mints a member_session cookie', async () => {
+    const oldHash = await hashPin('4827');
+    seedMember('Riley', { pinHash: oldHash });
+    const res = await ME_PATCH(
+      makeRequest('POST', 'http://localhost:3000/api/members/me', {
+        name: 'Riley',
+        currentPin: '4827',
+        newPin: '5392',
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(res.cookies.get('member_session')?.value).toBeTruthy();
+  });
+
+  it('clearing the PIN does NOT mint a member_session cookie', async () => {
+    const oldHash = await hashPin('4827');
+    seedMember('Riley', { pinHash: oldHash });
+    const res = await ME_PATCH(
+      makeRequest('POST', 'http://localhost:3000/api/members/me', {
+        name: 'Riley',
+        currentPin: '4827',
+        newPin: null,
+      }),
+    );
+    expect(res.status).toBe(200);
+    // No PIN means nothing to skip — no trust cookie.
+    expect(res.cookies.get('member_session')?.value).toBeFalsy();
+  });
+
   it('blocklisted newPin → 400 pin_too_common', async () => {
     seedMember('Riley');
     const res = await ME_PATCH(

@@ -151,7 +151,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   useEffect(() => {
     const id = getIdentity();
     setHasIdentity(id !== null);
-    if (id) setCurrentUser(id.name);
+    if (id) {
+      setCurrentUser(id.name);
+      // Seed the sign-up name from the logged-in identity so a returning member
+      // isn't treated like an anonymous typist. This fires `useMemberProbe`
+      // for their name → a trusted device (member_session cookie) resolves to
+      // `authMode: 'anon'`, rendering one-tap sign-up with no PIN field. The
+      // field stays editable (e.g. to sign up a friend on a shared device).
+      setName(id.name);
+    }
     loadData();
   }, [loadData]);
 
