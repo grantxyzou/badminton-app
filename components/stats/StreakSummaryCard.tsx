@@ -169,7 +169,7 @@ export default function StreakSummaryCard() {
               <p style={{ margin: 0, fontSize: 11, color: MUTED }}>Reading the dots…</p>
             </div>
           ) : hasInsight ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {insight?.recap && <InsightSection label="Last week" body={insight.recap} />}
               {insight?.focus && <InsightSection label="This week · Focus" body={insight.focus} accent />}
             </div>

@@ -176,6 +176,44 @@ export default function StatsPlaceholder({
     { id: 'equipment', label: tVH('viewEquipment') },
   ] as const;
 
+  const moreComingLabel = (
+    <div className="px-2" style={{ paddingTop: 4 }}>
+      <p className="section-label" style={sectionLabelStyle}>{t('moreComing')}</p>
+    </div>
+  );
+
+  // The active view's cards. Rendered inside one keyed wrapper below so a tab
+  // switch remounts it and replays the staggered entrance (see .stagger-children).
+  const activeView = !hasGear ? (
+    <>
+      {heroSlot}
+      {attendanceCard}
+      {skillCard}
+      {moreComingLabel}
+      <div style={gridStyle}>
+        <CompactComingSoonCard icon="groups" title={t('partners.title')} subtitle={t('partners.subtitle')} comingSoon={comingSoon} />
+        <CompactComingSoonCard icon="sports_tennis" title={t('equipment.title')} subtitle={t('equipment.subtitle')} comingSoon={comingSoon} />
+      </div>
+    </>
+  ) : view === 'summary' ? (
+    <>{heroSlot}</>
+  ) : view === 'game' ? (
+    <>
+      {attendanceCard}
+      {/* Value-Hub: game logger + partner frequency. */}
+      {gamePlaySlot}
+      {skillCard}
+    </>
+  ) : (
+    <>
+      {gearContent}
+      {moreComingLabel}
+      <div style={gridStyle}>
+        <CompactComingSoonCard icon="sports_tennis" title={t('equipment.title')} subtitle={t('equipment.subtitle')} comingSoon={comingSoon} />
+      </div>
+    </>
+  );
+
   return (
     <div className="space-y-5 w-full animate-fadeIn">
       <div>
@@ -202,52 +240,10 @@ export default function StatsPlaceholder({
         </div>
       )}
 
-      {/* ══ Legacy single scroll (value-hub off) ═══════════════════ */}
-      {!hasGear && (
-        <>
-          {heroSlot}
-          {attendanceCard}
-          {skillCard}
-          <div className="px-2" style={{ paddingTop: 4 }}>
-            <p className="section-label" style={sectionLabelStyle}>{t('moreComing')}</p>
-          </div>
-          <div style={gridStyle}>
-            <CompactComingSoonCard icon="groups" title={t('partners.title')} subtitle={t('partners.subtitle')} comingSoon={comingSoon} />
-            <CompactComingSoonCard icon="sports_tennis" title={t('equipment.title')} subtitle={t('equipment.subtitle')} comingSoon={comingSoon} />
-          </div>
-        </>
-      )}
-
-      {/* ══ Summary — the synthesized read ═════════════════════════ */}
-      {hasGear && view === 'summary' && <>{heroSlot}</>}
-
-      {/* ══ Game stats — the raw performance data ══════════════════ */}
-      {hasGear && view === 'game' && (
-        <>
-          {attendanceCard}
-          {/* Value-Hub: game logger + partner frequency. */}
-          {gamePlaySlot}
-          {skillCard}
-        </>
-      )}
-
-      {/* ══ Equipment ══════════════════════════════════════════════ */}
-      {hasGear && view === 'equipment' && (
-        <>
-          {gearContent}
-          <div className="px-2" style={{ paddingTop: 4 }}>
-            <p className="section-label" style={sectionLabelStyle}>{t('moreComing')}</p>
-          </div>
-          <div style={gridStyle}>
-            <CompactComingSoonCard
-              icon="sports_tennis"
-              title={t('equipment.title')}
-              subtitle={t('equipment.subtitle')}
-              comingSoon={comingSoon}
-            />
-          </div>
-        </>
-      )}
+      {/* Keyed by view → remounts on tab switch so the cards stagger in. */}
+      <div key={hasGear ? view : 'legacy'} className="space-y-5 stagger-children">
+        {activeView}
+      </div>
     </div>
   );
 }

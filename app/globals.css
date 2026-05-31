@@ -1556,6 +1556,20 @@ textarea {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Staggered entrance for a group of cards (e.g. the Stats tab content behind a
+   keyed wrapper). Direct children cascade in with a short delay each — polish
+   for OCCASIONAL views (tab switches), not frequent ones. Reuses the `fadeIn`
+   keyframe (opacity + 8px lift) and collapses to ~instant under the
+   prefers-reduced-motion blanket rule below. Keep delays short so the tab
+   never feels slow to settle. */
+.stagger-children > * {
+  animation: fadeIn var(--duration-normal) var(--ease-glass) both;
+}
+.stagger-children > *:nth-child(2) { animation-delay: 45ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 90ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 135ms; }
+.stagger-children > *:nth-child(n+5) { animation-delay: 175ms; }
+
 /* ── Reduced motion ──
    The blanket rule below collapses every transition/animation to 0.01ms,
    but GPU-accelerated elements (aurora blobs, wave-bar, shimmer) still
@@ -1678,7 +1692,13 @@ textarea {
 
 .segment-control button {
   transition: background var(--duration-fast) var(--ease-glass),
-              color var(--duration-fast) var(--ease-glass);
+              color var(--duration-fast) var(--ease-glass),
+              transform 140ms var(--ease-glass);
+}
+/* Press feedback — the control should feel it heard the tap. Subtle scale,
+   snappy ease-out. (Tab switches are occasional, so this is earned.) */
+.segment-control button:active {
+  transform: scale(0.96);
 }
 
 /* ── Player self-highlight rows ── */
