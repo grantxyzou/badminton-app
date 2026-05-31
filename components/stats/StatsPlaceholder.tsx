@@ -182,8 +182,8 @@ export default function StatsPlaceholder({
     </div>
   );
 
-  // The active view's cards. Rendered inside one keyed wrapper below so a tab
-  // switch remounts it and replays the staggered entrance (see .stagger-children).
+  // The active view's cards, rendered inside one keyed wrapper below so a
+  // segment switch swaps content cleanly.
   const activeView = !hasGear ? (
     <>
       {heroSlot}
@@ -240,8 +240,10 @@ export default function StatsPlaceholder({
         </div>
       )}
 
-      {/* Keyed by view → remounts on tab switch so the cards stagger in. */}
-      <div key={hasGear ? view : 'legacy'} className="space-y-5 stagger-children">
+      {/* Keyed by view so a segment switch swaps content cleanly. Entrance
+          motion is the shared whole-tab fade from HomeShell — no per-card
+          stagger here, so Stats matches Home/Profile/Sign-Ups. */}
+      <div key={hasGear ? view : 'legacy'} className="space-y-5">
         {activeView}
       </div>
     </div>
