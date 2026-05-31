@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer } from '@/lib/cosmos';
+import { topPartners } from '@/lib/recommend';
 
 /**
  * Player-facing weekly summary. Generates a 1-2 sentence read of the
@@ -25,7 +26,7 @@ import { getContainer } from '@/lib/cosmos';
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
-const MAX_OUTPUT_TOKENS = 80;
+const MAX_OUTPUT_TOKENS = 120;
 const ATTENDANCE_WEEKS = 52;
 
 interface AttendanceRow {
@@ -124,15 +125,61 @@ export async function POST(req: NextRequest) {
     else break;
   }
 
+  // Co-attendance partners (real) + self-rated skills (only when the player
+  // actually has scores) — so the read analyzes the whole Stats page, not just
+  // attendance. Both are best-effort: a failure just omits that line rather
+  // than failing the summary. Skill is intentionally gated on real scores so
+  // the AI never narrates sample/demo skill data as if it were the player's.
+  let partnerLine = '';
+  try {
+    const cutoffSessionId = `session-${cutoffIso.slice(0, 10)}`;
+    const { resources: partnerRows } = await playersContainer.items
+      .query({
+        query: 'SELECT c.sessionId, c.name, c.removed FROM c WHERE c.sessionId >= @cutoff',
+        parameters: [{ name: '@cutoff', value: cutoffSessionId }],
+      })
+      .fetchAll();
+    const bySession = new Map<string, string[]>();
+    for (const row of partnerRows as { sessionId?: string; name?: string; removed?: boolean }[]) {
+      if (typeof row.sessionId !== 'string' || typeof row.name !== 'string' || row.removed === true) continue;
+      const arr = bySession.get(row.sessionId) ?? [];
+      arr.push(row.name);
+      bySession.set(row.sessionId, arr);
+    }
+    const sessions = [...bySession.entries()].map(([sessionId, names]) => ({ sessionId, names }));
+    const partners = topPartners({ me: name, sessions, limit: 3 });
+    if (partners.length > 0) {
+      partnerLine = `\n- Regular partners: ${partners.map((p) => `${p.name} (${p.count} sessions)`).join(', ')}`;
+    }
+  } catch (err) {
+    console.warn('stats-summary partners lookup failed (non-fatal):', err);
+  }
+
+  let skillLine = '';
+  try {
+    const { resources: skillRows } = await getContainer('skills').items
+      .query({
+        query: 'SELECT c.name, c.scores FROM c WHERE LOWER(c.name) = LOWER(@name)',
+        parameters: [{ name: '@name', value: name }],
+      })
+      .fetchAll();
+    const scores = (skillRows[0] as { scores?: Record<string, number> } | undefined)?.scores;
+    if (scores && Object.keys(scores).length > 0) {
+      skillLine = `\n- Self-rated skills (0-6 scale): ${Object.entries(scores).map(([k, v]) => `${k} ${v}`).join(', ')}`;
+    }
+  } catch (err) {
+    console.warn('stats-summary skills lookup failed (non-fatal):', err);
+  }
+
   // Tight prompt — most of the spend would be on context if we let it.
   const prompt = `You're writing a friendly weekly quick-read for a casual badminton player named ${name}.
 
 Stats from the last ${totalSessions} sessions (past year):
 - Attended: ${attended} (${attendanceRate}%)
 - Current streak: ${currentStreak} ${currentStreak === 1 ? 'session' : 'sessions'}
-- Longest streak: ${longestStreak} ${longestStreak === 1 ? 'session' : 'sessions'}
+- Longest streak: ${longestStreak} ${longestStreak === 1 ? 'session' : 'sessions'}${partnerLine}${skillLine}
 
-Write a single 1-2 sentence summary in plain text. Friendly and honest tone, no jargon, no emoji, no markdown. Avoid generic praise — anchor on the specific numbers. Frame it as a week-in-review observation.`;
+Write a single 2-3 sentence summary in plain text. Friendly and honest tone, no jargon, no emoji, no markdown. Weave together what stands out across attendance${partnerLine ? ', regular partners' : ''}${skillLine ? ', and skill profile' : ''} — anchor on the specific numbers and names, avoid generic praise. Frame it as a week-in-review observation.`;
 
   let summary = '';
   try {
