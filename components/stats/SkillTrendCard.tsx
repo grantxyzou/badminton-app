@@ -85,6 +85,33 @@ function Delta({ value }: { value: number }) {
   );
 }
 
+function RadarBlock({
+  data, hasThen, height = 300, fontSize = 10, thenLabel, nowLabel,
+}: {
+  data: { category: string; now: number; then: number }[];
+  hasThen: boolean;
+  height?: number;
+  fontSize?: number;
+  thenLabel: string;
+  nowLabel: string;
+}) {
+  return (
+    <div style={{ margin: '0 -8px' }} aria-hidden="true">
+      <ResponsiveContainer width="100%" height={height}>
+        <RadarChart data={data} cx="50%" cy="50%" outerRadius="72%">
+          <PolarGrid stroke="var(--glass-border)" strokeDasharray="3 3" />
+          <PolarAngleAxis dataKey="category" tick={{ fill: 'var(--text-secondary)', fontSize, fontWeight: 500 }} />
+          <PolarRadiusAxis angle={90} domain={[0, 5]} tickCount={6} tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} />
+          {hasThen && (
+            <Radar name={thenLabel} dataKey="then" stroke={THEN_COLOR} fill={THEN_COLOR} fillOpacity={0.06} strokeWidth={1.5} strokeDasharray="4 3" />
+          )}
+          <Radar name={nowLabel} dataKey="now" stroke={NOW_COLOR} fill={NOW_COLOR} fillOpacity={0.18} strokeWidth={2} dot={{ r: 3, fill: NOW_COLOR, strokeWidth: 0 }} />
+        </RadarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 export default function SkillTrendCard() {
   const t = useTranslations('stats');
   const [activeName, setActiveName] = useState<string | null>(null);
@@ -123,6 +150,8 @@ export default function SkillTrendCard() {
       then: then.get(s.key) ?? 0,
     }));
   }, [latest, prev]);
+
+  const [showAll, setShowAll] = useState(false);
 
   if (!activeName) return null;
 
@@ -200,20 +229,14 @@ export default function SkillTrendCard() {
         </p>
       )}
 
-      {/* Radar: now vs then overlay (14 skills) */}
-      <div style={{ margin: '0 -8px' }}>
-        <ResponsiveContainer width="100%" height={300}>
-          <RadarChart data={chartData} cx="50%" cy="50%" outerRadius="72%">
-            <PolarGrid stroke="var(--glass-border)" strokeDasharray="3 3" />
-            <PolarAngleAxis dataKey="category" tick={{ fill: 'var(--text-secondary)', fontSize: 10, fontWeight: 500 }} />
-            <PolarRadiusAxis angle={90} domain={[0, 5]} tickCount={6} tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} />
-            {prev && (
-              <Radar name={t('assess.then')} dataKey="then" stroke={THEN_COLOR} fill={THEN_COLOR} fillOpacity={0.06} strokeWidth={1.5} strokeDasharray="4 3" />
-            )}
-            <Radar name={t('assess.now')} dataKey="now" stroke={NOW_COLOR} fill={NOW_COLOR} fillOpacity={0.18} strokeWidth={2} dot={{ r: 3, fill: NOW_COLOR, strokeWidth: 0 }} />
-          </RadarChart>
-        </ResponsiveContainer>
-      </div>
+      {/* Radar (decorative, aria-hidden): the 14-skill now-vs-then overlay.
+          The accessible truth is the sr-only summary + dimension tiles + the
+          skill list below. */}
+      <RadarBlock data={chartData} hasThen={!!prev} thenLabel={t('assess.then')} nowLabel={t('assess.now')} />
+      <p className="sr-only">
+        {t('assess.overall')} {fmt(latest.overall)}
+        {latest.phase ? `, ${t(`assess.phase.${latest.phase}`)}` : ''}.
+      </p>
 
       {/* Legend (only meaningful with a prior snapshot) */}
       {prev ? (
@@ -252,6 +275,32 @@ export default function SkillTrendCard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 12 }}>
         <SkillList title={t('assess.strengths')} items={strengths} nowMap={nowMap} thenMap={thenMap} onPick={setSheetSkill} />
         <SkillList title={t('assess.workOn')} items={workOn} nowMap={nowMap} thenMap={thenMap} onPick={setSheetSkill} />
+      </div>
+
+      {/* Full per-skill profile (spec §7.2/§7.5) — collapsible; also the
+          accessible representation of the aria-hidden radar. */}
+      <div className="space-y-3">
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          aria-expanded={showAll}
+          className="cc-btn cc-btn-ghost"
+          style={{ width: '100%', justifyContent: 'center' }}
+        >
+          {showAll ? t('assess.hideSkills') : t('assess.allSkills')}
+        </button>
+        {showAll && (
+          <div className="space-y-3">
+            {DIMENSIONS.map((dim) => {
+              const dimItems = SKILLS.filter((s) => s.dimension === dim && nowMap.has(s.key)).map(
+                (s) => ({ skillKey: s.key, value: nowMap.get(s.key)! }),
+              );
+              return (
+                <SkillList key={dim} title={t(`assess.dim.${dim}`)} items={dimItems} nowMap={nowMap} thenMap={thenMap} onPick={setSheetSkill} />
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {sheetSkill && (

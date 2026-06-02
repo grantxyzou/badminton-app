@@ -223,6 +223,8 @@
       "now": "Now",
       "strengths": "Strengths",
       "workOn": "Work on next",
+      "allSkills": "All skills",
+      "hideSkills": "Hide skills",
       "notRated": "Not rated yet",
       "empty": "No check-in yet — take your first to start tracking your game.",
       "baseline": "Baseline saved — check in again after a few sessions to watch it move.",

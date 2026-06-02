@@ -223,6 +223,8 @@
       "now": "现在",
       "strengths": "强项",
       "workOn": "下一步提升",
+      "allSkills": "全部技能",
+      "hideSkills": "收起",
       "notRated": "尚未评分",
       "empty": "还没有评估 — 完成第一次评估开始记录你的球技。",
       "baseline": "已记录基线 — 打几场后再来评估，看看变化。",
