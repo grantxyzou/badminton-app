@@ -930,18 +930,14 @@ html[data-tab="skills"] .glass-card {
        4. broad outer shadow    — lifts card off the dot field */
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.18),
-    0 1px 2px rgba(0, 0, 0, 0.25),
-    0 12px 32px -8px rgba(0, 0, 0, 0.45);
+    inset 0 -1px 1px rgba(0, 0, 0, 0.18);
 }
 
 @media (hover: hover) {
   html[data-tab="skills"] .glass-card:hover {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.24),
-      inset 0 -1px 1px rgba(0, 0, 0, 0.20),
-      0 1px 2px rgba(0, 0, 0, 0.28),
-      0 18px 40px -8px rgba(0, 0, 0, 0.55);
+      inset 0 -1px 1px rgba(0, 0, 0, 0.20);
   }
 }
 
@@ -965,9 +961,7 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
   /* DEPTH — softer stack on cream; light surfaces show shadow more readily. */
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    inset 0 -1px 1px rgba(22, 33, 27, 0.06),
-    0 1px 2px rgba(22, 33, 27, 0.08),
-    0 12px 28px -8px rgba(22, 33, 27, 0.18);
+    inset 0 -1px 1px rgba(22, 33, 27, 0.06);
 }
 
 @media (hover: hover) {
@@ -975,9 +969,7 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
   html[data-tab="skills"][data-theme="light"] .glass-card:hover {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.85),
-      inset 0 -1px 1px rgba(22, 33, 27, 0.08),
-      0 1px 2px rgba(22, 33, 27, 0.10),
-      0 18px 36px -8px rgba(22, 33, 27, 0.24);
+      inset 0 -1px 1px rgba(22, 33, 27, 0.08);
   }
 }
 
@@ -999,8 +991,7 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
   border: 1px solid var(--glass-border);
   border-radius: 16px;
   box-shadow:
-    inset 0 1px 0 var(--glass-inset),
-    var(--glass-shadow);
+    inset 0 1px 0 var(--glass-inset);
   transition: box-shadow var(--duration-normal) var(--ease-glass),
               transform var(--duration-normal) var(--ease-glass);
 }
@@ -1009,8 +1000,7 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
   .glass-card:hover {
     transform: translateY(-2px);
     box-shadow:
-      inset 0 1px 0 var(--glass-inset-hover),
-      var(--glass-shadow-hover);
+      inset 0 1px 0 var(--glass-inset-hover);
   }
 }
 
