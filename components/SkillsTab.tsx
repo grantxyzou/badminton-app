@@ -12,6 +12,8 @@ import PartnerFrequencyCard from '@/components/stats/cards/PartnerFrequencyCard'
 import GameLoggerCard from '@/components/stats/GameLoggerCard';
 import RacketRow from '@/components/stats/RacketRow';
 import { isFlagOn } from '@/lib/flags';
+import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
+import StatsSignedOut from '@/components/stats/StatsSignedOut';
 
 const SkillsRadar = dynamic(() => import('@/components/SkillsRadar'), { ssr: false });
 // Recharts needs window → ssr:false, same as SkillsRadar.
@@ -25,6 +27,20 @@ const SHOW_ADD_PLAYER_FORM = false;
 const SHOW_SKILLS_OVERLAY = false;
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+const STATS_NAME_KEY = 'badminton_stats_preview_name';
+
+// Same identity chain as the stats cards: real identity → stats preview-name.
+function resolveActiveName(): string | null {
+  const id = getIdentity();
+  if (id?.name) return id.name;
+  try {
+    const stored = localStorage.getItem(STATS_NAME_KEY);
+    if (stored && stored.trim()) return stored.trim();
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
 
 function toRadarShape(records: PersistedPlayerSkills[]): PlayerSkills[] {
   return records.map((s) => ({ id: s.id, name: s.name, scores: s.scores }));
@@ -59,6 +75,11 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState('');
 
+  // Identity for the assessment spine's signed-out empty state. Subscribes to
+  // IDENTITY_EVENT so signing in/out updates the tab without a reload.
+  const [activeName, setActiveName] = useState<string | null>(null);
+  const [identResolved, setIdentResolved] = useState(false);
+
   const refresh = useCallback(async () => {
     try {
       const res = await fetch(`${BASE}/api/skills`, { cache: 'no-store' });
@@ -84,6 +105,18 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
       cancelled = true;
     };
   }, [isAdmin, refresh]);
+
+  useEffect(() => {
+    const update = () => setActiveName(resolveActiveName());
+    update();
+    setIdentResolved(true);
+    window.addEventListener(IDENTITY_EVENT, update);
+    window.addEventListener('storage', update);
+    return () => {
+      window.removeEventListener(IDENTITY_EVENT, update);
+      window.removeEventListener('storage', update);
+    };
+  }, []);
 
   async function handleAddPlayer(e: React.FormEvent) {
     e.preventDefault();
@@ -141,6 +174,10 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   // Skill-assessment spine: two-tab layout (Summary = trend, Game stats =
   // logger + partner). Attendance, AI summary, and equipment are parked.
   if (skillAssessOn) {
+    if (!identResolved) return null;
+    if (!activeName) {
+      return <StatsSignedOut onSignIn={onTabChange ? () => onTabChange('profile') : undefined} />;
+    }
     return <StatsPlaceholder assessMode heroSlot={heroSlot} gamePlaySlot={gamePlaySlot} />;
   }
 

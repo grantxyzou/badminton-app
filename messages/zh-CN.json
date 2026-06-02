@@ -245,6 +245,9 @@
       "saveError": "保存失败 — 请重试。",
       "reviewCount": "已评 {rated} / {total} 项技能",
       "reviewPrompt": "保存以更新你的趋势。",
+      "signedOutTitle": "记录你的球技",
+      "signedOutBody": "登录后即可评估你的技能，追踪你的进步。",
+      "signIn": "登录",
       "switchCallout": "你正处在「转折点」— 从「我打羽毛球」到「我为羽毛球而训练」的跨越。现在的刻意练习决定你能否更进一步。",
       "dim": {
         "technical": "技术",

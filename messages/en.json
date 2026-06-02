@@ -245,6 +245,9 @@
       "saveError": "Couldn't save — try again.",
       "reviewCount": "{rated} of {total} skills rated",
       "reviewPrompt": "Save to update your trend.",
+      "signedOutTitle": "Track your game",
+      "signedOutBody": "Sign in to rate your skills and watch them improve over time.",
+      "signIn": "Sign in",
       "switchCallout": "You're right at the Switch — the crossover from \"I play badminton\" to \"I train for badminton.\" Deliberate practice now is what moves you up.",
       "dim": {
         "technical": "Technical",
