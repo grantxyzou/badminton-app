@@ -18,6 +18,7 @@
   --text-muted: rgba(255, 255, 255, 0.55);
   --accent: #4ade80;
   --accent-dark: #16a34a;
+  --accent-amber: #fbbf24;
   --color-scheme: dark;
 
   /* ── Motion ── */
@@ -177,6 +178,7 @@
   --text-muted: rgba(0, 0, 0, 0.50);
   --accent: #16a34a;
   --accent-dark: #15803d;
+  --accent-amber: #d97706;
   --color-scheme: light;
 
   --aurora-bg: #FAF8F5;

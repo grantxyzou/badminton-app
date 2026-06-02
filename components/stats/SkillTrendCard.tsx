@@ -86,10 +86,14 @@ function Delta({ value }: { value: number }) {
 }
 
 function RadarBlock({
-  data, hasThen, height = 300, fontSize = 10, thenLabel, nowLabel,
+  data, hasThen, nowColor, thenColor, height = 300, fontSize = 10, thenLabel, nowLabel,
 }: {
   data: { category: string; now: number; then: number }[];
   hasThen: boolean;
+  // Resolved at runtime from --accent / --text-muted so the chart honors the
+  // theme (recharts sets stroke/fill as SVG attributes, where var() can't resolve).
+  nowColor: string;
+  thenColor: string;
   height?: number;
   fontSize?: number;
   thenLabel: string;
@@ -103,9 +107,9 @@ function RadarBlock({
           <PolarAngleAxis dataKey="category" tick={{ fill: 'var(--text-secondary)', fontSize, fontWeight: 500 }} />
           <PolarRadiusAxis angle={90} domain={[0, 5]} tickCount={6} tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} />
           {hasThen && (
-            <Radar name={thenLabel} dataKey="then" stroke={THEN_COLOR} fill={THEN_COLOR} fillOpacity={0.06} strokeWidth={1.5} strokeDasharray="4 3" />
+            <Radar name={thenLabel} dataKey="then" stroke={thenColor} fill={thenColor} fillOpacity={0.06} strokeWidth={1.5} strokeDasharray="4 3" />
           )}
-          <Radar name={nowLabel} dataKey="now" stroke={NOW_COLOR} fill={NOW_COLOR} fillOpacity={0.18} strokeWidth={2} dot={{ r: 3, fill: NOW_COLOR, strokeWidth: 0 }} />
+          <Radar name={nowLabel} dataKey="now" stroke={nowColor} fill={nowColor} fillOpacity={0.18} strokeWidth={2} dot={{ r: 3, fill: nowColor, strokeWidth: 0 }} />
         </RadarChart>
       </ResponsiveContainer>
     </div>
@@ -152,6 +156,24 @@ export default function SkillTrendCard() {
   }, [latest, prev]);
 
   const [showAll, setShowAll] = useState(false);
+
+  // Resolve radar stroke/fill from the theme tokens (recharts can't read
+  // var() in SVG attributes). Re-read when the theme flips so the chart
+  // stays on-system in both light and dark.
+  const [radarColors, setRadarColors] = useState({ now: NOW_COLOR, then: THEN_COLOR });
+  useEffect(() => {
+    const read = () => {
+      const cs = getComputedStyle(document.documentElement);
+      setRadarColors({
+        now: cs.getPropertyValue('--accent').trim() || NOW_COLOR,
+        then: cs.getPropertyValue('--text-muted').trim() || THEN_COLOR,
+      });
+    };
+    read();
+    const obs = new MutationObserver(read);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => obs.disconnect();
+  }, []);
 
   if (!activeName) return null;
 
@@ -203,8 +225,8 @@ export default function SkillTrendCard() {
             style={{
               fontSize: 11, padding: '3px 10px', borderRadius: 100, fontWeight: 600,
               letterSpacing: '0.04em', textTransform: 'uppercase',
-              border: `1px solid ${latest.phase === 'switch' ? '#fbbf24' : 'var(--accent, #22c55e)'}`,
-              color: latest.phase === 'switch' ? '#fbbf24' : 'var(--accent, #22c55e)',
+              border: `1px solid ${latest.phase === 'switch' ? 'var(--accent-amber)' : 'var(--accent)'}`,
+              color: latest.phase === 'switch' ? 'var(--accent-amber)' : 'var(--accent)',
               whiteSpace: 'nowrap',
             }}
           >
@@ -232,7 +254,7 @@ export default function SkillTrendCard() {
       {/* Radar (decorative, aria-hidden): the 14-skill now-vs-then overlay.
           The accessible truth is the sr-only summary + dimension tiles + the
           skill list below. */}
-      <RadarBlock data={chartData} hasThen={!!prev} thenLabel={t('assess.then')} nowLabel={t('assess.now')} />
+      <RadarBlock data={chartData} hasThen={!!prev} nowColor={radarColors.now} thenColor={radarColors.then} thenLabel={t('assess.then')} nowLabel={t('assess.now')} />
       <p className="sr-only">
         {t('assess.overall')} {fmt(latest.overall)}
         {latest.phase ? `, ${t(`assess.phase.${latest.phase}`)}` : ''}.
@@ -242,10 +264,10 @@ export default function SkillTrendCard() {
       {prev ? (
         <div style={{ display: 'flex', gap: 16, justifyContent: 'center', fontSize: 11, color: 'var(--text-muted)' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 14, height: 0, borderTop: `2px dashed ${THEN_COLOR}` }} /> {t('assess.then')}
+            <span style={{ width: 14, height: 0, borderTop: `2px dashed ${radarColors.then}` }} /> {t('assess.then')}
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 14, height: 0, borderTop: `2px solid ${NOW_COLOR}` }} /> {t('assess.now')}
+            <span style={{ width: 14, height: 0, borderTop: `2px solid ${radarColors.now}` }} /> {t('assess.now')}
           </span>
         </div>
       ) : (
