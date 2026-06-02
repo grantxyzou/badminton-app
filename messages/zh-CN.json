@@ -1,5 +1,11 @@
 {
   "home": {
+    "skillDiscovery": {
+      "title": "想知道自己有没有进步吗？",
+      "titleSignedUp": "报名成功！想追踪你的球技吗？",
+      "cta": "评估你的技能",
+      "dismiss": "关闭"
+    },
     "signup": {
       "heading": "报名",
       "button": "本周参加",
@@ -218,6 +224,9 @@
     "assess": {
       "heroTitle": "你的球技变化",
       "checkIn": "评估",
+      "rateSkills": "评估你的技能",
+      "reRate": "重新评估",
+      "purpose": "每隔几周评估一次，看看你的进步。",
       "overall": "综合",
       "then": "之前",
       "now": "现在",

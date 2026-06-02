@@ -192,16 +192,21 @@ export default function SkillTrendCard() {
   // Card chrome wraps every state so the section reads consistently.
   const Frame = ({ children }: { children: React.ReactNode }) => (
     <div className="glass-card p-5 space-y-4">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: 'var(--accent, #22c55e)' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+          <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: 'var(--accent, #22c55e)', marginTop: 1 }}>
             trending_up
           </span>
-          <h3 className="bpm-h3 m-0">{t('assess.heroTitle')}</h3>
+          <div>
+            <h3 className="bpm-h3 m-0">{t('assess.heroTitle')}</h3>
+            {latest && (
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0', lineHeight: 1.35 }}>{t('assess.purpose')}</p>
+            )}
+          </div>
         </div>
         {latest && (
           <button type="button" onClick={() => setCheckInOpen(true)} className="cc-btn cc-btn-secondary" style={{ whiteSpace: 'nowrap' }}>
-            {t('assess.checkIn')}
+            {t('assess.reRate')}
           </button>
         )}
       </div>
@@ -216,7 +221,7 @@ export default function SkillTrendCard() {
         <Frame>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>{t('assess.empty')}</p>
           <button type="button" onClick={() => setCheckInOpen(true)} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
-            {t('assess.checkIn')}
+            {t('assess.rateSkills')}
           </button>
         </Frame>
         <CheckInSheet name={activeName} open={checkInOpen} onClose={() => setCheckInOpen(false)} onSaved={load} />

@@ -1,5 +1,11 @@
 {
   "home": {
+    "skillDiscovery": {
+      "title": "Curious if your game's improving?",
+      "titleSignedUp": "You're in! Want to track your game?",
+      "cta": "Rate your skills",
+      "dismiss": "Dismiss"
+    },
     "signup": {
       "heading": "Sign up",
       "button": "I'm in this week",
@@ -218,6 +224,9 @@
     "assess": {
       "heroTitle": "Your game over time",
       "checkIn": "Check in",
+      "rateSkills": "Rate your skills",
+      "reRate": "Re-rate",
+      "purpose": "Rate every few weeks to watch your trend move.",
       "overall": "Overall",
       "then": "Then",
       "now": "Now",
