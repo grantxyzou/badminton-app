@@ -8,6 +8,7 @@ import {
 import { getIdentity } from '@/lib/identity';
 import { SKILLS, topStrengths, workOnNext, type Rating, type Dimension, type Phase } from '@/lib/assessment';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import CheckInSheet from './CheckInSheet';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
@@ -123,6 +124,7 @@ export default function SkillTrendCard() {
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [sheetSkill, setSheetSkill] = useState<string | null>(null);
+  const [checkInOpen, setCheckInOpen] = useState(false);
 
   useEffect(() => {
     setActiveName(resolveActiveName());
@@ -197,6 +199,11 @@ export default function SkillTrendCard() {
           </span>
           <h3 className="bpm-h3 m-0">{t('assess.heroTitle')}</h3>
         </div>
+        {latest && (
+          <button type="button" onClick={() => setCheckInOpen(true)} className="cc-btn cc-btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+            {t('assess.checkIn')}
+          </button>
+        )}
       </div>
       {children}
     </div>
@@ -205,9 +212,15 @@ export default function SkillTrendCard() {
   // Empty — no check-in yet.
   if (!latest) {
     return (
-      <Frame>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>{t('assess.empty')}</p>
-      </Frame>
+      <>
+        <Frame>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>{t('assess.empty')}</p>
+          <button type="button" onClick={() => setCheckInOpen(true)} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
+            {t('assess.checkIn')}
+          </button>
+        </Frame>
+        <CheckInSheet name={activeName} open={checkInOpen} onClose={() => setCheckInOpen(false)} onSaved={load} />
+      </>
     );
   }
 
@@ -328,6 +341,8 @@ export default function SkillTrendCard() {
       {sheetSkill && (
         <SkillAnchorSheet skillKey={sheetSkill} value={nowMap.get(sheetSkill) ?? 0} onClose={() => setSheetSkill(null)} />
       )}
+
+      <CheckInSheet name={activeName} open={checkInOpen} onClose={() => setCheckInOpen(false)} onSaved={load} previous={nowMap} />
     </Frame>
   );
 }
