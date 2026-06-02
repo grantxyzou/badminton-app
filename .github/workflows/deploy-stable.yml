@@ -47,8 +47,13 @@ jobs:
           NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: 'false'
           NEXT_PUBLIC_FLAG_COMMAND_CENTER: 'true'
           NEXT_PUBLIC_FLAG_SETTLE: 'true'
-          # Ledger live on stable as of v1.5 (B-D landed + promoted 2026-05-30).
+          # Ledger goes live on stable with v1.6 (2026-06-02). The v1.5 cut
+          # (2026-05-30) was built before this flag was flipped, so the ledger
+          # page shipped dark; v1.6 is the first build that actually serves it.
           NEXT_PUBLIC_FLAG_LEDGER: 'true'
+          # Labeled Rail bottom nav — promoted to stable with v1.6 (soaked since
+          # 2026-05-19). Replaces the legacy floating .nav-glass pill.
+          NEXT_PUBLIC_FLAG_NAV_RAIL: 'true'
 
       - name: Package standalone build
         run: |
