@@ -214,6 +214,32 @@
     "equipment": {
       "title": "Your equipment",
       "subtitle": "Rackets, strings, shuttle preferences."
+    },
+    "assess": {
+      "heroTitle": "Your game over time",
+      "checkIn": "Check in",
+      "overall": "Overall",
+      "then": "Then",
+      "now": "Now",
+      "strengths": "Strengths",
+      "workOn": "Work on next",
+      "notRated": "Not rated yet",
+      "empty": "No check-in yet — take your first to start tracking your game.",
+      "baseline": "Baseline saved — check in again after a few sessions to watch it move.",
+      "error": "Couldn't load — refresh to retry",
+      "switchCallout": "You're right at the Switch — the crossover from \"I play badminton\" to \"I train for badminton.\" Deliberate practice now is what moves you up.",
+      "dim": {
+        "technical": "Technical",
+        "physical": "Physical",
+        "mental": "Mental"
+      },
+      "phase": {
+        "foundation": "Foundation",
+        "exploration": "Exploration",
+        "switch": "The Switch",
+        "commitment": "Commitment",
+        "advanced": "Advanced"
+      }
     }
   },
   "players": {

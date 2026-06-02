@@ -14,6 +14,8 @@ import RacketRow from '@/components/stats/RacketRow';
 import { isFlagOn } from '@/lib/flags';
 
 const SkillsRadar = dynamic(() => import('@/components/SkillsRadar'), { ssr: false });
+// Recharts needs window → ssr:false, same as SkillsRadar.
+const SkillTrendCard = dynamic(() => import('@/components/stats/SkillTrendCard'), { ssr: false });
 
 // Hidden for now — admin Add Player + SkillsRadar overlay/compare mode are
 // scoped out of the user-facing Stats tab while we figure out whether self-
@@ -113,9 +115,10 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
 
   // Live attendance + streak hero are now always-on (flag retired post-v1.3).
   const attendanceContent = <AttendanceCardLive />;
-  // Hero slot: one combined card — attendance streak as the headline, the
-  // once-weekly AI summary as the body. Self-hides when no active name.
-  const heroSlot = <StreakSummaryCard />;
+  // Hero slot. When the skill-assessment spine is on, the self-assessment
+  // trend hero is the headline; otherwise the legacy streak + AI summary.
+  const skillAssessOn = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS');
+  const heroSlot = skillAssessOn ? <SkillTrendCard /> : <StreakSummaryCard />;
 
   // Value-Hub Slice-0 splits across the Stats tab's two registers:
   //   • Gear view → RacketRow (your racket + recommendation)
