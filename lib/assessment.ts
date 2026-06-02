@@ -277,3 +277,77 @@ export function placePhase(overall: number | null): Phase | null {
   }
   return 'foundation';
 }
+
+/** A stored self-assessment snapshot (one `assessments` doc). Numbers are
+ *  frozen at POST time, so a summary reads them off the doc rather than
+ *  recomputing — keeping narration consistent with what the trend card shows. */
+export interface StoredAssessment {
+  takenAt: string;
+  ratings: Rating[];
+  overall: number | null;
+  phase?: Phase | null;
+  dimensionScores?: Record<Dimension, number | null>;
+}
+
+/** A labelled skill rating, for human-readable strength/work-on lists. */
+export interface LabelledRating {
+  key: string;
+  label: string;
+  value: number;
+}
+
+/** Trend summary across a member's snapshots — the shape both the insight
+ *  narrator and any future trend consumer can read without re-deriving. */
+export interface AssessmentTrend {
+  /** ISO timestamp of the most recent snapshot — also the cache-invalidation key. */
+  latestAt: string;
+  /** Total snapshots on record. */
+  count: number;
+  overall: number | null;
+  phase: Phase | null;
+  /** Overall of the immediately-previous snapshot ("Then"), or null if first. */
+  prevOverall: number | null;
+  /** latest.overall − prev.overall, or null when either side is missing. */
+  delta: number | null;
+  /** Top-3 highest-rated skills in the latest snapshot. */
+  strengths: LabelledRating[];
+  /** Bottom-3 lowest-rated skills in the latest snapshot. */
+  workOn: LabelledRating[];
+}
+
+function labelRating(r: Rating): LabelledRating {
+  return { key: r.skillKey, label: SKILL_BY_KEY.get(r.skillKey)?.label ?? r.skillKey, value: r.value };
+}
+
+/**
+ * Summarize a member's stored self-assessment snapshots for trend narration.
+ *
+ * Docs may arrive unsorted; we sort ascending by `takenAt` and read the latest.
+ * "Then" is the immediately-previous snapshot — matching `SkillTrendCard`'s
+ * `prev = snapshots[length-2]` so the insight's delta agrees with the radar.
+ * Scores/phase are read off the latest doc (frozen at POST); only the
+ * strength/work-on ordering is derived from `ratings`. Returns null when there
+ * are no snapshots.
+ */
+export function summarizeAssessmentTrend(docs: StoredAssessment[]): AssessmentTrend | null {
+  const sorted = docs
+    .filter((d): d is StoredAssessment => !!d && typeof d.takenAt === 'string')
+    .slice()
+    .sort((a, b) => a.takenAt.localeCompare(b.takenAt));
+  const latest = sorted[sorted.length - 1];
+  if (!latest) return null;
+  const prev = sorted.length > 1 ? sorted[sorted.length - 2] : undefined;
+  const latestOverall = latest.overall ?? null;
+  const prevOverall = prev?.overall ?? null;
+  const ratings = Array.isArray(latest.ratings) ? latest.ratings : [];
+  return {
+    latestAt: latest.takenAt,
+    count: sorted.length,
+    overall: latestOverall,
+    phase: latest.phase ?? placePhase(latestOverall),
+    prevOverall,
+    delta: latestOverall !== null && prevOverall !== null ? latestOverall - prevOverall : null,
+    strengths: topStrengths(ratings, 3).map(labelRating),
+    workOn: workOnNext(ratings, 3).map(labelRating),
+  };
+}

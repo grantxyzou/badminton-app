@@ -127,9 +127,12 @@ interface Props {
    *  coming-soon card is dropped (it's live in the Game view). */
   gearContent?: React.ReactNode;
   /** Skill-assessment spine layout: two sub-tabs (Summary = trend hero,
-   *  Game stats = game logger + partner). Parks the legacy attendance / skill /
-   *  equipment slots. */
+   *  Game stats = AI read + attendance + game logger + partner). Parks the
+   *  legacy skill / equipment slots. */
   assessMode?: boolean;
+  /** Passive AI "Your read" card (streak headline + insight). In assessMode it
+   *  leads the Game stats view; the synthesis sits above the raw data. */
+  insightSlot?: React.ReactNode;
 }
 
 const sectionLabelStyle: React.CSSProperties = {
@@ -152,6 +155,7 @@ export default function StatsPlaceholder({
   gamePlaySlot,
   gearContent,
   assessMode = false,
+  insightSlot,
 }: Props = {}) {
   const t = useTranslations('stats');
   const tVH = useTranslations('valueHub');
@@ -196,7 +200,16 @@ export default function StatsPlaceholder({
   // The active view's cards, rendered inside one keyed wrapper below so a
   // segment switch swaps content cleanly.
   const activeView = assessMode ? (
-    view === 'game' ? <>{gamePlaySlot}</> : <>{heroSlot}</>
+    view === 'game' ? (
+      <>
+        {/* Synthesis first (AI read + streak), then the raw data it draws on. */}
+        {insightSlot}
+        {attendanceCard}
+        {gamePlaySlot}
+      </>
+    ) : (
+      <>{heroSlot}</>
+    )
   ) : !hasGear ? (
     <>
       {heroSlot}

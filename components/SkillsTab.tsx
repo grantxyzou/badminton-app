@@ -171,14 +171,24 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
     </>
   ) : undefined;
 
-  // Skill-assessment spine: two-tab layout (Summary = trend, Game stats =
-  // logger + partner). Attendance, AI summary, and equipment are parked.
+  // Skill-assessment spine: two-tab layout. Summary = skill trend; Game stats =
+  // AI read (StreakSummaryCard) + attendance + logger + partner. The AI read
+  // now folds in the self-assessment trend (see /api/stats/insight). Equipment
+  // stays parked.
   if (skillAssessOn) {
     if (!identResolved) return null;
     if (!activeName) {
       return <StatsSignedOut onSignIn={onTabChange ? () => onTabChange('profile') : undefined} />;
     }
-    return <StatsPlaceholder assessMode heroSlot={heroSlot} gamePlaySlot={gamePlaySlot} />;
+    return (
+      <StatsPlaceholder
+        assessMode
+        heroSlot={heroSlot}
+        gamePlaySlot={gamePlaySlot}
+        attendanceContent={attendanceContent}
+        insightSlot={<StreakSummaryCard />}
+      />
+    );
   }
 
   if (!isAdmin) {
