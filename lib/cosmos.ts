@@ -1,6 +1,7 @@
 import { CosmosClient, Container } from '@azure/cosmos';
 import { randomBytes, scryptSync } from 'node:crypto';
 import equipmentCatalogSeed from '../scripts/data/equipment-catalog.json';
+import { scoreAssessment, placePhase } from './assessment';
 
 // ---------------------------------------------------------------------------
 // In-memory mock — used when COSMOS_CONNECTION_STRING is not set (local dev)
@@ -187,11 +188,47 @@ function seedDevScenarioIfRequested(containerName: string) {
     });
   }
 
+  // Skill self-assessment: two snapshots for Lin ~5 weeks apart so the trend
+  // hero has a then-vs-now overlay to render (Switch → Commitment).
+  mockStore.assessments ??= [];
+  if (mockStore.assessments.length === 0) {
+    const mkSnapshot = (id: string, daysAgo: number, ratingMap: Record<string, number>) => {
+      const ratings = Object.entries(ratingMap).map(([skillKey, value]) => ({
+        skillKey,
+        value,
+        source: 'self' as const,
+      }));
+      const score = scoreAssessment(ratings);
+      return {
+        id,
+        memberId: 'dev-member-lin',
+        name: 'Lin',
+        takenAt: new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000).toISOString(),
+        ratings,
+        overall: score.overall,
+        dimensionScores: score.dimensionScores,
+        phase: placePhase(score.overall),
+      };
+    };
+    mockStore.assessments.push(
+      mkSnapshot('dev-assess-lin-1', 35, {
+        serves_returns: 3, net_play: 2, clears_lifts: 3, drops: 2, drives: 2, smashes: 3, grip_deception: 2,
+        footwork_split_step: 3, court_coverage: 2, speed_stamina: 3,
+        game_reading: 3, consistency: 2, rules_strategy: 3, training_mindset: 4,
+      }),
+      mkSnapshot('dev-assess-lin-2', 5, {
+        serves_returns: 4, net_play: 3, clears_lifts: 3, drops: 3, drives: 3, smashes: 4, grip_deception: 3,
+        footwork_split_step: 4, court_coverage: 3, speed_stamina: 3,
+        game_reading: 3, consistency: 4, rules_strategy: 4, training_mindset: 4,
+      }),
+    );
+  }
+
   g._devScenarioSeeded = true;
   console.warn(
     `[dev] SEED_DEV_SCENARIO=fresh-thursday: seeded session ${sessionId} (signupOpen, 0/12, deadline ${deadline.slice(0, 10)}) ` +
       `+ 6 famous-player invite-list members (Lin has PIN 2468, others have no PIN) ` +
-      `+ ${equipmentCatalogSeed.items.length}-racket catalog + 1 sample game. Mock store only.`,
+      `+ ${equipmentCatalogSeed.items.length}-racket catalog + 1 sample game + 2 skill-assessment snapshots for Lin. Mock store only.`,
   );
 }
 

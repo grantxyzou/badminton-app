@@ -1,5 +1,11 @@
 {
   "home": {
+    "skillDiscovery": {
+      "title": "Curious if your game's improving?",
+      "titleSignedUp": "You're in! Want to track your game?",
+      "cta": "Rate your skills",
+      "dismiss": "Dismiss"
+    },
     "signup": {
       "heading": "Sign up",
       "button": "I'm in this week",
@@ -214,6 +220,57 @@
     "equipment": {
       "title": "Your equipment",
       "subtitle": "Rackets, strings, shuttle preferences."
+    },
+    "assess": {
+      "heroTitle": "Your game over time",
+      "checkIn": "Check in",
+      "rateSkills": "Rate your skills",
+      "reRate": "Update",
+      "purpose": "Rate every few weeks to watch your trend move.",
+      "overall": "Overall",
+      "then": "Then",
+      "now": "Now",
+      "strengths": "Strengths",
+      "workOn": "Work on next",
+      "allSkills": "All skills",
+      "hideSkills": "Hide skills",
+      "notRated": "Not rated yet",
+      "empty": "No check-in yet — take your first to start tracking your game.",
+      "baseline": "Baseline saved — check in again after a few sessions to watch it move.",
+      "error": "Couldn't load — refresh to retry",
+      "checkInTitle": "Skill check-in",
+      "close": "Close",
+      "mirrorTitle": "Recently",
+      "mirrorRecord": "You won {won} of {played} recent games.",
+      "mirrorPartner": "Most often with {name}.",
+      "noGames": "No games logged recently — just rate where your game is now.",
+      "ratePrompt": "Rate where your game is now. Pick the description that fits; skip anything you're unsure of.",
+      "start": "Start check-in",
+      "step": "{n} of {total}",
+      "back": "Back",
+      "next": "Next",
+      "skip": "Skip",
+      "save": "Save check-in",
+      "saving": "Saving…",
+      "saveError": "Couldn't save — try again.",
+      "reviewCount": "{rated} of {total} skills rated",
+      "reviewPrompt": "Save to update your trend.",
+      "signedOutTitle": "Track your game",
+      "signedOutBody": "Sign in to rate your skills and watch them improve over time.",
+      "signIn": "Sign in",
+      "switchCallout": "You're right at the Switch — the crossover from \"I play badminton\" to \"I train for badminton.\" Deliberate practice now is what moves you up.",
+      "dim": {
+        "technical": "Technical",
+        "physical": "Physical",
+        "mental": "Mental"
+      },
+      "phase": {
+        "foundation": "Foundation",
+        "exploration": "Exploration",
+        "switch": "The Switch",
+        "commitment": "Commitment",
+        "advanced": "Advanced"
+      }
     }
   },
   "players": {
