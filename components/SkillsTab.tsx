@@ -71,7 +71,8 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   }, []);
 
   useEffect(() => {
-    if (!isAdmin) {
+    // The legacy admin radar is parked under the assessment spine — skip its fetch.
+    if (!isAdmin || isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS')) {
       setLoading(false);
       return;
     }
@@ -127,13 +128,21 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   // All self-contained; flag-gated. Passing gearContent is what turns on the
   // Game/Gear segmented control in StatsPlaceholder.
   const valueHubOn = isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE');
-  const gearContent = valueHubOn ? <RacketRow /> : undefined;
-  const gamePlaySlot = valueHubOn ? (
+  const showPlay = skillAssessOn || valueHubOn;
+  // Gear (racket + recommendation) is parked under the assessment spine.
+  const gearContent = !skillAssessOn && valueHubOn ? <RacketRow /> : undefined;
+  const gamePlaySlot = showPlay ? (
     <>
       <GameLoggerCard />
       <PartnerFrequencyCard />
     </>
   ) : undefined;
+
+  // Skill-assessment spine: two-tab layout (Summary = trend, Game stats =
+  // logger + partner). Attendance, AI summary, and equipment are parked.
+  if (skillAssessOn) {
+    return <StatsPlaceholder assessMode heroSlot={heroSlot} gamePlaySlot={gamePlaySlot} />;
+  }
 
   if (!isAdmin) {
     return <StatsPlaceholder attendanceContent={attendanceContent} heroSlot={heroSlot} gamePlaySlot={gamePlaySlot} gearContent={gearContent} />;
