@@ -186,14 +186,14 @@
   <main class="main">
     <div class="hdr">
       <h1>The path to "recreational player on steroids"</h1>
-      <div class="meta">snapshot 2026-05-30 &middot; v1.5→stable · auth one-tap shipped<br>tap any card to expand &middot; click to focus a prompt</div>
+      <div class="meta">snapshot 2026-05-31 &middot; Slice-0 + Stats insight engine → bpm-next<br>tap any card to expand &middot; click to focus a prompt</div>
     </div>
 
     <div class="nextbar">
       <div class="dot"></div>
       <div>
         <div class="k">Literal next action</div>
-        <div class="v">✓ <b>v1.5 promoted to stable</b> (tag bpm-stable-v1.5 @ 211583e, deployed green, smoke 200) &middot; ✓ deps security batch merged (0 vulns) &middot; ✓ <b>one-tap sign-up</b> for logged-in members shipped to bpm-next (trusted-device cookie + PIN-set trust; PIN-skip after one device proof). Soaking on bpm-next for the next cut: Labeled Rail (<b>NEXT_PUBLIC_FLAG_NAV_RAIL</b>), trusted-device auth, Emil motion. Literal next on the path: <b>Slice-0 (#101)</b> on <b>feat/value-hub-slice-0</b> &mdash; the gate to the whole Value-Hub.</div>
+        <div class="v">✓ <b>Slice-0 SHIPPED to bpm-next</b> (main @ bf2c25d, flag <b>NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE</b>): the full vertical + <b>3-tab Stats</b> (Summary / Game stats / Equipment) + an account-gated, server-cached <b>AI insight engine</b> (last-week recap / this-week focus, Sonnet, with memory). v1.5 on stable; bpm-stable untouched. Literal next: <b>soak + measure the kill-criteria gate</b> on bpm-next (4 wks · ≥40% rec-repeat · ≥30% game-log). Near-term follow-ups: equipment rec as a 3rd insight field, multi-session memory, insight gating/cache tests.</div>
       </div>
     </div>
 
@@ -232,13 +232,13 @@ const SPINE = [
     note:"✓ Resolved 2026-05-18, promoted to stable 2026-05-30 (bpm-stable-v1.5). Ledger ships dormant behind NEXT_PUBLIC_FLAG_LEDGER until the gated stable redeploy." },
   { id:"goal", st:"gate", badge:"the goal", bcls:"b-gate", title:"Value-Hub — \"player on steroids\"", goal:true,
     sub:"4 parallel tracks behind a thin gated vertical", issues:[], note:"Plan: docs/plans/value-hub-slice-0.md · decisions A–G ratified 2026-05-16 (PR #95)." },
-  { id:"slice0", st:"now", badge:"now · in progress", bcls:"b-now", title:"Slice-0 — the gated vertical",
-    sub:"racket pick → 1 deterministic rec → game logger → partner card", issues:[
-      {n:101,t:"Slice-0 foundation: racket preference capture + kill-criteria gate",p:"p2"} ],
-    note:"Flag NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE. Active on branch feat/value-hub-slice-0 — the literal next step now that v1.5 is on stable." },
-  { id:"gate", st:"gate", badge:"decision gate", bcls:"b-gate", title:"Kill-criteria gate",
-    sub:"4 weeks live · ≥40% rec-card repeat · ≥30% game-log", issues:[],
-    note:"Decide-with-data: tracks only fan out if Slice-0 clears this. Otherwise kill, don't sink cost." },
+  { id:"slice0", st:"done", badge:"shipped · bpm-next", bcls:"b-done", title:"Slice-0 — the gated vertical",
+    sub:"racket pick → rec → game logger → partner card + AI insight engine", issues:[
+      {n:101,t:"Slice-0 foundation: racket preference capture + kill-criteria gate ✓ shipped to bpm-next 2026-05-31 (main bf2c25d)",p:"p2"} ],
+    note:"✓ Shipped to bpm-next 2026-05-31 behind NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE. Adds the 3-tab Stats (Summary/Game/Equipment) + account-gated, server-cached AI insight engine (recap + focus, Sonnet, one-step memory). Deferred follow-ups: equipment rec as a 3rd insight field, multi-session memory, insight gating/cache tests." },
+  { id:"gate", st:"now", badge:"now · measuring", bcls:"b-now", title:"Kill-criteria gate",
+    sub:"4 weeks live on bpm-next · ≥40% rec-card repeat · ≥30% game-log", issues:[],
+    note:"You are here: Slice-0 is live on bpm-next, now measuring engagement. Tracks only fan out if it clears this — otherwise kill, don't sink cost. (Instrumentation to actually measure rec-repeat / game-log % is the open gap.)" },
   { id:"tracks", st:"queued", badge:"on pass", bcls:"b-queued", title:"Tracks 1–3 (parallel)",
     sub:"open in parallel once the gate passes", issues:[
       {n:102,t:"Track 1 — Insight: between-session personal analytics",p:"p2"},
@@ -293,8 +293,8 @@ const THEMES = [
 const PRESETS = [
   { id:"path", label:"Path to goal", desc:"just the spine to the Value-Hub",
     state:{ongoing:false,branches:false,autoexpand:false,prios:["p1","p2","p3"]} },
-  { id:"next2w", label:"What's next (<=2 wk)", desc:"Slice-0 + next-cut soak",
-    state:{ongoing:false,branches:false,autoexpand:true,prios:["p1","p2","p3"],focus:["slice0"]} },
+  { id:"next2w", label:"What's next (<=2 wk)", desc:"measure Slice-0 + follow-ups",
+    state:{ongoing:false,branches:false,autoexpand:true,prios:["p1","p2","p3"],focus:["gate"]} },
   { id:"all", label:"Everything", desc:"spine + branches + themes",
     state:{ongoing:true,branches:true,autoexpand:false,prios:["p1","p2","p3"]} },
   { id:"risk", label:"Risk lens", desc:"p1 bugs + the big migration",

@@ -17,6 +17,7 @@ import PageHeader from '@/components/primitives/PageHeader';
 import EnterCodeSheet from './EnterCodeSheet';
 import PinInput from './PinInput';
 import NameAutocompleteInput from './home/NameAutocompleteInput';
+import SkillDiscoveryCard from './home/SkillDiscoveryCard';
 import { useMemberProbe } from '@/lib/useHasPin';
 import { useOnline } from '@/lib/useOnline';
 import { renderMarkdown } from '@/lib/miniMarkdown';
@@ -27,7 +28,7 @@ const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
 const TIME_SHORT = { hour: '2-digit', minute: '2-digit' } as const;
 
 interface HomeTabProps {
-  onTabChange?: (tab: 'home' | 'players' | 'admin') => void;
+  onTabChange?: (tab: 'home' | 'players' | 'skills' | 'admin') => void;
   onTitleTap?: () => void;
   devOverrides?: DevOverrides;
   /**
@@ -644,6 +645,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           </div>
         )}
       </div>
+
+      {/* Discovery hook for skill rating — surfaces at the sign-up touchpoint,
+          self-retires once the player rates or dismisses it. */}
+      <SkillDiscoveryCard
+        name={currentUser}
+        signedUp={effectiveIsSignedUp}
+        onOpen={() => onTabChange?.('skills')}
+      />
+
       <EnterCodeSheet
         open={enterCodeOpen}
         onClose={() => {

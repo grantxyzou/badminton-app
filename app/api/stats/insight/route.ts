@@ -3,6 +3,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer, getActiveSessionId, ensureContainer } from '@/lib/cosmos';
 import { topPartners } from '@/lib/recommend';
+import { isFlagOn } from '@/lib/flags';
+import { summarizeAssessmentTrend, type AssessmentTrend, type StoredAssessment } from '@/lib/assessment';
 
 /**
  * Account-gated, passively-generated player insight. Replaces the old
@@ -57,10 +59,41 @@ interface InsightDoc {
   recap: string;
   focus: string;
   generatedAt: string;
+  /** `takenAt` of the latest self-assessment baked into this insight. Lets a
+   *  fresh check-in invalidate the session cache so the read reflects it.
+   *  Absent on pre-assessment docs (treated as "no assessment baked in"). */
+  lastAssessmentAt?: string | null;
 }
 
 function emptyPayload(account: boolean) {
   return NextResponse.json({ account, recap: null, focus: null, generatedAt: null });
+}
+
+/**
+ * Latest self-assessment trend for a member, or null. Flag-gated: the
+ * `assessments` store only exists when the skill-assessment spine is on, so off
+ * deployments skip the query entirely. JS-filters by memberId because the mock
+ * store ignores `@memberId` (same reason the assessments GET does). Failures are
+ * non-fatal — the insight still generates from attendance/games alone.
+ */
+async function fetchAssessmentTrend(memberId: string): Promise<AssessmentTrend | null> {
+  if (!isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS')) return null;
+  try {
+    await ensureContainer('assessments', '/memberId');
+    const { resources } = await getContainer('assessments').items
+      .query({
+        query: 'SELECT c.memberId, c.takenAt, c.ratings, c.overall, c.phase FROM c WHERE c.memberId = @memberId',
+        parameters: [{ name: '@memberId', value: memberId }],
+      })
+      .fetchAll();
+    const docs = (resources as (StoredAssessment & { memberId?: string })[]).filter(
+      (d) => d && d.memberId === memberId && typeof d.takenAt === 'string',
+    );
+    return summarizeAssessmentTrend(docs);
+  } catch (err) {
+    console.error('insight assessment read failed:', err);
+    return null;
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -102,7 +135,13 @@ export async function GET(req: NextRequest) {
 
   const activeSessionId = await getActiveSessionId();
 
-  // ── Cache: return the stored insight if it's for the current session. ──
+  // ── Latest self-assessment (flag-gated). Fetched before the cache check so a
+  //    fresh check-in invalidates the session-cached read. ──
+  const trend = await fetchAssessmentTrend(member.id);
+  const latestAssessmentAt = trend?.latestAt ?? null;
+
+  // ── Cache: return the stored insight if it's for the current session AND no
+  //    newer assessment has landed since it was generated. ──
   let existing: InsightDoc | null = null;
   try {
     const { resource } = await insightsContainer.item(member.id, member.id).read<InsightDoc>();
@@ -110,7 +149,10 @@ export async function GET(req: NextRequest) {
   } catch {
     existing = null;
   }
-  if (existing && existing.sessionId === activeSessionId && existing.recap) {
+  // Nullish-normalize both sides: a pre-assessment cached doc (undefined) with a
+  // new assessment present (a string) mismatches → regenerate to fold it in.
+  const assessmentMatches = (existing?.lastAssessmentAt ?? null) === latestAssessmentAt;
+  if (existing && existing.sessionId === activeSessionId && existing.recap && assessmentMatches) {
     return NextResponse.json({
       account: true,
       recap: existing.recap,
@@ -129,7 +171,7 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Gather the data snapshot (deterministic — fed verbatim to Claude). ──
-  const snapshot = await buildSnapshot({ name: member.name, playersContainer, sessionsContainer });
+  const snapshot = await buildSnapshot({ name: member.name, playersContainer, sessionsContainer, trend });
 
   // ── Generate (memory = previous recap+focus). ──
   let recap = '';
@@ -148,7 +190,7 @@ export async function GET(req: NextRequest) {
   if (!recap && !focus) return emptyPayload(true);
 
   const generatedAt = new Date().toISOString();
-  const doc: InsightDoc = { id: member.id, memberId: member.id, name: member.name, sessionId: activeSessionId, recap, focus, generatedAt };
+  const doc: InsightDoc = { id: member.id, memberId: member.id, name: member.name, sessionId: activeSessionId, recap, focus, generatedAt, lastAssessmentAt: latestAssessmentAt };
   try {
     await insightsContainer.items.upsert(doc);
   } catch (err) {
@@ -166,6 +208,11 @@ interface Snapshot {
   longestStreak: number;
   lastSession: { date: string; attended: boolean; partners: string[] } | null;
   regularPartners: { name: string; count: number }[];
+  /** Self-assessment trend (1–5). The preferred skill source — when present the
+   *  legacy `skills` read is skipped and `skills` is null. */
+  assessment: AssessmentTrend | null;
+  /** Legacy admin-entered skills (0–6). Fallback only — populated when there is
+   *  no self-assessment. Never narrated alongside `assessment` (two scales). */
   skills: Record<string, number> | null;
 }
 
@@ -173,10 +220,12 @@ async function buildSnapshot({
   name,
   playersContainer,
   sessionsContainer,
+  trend,
 }: {
   name: string;
   playersContainer: ReturnType<typeof getContainer>;
   sessionsContainer: ReturnType<typeof getContainer>;
+  trend: AssessmentTrend | null;
 }): Promise<Snapshot> {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - ATTENDANCE_WEEKS * 7);
@@ -250,22 +299,25 @@ async function buildSnapshot({
       }
     : null;
 
-  // Skills only when real scores exist (sample data is never narrated as real).
+  // Legacy admin skills are a FALLBACK only — when a self-assessment exists we
+  // skip this read entirely and never mix the two scales in one prompt.
   let skills: Record<string, number> | null = null;
-  try {
-    const { resources: skillRows } = await getContainer('skills').items
-      .query({
-        query: 'SELECT c.name, c.scores FROM c WHERE LOWER(c.name) = LOWER(@name)',
-        parameters: [{ name: '@name', value: name }],
-      })
-      .fetchAll();
-    const scores = (skillRows[0] as { scores?: Record<string, number> } | undefined)?.scores;
-    if (scores && Object.keys(scores).length > 0) skills = scores;
-  } catch {
-    skills = null;
+  if (!trend) {
+    try {
+      const { resources: skillRows } = await getContainer('skills').items
+        .query({
+          query: 'SELECT c.name, c.scores FROM c WHERE LOWER(c.name) = LOWER(@name)',
+          parameters: [{ name: '@name', value: name }],
+        })
+        .fetchAll();
+      const scores = (skillRows[0] as { scores?: Record<string, number> } | undefined)?.scores;
+      if (scores && Object.keys(scores).length > 0) skills = scores;
+    } catch {
+      skills = null;
+    }
   }
 
-  return { totalSessions, attended, attendanceRate, currentStreak, longestStreak, lastSession, regularPartners, skills };
+  return { totalSessions, attended, attendanceRate, currentStreak, longestStreak, lastSession, regularPartners, assessment: trend, skills };
 }
 
 async function generate(name: string, s: Snapshot, prev: InsightDoc | null): Promise<{ recap: string; focus: string }> {
@@ -277,7 +329,9 @@ async function generate(name: string, s: Snapshot, prev: InsightDoc | null): Pro
   const partnerLine = s.regularPartners.length
     ? `Regular partners: ${s.regularPartners.map((p) => `${p.name} (${p.count})`).join(', ')}.`
     : 'No regular partners yet.';
-  const skillLine = s.skills ? `Self-rated skills (0-6): ${Object.entries(s.skills).map(([k, v]) => `${k} ${v}`).join(', ')}.` : '';
+  // Skill source is EXCLUSIVE: a self-assessment trend (1-5) when present, else
+  // the legacy admin skills (0-6). Never both — two scales confuse the model.
+  const skillLine = buildSkillLine(s);
   const memoryLine = prev?.recap
     ? `\n\nYour previous note to ${name} (one session ago):\n- Recap: ${prev.recap}\n- Focus: ${prev.focus}`
     : '';
@@ -290,8 +344,8 @@ ${partnerLine}${skillLine ? `\n${skillLine}` : ''}${memoryLine}
 
 Return ONLY a JSON object, no markdown fences:
 {"recap": "...", "focus": "..."}
-- "recap": 1-2 sentences on how the last session / recent stretch went. If a previous note exists, acknowledge progress against it.
-- "focus": 1-2 sentences naming ONE concrete thing to work on for the upcoming session. Build on the previous focus if there was one (did they act on it?). Specific, encouraging, no jargon, no emoji.`;
+- "recap": 1-2 sentences on how the last session / recent stretch went. Weave in attendance AND, if a self-assessment is present, how their skill rating moved (up, down, or holding). If a previous note exists, acknowledge progress against it.
+- "focus": 1-2 sentences naming ONE concrete thing to work on for the upcoming session. If a self-assessment lists "working on" skills, anchor the focus on one of them. Build on the previous focus if there was one (did they act on it?). Specific, encouraging, no jargon, no emoji.`;
 
   const message = await anthropic.messages.create({
     model: MODEL,
@@ -300,6 +354,40 @@ Return ONLY a JSON object, no markdown fences:
   });
   const text = message.content[0]?.type === 'text' ? message.content[0].text.trim() : '';
   return parseInsight(text);
+}
+
+/**
+ * The skill section of the prompt. Self-assessment (1-5) is preferred and
+ * EXCLUSIVE; legacy admin skills (0-6) are the fallback. Empty when neither
+ * exists. The trend phrasing mirrors SkillTrendCard's then→now delta so the
+ * narrated movement agrees with the radar the player is looking at.
+ */
+function buildSkillLine(s: Snapshot): string {
+  const a = s.assessment;
+  if (a) {
+    const fmt = (n: number | null) => (n === null ? '—' : n.toFixed(1));
+    const parts: string[] = [
+      `Self-assessment (1-5 self-rating, ${a.count} check-in${a.count === 1 ? '' : 's'} on record): overall ${fmt(a.overall)}`,
+    ];
+    if (a.phase) parts.push(`${a.phase} phase`);
+    if (a.delta === null) {
+      parts.push('first check-in — this is the baseline');
+    } else if (a.delta > 0.05) {
+      parts.push(`up ${a.delta.toFixed(1)} since the previous check-in (was ${fmt(a.prevOverall)})`);
+    } else if (a.delta < -0.05) {
+      parts.push(`down ${Math.abs(a.delta).toFixed(1)} since the previous check-in (was ${fmt(a.prevOverall)})`);
+    } else {
+      parts.push(`holding steady since the previous check-in (was ${fmt(a.prevOverall)})`);
+    }
+    let line = `${parts.join('; ')}.`;
+    if (a.strengths.length) line += ` Strongest: ${a.strengths.map((r) => `${r.label} (${r.value})`).join(', ')}.`;
+    if (a.workOn.length) line += ` Working on (lowest-rated): ${a.workOn.map((r) => `${r.label} (${r.value})`).join(', ')}.`;
+    return line;
+  }
+  if (s.skills) {
+    return `Self-rated skills (0-6): ${Object.entries(s.skills).map(([k, v]) => `${k} ${v}`).join(', ')}.`;
+  }
+  return '';
 }
 
 /** Tolerant JSON extraction — strips code fences, pulls the first {...} block. */

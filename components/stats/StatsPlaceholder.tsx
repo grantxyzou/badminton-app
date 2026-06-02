@@ -126,6 +126,13 @@ interface Props {
    *  the equipment coming-soon card moves under Gear and the partner
    *  coming-soon card is dropped (it's live in the Game view). */
   gearContent?: React.ReactNode;
+  /** Skill-assessment spine layout: two sub-tabs (Summary = trend hero,
+   *  Game stats = AI read + attendance + game logger + partner). Parks the
+   *  legacy skill / equipment slots. */
+  assessMode?: boolean;
+  /** Passive AI "Your read" card (streak headline + insight). In assessMode it
+   *  leads the Game stats view; the synthesis sits above the raw data. */
+  insightSlot?: React.ReactNode;
 }
 
 const sectionLabelStyle: React.CSSProperties = {
@@ -147,6 +154,8 @@ export default function StatsPlaceholder({
   heroSlot,
   gamePlaySlot,
   gearContent,
+  assessMode = false,
+  insightSlot,
 }: Props = {}) {
   const t = useTranslations('stats');
   const tVH = useTranslations('valueHub');
@@ -157,6 +166,7 @@ export default function StatsPlaceholder({
   // on the three-register split (Summary | Game stats | Equipment); without it
   // the tab renders as a single legacy scroll.
   const hasGear = !!gearContent;
+  const useTabs = assessMode || hasGear;
   const [view, setView] = useState<'summary' | 'game' | 'equipment'>('summary');
 
   const attendanceCard = attendanceLive && (
@@ -170,11 +180,16 @@ export default function StatsPlaceholder({
     </LiveCard>
   );
 
-  const TABS = [
-    { id: 'summary', label: tVH('viewSummary') },
-    { id: 'game', label: tVH('viewGameStats') },
-    { id: 'equipment', label: tVH('viewEquipment') },
-  ] as const;
+  const TABS = (assessMode
+    ? [
+        { id: 'summary', label: tVH('viewSummary') },
+        { id: 'game', label: tVH('viewGameStats') },
+      ]
+    : [
+        { id: 'summary', label: tVH('viewSummary') },
+        { id: 'game', label: tVH('viewGameStats') },
+        { id: 'equipment', label: tVH('viewEquipment') },
+      ]) as { id: 'summary' | 'game' | 'equipment'; label: string }[];
 
   const moreComingLabel = (
     <div className="px-2" style={{ paddingTop: 4 }}>
@@ -184,7 +199,18 @@ export default function StatsPlaceholder({
 
   // The active view's cards, rendered inside one keyed wrapper below so a
   // segment switch swaps content cleanly.
-  const activeView = !hasGear ? (
+  const activeView = assessMode ? (
+    view === 'game' ? (
+      <>
+        {/* Synthesis first (AI read + streak), then the raw data it draws on. */}
+        {insightSlot}
+        {attendanceCard}
+        {gamePlaySlot}
+      </>
+    ) : (
+      <>{heroSlot}</>
+    )
+  ) : !hasGear ? (
     <>
       {heroSlot}
       {attendanceCard}
@@ -221,7 +247,7 @@ export default function StatsPlaceholder({
         <p className="text-sm text-gray-400 mt-1 px-2">{t('subhead')}</p>
       </div>
 
-      {hasGear && (
+      {useTabs && (
         <div className="flex justify-center">
           <div className="segment-control flex w-full" style={{ maxWidth: 360 }}>
             {TABS.map((tab) => (
@@ -243,7 +269,7 @@ export default function StatsPlaceholder({
       {/* Keyed by view so a segment switch swaps content cleanly. Entrance
           motion is the shared whole-tab fade from HomeShell — no per-card
           stagger here, so Stats matches Home/Profile/Sign-Ups. */}
-      <div key={hasGear ? view : 'legacy'} className="space-y-5">
+      <div key={useTabs ? view : 'legacy'} className="space-y-5">
         {activeView}
       </div>
     </div>

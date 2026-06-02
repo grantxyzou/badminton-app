@@ -1,5 +1,11 @@
 {
   "home": {
+    "skillDiscovery": {
+      "title": "想知道自己有没有进步吗？",
+      "titleSignedUp": "报名成功！想追踪你的球技吗？",
+      "cta": "评估你的技能",
+      "dismiss": "关闭"
+    },
     "signup": {
       "heading": "报名",
       "button": "本周参加",
@@ -214,6 +220,57 @@
     "equipment": {
       "title": "你的装备",
       "subtitle": "球拍、拍线、球的偏好。"
+    },
+    "assess": {
+      "heroTitle": "你的球技变化",
+      "checkIn": "评估",
+      "rateSkills": "评估你的技能",
+      "reRate": "更新",
+      "purpose": "每隔几周评估一次，看看你的进步。",
+      "overall": "综合",
+      "then": "之前",
+      "now": "现在",
+      "strengths": "强项",
+      "workOn": "下一步提升",
+      "allSkills": "全部技能",
+      "hideSkills": "收起",
+      "notRated": "尚未评分",
+      "empty": "还没有评估 — 完成第一次评估开始记录你的球技。",
+      "baseline": "已记录基线 — 打几场后再来评估，看看变化。",
+      "error": "加载失败 — 刷新重试",
+      "checkInTitle": "技能评估",
+      "close": "关闭",
+      "mirrorTitle": "最近",
+      "mirrorRecord": "最近 {played} 场你赢了 {won} 场。",
+      "mirrorPartner": "最常和 {name} 搭档。",
+      "noGames": "最近没有记录比赛 — 直接评估你现在的水平。",
+      "ratePrompt": "评估你现在的水平。选择最符合的描述，不确定的可以跳过。",
+      "start": "开始评估",
+      "step": "第 {n} / {total} 项",
+      "back": "返回",
+      "next": "下一步",
+      "skip": "跳过",
+      "save": "保存评估",
+      "saving": "保存中…",
+      "saveError": "保存失败 — 请重试。",
+      "reviewCount": "已评 {rated} / {total} 项技能",
+      "reviewPrompt": "保存以更新你的趋势。",
+      "signedOutTitle": "记录你的球技",
+      "signedOutBody": "登录后即可评估你的技能，追踪你的进步。",
+      "signIn": "登录",
+      "switchCallout": "你正处在「转折点」— 从「我打羽毛球」到「我为羽毛球而训练」的跨越。现在的刻意练习决定你能否更进一步。",
+      "dim": {
+        "technical": "技术",
+        "physical": "体能",
+        "mental": "心理"
+      },
+      "phase": {
+        "foundation": "起步",
+        "exploration": "探索",
+        "switch": "转折点",
+        "commitment": "投入",
+        "advanced": "进阶"
+      }
     }
   },
   "players": {

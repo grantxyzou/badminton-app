@@ -12,8 +12,12 @@ import PartnerFrequencyCard from '@/components/stats/cards/PartnerFrequencyCard'
 import GameLoggerCard from '@/components/stats/GameLoggerCard';
 import RacketRow from '@/components/stats/RacketRow';
 import { isFlagOn } from '@/lib/flags';
+import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
+import StatsSignedOut from '@/components/stats/StatsSignedOut';
 
 const SkillsRadar = dynamic(() => import('@/components/SkillsRadar'), { ssr: false });
+// Recharts needs window → ssr:false, same as SkillsRadar.
+const SkillTrendCard = dynamic(() => import('@/components/stats/SkillTrendCard'), { ssr: false });
 
 // Hidden for now — admin Add Player + SkillsRadar overlay/compare mode are
 // scoped out of the user-facing Stats tab while we figure out whether self-
@@ -23,6 +27,20 @@ const SHOW_ADD_PLAYER_FORM = false;
 const SHOW_SKILLS_OVERLAY = false;
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+const STATS_NAME_KEY = 'badminton_stats_preview_name';
+
+// Same identity chain as the stats cards: real identity → stats preview-name.
+function resolveActiveName(): string | null {
+  const id = getIdentity();
+  if (id?.name) return id.name;
+  try {
+    const stored = localStorage.getItem(STATS_NAME_KEY);
+    if (stored && stored.trim()) return stored.trim();
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
 
 function toRadarShape(records: PersistedPlayerSkills[]): PlayerSkills[] {
   return records.map((s) => ({ id: s.id, name: s.name, scores: s.scores }));
@@ -57,6 +75,11 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState('');
 
+  // Identity for the assessment spine's signed-out empty state. Subscribes to
+  // IDENTITY_EVENT so signing in/out updates the tab without a reload.
+  const [activeName, setActiveName] = useState<string | null>(null);
+  const [identResolved, setIdentResolved] = useState(false);
+
   const refresh = useCallback(async () => {
     try {
       const res = await fetch(`${BASE}/api/skills`, { cache: 'no-store' });
@@ -69,7 +92,8 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   }, []);
 
   useEffect(() => {
-    if (!isAdmin) {
+    // The legacy admin radar is parked under the assessment spine — skip its fetch.
+    if (!isAdmin || isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS')) {
       setLoading(false);
       return;
     }
@@ -81,6 +105,18 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
       cancelled = true;
     };
   }, [isAdmin, refresh]);
+
+  useEffect(() => {
+    const update = () => setActiveName(resolveActiveName());
+    update();
+    setIdentResolved(true);
+    window.addEventListener(IDENTITY_EVENT, update);
+    window.addEventListener('storage', update);
+    return () => {
+      window.removeEventListener(IDENTITY_EVENT, update);
+      window.removeEventListener('storage', update);
+    };
+  }, []);
 
   async function handleAddPlayer(e: React.FormEvent) {
     e.preventDefault();
@@ -113,9 +149,10 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
 
   // Live attendance + streak hero are now always-on (flag retired post-v1.3).
   const attendanceContent = <AttendanceCardLive />;
-  // Hero slot: one combined card — attendance streak as the headline, the
-  // once-weekly AI summary as the body. Self-hides when no active name.
-  const heroSlot = <StreakSummaryCard />;
+  // Hero slot. When the skill-assessment spine is on, the self-assessment
+  // trend hero is the headline; otherwise the legacy streak + AI summary.
+  const skillAssessOn = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS');
+  const heroSlot = skillAssessOn ? <SkillTrendCard /> : <StreakSummaryCard />;
 
   // Value-Hub Slice-0 splits across the Stats tab's two registers:
   //   • Gear view → RacketRow (your racket + recommendation)
@@ -124,13 +161,35 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   // All self-contained; flag-gated. Passing gearContent is what turns on the
   // Game/Gear segmented control in StatsPlaceholder.
   const valueHubOn = isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE');
-  const gearContent = valueHubOn ? <RacketRow /> : undefined;
-  const gamePlaySlot = valueHubOn ? (
+  const showPlay = skillAssessOn || valueHubOn;
+  // Gear (racket + recommendation) is parked under the assessment spine.
+  const gearContent = !skillAssessOn && valueHubOn ? <RacketRow /> : undefined;
+  const gamePlaySlot = showPlay ? (
     <>
       <GameLoggerCard />
       <PartnerFrequencyCard />
     </>
   ) : undefined;
+
+  // Skill-assessment spine: two-tab layout. Summary = skill trend; Game stats =
+  // AI read (StreakSummaryCard) + attendance + logger + partner. The AI read
+  // now folds in the self-assessment trend (see /api/stats/insight). Equipment
+  // stays parked.
+  if (skillAssessOn) {
+    if (!identResolved) return null;
+    if (!activeName) {
+      return <StatsSignedOut onSignIn={onTabChange ? () => onTabChange('profile') : undefined} />;
+    }
+    return (
+      <StatsPlaceholder
+        assessMode
+        heroSlot={heroSlot}
+        gamePlaySlot={gamePlaySlot}
+        attendanceContent={attendanceContent}
+        insightSlot={<StreakSummaryCard />}
+      />
+    );
+  }
 
   if (!isAdmin) {
     return <StatsPlaceholder attendanceContent={attendanceContent} heroSlot={heroSlot} gamePlaySlot={gamePlaySlot} gearContent={gearContent} />;

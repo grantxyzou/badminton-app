@@ -21,7 +21,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_SETTLE'
   | 'NEXT_PUBLIC_FLAG_LEDGER'
   | 'NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE'
-  | 'NEXT_PUBLIC_FLAG_NAV_RAIL';
+  | 'NEXT_PUBLIC_FLAG_NAV_RAIL'
+  | 'NEXT_PUBLIC_FLAG_SKILL_ASSESS';
 
 interface FlagMeta {
   description: string;
@@ -60,6 +61,11 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'after the nav rail is promoted to stable + lived-in for 2 weeks (then delete the legacy .nav-glass branch + classes)',
   },
+  NEXT_PUBLIC_FLAG_SKILL_ASSESS: {
+    description: 'Self-assessment skill trend on Stats (docs/badminton-spec-md.md P0): a periodic anchor-card check-in across 14 skills / 3 dimensions, a then-vs-now radar trend, phase placement (incl. "The Switch"), and top strengths / work-on. Gates the player-facing check-in + trend UI and the /api/assessments routes. On for bpm-next + dev; off on bpm-stable until promoted.',
+    owner: 'grant',
+    plannedRemoval: 'after skill-assessment P0 is promoted to stable + lived-in for 2 weeks',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -76,6 +82,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
     case 'NEXT_PUBLIC_FLAG_NAV_RAIL':
       return process.env.NEXT_PUBLIC_FLAG_NAV_RAIL;
+    case 'NEXT_PUBLIC_FLAG_SKILL_ASSESS':
+      return process.env.NEXT_PUBLIC_FLAG_SKILL_ASSESS;
   }
 }
 
