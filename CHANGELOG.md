@@ -56,11 +56,27 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ### Added
 
-- **Trusted-device sign-up** — a member who proves their PIN once on a device stays trusted for 30 days to sign up for future sessions without re-entering it (revoked on sign-out). *(soaking on `bpm-next`)*
+- **Skill self-assessment** *(flag-gated `NEXT_PUBLIC_FLAG_SKILL_ASSESS`, dormant on stable)* — periodic anchor-card check-in across 14 skills, a then-vs-now trend radar, phase placement, and an AI "Your read" that folds in the assessment. *(soaking on `bpm-next`)*
+- **Value-Hub Slice-0** *(flag-gated `NEXT_PUBLIC_FLAG_VALUE_HUB`, dormant on stable)* — racket pick → recommendation card, 48h game logger, and partner-frequency Stats card. *(awaiting kill-criterion gate)*
+
+---
+
+## v1.6 — Ledger goes live + Labeled Rail nav + trusted-device sign-up (2026-06-02)
+
+### Added
+
+- **Ledger now actually serves** *(flag `NEXT_PUBLIC_FLAG_LEDGER` flipped on)* — the who-owes-what page shipped dark in v1.5 (the build predated the flag flip); v1.6 is the first stable build that renders it. Backed by `GET /api/admin/ledger`.
+- **Trusted-device sign-up** — a member who proves their PIN once on a device stays trusted for 30 days to sign up for future sessions without re-entering it (revoked on sign-out).
+- **AI "Your read"** — the Stats hero shows an account-gated, server-cached recap + focus generated from your recent attendance and games.
 
 ### Changed
 
-- **Motion polish pass** — touch-hover gating (hover styles no longer stick after a tap on phones), stronger easing on buttons/cards, plus sign-up-success / spot-counter / list-stagger micro-interactions. *(soaking on `bpm-next`)*
+- **Labeled Rail bottom nav** *(flag `NEXT_PUBLIC_FLAG_NAV_RAIL`)* — replaces the floating glass-pill nav with an edge-attached, full-width rail and a triple-signal active state. Same tabs, routing, and i18n.
+- **Motion polish pass** — touch-hover gating (hover styles no longer stick after a tap on phones), stronger easing on buttons/cards, plus sign-up-success / spot-counter / list-stagger micro-interactions.
+
+### Security
+
+- **Cleared 4 Dependabot vulnerabilities** + reconciled the lockfile; added a pre-merge PR gate and grouped Dependabot to prevent lockfile drift.
 
 ---
 
