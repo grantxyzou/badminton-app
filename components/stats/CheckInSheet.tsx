@@ -84,9 +84,11 @@ export default function CheckInSheet({
 
   const ratedCount = Object.keys(ratings).length;
 
+  // Select sets the rating and STAYS on the skill so the choice is visibly
+  // confirmed; the footer Next button advances. (Auto-advancing on tap read as
+  // "nothing happened" because the screen jumped before you saw the selection.)
   const select = (level: number) => {
     setRatings((r) => ({ ...r, [SKILLS[step].key]: level }));
-    setStep((s) => Math.min(s + 1, total));
   };
 
   const submit = async () => {
@@ -208,8 +210,8 @@ export default function CheckInSheet({
                 <button type="button" onClick={() => setStep((s) => Math.max(s - 1, -1))} className="cc-btn cc-btn-ghost" style={{ flex: 1 }}>
                   {t('assess.back')}
                 </button>
-                <button type="button" onClick={() => setStep((s) => Math.min(s + 1, total))} className="cc-btn cc-btn-secondary" style={{ flex: 1 }}>
-                  {t('assess.skip')}
+                <button type="button" onClick={() => setStep((s) => Math.min(s + 1, total))} className="cc-btn cc-btn-primary" style={{ flex: 1 }}>
+                  {ratings[skill.key] !== undefined ? t('assess.next') : t('assess.skip')}
                 </button>
               </div>
             </div>

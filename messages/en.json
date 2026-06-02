@@ -239,6 +239,7 @@
       "start": "Start check-in",
       "step": "{n} of {total}",
       "back": "Back",
+      "next": "Next",
       "skip": "Skip",
       "save": "Save check-in",
       "saving": "Saving…",
