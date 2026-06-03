@@ -5,6 +5,7 @@ import {
   seedPointer,
   seedSession,
   seedMember,
+  seedPlayer,
   makeRequest,
 } from './helpers';
 import { POST } from '@/app/api/players/route';
@@ -162,5 +163,67 @@ describe('POST /api/players with trusted-device cookie (member_session)', () => 
     const res = await POST(req);
     expect(res.status).toBe(201);
     expect(res.cookies.get('member_session')?.value).toBeTruthy();
+  });
+});
+
+/**
+ * Waitlist sign-up enforces the same PIN guard as a normal sign-up. The Home
+ * waitlist form now reveals the PIN field adaptively and sends `pin` alongside
+ * `waitlist: true` — these tests lock in the server contract that form satisfies.
+ * Regression for the "PIN required but no PIN input" waitlist bug.
+ */
+describe('POST /api/players waitlist with PIN', () => {
+  const sessionId = 'session-2026-05-20';
+  const pin = '2468';
+
+  beforeEach(async () => {
+    resetMockStore();
+    seedPointer(sessionId);
+    // Capacity of 2, both spots taken → the session is full so any further
+    // sign-up must go through the waitlist branch.
+    seedSession(sessionId, { maxPlayers: 2, signupOpen: true });
+    seedPlayer(sessionId, 'Viktor');
+    seedPlayer(sessionId, 'Carolina');
+    const pinHash = await hashPin(pin);
+    seedMember('Lin', { pinHash });
+  });
+
+  it('valid PIN + waitlist:true waitlists the PIN-protected member (201)', async () => {
+    const req = makeRequest('POST', 'http://localhost:3000/api/players', {
+      name: 'Lin',
+      pin,
+      waitlist: true,
+    }, { 'X-Client-IP': '10.2.0.1' });
+
+    const res = await POST(req);
+    expect(res.status).toBe(201);
+
+    const body = await res.json();
+    expect(body.name).toBe('Lin');
+    expect(body.waitlisted).toBe(true);
+    expect(body.pinHash).toBeUndefined();
+  });
+
+  it('missing PIN + waitlist:true returns 401 pin_required (guard runs before the waitlist branch)', async () => {
+    const req = makeRequest('POST', 'http://localhost:3000/api/players', {
+      name: 'Lin',
+      waitlist: true,
+    }, { 'X-Client-IP': '10.2.0.2' });
+
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+    expect((await res.json()).error).toBe('pin_required');
+  });
+
+  it('wrong PIN + waitlist:true returns 401 pin_incorrect', async () => {
+    const req = makeRequest('POST', 'http://localhost:3000/api/players', {
+      name: 'Lin',
+      pin: '9999',
+      waitlist: true,
+    }, { 'X-Client-IP': '10.2.0.3' });
+
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+    expect((await res.json()).error).toBe('pin_incorrect');
   });
 });

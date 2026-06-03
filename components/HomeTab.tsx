@@ -240,8 +240,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   }, []);
   const openReleaseSheet = useCallback(() => setReleaseSheetOpen(true), []);
 
-  async function handleSignUp(e: React.FormEvent) {
-    e.preventDefault();
+  // Unified sign-up + waitlist submit. `waitlist` adds `waitlist: true` to the
+  // POST body and tunes the failure copy — otherwise the auth flow (anon /
+  // sign-in PIN / create PIN) is identical, so a PIN-protected member can join
+  // the waitlist with the same inline PIN field the open-signup form uses.
+  async function performSignup(waitlist: boolean) {
     // Legible-fail: refuse the mutation with a clear reason instead of
     // firing a fetch that throws and leaves the form in limbo.
     if (!online) { setError(t('signup.offline')); return; }
@@ -290,11 +293,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         const signupRes = await fetch(`${BASE}/api/players`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: trimmed, pin }),
+          body: JSON.stringify({ name: trimmed, pin, ...(waitlist ? { waitlist: true } : {}) }),
         });
         const signupData = await signupRes.json();
         if (!signupRes.ok) {
-          setError(signupData.error ?? t('signup.genericFailure'));
+          setError(signupData.error ?? (waitlist ? t('signup.waitlistFailure') : t('signup.genericFailure')));
           if (signupRes.status === 409) loadData();
           return;
         }
@@ -302,7 +305,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         setIdentity({ name: trimmed, token: signupData.deleteToken ?? '', sessionId: session.id });
         setCurrentUser(trimmed);
         setHasIdentity(true);
-        setJustSignedUp(true);
+        if (!waitlist) setJustSignedUp(true);
         await loadData();
       } else {
         // 'anon' and 'create' both go through POST /api/players. The only
@@ -310,6 +313,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         // (e.g. rejects 'pin_too_common', enforces invite list).
         const body: Record<string, unknown> = { name: trimmed };
         if (authMode === 'create') body.pin = pin;
+        if (waitlist) body.waitlist = true;
         const res = await fetch(`${BASE}/api/players`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -325,7 +329,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           } else if (data.error === 'pin_too_common' || data.error === 'Invalid PIN format') {
             setError(t('signup.pinTooCommon'));
           } else {
-            setError(data.error ?? t('signup.genericFailure'));
+            setError(data.error ?? (waitlist ? t('signup.waitlistFailure') : t('signup.genericFailure')));
           }
           if (res.status === 409) loadData();
           return;
@@ -334,7 +338,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         setIdentity({ name: trimmed, token: data.deleteToken ?? '', sessionId: session.id });
         setCurrentUser(trimmed);
         setHasIdentity(true);
-        setJustSignedUp(true);
+        if (!waitlist) setJustSignedUp(true);
         await loadData();
       }
     } catch {
@@ -344,42 +348,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     }
   }
 
+  async function handleSignUp(e: React.FormEvent) {
+    e.preventDefault();
+    await performSignup(false);
+  }
+
   async function handleJoinWaitlist(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) { setError(t('signup.nameRequired')); return; }
-    setIsSubmitting(true);
-    setError('');
-    try {
-      const res = await fetch(`${BASE}/api/players`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), waitlist: true }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.error === 'invite_list_not_found') {
-          setError(t('signup.inviteError', { name: name.trim() }));
-        } else if (data.error === 'pin_required') {
-          setError(t('signup.pinRequired'));
-        } else {
-          setError(data.error ?? t('signup.waitlistFailure'));
-        }
-      } else {
-        // Batch C M2: same empty-sessionId guard as handleSignUp.
-        if (!session?.id) {
-          setError(t('signup.networkError'));
-          return;
-        }
-        setIdentity({ name: name.trim(), token: data.deleteToken ?? '', sessionId: session.id });
-        setCurrentUser(name.trim());
-        setHasIdentity(true);
-        await loadData();
-      }
-    } catch {
-      setError(t('signup.networkError'));
-    } finally {
-      setIsSubmitting(false);
-    }
+    await performSignup(true);
   }
 
   if (loading) {
@@ -555,14 +531,58 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 ariaLabel={t('signup.nameAriaLabel')}
                 errorId={error ? 'signup-error' : undefined}
               />
+              {/* PIN inputs — same adaptive reveal as the open-signup form, so a
+                  PIN-protected member can authenticate while joining the waitlist
+                  (the server enforces the PIN on waitlist sign-ups too). */}
+              {authMode === 'sign-in' && (
+                <PinInput
+                  value={pin}
+                  onChange={(v) => { setPin(v); setError(''); }}
+                  digits={4}
+                  label={t('signup.pinLabel')}
+                  ariaInvalid={!!error}
+                />
+              )}
+              {authMode === 'create' && (
+                <>
+                  <PinInput
+                    value={pin}
+                    onChange={(v) => { setPin(v); setError(''); }}
+                    digits={4}
+                    label={t('signup.pinCreateLabel')}
+                    ariaInvalid={!!error}
+                  />
+                  <PinInput
+                    value={confirmPin}
+                    onChange={(v) => { setConfirmPin(v); setError(''); }}
+                    digits={4}
+                    label={t('signup.pinConfirmLabel')}
+                    ariaInvalid={!!error}
+                  />
+                </>
+              )}
               {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
               <button
                 type="submit"
-                disabled={isSubmitting || !name.trim() || !online}
+                disabled={
+                  isSubmitting || !name.trim() || !online
+                  || (authMode === 'sign-in' && pin.length !== 4)
+                  || (authMode === 'create' && (pin.length !== 4 || confirmPin.length !== 4))
+                }
                 className="cc-btn cc-btn-primary cc-btn-lg"
               >
                 {isSubmitting ? t('signup.joining') : t('signup.waitlist')}
               </button>
+              {authMode === 'sign-in' && (
+                <button
+                  type="button"
+                  onClick={() => setEnterCodeOpen(true)}
+                  className="text-xs underline mx-auto"
+                  style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px 12px', minHeight: 44 }}
+                >
+                  {t('signup.forgotPin')}
+                </button>
+              )}
             </form>
           </div>
         ) : (
