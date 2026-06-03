@@ -229,5 +229,13 @@ async function handlePost(req: NextRequest) {
     pinHash: '',
   });
 
-  return NextResponse.json({ deleteToken: newDeleteToken });
+  const res = NextResponse.json({ deleteToken: newDeleteToken });
+  // Consuming a valid admin-issued recovery code proves identity (same as a PIN
+  // sign-in does on the pin path), so mint the member_session cookie. Without
+  // it the user — who just cleared their PIN — would have no credential for the
+  // members/me first-set guard when they pick a new PIN in the next sheet.
+  if (member) {
+    setMemberCookie(res, String(member.id), String(member.name));
+  }
+  return res;
 }

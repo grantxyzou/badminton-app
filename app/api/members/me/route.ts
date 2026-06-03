@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
-import { verifyMemberAuth, setMemberCookie } from '@/lib/auth';
+import { verifyMemberAuth, isAdminAuthedWithMember, setMemberCookie } from '@/lib/auth';
 
 const BLOCKLISTED_PINS = new Set(['0000', '1111', '1234', '4321', '1212']);
 
@@ -136,7 +136,18 @@ async function handlePatch(req: NextRequest) {
       return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
     }
   }
-  // No prior pinHash → claim flow, no currentPin required.
+  // No prior pinHash → first-set / claim flow. There's no currentPin to require,
+  // but identity must still be proven: a member_session cookie for THIS name
+  // (minted at sign-up, PIN sign-in, or recovery-code reset) or an admin.
+  // Without this, anyone who knows an enumerable member name (GET /api/members)
+  // could claim the account by setting its first PIN, then sign in as them.
+  if (!hadPin) {
+    const caller = verifyMemberAuth(req);
+    const isSelf = !!caller && caller.name.toLowerCase() === name.toLowerCase();
+    if (!isSelf && !(await isAdminAuthedWithMember(req)).authed) {
+      return NextResponse.json({ error: 'auth_required' }, { status: 401 });
+    }
+  }
 
   const memberDoc: Record<string, unknown> = { ...member, lastSeen: new Date().toISOString() };
   if (clearPin) {

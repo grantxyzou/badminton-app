@@ -205,18 +205,46 @@ describe('PATCH /api/members/me — member-scoped PIN management', () => {
     setupAdminPin();
   });
 
-  it('first-time set: claim flow — no currentPin required when member has no pinHash', async () => {
-    seedMember('Riley');
+  it('first-time set: a signed-in member sets a first PIN with no currentPin', async () => {
+    const m = seedMember('Riley');
+    const res = await ME_PATCH(
+      makeRequest(
+        'POST',
+        'http://localhost:3000/api/members/me',
+        { name: 'Riley', newPin: '4827' },
+        { cookie: `member_session=${memberCookie(m.id, 'Riley')}` },
+      ),
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    expect(data.hasPin).toBe(true);
+  });
+
+  it('rejects an anonymous first-PIN claim — no member cookie + no currentPin → 401', async () => {
+    // Member names are enumerable via GET /api/members. Without this guard,
+    // any visitor could claim an unclaimed (no-PIN) account by POSTing a name
+    // + newPin, then sign in as them.
+    seedMember('Riley'); // no pinHash
     const res = await ME_PATCH(
       makeRequest('POST', 'http://localhost:3000/api/members/me', {
         name: 'Riley',
         newPin: '4827',
       }),
     );
+    expect(res.status).toBe(401);
+  });
+
+  it('admin may set a member\'s first PIN on their behalf', async () => {
+    seedMember('Riley'); // no pinHash
+    seedAdminMember();
+    const res = await ME_PATCH(
+      makeAdminRequest('POST', 'http://localhost:3000/api/members/me', {
+        name: 'Riley',
+        newPin: '4827',
+      }),
+    );
     expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.success).toBe(true);
-    expect(data.hasPin).toBe(true);
   });
 
   it('change with correct currentPin succeeds', async () => {
@@ -281,12 +309,14 @@ describe('PATCH /api/members/me — member-scoped PIN management', () => {
   });
 
   it('first-time set mints a member_session cookie — device trusted for one-tap sign-up', async () => {
-    seedMember('Riley');
+    const m = seedMember('Riley');
     const res = await ME_PATCH(
-      makeRequest('POST', 'http://localhost:3000/api/members/me', {
-        name: 'Riley',
-        newPin: '4827',
-      }),
+      makeRequest(
+        'POST',
+        'http://localhost:3000/api/members/me',
+        { name: 'Riley', newPin: '4827' },
+        { cookie: `member_session=${memberCookie(m.id, 'Riley')}` },
+      ),
     );
     expect(res.status).toBe(200);
     // Proving PIN ownership by setting it should trust this device, so the
@@ -351,12 +381,14 @@ describe('PATCH /api/members/me — member-scoped PIN management', () => {
     // Member set PIN; later when sessions advance, the member.pinHash
     // is still the source of truth — recover endpoint will verify
     // against it regardless of any (or no) session player.
-    seedMember('Riley');
+    const m = seedMember('Riley');
     await ME_PATCH(
-      makeRequest('POST', 'http://localhost:3000/api/members/me', {
-        name: 'Riley',
-        newPin: '4827',
-      }),
+      makeRequest(
+        'POST',
+        'http://localhost:3000/api/members/me',
+        { name: 'Riley', newPin: '4827' },
+        { cookie: `member_session=${memberCookie(m.id, 'Riley')}` },
+      ),
     );
 
     const { getStore } = await import('./helpers');
