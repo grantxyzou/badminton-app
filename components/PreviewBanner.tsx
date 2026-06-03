@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { isPreviewEnv } from '@/lib/flags';
+import { useFocusTrap } from './BottomSheet/useFocusTrap';
 
 const BANNER_HEIGHT = 28;
 const REPO = 'grantxyzou/badminton-app';
@@ -10,6 +11,11 @@ const FEEDBACK_EMAIL = 'xyzou2012@gmail.com';
 export default function PreviewBanner() {
   const show = isPreviewEnv();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  // Move focus into the menu on open, trap Tab inside, restore to the trigger
+  // on close (Escape is handled below; backdrop-click also closes).
+  useFocusTrap(pickerOpen, menuRef, triggerRef);
 
   useEffect(() => {
     if (!show) return;
@@ -67,6 +73,7 @@ export default function PreviewBanner() {
       >
         preview bpm vnext · {sha} not the stable site ·{' '}
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => setPickerOpen((p) => !p)}
           aria-haspopup="menu"
@@ -99,6 +106,7 @@ export default function PreviewBanner() {
             }}
           />
           <div
+            ref={menuRef}
             role="menu"
             aria-label="Report options"
             style={{
