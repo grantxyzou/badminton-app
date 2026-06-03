@@ -9,6 +9,7 @@ import {
   makeAdminRequest,
   makeGetRequest,
   getStore,
+  seedAdminMember,
 } from './helpers';
 import { GET, PUT } from '@/app/api/session/route';
 import { POST as ADVANCE } from '@/app/api/session/advance/route';
@@ -20,6 +21,7 @@ setupAdminPin();
 describe('GET /api/session', () => {
   beforeEach(() => {
     resetMockStore();
+    seedAdminMember();
     seedPointer('session-2026-04-05');
     seedSession('session-2026-04-05', { title: 'Test Session' });
   });
@@ -43,6 +45,7 @@ describe('GET /api/session', () => {
 describe('PUT /api/session', () => {
   beforeEach(() => {
     resetMockStore();
+    seedAdminMember();
     seedPointer('session-2026-04-05');
     seedSession('session-2026-04-05', { title: 'Original Title' });
   });
@@ -234,6 +237,7 @@ describe('PUT /api/session', () => {
 describe('POST /api/session/advance', () => {
   beforeEach(() => {
     resetMockStore();
+    seedAdminMember();
     seedPointer('session-2026-04-05');
     seedSession('session-2026-04-05', { title: 'Test Session' });
   });
@@ -353,6 +357,7 @@ describe('POST /api/session/advance', () => {
 describe('GET /api/sessions/costs', () => {
   beforeEach(() => {
     resetMockStore();
+    seedAdminMember();
     seedPointer('session-2026-04-05');
   });
 

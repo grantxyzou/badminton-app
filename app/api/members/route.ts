@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
-import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { randomBytes } from 'crypto';
 
 export async function GET(req: NextRequest) {
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAdminAuthed(req)) return unauthorized();
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
   try {
     const body = await req.json();
     const trimmedName = typeof body.name === 'string' ? body.name.trim() : '';
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!isAdminAuthed(req)) return unauthorized();
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
   try {
     const body = await req.json();
     const { id } = body;
@@ -160,7 +160,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!isAdminAuthed(req)) return unauthorized();
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
   try {
     const body = await req.json();
     const { id } = body;

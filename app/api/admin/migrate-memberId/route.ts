@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer } from '@/lib/cosmos';
-import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +15,7 @@ interface MigrationSummary {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAdminAuthed(req)) return unauthorized();
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   let dryRun = false;
   try {

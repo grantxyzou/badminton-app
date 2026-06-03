@@ -7,6 +7,7 @@ import {
   makeRequest,
   makeAdminRequest,
   makeGetRequest,
+  seedAdminMember,
 } from './helpers';
 import { GET, POST, PATCH, DELETE } from '@/app/api/skills/route';
 
@@ -15,6 +16,7 @@ setupAdminPin();
 describe('Skills API', () => {
   beforeEach(() => {
     resetMockStore();
+    seedAdminMember();
     seedPointer('session-2026-04-12');
     seedSession('session-2026-04-12', { title: 'Test Session' });
   });
@@ -158,6 +160,7 @@ describe('Skills API', () => {
       );
       // Switch active session
       resetMockStore();
+      seedAdminMember();
       seedPointer('session-2026-04-19');
       seedSession('session-2026-04-19', { title: 'Next Session' });
 

@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { PUT } from '@/app/api/session/route';
-import { resetMockStore, setupAdminPin, seedPointer, seedSession, makeAdminRequest, getStore } from './helpers';
+import { resetMockStore, setupAdminPin, seedPointer, seedSession, makeAdminRequest, getStore,
+  seedAdminMember,
+} from './helpers';
 
 /**
  * Audit finding: PUT /api/session rebuilt the doc from a fixed key-set and
@@ -17,6 +19,7 @@ const SID = 'session-2026-06-01';
 describe('PUT /api/session preserves fields the client does not send', () => {
   beforeEach(() => {
     resetMockStore();
+    seedAdminMember();
     setupAdminPin();
     seedPointer(SID);
     seedSession(SID, {
