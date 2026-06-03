@@ -1004,6 +1004,59 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
   }
 }
 
+/* ── AI insight gradient rim ──
+   Persistent conic-gradient border marking the Stats "Your read" as an AI
+   surface (replaces the old green side-stripe). A masked ::before paints only
+   the edge ring over the glass card — no inner wrapper, content untouched.
+
+   The rim is STATIC by default and only spins WHILE the read is being
+   generated (the `.is-generating` class). The spin freezes in place the
+   instant the text lands — no eased tail. The angle lever is a registered
+   custom property because plain custom props don't interpolate. */
+@property --conic-a {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+.insight-rim {
+  position: relative;
+  border-color: transparent; /* the conic ring is the only edge treatment */
+}
+.insight-rim::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.75px; /* ring thickness */
+  background: conic-gradient(
+    from var(--conic-a),
+    var(--accent, #22c55e),
+    #0ea5e9,
+    #8b5cf6,
+    #f59e0b,
+    var(--accent, #22c55e)
+  );
+  /* Cut out the centre so only the edge ring shows. */
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  /* Declared but PAUSED: static at rest, runs only while generating, and
+     freezes in place (no snap-back, no ease) when the class is removed. */
+  animation: conic-spin 1.4s linear infinite paused;
+}
+.insight-rim.is-generating::before {
+  animation-play-state: running;
+}
+@keyframes conic-spin {
+  to { --conic-a: 360deg; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .insight-rim.is-generating::before { animation-play-state: paused; }
+}
+
 /* ── Buttons ── */
 .btn-primary {
   background: var(--btn-primary-bg);

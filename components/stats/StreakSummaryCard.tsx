@@ -112,11 +112,25 @@ export default function StreakSummaryCard() {
   const hasInsight = insight?.account && (insight.recap || insight.focus);
   // Show the body section while loading OR when there's an insight to render.
   const showBody = insightLoading || hasInsight || (insight?.account && insightError);
+  // The read is actively being produced (spin + aria-busy).
+  const generating = insightLoading && !hasInsight;
+  // The AI gradient treatment only applies when there's an actual read — or
+  // one is being generated. A streak-only card (no read) keeps a plain border,
+  // so the gradient never implies AI content that isn't there.
+  const showRim = insightLoading || !!hasInsight;
+
+  // Nothing to show — no streak, no read, and not generating: render nothing
+  // rather than an empty card shell.
+  if (!hasStreak && !showBody) return null;
 
   return (
     <div
-      className="glass-card"
-      style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14, borderLeft: `3px solid ${ACCENT}` }}
+      // Conic gradient rim marks this as the AI surface (only when a read is
+      // present/loading); `.is-generating` spins it while the read is produced,
+      // freezing in place when it lands. See `.insight-rim` in globals.css.
+      className={`glass-card${showRim ? ' insight-rim' : ''}${generating ? ' is-generating' : ''}`}
+      style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}
+      aria-busy={generating || undefined}
       aria-label={hasStreak ? `${streak} week attendance streak for ${name}` : `Insight for ${name}`}
     >
       {/* ── Headline: attendance streak ── */}
