@@ -12,6 +12,14 @@ interface Props {
   onClose: () => void;
   identity: Identity;
   hasPin: boolean;
+  /**
+   * Whether this device holds a valid member_session cookie for the identity
+   * (from `GET /api/members/me` → `authed`). Tri-state: `null` = unknown
+   * (fetch pending/failed) — don't block on unknown, let the server be the
+   * backstop. Only `false` (known-not-authed) gates the first-PIN set, since
+   * the server requires that cookie for the claim flow.
+   */
+  authed?: boolean | null;
   /** Fires after a successful save with the new state. */
   onSaved: (newHasPin: boolean) => void;
 }
@@ -22,9 +30,10 @@ type PinError =
   | 'failed'
   | 'wrong_current'
   | 'rate_limited'
+  | 'needs_signin'
   | null;
 
-export default function RecoveryPinSheet({ open, onClose, identity, hasPin, onSaved }: Props) {
+export default function RecoveryPinSheet({ open, onClose, identity, hasPin, authed = null, onSaved }: Props) {
   const t = useTranslations('profile');
   const tSettings = useTranslations('profile.settings');
   const tPin = useTranslations('pin');
@@ -69,6 +78,9 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, onSa
         else if (body.error === 'pin_too_common') setPinError('too_common');
         else if (body.error === 'Invalid PIN format') setPinError('invalid');
         else if (body.error === 'invalid_credentials' || body.error === 'current_pin_required') setPinError('wrong_current');
+        // Server's first-set guard rejected us — the cookie expired since the
+        // client last checked `authed`. Show the same actionable guidance.
+        else if (body.error === 'auth_required') setPinError('needs_signin');
         else setPinError('failed');
         return;
       }
@@ -82,6 +94,10 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, onSa
     }
   }
 
+  // First-set requires a member_session cookie (server enforces it). Block the
+  // form only when we KNOW the device isn't authed; `null` (unknown) falls
+  // through to let the user try, with the server as the backstop.
+  const firstSetBlocked = !hasPin && authed === false;
   const title = hasPin ? tSettings('updatePin') : tSettings('newPin');
   const submitLabel = hasPin ? tSettings('updatePin') : tPin('save');
   const canSubmit =
@@ -104,6 +120,16 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, onSa
         </button>
       </BottomSheetHeader>
       <BottomSheetBody className="p-5 pb-8">
+        {firstSetBlocked ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p role="alert" style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+              {t('pinNeedsSignIn')}
+            </p>
+            <button type="button" className="cc-btn cc-btn-secondary cc-btn-lg" onClick={onClose}>
+              {tRecovery('close')}
+            </button>
+          </div>
+        ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {hasPin && (
             <div>
@@ -162,6 +188,11 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, onSa
               {t('pinUpdateFailed')}
             </p>
           )}
+          {pinError === 'needs_signin' && (
+            <p role="alert" style={{ fontSize: 12, color: 'var(--color-amber, #f59e0b)', margin: 0 }}>
+              {t('pinNeedsSignIn')}
+            </p>
+          )}
           {newPin && confirmPin && newPin !== confirmPin && (
             <p role="alert" style={{ fontSize: 12, color: 'var(--color-red, #ef4444)', margin: 0 }}>
               {tPin('mismatch')}
@@ -176,6 +207,7 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, onSa
             {submitLabel}
           </button>
         </div>
+        )}
       </BottomSheetBody>
     </BottomSheet>
   );
