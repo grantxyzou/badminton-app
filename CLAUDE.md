@@ -26,7 +26,7 @@ Omit `COSMOS_CONNECTION_STRING` from `.env.local` to use the in-memory mock stor
 Sessions are date-keyed (`session-YYYY-MM-DD`). A pointer document (`id: 'active-session-pointer'`) tracks the current session. **Always use `getActiveSessionId()`** — never `SESSION_ID` directly (legacy compat only). The pointer falls back to `'current-session'` if no pointer doc exists — do not remove this fallback.
 
 ### Auth
-- Admin: HTTP-only cookie via PIN, validated with `timingSafeEqual`. All admin routes call `isAdminAuthed(req)`.
+- Admin: HTTP-only cookie via PIN, validated with `timingSafeEqual`. **Mutating** admin routes call `await isAdminAuthedWithMember(req)` (re-reads the Member, enforces `role==='admin' && active===true` on every request, so demotion takes effect immediately); **read-only** routes use the cheap sync `isAdminAuthed(req)` (cookie signature + expiry only — no Cosmos read on hot paths). See `lib/auth.ts`. The inline rule-7 sessionId-override checks (skills/players/games) also stay sync. (WS#3 audit, 2026-06-03.)
 - Player self-cancel: `deleteToken` (random 16 bytes hex) returned once at sign-up, stored in `localStorage`, validated server-side.
 
 ### Soft Delete
@@ -83,7 +83,7 @@ Canonical bundle mirrored at `docs/design-system/` (43 files — tokens, 28 spec
 
 1. **`deleteToken` never in responses.** Strip after any GET/PATCH: `const { deleteToken: _dt, ...safe } = record`.
 2. **`timingSafeEqual` for all secret comparisons.** Never `===` for PINs or cookies.
-3. **Auth before DB.** `isAdminAuthed(req)` at top of every admin route, before body parsing.
+3. **Auth before DB.** Admin check at top of every admin route, before body parsing. **Mutating** handlers use `await isAdminAuthedWithMember(req)` (role re-check); read-only handlers may use sync `isAdminAuthed(req)`.
 4. **Rate limit before auth.** Rate limiting first in handler so it can't be bypassed.
 5. **`POST /api/claude` is admin-only.** Unauthenticated access would expose API key budget.
 6. **`getClientIp(req)` for IP.** Reads `X-Client-IP` then `X-Forwarded-For`. Never `req.ip` (returns Azure proxy IP).
@@ -92,6 +92,7 @@ Canonical bundle mirrored at `docs/design-system/` (43 files — tokens, 28 spec
 9. **`purgeAll: true` is irreversible.** Hard-deletes all records including soft-deleted.
 10. **Aliases require admin auth.** E-transfer names are sensitive payment data.
 11. **PIN comparison hashes first.** `admin/route.ts` hashes both PIN and admin PIN to SHA-256 before `timingSafeEqual` to avoid leaking PIN length via timing.
+12. **Member-scoped writes bind to the member cookie.** A name-keyed write that mutates one member's data (e.g. `equipment/gear` PUT) must require a `member_session` cookie matching the target member (`verifyMemberAuth` → `memberId`) OR admin — never name-only, since names are enumerable. The cookie is minted at sign-up (no PIN needed), preserving "anon-signup trust" while closing impersonation. (WS#3, 2026-06-03.)
 
 ## Gotchas
 
@@ -114,7 +115,8 @@ Canonical bundle mirrored at `docs/design-system/` (43 files — tokens, 28 spec
   - **Sign in** (Profile path) = name + PIN auth via `<SignInForm>` rendered inline on ProfileTab's anonymous view. POST `/api/players/recover` verifies against `members.pinHash` and returns **identity-only** (`deleteToken: null`) — Profile sign-in does NOT auto-register for a session (commit 6046755, 2026-05-07). Constant-time miss against `FAKE_HASH`. Rate-limited 5/hr per `(name, IP)`. HomeTab's old "Already a player?" link + standalone RecoverySheet card (#89) were removed 2026-05-12 in favor of the adaptive form above.
   - **Cancel spot** ≠ **Sign out**. `PlayersTab.handleCancel` removes the user from the active session player list and zeroes the deleteToken (server consumed it), but preserves name + sessionId in localStorage. The user stays signed in and can re-sign-up with one tap. `clearIdentity()` belongs only in `ProfileTab.handleLogout`.
   - PINs scrypt-hashed via `lib/recoveryHash.ts`. Lost-device admin code via `POST /api/players/reset-access` (10/hr per IP, 6-digit, 15-min TTL — in-memory `lib/recoveryCodes.ts`, does NOT survive cold starts).
-  - **Recovery code path clears `members.pinHash`** (and the `players.pinHash` mirror) on success — the user reached this path because they forgot their PIN, so any subsequent `RecoveryPinSheet` should render in 2-field mode (no current-PIN prompt). Without this, the sheet's `hasPin` check left users stuck after a reset.
+  - **Recovery code path clears `members.pinHash`** (and the `players.pinHash` mirror) on success — the user reached this path because they forgot their PIN, so any subsequent `RecoveryPinSheet` should render in 2-field mode (no current-PIN prompt). Without this, the sheet's `hasPin` check left users stuck after a reset. **It also mints a `member_session` cookie** (consuming a valid admin-issued code proves identity, same as a PIN sign-in) — this is what lets the user pass the members/me first-set guard below when they pick a replacement PIN. (WS#3, 2026-06-03.)
+  - **`PATCH /api/members/me` first-PIN set (claim flow) requires identity proof** (WS#3, 2026-06-03): a `member_session` cookie for that name (minted at sign-up, PIN sign-in, or recovery-code reset) OR admin. Previously name-only — member names are enumerable via `GET /api/members`, so anyone could claim an unclaimed (no-PIN) account and sign in as them. The **change-PIN** branch is unaffected (`currentPin` is its credential). Client-side: `GET /api/members/me` returns `authed`; `ProfileTab` passes it to `RecoveryPinSheet`, which blocks first-set with actionable guidance (`profile.pinNeedsSignIn`) when known-not-authed (e.g. cookie expired past its 30-day TTL while `localStorage` identity persists), and never blocks on `authed === null` (unknown — server is the backstop).
   - Profile signed-in: PIN management lives in Settings as `New PIN` / `Update PIN` row → opens `RecoveryPinSheet` (Set/Change only — no Remove). Status sourced from `/api/members/me?name=X` returning `hasPin`, refetched on identity change.
   - **PIN is opt-in.** `ForcePinModal` was removed in commit 2026-05-07 (was already unmounted; deleted with no consumers).
   - **Admin login**: per-player auth via name + own PIN (`POST /api/admin`); cookie HMAC-signed via `SESSION_SECRET`. `member.role === 'admin'` required. Bootstrap names via `ADMIN_NAMES` env var. **Cookie TTL is 30 days** (`lib/auth.ts:29`); was 8h pre-v1.3, bumped to match `badminton_identity` localStorage longevity.
