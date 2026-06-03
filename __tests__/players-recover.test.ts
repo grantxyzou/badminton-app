@@ -77,6 +77,22 @@ describe('POST /api/players/recover', () => {
     expect(data.deleteToken).toMatch(/^[0-9a-f]{32}$/);
   });
 
+  it('Code success mints a member_session cookie — the post-reset PIN sheet needs identity proof', async () => {
+    const { seedMember } = await import('./helpers');
+    const oldHash = await hashPin('1234');
+    seedMember('Sarah', { pinHash: oldHash });
+    const player = seedPlayer(SESSION, 'Sarah', { deleteToken: 'old-token' });
+    const { code } = await issueCode(player.id, SESSION);
+
+    const res = await POST(
+      makeRequest('POST', URL_PATH, { name: 'Sarah', sessionId: SESSION, code }),
+    );
+    expect(res.status).toBe(200);
+    // Consuming the code clears the PIN; the minted cookie is what lets the
+    // user pass the members/me first-set guard when they choose a new PIN.
+    expect(res.cookies.get('member_session')?.value).toBeTruthy();
+  });
+
   it('Wrong PIN: 401 invalid_credentials', async () => {
     const pinHash = await hashPin('1234');
     const { seedMember } = await import('./helpers');
