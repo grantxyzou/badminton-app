@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
+import { verifyMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import type { PlayerGear, GearItem } from '@/lib/types';
 
@@ -48,10 +49,10 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// TODO(value-hub): gear writes are name-keyed and unauthenticated for Slice-0
-// (a racket preference is low-sensitivity, same trust as anon sign-up). Bind to
-// PIN/identity here if gear later carries sensitive data — verify body.pin
-// against member.pinHash, same envelope as POST /api/players.
+// Gear writes are identity-bound: the caller must hold the member_session
+// cookie for the target member (minted at sign-up, no PIN required) or be an
+// admin. See the owner/admin check below. GET stays public — a racket
+// preference is low-sensitivity to read.
 export async function PUT(req: NextRequest) {
   if (!isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
@@ -66,6 +67,16 @@ export async function PUT(req: NextRequest) {
     }
     const memberId = await resolveMemberId(name);
     if (!memberId) return NextResponse.json({ error: 'member_not_found' }, { status: 404 });
+
+    // Gear is member-scoped: only the member themselves (proven by the
+    // member_session cookie minted at sign-up — no PIN required) or an admin
+    // may write it. Closes the name-keyed impersonation hole while keeping the
+    // "same trust as anon sign-up" bar the feature was designed around.
+    const caller = verifyMemberAuth(req);
+    const isOwner = caller?.memberId === memberId;
+    if (!isOwner && !(await isAdminAuthedWithMember(req)).authed) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
 
     const incoming: GearItem = {
       id: typeof body.item.id === 'string' ? body.item.id : randomBytes(12).toString('hex'),

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos';
+import { isAdminAuthed } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import type { GameResult } from '@/lib/types';
@@ -30,8 +31,9 @@ export async function GET(req: NextRequest) {
   }
   try {
     await ensureGames();
+    // sessionId override is admin-only (rule 7); non-admins read the active session.
     const override = new URL(req.url).searchParams.get('sessionId');
-    const sessionId = override || (await getActiveSessionId());
+    const sessionId = override && isAdminAuthed(req) ? override : await getActiveSessionId();
     const container = getContainer('gameResults');
     const { resources } = await container.items
       .query({
@@ -70,7 +72,8 @@ export async function POST(req: NextRequest) {
     const loggedBy = typeof body.loggedBy === 'string' ? body.loggedBy.trim().slice(0, 50) : '';
     if (!loggedBy) return NextResponse.json({ error: 'loggedBy_required' }, { status: 400 });
 
-    const sessionId = typeof body.sessionId === 'string' && body.sessionId
+    // sessionId override is admin-only (rule 7); non-admins log to the active session.
+    const sessionId = typeof body.sessionId === 'string' && body.sessionId && isAdminAuthed(req)
       ? body.sessionId
       : await getActiveSessionId();
 
