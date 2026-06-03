@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
-import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
 import type { Player, Session, SettledSnapshot } from '@/lib/types';
 
@@ -32,7 +32,7 @@ async function resolveTargetSessionId(req: NextRequest): Promise<string> {
  * silently redefine what already-paid players paid for.
  */
 export async function POST(req: NextRequest) {
-  if (!isAdminAuthed(req)) return unauthorized();
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   try {
     const sessionId = await resolveTargetSessionId(req);
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
  * payment from this person") that survives a typo'd settle.
  */
 export async function DELETE(req: NextRequest) {
-  if (!isAdminAuthed(req)) return unauthorized();
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   try {
     const sessionId = await resolveTargetSessionId(req);

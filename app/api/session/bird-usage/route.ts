@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
-import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { normalizeBirdUsages } from '@/lib/birdUsages';
 import type { BirdUsage, Session } from '@/lib/types';
 
@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
  * - tubes === 0 removes the entry for that purchase (undo assignment).
  */
 export async function PATCH(req: NextRequest) {
-  if (!isAdminAuthed(req)) return unauthorized();
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   try {
     const body = await req.json();

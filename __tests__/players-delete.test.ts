@@ -7,6 +7,7 @@ import {
   seedPlayer,
   makeRequest,
   makeAdminRequest,
+  seedAdminMember,
 } from './helpers';
 import { DELETE } from '@/app/api/players/route';
 
@@ -21,6 +22,7 @@ describe('DELETE /api/players', () => {
   beforeEach(() => {
     setupAdminPin();
     resetMockStore();
+    seedAdminMember();
     seedPointer(SESSION_ID);
     seedSession(SESSION_ID);
   });

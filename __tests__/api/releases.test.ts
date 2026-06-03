@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GET, POST, DELETE } from '../../app/api/releases/route';
 import { NextRequest } from 'next/server';
-import { resetMockStore, makeAdminRequest, makeRequest, setupAdminPin } from '../helpers';
+import { resetMockStore, makeAdminRequest, makeRequest, setupAdminPin,
+  seedAdminMember,
+} from '../helpers';
 
 setupAdminPin();
 
@@ -32,6 +34,7 @@ const validBody = {
 describe('/api/releases', () => {
   beforeEach(() => {
     resetMockStore();
+    seedAdminMember();
   });
 
   it('GET returns array (public)', async () => {

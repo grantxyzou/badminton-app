@@ -8,6 +8,7 @@ import {
   seedPointer,
   seedSession,
   getStore,
+  seedAdminMember,
 } from './helpers';
 
 function seedPurchase(id: string, name: string, tubes = 10, costPerTube = 12): void {
@@ -28,6 +29,7 @@ describe('PATCH /api/session/bird-usage', () => {
   beforeEach(() => {
     setupAdminPin();
     resetMockStore();
+    seedAdminMember();
     seedPointer('session-2026-04-24');
     seedSession('session-2026-04-24');
     seedPurchase('pur-yonex-1', 'Yonex AS-50');

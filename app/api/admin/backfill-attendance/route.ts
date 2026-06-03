@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, sessionIdFromDate } from '@/lib/cosmos';
-import { isAdminAuthed } from '@/lib/auth';
+import { isAdminAuthedWithMember } from '@/lib/auth';
 
 /**
  * Admin-only one-shot backfill endpoint for historical attendance.
@@ -36,7 +36,7 @@ interface Body {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAdminAuthed(req)) {
+  if (!(await isAdminAuthedWithMember(req)).authed) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
   }
 

@@ -7,6 +7,7 @@ import {
   makeGetRequest,
   seedPointer,
   seedSession,
+  seedAdminMember,
 } from './helpers';
 import { GET, POST, DELETE, PATCH } from '@/app/api/birds/route';
 
@@ -14,6 +15,7 @@ describe('Birds API', () => {
   beforeEach(() => {
     setupAdminPin();
     resetMockStore();
+    seedAdminMember();
   });
 
   describe('POST /api/birds', () => {

@@ -11,6 +11,7 @@ import {
   makeAdminRequest,
   makeGetRequest,
   getStore,
+  seedAdminMember,
 } from './helpers';
 
 // ---- HELPERS ----
@@ -213,6 +214,9 @@ describe('PATCH /api/players — pin field', () => {
   beforeEach(() => {
     resetMockStoreH();
     setupAdminPin();
+    // PATCH now derives its admin flag via the role-rechecking async gate, so
+    // the cookie's admin Member must exist for the admin-set-PIN path.
+    seedAdminMember();
     seedPointerH(SESSION);
     seedSessionH(SESSION);
     process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'true';

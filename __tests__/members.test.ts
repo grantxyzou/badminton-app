@@ -3,6 +3,7 @@ import {
   resetMockStore,
   setupAdminPin,
   seedMember,
+  seedAdminMember,
   makeRequest,
   makeAdminRequest,
   makeGetRequest,
@@ -67,6 +68,10 @@ describe('GET /api/members', () => {
 describe('POST /api/members', () => {
   beforeEach(() => {
     resetMockStore();
+    // POST /api/members now uses the role-rechecking async admin gate, so the
+    // cookie's admin Member must exist. (GET stays sync — seeding here only,
+    // not in the GET block which asserts member-list counts.)
+    seedAdminMember();
   });
 
   it('admin creates a new member → 201', async () => {

@@ -9,6 +9,7 @@ import {
   adminCookieValue,
   makeRequest,
   makeAdminRequest,
+  seedAdminMember,
 } from './helpers';
 import { __resetForTests } from '@/lib/recoveryCodes';
 
@@ -17,6 +18,7 @@ const URL_PATH = 'http://localhost:3000/api/players/reset-access';
 
 beforeEach(() => {
   resetMockStore();
+  seedAdminMember();
   setupAdminPin();
   __resetForTests();
   seedPointer(SESSION);
