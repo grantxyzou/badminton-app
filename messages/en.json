@@ -173,6 +173,7 @@
     "pinTooCommon": "Pick a less common PIN",
     "pinInvalid": "PIN must be 4 digits",
     "pinUpdateFailed": "Couldn't update PIN. Please try again.",
+    "pinNeedsSignIn": "Sign up for this week first — it re-activates your account on this device so you can set a PIN.",
     "pinWrongCurrent": "Current PIN doesn't match.",
     "pinRateLimited": "Too many tries. Try again in an hour.",
     "adminToolsTitle": "Admin tools",

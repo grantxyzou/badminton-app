@@ -35,6 +35,10 @@ export default function ProfileTab({
   // 5xx on /api/members/me silently rendered "Recovery PIN: Not set" and
   // pushed users into a re-create loop that 409'd on `account_exists`.
   const [pinIsSet, setPinIsSet] = useState<boolean | null>(null);
+  // Whether this device holds a valid member_session cookie. Gates first-PIN
+  // set in RecoveryPinSheet (the server requires the cookie for the claim flow).
+  // null = unknown — don't block on it.
+  const [pinAuthed, setPinAuthed] = useState<boolean | null>(null);
   const [memberCreatedAt, setMemberCreatedAt] = useState<string | null>(null);
   const [isSignedUp, setIsSignedUp] = useState<boolean>(false);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
@@ -92,10 +96,12 @@ export default function ProfileTab({
         if (!r.ok) throw new Error(`hasPin fetch ${r.status}`);
         return r.json();
       })
-      .then((data: { hasPin?: boolean; createdAt?: string | null }) => {
+      .then((data: { hasPin?: boolean; createdAt?: string | null; authed?: boolean }) => {
         if (cancelled) return;
         setPinIsSet(data.hasPin === true);
         setMemberCreatedAt(typeof data.createdAt === 'string' ? data.createdAt : null);
+        // `authed` gates first-PIN set in RecoveryPinSheet; unknown stays null.
+        setPinAuthed(typeof data.authed === 'boolean' ? data.authed : null);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -104,6 +110,7 @@ export default function ProfileTab({
         // recreate-account loops on transient backend failures.
         console.warn('hasPin fetch failed:', err);
         setPinIsSet(null);
+        setPinAuthed(null);
       });
 
     // Signed-up status — independent chain; its failure must NOT touch pinIsSet.
@@ -336,6 +343,7 @@ export default function ProfileTab({
         onClose={() => setRecoveryPinOpen(false)}
         identity={identity}
         hasPin={pinIsSet === true}
+        authed={pinAuthed}
         onSaved={(newHasPin) => setPinIsSet(newHasPin)}
       />
       <EnterCodeSheet

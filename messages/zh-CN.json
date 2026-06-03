@@ -173,6 +173,7 @@
     "pinTooCommon": "请选择不那么常见的 PIN",
     "pinInvalid": "PIN 必须是 4 位数字",
     "pinUpdateFailed": "更新 PIN 失败，请重试。",
+    "pinNeedsSignIn": "请先报名本周活动——这会在此设备上重新激活你的账户，然后即可设置 PIN。",
     "pinWrongCurrent": "当前 PIN 不正确。",
     "pinRateLimited": "尝试次数过多，请一小时后再试。",
     "adminToolsTitle": "管理员工具",
