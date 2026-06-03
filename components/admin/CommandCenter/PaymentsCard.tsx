@@ -26,6 +26,25 @@ interface Player {
   writtenOff?: boolean;
 }
 
+/**
+ * Single source of truth for "this player has an outstanding, coverable debt."
+ * Used by BOTH the "Cover their $X" ActionRow and the remove-intercept so the
+ * two surfaces can't drift — they previously did (the ActionRow omitted `!paid`
+ * and offered to write off a debt the player had already settled). Does not
+ * include the `NEXT_PUBLIC_FLAG_LEDGER` gate — that's a feature flag, not a
+ * property of the player — so callers keep gating on `ledgerFlagOn` themselves.
+ */
+export function canCover(
+  p: Pick<Player, 'owedAmount' | 'paid' | 'writtenOff'> | null | undefined,
+): boolean {
+  return (
+    typeof p?.owedAmount === 'number' &&
+    p.owedAmount > 0 &&
+    !p.writtenOff &&
+    !p.paid
+  );
+}
+
 interface SessionLite {
   id: string;
   datetime?: string;
@@ -280,13 +299,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
     // an orphan debt on the ledger. Offer "Cover & remove" first instead of a
     // plain confirm — same predicate as the "Cover their $X" ActionRow so the
     // two surfaces agree on what counts as an outstanding debt (v1.5/C).
-    if (
-      ledgerFlagOn &&
-      typeof actionTarget.owedAmount === 'number' &&
-      actionTarget.owedAmount > 0 &&
-      !actionTarget.writtenOff &&
-      !actionTarget.paid
-    ) {
+    if (ledgerFlagOn && canCover(actionTarget)) {
       setCoverMode('cover-and-remove');
       setCoverTarget(actionTarget);
       setActionTarget(null);
@@ -640,7 +653,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
                 {actionError}
               </p>
             )}
-            {ledgerFlagOn && typeof actionTarget?.owedAmount === 'number' && actionTarget.owedAmount > 0 && !actionTarget.writtenOff && (
+            {ledgerFlagOn && actionTarget && canCover(actionTarget) && (
               <ActionRow
                 icon="paid"
                 label={`Cover their $${actionTarget.owedAmount}`}
