@@ -650,7 +650,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                 placeholder="Name on e-transfers, if different"
               />
               <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0' }}>
-                Used to match incoming payments when the e-transfer name doesn't match the in-app name.
+                Used to match incoming payments when the e-transfer name doesn&apos;t match the in-app name.
               </p>
             </Field>
 

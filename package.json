@@ -7,7 +7,7 @@
     "prebuild": "node scripts/extract-unreleased.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -28,7 +28,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.5.0",
-    "eslint": "^10.4.0",
+    "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.6",
     "jsdom": "^29.1.1",
     "postcss": "^8.5.10",

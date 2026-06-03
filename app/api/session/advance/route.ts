@@ -27,11 +27,20 @@ function calculateOffsetHours(sessionDatetime: string | undefined, deadline: str
  * This is a placeholder — the actual implementation would need timestamps
  * from when signup was toggled on, which aren't currently tracked.
  */
-function calculateSignupOpensOffset(session: any): number {
+function calculateSignupOpensOffset(_session: unknown): number {
   // TODO: implement signup-open timestamp tracking if needed for audits
   // For now, default to 0 (signup opened immediately at session start)
   return 0;
 }
+
+/** Frozen snapshot of the outgoing session's settings, stored on advance. */
+type PrevSnapshot = {
+  courtCount: number;
+  costPerCourt: number;
+  maxPlayers: number;
+  deadlineOffsetHours: number;
+  signupOpensOffsetHours: number;
+};
 
 export async function POST(req: NextRequest) {
   if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
@@ -59,7 +68,7 @@ export async function POST(req: NextRequest) {
     // Snapshot previous session's cost-per-person for the payment reminder
     let prevSessionDate: string | undefined;
     let prevCostPerPerson: number | undefined;
-    let prevSnapshot: any = undefined;
+    let prevSnapshot: PrevSnapshot | undefined = undefined;
     const anomaliesAtAdvance: import('@/lib/anomalies').AnomalyCode[] = [];
 
     if (currentSession) {

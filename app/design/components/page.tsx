@@ -102,7 +102,7 @@ export default function ComponentsPage() {
         <div className="status-banner-orange">
           <span className="material-icons" aria-hidden style={{ fontSize: 22, color: 'var(--sev-med-text)' }}>watch_later</span>
           <div>
-            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--sev-med-text)' }}>You're on the waitlist</div>
+            <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--sev-med-text)' }}>You&apos;re on the waitlist</div>
             <div style={{ fontSize: 12, opacity: 0.72, marginTop: 2 }}>Position #2 of 3</div>
           </div>
         </div>

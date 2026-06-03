@@ -51,8 +51,8 @@ export default function TypeSystemPage() {
 
       <Block title="BODY — IBM PLEX SANS 400 / 500">
         <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, margin: 0 }}>
-          Sign up to claim your spot at this week's casual session. Twelve players on court,
-          waitlist open once we're full. Your share of court + shuttles is about{' '}
+          Sign up to claim your spot at this week&apos;s casual session. Twelve players on court,
+          waitlist open once we&apos;re full. Your share of court + shuttles is about{' '}
           <span className="bpm-mono">~$8.50</span>.
         </p>
         <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, margin: 0, color: 'var(--text-secondary)' }}>
