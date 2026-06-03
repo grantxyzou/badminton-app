@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
     // an admin must not see "no skills recorded" when the read actually failed
     // (CLAUDE.md: "Lying empty state is forbidden").
     console.error('GET skills error:', error);
-    return NextResponse.json({ error: 'Failed to load skills' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to load skills' }, { status: 503 });
   }
 }
 

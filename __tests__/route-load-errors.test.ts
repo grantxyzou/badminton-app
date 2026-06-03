@@ -27,24 +27,24 @@ describe('read routes surface load failures instead of a lying empty state', () 
     vi.restoreAllMocks();
   });
 
-  it('GET /api/players returns 500 when the players query throws (not 200 + [])', async () => {
+  it('GET /api/players returns 503 when the players query throws (not 200 + [])', async () => {
     // getActiveSessionId uses cosmos' internal container ref (still works);
     // the route's getContainer('players') export call is what we break.
     vi.spyOn(cosmos, 'getContainer').mockImplementation(() => {
       throw new Error('cosmos down');
     });
     const res = await getPlayers(getReq('http://localhost/api/players'));
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(503);
     const body = await res.json();
     expect(body.error).toBeTruthy();
   });
 
-  it('GET /api/skills returns 500 when the skills query throws (not 200 + empty)', async () => {
+  it('GET /api/skills returns 503 when the skills query throws (not 200 + empty)', async () => {
     vi.spyOn(cosmos, 'getContainer').mockImplementation(() => {
       throw new Error('cosmos down');
     });
     const res = await getSkills(makeGetRequest('http://localhost/api/skills', true));
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(503);
     const body = await res.json();
     expect(body.error).toBeTruthy();
   });

@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     // the v1.3 Cosmos outage was masked. Clients must be able to tell the
     // difference (CLAUDE.md: "Lying empty state is forbidden").
     console.error('GET players error:', error);
-    return NextResponse.json({ error: 'Failed to load players' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to load players' }, { status: 503 });
   }
 }
 
