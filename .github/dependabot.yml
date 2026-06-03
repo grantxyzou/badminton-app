@@ -30,3 +30,11 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    ignore:
+      # eslint-config-next 16 targets ESLint 9 (peer `>=9`), and its bundled
+      # eslint-plugin-react crashes on ESLint 10 (`getFilename` was removed) —
+      # the exact bump that silently broke the whole lint toolchain. Hold ESLint
+      # on 9.x (minors/patches still flow) until eslint-config-next ships ESLint
+      # 10 support; revisit then. (audit WS#4, 2026-06-03)
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]

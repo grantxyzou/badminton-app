@@ -43,6 +43,12 @@ jobs:
       - name: Install dependencies (strict, mirrors deploy)
         run: npm ci
 
+      # ESLint (flat config, eslint.config.mjs). Fails the PR on lint *errors*
+      # only — `eslint .` exits 0 on warnings, so the deferred React-Compiler /
+      # exhaustive-deps / a11y warning pile (audit "Harvest B") doesn't block.
+      - name: Lint
+        run: npm run lint
+
       - name: Run tests
         run: npm test
 
