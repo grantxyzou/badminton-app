@@ -15,7 +15,7 @@
     "@anthropic-ai/sdk": "^0.100.1",
     "@azure/cosmos": "^4.9.3",
     "@formatjs/intl-localematcher": "^0.8.9",
-    "next": "^16.2.6",
+    "next": "^16.2.7",
     "next-intl": "^4.12.0",
     "react": "^18",
     "react-dom": "^18",
