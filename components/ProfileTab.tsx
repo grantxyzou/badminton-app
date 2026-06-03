@@ -83,6 +83,10 @@ export default function ProfileTab({
     }
     let cancelled = false;
     setPinIsSet(null); // mark unknown while fetching
+    // PIN status — its OWN chain so a players-fetch failure can never reset it.
+    // Previously these were chained (members/me -> players) under one catch, so
+    // a transient players rejection wiped a perfectly good pinIsSet=true,
+    // mislabeling the PIN row (audit silent-failure cluster).
     fetch(`${BASE}/api/members/me?name=${encodeURIComponent(identity.name)}`, { cache: 'no-store' })
       .then(async (r) => {
         if (!r.ok) throw new Error(`hasPin fetch ${r.status}`);
@@ -93,9 +97,19 @@ export default function ProfileTab({
         setPinIsSet(data.hasPin === true);
         setMemberCreatedAt(typeof data.createdAt === 'string' ? data.createdAt : null);
       })
-      .then(() => fetch(`${BASE}/api/players`, { cache: 'no-store' }))
+      .catch((err) => {
+        if (cancelled) return;
+        // Keep status unknown rather than asserting "Not set". The audit
+        // (H4) found this default-to-false flip was pushing users into
+        // recreate-account loops on transient backend failures.
+        console.warn('hasPin fetch failed:', err);
+        setPinIsSet(null);
+      });
+
+    // Signed-up status — independent chain; its failure must NOT touch pinIsSet.
+    fetch(`${BASE}/api/players`, { cache: 'no-store' })
       .then(async (r) => {
-        if (!r || !r.ok) return null;
+        if (!r.ok) return null;
         return r.json() as Promise<Array<{ name?: string; removed?: boolean; waitlisted?: boolean }>>;
       })
       .then((players) => {
@@ -107,11 +121,8 @@ export default function ProfileTab({
       })
       .catch((err) => {
         if (cancelled) return;
-        // Keep status unknown rather than asserting "Not set". The audit
-        // (H4) found this default-to-false flip was pushing users into
-        // recreate-account loops on transient backend failures.
-        console.warn('hasPin fetch failed:', err);
-        setPinIsSet(null);
+        // Signed-up status stays unknown; never touch pinIsSet from here.
+        console.warn('signed-up fetch failed:', err);
       });
     return () => {
       cancelled = true;

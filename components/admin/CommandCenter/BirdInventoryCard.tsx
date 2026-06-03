@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useReportFetchFailure } from '@/lib/useOnline';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -18,14 +19,18 @@ export default function BirdInventoryCard({ onOpen }: BirdInventoryCardProps = {
   const [summary, setSummary] = useState<BirdSummary | null>(null);
   const [weeksOfBurnRate, setWeeksOfBurnRate] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const reportFetchFailure = useReportFetchFailure();
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const [birdsRes, sessionsRes] = await Promise.all([
         fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
         fetch(`${BASE}/api/sessions/recent?limit=6`, { cache: 'no-store' }),
       ]);
+      if (!birdsRes.ok) setLoadError(true);
       const birds = birdsRes.ok ? ((await birdsRes.json()) as BirdSummary) : null;
       setSummary(birds);
 
@@ -46,15 +51,27 @@ export default function BirdInventoryCard({ onOpen }: BirdInventoryCardProps = {
         }
       }
     } catch {
+      setLoadError(true);
+      reportFetchFailure();
       setSummary(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [reportFetchFailure]);
 
   useEffect(() => { void load(); }, [load]);
 
   if (loading) return null;
+  // Distinguish a load failure from a genuinely empty inventory — "No data."
+  // on a failed fetch is a lying empty state (CLAUDE.md).
+  if (loadError) {
+    return (
+      <section className="glass-card p-4 space-y-1 opacity-60" aria-label="Bird inventory">
+        <h3 className="bpm-h3">Bird inventory</h3>
+        <p role="alert" className="text-xs" style={{ color: 'var(--color-red, #ef4444)' }}>Couldn&apos;t load — refresh to retry</p>
+      </section>
+    );
+  }
   if (!summary) {
     return (
       <section className="glass-card p-4 space-y-1 opacity-60" aria-label="Bird inventory">
