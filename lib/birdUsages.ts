@@ -30,6 +30,36 @@ export function totalBirdCost(usages: BirdUsage[]): number {
 }
 
 /**
+ * Apply a single-purchase tube edit to a session's full usage map WITHOUT
+ * dropping the other purchases. Returns the `{ purchaseId, tubes }` array that
+ * `PUT /api/session` accepts (the server re-derives cost from the purchase).
+ *
+ * SetupPage's single-purchase tube editor used to overwrite the whole
+ * `birdUsages` array with just the one edited entry, silently collapsing a
+ * session that legitimately carried tubes from ≥2 purchases (assignable via
+ * BirdsPage's AssignUsageSheet) down to one — understating cost. Merging
+ * against the loaded `originalSessionTubes` map preserves the untouched entries.
+ *
+ * - `editedTubes > 0`  → set/replace that purchase's entry
+ * - `editedTubes <= 0` → remove that purchase's entry
+ * - `editedPurchaseId === null` → no edit; the original map is returned as-is
+ *
+ * Does not mutate `original`.
+ */
+export function mergeBirdUsageEdit(
+  original: Map<string, number>,
+  editedPurchaseId: string | null,
+  editedTubes: number,
+): { purchaseId: string; tubes: number }[] {
+  const merged = new Map(original);
+  if (editedPurchaseId) {
+    if (editedTubes > 0) merged.set(editedPurchaseId, editedTubes);
+    else merged.delete(editedPurchaseId);
+  }
+  return Array.from(merged, ([purchaseId, tubes]) => ({ purchaseId, tubes }));
+}
+
+/**
  * Sums tubes used across the given sessions. Accepts either full sessions
  * (reads via `normalizeBirdUsages`) or already-normalized usage arrays.
  */

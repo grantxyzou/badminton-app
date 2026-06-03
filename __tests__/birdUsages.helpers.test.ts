@@ -1,6 +1,46 @@
 import { describe, it, expect } from 'vitest';
-import { tubesUsedAcross, avgTubesPerSession, runwayWeeks } from '@/lib/birdUsages';
+import { tubesUsedAcross, avgTubesPerSession, runwayWeeks, mergeBirdUsageEdit } from '@/lib/birdUsages';
 import type { Session, BirdUsage } from '@/lib/types';
+
+describe('mergeBirdUsageEdit — preserve other purchases when editing one', () => {
+  const sorted = (arr: { purchaseId: string; tubes: number }[]) =>
+    [...arr].sort((a, b) => a.purchaseId.localeCompare(b.purchaseId));
+
+  it('updates the edited purchase and keeps the others (the bug: it collapsed to one)', () => {
+    const original = new Map([['A', 2], ['B', 3]]);
+    expect(sorted(mergeBirdUsageEdit(original, 'A', 5))).toEqual([
+      { purchaseId: 'A', tubes: 5 },
+      { purchaseId: 'B', tubes: 3 },
+    ]);
+  });
+
+  it('removes only the edited purchase when its tubes go to 0', () => {
+    const original = new Map([['A', 2], ['B', 3]]);
+    expect(mergeBirdUsageEdit(original, 'A', 0)).toEqual([{ purchaseId: 'B', tubes: 3 }]);
+  });
+
+  it('adds a new purchase alongside existing ones', () => {
+    const original = new Map([['A', 2]]);
+    expect(sorted(mergeBirdUsageEdit(original, 'C', 1))).toEqual([
+      { purchaseId: 'A', tubes: 2 },
+      { purchaseId: 'C', tubes: 1 },
+    ]);
+  });
+
+  it('returns the original untouched when there is no edit (null purchase)', () => {
+    const original = new Map([['A', 2], ['B', 3]]);
+    expect(sorted(mergeBirdUsageEdit(original, null, 0))).toEqual([
+      { purchaseId: 'A', tubes: 2 },
+      { purchaseId: 'B', tubes: 3 },
+    ]);
+  });
+
+  it('does not mutate the input map', () => {
+    const original = new Map([['A', 2]]);
+    mergeBirdUsageEdit(original, 'A', 9);
+    expect(original.get('A')).toBe(2);
+  });
+});
 
 function mkSession(usages: Partial<BirdUsage>[] | null): Pick<Session, 'birdUsages'> {
   if (!usages) return { birdUsages: undefined };
