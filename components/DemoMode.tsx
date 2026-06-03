@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { useFocusTrap } from './BottomSheet/useFocusTrap';
 
 interface Props {
   onClose: () => void;
@@ -13,6 +14,12 @@ interface Props {
  * This is intentionally bare — content lands here in a future pass.
  */
 export default function DemoMode({ onClose }: Props) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  // Trap Tab focus inside the modal + move focus to the close button on open
+  // (no clean trigger ref for the 7-tap title; the hook restores to the
+  // previously-focused element on unmount).
+  useFocusTrap(true, dialogRef);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
@@ -23,6 +30,7 @@ export default function DemoMode({ onClose }: Props) {
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label="Demo mode"
