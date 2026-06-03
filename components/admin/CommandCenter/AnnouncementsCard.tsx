@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { renderMarkdown } from '@/lib/miniMarkdown';
+import { useReportFetchFailure } from '@/lib/useOnline';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -29,15 +30,25 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
   const [editText, setEditText] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [editError, setEditError] = useState('');
+  const [loadError, setLoadError] = useState(false);
+  const reportFetchFailure = useReportFetchFailure();
 
   const load = useCallback(async () => {
+    setLoadError(false);
     try {
       const res = await fetch(`${BASE}/api/announcements`, { cache: 'no-store' });
-      if (res.ok) setItems(await res.json());
+      // Don't swallow a failed load as "No announcements posted" (lying empty
+      // state — CLAUDE.md). Surface it so the admin knows the list is unknown.
+      if (!res.ok) {
+        setLoadError(true);
+        return;
+      }
+      setItems(await res.json());
     } catch {
-      // Silent — show no items.
+      setLoadError(true);
+      reportFetchFailure();
     }
-  }, []);
+  }, [reportFetchFailure]);
 
   useEffect(() => { void load(); }, [load, refreshKey]);
 
@@ -146,8 +157,16 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
     <section className="glass-card p-4 space-y-3 flex flex-col" aria-label="Announcements">
       <header>
         <h3 className="bpm-h3">Announcements</h3>
-        <p className="text-xs text-gray-400 mt-0.5">
-          {items.length === 0 ? 'No announcements posted' : `${items.length} posted`}
+        <p
+          className="text-xs text-gray-400 mt-0.5"
+          role={loadError ? 'alert' : undefined}
+          style={loadError ? { color: 'var(--color-red, #ef4444)' } : undefined}
+        >
+          {loadError
+            ? "Couldn't load — refresh to retry"
+            : items.length === 0
+              ? 'No announcements posted'
+              : `${items.length} posted`}
         </p>
       </header>
 
