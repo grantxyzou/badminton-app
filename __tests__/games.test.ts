@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GET, POST } from '@/app/api/games/route';
 import { NextRequest } from 'next/server';
+import { resetMockStore, seedPointer, setupAdminPin, makeAdminRequest } from './helpers';
 
 function get(url: string): NextRequest {
   return new NextRequest(new URL(url, 'http://localhost/bpm'));
@@ -54,5 +55,39 @@ describe('/api/games', () => {
     process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'false';
     const res = await POST(post(validGame));
     expect(res.status).toBe(404);
+  });
+});
+
+describe('/api/games — sessionId override is admin-only (rule 7)', () => {
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
+    setupAdminPin();
+    resetMockStore();
+    seedPointer('session-active');
+  });
+
+  it('ignores a client sessionId override on an anonymous POST (writes to the active session)', async () => {
+    const res = await POST(post({ ...validGame, sessionId: 'session-evil' }));
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.sessionId).toBe('session-active');
+  });
+
+  it('honors the sessionId override for an admin POST', async () => {
+    const res = await POST(
+      makeAdminRequest('POST', 'http://localhost/bpm/api/games', { ...validGame, sessionId: 'session-archive' }),
+    );
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.sessionId).toBe('session-archive');
+  });
+
+  it('ignores a ?sessionId= override on an anonymous GET (reads the active session)', async () => {
+    // Log into the active session, then a foreign read attempt must not surface it
+    // under the foreign id — the anon GET resolves to the active session regardless.
+    await POST(post({ ...validGame, sessionId: 'session-evil' }));
+    const res = await GET(get('/api/games?sessionId=session-evil'));
+    const body = await res.json();
+    expect(body.games.every((g: { sessionId: string }) => g.sessionId === 'session-active')).toBe(true);
   });
 });
