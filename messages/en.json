@@ -284,7 +284,9 @@
     "cancelConfirm": "Cancel your spot?",
     "confirmYes": "Yes",
     "confirmNo": "No",
-    "cancelFailure": "Failed to cancel. Please try again."
+    "cancelFailure": "Failed to cancel. Please try again.",
+    "loadError": "Couldn't load — refresh to retry.",
+    "retry": "Retry"
   },
   "forcePinModal": {
     "title": "Set a PIN to keep your spot",

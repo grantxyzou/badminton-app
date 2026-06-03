@@ -8,7 +8,7 @@ import ShuttleLoader from '@/components/ShuttleLoader';
 import ShuttleIcon from '@/components/ShuttleIcon';
 import PageHeader from '@/components/primitives/PageHeader';
 import ConfirmInline from '@/components/primitives/ConfirmInline';
-import { useOnline } from '@/lib/useOnline';
+import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
@@ -22,24 +22,31 @@ export default function PlayersTab() {
   const [session, setSession] = useState<Session | null>(null);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [cancelError, setCancelError] = useState('');
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const reportFetchFailure = useReportFetchFailure();
 
   const loadPlayers = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const [pRes, sRes] = await Promise.all([
         fetch(`${BASE}/api/players`, { cache: 'no-store' }),
         fetch(`${BASE}/api/session`, { cache: 'no-store' }),
       ]);
+      // A failed load must NOT silently render as an empty roster — track the
+      // error so the UI can say "couldn't load" instead (CLAUDE.md).
+      if (!pRes.ok || !sRes.ok) setLoadError(true);
       if (pRes.ok) setPlayers(await pRes.json());
       if (sRes.ok) setSession(await sRes.json());
     } catch {
-      // silent
+      setLoadError(true);
+      reportFetchFailure();
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [reportFetchFailure]);
 
   useEffect(() => {
     const id = getIdentity();
@@ -92,6 +99,22 @@ export default function PlayersTab() {
 
   const activePlayers = players.filter(p => !p.waitlisted);
   const waitlistPlayers = players.filter(p => p.waitlisted);
+
+  // Load failed and we have nothing to show: render an explicit error (standalone
+  // centered text + ghost retry, per the error-state convention) instead of the
+  // "no one signed up yet" empty state, which would lie about why the list is bare.
+  if (loadError && activePlayers.length === 0 && waitlistPlayers.length === 0) {
+    return (
+      <div className="space-y-5">
+        <PageHeader>{pageT('title')}</PageHeader>
+        <div className="p-10 text-center">
+          <p className="text-sm text-gray-400" role="alert">{t('loadError')}</p>
+          <div className="h-3" />
+          <button type="button" onClick={() => loadPlayers()} className="cc-btn cc-btn-ghost">{t('retry')}</button>
+        </div>
+      </div>
+    );
+  }
 
   if (activePlayers.length === 0 && waitlistPlayers.length === 0) {
     return (
