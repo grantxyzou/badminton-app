@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createHmac } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   setAdminCookie,
@@ -66,7 +67,6 @@ describe('lib/auth — signed-payload cookie', () => {
 
   it('isAdminAuthed returns false when token is expired', () => {
     // Build a token with exp in the past, signed with the same secret
-    const { createHmac } = require('crypto');
     const past = Math.floor(Date.now() / 1000) - 100;
     const payload = { memberId: 'm', name: 'n', iat: past - 60, exp: past };
     const headerB64 = Buffer.from(JSON.stringify(payload), 'utf8')

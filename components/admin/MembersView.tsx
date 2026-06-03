@@ -348,7 +348,7 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
           thumb zone for one-handed use. */}
       <div className="glass-card p-5 space-y-3">
         <p className="section-label">ADD ALIAS</p>
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Link each player's app name to their e-transfer name for payment tracking.</p>
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Link each player&apos;s app name to their e-transfer name for payment tracking.</p>
         <form onSubmit={handleAddAlias} className="space-y-3">
           <div className="flex gap-2">
             <input
