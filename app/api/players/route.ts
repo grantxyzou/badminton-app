@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { isAdminAuthed, verifyMemberAuth, setMemberCookie } from '@/lib/auth';
+import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, setMemberCookie } from '@/lib/auth';
 import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import { appendEvent } from '@/lib/recoveryAudit';
 import type { RecoveryEvent } from '@/lib/types';
@@ -342,7 +342,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const isAdmin = isAdminAuthed(req);
+  const isAdmin = (await isAdminAuthedWithMember(req)).authed;
 
   try {
     const body = await req.json();
@@ -560,7 +560,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
   }
 
-  const isAdmin = isAdminAuthed(req);
+  const isAdmin = (await isAdminAuthedWithMember(req)).authed;
 
   try {
     const body = await req.json();

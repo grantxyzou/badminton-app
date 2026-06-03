@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId, setActiveSessionId, sessionIdFromDate } from '@/lib/cosmos';
-import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { toValidIso } from '@/app/api/session/route';
 import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
 
@@ -34,7 +34,7 @@ function calculateSignupOpensOffset(session: any): number {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAdminAuthed(req)) return unauthorized();
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   try {
     const body = await req.json();

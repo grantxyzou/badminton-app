@@ -166,6 +166,41 @@ export async function seedTestAdminMember() {
   return member;
 }
 
+/** The memberId carried by the test admin cookie — exported so tests can
+ *  seed a member doc at that id (e.g. a demoted/deactivated admin). */
+export const ADMIN_MEMBER_ID = TEST_ADMIN_MEMBER_ID;
+
+/**
+ * Seed the test admin Member *synchronously* (no `pinHash`). The async-with-member
+ * admin gate (`isAdminAuthedWithMember`) only re-checks `role === 'admin' &&
+ * active === true`, so mutating-route tests don't need the scrypt-hashed PIN that
+ * `seedTestAdminMember` computes — just the role/active fields. Pass overrides to
+ * model a demoted (`{ role: 'member' }`) or deactivated (`{ active: false }`)
+ * admin. Idempotent on the fixed admin memberId. Returns the member.
+ */
+export function seedAdminMember(overrides: Record<string, unknown> = {}) {
+  const store = getStore();
+  if (!store['members']) store['members'] = [];
+  const base = {
+    id: TEST_ADMIN_MEMBER_ID,
+    name: TEST_ADMIN_NAME,
+    role: 'admin' as const,
+    sessionCount: 0,
+    active: true,
+    createdAt: new Date().toISOString(),
+  };
+  const existing = (store['members'] as Array<{ id: string }>).find(
+    (m) => m.id === TEST_ADMIN_MEMBER_ID,
+  );
+  if (existing) {
+    Object.assign(existing, base, overrides);
+    return existing;
+  }
+  const member = { ...base, ...overrides };
+  store['members'].push(member);
+  return member;
+}
+
 function base64urlEncode(buf: Buffer): string {
   return buf.toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 }

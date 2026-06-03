@@ -7,12 +7,14 @@ import {
   makeAdminRequest,
   seedPointer,
   seedSession,
+  seedAdminMember,
 } from './helpers';
 
 describe('POST /api/announcements — markdown round-trip', () => {
   beforeEach(() => {
     setupAdminPin();
     resetMockStore();
+    seedAdminMember();
     seedPointer('session-2026-04-24');
     seedSession('session-2026-04-24');
   });

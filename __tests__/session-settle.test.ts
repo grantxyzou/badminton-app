@@ -11,6 +11,7 @@ import {
   seedSession,
   seedPlayer,
   getStore,
+  seedAdminMember,
 } from './helpers';
 
 const SID = 'session-2026-05-04';
@@ -33,6 +34,7 @@ describe('POST /api/session/settle', () => {
   beforeEach(() => {
     setupAdminPin();
     resetMockStore();
+    seedAdminMember();
     seedPointer(SID);
     seedSession(SID, { costPerCourt: 30, courts: 2 });
   });
@@ -148,6 +150,7 @@ describe('DELETE /api/session/settle', () => {
   beforeEach(() => {
     setupAdminPin();
     resetMockStore();
+    seedAdminMember();
     seedPointer(SID);
     seedSession(SID, { costPerCourt: 30, courts: 2 });
   });
@@ -203,6 +206,7 @@ describe('advance derives prevCostPerPerson from settled snapshot', () => {
   beforeEach(() => {
     setupAdminPin();
     resetMockStore();
+    seedAdminMember();
     seedPointer(SID);
     seedSession(SID, { costPerCourt: 30, courts: 2 });
   });

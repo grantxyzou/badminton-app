@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
-import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic';
  * round-trip client version, AND we never write fields we didn't read).
  */
 export async function POST(req: NextRequest) {
-  if (!isAdminAuthed(req)) return unauthorized();
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   let code: string;
   try {

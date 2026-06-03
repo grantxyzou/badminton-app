@@ -6,6 +6,7 @@ import {
   makeRequest,
   makeAdminRequest,
   makeGetRequest,
+  seedAdminMember,
 } from './helpers';
 
 function releaseBody(version = 'v1.0.0') {
@@ -20,6 +21,7 @@ describe('POST /api/releases', () => {
   beforeEach(() => {
     setupAdminPin();
     resetMockStore();
+    seedAdminMember();
   });
 
   it('creates a release with env stamp when admin', async () => {
@@ -45,6 +47,7 @@ describe('PATCH /api/releases', () => {
   beforeEach(() => {
     setupAdminPin();
     resetMockStore();
+    seedAdminMember();
   });
 
   it('updates existing record and stamps editedAt', async () => {
@@ -104,6 +107,7 @@ describe('GET /api/releases after PATCH', () => {
   beforeEach(() => {
     setupAdminPin();
     resetMockStore();
+    seedAdminMember();
   });
 
   it('returns the edited version after PATCH', async () => {
@@ -132,6 +136,7 @@ describe('DELETE /api/releases', () => {
   beforeEach(() => {
     setupAdminPin();
     resetMockStore();
+    seedAdminMember();
   });
 
   it('deletes a release when admin', async () => {

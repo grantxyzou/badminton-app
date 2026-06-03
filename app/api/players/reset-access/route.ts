@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { issueCode } from '@/lib/recoveryCodes';
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
 
-  if (!isAdminAuthed(req)) return unauthorized();
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   let body: { playerId?: unknown };
   try {
