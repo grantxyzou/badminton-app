@@ -73,3 +73,24 @@ roles; hand-rolled dialogs without focus traps).
 6. **A11y**: combobox roles + focus traps.
 
 Each of 1–6 is a self-contained, testable workstream (TDD) — pick them off in order.
+
+## Remediation status (2026-06-03)
+
+All six named workstreams are **complete and merged to `main`** (each TDD'd, CI +
+claude-review green, rebase-merged):
+
+| WS | What | PR / commits |
+|---|---|---|
+| **WS#1** | Silent-failure cluster (7 spots → load errors, not lying empties) | merged `71b80dd` |
+| **WS#2** | `PUT /api/session` read-spread-upsert (stop wiping un-sent fields) | merged `0858ab0` |
+| **WS#3** | Admin-auth: mutating routes role-recheck; 2 unauth writes closed; members/me first-PIN claim | PR #126 |
+| **WS#4** | ESLint toolchain repair + CI lint gate (errors=0; 62 warnings deferred) | PR #128 |
+| **WS#5** | 3 correctness bugs: cover-paid predicate, SetupPage birdUsages collapse, sessions/recent N+1 | PR #131 |
+| **WS#6** | A11y: NameAutocomplete combobox, CheckInSheet aria, DemoMode + PreviewBanner focus traps | this PR |
+
+**Remaining tail (deliberately deferred — not named workstreams):**
+
+- **WS#4 "Harvest B"** — tighten the 62 lint warnings into errors: `react-hooks/exhaustive-deps` → error, strict `eslint-plugin-jsx-a11y`, add `eslint-plugin-security`, and the React-Compiler-readiness rules (currently `warn`). A larger, careful pass.
+- **Low-severity silent-failure GETs** still returning `200 + empty` on failure: `GET /api/releases`, `/api/aliases`, `/api/sessions/costs` (WS#1 covered only the 7-spot high-value cluster).
+- **`EnterCodeSheet` error mapping** (reads a 5xx as "wrong code" — was bundled with WS#5's order but not done) and **`CoverSheet` cover-and-remove** (two non-atomic PATCHes with a misleading error → collapse to one `{ writtenOff, removed }`).
+- The remaining medium/low findings in the phase docs (single-pass leads, not re-verified).
