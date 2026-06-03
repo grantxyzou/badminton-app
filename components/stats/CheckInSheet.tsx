@@ -189,6 +189,7 @@ export default function CheckInSheet({
                   <button
                     key={level}
                     type="button"
+                    aria-pressed={isActive}
                     onClick={() => select(level)}
                     className="w-full text-left rounded-xl transition-all active:scale-[0.98]"
                     style={{
@@ -200,7 +201,7 @@ export default function CheckInSheet({
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: isActive ? 'var(--accent)' : 'var(--text-muted)' }}>{level}</span>
-                      {isActive && <span className="material-icons" style={{ fontSize: 15, color: 'var(--accent)' }}>check_circle</span>}
+                      {isActive && <span className="material-icons" aria-hidden="true" style={{ fontSize: 15, color: 'var(--accent)' }}>check_circle</span>}
                     </div>
                     <p style={{ fontSize: 13, lineHeight: 1.45, color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)', margin: 0 }}>{anchor}</p>
                   </button>
