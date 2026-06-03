@@ -76,6 +76,32 @@ describe('GET /api/sessions/recent', () => {
     expect(session.anomalyCodes).toEqual(['cost_changed']);
   });
 
+  it('attributes players to the correct session — no cross-contamination', async () => {
+    // The N+1 → single-IN()-query refactor must group player rows by sessionId
+    // correctly. Two sessions with DISJOINT player sets and different mixes
+    // catch any leakage (a bad group/post-filter would mis-count).
+    seedSession('session-2026-05-13', { datetime: '2026-05-13T20:00:00-04:00', courts: 2, costPerCourt: 30 });
+    seedPlayer('session-2026-05-13', 'A1', { paid: true });
+    seedPlayer('session-2026-05-13', 'A2', { paid: true });
+    seedPlayer('session-2026-05-13', 'A3', { paid: false });
+
+    seedSession('session-2026-05-06', { datetime: '2026-05-06T20:00:00-04:00', courts: 1, costPerCourt: 40 });
+    seedPlayer('session-2026-05-06', 'B1', { paid: true });
+    seedPlayer('session-2026-05-06', 'B2', { paid: false, removed: true });   // excluded
+    seedPlayer('session-2026-05-06', 'B3', { paid: false, waitlisted: true }); // excluded
+
+    const res = await GET(makeAdminRequest('GET', 'http://localhost:3000/api/sessions/recent'));
+    const body = await res.json();
+    const byId: Record<string, { attendanceCount: number; paidPercent: number }> = Object.fromEntries(
+      body.map((s: { sessionId: string }) => [s.sessionId, s]),
+    );
+
+    expect(byId['session-2026-05-13'].attendanceCount).toBe(3);
+    expect(byId['session-2026-05-13'].paidPercent).toBe(67); // 2/3
+    expect(byId['session-2026-05-06'].attendanceCount).toBe(1); // removed + waitlisted excluded
+    expect(byId['session-2026-05-06'].paidPercent).toBe(100); // 1/1
+  });
+
   it('handles a session with zero active players', async () => {
     seedSession('session-2026-05-13', { datetime: '2026-05-13T20:00:00-04:00', courts: 2, costPerCourt: 32 });
     const req = makeAdminRequest('GET', 'http://localhost:3000/api/sessions/recent');

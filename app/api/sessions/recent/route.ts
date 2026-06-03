@@ -43,34 +43,49 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
       .slice(0, limit);
 
-    const summaries: RecentSessionSummary[] = await Promise.all(
-      (sessions as Session[]).map(async (s) => {
-        const sessionId = s.id;
-        const { resources: players } = await playersContainer.items
-          .query({
-            query: 'SELECT c.paid, c.removed, c.waitlisted FROM c WHERE c.sessionId = @sessionId',
-            parameters: [{ name: '@sessionId', value: sessionId }],
-          })
-          .fetchAll();
+    // Single batched player fetch (was N+1 — one query per session inside
+    // Promise.all). Real Cosmos honors IN(); the mock store ignores it and
+    // returns every row, so we MUST post-filter by sessionIdSet — same contract
+    // as admin/ledger and stats/attendance. Group by sessionId so each summary
+    // counts only its own players.
+    type PlayerRow = { sessionId: string; paid?: boolean; removed?: boolean; waitlisted?: boolean };
+    const sessionIds = sessions.map((s) => s.id);
+    const sessionIdSet = new Set(sessionIds);
+    const playersBySession = new Map<string, PlayerRow[]>();
 
-        const active = (players as Array<{ paid?: boolean; removed?: boolean; waitlisted?: boolean }>)
-          .filter((p) => !p.removed && !p.waitlisted);
-        const paidCount = active.filter((p) => p.paid === true).length;
+    if (sessionIds.length > 0) {
+      const placeholders = sessionIds.map((_, i) => `@sid${i}`).join(',');
+      const { resources: rawPlayers } = await playersContainer.items
+        .query({
+          query: `SELECT c.sessionId, c.paid, c.removed, c.waitlisted FROM c WHERE c.sessionId IN (${placeholders})`,
+          parameters: sessionIds.map((id, i) => ({ name: `@sid${i}`, value: id })),
+        })
+        .fetchAll();
+      for (const p of rawPlayers as PlayerRow[]) {
+        if (!sessionIdSet.has(p.sessionId)) continue;
+        const arr = playersBySession.get(p.sessionId);
+        if (arr) arr.push(p);
+        else playersBySession.set(p.sessionId, [p]);
+      }
+    }
 
-        const courtTotal = (s.costPerCourt ?? 0) * (s.courts ?? 0);
-        const birdTotal = totalBirdCost(normalizeBirdUsages(s));
-        const totalCost = courtTotal + birdTotal;
+    const summaries: RecentSessionSummary[] = (sessions as Session[]).map((s) => {
+      const active = (playersBySession.get(s.id) ?? []).filter((p) => !p.removed && !p.waitlisted);
+      const paidCount = active.filter((p) => p.paid === true).length;
 
-        return {
-          sessionId,
-          date: s.datetime ?? '',
-          attendanceCount: active.length,
-          totalCost,
-          paidPercent: active.length > 0 ? Math.round((paidCount / active.length) * 100) : 0,
-          anomalyCodes: s.anomaliesAtAdvance ?? [],
-        };
-      })
-    );
+      const courtTotal = (s.costPerCourt ?? 0) * (s.courts ?? 0);
+      const birdTotal = totalBirdCost(normalizeBirdUsages(s));
+      const totalCost = courtTotal + birdTotal;
+
+      return {
+        sessionId: s.id,
+        date: s.datetime ?? '',
+        attendanceCount: active.length,
+        totalCost,
+        paidPercent: active.length > 0 ? Math.round((paidCount / active.length) * 100) : 0,
+        anomalyCodes: s.anomaliesAtAdvance ?? [],
+      };
+    });
 
     return NextResponse.json(summaries);
   } catch (error) {
