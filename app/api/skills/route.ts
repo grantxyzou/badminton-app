@@ -59,8 +59,11 @@ export async function GET(req: NextRequest) {
       .fetchAll();
     return NextResponse.json({ skills: resources });
   } catch (error) {
+    // Surface the failure (500) instead of a lying 200 + empty skills list —
+    // an admin must not see "no skills recorded" when the read actually failed
+    // (CLAUDE.md: "Lying empty state is forbidden").
     console.error('GET skills error:', error);
-    return NextResponse.json({ skills: [] });
+    return NextResponse.json({ error: 'Failed to load skills' }, { status: 503 });
   }
 }
 

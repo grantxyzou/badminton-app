@@ -6,6 +6,7 @@ import ResetAccessSheet from '../ResetAccessSheet';
 import CoverSheet, { type CoverSheetMode } from '../CoverSheet';
 import { fmtSessionLabel } from '@/lib/fmt';
 import { isFlagOn } from '@/lib/flags';
+import { useReportFetchFailure } from '@/lib/useOnline';
 import type { SettledSnapshot } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -49,6 +50,11 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  // Separate from loadError (which load() owns for the session fetch) so a
+  // players-fetch failure can't be clobbered by load()'s reset — the two run
+  // in independent effects.
+  const [playersError, setPlayersError] = useState(false);
+  const reportFetchFailure = useReportFetchFailure();
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [toggleError, setToggleError] = useState<string | null>(null);
 
@@ -123,9 +129,13 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
 
   // Fetch players for the viewed session.
   const loadPlayers = useCallback(async (sessionId: string) => {
+    setPlayersError(false);
     try {
       const res = await fetch(`${BASE}/api/players?sessionId=${encodeURIComponent(sessionId)}&all=true`, { cache: 'no-store' });
       if (!res.ok) {
+        // A failed roster load on a payments surface must NOT read as an empty
+        // session — an admin could settle against players that never loaded.
+        setPlayersError(true);
         setAllPlayers([]);
         return;
       }
@@ -133,9 +143,11 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
       setAllPlayers(Array.isArray(data) ? data : []);
     } catch (err) {
       console.warn('PaymentsCard loadPlayers failed:', err);
+      setPlayersError(true);
+      reportFetchFailure();
       setAllPlayers([]);
     }
-  }, []);
+  }, [reportFetchFailure]);
 
   useEffect(() => { void load(); }, [load, refreshKey]);
 
@@ -392,7 +404,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
 
       {/* Load-error affordance preserved from the removed header (the
           lying-empty-state rule forbids dropping it). */}
-      {loadError && (
+      {(loadError || playersError) && (
         <p role="alert" className="text-xs" style={{ color: 'var(--color-red, #ef4444)', margin: 0 }}>
           Couldn&apos;t load — refresh to retry
         </p>
@@ -402,7 +414,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
       {/* Empty state — kept distinct from loadError (lying-empty-state
           rule). The "X of Y paid" count was removed by design; this is
           the no-roster case, not the count. */}
-      {!loadError && total === 0 && (
+      {!loadError && !playersError && total === 0 && (
         <p className="text-xs" style={{ color: 'var(--text-muted)', margin: 0 }}>
           No active players
         </p>
