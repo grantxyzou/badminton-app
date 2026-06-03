@@ -38,3 +38,18 @@ updates:
       # 10 support; revisit then. (audit WS#4, 2026-06-03)
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
+      # The following majors are deliberate migrations, not auto-merges — held
+      # so Dependabot stops re-proposing them weekly. Minor/patch still flow.
+      # Revisit each on its own branch when there's appetite. (2026-06-03)
+      # Tailwind 4 is a ground-up rewrite (CSS-first config, breaking
+      # tailwind.config.js + utility changes).
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+      # @types/node should track the runtime (CI/Azure run Node 22), not jump
+      # ahead to Node 25 types.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # TypeScript 6 would churn types right after the eslint/TS toolchain was
+      # stabilized on ESLint 9; TS 5.x is fine until a deliberate TS 6 pass.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
