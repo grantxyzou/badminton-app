@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import AdminBackHeader from '../AdminBackHeader';
-import { normalizeBirdUsages } from '@/lib/birdUsages';
+import { normalizeBirdUsages, mergeBirdUsageEdit } from '@/lib/birdUsages';
 import { renderGroupCanvas, renderGroupText, type ReceiptInput } from '@/lib/receiptTemplate';
 import { withLocalTz } from '@/lib/fmt';
 import type { BirdPurchase, Session } from '@/lib/types';
@@ -58,6 +58,10 @@ export default function SetupPage({ onBack }: SetupPageProps) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [success, setSuccess] = useState(false);
+  // True when the session failed to load. Saving from this state would PUT the
+  // default form over the real session (wiping fields the form doesn't carry —
+  // incl. collapsing birdUsages), so Save is blocked until a reload succeeds.
+  const [loadError, setLoadError] = useState(false);
 
   // Session fields
   const [title, setTitle] = useState('');
@@ -97,6 +101,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const [sessionRes, birdsRes, sessionsRes, playersRes, membersRes, recentCostsRes] = await Promise.all([
         fetch(`${BASE}/api/session`, { cache: 'no-store' }),
@@ -106,6 +111,9 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         fetch(`${BASE}/api/members`, { cache: 'no-store' }),
         fetch(`${BASE}/api/sessions/costs`, { cache: 'no-store' }),
       ]);
+      // The session is the doc Save overwrites — if it didn't load, the form is
+      // showing defaults, not the real session. Flag it so Save stays blocked.
+      if (!sessionRes.ok) setLoadError(true);
       const session = sessionRes.ok ? await sessionRes.json() as Session : null;
       const birds = birdsRes.ok ? await birdsRes.json() as { purchases: BirdPurchase[]; currentStock?: number } : null;
       const allSessions = sessionsRes.ok ? await sessionsRes.json() as Session[] : [];
@@ -165,6 +173,10 @@ export default function SetupPage({ onBack }: SetupPageProps) {
       setRecipient(sessionRecipient ?? adminMember?.eTransferRecipient ?? null);
 
       if (costs?.costs) setRecentCosts(costs.costs);
+    } catch (err) {
+      // Network drop / parse failure — the form holds defaults, not the session.
+      console.warn('SetupPage load failed:', err);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -240,11 +252,10 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         ...(costPerCourt !== null ? { costPerCourt } : {}),
       };
 
-      if (tubePurchase && tubes > 0) {
-        body.birdUsages = [{ purchaseId: tubePurchase.id, tubes }];
-      } else {
-        body.birdUsages = [];
-      }
+      // Merge the single-purchase edit into the session's FULL usage map so a
+      // session carrying tubes from ≥2 purchases isn't collapsed to one. The
+      // server re-derives cost from { purchaseId, tubes }.
+      body.birdUsages = mergeBirdUsageEdit(originalSessionTubes, tubePurchase?.id ?? null, tubes);
 
       const res = await fetch(`${BASE}/api/session`, {
         method: 'PUT',
@@ -508,6 +519,11 @@ export default function SetupPage({ onBack }: SetupPageProps) {
       )}
 
       {/* Save bar */}
+      {loadError && (
+        <p role="alert" style={{ fontSize: 13, color: 'var(--color-red, #ef4444)', margin: '6px 4px 0' }}>
+          Couldn&apos;t load the current session — saving is disabled to avoid overwriting it. Refresh to retry.
+        </p>
+      )}
       {saveError && (
         <p role="alert" style={{ fontSize: 13, color: 'var(--color-red, #ef4444)', margin: '6px 4px 0' }}>
           {saveError}
@@ -542,7 +558,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
           <button
             type="button"
             onClick={save}
-            disabled={saving}
+            disabled={saving || loadError}
             className="cc-btn cc-btn-primary"
             style={{ flex: 2, justifyContent: 'center' }}
           >
