@@ -50,21 +50,21 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const sessionId = await getActiveSessionId();
 
-    const session = {
-      id: sessionId,
-      sessionId,
-      title: String(body.title ?? '').trim().slice(0, 100),
-      locationName: String(body.locationName ?? '').trim().slice(0, 200),
-      locationAddress: String(body.locationAddress ?? '').trim().slice(0, 300),
-      datetime: toValidIso(body.datetime),
-      endDatetime: toValidIso(body.endDatetime),
-      deadline: toValidIso(body.deadline),
-      courts: Math.max(1, Math.min(20, parseInt(body.courts, 10) || 2)),
-      maxPlayers: Math.max(1, Math.min(100, parseInt(body.maxPlayers, 10) || 12)),
-      signupOpen: typeof body.signupOpen === 'boolean' ? body.signupOpen : undefined,
-      costPerCourt: typeof body.costPerCourt === 'number' ? Math.max(0, Math.min(500, body.costPerCourt)) : undefined,
-      showCostBreakdown: typeof body.showCostBreakdown === 'boolean' ? body.showCostBreakdown : undefined,
-    };
+    // Build updates from ONLY the keys the body actually supplied. A field the
+    // editing client doesn't send (e.g. DateTimeEditor sends only datetimes)
+    // must be left untouched, not reset to a default — see the read-spread below.
+    const updates: Record<string, unknown> = {};
+    if (body.title !== undefined) updates.title = String(body.title ?? '').trim().slice(0, 100);
+    if (body.locationName !== undefined) updates.locationName = String(body.locationName ?? '').trim().slice(0, 200);
+    if (body.locationAddress !== undefined) updates.locationAddress = String(body.locationAddress ?? '').trim().slice(0, 300);
+    if (body.datetime !== undefined) updates.datetime = toValidIso(body.datetime);
+    if (body.endDatetime !== undefined) updates.endDatetime = toValidIso(body.endDatetime);
+    if (body.deadline !== undefined) updates.deadline = toValidIso(body.deadline);
+    if (body.courts !== undefined) updates.courts = Math.max(1, Math.min(20, parseInt(body.courts, 10) || 2));
+    if (body.maxPlayers !== undefined) updates.maxPlayers = Math.max(1, Math.min(100, parseInt(body.maxPlayers, 10) || 12));
+    if (typeof body.signupOpen === 'boolean') updates.signupOpen = body.signupOpen;
+    if (typeof body.costPerCourt === 'number') updates.costPerCourt = Math.max(0, Math.min(500, body.costPerCourt));
+    if (typeof body.showCostBreakdown === 'boolean') updates.showCostBreakdown = body.showCostBreakdown;
 
     // Handle bird usages — array of { purchaseId, tubes }. Each entry is
     // looked up live so cost snapshots are authoritative.
@@ -107,21 +107,25 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid anomaliesDismissed' }, { status: 400 });
     }
 
-    const sessionData: Record<string, unknown> = { ...session };
-    if (birdUsages !== undefined) {
-      sessionData.birdUsages = birdUsages;
-      // Drop legacy single-object field so it doesn't linger alongside the array.
-      // Cosmos upsert replaces the whole doc, so simply omitting would also work,
-      // but setting undefined makes the intent explicit.
-    }
-    if (body.eTransferRecipient !== undefined) {
-      sessionData.eTransferRecipient = body.eTransferRecipient;
-    }
-    if (body.anomaliesDismissed !== undefined) {
-      sessionData.anomaliesDismissed = body.anomaliesDismissed;
-    }
+    if (birdUsages !== undefined) updates.birdUsages = birdUsages;
+    if (body.eTransferRecipient !== undefined) updates.eTransferRecipient = body.eTransferRecipient;
+    if (body.anomaliesDismissed !== undefined) updates.anomaliesDismissed = body.anomaliesDismissed;
 
     const container = getContainer('sessions');
+    // Read the existing doc FIRST and spread it, so fields the editing client
+    // never sent (settled, approvedNames, prev*, anomaliesAtAdvance) survive.
+    // A fixed-key upsert silently wipes them — the atomic-merge-over-PUT rule
+    // (CLAUDE.md), same pattern as /api/session/dismiss-anomaly.
+    const { resources } = await container.items
+      .query({ query: 'SELECT * FROM c WHERE c.id = @id', parameters: [{ name: '@id', value: sessionId }] })
+      .fetchAll();
+    const existing = (resources.find((r) => r.id !== POINTER_ID) ?? {}) as Record<string, unknown>;
+
+    const sessionData: Record<string, unknown> = { ...existing, ...updates, id: sessionId, sessionId };
+    // When writing the new birdUsages array, drop the legacy single-object
+    // `birdUsage` field (the old full-doc replace dropped it implicitly; the
+    // read-spread would otherwise let it linger alongside the array).
+    if (birdUsages !== undefined) delete sessionData.birdUsage;
     const { resource } = await container.items.upsert(sessionData);
     return NextResponse.json(resource);
   } catch (error) {
