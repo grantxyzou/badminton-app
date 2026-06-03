@@ -27,8 +27,12 @@ export async function GET(req: NextRequest) {
     // Strip deleteToken — it must never be exposed to other clients
     return NextResponse.json(resources.map(({ deleteToken: _dt, pinHash: _ph, ...p }: { deleteToken?: string; pinHash?: string; [key: string]: unknown }) => p));
   } catch (error) {
+    // Surface the failure (500) rather than a lying 200 + []: an empty array is
+    // indistinguishable from a legitimately empty roster, which is exactly how
+    // the v1.3 Cosmos outage was masked. Clients must be able to tell the
+    // difference (CLAUDE.md: "Lying empty state is forbidden").
     console.error('GET players error:', error);
-    return NextResponse.json([]);
+    return NextResponse.json({ error: 'Failed to load players' }, { status: 500 });
   }
 }
 
