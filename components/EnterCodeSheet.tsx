@@ -17,7 +17,7 @@ export default function EnterCodeSheet({ open, onClose, sessionId }: Props) {
   const t = useTranslations('recovery');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
-  const [error, setError] = useState<'invalid' | 'rate_limited' | 'admin_logged_in' | null>(null);
+  const [error, setError] = useState<'invalid' | 'rate_limited' | 'admin_logged_in' | 'server' | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -35,11 +35,19 @@ export default function EnterCodeSheet({ open, onClose, sessionId }: Props) {
       // /reset-access instead). Surface this distinctly so the user knows
       // they're not just typing the wrong code.
       if (res.status === 403) { setError('admin_logged_in'); return; }
+      // A 5xx means the server broke, NOT that the code is wrong. Mapping it to
+      // 'invalid' tells the user to re-type a code that may be correct — and
+      // recovery is rate-limited (10/hr), so burning attempts on a server
+      // outage is costly. Split server errors out as a retryable 'server'.
+      if (res.status >= 500) { setError('server'); return; }
       if (!res.ok) { setError('invalid'); return; }
       const body = await res.json();
       setIdentity({ name: name.trim(), token: body.deleteToken, sessionId });
       setSuccess(name.trim());
       setTimeout(() => { onClose(); setSuccess(null); }, 1500);
+    } catch {
+      // Network failure (fetch rejects) — also not the user's fault.
+      setError('server');
     } finally {
       setSubmitting(false);
     }
@@ -113,6 +121,11 @@ export default function EnterCodeSheet({ open, onClose, sessionId }: Props) {
             {error === 'admin_logged_in' && (
               <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>
                 {t('errorAdminLoggedIn')}
+              </p>
+            )}
+            {error === 'server' && (
+              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>
+                {t('errorNetwork')}
               </p>
             )}
           </div>

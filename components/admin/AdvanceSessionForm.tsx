@@ -71,7 +71,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
         setPrefillFailed(true);
       });
     fetch(`${BASE}/api/sessions/costs`, { cache: 'no-store' })
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : { costs: [] })
       .then((data: { costs: number[] }) => setRecentCosts(data.costs ?? []))
       .catch(() => {});
     // Skip dates from the auth-gated admin endpoint (not the public

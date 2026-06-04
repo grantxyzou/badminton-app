@@ -23,9 +23,10 @@ interface Props {
  * Unified confirm sheet for the v1.5 "Cover" workflow. Two modes:
  *  - cover-only: one primary button ("I got it") → PATCH writtenOff:true
  *  - cover-and-remove: triggered from roster Remove when player has unpaid
- *      owedAmount. Primary "Cover & remove" PATCHes writtenOff:true then
- *      removed:true. Secondary "Remove without covering" PATCHes removed:true
- *      only.
+ *      owedAmount. Primary "Cover & remove" PATCHes { writtenOff:true,
+ *      removed:true } in ONE atomic call (the players PATCH handler merges both
+ *      into a single upsert). Secondary "Remove without covering" PATCHes
+ *      removed:true only.
  *
  * Friend-voice copy per design §3 — "I got it" beats "Mark covered."
  */
@@ -74,8 +75,10 @@ export default function CoverSheet({
     setSubmitting(true);
     setError('');
     try {
-      await patch({ writtenOff: true });
-      await patch({ removed: true });
+      // One atomic PATCH, not two. Two sequential calls could leave the player
+      // covered-but-not-removed if the second failed — and the old catch then
+      // lied ("Couldn't cover") even though the cover had already landed.
+      await patch({ writtenOff: true, removed: true });
       onCovered();
       onClose();
     } catch {
