@@ -218,7 +218,7 @@ export default function SkillsRadar({
                 dot={{ r: 4, fill: '#4ade80', strokeWidth: 0 }}
               />
             ) : (
-              Array.from(overlayIds).map((id, i) => {
+              Array.from(overlayIds).map((id) => {
                 const player = players.find(p => p.id === id);
                 const idx = players.findIndex(p => p.id === id);
                 const color = PLAYER_COLORS[idx % PLAYER_COLORS.length];
