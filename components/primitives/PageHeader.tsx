@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
+import { useScrollCondensed } from './useScrollCondensed';
 
 /**
  * Tab-level page header. Wraps the canonical `<h1 className="bpm-h1">`
@@ -36,20 +37,10 @@ export interface PageHeaderProps {
 export default function PageHeader({ children, action }: PageHeaderProps) {
   const ref = useRef<HTMLDivElement>(null);
 
-  // Pre-paint sync to avoid a one-frame "at-rest" flash on a scrolled page.
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el || typeof window === 'undefined') return;
-    el.classList.toggle('scrolled', window.scrollY > 8);
-  }, []);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const update = () => el.classList.toggle('scrolled', window.scrollY > 8);
-    window.addEventListener('scroll', update, { passive: true });
-    return () => window.removeEventListener('scroll', update);
-  }, []);
+  // Condense once the real scroll ancestor passes 8px. This app scrolls
+  // <body> (not window) — see useScrollCondensed — so a window-only
+  // listener (the previous impl) never fired and the frosted bar stayed dead.
+  useScrollCondensed(ref);
 
   return (
     <div ref={ref} className="bpm-page-header">

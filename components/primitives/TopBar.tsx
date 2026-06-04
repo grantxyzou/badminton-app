@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
+import { useScrollCondensed } from './useScrollCondensed';
 
 /**
  * Sticky, scroll-condensed top bar. Implements `TopBar Spec.html`
@@ -28,39 +29,12 @@ export interface TopBarProps {
   backLabel?: string;
 }
 
-function findScroller(el: HTMLElement): HTMLElement | Window {
-  let node: HTMLElement | null = el.parentElement;
-  while (node) {
-    const style = getComputedStyle(node);
-    if (/(auto|scroll|overlay)/.test(style.overflowY)) return node;
-    node = node.parentElement;
-  }
-  return window;
-}
-
 export default function TopBar({ title, crumb, onBack, right, backLabel = 'Back' }: TopBarProps) {
   const ref = useRef<HTMLDivElement>(null);
 
-  // Sync the initial state in a layout effect so we don't paint at-rest
-  // for one frame when navigating to a screen that's already scrolled.
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el || typeof window === 'undefined') return;
-    const scroller = findScroller(el);
-    const top = scroller === window ? window.scrollY : (scroller as HTMLElement).scrollTop;
-    el.classList.toggle('scrolled', top > 8);
-  }, []);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const scroller = findScroller(el);
-    const getTop = () =>
-      scroller === window ? window.scrollY : (scroller as HTMLElement).scrollTop;
-    const update = () => el.classList.toggle('scrolled', getTop() > 8);
-    scroller.addEventListener('scroll', update, { passive: true } as AddEventListenerOptions);
-    return () => scroller.removeEventListener('scroll', update);
-  }, []);
+  // Scroll-condense (shared with PageHeader). Handles the <body>-is-scroller
+  // reality of this app — see useScrollCondensed.
+  useScrollCondensed(ref);
 
   useEffect(() => {
     if (!onBack) return;
