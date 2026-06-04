@@ -2,7 +2,7 @@
 // @vitest-environment-options { "url": "http://localhost:3000/bpm" }
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../../../components/BottomSheet';
+import { BottomSheet, BottomSheetBody } from '../../../components/BottomSheet';
 
 describe('BottomSheet — skeleton', () => {
   afterEach(cleanup);

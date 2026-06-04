@@ -211,10 +211,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   } : session;
   const effectivePlayerCount = dv?.activePlayerCount ?? activePlayers.length;
 
-  const currentPlayerRecord = currentUser
-    ? players.find(p => p.name.toLowerCase() === currentUser.toLowerCase())
-    : null;
-
   const courtTotal = effectiveSession?.costPerCourt && effectiveSession.courts
     ? effectiveSession.costPerCourt * effectiveSession.courts : 0;
   const birdTotal = effectiveSession?.showCostBreakdown
@@ -379,7 +375,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       <div>
         <PageHeader>
           <span
+            role="button"
+            tabIndex={0}
             onClick={onTitleTap}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTitleTap?.(); }
+            }}
             style={{ cursor: 'default', userSelect: 'none' }}
           >
             BPM Badminton
