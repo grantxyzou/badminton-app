@@ -456,7 +456,12 @@ h1, h2, h3, h4 {
 
 .bpm-topbar {
   position: sticky;
-  top: 0;
+  /* Stick BELOW the fixed PreviewBanner (vnext), not under it. The banner
+     publishes its height as --banner-offset on <html>; 0 in stable/dev where
+     the banner is absent. Without this the frosted bar tucks under the orange
+     banner on scroll (banner z 9999 ≫ header z 10). Mirrors the .theme-toggle
+     pattern below. */
+  top: var(--banner-offset, 0px);
   z-index: 10;
   display: flex;
   align-items: center;
@@ -551,7 +556,8 @@ h1, h2, h3, h4 {
 
 .bpm-page-header {
   position: sticky;
-  top: 0;
+  /* Stick below the fixed PreviewBanner — see .bpm-topbar note above. */
+  top: var(--banner-offset, 0px);
   z-index: 10;
   display: flex;
   align-items: baseline;
