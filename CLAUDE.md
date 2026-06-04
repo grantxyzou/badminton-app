@@ -99,7 +99,7 @@ Canonical bundle mirrored at `docs/design-system/` (43 files — tokens, 28 spec
 - **Race condition on signup**: Capacity check + insert not atomic. Can exceed `maxPlayers` by 1-2 spots.
 - **In-memory rate limiter**: Resets on cold start. Single-instance only.
 - **Cold starts**: ~10-20s wake after 20min idle (Free tier).
-- **`NEXT_PUBLIC_BASE_PATH` must match `basePath`**: Both must be `/bpm` or API fetches 404.
+- **`NEXT_PUBLIC_BASE_PATH` must match `basePath`**: Both must be `/bpm` or API fetches 404. **It is NOT set anywhere by default** — `next.config.js` sets `basePath: '/bpm'` (server-side only, does not export the env var) and `.env.local.example` omits it. The running prod/dev `.env.local` provides it. On a fresh clone or any launch without it, the client bundle reads `BASE = process.env.NEXT_PUBLIC_BASE_PATH || ''` → fetches `/api/*` with no prefix → every request 404s → `reportFetchFailure` cascades into a **false "You're offline / Couldn't load" state across the whole app** (server is fine). Tell: dev log shows `GET /api/players 404` (no `/bpm`). Any offline-path launch must pass `NEXT_PUBLIC_BASE_PATH=/bpm` explicitly — see `.claude/skills/run-badminton-app/`.
 - **`endDatetime` is optional**: May be absent in legacy records. Guard with `session?.endDatetime ? ... : false`.
 - **`signupOpen` defaults to open**: Absent = open. New sessions via advance start closed.
 - **Announcements are session-scoped**: Advancing hides old announcements.
