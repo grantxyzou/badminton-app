@@ -16,7 +16,7 @@ import PageHeader from './primitives/PageHeader';
    var is retired. Admin powers come from `member.role === 'admin'` on
    the matched record. */
 
-export default function AdminTab() {
+export default function AdminTab({ onExit }: { onExit: () => void }) {
   const pageT = useTranslations('pages.admin');
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null); // null = loading
   const [name, setName] = useState(() => getIdentity()?.name ?? '');
@@ -116,5 +116,5 @@ export default function AdminTab() {
   // Dashboard renders its own h1 when on the dashboard view so the header
   // disappears when the user drills into a sub-editor (Session Details,
   // Members, etc.) — those render AdminBackHeader instead.
-  return <AdminDashboard />;
+  return <AdminDashboard onExit={onExit} />;
 }
