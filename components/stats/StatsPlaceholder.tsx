@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import PageHeader from '@/components/primitives/PageHeader';
 
 interface CompactCardProps {
   icon: string;
@@ -242,10 +243,12 @@ export default function StatsPlaceholder({
 
   return (
     <div className="space-y-5 w-full">
-      <div>
-        <h1 className="bpm-h1 leading-tight px-2">{t('heading')}</h1>
-        <p className="text-sm text-gray-400 mt-1 px-2">{t('subhead')}</p>
-      </div>
+      {/* PageHeader must be a direct child of the tall scroll root so its
+          `position: sticky` stays stuck for the whole tab (nesting it in a
+          short wrapper would un-stick it). Subhead is a sibling pinned tight
+          to the title via inline marginTop (beats the space-y-5 gap). */}
+      <PageHeader>{t('heading')}</PageHeader>
+      <p className="text-sm text-gray-400 px-2" style={{ marginTop: 4 }}>{t('subhead')}</p>
 
       {useTabs && (
         <div className="flex justify-center">
