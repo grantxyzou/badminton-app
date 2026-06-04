@@ -49,7 +49,7 @@ export default function ResetAccessSheet({ open, onClose, playerName, code, expi
       <BottomSheetBody className="p-5 pb-8">
         <div style={{ textAlign: 'center' }}>
           <p
-            role="text"
+            role="img"
             aria-label={`Recovery code: ${code.split('').join(' ')}`}
             style={{
               fontFamily: 'var(--font-mono)',

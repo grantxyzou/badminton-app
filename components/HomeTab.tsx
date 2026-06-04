@@ -375,7 +375,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       <div>
         <PageHeader>
           <span
+            role="button"
+            tabIndex={0}
             onClick={onTitleTap}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTitleTap?.(); }
+            }}
             style={{ cursor: 'default', userSelect: 'none' }}
           >
             BPM Badminton
