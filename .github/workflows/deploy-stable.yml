@@ -54,6 +54,9 @@ jobs:
           # Labeled Rail bottom nav — promoted to stable with v1.6 (soaked since
           # 2026-05-19). Replaces the legacy floating .nav-glass pill.
           NEXT_PUBLIC_FLAG_NAV_RAIL: 'true'
+          # Skill self-assessment trend spine - promoted to stable with v1.7
+          # (soaked since 2026-06-02, kill-gate cleared). vnext-only on v1.6.
+          NEXT_PUBLIC_FLAG_SKILL_ASSESS: 'true'
 
       - name: Package standalone build
         run: |
