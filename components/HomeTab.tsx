@@ -368,24 +368,28 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         <WelcomeCard onDismiss={dismissOnboarding} />
       )}
 
-      {/* Page title + release trigger — grouped so no space-y-5 gap sits
-          between them; the version stamp sits tight under the title. The
-          easter-egg `onTitleTap` handler lives on the inner span so PageHeader
-          can own the sticky scroll-condense behavior. */}
-      <div>
-        <PageHeader>
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={onTitleTap}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTitleTap?.(); }
-            }}
-            style={{ cursor: 'default', userSelect: 'none' }}
-          >
-            BPM Badminton
-          </span>
-        </PageHeader>
+      {/* PageHeader must be a DIRECT child of this space-y-5 scroll root so its
+          position:sticky containing block is the full tab. Wrapping it (with the
+          release trigger) in a short <div> made the containing block ~43px tall,
+          so the "BPM Badminton" bar un-stuck instantly and scrolled off instead
+          of condensing like every other tab. The version stamp stays tight under
+          the title via inline marginTop (beats the space-y-5 gap).
+          The easter-egg `onTitleTap` lives on the inner span so PageHeader owns
+          the scroll-condense. */}
+      <PageHeader>
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={onTitleTap}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTitleTap?.(); }
+          }}
+          style={{ cursor: 'default', userSelect: 'none' }}
+        >
+          BPM Badminton
+        </span>
+      </PageHeader>
+      <div style={{ marginTop: 4 }}>
         <ReleaseNotesTrigger
           releases={releases}
           onOpen={openReleaseSheet}

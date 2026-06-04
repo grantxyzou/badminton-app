@@ -1546,16 +1546,22 @@ textarea {
   100% { transform: scale(1) rotate(0); opacity: 1; }
 }
 
+/* fill-mode `backwards` (not `both`): these entrances all END at the natural
+   state (opacity:1, transform:none), so holding the end frame (`forwards`) is
+   visually a no-op — but it leaves a retained `translateX(0)`/`translateY(0)`
+   on the element, which establishes a containing block and breaks
+   `position: sticky`/`fixed` descendants (the documented containing-block
+   trap). `backwards` keeps the entrance but drops the retained transform. */
 .animate-fadeIn {
-  animation: fadeIn var(--duration-normal) var(--ease-glass) both;
+  animation: fadeIn var(--duration-normal) var(--ease-glass) backwards;
 }
 
 .animate-slideUp {
-  animation: slideUp var(--duration-slow) var(--ease-spring) both;
+  animation: slideUp var(--duration-slow) var(--ease-spring) backwards;
 }
 
 .animate-slideInRight {
-  animation: slideInRight var(--duration-normal) var(--ease-glass) both;
+  animation: slideInRight var(--duration-normal) var(--ease-glass) backwards;
 }
 
 .animate-scaleIn {
