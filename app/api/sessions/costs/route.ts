@@ -24,7 +24,10 @@ export async function GET(req: NextRequest) {
     const unique = Array.from(new Set(valid.map((r: { costPerCourt: number }) => r.costPerCourt))).sort((a, b) => a - b);
     return NextResponse.json({ costs: unique });
   } catch (error) {
+    // Surface the failure (503) instead of a lying 200 + empty list — a 200
+    // here reads as "no prior costs to suggest" when the read actually failed
+    // (CLAUDE.md: "Lying empty state is forbidden"). Consumers guard on res.ok.
     console.error('GET sessions/costs error:', error);
-    return NextResponse.json({ costs: [] });
+    return NextResponse.json({ error: 'Failed to load costs' }, { status: 503 });
   }
 }

@@ -103,7 +103,7 @@ describe('<CoverSheet />', () => {
     fetchSpy.mockRestore();
   });
 
-  it('"Cover & remove" PATCHes writtenOff then removed', async () => {
+  it('"Cover & remove" sends one atomic PATCH with writtenOff + removed', async () => {
     const onCovered = vi.fn();
     const onClose = vi.fn();
     const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() =>
@@ -132,11 +132,12 @@ describe('<CoverSheet />', () => {
       fireEvent.click(screen.getByRole('button', { name: /Cover & remove/i }));
       await waitFor(() => expect(onCovered).toHaveBeenCalledOnce());
 
-      expect(fetchSpy).toHaveBeenCalledTimes(2);
-      const firstBody = JSON.parse(String((fetchSpy.mock.calls[0][1] as RequestInit).body));
-      const secondBody = JSON.parse(String((fetchSpy.mock.calls[1][1] as RequestInit).body));
-      expect(firstBody.writtenOff).toBe(true);
-      expect(secondBody.removed).toBe(true);
+      // One call, not two — covered-and-removed must not be a non-atomic pair
+      // that can leave the player half-updated on a mid-sequence failure.
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const body = JSON.parse(String((fetchSpy.mock.calls[0][1] as RequestInit).body));
+      expect(body.writtenOff).toBe(true);
+      expect(body.removed).toBe(true);
     } finally {
       fetchSpy.mockRestore();
     }

@@ -14,8 +14,12 @@ export async function GET(req: NextRequest) {
       .fetchAll();
     return NextResponse.json(resources);
   } catch (error) {
+    // Surface the failure (503) instead of a lying 200 + empty list — an admin
+    // must not see "no aliases" (e-transfer name mappings) when the read
+    // actually failed (CLAUDE.md: "Lying empty state is forbidden"). Consumers
+    // already guard on res.ok.
     console.error('GET aliases error:', error);
-    return NextResponse.json([]);
+    return NextResponse.json({ error: 'Failed to load aliases' }, { status: 503 });
   }
 }
 
