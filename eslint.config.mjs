@@ -2,13 +2,14 @@ import coreWebVitals from 'eslint-config-next/core-web-vitals';
 import typescript from 'eslint-config-next/typescript';
 
 /** @type {import('eslint').Linter.Config[]} */
-export default [
+const config = [
   {
     ignores: [
       '.next/**',
       'node_modules/**',
       'docs/design-system/**',
       '.claude/**',
+      '.remember/**',
       'next-env.d.ts',
       'coverage/**',
     ],
@@ -38,4 +39,25 @@ export default [
       '@typescript-eslint/no-require-imports': 'off',
     },
   },
+  {
+    // Unused vars are now an ERROR (was warn) — but `_`-prefixed names stay
+    // exempt. That's load-bearing: the security strip pattern destructures
+    // secrets out via `const { deleteToken: _dt, pinHash: _ph, ...safe } = rec`
+    // (CLAUDE.md) — those `_`-names are intentionally unused and MUST NOT be
+    // deleted, or the secret re-enters `...safe`. Same for required-but-unused
+    // handler params (`_req`, `_session`, `_pk`).
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+        },
+      ],
+    },
+  },
 ];
+
+export default config;

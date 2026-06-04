@@ -93,7 +93,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Material Symbols Rounded — subsetted to the ~35 glyphs actually used.
-            Replaces the old full Material Icons webfont (~100 KB → ~15–20 KB). */}
+            Replaces the old full Material Icons webfont (~100 KB → ~15–20 KB).
+            Deliberate <link> (icon font, not body text) — next/font doesn't fit
+            the dynamic icon_names subset, so opt this one out of the rule. */}
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,admin_panel_settings,arrow_back,arrow_forward,article_person,auto_fix_high,bar_chart,bolt,calendar_today,campaign,celebration,check_circle,chevron_left,chevron_right,close,dark_mode,delete,delete_forever,delete_outline,delete_sweep,download,edit,emoji_events,error,error_outline,event,expand_less,expand_more,format_list_bulleted,format_list_numbered,group,group_add,groups,help_outline,home,hourglass_empty,hourglass_top,how_to_reg,image,inventory_2,key,light_mode,local_fire_department,lock,lock_clock,logout,more_vert,paid,payments,person,person_add,person_remove,radio_button_unchecked,receipt_long,remove,request_quote,restore,schedule,school,science,search,send,share,shield,sports_tennis,star,subdirectory_arrow_left,translate,trending_up,verified,visibility,warning,watch_later&display=swap"
           rel="stylesheet"

@@ -43,18 +43,6 @@ function fmtDate(iso: string): string {
   }
 }
 
-function fmtTime(iso: string): string {
-  if (!iso) return '';
-  try {
-    return new Date(iso).toLocaleTimeString(undefined, {
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  } catch {
-    return '';
-  }
-}
-
 function fmtMemo(template: string, dateIso: string, name: string): string {
   const dateShort = (() => {
     if (!dateIso) return '';

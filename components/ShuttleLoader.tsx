@@ -6,8 +6,6 @@
  * "BPM" = group name + beats per minute.
  */
 
-const BAR_COUNT = 14;
-
 // Height pattern mimicking a smash waveform: quiet → SPIKE → decay → quiet
 const SMASH_PATTERN = [0.15, 0.2, 0.25, 0.4, 0.7, 0.95, 1.0, 0.85, 0.55, 0.35, 0.25, 0.2, 0.15, 0.12];
 

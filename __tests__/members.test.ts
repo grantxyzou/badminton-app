@@ -8,7 +8,7 @@ import {
   makeAdminRequest,
   makeGetRequest,
 } from './helpers';
-import { GET, POST, PATCH, DELETE } from '@/app/api/members/route';
+import { GET, POST } from '@/app/api/members/route';
 import { GET as ME_GET, PATCH as ME_PATCH } from '@/app/api/members/me/route';
 import { hashPin, verifyPin } from '@/lib/recoveryHash';
 import { setMemberCookie } from '@/lib/auth';

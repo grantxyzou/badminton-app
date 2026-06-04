@@ -25,7 +25,6 @@ interface Props {
 
 export default function ProfileTab({
   sessionId,
-  sessionLabel,
   isAdmin,
   onAdminTools,
 }: Props) {

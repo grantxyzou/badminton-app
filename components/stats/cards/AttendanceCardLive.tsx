@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { getIdentity } from '@/lib/identity';
 import AttendanceSessionStrip, { recentSessions } from './AttendanceSessionStrip';
 
@@ -42,9 +42,6 @@ export default function AttendanceCardLive() {
   const [resolved, setResolved] = useState(false);
   const [data, setData] = useState<AttendanceResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [members, setMembers] = useState<string[]>([]);
-  const [pickerValue, setPickerValue] = useState('');
-  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const weeks = WEEKS;
 
@@ -52,29 +49,6 @@ export default function AttendanceCardLive() {
   useEffect(() => {
     setActiveName(resolveActiveName());
     setResolved(true);
-  }, []);
-
-  // Load member names for autocomplete (public endpoint, no auth needed).
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(`${BASE}/api/members`, { cache: 'no-store' });
-        if (!res.ok) return;
-        const payload = await res.json();
-        const list = Array.isArray(payload?.members) ? payload.members : payload;
-        if (cancelled) return;
-        const names = (list as Array<{ name?: string }>)
-          .map((m) => m?.name)
-          .filter((n): n is string => typeof n === 'string' && n.length > 0);
-        setMembers(names);
-      } catch {
-        /* autocomplete is optional */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   // Fetch attendance whenever the active name changes.
@@ -104,25 +78,6 @@ export default function AttendanceCardLive() {
       cancelled = true;
     };
   }, [activeName, weeks]);
-
-  const suggestions = useMemo(() => {
-    const q = pickerValue.trim().toLowerCase();
-    if (!q) return members.slice(0, 6);
-    return members.filter((n) => n.toLowerCase().includes(q)).slice(0, 6);
-  }, [members, pickerValue]);
-
-  function confirmName(name: string) {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    try {
-      localStorage.setItem(STATS_NAME_KEY, trimmed);
-    } catch {
-      /* ignore */
-    }
-    setActiveName(trimmed);
-    setPickerValue('');
-    setShowSuggestions(false);
-  }
 
   function clearPickedName() {
     try {
