@@ -59,6 +59,23 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **Skill self-assessment** *(flag-gated `NEXT_PUBLIC_FLAG_SKILL_ASSESS`, dormant on stable)* — periodic anchor-card check-in across 14 skills, a then-vs-now trend radar, phase placement, and an AI "Your read" that folds in the assessment. *(soaking on `bpm-next`)*
 - **Value-Hub Slice-0** *(flag-gated `NEXT_PUBLIC_FLAG_VALUE_HUB`, dormant on stable)* — racket pick → recommendation card, 48h game logger, and partner-frequency Stats card. *(awaiting kill-criterion gate)*
 
+### Changed
+
+- **Stats visual polish** — flat cards app-wide (dropped the bottom drop-shadow on every glass-card tier); the AI "Your read" gets a conic-gradient rim that spins while generating, then settles. *(unflagged — rides the next cut)*
+
+### Fixed
+
+- **No more silently-wrong empty states** — a failed data read now shows "couldn't load" instead of confidently showing zero (players, payments, skills, announcements, bird inventory, release notes, and the releases/aliases/cost-suggestion reads).
+- **Session edits no longer wipe hidden fields** — editing a session preserves its settled state, invite list, and prior-cost snapshots.
+- **Recovery-code errors are honest** — a server hiccup during PIN recovery no longer reads as "wrong code" (which was burning your limited attempts).
+- **Cover & remove is atomic** — covering a debt and removing a player happens in one step now, so it can't half-complete.
+- **Waitlist sign-up for PIN'd members** — members with a PIN couldn't join a full session's waitlist; fixed.
+
+### Security
+
+- **Admin-auth hardening** — admin actions re-check your role on every request (a demotion takes effect immediately); closed two unauthenticated write paths; first-time PIN claims now require identity proof.
+- **CI lint gate + dependency bumps** (next 16.2.7, @types/node, dev-deps).
+
 ---
 
 ## v1.6 — Ledger goes live + Labeled Rail nav + trusted-device sign-up (2026-06-02)
