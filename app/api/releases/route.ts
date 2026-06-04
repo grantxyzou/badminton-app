@@ -66,8 +66,12 @@ export async function GET(_req: NextRequest) {
 
     return NextResponse.json(filtered);
   } catch (error) {
+    // Surface the failure (503) instead of a lying 200 + empty list — a user
+    // (or the admin ReleasesView) must not see "no releases" when the read
+    // actually failed (CLAUDE.md: "Lying empty state is forbidden"). Consumers
+    // already guard on res.ok, so they degrade to no-release-notes.
     console.error('GET releases error:', error);
-    return NextResponse.json([]);
+    return NextResponse.json({ error: 'Failed to load releases' }, { status: 503 });
   }
 }
 
