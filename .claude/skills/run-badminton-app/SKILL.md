@@ -28,9 +28,10 @@ Node 20.19, Chrome 14x headless.
 npm install
 ```
 
-No `.env.local` is needed for the offline path — **omitting `COSMOS_CONNECTION_STRING`
-selects the mock store.** Do NOT copy `.env.local.example` for this: it is missing
-`NEXT_PUBLIC_BASE_PATH` (see Gotchas), which the app requires.
+No `.env.local` is needed for the offline path — the driver passes the required
+env inline, and **omitting `COSMOS_CONNECTION_STRING` selects the mock store.**
+(For a persistent config you can also `cp .env.local.example .env.local`; it now
+includes `NEXT_PUBLIC_BASE_PATH=/bpm` — see Gotchas for why that var matters.)
 
 ## Run (agent path) — the driver
 
