@@ -18,29 +18,6 @@ function splitIso(iso?: string): { date: string; time: string } {
   return { date: iso.slice(0, 10), time: iso.slice(11, 16) };
 }
 
-function fmtPretty(date: string, time: string): string {
-  if (!date || !time) return '—';
-  try {
-    const d = new Date(`${date}T${time}`);
-    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) +
-      ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  } catch {
-    return `${date} · ${time}`;
-  }
-}
-
-function fmtTimeOnly(time: string): string {
-  if (!time) return '—';
-  try {
-    const [h, m] = time.split(':');
-    const d = new Date();
-    d.setHours(parseInt(h, 10), parseInt(m, 10));
-    return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  } catch {
-    return time;
-  }
-}
-
 function hoursBetween(a: { date: string; time: string }, b: { date: string; time: string }): number | null {
   if (!a.date || !a.time || !b.date || !b.time) return null;
   try {

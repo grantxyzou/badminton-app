@@ -47,7 +47,6 @@ function getSessionSecret(): string {
         'Generate with: openssl rand -hex 32',
     );
   }
-  // eslint-disable-next-line no-console
   console.warn(
     '[dev] SESSION_SECRET not set; falling back to a dev sentinel. ' +
       'Sessions signed with this secret are NOT secure for production use.',

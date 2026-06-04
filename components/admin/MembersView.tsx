@@ -7,15 +7,6 @@ import AdminBackHeader from './AdminBackHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
-function Label({ text, children }: { text: string; children: React.ReactNode }) {
-  return (
-    <label className="block space-y-1">
-      <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{text}</span>
-      {children}
-    </label>
-  );
-}
-
 export default function MembersView({ onBack }: { onBack: () => void }) {
   // Members state
   const [members, setMembers] = useState<Member[]>([]);
