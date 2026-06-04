@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import PageHeader from '@/components/primitives/PageHeader';
 
 /**
  * Stats tab empty state for a signed-out visitor (no identity, no stats
@@ -12,7 +13,7 @@ export default function StatsSignedOut({ onSignIn }: { onSignIn?: () => void }) 
   const t = useTranslations('stats');
   return (
     <div className="space-y-5 w-full">
-      <h1 className="bpm-h1 leading-tight px-2">{t('heading')}</h1>
+      <PageHeader>{t('heading')}</PageHeader>
       <div
         style={{
           padding: '48px 24px',
