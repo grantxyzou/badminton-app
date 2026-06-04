@@ -26,9 +26,11 @@ export default function AdminBackHeader({ onBack, title, sessionLabel }: AdminNa
     </span>
   ) : undefined;
 
-  return (
-    <div className="animate-fadeIn">
-      <TopBar title={title} crumb="Admin" onBack={onBack} right={right} />
-    </div>
-  );
+  // No wrapper element. TopBar is position:sticky, and a wrapper that holds
+  // ONLY the header makes the sticky's containing block ~58px tall, so it
+  // un-sticks immediately on scroll (the header scrolls off instead of
+  // condensing). Returning TopBar directly makes its containing block the
+  // tall page root. The page already animates in via `animate-slideInRight`,
+  // so the header still has an entrance.
+  return <TopBar title={title} crumb="Admin" onBack={onBack} right={right} />;
 }
