@@ -138,9 +138,8 @@ export default function PlayersTab() {
     <div className="space-y-5">
       <PageHeader>{pageT('title')}</PageHeader>
       <div className="space-y-4">
-      {/* Active players card — `roster-court-card` paints a faint badminton
-          court hero band behind the date header (see globals.css). */}
-      <div className="glass-card overflow-hidden roster-court-card">
+      {/* Active players card */}
+      <div className="glass-card overflow-hidden">
         <div className="px-4 pt-3 pb-2 section-label">
           {gameDate || t('upcomingSession')}
         </div>

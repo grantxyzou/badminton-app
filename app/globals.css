@@ -789,39 +789,65 @@ html[data-swiping="release"] [data-page-shell] {
   }
 }
 
-/* ── Court watermark on the Sign-Ups roster card ──
-   The court motif moved from a full-page backdrop ONTO the roster card (so the
-   Sign-Ups page now uses the default aurora like every other tab). The full
-   doubles-court diagram (portrait, net dashed across the middle) sits as a faint
-   watermark behind the whole roster — the card reads as the court the list is
-   signing onto.
+/* ── 03 Court — per-tab override for Sign-Ups ──
+   When the user is on the Sign-Ups tab (data-tab="players" on <html>),
+   swap the three drifting aurora blobs for a faint doubles-court etching
+   + soft green floor glow. Per docs/design-system/preview/24-app-background
+   bg-3: static (no animation), embedded SVG lines at ~18% opacity, green
+   glow from below. On-theme for the sport-specific list view. */
+html[data-tab="players"] .aurora-blob-1,
+html[data-tab="players"] .aurora-blob-2,
+html[data-tab="players"] .aurora-blob-3 {
+  /* Hide the aurora blobs entirely — static court backdrop owns the scene. */
+  display: none;
+}
 
-   Scoped to `.roster-court-card` (set in PlayersTab) so the shared `.glass-card`
-   surface is untouched everywhere else. `isolation: isolate` + the `> *` z-index
-   lift keep the card's real content above the watermark; the card's own
-   `overflow-hidden` clips it to the rounded corners. `background-size: auto 150%`
-   sizes the court by height (overflowing top/bottom) so its real 100:220
-   proportions never stretch.
+html[data-tab="players"] .court-bg {
+  /* Soft green floor glow — stronger at the bottom so the court reads as
+     being lit from its baseline (gymnasium floor catching stage light). */
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 115%, rgba(22, 163, 74, 0.18) 0%, transparent 60%),
+    var(--page-bg);
+}
 
-   Court proportions: real doubles court is 13.40m × 6.10m (≈ 100:220). Lines, in
-   the portrait (100×220) frame: singles sidelines x=7.54/92.46, short service
-   y=77.5/142.5, long doubles service y=12.5/207.5, centre line x=50 (only past
-   the short service lines), net y=110 dashed. */
-.roster-court-card { position: relative; isolation: isolate; }
-.roster-court-card > * { position: relative; z-index: 1; }
-.roster-court-card::before {
+/* Proper badminton doubles-court diagram viewed from above.
+   Real dimensions: 13.40m long × 6.10m wide = ratio 2.197:1 (≈ 100:220).
+   Markings at actual proportions:
+     - Singles sidelines:      0.46m inset    →  x ≈ 7.54 / 92.46 on a 0–100 width
+     - Short service line:     1.98m from net →  y ≈ 77.5  / 142.5 on a 0–220 length
+     - Long doubles service:   0.76m inset    →  y ≈ 12.5  / 207.5
+     - Net:                    at court mid   →  y = 110  (dashed)
+     - Center line:            only between short service and back boundary
+   Aspect ratio is LOCKED: `aspect-ratio: 100 / 220` on the container and
+   `background-size: contain` on the SVG. The court never stretches — it's
+   scaled to fit the viewport while keeping real-world proportions, then
+   letterboxed left/right or top/bottom as the viewport dictates. */
+html[data-tab="players"] .court-bg::before {
   content: '';
   position: absolute;
-  inset: 0;
-  z-index: 0;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  /* min(vw, vh-based) picks whichever dimension is the limiting one so the
+     court always fits entirely inside the viewport with consistent margin. */
+  width: min(86vw, calc(86vh * 100 / 220));
+  aspect-ratio: 100 / 220;
   pointer-events: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'><g fill='none' stroke='%234ade80' stroke-width='0.6' opacity='0.30' vector-effect='non-scaling-stroke'><rect x='0' y='0' width='100' height='220'/><line x1='7.54' y1='0' x2='7.54' y2='220'/><line x1='92.46' y1='0' x2='92.46' y2='220'/><line x1='0' y1='77.5' x2='100' y2='77.5'/><line x1='0' y1='142.5' x2='100' y2='142.5'/><line x1='0' y1='12.5' x2='100' y2='12.5'/><line x1='0' y1='207.5' x2='100' y2='207.5'/><line x1='50' y1='0' x2='50' y2='77.5'/><line x1='50' y1='142.5' x2='50' y2='220'/></g><line x1='0' y1='110' x2='100' y2='110' stroke='%234ade80' stroke-width='1' stroke-dasharray='3 3' opacity='0.45' vector-effect='non-scaling-stroke'/></svg>");
-  background-size: auto 150%;
-  background-position: center;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'><g fill='none' stroke='%234ade80' stroke-width='0.5' opacity='0.14' vector-effect='non-scaling-stroke'><rect x='0' y='0' width='100' height='220'/><line x1='7.54' y1='0' x2='7.54' y2='220'/><line x1='92.46' y1='0' x2='92.46' y2='220'/><line x1='0' y1='77.5' x2='100' y2='77.5'/><line x1='0' y1='142.5' x2='100' y2='142.5'/><line x1='0' y1='12.5' x2='100' y2='12.5'/><line x1='0' y1='207.5' x2='100' y2='207.5'/><line x1='50' y1='0' x2='50' y2='77.5'/><line x1='50' y1='142.5' x2='50' y2='220'/></g><line x1='0' y1='110' x2='100' y2='110' stroke='%234ade80' stroke-width='0.9' stroke-dasharray='2 2' opacity='0.22' vector-effect='non-scaling-stroke'/></svg>");
+  background-size: contain;
+  background-position: center center;
   background-repeat: no-repeat;
 }
-[data-theme="light"] .roster-court-card::before {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'><g fill='none' stroke='%2316a34a' stroke-width='0.6' opacity='0.34' vector-effect='non-scaling-stroke'><rect x='0' y='0' width='100' height='220'/><line x1='7.54' y1='0' x2='7.54' y2='220'/><line x1='92.46' y1='0' x2='92.46' y2='220'/><line x1='0' y1='77.5' x2='100' y2='77.5'/><line x1='0' y1='142.5' x2='100' y2='142.5'/><line x1='0' y1='12.5' x2='100' y2='12.5'/><line x1='0' y1='207.5' x2='100' y2='207.5'/><line x1='50' y1='0' x2='50' y2='77.5'/><line x1='50' y1='142.5' x2='50' y2='220'/></g><line x1='0' y1='110' x2='100' y2='110' stroke='%2316a34a' stroke-width='1' stroke-dasharray='3 3' opacity='0.5' vector-effect='non-scaling-stroke'/></svg>");
+
+[data-theme="light"] html[data-tab="players"] .court-bg,
+html[data-tab="players"][data-theme="light"] .court-bg {
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 115%, rgba(22, 163, 74, 0.10) 0%, transparent 60%),
+    var(--page-bg);
+}
+[data-theme="light"] html[data-tab="players"] .court-bg::before,
+html[data-tab="players"][data-theme="light"] .court-bg::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'><g fill='none' stroke='%2316a34a' stroke-width='0.5' opacity='0.20' vector-effect='non-scaling-stroke'><rect x='0' y='0' width='100' height='220'/><line x1='7.54' y1='0' x2='7.54' y2='220'/><line x1='92.46' y1='0' x2='92.46' y2='220'/><line x1='0' y1='77.5' x2='100' y2='77.5'/><line x1='0' y1='142.5' x2='100' y2='142.5'/><line x1='0' y1='12.5' x2='100' y2='12.5'/><line x1='0' y1='207.5' x2='100' y2='207.5'/><line x1='50' y1='0' x2='50' y2='77.5'/><line x1='50' y1='142.5' x2='50' y2='220'/></g><line x1='0' y1='110' x2='100' y2='110' stroke='%2316a34a' stroke-width='0.9' stroke-dasharray='2 2' opacity='0.32' vector-effect='non-scaling-stroke'/></svg>");
 }
 
 /* ── 05 Tempo Field — per-tab override for Stats ──
