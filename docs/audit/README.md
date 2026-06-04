@@ -94,9 +94,13 @@ waitlist-PIN bug fix hiding in a stray branch (PIN'd members couldn't join a ful
 session's waitlist — #133); Dependabot triage (merged `next` 16.2.7 + dev-deps,
 closed + major-ignored Tailwind 4 / TS 6 / @types/node 25).
 
-**Remaining tail (deliberately deferred — low-value or judgment-call):**
+**Tail cleared** (commit `fa82e9c`, branch `fix/audit-tail-deferred`, +6 tests):
 
-- **Low-severity silent-failure GETs** still returning `200 + empty` on failure: `GET /api/releases`, `/api/aliases`, `/api/sessions/costs` (WS#1 covered only the 7-spot high-value cluster).
-- **`EnterCodeSheet` error mapping** (reads a 5xx as "wrong code") and **`CoverSheet` cover-and-remove** (two non-atomic PATCHes with a misleading error → collapse to one `{ writtenOff, removed }`).
+- ✅ **Low-severity silent-failure GETs** — `GET /api/releases`, `/api/aliases`, `/api/sessions/costs` now return `503 {error}` on a backend throw instead of a lying `200 + empty`. All consumers already guarded `res.ok`; AdvanceSessionForm's costs read got an explicit guard for parity. (3 cases added to `route-load-errors.test.ts`.)
+- ✅ **`EnterCodeSheet` error mapping** — a 5xx / network throw now maps to a retryable `'server'` state (`recovery.errorNetwork`) instead of `'invalid'` ("wrong code"), which had been burning the user's rate-limited (10/hr) recovery attempts on a server outage. (New `EnterCodeSheet.test.tsx`, 3 cases.)
+- ✅ **`CoverSheet` cover-and-remove** — collapsed the two non-atomic PATCHes into one atomic `{ writtenOff:true, removed:true }`, fixing both the half-updated-on-failure risk and the misleading "Couldn't cover" error fired after the cover had already landed.
+
+**Still deferred (genuinely out of audit scope):**
+
 - **React-Compiler readiness** (the ~22 `set-state-in-effect`/`purity`/`refs` warnings) — a separate opt-in initiative if/when the app adopts the React Compiler, NOT lint hygiene.
 - The remaining medium/low findings in the phase docs (single-pass leads, not re-verified).
