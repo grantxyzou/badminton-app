@@ -58,7 +58,7 @@ function fmtSessionNav(datetime: string) {
 
 /* ── Main component ── */
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   const [view, setView] = useState<AdminView>('dashboard');
   const [refreshKey, setRefreshKey] = useState(0);
   // Session the Ledger drilled into; PaymentsCard preselects its chip.
@@ -155,7 +155,7 @@ export default function AdminDashboard() {
   }
 
   if (isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER')) {
-    return <CommandCenter refreshKey={refreshKey} setView={setView} />;
+    return <CommandCenter refreshKey={refreshKey} setView={setView} onExit={onExit} />;
   }
   return <Dashboard refreshKey={refreshKey} setView={setView} />;
 }

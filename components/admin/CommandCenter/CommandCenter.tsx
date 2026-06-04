@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import PageHeader from '../../primitives/PageHeader';
+import TopBar from '../../primitives/TopBar';
 import AnomalyFeed from './AnomalyFeed';
 import NextSessionCard from './NextSessionCard';
 import PaymentsCard from './PaymentsCard';
@@ -23,6 +23,8 @@ export interface OpenReceiptOpts {
 interface CommandCenterProps {
   refreshKey: number;
   setView: (v: AdminView) => void;
+  /** Exit the Admin tab back to Profile (Admin is reached from Profile). */
+  onExit: () => void;
 }
 
 /**
@@ -30,7 +32,7 @@ interface CommandCenterProps {
  * across every admin domain (session, payments, birds, roster) so the
  * organizer can confirm "everything looks right" in 30 seconds.
  */
-export default function CommandCenter({ refreshKey, setView }: CommandCenterProps) {
+export default function CommandCenter({ refreshKey, setView, onExit }: CommandCenterProps) {
   const pageT = useTranslations('pages.admin');
   const [localRefresh, setLocalRefresh] = useState(0);
   const composedRefresh = refreshKey + localRefresh;
@@ -119,7 +121,9 @@ export default function CommandCenter({ refreshKey, setView }: CommandCenterProp
 
   return (
     <div className="space-y-5 w-full">
-      <PageHeader>{pageT('title')}</PageHeader>
+      {/* Admin is reached from Profile, so it's a sub-page: TopBar with a back
+          affordance (no crumb — "ADMIN" over an "Admin" title is redundant). */}
+      <TopBar title={pageT('title')} onBack={onExit} backLabel="Back to profile" />
 
       <AnomalyFeed refreshKey={composedRefresh} />
       <NextSessionCard
