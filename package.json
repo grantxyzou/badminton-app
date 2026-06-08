@@ -13,9 +13,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.100.1",
+    "@anthropic-ai/sdk": "^0.102.0",
     "@azure/cosmos": "^4.9.3",
-    "@formatjs/intl-localematcher": "^0.8.9",
+    "@formatjs/intl-localematcher": "^0.8.10",
     "next": "^16.2.7",
     "next-intl": "^4.12.0",
     "react": "^18",
