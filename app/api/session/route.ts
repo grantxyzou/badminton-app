@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId, POINTER_ID, DEFAULT_SESSION } from '@/lib/cosmos';
-import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
+import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import type { BirdUsage, ETransferRecipient } from '@/lib/types';
 
 function isValidETransferRecipient(value: unknown): value is ETransferRecipient {
@@ -20,7 +20,25 @@ function isValidAnomalyDismissedList(value: unknown): value is string[] {
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+/**
+ * Removes admin-only fields from a session doc before it goes to a non-admin
+ * caller. `eTransferRecipient` is payment PII (rule 10) and `approvedNames` is
+ * the invite list (enables name enumeration); both are read only by admin
+ * components. Same strip convention as `deleteToken`/`pinHash` elsewhere.
+ * `settled` is intentionally kept — it carries the player's own cost.
+ */
+function stripForPublic<T extends Record<string, unknown>>(session: T) {
+  const {
+    eTransferRecipient: _etr,
+    approvedNames: _an,
+    anomaliesAtAdvance: _aaa,
+    anomaliesDismissed: _ad,
+    ...safe
+  } = session;
+  return safe;
+}
+
+export async function GET(req: NextRequest) {
   try {
     const sessionId = await getActiveSessionId();
     const container = getContainer('sessions');
@@ -30,8 +48,9 @@ export async function GET() {
         parameters: [{ name: '@id', value: sessionId }],
       })
       .fetchAll();
-    const session = resources.find((r) => r.id !== POINTER_ID);
-    return NextResponse.json(session ?? { ...DEFAULT_SESSION, id: sessionId, sessionId });
+    const session = resources.find((r) => r.id !== POINTER_ID)
+      ?? { ...DEFAULT_SESSION, id: sessionId, sessionId };
+    return NextResponse.json(isAdminAuthed(req) ? session : stripForPublic(session));
   } catch (error) {
     console.error('GET session error:', error);
     return NextResponse.json(DEFAULT_SESSION);
