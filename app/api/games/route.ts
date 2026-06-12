@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos';
-import { isAdminAuthed } from '@/lib/auth';
+import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import type { GameResult } from '@/lib/types';
@@ -69,8 +69,21 @@ export async function POST(req: NextRequest) {
       || !Number.isFinite(body.scoreA) || !Number.isFinite(body.scoreB)) {
       return NextResponse.json({ error: 'numeric_scores_required' }, { status: 400 });
     }
-    const loggedBy = typeof body.loggedBy === 'string' ? body.loggedBy.trim().slice(0, 50) : '';
-    if (!loggedBy) return NextResponse.json({ error: 'loggedBy_required' }, { status: 400 });
+    // Game logging is identity-bound (rule 12): the recorder must hold the
+    // member_session cookie (minted at sign-up, no PIN) or be an admin — never
+    // name-only, since member names are enumerable via GET /api/members. Mirror
+    // the gear endpoint's owner-or-admin pattern. The cookie name is the
+    // authoritative `loggedBy`; admins may log on behalf of another name.
+    const caller = verifyMemberAuth(req);
+    let loggedBy: string;
+    if (caller) {
+      loggedBy = caller.name;
+    } else if ((await isAdminAuthedWithMember(req)).authed) {
+      loggedBy = typeof body.loggedBy === 'string' ? body.loggedBy.trim().slice(0, 50) : '';
+      if (!loggedBy) return NextResponse.json({ error: 'loggedBy_required' }, { status: 400 });
+    } else {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
 
     // sessionId override is admin-only (rule 7); non-admins log to the active session.
     const sessionId = typeof body.sessionId === 'string' && body.sessionId && isAdminAuthed(req)
