@@ -6,6 +6,7 @@ import {
   isAdminAuthed,
   isAdminAuthedWithMember,
   clearAdminCookie,
+  clearMemberCookie,
   getAdminNames,
   isNameInAdminBootstrap,
 } from '../lib/auth';
@@ -86,6 +87,78 @@ describe('lib/auth — signed-payload cookie', () => {
     const setCookie = res.headers.get('set-cookie') ?? '';
     expect(setCookie).toContain('admin_session=');
     expect(setCookie.toLowerCase()).toMatch(/max-age=0/);
+  });
+
+  it('setAdminCookie scopes the cookie to the /bpm basePath', () => {
+    const res = NextResponse.json({});
+    setAdminCookie(res, 'member-grant', 'Grant');
+    const setCookie = res.headers.get('set-cookie') ?? '';
+    expect(setCookie.toLowerCase()).toContain('path=/bpm');
+  });
+
+  it('clearAdminCookie clears BOTH the /bpm and legacy / paths', () => {
+    const res = NextResponse.json({});
+    clearAdminCookie(res);
+    const all = res.headers.getSetCookie();
+    const adminClears = all.filter((c) => c.startsWith('admin_session='));
+    expect(adminClears).toHaveLength(2);
+    expect(adminClears.some((c) => /path=\/bpm/i.test(c))).toBe(true);
+    expect(adminClears.some((c) => /path=\/(;|$)/i.test(c))).toBe(true);
+    expect(adminClears.every((c) => /max-age=0/i.test(c))).toBe(true);
+  });
+
+  it('logout-style double clear keeps all four headers (no re-serialization drop)', () => {
+    // Regression guard: clearing two cookies on one response must not drop any
+    // path. clear* are append-only precisely so this holds — see lib/auth.ts.
+    const res = NextResponse.json({});
+    clearAdminCookie(res);
+    clearMemberCookie(res);
+    const all = res.headers.getSetCookie();
+    expect(all.filter((c) => c.startsWith('admin_session=')).length).toBe(2);
+    expect(all.filter((c) => c.startsWith('member_session=')).length).toBe(2);
+  });
+});
+
+describe('lib/auth — SESSION_SECRET fallback gating', () => {
+  const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
+
+  afterEach(() => {
+    delete process.env.SESSION_SECRET;
+    // NODE_ENV is read-only in the types but writable at runtime; restore it.
+    (process.env as Record<string, string | undefined>).NODE_ENV = ORIGINAL_NODE_ENV;
+  });
+
+  function setNodeEnv(value: string | undefined) {
+    (process.env as Record<string, string | undefined>).NODE_ENV = value;
+  }
+
+  it('falls back to the dev sentinel in development/test (no real secret)', () => {
+    delete process.env.SESSION_SECRET;
+    setNodeEnv('development');
+    // Signing must not throw; the resulting cookie must still verify.
+    const res = NextResponse.json({});
+    expect(() => setAdminCookie(res, 'm', 'n')).not.toThrow();
+  });
+
+  it('throws rather than signing with the public sentinel in production', () => {
+    delete process.env.SESSION_SECRET;
+    setNodeEnv('production');
+    const res = NextResponse.json({});
+    expect(() => setAdminCookie(res, 'm', 'n')).toThrow(/SESSION_SECRET/);
+  });
+
+  it('throws when NODE_ENV is unset on a host with no secret (the dangerous case)', () => {
+    delete process.env.SESSION_SECRET;
+    setNodeEnv(undefined);
+    const res = NextResponse.json({});
+    expect(() => setAdminCookie(res, 'm', 'n')).toThrow(/SESSION_SECRET/);
+  });
+
+  it('uses a provided real secret regardless of NODE_ENV', () => {
+    process.env.SESSION_SECRET = SECRET;
+    setNodeEnv('production');
+    const res = NextResponse.json({});
+    expect(() => setAdminCookie(res, 'm', 'n')).not.toThrow();
   });
 });
 
