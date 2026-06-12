@@ -42,6 +42,41 @@ describe('GET /api/session', () => {
   });
 });
 
+describe('GET /api/session — admin-only field stripping', () => {
+  beforeEach(() => {
+    resetMockStore();
+    seedAdminMember();
+    seedPointer('session-2026-04-05');
+    seedSession('session-2026-04-05', {
+      title: 'Test Session',
+      approvedNames: ['Lin', 'Viktor'],
+      eTransferRecipient: { name: 'Grant', email: 'grant@example.com' },
+      anomaliesDismissed: ['cost_spike'],
+      settled: { at: '2026-04-05T00:00:00Z', costPerPerson: 8, totalCost: 48, playerNames: ['Lin'] },
+    });
+  });
+
+  it('strips eTransferRecipient and approvedNames for a non-admin caller', async () => {
+    const res = await GET(makeGetRequest('http://localhost:3000/api/session') as never);
+    const data = await res.json();
+    expect(res.status).toBe(200);
+    expect(data.eTransferRecipient).toBeUndefined();
+    expect(data.approvedNames).toBeUndefined();
+    expect(data.anomaliesDismissed).toBeUndefined();
+    // Non-sensitive fields the player UI needs survive.
+    expect(data.title).toBe('Test Session');
+    expect(data.settled?.costPerPerson).toBe(8);
+  });
+
+  it('returns the full doc for an admin caller', async () => {
+    const res = await GET(makeGetRequest('http://localhost:3000/api/session', true) as never);
+    const data = await res.json();
+    expect(res.status).toBe(200);
+    expect(data.eTransferRecipient?.email).toBe('grant@example.com');
+    expect(data.approvedNames).toEqual(['Lin', 'Viktor']);
+  });
+});
+
 describe('PUT /api/session', () => {
   beforeEach(() => {
     resetMockStore();
