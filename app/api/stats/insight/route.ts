@@ -399,6 +399,9 @@ function buildSkillLine(s: Snapshot): string {
     } else if (lvl.blindSpot?.direction === 'below') {
       levelHeader += 'Their self-rating is a little ahead of recent game results (room to grow into it). ';
     }
+    if (lvl.pendingPromotion) {
+      levelHeader += `They're on the cusp of the ${lvl.pendingPromotion} phase — one more consistent check-in confirms it. `;
+    }
   }
 
   const a = s.assessment;
