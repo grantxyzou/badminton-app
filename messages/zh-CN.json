@@ -199,6 +199,21 @@
   "stats": {
     "heading": "你的数据",
     "subhead": "你没问过但很有趣的数据(beta)",
+    "level": {
+      "title": "你的水平",
+      "purpose": "一眼看清你现在的水平——只给你自己看。",
+      "ofFive": "/ 5",
+      "howTitle": "如何计算",
+      "hideDetails": "收起",
+      "confidence": {
+        "low": "粗略估计",
+        "medium": "逐渐清晰",
+        "high": "已校准"
+      },
+      "empty": "完成一次技能自评即可看到你的水平。",
+      "error": "加载失败——刷新重试",
+      "needsAuth": "请重新登录以查看你的水平。"
+    },
     "comingSoon": "即将推出",
     "moreComing": "更多指标制作中",
     "progression": {

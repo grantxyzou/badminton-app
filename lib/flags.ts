@@ -22,7 +22,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_LEDGER'
   | 'NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE'
   | 'NEXT_PUBLIC_FLAG_NAV_RAIL'
-  | 'NEXT_PUBLIC_FLAG_SKILL_ASSESS';
+  | 'NEXT_PUBLIC_FLAG_SKILL_ASSESS'
+  | 'NEXT_PUBLIC_FLAG_SKILL_LEVEL';
 
 interface FlagMeta {
   description: string;
@@ -66,6 +67,11 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'after skill-assessment P0 is promoted to stable + lived-in for 2 weeks',
   },
+  NEXT_PUBLIC_FLAG_SKILL_LEVEL: {
+    description: 'Canonical skill level (Phase 1 of the skill-accuracy spine): one derived 1–5 level per member, computed on read by folding self-assessment snapshots (+ legacy Member.stage fallback). Surfaces a private "Your level" card on Stats and prepends the level to the AI insight. Read API is privacy-gated (member cookie / admin). On for bpm-next + dev; off on bpm-stable until promoted.',
+    owner: 'grant',
+    plannedRemoval: 'after the skill-level spine is promoted to stable + lived-in for 2 weeks',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -84,6 +90,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_NAV_RAIL;
     case 'NEXT_PUBLIC_FLAG_SKILL_ASSESS':
       return process.env.NEXT_PUBLIC_FLAG_SKILL_ASSESS;
+    case 'NEXT_PUBLIC_FLAG_SKILL_LEVEL':
+      return process.env.NEXT_PUBLIC_FLAG_SKILL_LEVEL;
   }
 }
 

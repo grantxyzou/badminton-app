@@ -224,6 +224,21 @@ export function adminCookieValue(): string {
   return `${headerB64}.${sigB64}`;
 }
 
+/**
+ * Build a valid `member_session` cookie value for a given member identity.
+ * Same signed-payload format as the admin cookie (so it exercises the real
+ * `verifyMemberAuth` path), but bound to an arbitrary name/id — used to test
+ * member-scoped read gates like /api/stats/level.
+ */
+export function memberCookieValue(name: string, memberId = `member-${name.toLowerCase()}`): string {
+  const now = Math.floor(Date.now() / 1000);
+  const payload = { memberId, name, iat: now, exp: now + 60 * 60 * 24 * 30 };
+  const headerB64 = base64urlEncode(Buffer.from(JSON.stringify(payload), 'utf8'));
+  const sig = createHmac('sha256', TEST_SESSION_SECRET).update(headerB64).digest();
+  const sigB64 = base64urlEncode(sig);
+  return `${headerB64}.${sigB64}`;
+}
+
 export function makeRequest(
   method: string,
   url: string,

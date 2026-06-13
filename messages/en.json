@@ -199,6 +199,21 @@
   "stats": {
     "heading": "Your stats",
     "subhead": "Interesting metrics that you didn't ask for (beta)",
+    "level": {
+      "title": "Your level",
+      "purpose": "One read on where your game is right now — just for you.",
+      "ofFive": "/ 5",
+      "howTitle": "How this is calculated",
+      "hideDetails": "Hide",
+      "confidence": {
+        "low": "Rough estimate",
+        "medium": "Getting clearer",
+        "high": "Well-calibrated"
+      },
+      "empty": "Take a skill check-in to see your level.",
+      "error": "Couldn't load — refresh to retry",
+      "needsAuth": "Sign in again to see your level."
+    },
     "comingSoon": "Coming soon",
     "moreComing": "other metrics in the making",
     "progression": {
