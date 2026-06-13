@@ -260,8 +260,10 @@ export function workOnNext(ratings: Rating[], n = 3): Rating[] {
   return sortedKnown(ratings, 'asc').slice(0, n);
 }
 
-/** §6 phase bands, highest first so the first match wins. */
-const PHASE_BANDS: { phase: Phase; min: number }[] = [
+/** §6 phase bands, highest first so the first match wins. Exported so the
+ *  canonical-level hysteresis (`lib/level.ts`) can read band minimums without
+ *  re-declaring them. */
+export const PHASE_BANDS: { phase: Phase; min: number }[] = [
   { phase: 'advanced', min: 4.3 },
   { phase: 'commitment', min: 3.4 },
   { phase: 'switch', min: 2.6 },

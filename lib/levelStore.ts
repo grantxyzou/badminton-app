@@ -142,5 +142,11 @@ export async function getCanonicalLevel(subject: LevelSubject): Promise<Canonica
     }
   }
 
-  return deriveLevel({ selfSnapshots, gameCalibration, legacyStage, now });
+  return deriveLevel({
+    selfSnapshots,
+    gameCalibration,
+    legacyStage,
+    smoothing: isFlagOn('NEXT_PUBLIC_FLAG_SKILL_SMOOTHING'),
+    now,
+  });
 }

@@ -20,7 +20,7 @@
  * either, `level` is null (take a check-in).
  */
 
-import { placePhase, type Phase } from './assessment';
+import { placePhase, PHASE_BANDS, type Phase } from './assessment';
 import { blindSpot, type BlindSpot } from './calibration';
 
 export interface LevelInputs {
@@ -33,6 +33,11 @@ export interface LevelInputs {
   peerLevel?: { median: number; raters: number } | null;
   /** `Member.stage` (1–6). Fallback input only, never written. */
   legacyStage?: number | null;
+  /** Phase 3 — when true, the self component is a time-decayed EWMA of all
+   *  snapshots (not just the latest) and the phase is the hysteresis-confirmed
+   *  trajectory phase rather than a raw band lookup. Gated by
+   *  `NEXT_PUBLIC_FLAG_SKILL_SMOOTHING` at the store. */
+  smoothing?: boolean;
   /** Injected for deterministic staleness math. ISO 8601. */
   now: string;
 }
@@ -53,6 +58,10 @@ export interface CanonicalLevel {
    *  enough games; asymmetrically gated. The card reveals it only on opt-in and
    *  never prints the deficit number for the 'below' direction. */
   blindSpot?: BlindSpot | null;
+  /** Phase 3 — a higher phase the latest check-in reached but that hysteresis
+   *  hasn't confirmed yet. Drives the "on track for X — confirm next check-in"
+   *  hint. Null when the confirmed phase is already current or smoothing is off. */
+  pendingPromotion?: Phase | null;
   computedAt: string;
 }
 
@@ -89,6 +98,148 @@ function ageDays(fromIso: string, nowIso: string): number {
   return (now - from) / 86_400_000;
 }
 
+// ── Phase 3: stability (smoothing + phase hysteresis) ──
+
+/** EWMA half-life, in days: a snapshot's weight halves every 90 days of age. */
+const SMOOTH_HALF_LIFE_DAYS = 90;
+/** A pending promotion is confirmed early if a game-calibrated level lands
+ *  within this much of the target band minimum (with enough games). */
+const PROMOTE_CORROBORATION = 0.2;
+/** Demotion only fires once the smoothed level falls this far below the current
+ *  band minimum — sticky edges, so a 3.38 after a 3.45 doesn't bounce a phase. */
+const DEMOTE_MARGIN = 0.15;
+/** Games required before a calibrated level may corroborate a promotion. */
+const CORROBORATION_MIN_GAMES = 8;
+
+function validSorted(snapshots: { takenAt: string; overall: number | null }[]): { takenAt: string; overall: number }[] {
+  return (snapshots ?? [])
+    .filter((s) => s && typeof s.takenAt === 'string' && typeof s.overall === 'number')
+    .map((s) => ({ takenAt: s.takenAt, overall: s.overall as number }))
+    .sort((a, b) => a.takenAt.localeCompare(b.takenAt));
+}
+
+/** Time-decayed EWMA of all snapshots, anchored at `anchorIso` (defaults to the
+ *  newest snapshot). Recent check-ins dominate; old ones fade but are never
+ *  discarded. A single snapshot returns its own value (weights cancel). */
+export function smoothSelfLevel(
+  snapshots: { takenAt: string; overall: number | null }[],
+  now: string,
+): number | null {
+  const pts = validSorted(snapshots);
+  if (pts.length === 0) return null;
+  const anchor = pts[pts.length - 1].takenAt;
+  let sumW = 0;
+  let sumWV = 0;
+  for (const p of pts) {
+    const w = Math.pow(0.5, ageDays(p.takenAt, anchor) / SMOOTH_HALF_LIFE_DAYS);
+    sumW += w;
+    sumWV += w * p.overall;
+  }
+  // `now` is accepted for signature symmetry with deriveLevel; anchoring at the
+  // newest snapshot (not `now`) keeps the blend value independent of how long
+  // ago the last check-in was — staleness is handled by confidence docking.
+  void now;
+  return sumW > 0 ? round1(clampLevel(sumWV / sumW)) : null;
+}
+
+/** Band minimum for a phase (1.0 if somehow unknown). */
+function bandMin(phase: Phase | null): number {
+  if (!phase) return 1.0;
+  const band = PHASE_BANDS.find((b) => b.phase === phase);
+  return band ? band.min : 1.0;
+}
+
+export interface PhaseTrajectory {
+  /** The hysteresis-confirmed phase. */
+  phase: Phase | null;
+  /** A higher band the latest check-in reached but that isn't confirmed yet. */
+  pendingPromotion: Phase | null;
+}
+
+/**
+ * Confirmed phase + pending promotion, derived by folding the snapshot history
+ * chronologically — stateless and reproducible (no stored "previous phase").
+ *
+ * Rules:
+ *  - The first check-in establishes a baseline phase with no hysteresis.
+ *  - **Promotion** to a higher band needs corroboration: either two consecutive
+ *    check-ins whose smoothed level reaches the band, OR one such check-in
+ *    backed by a game-calibrated level within `PROMOTE_CORROBORATION` of the
+ *    band minimum (≥ `CORROBORATION_MIN_GAMES` games). Until then the band is
+ *    `pendingPromotion`, not `phase`.
+ *  - **Demotion** only once the smoothed level drops below `bandMin − DEMOTE_MARGIN`.
+ *
+ * `gameCorroboration` is the member's CURRENT observed calibration; it can only
+ * confirm a promotion the latest check-in is already pending (we don't have a
+ * historical observed level per snapshot, and "current games confirm the current
+ * pending promotion" is exactly the intended use).
+ */
+export function resolvePhaseTrajectory(
+  snapshots: { takenAt: string; overall: number | null }[],
+  gameCorroboration?: { level: number; games: number } | null,
+): PhaseTrajectory {
+  const pts = validSorted(snapshots);
+  if (pts.length === 0) return { phase: null, pendingPromotion: null };
+
+  /** Prefix EWMA anchored at pts[idx] — the smoothed level "as of" that check-in. */
+  const smoothedAt = (idx: number): number => {
+    const anchor = pts[idx].takenAt;
+    let sumW = 0;
+    let sumWV = 0;
+    for (let j = 0; j <= idx; j++) {
+      const w = Math.pow(0.5, ageDays(pts[j].takenAt, anchor) / SMOOTH_HALF_LIFE_DAYS);
+      sumW += w;
+      sumWV += w * pts[j].overall;
+    }
+    return sumW > 0 ? sumWV / sumW : pts[idx].overall;
+  };
+
+  let confirmed = placePhase(smoothedAt(0));
+  let prevQualifying: Phase | null = null;
+  let pending: Phase | null = null;
+
+  for (let i = 0; i < pts.length; i++) {
+    const sm = smoothedAt(i);
+    const target = placePhase(sm);
+    const targetMin = bandMin(target);
+    const confirmedMin = bandMin(confirmed);
+
+    if (targetMin > confirmedMin) {
+      // Candidate promotion: confirm on a second consecutive qualifying check-in.
+      if (prevQualifying === target) {
+        confirmed = target;
+        prevQualifying = null;
+        pending = null;
+      } else {
+        prevQualifying = target;
+        pending = target;
+      }
+    } else if (sm < confirmedMin - DEMOTE_MARGIN) {
+      // Sticky demotion.
+      confirmed = placePhase(sm);
+      prevQualifying = null;
+      pending = null;
+    } else {
+      // Same band (or within the sticky demotion margin) — no change.
+      prevQualifying = null;
+      pending = null;
+    }
+  }
+
+  // The current observed calibration can confirm a still-pending promotion.
+  if (
+    pending &&
+    gameCorroboration &&
+    gameCorroboration.games >= CORROBORATION_MIN_GAMES &&
+    gameCorroboration.level >= bandMin(pending) - PROMOTE_CORROBORATION
+  ) {
+    confirmed = pending;
+    pending = null;
+  }
+
+  return { phase: confirmed, pendingPromotion: pending };
+}
+
 const NOTCH_DOWN: Record<CanonicalLevel['confidence'], CanonicalLevel['confidence']> = {
   high: 'medium',
   medium: 'low',
@@ -105,7 +256,12 @@ export function deriveLevel(inputs: LevelInputs): CanonicalLevel {
   const explanation: string[] = [];
 
   const self = latestSelf(selfSnapshots ?? []);
-  const selfLevel = self?.overall ?? null;
+  const latestSelfLevel = self?.overall ?? null;
+  // Phase 3: the self component switches from the latest overall to a smoothed
+  // EWMA. `latestSelfLevel` is still used for the blind-spot (perception vs
+  // games) and staleness so Phase 2 behaviour is unchanged when smoothing is off.
+  const smoothedSelf = inputs.smoothing ? smoothSelfLevel(selfSnapshots ?? [], now) : null;
+  const selfLevel = inputs.smoothing ? smoothedSelf : latestSelfLevel;
   const gameLevel = gameCalibration ? clampLevel(gameCalibration.observedLevel) : null;
   const peerLevelVal = peerLevel ? clampLevel(peerLevel.median) : null;
 
@@ -162,30 +318,54 @@ export function deriveLevel(inputs: LevelInputs): CanonicalLevel {
   // Narration of what fed the number.
   if (basis.self !== null) {
     const count = selfSnapshots.filter((s) => typeof s.overall === 'number').length;
-    explanation.unshift(
-      count > 1
-        ? `From your self check-ins (latest ${basis.self.toFixed(1)} / 5, ${count} on record).`
-        : `From your self check-in (${basis.self.toFixed(1)} / 5).`,
-    );
+    if (inputs.smoothing && count > 1) {
+      explanation.unshift(`From your self check-ins (recent average ${basis.self.toFixed(1)} / 5, ${count} on record).`);
+    } else {
+      explanation.unshift(
+        count > 1
+          ? `From your self check-ins (latest ${basis.self.toFixed(1)} / 5, ${count} on record).`
+          : `From your self check-in (${basis.self.toFixed(1)} / 5).`,
+      );
+    }
   }
   if (basis.game !== null && gameCalibration) {
     explanation.push(`Adjusted by your logged games (${gameCalibration.games} game${gameCalibration.games === 1 ? '' : 's'}).`);
   }
   if (basis.peer !== null) explanation.push('Includes how regular partners see your play.');
 
-  // The self-vs-observed gap, computed from the SELF component vs the observed
-  // game level (asymmetric gating lives in `blindSpot`). Always available to the
-  // owner; the card chooses whether/how to reveal it.
-  const bs = gameCalibration ? blindSpot(selfLevel, gameCalibration) : null;
+  // The self-vs-observed gap, computed from the latest self RATING (perception)
+  // vs the observed game level (asymmetric gating lives in `blindSpot`). Uses the
+  // latest rating — not the smoothed value — because the gap is about what the
+  // player believes right now. Always available to the owner; the card chooses
+  // whether/how to reveal it.
+  const bs = gameCalibration ? blindSpot(latestSelfLevel, gameCalibration) : null;
+
+  // Phase 3: hysteresis-confirmed phase + pending promotion. Off → raw band.
+  let phase: Phase | null = placePhase(level);
+  let pendingPromotion: Phase | null = null;
+  if (inputs.smoothing) {
+    const gameCorroboration = gameCalibration
+      ? { level: clampLevel(gameCalibration.observedLevel), games: gameCalibration.games }
+      : null;
+    const traj = resolvePhaseTrajectory(selfSnapshots ?? [], gameCorroboration);
+    if (traj.phase) phase = traj.phase;
+    pendingPromotion = traj.pendingPromotion;
+    if (pendingPromotion) {
+      explanation.push(
+        `Your check-ins are reaching the ${pendingPromotion} phase — one more consistent check-in locks it in.`,
+      );
+    }
+  }
 
   return {
     level,
     stage: levelToStage(level),
-    phase: placePhase(level),
+    phase,
     confidence,
     basis,
     explanation,
     blindSpot: bs,
+    pendingPromotion,
     computedAt: now,
   };
 }

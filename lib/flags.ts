@@ -24,7 +24,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_NAV_RAIL'
   | 'NEXT_PUBLIC_FLAG_SKILL_ASSESS'
   | 'NEXT_PUBLIC_FLAG_SKILL_LEVEL'
-  | 'NEXT_PUBLIC_FLAG_SKILL_CALIBRATION';
+  | 'NEXT_PUBLIC_FLAG_SKILL_CALIBRATION'
+  | 'NEXT_PUBLIC_FLAG_SKILL_SMOOTHING';
 
 interface FlagMeta {
   description: string;
@@ -78,6 +79,11 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'after the calibration phase is promoted to stable + lived-in for 2 weeks',
   },
+  NEXT_PUBLIC_FLAG_SKILL_SMOOTHING: {
+    description: 'Progression stability (Phase 3 of the skill-accuracy spine): the canonical level\'s self component becomes a time-decayed EWMA (90-day half-life) of all check-ins instead of just the latest, and the phase is hysteresis-confirmed (promotion needs two consecutive qualifying check-ins or game corroboration; demotion has a sticky margin) so it stops swinging on one check-in. Surfaces an "on track for X — confirm next check-in" hint. On for bpm-next + dev; off on bpm-stable until promoted.',
+    owner: 'grant',
+    plannedRemoval: 'after the skill-accuracy spine is promoted to stable + lived-in for 2 weeks',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -100,6 +106,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_SKILL_LEVEL;
     case 'NEXT_PUBLIC_FLAG_SKILL_CALIBRATION':
       return process.env.NEXT_PUBLIC_FLAG_SKILL_CALIBRATION;
+    case 'NEXT_PUBLIC_FLAG_SKILL_SMOOTHING':
+      return process.env.NEXT_PUBLIC_FLAG_SKILL_SMOOTHING;
   }
 }
 
