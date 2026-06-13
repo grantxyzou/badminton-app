@@ -155,6 +155,21 @@ export default function LevelCard() {
         </span>
       </div>
 
+      {/* Phase 3: a higher phase the latest check-in reached but hysteresis
+          hasn't confirmed — framed as encouragement, never a downgrade. */}
+      {level.pendingPromotion && (
+        <p
+          style={{
+            fontSize: 12, lineHeight: 1.45, margin: 0,
+            color: 'var(--accent-amber, #f59e0b)',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}
+        >
+          <span className="material-icons" aria-hidden="true" style={{ fontSize: 16 }}>trending_up</span>
+          {t('level.onTrack', { phase: t(`assess.phase.${level.pendingPromotion}`) })}
+        </p>
+      )}
+
       {/* Opt-in, asymmetric "blind spot": the comparison is revealed only on a
           deliberate tap, and the 'below' direction is reframed forward-looking
           with no deficit number (locked decision). */}

@@ -213,6 +213,7 @@
       "empty": "Take a skill check-in to see your level.",
       "error": "Couldn't load — refresh to retry",
       "needsAuth": "Sign in again to see your level.",
+      "onTrack": "On track for {phase} — confirm it at your next check-in.",
       "compare": {
         "cta": "See how your games compare",
         "hide": "Hide",
