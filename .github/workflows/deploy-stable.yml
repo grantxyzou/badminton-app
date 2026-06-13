@@ -44,7 +44,11 @@ jobs:
           NEXT_PUBLIC_ETRANSFER_EMAIL: grantxyzou@gmail.com
           NEXT_PUBLIC_ENV: stable
           NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
-          NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: 'false'
+          # v1.7: stable is brought to FULL feature parity with bpm-next — every
+          # flag below mirrors deploy-next.yml. (NEXT_PUBLIC_ENV stays 'stable'
+          # so the preview banner remains off; it's an env identifier, not a
+          # feature flag.)
+          NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: 'true'
           NEXT_PUBLIC_FLAG_COMMAND_CENTER: 'true'
           NEXT_PUBLIC_FLAG_SETTLE: 'true'
           # Ledger goes live on stable with v1.6 (2026-06-02). The v1.5 cut
@@ -57,6 +61,13 @@ jobs:
           # Skill self-assessment trend spine - promoted to stable with v1.7
           # (soaked since 2026-06-02, kill-gate cleared). vnext-only on v1.6.
           NEXT_PUBLIC_FLAG_SKILL_ASSESS: 'true'
+          # v1.7: parity flips — Value-Hub Slice-0 (racket/game-logger/partners)
+          # and the full skill-accuracy spine (canonical level → game calibration
+          # → progression stability) now live on stable, matching bpm-next.
+          NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE: 'true'
+          NEXT_PUBLIC_FLAG_SKILL_LEVEL: 'true'
+          NEXT_PUBLIC_FLAG_SKILL_CALIBRATION: 'true'
+          NEXT_PUBLIC_FLAG_SKILL_SMOOTHING: 'true'
 
       - name: Package standalone build
         run: |
