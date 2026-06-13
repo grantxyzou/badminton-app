@@ -58,6 +58,7 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 - **Skill self-assessment** *(flag-gated `NEXT_PUBLIC_FLAG_SKILL_ASSESS`, dormant on stable)* — periodic anchor-card check-in across 14 skills, a then-vs-now trend radar, phase placement, and an AI "Your read" that folds in the assessment. *(soaking on `bpm-next`)*
 - **Value-Hub Slice-0** *(flag-gated `NEXT_PUBLIC_FLAG_VALUE_HUB`, dormant on stable)* — racket pick → recommendation card, 48h game logger, and partner-frequency Stats card. *(awaiting kill-criterion gate)*
+- **Accurate skill level** *(flag-gated `NEXT_PUBLIC_FLAG_SKILL_LEVEL` / `…_CALIBRATION` / `…_SMOOTHING`, dormant on stable)* — a private "Your level" card on Stats that folds your check-ins into one 1–5 level, sharpens it against your logged game results (with an opt-in "how your games compare" note), and smooths it so a single check-in can't swing your phase. Feeds the AI "Your read". *(soaking on `bpm-next`)*
 
 ### Changed
 
@@ -74,6 +75,8 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 ### Security
 
 - **Admin-auth hardening** — admin actions re-check your role on every request (a demotion takes effect immediately); closed two unauthenticated write paths; first-time PIN claims now require identity proof.
+- **Game logging bound to identity** — recording a game result now requires your own trusted-device cookie, so results can't be forged under another member's name; the public session read no longer leaks admin-only payment-recipient or invite-list fields.
+- **Session-secret fail-closed + cookie scoping** — session cookies are scoped to the app's `/bpm` path, the app refuses to sign sessions with the built-in dev key outside local dev (so a misconfigured host can't issue forgeable admin cookies), and an optional `TRUSTED_IP_HEADER` lets a non-Azure deployment pin a trusted client-IP source for rate limiting.
 - **CI lint gate + dependency bumps** (next 16.2.7, @types/node, dev-deps).
 
 ---
