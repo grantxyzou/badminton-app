@@ -5,6 +5,8 @@ import { getContainer, getActiveSessionId, ensureContainer } from '@/lib/cosmos'
 import { topPartners } from '@/lib/recommend';
 import { isFlagOn } from '@/lib/flags';
 import { summarizeAssessmentTrend, type AssessmentTrend, type StoredAssessment } from '@/lib/assessment';
+import { getCanonicalLevel } from '@/lib/levelStore';
+import type { CanonicalLevel } from '@/lib/level';
 
 /**
  * Account-gated, passively-generated player insight. Replaces the old
@@ -140,6 +142,16 @@ export async function GET(req: NextRequest) {
   const trend = await fetchAssessmentTrend(member.id);
   const latestAssessmentAt = trend?.latestAt ?? null;
 
+  // Canonical level (flag-gated). Same memberId-resolve as the trend; folds the
+  // self-assessments into one private headline number. Non-fatal — the insight
+  // still generates without it. Cheap on the cached path (only runs on miss).
+  const canonicalLevel = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_LEVEL')
+    ? await getCanonicalLevel({ memberId: member.id, name: member.name }).catch((err) => {
+        console.error('insight level read failed:', err);
+        return null;
+      })
+    : null;
+
   // ── Cache: return the stored insight if it's for the current session AND no
   //    newer assessment has landed since it was generated. ──
   let existing: InsightDoc | null = null;
@@ -171,7 +183,7 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Gather the data snapshot (deterministic — fed verbatim to Claude). ──
-  const snapshot = await buildSnapshot({ name: member.name, playersContainer, sessionsContainer, trend });
+  const snapshot = await buildSnapshot({ name: member.name, playersContainer, sessionsContainer, trend, canonicalLevel });
 
   // ── Generate (memory = previous recap+focus). ──
   let recap = '';
@@ -211,6 +223,9 @@ interface Snapshot {
   /** Self-assessment trend (1–5). The preferred skill source — when present the
    *  legacy `skills` read is skipped and `skills` is null. */
   assessment: AssessmentTrend | null;
+  /** Canonical level (1–5) — the private headline, when the level flag is on.
+   *  Narrated as a one-line header above the self-assessment detail. */
+  canonicalLevel: CanonicalLevel | null;
   /** Legacy admin-entered skills (0–6). Fallback only — populated when there is
    *  no self-assessment. Never narrated alongside `assessment` (two scales). */
   skills: Record<string, number> | null;
@@ -221,11 +236,13 @@ async function buildSnapshot({
   playersContainer,
   sessionsContainer,
   trend,
+  canonicalLevel,
 }: {
   name: string;
   playersContainer: ReturnType<typeof getContainer>;
   sessionsContainer: ReturnType<typeof getContainer>;
   trend: AssessmentTrend | null;
+  canonicalLevel: CanonicalLevel | null;
 }): Promise<Snapshot> {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - ATTENDANCE_WEEKS * 7);
@@ -317,7 +334,7 @@ async function buildSnapshot({
     }
   }
 
-  return { totalSessions, attended, attendanceRate, currentStreak, longestStreak, lastSession, regularPartners, assessment: trend, skills };
+  return { totalSessions, attended, attendanceRate, currentStreak, longestStreak, lastSession, regularPartners, assessment: trend, canonicalLevel, skills };
 }
 
 async function generate(name: string, s: Snapshot, prev: InsightDoc | null): Promise<{ recap: string; focus: string }> {
@@ -363,6 +380,16 @@ Return ONLY a JSON object, no markdown fences:
  * narrated movement agrees with the radar the player is looking at.
  */
 function buildSkillLine(s: Snapshot): string {
+  // Canonical level is a one-line HEADER (1–5) above the self-assessment detail.
+  // It and the self-assessment share the 1–5 scale, so they never conflict the
+  // way the legacy 0–6 skills would — but we still never emit the 0–6 line
+  // alongside it (that branch is the no-assessment fallback below).
+  const lvl = s.canonicalLevel;
+  const levelHeader =
+    lvl && lvl.level !== null
+      ? `Canonical level: ${lvl.level.toFixed(1)} / 5${lvl.phase ? ` (${lvl.phase} phase` : ''}${lvl.phase ? `, ${lvl.confidence} confidence)` : ''}. `
+      : '';
+
   const a = s.assessment;
   if (a) {
     const fmt = (n: number | null) => (n === null ? '—' : n.toFixed(1));
@@ -379,7 +406,7 @@ function buildSkillLine(s: Snapshot): string {
     } else {
       parts.push(`holding steady since the previous check-in (was ${fmt(a.prevOverall)})`);
     }
-    let line = `${parts.join('; ')}.`;
+    let line = `${levelHeader}${parts.join('; ')}.`;
     if (a.strengths.length) line += ` Strongest: ${a.strengths.map((r) => `${r.label} (${r.value})`).join(', ')}.`;
     if (a.workOn.length) line += ` Working on (lowest-rated): ${a.workOn.map((r) => `${r.label} (${r.value})`).join(', ')}.`;
     return line;
