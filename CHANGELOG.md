@@ -54,11 +54,19 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
      Format: `- **Short title** — one-sentence what + why.` See v1.3 below for examples.
      Empty subheadings are fine; delete a section if you don't end up using it. -->
 
+*(empty — everything below shipped to stable in v1.7.)*
+
+---
+
+## v1.7 — Stable reaches full parity with `bpm-next` (2026-06-13)
+
+This cut flips **every** remaining feature flag on, so stable and `bpm-next` are now feature-identical (only `NEXT_PUBLIC_ENV` differs, keeping the preview banner off on stable). Headline: the **skill-accuracy spine** and **Value-Hub Slice-0** go live for everyone, on top of the full app-code audit remediation, accessibility pass, and security hardening accumulated since v1.6.
+
 ### Added
 
-- **Skill self-assessment** *(flag-gated `NEXT_PUBLIC_FLAG_SKILL_ASSESS`, dormant on stable)* — periodic anchor-card check-in across 14 skills, a then-vs-now trend radar, phase placement, and an AI "Your read" that folds in the assessment. *(soaking on `bpm-next`)*
-- **Value-Hub Slice-0** *(flag-gated `NEXT_PUBLIC_FLAG_VALUE_HUB`, dormant on stable)* — racket pick → recommendation card, 48h game logger, and partner-frequency Stats card. *(awaiting kill-criterion gate)*
-- **Accurate skill level** *(flag-gated `NEXT_PUBLIC_FLAG_SKILL_LEVEL` / `…_CALIBRATION` / `…_SMOOTHING`, dormant on stable)* — a private "Your level" card on Stats that folds your check-ins into one 1–5 level, sharpens it against your logged game results (with an opt-in "how your games compare" note), and smooths it so a single check-in can't swing your phase. Feeds the AI "Your read". *(soaking on `bpm-next`)*
+- **Skill self-assessment** *(flag-gated `NEXT_PUBLIC_FLAG_SKILL_ASSESS`, now on for everyone)* — periodic anchor-card check-in across 14 skills, a then-vs-now trend radar, phase placement, and an AI "Your read" that folds in the assessment. *(now live)*
+- **Value-Hub Slice-0** *(flag-gated `NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE`, now on for everyone)* — racket pick → recommendation card, 48h game logger, and partner-frequency Stats card. *(now live)*
+- **Accurate skill level** *(flag-gated `NEXT_PUBLIC_FLAG_SKILL_LEVEL` / `…_CALIBRATION` / `…_SMOOTHING`, now on for everyone)* — a private "Your level" card on Stats that folds your check-ins into one 1–5 level, sharpens it against your logged game results (with an opt-in "how your games compare" note), and smooths it so a single check-in can't swing your phase. Feeds the AI "Your read". *(now live)*
 
 ### Changed
 
