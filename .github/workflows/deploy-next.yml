@@ -46,6 +46,7 @@ jobs:
           NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE: 'true'
           NEXT_PUBLIC_FLAG_NAV_RAIL: 'true'
           NEXT_PUBLIC_FLAG_SKILL_ASSESS: 'true'
+          NEXT_PUBLIC_FLAG_SKILL_LEVEL: 'true'
 
       - name: Package standalone build
         run: |
