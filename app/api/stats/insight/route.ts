@@ -362,7 +362,8 @@ ${partnerLine}${skillLine ? `\n${skillLine}` : ''}${memoryLine}
 Return ONLY a JSON object, no markdown fences:
 {"recap": "...", "focus": "..."}
 - "recap": 1-2 sentences on how the last session / recent stretch went. Weave in attendance AND, if a self-assessment is present, how their skill rating moved (up, down, or holding). If a previous note exists, acknowledge progress against it.
-- "focus": 1-2 sentences naming ONE concrete thing to work on for the upcoming session. If a self-assessment lists "working on" skills, anchor the focus on one of them. Build on the previous focus if there was one (did they act on it?). Specific, encouraging, no jargon, no emoji.`;
+- "focus": 1-2 sentences naming ONE concrete thing to work on for the upcoming session. If a self-assessment lists "working on" skills, anchor the focus on one of them. Build on the previous focus if there was one (did they act on it?). Specific, encouraging, no jargon, no emoji.
+- If the notes mention a gap between recent games and the self-rating, you MAY reference it gently and only as encouragement — never as criticism, and never with a number.`;
 
   const message = await anthropic.messages.create({
     model: MODEL,
@@ -385,10 +386,20 @@ function buildSkillLine(s: Snapshot): string {
   // way the legacy 0–6 skills would — but we still never emit the 0–6 line
   // alongside it (that branch is the no-assessment fallback below).
   const lvl = s.canonicalLevel;
-  const levelHeader =
-    lvl && lvl.level !== null
-      ? `Canonical level: ${lvl.level.toFixed(1)} / 5${lvl.phase ? ` (${lvl.phase} phase` : ''}${lvl.phase ? `, ${lvl.confidence} confidence)` : ''}. `
-      : '';
+  let levelHeader = '';
+  if (lvl && lvl.level !== null) {
+    levelHeader = `Canonical level: ${lvl.level.toFixed(1)} / 5${lvl.phase ? ` (${lvl.phase} phase, ${lvl.confidence} confidence)` : ''}. `;
+    if (lvl.basis.game !== null) {
+      levelHeader += `Recent logged games put their play around ${lvl.basis.game.toFixed(1)}. `;
+    }
+    // The blind-spot direction is a SOFT hint for the narrator — framed, never a
+    // deficit number. 'above' = pleasant surprise; 'below' = games haven't caught up.
+    if (lvl.blindSpot?.direction === 'above') {
+      levelHeader += 'Their games are running a bit ahead of their self-rating (a nice sign). ';
+    } else if (lvl.blindSpot?.direction === 'below') {
+      levelHeader += 'Their self-rating is a little ahead of recent game results (room to grow into it). ';
+    }
+  }
 
   const a = s.assessment;
   if (a) {

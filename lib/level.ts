@@ -21,6 +21,7 @@
  */
 
 import { placePhase, type Phase } from './assessment';
+import { blindSpot, type BlindSpot } from './calibration';
 
 export interface LevelInputs {
   /** Self-assessment snapshots (may be unsorted). Phase 1 reads the latest
@@ -48,6 +49,10 @@ export interface CanonicalLevel {
   basis: { self: number | null; game: number | null; peer: number | null; legacyStage: number | null };
   /** Human-readable lines rendered under "How this is calculated". */
   explanation: string[];
+  /** Self-vs-observed gap from game calibration (Phase 2). Null until there are
+   *  enough games; asymmetrically gated. The card reveals it only on opt-in and
+   *  never prints the deficit number for the 'below' direction. */
+  blindSpot?: BlindSpot | null;
   computedAt: string;
 }
 
@@ -168,6 +173,11 @@ export function deriveLevel(inputs: LevelInputs): CanonicalLevel {
   }
   if (basis.peer !== null) explanation.push('Includes how regular partners see your play.');
 
+  // The self-vs-observed gap, computed from the SELF component vs the observed
+  // game level (asymmetric gating lives in `blindSpot`). Always available to the
+  // owner; the card chooses whether/how to reveal it.
+  const bs = gameCalibration ? blindSpot(selfLevel, gameCalibration) : null;
+
   return {
     level,
     stage: levelToStage(level),
@@ -175,6 +185,7 @@ export function deriveLevel(inputs: LevelInputs): CanonicalLevel {
     confidence,
     basis,
     explanation,
+    blindSpot: bs,
     computedAt: now,
   };
 }
