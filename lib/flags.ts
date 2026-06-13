@@ -23,7 +23,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE'
   | 'NEXT_PUBLIC_FLAG_NAV_RAIL'
   | 'NEXT_PUBLIC_FLAG_SKILL_ASSESS'
-  | 'NEXT_PUBLIC_FLAG_SKILL_LEVEL';
+  | 'NEXT_PUBLIC_FLAG_SKILL_LEVEL'
+  | 'NEXT_PUBLIC_FLAG_SKILL_CALIBRATION';
 
 interface FlagMeta {
   description: string;
@@ -72,6 +73,11 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'after the skill-level spine is promoted to stable + lived-in for 2 weeks',
   },
+  NEXT_PUBLIC_FLAG_SKILL_CALIBRATION: {
+    description: 'Game calibration (Phase 2 of the skill-accuracy spine): folds logged game results (Elo-lite, seeded by each player\'s self-assessment) into an observed level that silently sharpens the canonical level, and surfaces an opt-in, asymmetric "how your games compare" note on the level card. Requires the value-hub game logger to produce data. On for bpm-next + dev; off on bpm-stable until promoted.',
+    owner: 'grant',
+    plannedRemoval: 'after the calibration phase is promoted to stable + lived-in for 2 weeks',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -92,6 +98,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_SKILL_ASSESS;
     case 'NEXT_PUBLIC_FLAG_SKILL_LEVEL':
       return process.env.NEXT_PUBLIC_FLAG_SKILL_LEVEL;
+    case 'NEXT_PUBLIC_FLAG_SKILL_CALIBRATION':
+      return process.env.NEXT_PUBLIC_FLAG_SKILL_CALIBRATION;
   }
 }
 

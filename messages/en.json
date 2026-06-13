@@ -212,7 +212,13 @@
       },
       "empty": "Take a skill check-in to see your level.",
       "error": "Couldn't load — refresh to retry",
-      "needsAuth": "Sign in again to see your level."
+      "needsAuth": "Sign in again to see your level.",
+      "compare": {
+        "cta": "See how your games compare",
+        "hide": "Hide",
+        "above": "Your recent games are landing above your check-in — nice. Bump your next check-in up if that feels right.",
+        "below": "Your check-in is a touch ahead of recent games — a strong week or two will bring them in line."
+      }
     },
     "comingSoon": "Coming soon",
     "moreComing": "other metrics in the making",

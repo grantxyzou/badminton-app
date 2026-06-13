@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { GET } from '../app/api/stats/level/route';
+import { _resetCalibrationCache } from '../lib/levelStore';
 import {
   resetMockStore, getStore, seedMember, setupAdminPin, makeRequest, makeGetRequest, memberCookieValue,
 } from './helpers';
@@ -13,20 +14,30 @@ function getAs(name: string, cookieName?: string) {
   return makeRequest('GET', `${BASE}?name=${encodeURIComponent(name)}`, undefined, { Cookie: cookie });
 }
 
-function seedAssessment(memberId: string, overall: number, takenAt: string) {
+function seedAssessment(memberId: string, name: string, overall: number, takenAt: string) {
   const store = getStore();
   if (!store['assessments']) store['assessments'] = [];
-  store['assessments'].push({ id: `a-${Math.random().toString(36).slice(2)}`, memberId, overall, takenAt });
+  store['assessments'].push({ id: `a-${Math.random().toString(36).slice(2)}`, memberId, name, overall, takenAt });
+}
+
+function seedGame(teamA: string[], teamB: string[], scoreA: number, scoreB: number, loggedAt: string) {
+  const store = getStore();
+  if (!store['gameResults']) store['gameResults'] = [];
+  store['gameResults'].push({
+    id: `g-${Math.random().toString(36).slice(2)}`, sessionId: 'session-x', teamA, teamB, scoreA, scoreB, loggedAt,
+  });
 }
 
 describe('/api/stats/level', () => {
   beforeEach(() => {
     resetMockStore();
     setupAdminPin();
+    _resetCalibrationCache();
     process.env.NEXT_PUBLIC_FLAG_SKILL_LEVEL = 'true';
   });
   afterAll(() => {
     delete process.env.NEXT_PUBLIC_FLAG_SKILL_LEVEL;
+    delete process.env.NEXT_PUBLIC_FLAG_SKILL_CALIBRATION;
   });
 
   it('404s when the flag is off', async () => {
@@ -52,7 +63,7 @@ describe('/api/stats/level', () => {
 
   it('returns the level to the owning member (matching cookie)', async () => {
     const m = seedMember('Lin');
-    seedAssessment(m.id, 3.0, '2026-06-01T00:00:00.000Z');
+    seedAssessment(m.id, 'Lin', 3.0, '2026-06-01T00:00:00.000Z');
     const res = await GET(getAs('Lin'));
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -62,7 +73,7 @@ describe('/api/stats/level', () => {
 
   it('lets an admin browse another player without a member cookie', async () => {
     const m = seedMember('Viktor');
-    seedAssessment(m.id, 4.5, '2026-06-01T00:00:00.000Z');
+    seedAssessment(m.id, 'Viktor', 4.5, '2026-06-01T00:00:00.000Z');
     const res = await GET(makeGetRequest(`${BASE}?name=Viktor`, true));
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -86,5 +97,37 @@ describe('/api/stats/level', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.level.level).toBeNull();
+  });
+
+  describe('with game calibration on (Phase 2)', () => {
+    beforeEach(() => {
+      process.env.NEXT_PUBLIC_FLAG_SKILL_CALIBRATION = 'true';
+    });
+
+    it('lights up basis.game and an "above" blind spot when games outrun the self-rating', async () => {
+      const m = seedMember('Lin');
+      seedAssessment(m.id, 'Lin', 3.0, '2026-06-01T00:00:00.000Z');
+      // 10 decisive wins over a default-seeded opponent → observed climbs above 3.0.
+      for (let i = 0; i < 10; i++) {
+        seedGame(['Lin'], ['Bob'], 21, 11, `2026-06-${String(2 + i).padStart(2, '0')}T00:00:00.000Z`);
+      }
+      const body = await (await GET(getAs('Lin'))).json();
+      expect(body.level.basis.game).not.toBeNull();
+      expect(body.level.basis.game).toBeGreaterThan(3.0);
+      expect(body.level.blindSpot?.direction).toBe('above');
+      // Headline level is blended (self anchors it), so it sits between self and observed.
+      expect(body.level.level).toBeGreaterThan(3.0);
+      expect(body.level.level).toBeLessThan(body.level.basis.game);
+    });
+
+    it('leaves basis.game null when the calibration flag is off', async () => {
+      process.env.NEXT_PUBLIC_FLAG_SKILL_CALIBRATION = 'false';
+      const m = seedMember('Lin');
+      seedAssessment(m.id, 'Lin', 3.0, '2026-06-01T00:00:00.000Z');
+      seedGame(['Lin'], ['Bob'], 21, 5, '2026-06-05T00:00:00.000Z');
+      const body = await (await GET(getAs('Lin'))).json();
+      expect(body.level.basis.game).toBeNull();
+      expect(body.level.level).toBe(3.0);
+    });
   });
 });
