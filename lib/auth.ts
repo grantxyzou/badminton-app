@@ -32,26 +32,66 @@ const COOKIE_NAME = 'admin_session';
 // again" friction. Re-PIN on Profile logout or natural 30d expiry.
 const COOKIE_MAX_AGE_S = 60 * 60 * 24 * 30;
 
+// Cookies are scoped to the app's basePath (`/bpm`, see next.config.js) rather
+// than the origin root, matching the `NEXT_LOCALE` cookie. `LEGACY_COOKIE_PATH`
+// is the root path our cookies used before this migration — we must keep
+// clearing it so anyone still holding a root-scoped cookie can actually sign
+// out (a `/bpm` clear does NOT delete a `/`-scoped cookie of the same name).
+const COOKIE_PATH = '/bpm';
+const LEGACY_COOKIE_PATH = '/';
+
 /**
- * Returns the HMAC secret. In production, the env var must be set or we
- * throw at module-load (callers can't recover from a missing secret in any
- * meaningful way). In dev, fall back to a hard-coded sentinel and log a
- * warning so local-only flows still work.
+ * Append a same-name cookie-clearing `Set-Cookie` header for both the current
+ * and legacy paths.
+ *
+ * Why append-only (never `res.cookies.set`): Next's `ResponseCookies` keeps an
+ * internal map keyed by cookie NAME alone, so it cannot represent the same
+ * cookie at two paths, and every `.set()` re-serializes the whole map —
+ * silently dropping any header we appended earlier. The logout route clears two
+ * cookies on one response, so a `.set()`-based clear of the second would wipe
+ * the first's legacy-path header. Building the headers by hand sidesteps that.
+ * (Verified empirically before writing this.) Do NOT call a `set*Cookie` helper
+ * AFTER a `clear*Cookie` on the same response — the re-serialization would drop
+ * these appended headers.
+ */
+function appendClearCookie(res: NextResponse, name: string): void {
+  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  for (const path of [COOKIE_PATH, LEGACY_COOKIE_PATH]) {
+    res.headers.append(
+      'set-cookie',
+      `${name}=; Path=${path}; Max-Age=0; HttpOnly; SameSite=Strict${secure}`,
+    );
+  }
+}
+
+/**
+ * Returns the HMAC secret. A real `SESSION_SECRET` (>=32 chars) is always
+ * preferred. The hard-coded dev sentinel is only used for *explicitly* local
+ * environments (`NODE_ENV` of `development` or `test`).
+ *
+ * Security: previously the fallback fired for any `NODE_ENV !== 'production'`,
+ * which meant an internet-facing host booted with an unset/unexpected
+ * `NODE_ENV` (e.g. a misconfigured preview running a bare `next` server) would
+ * sign admin cookies with a *public constant from this repo* — anyone could
+ * forge a valid `admin_session`. We now fail closed: only the two known-local
+ * envs get the sentinel; everything else throws.
  */
 function getSessionSecret(): string {
   const secret = process.env.SESSION_SECRET;
   if (secret && secret.length >= 32) return secret;
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      'SESSION_SECRET environment variable is missing or too short (>=32 chars). ' +
-        'Generate with: openssl rand -hex 32',
+  const env = process.env.NODE_ENV;
+  if (env === 'development' || env === 'test') {
+    console.warn(
+      '[dev] SESSION_SECRET not set; falling back to a dev sentinel. ' +
+        'Sessions signed with this secret are NOT secure for production use.',
     );
+    return 'dev-fallback-secret-not-for-production-use-please';
   }
-  console.warn(
-    '[dev] SESSION_SECRET not set; falling back to a dev sentinel. ' +
-      'Sessions signed with this secret are NOT secure for production use.',
+  throw new Error(
+    `SESSION_SECRET environment variable is missing or too short (>=32 chars); ` +
+      `refusing to sign sessions with the public dev sentinel (NODE_ENV=${env ?? 'unset'}). ` +
+      'Generate with: openssl rand -hex 32',
   );
-  return 'dev-fallback-secret-not-for-production-use-please';
 }
 
 interface SessionPayload {
@@ -124,18 +164,12 @@ export function setAdminCookie(res: NextResponse, memberId: string, name: string
     sameSite: 'strict',
     secure: process.env.NODE_ENV === 'production',
     maxAge: COOKIE_MAX_AGE_S,
-    path: '/',
+    path: COOKIE_PATH,
   });
 }
 
 export function clearAdminCookie(res: NextResponse): void {
-  res.cookies.set(COOKIE_NAME, '', {
-    httpOnly: true,
-    sameSite: 'strict',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 0,
-    path: '/',
-  });
+  appendClearCookie(res, COOKIE_NAME);
 }
 
 // ── Member session ──
@@ -155,7 +189,7 @@ const COOKIE_OPTS = {
   httpOnly: true as const,
   sameSite: 'strict' as const,
   secure: process.env.NODE_ENV === 'production',
-  path: '/',
+  path: COOKIE_PATH,
 };
 
 export function setMemberCookie(res: NextResponse, memberId: string, name: string): void {
@@ -168,7 +202,7 @@ export function setMemberCookie(res: NextResponse, memberId: string, name: strin
 }
 
 export function clearMemberCookie(res: NextResponse): void {
-  res.cookies.set(MEMBER_COOKIE_NAME, '', { ...COOKIE_OPTS, maxAge: 0 });
+  appendClearCookie(res, MEMBER_COOKIE_NAME);
 }
 
 /**

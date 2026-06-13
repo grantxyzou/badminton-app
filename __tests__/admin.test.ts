@@ -198,8 +198,14 @@ describe('DELETE /api/admin (logout)', () => {
     const res = await DELETE(makeRequest('DELETE', URL_PATH));
     expect(res.status).toBe(200);
     expect((await res.json()).success).toBe(true);
-    // Both session cookies are cleared (set to empty with maxAge 0).
-    expect(res.cookies.get('member_session')).toBeTruthy();
-    expect(res.cookies.get('admin_session')).toBeTruthy();
+    // Both session cookies are cleared (set to empty with maxAge 0). Clears are
+    // append-only Set-Cookie headers (see lib/auth.ts appendClearCookie), so we
+    // read the raw header list rather than the name-keyed res.cookies map —
+    // the latter can't represent the same cookie cleared at two paths.
+    const setCookies = res.headers.getSetCookie();
+    const isCleared = (name: string) =>
+      setCookies.some((c) => c.startsWith(`${name}=;`) && /max-age=0/i.test(c));
+    expect(isCleared('member_session')).toBe(true);
+    expect(isCleared('admin_session')).toBe(true);
   });
 });
