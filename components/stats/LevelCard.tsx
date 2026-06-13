@@ -46,6 +46,7 @@ export default function LevelCard() {
   const [state, setState] = useState<LoadState>({ kind: 'idle' });
   const [loaded, setLoaded] = useState(false);
   const [showHow, setShowHow] = useState(false);
+  const [showCompare, setShowCompare] = useState(false);
 
   useEffect(() => {
     setActiveName(resolveActiveName());
@@ -153,6 +154,28 @@ export default function LevelCard() {
           {t(`level.confidence.${level.confidence}`)}
         </span>
       </div>
+
+      {/* Opt-in, asymmetric "blind spot": the comparison is revealed only on a
+          deliberate tap, and the 'below' direction is reframed forward-looking
+          with no deficit number (locked decision). */}
+      {level.blindSpot && (
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setShowCompare((v) => !v)}
+            aria-expanded={showCompare}
+            className="cc-btn cc-btn-ghost"
+            style={{ width: '100%', justifyContent: 'center' }}
+          >
+            {showCompare ? t('level.compare.hide') : t('level.compare.cta')}
+          </button>
+          {showCompare && (
+            <p style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--text-secondary)', margin: 0 }}>
+              {t(`level.compare.${level.blindSpot.direction}`)}
+            </p>
+          )}
+        </div>
+      )}
 
       {level.explanation.length > 0 && (
         <div className="space-y-2">
