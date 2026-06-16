@@ -7,6 +7,7 @@ import EnterCodeSheet from './EnterCodeSheet';
 import CreateAccountSheet from './CreateAccountSheet';
 import RecoveryPinSheet from './RecoveryPinSheet';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
+import ReportProblemSheet from './ReportProblemSheet';
 import SignInForm from './SignInForm';
 import PageHeader from './primitives/PageHeader';
 import AdminConsoleHero from './admin/CommandCenter/AdminConsoleHero';
@@ -46,6 +47,7 @@ export default function ProfileTab({
   // open RecoveryPinSheet (set / change / remove + forgot-it handoff).
   const [recoveryPinOpen, setRecoveryPinOpen] = useState(false);
   const [releaseSheetOpen, setReleaseSheetOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [releases, setReleases] = useState<Release[] | null>([]);
   const tSettings = useTranslations('profile.settings');
   const tNav = useTranslations('nav');
@@ -275,6 +277,17 @@ export default function ProfileTab({
             </button>
           </div>
         )}
+        {/* Reachable even when signed out — anonymous users hitting a sign-up
+            problem are exactly the reports worth catching. */}
+        <button
+          type="button"
+          onClick={() => setReportOpen(true)}
+          className="btn-ghost"
+          style={{ width: '100%', fontSize: 13 }}
+        >
+          {tSettings('reportProblem')}
+        </button>
+        <ReportProblemSheet open={reportOpen} onClose={() => setReportOpen(false)} />
       </div>
     );
   }
@@ -330,6 +343,7 @@ export default function ProfileTab({
               onClick: () => setEnterCodeOpen(true),
             },
             { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
+            { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setReportOpen(true) },
             ...(isAdmin
               ? [{ icon: 'admin_panel_settings', label: tSettings('adminAccess'), onClick: onAdminTools }]
               : []),
@@ -355,6 +369,12 @@ export default function ProfileTab({
         open={releaseSheetOpen}
         releases={releases}
         onClose={() => setReleaseSheetOpen(false)}
+      />
+
+      <ReportProblemSheet
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        name={identity?.name}
       />
     </div>
   );

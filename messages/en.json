@@ -185,8 +185,21 @@
       "recoveryCode": "Have a recovery code?",
       "releaseNotes": "What's new",
       "adminAccess": "Admin access",
-      "logout": "Log out"
+      "logout": "Log out",
+      "reportProblem": "Report a problem"
     }
+  },
+  "report": {
+    "title": "Report a problem",
+    "help": "Something not working? Tell me what happened and I'll take a look.",
+    "placeholder": "What went wrong?",
+    "send": "Send report",
+    "sending": "Sending…",
+    "success": "Thanks — got it. I'll look into it.",
+    "errorRequired": "Please describe what happened.",
+    "errorServer": "Couldn't send — please try again.",
+    "offline": "You're offline — reconnect to send.",
+    "close": "Close"
   },
   "pin": {
     "newLabel": "New PIN",
