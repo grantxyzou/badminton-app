@@ -13,10 +13,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.100.1",
+    "@anthropic-ai/sdk": "^0.104.2",
     "@azure/cosmos": "^4.9.3",
-    "@formatjs/intl-localematcher": "^0.8.9",
-    "next": "^16.2.7",
+    "@formatjs/intl-localematcher": "^0.8.10",
+    "next": "^16.2.9",
     "next-intl": "^4.12.0",
     "nodemailer": "^9.0.0",
     "react": "^18",
