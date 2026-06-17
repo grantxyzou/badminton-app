@@ -9,6 +9,7 @@ import { getCanonicalLevel } from '@/lib/levelStore';
 import type { CanonicalLevel } from '@/lib/level';
 import { recommendDrills, type DrillPick } from '@/lib/drills';
 import { computeInsightSignals, signalsByCard, type InsightSignal, type SignalCard } from '@/lib/insightSignals';
+import { VOICE_PERSONA } from '@/lib/aiPersona';
 
 /**
  * Account-gated, passively-generated player insight. Replaces the old
@@ -412,7 +413,9 @@ async function generate(name: string, s: Snapshot, prev: InsightDoc | null): Pro
     ? `\n\nYour previous note to ${name} (one session ago):\n- Recap: ${prev.recap}\n- Focus: ${prev.focus}`
     : '';
 
-  const prompt = `You are a warm, plain-spoken badminton companion writing for ${name}, a casual weekly player. Use ONLY the facts below — never invent numbers, names, or events.
+  const prompt = `${VOICE_PERSONA}
+
+You're writing for ${name}, a casual weekly player. Use ONLY the facts below — never invent numbers, names, or events.
 
 ${lastLine}
 Season (last ${s.totalSessions} sessions): attended ${s.attended} (${s.attendanceRate}%), current streak ${s.currentStreak}, longest streak ${s.longestStreak}.
@@ -525,7 +528,9 @@ async function generateCards(
     .join('\n');
   const memoryLine = prev?.greeting ? `\n\nYour previous greeting to ${name}: "${prev.greeting}"` : '';
 
-  const prompt = `You are a warm, plain-spoken badminton companion writing short, scannable insights for ${name}, a casual weekly player. Use ONLY the facts below — never invent numbers, names, events, or patterns.
+  const prompt = `${VOICE_PERSONA}
+
+You're writing short, scannable insights for ${name}, a casual weekly player. Use ONLY the facts below — never invent numbers, names, events, or patterns.
 
 DATA
 ${lastLine}

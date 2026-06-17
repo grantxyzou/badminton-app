@@ -68,7 +68,7 @@ describe('RecoverySheet', () => {
     fireEvent.change(screen.getByLabelText('PIN'), { target: { value: '0000' } });
     fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
     await waitFor(() => {
-      expect(screen.getByText(/too many tries/i)).toBeDefined();
+      expect(screen.getByText(/pause a moment/i)).toBeDefined();
     });
   });
 });
