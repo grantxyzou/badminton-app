@@ -114,7 +114,7 @@ describe('<SignInForm />', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Too many tries/i)).toBeDefined();
+      expect(screen.getByText(/pause a moment/i)).toBeDefined();
     });
   });
 });

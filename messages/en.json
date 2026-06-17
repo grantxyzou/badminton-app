@@ -12,16 +12,16 @@
       "waitlist": "Join Waitlist",
       "full": "Session Full",
       "confirmed": "Signed up as {name}",
-      "inviteError": "We don't have \"{name}\" on our invite list. Check the spelling, or ask the friend who shared this app with you to add you.",
-      "networkError": "Network error. Please try again.",
+      "inviteError": "We can't find \"{name}\" on the list yet — double-check the spelling, or ask the friend who shared this app to add you.",
+      "networkError": "Can't reach the server — check your connection and try again.",
       "offline": "You're offline — reconnect to sign up.",
-      "nameRequired": "Enter your name to sign up",
+      "nameRequired": "Add your name to sign up",
       "pinRequired": "Set a 4-digit PIN to sign up",
-      "pinTooCommon": "Pick a less common PIN",
+      "pinTooCommon": "Try a less common PIN",
       "pinLabel": "PIN",
       "pinHint": "Required. Use this PIN to recover access if you change phones.",
-      "genericFailure": "Failed to sign up",
-      "waitlistFailure": "Failed to join waitlist",
+      "genericFailure": "That didn't go through — give it another try.",
+      "waitlistFailure": "That didn't go through — try the waitlist again.",
       "namePlaceholder": "Enter your name",
       "nameAriaLabel": "Your name",
       "joining": "Joining…",
@@ -37,7 +37,7 @@
       "pinLabel": "PIN",
       "pinCreateLabel": "Create a PIN",
       "pinConfirmLabel": "Confirm PIN",
-      "pinMismatch": "PINs don't match.",
+      "pinMismatch": "Those two don't match — give it another go.",
       "pinIncorrect": "That didn't match. Try again.",
       "pinTooCommon": "Pick a different PIN — try something less common.",
       "forgotPin": "Forgot your PIN?",
@@ -52,7 +52,7 @@
         "skip": "Maybe later",
         "savedToast": "PIN saved",
         "errorInvalid": "PIN must be 4 digits",
-        "errorTooCommon": "Pick a less common PIN"
+        "errorTooCommon": "Try a less common PIN"
       }
     },
     "states": {
@@ -115,9 +115,9 @@
       "pinLabel": "PIN",
       "signInButton": "Sign in",
       "signInChecking": "Checking…",
-      "signInErrorRateLimited": "Too many attempts. Try again in 15 minutes.",
+      "signInErrorRateLimited": "Let's pause a moment — try again in 15 minutes.",
       "signInErrorInvalid": "Incorrect name or PIN.",
-      "signInErrorNetwork": "Network error."
+      "signInErrorNetwork": "Can't reach the server right now."
     }
   },
   "nav": {
@@ -136,7 +136,7 @@
     "anonymousSignInButton": "Sign in",
     "anonymousSignInChecking": "Checking…",
     "anonymousSignInErrorInvalid": "That didn't match. Try again.",
-    "anonymousSignInErrorRateLimited": "Too many tries. Try again later.",
+    "anonymousSignInErrorRateLimited": "Let's pause a moment — try again shortly.",
     "anonymousSignInErrorAdminLogged": "Signed in as admin — sign out first to recover a player account.",
     "anonymousSignInErrorNetwork": "Couldn't reach the server. Check your connection and try again.",
     "anonymousOrDivider": "or",
@@ -151,15 +151,15 @@
       "submit": "Create account",
       "submitting": "Creating…",
       "successWelcome": "Welcome, {name}",
-      "errorMismatch": "PINs don't match",
-      "errorTooCommon": "Pick a less common PIN",
+      "errorMismatch": "Those two don't match — give it another go",
+      "errorTooCommon": "Try a less common PIN",
       "errorInvalid": "PIN must be 4 digits",
-      "errorRateLimited": "Too many tries. Try again in an hour.",
-      "errorNetwork": "Network error. Please try again.",
+      "errorRateLimited": "Let's pause a moment — try again in an hour.",
+      "errorNetwork": "Can't reach the server — check your connection and try again.",
       "errorPinProblem": "Pick a different PIN — try something less common that you'll remember.",
       "errorTryLater": "Couldn't save right now. Try again in a moment.",
       "errorAccountExists": "An account with this name already exists. Sign in instead.",
-      "errorInviteOnly": "This name isn't on the invite list. Ask the admin to add you."
+      "errorInviteOnly": "We can't find that name on the list yet — ask the admin to add you."
     },
     "playerName": "Name",
     "playerSession": "Signed up for",
@@ -170,12 +170,12 @@
     "pinChangeButton": "Change",
     "pinRemoveButton": "Remove",
     "pinSaved": "Saved",
-    "pinTooCommon": "Pick a less common PIN",
+    "pinTooCommon": "Try a less common PIN",
     "pinInvalid": "PIN must be 4 digits",
-    "pinUpdateFailed": "Couldn't update PIN. Please try again.",
+    "pinUpdateFailed": "That didn't save — give your PIN another go.",
     "pinNeedsSignIn": "Sign up for this week first — it re-activates your account on this device so you can set a PIN.",
-    "pinWrongCurrent": "Current PIN doesn't match.",
-    "pinRateLimited": "Too many tries. Try again in an hour.",
+    "pinWrongCurrent": "That current PIN doesn't match — give it another go.",
+    "pinRateLimited": "Let's pause a moment — try again in an hour.",
     "adminToolsTitle": "Admin tools",
     "adminToolsButton": "Admin tools →",
     "settings": {
@@ -207,7 +207,7 @@
     "confirmLabel": "Confirm PIN",
     "save": "Save",
     "cancel": "Cancel",
-    "mismatch": "PINs don't match"
+    "mismatch": "Those two don't match — give it another go"
   },
   "stats": {
     "heading": "Your stats",
@@ -224,7 +224,7 @@
         "high": "Well-calibrated"
       },
       "empty": "Take a skill check-in to see your level.",
-      "error": "Couldn't load — refresh to retry",
+      "error": "Couldn't load that — refresh to try again",
       "needsAuth": "Sign in again to see your level.",
       "onTrack": "On track for {phase} — confirm it at your next check-in.",
       "compare": {
@@ -243,7 +243,7 @@
         "pair": "pair",
         "group": "group"
       },
-      "error": "Couldn't load — refresh to retry",
+      "error": "Couldn't load that — refresh to try again",
       "needsAuth": "Sign in again to see your drills."
     },
     "kudos": {
@@ -251,7 +251,7 @@
       "giveTitle": "Send kudos",
       "giveHint": "Give a shout-out to who you played with tonight.",
       "offline": "You're offline — reconnect to send kudos.",
-      "error": "Couldn't load — refresh to retry",
+      "error": "Couldn't load that — refresh to try again",
       "tag": {
         "great_defense": "Great defense",
         "clutch": "Clutch",
@@ -299,7 +299,7 @@
       "notRated": "Not rated yet",
       "empty": "No check-in yet — take your first to start tracking your game.",
       "baseline": "Baseline saved — check in again after a few sessions to watch it move.",
-      "error": "Couldn't load — refresh to retry",
+      "error": "Couldn't load that — refresh to try again",
       "checkInTitle": "Skill check-in",
       "close": "Close",
       "mirrorTitle": "Recently",
@@ -314,7 +314,7 @@
       "skip": "Skip",
       "save": "Save check-in",
       "saving": "Saving…",
-      "saveError": "Couldn't save — try again.",
+      "saveError": "That didn't save — give it another go.",
       "reviewCount": "{rated} of {total} skills rated",
       "reviewPrompt": "Save to update your trend.",
       "signedOutTitle": "Track your game",
@@ -346,24 +346,9 @@
     "cancelConfirm": "Cancel your spot?",
     "confirmYes": "Yes",
     "confirmNo": "No",
-    "cancelFailure": "Failed to cancel. Please try again.",
-    "loadError": "Couldn't load — refresh to retry.",
+    "cancelFailure": "That didn't go through — give it another try.",
+    "loadError": "Couldn't load that — refresh to try again.",
     "retry": "Retry"
-  },
-  "forcePinModal": {
-    "title": "Set a PIN to keep your spot",
-    "body": "PINs are now required so you can recover your account if you change phones or clear your browser. Pick a 4-digit code you'll remember.",
-    "whatIsThis": "What is this? Why now?",
-    "whatIsThisBody": "Until today, PINs were optional and most accounts didn't have one — so a single browser refresh could lock you out forever. We're making them required for everyone. It takes 5 seconds.",
-    "pinLabel": "Your PIN",
-    "confirmLabel": "Confirm",
-    "save": "Save PIN",
-    "saving": "Saving…",
-    "signOutInstead": "Sign out instead",
-    "errMismatch": "PINs don't match",
-    "errTooCommon": "Pick a less common PIN",
-    "errInvalid": "Couldn't save. Try again.",
-    "errNetwork": "Network error. Try again."
   },
   "admin": {
     "releases": {
@@ -395,7 +380,7 @@
     "forgotPinLink": "Forgot your PIN?",
     "haveCodeLink": "Have a recovery code from admin?",
     "errorInvalid": "That didn't match. Try again.",
-    "errorRateLimited": "Too many tries. Try again later.",
+    "errorRateLimited": "Let's pause a moment — try again shortly.",
     "errorAdminLoggedIn": "Signed in as admin — sign out first to recover a player account.",
     "errorNetwork": "Couldn't reach the server. Try again.",
     "welcomeBack": "Welcome back, {name}",
@@ -419,10 +404,10 @@
     "recTitle": "Players like you often use",
     "recCta": "See gear",
     "recEmpty": "Add your racket to get a pick.",
-    "recError": "Couldn't load — refresh to retry",
+    "recError": "Couldn't load that — refresh to try again",
     "partnersTitle": "Your regular partners",
     "partnersEmpty": "Play a few sessions to see your regulars.",
-    "partnersError": "Couldn't load — refresh to retry",
+    "partnersError": "Couldn't load that — refresh to try again",
     "partnersCount": "{count, plural, one {# session} other {# sessions}}",
     "partnersMostWith": "You play most with",
     "partnersTogether": "{count, plural, one {# session together} other {# sessions together}}",

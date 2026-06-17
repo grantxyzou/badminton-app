@@ -12,16 +12,16 @@
       "waitlist": "加入候补",
       "full": "名额已满",
       "confirmed": "已报名：{name}",
-      "inviteError": "邀请名单上没有\"{name}\"。请检查拼写，或联系分享此应用的朋友将您添加。",
-      "networkError": "网络错误，请重试。",
+      "inviteError": "暂时没找到\"{name}\"。请检查拼写，或请分享此应用给你的朋友把你加上。",
+      "networkError": "连不上服务器 — 检查下网络再试一次。",
       "offline": "您已离线 — 重新连接后即可报名。",
-      "nameRequired": "请输入您的姓名以报名",
+      "nameRequired": "填上你的名字就能报名",
       "pinRequired": "请设置 4 位 PIN 后报名",
-      "pinTooCommon": "请使用不太常见的 PIN",
+      "pinTooCommon": "换一个不那么常见的 PIN 吧",
       "pinLabel": "PIN",
       "pinHint": "必填。换设备时用此 PIN 恢复账户。",
-      "genericFailure": "报名失败",
-      "waitlistFailure": "加入候补失败",
+      "genericFailure": "没报上 — 再试一次吧。",
+      "waitlistFailure": "没加上 — 再试一次候补吧。",
       "namePlaceholder": "输入您的姓名",
       "nameAriaLabel": "您的姓名",
       "joining": "正在加入…",
@@ -37,7 +37,7 @@
       "pinLabel": "PIN",
       "pinCreateLabel": "设置 PIN",
       "pinConfirmLabel": "确认 PIN",
-      "pinMismatch": "两次 PIN 不一致。",
+      "pinMismatch": "两次输入不一样，再试一次吧。",
       "pinIncorrect": "信息不匹配，请重试。",
       "pinTooCommon": "请换一个 PIN——选一个不那么常见的。",
       "forgotPin": "忘记 PIN？",
@@ -52,7 +52,7 @@
         "skip": "稍后再说",
         "savedToast": "PIN 已保存",
         "errorInvalid": "PIN 必须是 4 位数字",
-        "errorTooCommon": "请选择不那么常见的 PIN"
+        "errorTooCommon": "换一个不那么常见的 PIN 吧"
       }
     },
     "states": {
@@ -115,9 +115,9 @@
       "pinLabel": "PIN",
       "signInButton": "登录",
       "signInChecking": "验证中…",
-      "signInErrorRateLimited": "尝试次数过多，请 15 分钟后再试。",
+      "signInErrorRateLimited": "先歇一下，15 分钟后再试。",
       "signInErrorInvalid": "名字或 PIN 不正确。",
-      "signInErrorNetwork": "网络错误。"
+      "signInErrorNetwork": "暂时连不上服务器。"
     }
   },
   "nav": {
@@ -136,7 +136,7 @@
     "anonymousSignInButton": "登录",
     "anonymousSignInChecking": "验证中…",
     "anonymousSignInErrorInvalid": "信息不匹配，请重试。",
-    "anonymousSignInErrorRateLimited": "尝试次数过多，请稍后再试。",
+    "anonymousSignInErrorRateLimited": "先歇一下，稍后再试。",
     "anonymousSignInErrorAdminLogged": "已以管理员身份登录 — 请先退出再恢复球员账号。",
     "anonymousSignInErrorNetwork": "无法连接服务器，请检查网络后重试。",
     "anonymousOrDivider": "或",
@@ -151,15 +151,15 @@
       "submit": "创建账号",
       "submitting": "创建中…",
       "successWelcome": "欢迎，{name}",
-      "errorMismatch": "两次输入的 PIN 不一致",
-      "errorTooCommon": "请选择不那么常见的 PIN",
+      "errorMismatch": "两次输入不一样，再试一次吧",
+      "errorTooCommon": "换一个不那么常见的 PIN 吧",
       "errorInvalid": "PIN 必须是 4 位数字",
-      "errorRateLimited": "尝试次数过多，请一小时后再试。",
-      "errorNetwork": "网络错误，请重试。",
+      "errorRateLimited": "先歇一下，一小时后再试。",
+      "errorNetwork": "连不上服务器 — 检查下网络再试一次。",
       "errorPinProblem": "请换一个 PIN——选一个不那么常见、你能记住的。",
       "errorTryLater": "暂时无法保存，请稍后再试。",
       "errorAccountExists": "该名字已存在账号，请登录。",
-      "errorInviteOnly": "该名字不在邀请名单上，请联系管理员添加。"
+      "errorInviteOnly": "暂时没找到这个名字 — 请联系管理员添加。"
     },
     "playerName": "名字",
     "playerSession": "已报名场次",
@@ -170,12 +170,12 @@
     "pinChangeButton": "更改",
     "pinRemoveButton": "移除",
     "pinSaved": "已保存",
-    "pinTooCommon": "请选择不那么常见的 PIN",
+    "pinTooCommon": "换一个不那么常见的 PIN 吧",
     "pinInvalid": "PIN 必须是 4 位数字",
-    "pinUpdateFailed": "更新 PIN 失败，请重试。",
+    "pinUpdateFailed": "没更新成功 — 再试一次吧。",
     "pinNeedsSignIn": "请先报名本周活动——这会在此设备上重新激活你的账户，然后即可设置 PIN。",
-    "pinWrongCurrent": "当前 PIN 不正确。",
-    "pinRateLimited": "尝试次数过多，请一小时后再试。",
+    "pinWrongCurrent": "当前 PIN 不对 — 再试一次吧。",
+    "pinRateLimited": "先歇一下，一小时后再试。",
     "adminToolsTitle": "管理员工具",
     "adminToolsButton": "管理员工具 →",
     "settings": {
@@ -207,7 +207,7 @@
     "confirmLabel": "确认 PIN",
     "save": "保存",
     "cancel": "取消",
-    "mismatch": "PIN 不匹配"
+    "mismatch": "两次输入不一样，再试一次吧"
   },
   "stats": {
     "heading": "你的数据",
@@ -224,7 +224,7 @@
         "high": "已校准"
       },
       "empty": "完成一次技能自评即可看到你的水平。",
-      "error": "加载失败——刷新重试",
+      "error": "暂时加载不出来 — 刷新再试一次",
       "needsAuth": "请重新登录以查看你的水平。",
       "onTrack": "即将达到{phase}——下次自评确认。",
       "compare": {
@@ -243,7 +243,7 @@
         "pair": "双人",
         "group": "多人"
       },
-      "error": "加载失败——刷新重试",
+      "error": "暂时加载不出来 — 刷新再试一次",
       "needsAuth": "请重新登录以查看你的练习。"
     },
     "kudos": {
@@ -251,7 +251,7 @@
       "giveTitle": "送出赞",
       "giveHint": "为今晚和你一起打球的人点个赞。",
       "offline": "你已离线——重新联网后再送赞。",
-      "error": "加载失败——刷新重试",
+      "error": "暂时加载不出来 — 刷新再试一次",
       "tag": {
         "great_defense": "防守出色",
         "clutch": "关键先生",
@@ -299,7 +299,7 @@
       "notRated": "尚未评分",
       "empty": "还没有评估 — 完成第一次评估开始记录你的球技。",
       "baseline": "已记录基线 — 打几场后再来评估，看看变化。",
-      "error": "加载失败 — 刷新重试",
+      "error": "暂时加载不出来 — 刷新再试一次",
       "checkInTitle": "技能评估",
       "close": "关闭",
       "mirrorTitle": "最近",
@@ -314,7 +314,7 @@
       "skip": "跳过",
       "save": "保存评估",
       "saving": "保存中…",
-      "saveError": "保存失败 — 请重试。",
+      "saveError": "没存上 — 再试一次吧。",
       "reviewCount": "已评 {rated} / {total} 项技能",
       "reviewPrompt": "保存以更新你的趋势。",
       "signedOutTitle": "记录你的球技",
@@ -346,24 +346,9 @@
     "cancelConfirm": "取消您的名额？",
     "confirmYes": "是",
     "confirmNo": "否",
-    "cancelFailure": "取消失败，请重试。",
-    "loadError": "加载失败 — 请刷新重试。",
+    "cancelFailure": "没取消成功 — 再试一次吧。",
+    "loadError": "暂时加载不出来 — 刷新再试一次。",
     "retry": "重试"
-  },
-  "forcePinModal": {
-    "title": "设置 PIN 保住您的名额",
-    "body": "现在所有账户都需要 PIN，这样换手机或清除浏览器后还能恢复账户。选一个 4 位数容易记住的就好。",
-    "whatIsThis": "为什么现在要设？",
-    "whatIsThisBody": "之前 PIN 是可选的，大多数账户都没有——只要清一次浏览器就永远找不回。现在所有人都需要设。只要 5 秒。",
-    "pinLabel": "您的 PIN",
-    "confirmLabel": "确认",
-    "save": "保存 PIN",
-    "saving": "保存中…",
-    "signOutInstead": "改为退出登录",
-    "errMismatch": "两次输入的 PIN 不一致",
-    "errTooCommon": "请使用不太常见的 PIN",
-    "errInvalid": "保存失败，请重试。",
-    "errNetwork": "网络错误，请重试。"
   },
   "admin": {
     "releases": {
@@ -395,7 +380,7 @@
     "forgotPinLink": "忘记 PIN？",
     "haveCodeLink": "有管理员发的验证码？",
     "errorInvalid": "信息不匹配，请重试。",
-    "errorRateLimited": "尝试次数过多，请稍后再试。",
+    "errorRateLimited": "先歇一下，稍后再试。",
     "errorAdminLoggedIn": "当前为管理员登录——请先退出后再恢复玩家账户。",
     "errorNetwork": "无法连接到服务器，请重试。",
     "welcomeBack": "欢迎回来，{name}",
@@ -419,10 +404,10 @@
     "recTitle": "和你水平相近的球友常用",
     "recCta": "查看装备",
     "recEmpty": "添加你的球拍以获得推荐。",
-    "recError": "加载失败 — 刷新重试",
+    "recError": "暂时加载不出来 — 刷新再试一次",
     "partnersTitle": "你的常约搭档",
     "partnersEmpty": "多打几场就能看到你的常约搭档。",
-    "partnersError": "加载失败 — 刷新重试",
+    "partnersError": "暂时加载不出来 — 刷新再试一次",
     "partnersCount": "{count} 次",
     "partnersMostWith": "你最常一起打的是",
     "partnersTogether": "一起打了 {count} 次",
