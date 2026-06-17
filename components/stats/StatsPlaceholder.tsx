@@ -73,17 +73,17 @@ function LiveCard({ icon, title, subtitle, children, badge = 'Live' }: LiveCardP
   return (
     <div className="glass-card p-5 space-y-3">
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
           <span
             className="material-icons"
             aria-hidden="true"
-            style={{ fontSize: 22, color: 'var(--accent, #22c55e)' }}
+            style={{ fontSize: 22, color: 'var(--accent, #22c55e)', marginTop: 1 }}
           >
             {icon}
           </span>
           <div>
             <h3 className="bpm-h3 m-0">{title}</h3>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, marginTop: 2 }}>{subtitle}</p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0', lineHeight: 1.35 }}>{subtitle}</p>
           </div>
         </div>
         <span
