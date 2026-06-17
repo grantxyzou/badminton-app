@@ -7,6 +7,9 @@ import {
 } from 'recharts';
 import { getIdentity } from '@/lib/identity';
 import { SKILLS, topStrengths, workOnNext, type Rating, type Dimension, type Phase } from '@/lib/assessment';
+import { isFlagOn } from '@/lib/flags';
+import { useInsight } from '@/lib/useInsight';
+import InsightChip from '@/components/stats/InsightChip';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import CheckInSheet from './CheckInSheet';
 
@@ -125,6 +128,9 @@ export default function SkillTrendCard() {
   const [loadError, setLoadError] = useState(false);
   const [sheetSkill, setSheetSkill] = useState<string | null>(null);
   const [checkInOpen, setCheckInOpen] = useState(false);
+  // Distributed AI insight — a short, non-obvious chip about the skill trend.
+  const insightsOn = isFlagOn('NEXT_PUBLIC_FLAG_INSIGHT_CARDS');
+  const { data: insight } = useInsight(insightsOn);
 
   useEffect(() => {
     setActiveName(resolveActiveName());
@@ -316,6 +322,8 @@ export default function SkillTrendCard() {
         <SkillList title={t('assess.strengths')} items={strengths} nowMap={nowMap} thenMap={thenMap} onPick={setSheetSkill} />
         <SkillList title={t('assess.workOn')} items={workOn} nowMap={nowMap} thenMap={thenMap} onPick={setSheetSkill} />
       </div>
+
+      {insightsOn && insight?.trend && <InsightChip {...insight.trend} />}
 
       {/* Full per-skill profile (spec §7.2/§7.5) — collapsible; also the
           accessible representation of the aria-hidden radar. */}

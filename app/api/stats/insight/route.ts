@@ -8,6 +8,7 @@ import { summarizeAssessmentTrend, type AssessmentTrend, type StoredAssessment }
 import { getCanonicalLevel } from '@/lib/levelStore';
 import type { CanonicalLevel } from '@/lib/level';
 import { recommendDrills, type DrillPick } from '@/lib/drills';
+import { computeInsightSignals, signalsByCard, type InsightSignal, type SignalCard } from '@/lib/insightSignals';
 
 /**
  * Account-gated, passively-generated player insight. Replaces the old
@@ -39,6 +40,8 @@ export const dynamic = 'force-dynamic';
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const MODEL = 'claude-sonnet-4-6';
 const MAX_OUTPUT_TOKENS = 400;
+// Structured card insights are several short fields rather than one blob.
+const MAX_OUTPUT_TOKENS_CARDS = 600;
 const ATTENDANCE_WEEKS = 52;
 
 // Lazy bootstrap — real Cosmos doesn't auto-create containers. PK /memberId
@@ -54,13 +57,28 @@ function ensureInsightsContainer(): Promise<void> {
   return insightsReady;
 }
 
+/** One distributed-insight slice: a styled chip's content. `kind` is set
+ *  server-side from the driving signal (drives the chip icon), never trusted
+ *  from the model. */
+interface CardInsight {
+  headline: string;
+  support?: string;
+  kind: string;
+}
+
 interface InsightDoc {
   id: string;
   memberId: string;
   name: string;
   sessionId: string;
-  recap: string;
-  focus: string;
+  /** Legacy "Your read" shape (flag off). Optional now — structured docs omit it. */
+  recap?: string;
+  focus?: string;
+  /** Distributed-insight shape (NEXT_PUBLIC_FLAG_INSIGHT_CARDS on). Additive —
+   *  legacy recap/focus docs simply lack these and regenerate once on a flag flip. */
+  greeting?: string | null;
+  level?: CardInsight | null;
+  trend?: CardInsight | null;
   generatedAt: string;
   /** `takenAt` of the latest self-assessment baked into this insight. Lets a
    *  fresh check-in invalidate the session cache so the read reflects it.
@@ -69,7 +87,7 @@ interface InsightDoc {
 }
 
 function emptyPayload(account: boolean) {
-  return NextResponse.json({ account, recap: null, focus: null, generatedAt: null });
+  return NextResponse.json({ account, recap: null, focus: null, greeting: null, level: null, trend: null, generatedAt: null });
 }
 
 /**
@@ -79,23 +97,22 @@ function emptyPayload(account: boolean) {
  * store ignores `@memberId` (same reason the assessments GET does). Failures are
  * non-fatal — the insight still generates from attendance/games alone.
  */
-async function fetchAssessmentTrend(memberId: string): Promise<AssessmentTrend | null> {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS')) return null;
+async function fetchAssessmentDocs(memberId: string): Promise<StoredAssessment[]> {
+  if (!isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS')) return [];
   try {
     await ensureContainer('assessments', '/memberId');
     const { resources } = await getContainer('assessments').items
       .query({
-        query: 'SELECT c.memberId, c.takenAt, c.ratings, c.overall, c.phase FROM c WHERE c.memberId = @memberId',
+        query: 'SELECT c.memberId, c.takenAt, c.ratings, c.overall, c.phase, c.dimensionScores FROM c WHERE c.memberId = @memberId',
         parameters: [{ name: '@memberId', value: memberId }],
       })
       .fetchAll();
-    const docs = (resources as (StoredAssessment & { memberId?: string })[]).filter(
+    return (resources as (StoredAssessment & { memberId?: string })[]).filter(
       (d) => d && d.memberId === memberId && typeof d.takenAt === 'string',
     );
-    return summarizeAssessmentTrend(docs);
   } catch (err) {
     console.error('insight assessment read failed:', err);
-    return null;
+    return [];
   }
 }
 
@@ -138,9 +155,13 @@ export async function GET(req: NextRequest) {
 
   const activeSessionId = await getActiveSessionId();
 
+  const cardsOn = isFlagOn('NEXT_PUBLIC_FLAG_INSIGHT_CARDS');
+
   // ── Latest self-assessment (flag-gated). Fetched before the cache check so a
-  //    fresh check-in invalidates the session-cached read. ──
-  const trend = await fetchAssessmentTrend(member.id);
+  //    fresh check-in invalidates the session-cached read. Raw docs are kept so
+  //    the signal engine can fold the full history (sticky-weak, streaks). ──
+  const assessmentDocs = await fetchAssessmentDocs(member.id);
+  const trend = summarizeAssessmentTrend(assessmentDocs);
   const latestAssessmentAt = trend?.latestAt ?? null;
 
   // Canonical level (flag-gated). Same memberId-resolve as the trend; folds the
@@ -165,19 +186,22 @@ export async function GET(req: NextRequest) {
   // Nullish-normalize both sides: a pre-assessment cached doc (undefined) with a
   // new assessment present (a string) mismatches → regenerate to fold it in.
   const assessmentMatches = (existing?.lastAssessmentAt ?? null) === latestAssessmentAt;
-  if (existing && existing.sessionId === activeSessionId && existing.recap && assessmentMatches) {
-    return NextResponse.json({
-      account: true,
-      recap: existing.recap,
-      focus: existing.focus,
-      generatedAt: existing.generatedAt,
-      cached: true,
-    });
+  const cacheFresh = !!existing && existing.sessionId === activeSessionId && assessmentMatches;
+  // The cache is keyed by the shape the current flag wants: a flag flip leaves a
+  // doc with the wrong field set, which misses here and regenerates once.
+  if (cacheFresh && cardsOn && existing!.greeting) {
+    return NextResponse.json({ account: true, greeting: existing!.greeting, level: existing!.level ?? null, trend: existing!.trend ?? null, generatedAt: existing!.generatedAt, cached: true });
+  }
+  if (cacheFresh && !cardsOn && existing!.recap) {
+    return NextResponse.json({ account: true, recap: existing!.recap, focus: existing!.focus, generatedAt: existing!.generatedAt, cached: true });
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    // No key — serve any stale insight rather than nothing, but don't generate.
-    if (existing?.recap) {
+    // No key — serve any stale insight of the right shape rather than nothing.
+    if (cardsOn && existing?.greeting) {
+      return NextResponse.json({ account: true, greeting: existing.greeting, level: existing.level ?? null, trend: existing.trend ?? null, generatedAt: existing.generatedAt, stale: true });
+    }
+    if (!cardsOn && existing?.recap) {
       return NextResponse.json({ account: true, recap: existing.recap, focus: existing.focus, generatedAt: existing.generatedAt, stale: true });
     }
     return emptyPayload(true);
@@ -191,7 +215,32 @@ export async function GET(req: NextRequest) {
   // ── Gather the data snapshot (deterministic — fed verbatim to Claude). ──
   const snapshot = await buildSnapshot({ name: member.name, playersContainer, sessionsContainer, trend, canonicalLevel, drills });
 
-  // ── Generate (memory = previous recap+focus). ──
+  // ── Distributed insights (flag on): structured, signal-grounded slices. ──
+  if (cardsOn) {
+    const signals = signalsByCard(computeInsightSignals({ snapshots: assessmentDocs, canonicalLevel, now: new Date().toISOString() }));
+    let cards: { greeting: string | null; level: CardInsight | null; trend: CardInsight | null };
+    try {
+      cards = await generateCards(member.name, snapshot, signals, existing);
+    } catch (err) {
+      console.error('insight cards generation failed:', err);
+      if (existing?.greeting) {
+        return NextResponse.json({ account: true, greeting: existing.greeting, level: existing.level ?? null, trend: existing.trend ?? null, generatedAt: existing.generatedAt, stale: true });
+      }
+      return emptyPayload(true);
+    }
+    if (!cards.greeting && !cards.level && !cards.trend) return emptyPayload(true);
+
+    const generatedAt = new Date().toISOString();
+    const doc: InsightDoc = { id: member.id, memberId: member.id, name: member.name, sessionId: activeSessionId, greeting: cards.greeting, level: cards.level, trend: cards.trend, generatedAt, lastAssessmentAt: latestAssessmentAt };
+    try {
+      await insightsContainer.items.upsert(doc);
+    } catch (err) {
+      console.warn('insight cache write failed (non-fatal):', err);
+    }
+    return NextResponse.json({ account: true, greeting: cards.greeting, level: cards.level, trend: cards.trend, generatedAt, cached: false });
+  }
+
+  // ── Legacy "Your read" (flag off): recap + focus blob. ──
   let recap = '';
   let focus = '';
   try {
@@ -442,6 +491,102 @@ function buildSkillLine(s: Snapshot): string {
     return `Self-rated skills (0-6): ${Object.entries(s.skills).map(([k, v]) => `${k} ${v}`).join(', ')}.`;
   }
   return '';
+}
+
+/**
+ * Distributed-insight generation: a plain-language greeting + a short,
+ * NON-OBVIOUS chip per card, grounded in the pre-computed signals. The model
+ * only narrates the signals into plain words — it never selects them and never
+ * invents a pattern. `kind` is attached server-side from the signal (drives the
+ * chip icon), and any card without a signal is forced null (silence > obvious).
+ */
+async function generateCards(
+  name: string,
+  s: Snapshot,
+  signals: Record<SignalCard, InsightSignal | null>,
+  prev: InsightDoc | null,
+): Promise<{ greeting: string | null; level: CardInsight | null; trend: CardInsight | null }> {
+  const lastLine = s.lastSession
+    ? `Last completed session (${s.lastSession.date.slice(0, 10)}): ${name} ${s.lastSession.attended ? 'PLAYED' : 'did NOT play'}.`
+    : 'No completed sessions on record yet.';
+  const partnerLine = s.regularPartners.length
+    ? `Regular partners: ${s.regularPartners.map((p) => `${p.name} (${p.count})`).join(', ')}.`
+    : 'No regular partners yet.';
+  const skillLine = buildSkillLine(s);
+
+  const cards: SignalCard[] = ['greeting', 'level', 'trend'];
+  const signalBlock = cards
+    .map((card) => {
+      const sig = signals[card];
+      return sig
+        ? `- ${card}: [${sig.kind}] ${sig.hint} (grounded facts: ${JSON.stringify(sig.facts)})`
+        : `- ${card}: (no non-obvious signal — return null for this slot)`;
+    })
+    .join('\n');
+  const memoryLine = prev?.greeting ? `\n\nYour previous greeting to ${name}: "${prev.greeting}"` : '';
+
+  const prompt = `You are a warm, plain-spoken badminton companion writing short, scannable insights for ${name}, a casual weekly player. Use ONLY the facts below — never invent numbers, names, events, or patterns.
+
+DATA
+${lastLine}
+Season (last ${s.totalSessions} sessions): attended ${s.attended} (${s.attendanceRate}%), current streak ${s.currentStreak}, longest ${s.longestStreak}.
+${partnerLine}${skillLine ? `\n${skillLine}` : ''}
+
+NON-OBVIOUS SIGNALS (pre-computed — narrate the ones present; do not restate plain numbers):
+${signalBlock}${memoryLine}
+
+The whole point is value BEYOND the obvious: ${name} can already SEE their level number, phase, and skill ratings on the cards. NEVER restate those. Surface the relationship/pattern in the signals instead, in plain words.
+
+Return ONLY a JSON object, no markdown fences:
+{"greeting": "...", "level": {"headline": "...", "support": "..."} | null, "trend": {"headline": "...", "support": "..."} | null}
+- "greeting": ONE warm, plain-language sentence (max ~16 words) leading with the most interesting honest thing. Translate jargon (never "3.1 / switch / medium confidence"). If nothing is beyond the obvious, a brief encouraging line is fine.
+- "level" / "trend": ONLY if that signal is present above — "headline" ≤ 8 words (the punch), "support" ≤ 14 words (one grounding clause). If the slot says "return null", return null for it.
+- Plain, encouraging, specific. No emoji, no hashtags, no jargon. Do NOT repeat a raw rating number the card already shows.`;
+
+  const message = await anthropic.messages.create({
+    model: MODEL,
+    max_tokens: MAX_OUTPUT_TOKENS_CARDS,
+    messages: [{ role: 'user', content: prompt }],
+  });
+  const text = message.content[0]?.type === 'text' ? message.content[0].text.trim() : '';
+  const parsed = parseCards(text);
+
+  return {
+    greeting: parsed.greeting,
+    level: signals.level && parsed.level ? { ...parsed.level, kind: signals.level.kind } : null,
+    trend: signals.trend && parsed.trend ? { ...parsed.trend, kind: signals.trend.kind } : null,
+  };
+}
+
+/** Tolerant parse of the structured card payload. Each card slice is nullable
+ *  and requires a non-empty headline; support is optional. */
+function parseCards(text: string): {
+  greeting: string | null;
+  level: { headline: string; support?: string } | null;
+  trend: { headline: string; support?: string } | null;
+} {
+  const cleaned = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  const slice = start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;
+  const coerceCard = (v: unknown): { headline: string; support?: string } | null => {
+    if (!v || typeof v !== 'object') return null;
+    const o = v as { headline?: unknown; support?: unknown };
+    const headline = typeof o.headline === 'string' ? o.headline.trim() : '';
+    if (!headline) return null;
+    const support = typeof o.support === 'string' && o.support.trim() ? o.support.trim() : undefined;
+    return support ? { headline, support } : { headline };
+  };
+  try {
+    const obj = JSON.parse(slice) as { greeting?: unknown; level?: unknown; trend?: unknown };
+    return {
+      greeting: typeof obj.greeting === 'string' && obj.greeting.trim() ? obj.greeting.trim() : null,
+      level: coerceCard(obj.level),
+      trend: coerceCard(obj.trend),
+    };
+  } catch {
+    return { greeting: null, level: null, trend: null };
+  }
 }
 
 /** Tolerant JSON extraction — strips code fences, pulls the first {...} block. */

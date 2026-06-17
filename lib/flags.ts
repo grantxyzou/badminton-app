@@ -27,7 +27,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_SKILL_CALIBRATION'
   | 'NEXT_PUBLIC_FLAG_SKILL_SMOOTHING'
   | 'NEXT_PUBLIC_FLAG_SKILL_DRILLS'
-  | 'NEXT_PUBLIC_FLAG_KUDOS';
+  | 'NEXT_PUBLIC_FLAG_KUDOS'
+  | 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS';
 
 interface FlagMeta {
   description: string;
@@ -96,6 +97,11 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'after kudos is promoted to stable + lived-in for 2 weeks',
   },
+  NEXT_PUBLIC_FLAG_INSIGHT_CARDS: {
+    description: 'Distributed AI insights: dissolves the standalone "Your read" card into a one-line plain-language greeting at the top of the Stats Summary plus a short, NON-OBVIOUS insight chip attached to each card (level, skill trend). Server-side the /api/stats/insight route switches from {recap, focus} to structured {greeting, level, trend} slices, grounded in deterministically-computed signals (lib/insightSignals.ts) and nullable per card. On for bpm-next + dev; off on bpm-stable (legacy StreakSummaryCard) until promoted.',
+    owner: 'grant',
+    plannedRemoval: 'after distributed insights are promoted to stable + lived-in for 2 weeks',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -124,6 +130,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_SKILL_DRILLS;
     case 'NEXT_PUBLIC_FLAG_KUDOS':
       return process.env.NEXT_PUBLIC_FLAG_KUDOS;
+    case 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS':
+      return process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS;
   }
 }
 
