@@ -25,7 +25,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_SKILL_ASSESS'
   | 'NEXT_PUBLIC_FLAG_SKILL_LEVEL'
   | 'NEXT_PUBLIC_FLAG_SKILL_CALIBRATION'
-  | 'NEXT_PUBLIC_FLAG_SKILL_SMOOTHING';
+  | 'NEXT_PUBLIC_FLAG_SKILL_SMOOTHING'
+  | 'NEXT_PUBLIC_FLAG_SKILL_DRILLS';
 
 interface FlagMeta {
   description: string;
@@ -84,6 +85,11 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'after the skill-accuracy spine is promoted to stable + lived-in for 2 weeks',
   },
+  NEXT_PUBLIC_FLAG_SKILL_DRILLS: {
+    description: 'Drill recommendations (skill-followups plan, Phase B): a deterministic engine maps the member\'s lowest-rated skills to concrete practice drills from a static library (band = the skill\'s own rating, rotated weekly by session). Surfaces a private DrillsCard on Stats and lets the AI insight name a real drill. Gated read API (member cookie / admin). On for bpm-next + dev; off on bpm-stable until promoted.',
+    owner: 'grant',
+    plannedRemoval: 'after drills are promoted to stable + lived-in for 2 weeks',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -108,6 +114,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_SKILL_CALIBRATION;
     case 'NEXT_PUBLIC_FLAG_SKILL_SMOOTHING':
       return process.env.NEXT_PUBLIC_FLAG_SKILL_SMOOTHING;
+    case 'NEXT_PUBLIC_FLAG_SKILL_DRILLS':
+      return process.env.NEXT_PUBLIC_FLAG_SKILL_DRILLS;
   }
 }
 

@@ -7,6 +7,7 @@ import { isFlagOn } from '@/lib/flags';
 import { summarizeAssessmentTrend, type AssessmentTrend, type StoredAssessment } from '@/lib/assessment';
 import { getCanonicalLevel } from '@/lib/levelStore';
 import type { CanonicalLevel } from '@/lib/level';
+import { recommendDrills, type DrillPick } from '@/lib/drills';
 
 /**
  * Account-gated, passively-generated player insight. Replaces the old
@@ -182,8 +183,13 @@ export async function GET(req: NextRequest) {
     return emptyPayload(true);
   }
 
+  // Drills for the work-on skills (flag-gated). Deterministic; rotates by session.
+  const drills = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_DRILLS') && trend
+    ? recommendDrills({ workOn: trend.workOn, level: canonicalLevel?.level ?? null, rotationSeed: activeSessionId })
+    : [];
+
   // ── Gather the data snapshot (deterministic — fed verbatim to Claude). ──
-  const snapshot = await buildSnapshot({ name: member.name, playersContainer, sessionsContainer, trend, canonicalLevel });
+  const snapshot = await buildSnapshot({ name: member.name, playersContainer, sessionsContainer, trend, canonicalLevel, drills });
 
   // ── Generate (memory = previous recap+focus). ──
   let recap = '';
@@ -229,6 +235,8 @@ interface Snapshot {
   /** Legacy admin-entered skills (0–6). Fallback only — populated when there is
    *  no self-assessment. Never narrated alongside `assessment` (two scales). */
   skills: Record<string, number> | null;
+  /** Drills for the work-on skills (flag-gated). Narrated by name in the focus. */
+  drills: DrillPick[];
 }
 
 async function buildSnapshot({
@@ -237,12 +245,14 @@ async function buildSnapshot({
   sessionsContainer,
   trend,
   canonicalLevel,
+  drills,
 }: {
   name: string;
   playersContainer: ReturnType<typeof getContainer>;
   sessionsContainer: ReturnType<typeof getContainer>;
   trend: AssessmentTrend | null;
   canonicalLevel: CanonicalLevel | null;
+  drills: DrillPick[];
 }): Promise<Snapshot> {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - ATTENDANCE_WEEKS * 7);
@@ -334,7 +344,7 @@ async function buildSnapshot({
     }
   }
 
-  return { totalSessions, attended, attendanceRate, currentStreak, longestStreak, lastSession, regularPartners, assessment: trend, canonicalLevel, skills };
+  return { totalSessions, attended, attendanceRate, currentStreak, longestStreak, lastSession, regularPartners, assessment: trend, canonicalLevel, skills, drills };
 }
 
 async function generate(name: string, s: Snapshot, prev: InsightDoc | null): Promise<{ recap: string; focus: string }> {
@@ -362,7 +372,7 @@ ${partnerLine}${skillLine ? `\n${skillLine}` : ''}${memoryLine}
 Return ONLY a JSON object, no markdown fences:
 {"recap": "...", "focus": "..."}
 - "recap": 1-2 sentences on how the last session / recent stretch went. Weave in attendance AND, if a self-assessment is present, how their skill rating moved (up, down, or holding). If a previous note exists, acknowledge progress against it.
-- "focus": 1-2 sentences naming ONE concrete thing to work on for the upcoming session. If a self-assessment lists "working on" skills, anchor the focus on one of them. Build on the previous focus if there was one (did they act on it?). Specific, encouraging, no jargon, no emoji.
+- "focus": 1-2 sentences naming ONE concrete thing to work on for the upcoming session. If a self-assessment lists "working on" skills, anchor the focus on one of them. If "Suggested drills" are listed, name ONE of them verbatim as the concrete action (don't invent a different drill). Build on the previous focus if there was one (did they act on it?). Specific, encouraging, no jargon, no emoji.
 - If the notes mention a gap between recent games and the self-rating, you MAY reference it gently and only as encouragement — never as criticism, and never with a number.`;
 
   const message = await anthropic.messages.create({
@@ -423,6 +433,9 @@ function buildSkillLine(s: Snapshot): string {
     let line = `${levelHeader}${parts.join('; ')}.`;
     if (a.strengths.length) line += ` Strongest: ${a.strengths.map((r) => `${r.label} (${r.value})`).join(', ')}.`;
     if (a.workOn.length) line += ` Working on (lowest-rated): ${a.workOn.map((r) => `${r.label} (${r.value})`).join(', ')}.`;
+    if (s.drills.length) {
+      line += ` Suggested drills for those skills: ${s.drills.map((d) => `"${d.title}" (${d.minutes}min, ${d.setting}, for ${d.skillLabel})`).join('; ')}.`;
+    }
     return line;
   }
   if (s.skills) {

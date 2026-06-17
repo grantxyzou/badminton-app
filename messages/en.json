@@ -234,6 +234,18 @@
         "below": "Your check-in is a touch ahead of recent games — a strong week or two will bring them in line."
       }
     },
+    "drills": {
+      "title": "Practice this week",
+      "purpose": "Concrete drills for the skills you're working on — just for you.",
+      "minutes": "{n} min",
+      "setting": {
+        "solo": "solo",
+        "pair": "pair",
+        "group": "group"
+      },
+      "error": "Couldn't load — refresh to retry",
+      "needsAuth": "Sign in again to see your drills."
+    },
     "comingSoon": "Coming soon",
     "moreComing": "other metrics in the making",
     "progression": {
