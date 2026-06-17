@@ -102,11 +102,11 @@ export default function GiveKudosCard() {
 
   return (
     <div className="glass-card p-5 space-y-3">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: 'var(--accent, #22c55e)' }}>volunteer_activism</span>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+        <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: 'var(--accent, #22c55e)', marginTop: 1 }}>volunteer_activism</span>
         <div>
           <h3 className="bpm-h3 m-0">{t('kudos.giveTitle')}</h3>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, marginTop: 2 }}>{t('kudos.giveHint')}</p>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0', lineHeight: 1.35 }}>{t('kudos.giveHint')}</p>
         </div>
       </div>
       {!online && (

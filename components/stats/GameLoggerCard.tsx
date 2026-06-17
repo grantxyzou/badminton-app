@@ -69,11 +69,11 @@ export default function GameLoggerCard() {
 
   return (
     <div className="glass-card p-5 space-y-3">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: ACCENT }}>sports_tennis</span>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+        <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: ACCENT, marginTop: 1 }}>sports_tennis</span>
         <div>
           <h3 className="bpm-h3 m-0">{t('logGameTitle')}</h3>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, marginTop: 2 }}>{t('logGameHint')}</p>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0', lineHeight: 1.35 }}>{t('logGameHint')}</p>
         </div>
       </div>
       <button type="button" onClick={() => setOpen(true)} className="cc-btn cc-btn-primary">
