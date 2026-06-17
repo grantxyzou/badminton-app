@@ -8,6 +8,7 @@ import ShuttleLoader from '@/components/ShuttleLoader';
 import StatsPlaceholder from '@/components/stats/StatsPlaceholder';
 import AttendanceCardLive from '@/components/stats/cards/AttendanceCardLive';
 import StreakSummaryCard from '@/components/stats/StreakSummaryCard';
+import SummaryGreeting from '@/components/stats/SummaryGreeting';
 import PartnerFrequencyCard from '@/components/stats/cards/PartnerFrequencyCard';
 import GameLoggerCard from '@/components/stats/GameLoggerCard';
 import RacketRow from '@/components/stats/RacketRow';
@@ -163,8 +164,13 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   const drillsOn = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_DRILLS');
   // Kudos — positive-only peer recognition (received read here; give in the play slot).
   const kudosOn = isFlagOn('NEXT_PUBLIC_FLAG_KUDOS');
+  // Distributed AI insights: a plain-language greeting leads the Summary and the
+  // standalone "Your read" card is retired (its synthesis moves into the greeting
+  // + per-card chips; the streak still shows on AttendanceCardLive in Game stats).
+  const insightCardsOn = isFlagOn('NEXT_PUBLIC_FLAG_INSIGHT_CARDS');
   const heroSlot = skillAssessOn ? (
     <>
+      {insightCardsOn && <SummaryGreeting />}
       {levelOn && <LevelCard />}
       <SkillTrendCard />
       {drillsOn && <DrillsCard />}
@@ -207,7 +213,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
         heroSlot={heroSlot}
         gamePlaySlot={gamePlaySlot}
         attendanceContent={attendanceContent}
-        insightSlot={<StreakSummaryCard />}
+        insightSlot={insightCardsOn ? undefined : <StreakSummaryCard />}
       />
     );
   }

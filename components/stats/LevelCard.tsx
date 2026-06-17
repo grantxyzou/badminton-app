@@ -4,6 +4,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { getIdentity } from '@/lib/identity';
 import type { CanonicalLevel } from '@/lib/level';
+import { isFlagOn } from '@/lib/flags';
+import { useInsight } from '@/lib/useInsight';
+import InsightChip from '@/components/stats/InsightChip';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
@@ -47,6 +50,10 @@ export default function LevelCard() {
   const [loaded, setLoaded] = useState(false);
   const [showHow, setShowHow] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
+  // Distributed AI insight — a short, non-obvious chip about the level. Shared
+  // (memoized) fetch across the greeting + the other card chips.
+  const insightsOn = isFlagOn('NEXT_PUBLIC_FLAG_INSIGHT_CARDS');
+  const { data: insight } = useInsight(insightsOn);
 
   useEffect(() => {
     setActiveName(resolveActiveName());
@@ -191,6 +198,8 @@ export default function LevelCard() {
           )}
         </div>
       )}
+
+      {insightsOn && insight?.level && <InsightChip {...insight.level} />}
 
       {level.explanation.length > 0 && (
         <div className="space-y-2">
