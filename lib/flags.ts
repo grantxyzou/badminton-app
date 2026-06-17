@@ -26,7 +26,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_SKILL_LEVEL'
   | 'NEXT_PUBLIC_FLAG_SKILL_CALIBRATION'
   | 'NEXT_PUBLIC_FLAG_SKILL_SMOOTHING'
-  | 'NEXT_PUBLIC_FLAG_SKILL_DRILLS';
+  | 'NEXT_PUBLIC_FLAG_SKILL_DRILLS'
+  | 'NEXT_PUBLIC_FLAG_KUDOS';
 
 interface FlagMeta {
   description: string;
@@ -90,6 +91,11 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'after drills are promoted to stable + lived-in for 2 weeks',
   },
+  NEXT_PUBLIC_FLAG_KUDOS: {
+    description: 'Kudos (skill-followups plan, Phase C): positive-only, post-game peer recognition that replaces the cut numeric peer rating. A small fixed set of tags, member-cookie-bound writes (rule 12) gated on co-play, and a private counts-only aggregate (member/admin). No level coupling in v1 — purely social. New `kudos` container (PK /recipientMemberId). On for bpm-next + dev; off on bpm-stable until promoted.',
+    owner: 'grant',
+    plannedRemoval: 'after kudos is promoted to stable + lived-in for 2 weeks',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -116,6 +122,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_SKILL_SMOOTHING;
     case 'NEXT_PUBLIC_FLAG_SKILL_DRILLS':
       return process.env.NEXT_PUBLIC_FLAG_SKILL_DRILLS;
+    case 'NEXT_PUBLIC_FLAG_KUDOS':
+      return process.env.NEXT_PUBLIC_FLAG_KUDOS;
   }
 }
 

@@ -246,6 +246,20 @@
       "error": "Couldn't load — refresh to retry",
       "needsAuth": "Sign in again to see your drills."
     },
+    "kudos": {
+      "receivedTitle": "Kudos you've received",
+      "giveTitle": "Send kudos",
+      "giveHint": "Give a shout-out to who you played with tonight.",
+      "offline": "You're offline — reconnect to send kudos.",
+      "error": "Couldn't load — refresh to retry",
+      "tag": {
+        "great_defense": "Great defense",
+        "clutch": "Clutch",
+        "most_improved": "Most improved",
+        "good_sport": "Good sport",
+        "nice_shot": "Nice shot"
+      }
+    },
     "comingSoon": "Coming soon",
     "moreComing": "other metrics in the making",
     "progression": {

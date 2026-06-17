@@ -21,6 +21,8 @@ const SkillTrendCard = dynamic(() => import('@/components/stats/SkillTrendCard')
 // Client-only (reads localStorage identity), same posture as SkillTrendCard.
 const LevelCard = dynamic(() => import('@/components/stats/LevelCard'), { ssr: false });
 const DrillsCard = dynamic(() => import('@/components/stats/DrillsCard'), { ssr: false });
+const KudosReceivedCard = dynamic(() => import('@/components/stats/KudosReceivedCard'), { ssr: false });
+const GiveKudosCard = dynamic(() => import('@/components/stats/GiveKudosCard'), { ssr: false });
 
 // Hidden for now — admin Add Player + SkillsRadar overlay/compare mode are
 // scoped out of the user-facing Stats tab while we figure out whether self-
@@ -159,11 +161,14 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   const levelOn = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_LEVEL');
   // Drills — concrete practice for the lowest-rated skills, below the trend.
   const drillsOn = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_DRILLS');
+  // Kudos — positive-only peer recognition (received read here; give in the play slot).
+  const kudosOn = isFlagOn('NEXT_PUBLIC_FLAG_KUDOS');
   const heroSlot = skillAssessOn ? (
     <>
       {levelOn && <LevelCard />}
       <SkillTrendCard />
       {drillsOn && <DrillsCard />}
+      {kudosOn && <KudosReceivedCard />}
     </>
   ) : (
     <StreakSummaryCard />
@@ -182,6 +187,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   const gamePlaySlot = showPlay ? (
     <>
       <GameLoggerCard />
+      {kudosOn && <GiveKudosCard />}
       <PartnerFrequencyCard />
     </>
   ) : undefined;
