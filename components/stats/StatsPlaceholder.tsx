@@ -16,7 +16,7 @@ function CompactComingSoonCard({ icon, title, subtitle, comingSoon }: CompactCar
     <div
       className="glass-card"
       style={{
-        padding: 14,
+        padding: 16,
         display: 'flex',
         flexDirection: 'column',
         gap: 6,

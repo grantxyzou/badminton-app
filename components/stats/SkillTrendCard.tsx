@@ -191,7 +191,7 @@ export default function SkillTrendCard() {
 
   // Card chrome wraps every state so the section reads consistently.
   const Frame = ({ children }: { children: React.ReactNode }) => (
-    <div className="glass-card p-5 space-y-4">
+    <div className="glass-card p-5 space-y-3">
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
           <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: 'var(--accent, #22c55e)', marginTop: 1 }}>
