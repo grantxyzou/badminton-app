@@ -168,7 +168,7 @@ export default function StreakSummaryCard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, ...(hasStreak ? { borderTop: '1px solid var(--inner-card-border)', paddingTop: 14 } : {}) }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="material-icons" aria-hidden="true" style={{ fontSize: 20, color: ACCENT }}>auto_fix_high</span>
+              <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: ACCENT }}>auto_fix_high</span>
               <h3 className="bpm-h3 m-0">Your read</h3>
             </div>
             <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 100, whiteSpace: 'nowrap', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', border: `1px solid ${ACCENT}`, color: ACCENT }}>
