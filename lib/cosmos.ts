@@ -83,19 +83,31 @@ function seedDevAdminIfRequested(containerName: string) {
  * Players container stays empty by design — the test scenario starts
  * "no one signed up yet."
  *
+ * Set `SEED_DEV_SCENARIO=played-thursday` for the same fixtures but a session
+ * that JUST happened (3h ago, signup closed) plus a 4-player roster and 3 kudos
+ * received by Lin — so the post-session surfaces (game logger, give-kudos +
+ * received-kudos cards, drills, calibration) all render. Sign in as Lin (2468)
+ * → Stats. See `scripts/dev-demo.sh`.
+ *
  * Plays well with SEED_DEV_ADMIN — they seed different docs and both can
  * be active simultaneously. Refuses when real Cosmos is configured.
  */
 function seedDevScenarioIfRequested(containerName: string) {
   if (g._devScenarioSeeded) return;
   if (process.env.COSMOS_CONNECTION_STRING) return;
-  if (process.env.SEED_DEV_SCENARIO !== 'fresh-thursday') return;
+  const scenario = process.env.SEED_DEV_SCENARIO;
+  if (scenario !== 'fresh-thursday' && scenario !== 'played-thursday') return;
+  // `played-thursday` is a session that JUST happened (3h ago) so the
+  // post-session windows are open — the game logger, the give-kudos card, and
+  // calibration all have live data. `fresh-thursday` is the upcoming (+48h)
+  // signup-open session. Both seed the same members + catalog + Lin check-ins.
+  const played = scenario === 'played-thursday';
   // Only seed once, on first access to any container we care about.
   if (containerName !== 'sessions' && containerName !== 'members') return;
 
   const now = new Date();
-  const sessionDate = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000); // +48h
-  const deadlineDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // +24h
+  const sessionDate = new Date(now.getTime() + (played ? -3 * 60 * 60 * 1000 : 2 * 24 * 60 * 60 * 1000));
+  const deadlineDate = new Date(now.getTime() + (played ? -27 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000));
   const datetime = sessionDate.toISOString();
   const deadline = deadlineDate.toISOString();
   const sessionId = sessionIdFromDate(datetime);
@@ -113,7 +125,7 @@ function seedDevScenarioIfRequested(containerName: string) {
       courts: 2,
       costPerCourt: 60,
       maxPlayers: 12,
-      signupOpen: true,
+      signupOpen: !played,
       locationVenue: "Wing's Badminton",
       locationAddress: '11820 Horseshoe Way, Richmond',
       showCostBreakdown: true,
@@ -224,11 +236,49 @@ function seedDevScenarioIfRequested(containerName: string) {
     );
   }
 
+  // played-thursday extras: a roster (so the post-session logger sees Lin as
+  // "attended") and a few kudos received by Lin (so the "Kudos you've received"
+  // card renders). The give-kudos card derives its co-players from the seeded
+  // game above, which now sits in the just-passed active session.
+  if (played) {
+    mockStore.players ??= [];
+    for (const name of ['Lin', 'Viktor', 'Carolina', 'Akane']) {
+      const dup = mockStore.players.find(
+        (p) => (p as { sessionId?: string }).sessionId === sessionId && (p as { name?: string }).name === name,
+      );
+      if (!dup) {
+        mockStore.players.push({
+          id: `dev-player-${name.toLowerCase()}`,
+          sessionId,
+          name,
+          removed: false,
+          signedUpAt: now.toISOString(),
+        });
+      }
+    }
+    mockStore.kudos ??= [];
+    if (mockStore.kudos.length === 0) {
+      const mkKudos = (raterName: string, tag: string) => ({
+        id: randomBytes(16).toString('hex'),
+        recipientMemberId: 'dev-member-lin',
+        recipientName: 'Lin',
+        raterMemberId: `dev-member-${raterName.toLowerCase()}`,
+        raterName,
+        sessionId,
+        tag,
+        createdAt: now.toISOString(),
+      });
+      mockStore.kudos.push(mkKudos('Viktor', 'clutch'), mkKudos('Carolina', 'great_defense'), mkKudos('Akane', 'clutch'));
+    }
+  }
+
   g._devScenarioSeeded = true;
   console.warn(
-    `[dev] SEED_DEV_SCENARIO=fresh-thursday: seeded session ${sessionId} (signupOpen, 0/12, deadline ${deadline.slice(0, 10)}) ` +
+    `[dev] SEED_DEV_SCENARIO=${scenario}: seeded session ${sessionId} ` +
+      `(${played ? 'just played (3h ago), signup closed' : 'signupOpen'}, deadline ${deadline.slice(0, 10)}) ` +
       `+ 6 famous-player invite-list members (Lin has PIN 2468, others have no PIN) ` +
-      `+ ${equipmentCatalogSeed.items.length}-racket catalog + 1 sample game + 2 skill-assessment snapshots for Lin. Mock store only.`,
+      `+ ${equipmentCatalogSeed.items.length}-racket catalog + 1 sample game + 2 skill-assessment snapshots for Lin` +
+      `${played ? ' + 4-player roster + 3 kudos received by Lin' : ''}. Mock store only.`,
   );
 }
 
