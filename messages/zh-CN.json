@@ -234,6 +234,18 @@
         "below": "你的自评略高于最近的比赛表现——再打好一两周就能跟上。"
       }
     },
+    "drills": {
+      "title": "本周练习",
+      "purpose": "针对你正在提升的技能的具体练习——只给你自己看。",
+      "minutes": "{n} 分钟",
+      "setting": {
+        "solo": "单人",
+        "pair": "双人",
+        "group": "多人"
+      },
+      "error": "加载失败——刷新重试",
+      "needsAuth": "请重新登录以查看你的练习。"
+    },
     "comingSoon": "即将推出",
     "moreComing": "更多指标制作中",
     "progression": {

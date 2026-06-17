@@ -20,6 +20,7 @@ const SkillsRadar = dynamic(() => import('@/components/SkillsRadar'), { ssr: fal
 const SkillTrendCard = dynamic(() => import('@/components/stats/SkillTrendCard'), { ssr: false });
 // Client-only (reads localStorage identity), same posture as SkillTrendCard.
 const LevelCard = dynamic(() => import('@/components/stats/LevelCard'), { ssr: false });
+const DrillsCard = dynamic(() => import('@/components/stats/DrillsCard'), { ssr: false });
 
 // Hidden for now — admin Add Player + SkillsRadar overlay/compare mode are
 // scoped out of the user-facing Stats tab while we figure out whether self-
@@ -156,10 +157,13 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   const skillAssessOn = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS');
   // Phase 1 canonical level — the private headline read, above the trend radar.
   const levelOn = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_LEVEL');
+  // Drills — concrete practice for the lowest-rated skills, below the trend.
+  const drillsOn = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_DRILLS');
   const heroSlot = skillAssessOn ? (
     <>
       {levelOn && <LevelCard />}
       <SkillTrendCard />
+      {drillsOn && <DrillsCard />}
     </>
   ) : (
     <StreakSummaryCard />
