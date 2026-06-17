@@ -112,7 +112,7 @@ export default function AttendanceCardLive() {
   if (!data) {
     return (
       <p style={{ margin: 0, fontSize: 12, color: MUTED }} role="alert">
-        Couldn’t load attendance.
+        Couldn’t load that — refresh to try again.
       </p>
     );
   }
