@@ -246,6 +246,20 @@
       "error": "加载失败——刷新重试",
       "needsAuth": "请重新登录以查看你的练习。"
     },
+    "kudos": {
+      "receivedTitle": "你收到的赞",
+      "giveTitle": "送出赞",
+      "giveHint": "为今晚和你一起打球的人点个赞。",
+      "offline": "你已离线——重新联网后再送赞。",
+      "error": "加载失败——刷新重试",
+      "tag": {
+        "great_defense": "防守出色",
+        "clutch": "关键先生",
+        "most_improved": "进步最大",
+        "good_sport": "风度极佳",
+        "nice_shot": "好球"
+      }
+    },
     "comingSoon": "即将推出",
     "moreComing": "更多指标制作中",
     "progression": {
