@@ -69,6 +69,7 @@ jobs:
           NEXT_PUBLIC_FLAG_SKILL_CALIBRATION: 'true'
           NEXT_PUBLIC_FLAG_SKILL_SMOOTHING: 'true'
           NEXT_PUBLIC_FLAG_SKILL_DRILLS: 'true'
+          NEXT_PUBLIC_FLAG_KUDOS: 'true'
 
       - name: Package standalone build
         run: |
