@@ -65,7 +65,7 @@ export default function RacketRow() {
           type="button"
           onClick={() => setSheetOpen(true)}
           className="glass-card"
-          style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 4, minHeight: 104, textAlign: 'left', cursor: 'pointer' }}
+          style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 4, minHeight: 112, textAlign: 'left', cursor: 'pointer' }}
         >
           <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>{t('yourRacket')}</p>
           {loadError ? (

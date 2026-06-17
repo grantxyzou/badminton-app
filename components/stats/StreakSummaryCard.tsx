@@ -129,7 +129,7 @@ export default function StreakSummaryCard() {
       // present/loading); `.is-generating` spins it while the read is produced,
       // freezing in place when it lands. See `.insight-rim` in globals.css.
       className={`glass-card${showRim ? ' insight-rim' : ''}${generating ? ' is-generating' : ''}`}
-      style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}
+      style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}
       aria-busy={generating || undefined}
       aria-label={hasStreak ? `${streak} week attendance streak for ${name}` : `Insight for ${name}`}
     >
