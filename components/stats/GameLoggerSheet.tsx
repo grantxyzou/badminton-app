@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -105,7 +106,7 @@ export default function GameLoggerSheet({ you, sessionId, open, onClose, onLogge
                 <input inputMode="numeric" aria-label={t('theirScore')} value={scoreB} onChange={(e) => setScoreB(onlyDigits(e.target.value))} />
               </div>
             </div>
-            {error && <p className="text-red-400 text-xs" role="alert">{t('recError')}</p>}
+            {error && <ErrorState message={t('recError')} />}
             <button type="button" disabled={!valid || busy} onClick={submit} className="cc-btn cc-btn-primary cc-btn-lg" style={{ marginTop: 4 }}>
               {t('logGameSubmit')}
             </button>

@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import ErrorState from '@/components/primitives/ErrorState';
+import EmptyState from '@/components/primitives/EmptyState';
 import { getIdentity } from '@/lib/identity';
 import type { DrillPick } from '@/lib/drills';
 import CardHeader from '@/components/primitives/CardHeader';
@@ -80,7 +82,7 @@ export default function DrillsCard() {
   if (state.kind === 'error') {
     return (
       <Frame>
-        <p className="text-red-400 text-xs" role="alert">{t('drills.error')}</p>
+        <ErrorState message={t('drills.error')} />
       </Frame>
     );
   }
@@ -88,7 +90,7 @@ export default function DrillsCard() {
   if (state.kind === 'needsAuth') {
     return (
       <Frame>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>{t('drills.needsAuth')}</p>
+        <EmptyState>{t('drills.needsAuth')}</EmptyState>
       </Frame>
     );
   }
