@@ -83,8 +83,8 @@ As of **v1.7, stable and `bpm-next` are at full flag parity** — every feature 
 
 ## 6. Branch hygiene
 
-- ✅ **Retired 2026-06-18:** `feat/value-hub-slice-0` (worktree + local + remote) — fully superseded, Slice-0 shipped via the v1.7 PRs; PR #118 was closed unmerged. Also pruned the merged `chore/ci-node24-actions` and `claude/app-review-upcoming-HtKgE` (#162) branches.
-- Local branches now: `main` + `feat/in-app-problem-report` (PR #151 merged — verify its remote/upstream before deleting; no `[gone]` marker yet).
+- ✅ **Full branch sweep 2026-06-18:** retired `feat/value-hub-slice-0` (worktree + local + remote — fully superseded by the v1.7 PRs; PR #118 closed unmerged) and pruned every merged branch: `chore/ci-node24-actions`, `claude/app-review-upcoming-HtKgE` (#162), `feat/in-app-problem-report` (#151, squash-merged; remote already gone).
+- Local branches now: **`main` only.** Single clean worktree.
 - Run `git fetch --prune` + audit `git branch -vv` for `[gone]` markers periodically. `git branch -D` is `bpm confirm`-gated.
 
 ## 7. Doc map
