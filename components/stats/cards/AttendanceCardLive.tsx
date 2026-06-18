@@ -161,10 +161,10 @@ function LoadingStrip({ weeks }: { weeks: number }) {
   const placeholder = Math.min(weeks, 16);
   return (
     <div style={{ display: 'grid', gap: 8, opacity: 0.4 }}>
-      <div style={{ height: 26, background: 'var(--inner-card-bg)', borderRadius: 4, width: '40%' }} />
+      <div style={{ height: 26, background: 'var(--inner-card-bg)', borderRadius: 'var(--radius-xs)', width: '40%' }} />
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
         {Array.from({ length: placeholder }).map((_, i) => (
-          <div key={i} style={{ width: 16, height: 16, background: 'var(--inner-card-bg)', borderRadius: 4, flex: '0 0 auto' }} />
+          <div key={i} style={{ width: 16, height: 16, background: 'var(--inner-card-bg)', borderRadius: 'var(--radius-xs)', flex: '0 0 auto' }} />
         ))}
       </div>
     </div>

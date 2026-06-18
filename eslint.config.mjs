@@ -1,6 +1,21 @@
 import coreWebVitals from 'eslint-config-next/core-web-vitals';
 import typescript from 'eslint-config-next/typescript';
 
+// Selectors for the design-token guardrail — shared between the app-wide
+// `warn` rule and the per-area `error` overrides (Phase 4 tightening).
+const DESIGN_TOKEN_SELECTORS = [
+  {
+    selector: 'Literal[value=/^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/]',
+    message:
+      'Hardcoded hex color — use a design token from globals.css (var(--accent), --text-*, --sev-*, etc.) instead of a bare hex literal.',
+  },
+  {
+    selector: "Property[key.name='borderRadius'] > Literal[raw=/^[0-9]/]",
+    message:
+      'Raw border-radius — use the radii ladder token: var(--radius-xs|sm|md|lg|xl|pill).',
+  },
+];
+
 /** @type {import('eslint').Linter.Config[]} */
 const config = [
   {
@@ -68,19 +83,17 @@ const config = [
     // flagged — the hex there is inside the var() string, not a bare literal.
     files: ['app/**/*.{ts,tsx}', 'components/**/*.{ts,tsx}', 'lib/**/*.{ts,tsx}'],
     rules: {
-      'no-restricted-syntax': [
-        'warn',
-        {
-          selector: 'Literal[value=/^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/]',
-          message:
-            'Hardcoded hex color — use a design token from globals.css (var(--accent), --text-*, --sev-*, etc.) instead of a bare hex literal.',
-        },
-        {
-          selector: "Property[key.name='borderRadius'] > Literal[raw=/^[0-9]/]",
-          message:
-            'Raw border-radius — use the radii ladder token: var(--radius-xs|sm|md|lg|xl|pill).',
-        },
-      ],
+      'no-restricted-syntax': ['warn', ...DESIGN_TOKEN_SELECTORS],
+    },
+  },
+  {
+    // Phase-4 tightening, applied per cleared area. components/stats is fully
+    // swept (radii tokenized; the only remaining hex are recharts SVG defaults
+    // carrying eslint-disable), so the guardrail is an ERROR there — new color/
+    // radius drift in stats fails CI. Other areas flip to error as their sweeps land.
+    files: ['components/stats/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': ['error', ...DESIGN_TOKEN_SELECTORS],
     },
   },
 ];
