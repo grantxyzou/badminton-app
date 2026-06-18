@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import PageHeader from '@/components/primitives/PageHeader';
+import CardHeader from '@/components/primitives/CardHeader';
+import StatusBadge from '@/components/primitives/StatusBadge';
 
 interface CompactCardProps {
   icon: string;
@@ -32,21 +34,7 @@ function CompactComingSoonCard({ icon, title, subtitle, comingSoon }: CompactCar
         >
           {icon}
         </span>
-        <span
-          style={{
-            fontSize: 9,
-            padding: '2px 7px',
-            borderRadius: 100,
-            whiteSpace: 'nowrap',
-            fontWeight: 600,
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-            border: '1px solid var(--inner-card-border)',
-            color: 'var(--text-muted)',
-          }}
-        >
-          {comingSoon}
-        </span>
+        <StatusBadge variant="muted">{comingSoon}</StatusBadge>
       </div>
       <h3
         className="text-xs font-semibold m-0"
@@ -72,36 +60,7 @@ interface LiveCardProps {
 function LiveCard({ icon, title, subtitle, children, badge = 'Live' }: LiveCardProps) {
   return (
     <div className="glass-card p-5 space-y-3">
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <span
-            className="material-icons"
-            aria-hidden="true"
-            style={{ fontSize: 22, color: 'var(--accent, #22c55e)', marginTop: 1 }}
-          >
-            {icon}
-          </span>
-          <div>
-            <h3 className="bpm-h3 m-0">{title}</h3>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0', lineHeight: 1.35 }}>{subtitle}</p>
-          </div>
-        </div>
-        <span
-          style={{
-            fontSize: 10,
-            padding: '3px 8px',
-            borderRadius: 100,
-            whiteSpace: 'nowrap',
-            fontWeight: 600,
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-            border: '1px solid var(--accent, #22c55e)',
-            color: 'var(--accent, #22c55e)',
-          }}
-        >
-          {badge}
-        </span>
-      </div>
+      <CardHeader icon={icon} title={title} subtitle={subtitle} badge={<StatusBadge>{badge}</StatusBadge>} />
       {children}
     </div>
   );
