@@ -45,7 +45,7 @@
 
 Promotion = tag a **specific commit** + dispatch `deploy-stable.yml` (never blindly tag `main` — it carries post-soak work; see CLAUDE.md "stable-tag footgun").
 
-> ⚠️ **Tag gap:** the `bpm-stable-v1.7` git tag is not present on the remote (tags stop at `bpm-stable-v1.6`). v1.7 is documented in `CHANGELOG.md` and is live, but the promotion tag was never pushed — reconcile before the next stable cut so rollback targets stay valid.
+Tag `bpm-stable-v1.7` → `d4cdf7b` (the release commit; backfilled 2026-06-18 — v1.7 shipped 2026-06-13 but the promotion tag had been missed). Rollback/promotion targets are valid through v1.7.
 
 ---
 
@@ -76,11 +76,10 @@ As of **v1.7, stable and `bpm-next` are at full flag parity** — every feature 
 
 ## 5. Prioritized punch list
 
-1. **Push the `bpm-stable-v1.7` tag** — close the tag gap (see Deployments) so rollback/promotion targets stay valid.
-2. **Value-Hub Slice-0 kill-criteria readout** — gather engagement signal from live users; decide go/no-go on Tracks 1–4.
-3. **Mark PR #162 ready + verify on next** — game logger reachable on the live preview build.
-4. **Dependabot batch** — review #139/#140/#150/#152; reconcile lockfile after each squash.
-5. **Branch cleanup** — see §6 below.
+1. **Value-Hub Slice-0 kill-criteria readout** — gather engagement signal from live users; decide go/no-go on Tracks 1–4.
+2. **Verify PR #162 on next** — game logger reachable on the live preview build (PR marked ready 2026-06-18).
+3. **Dependabot batch** — review #139/#140/#150/#152; reconcile lockfile after each squash.
+4. **Branch cleanup** — see §6 below.
 
 ## 6. Branch hygiene
 
