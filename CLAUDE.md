@@ -67,6 +67,14 @@ Canonical bundle mirrored at `docs/design-system/` (43 files — tokens, 28 spec
   - `<ErrorState message />` / `<EmptyState>` — the legible-fail surfaces: ErrorState is the `role="alert"` red load-error pill; EmptyState is muted "no data yet" body copy. Keep them distinct (a loaded-empty card must not look like a failure).
   - `<ListRow leading? title subtitle? trailing? onClick? />` — structural row layout (renders a `cc-mini-card` button when `onClick` is set). Not opinionated about text styling; slots take nodes.
   - The `<BottomSheet>` primitive (below) predates these and is the same idea for sheets.
+- **Inner-content reference** (the single "one true reference" for in-card content styling, derived from Home/Sign-Up and codified 2026-06-18): use these roles instead of hand-rolling raw Tailwind (`text-xl`/`text-sm`) or raw px. Stats/admin cards already conform via the primitives.
+  - **Card container**: `.glass-card` (16px radius). Content cards pad **20px** (`p-5`); compact tiles (date/location) pad **16px** (`p-4`).
+  - **Card title**: standard card-header title = `.bpm-h3` (18px) via `<CardHeader>`. The bare hero heading (Sign-Up's "I'm in this week") = `.bpm-h2` (20px) — use the same class in every state (don't fork into `text-xl font-bold text-green-400`).
+  - **Card subtitle**: `--fs-sm` (12px) via `<CardHeader subtitle>`.
+  - **Primary body copy** (announcement, AI insight, the card's main reading payload) = `--fs-md` (14px), `--text-primary`. **Muted/secondary** helper lines = 12px, `--text-muted`. (13px `--fs-base` is the generic body token but Home renders primary body at 14 — match it.)
+  - **Section label** (uppercase eyebrow) = `--fs-2xs` (10px) / `.section-label` (11px), 700 display.
+  - **Inner rows + stat tiles** (`ListRow`/`cc-mini-card`/`cc-tile` inside a card): **12px radius (`--radius-lg`) + 12px padding**. Override `cc-tile`'s 14px per-use, don't edit the shared admin class.
+  - **Inline stat/value numbers** = `--fs-md` (14px). The Stats tab's headline data numbers (Level, Overall, streak count) are a deliberate larger mono scale (20–22px) — Stats-specific, no Home equivalent.
 - **Token guardrail (ESLint)**: `eslint.config.mjs` flags bare hex color literals and raw inline `borderRadius` numbers (steer to `var(--accent)`/`--text-*`/`--sev-*` and `var(--radius-*)`). The `var(--accent, #22c55e)` fallback form is fine (hex is inside the `var()` string). App-wide it's `warn`; **per cleared area it tightens to `error`** (the `DESIGN_TOKEN_SELECTORS` override pattern — `components/stats` is already `error`). Genuinely-untokenizable values (recharts/SVG stroke-fill that can't read `var()`) carry an `// eslint-disable-next-line no-restricted-syntax` with a reason. The `design-canary` test (`__tests__/design-canary.test.ts`) pins the token/class contract.
 
 ## Coding Conventions
