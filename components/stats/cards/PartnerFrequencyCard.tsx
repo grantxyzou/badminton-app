@@ -3,10 +3,11 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { getIdentity } from '@/lib/identity';
 import { avatarColors } from '@/lib/avatar';
+import CardHeader from '@/components/primitives/CardHeader';
+import StatusBadge from '@/components/primitives/StatusBadge';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
-const ACCENT = 'var(--accent, #22c55e)';
 
 // Mirrors AttendanceCardLive: identity → stats preview-name → null. The preview
 // key lets admins/incognito browse someone else's stats without faking identity.
@@ -58,21 +59,7 @@ export default function PartnerFrequencyCard() {
 
   return (
     <div className="glass-card p-5 space-y-3">
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: ACCENT }}>groups</span>
-          <h3 className="bpm-h3 m-0">{t('partnersTitle')}</h3>
-        </div>
-        <span
-          style={{
-            fontSize: 10, padding: '3px 8px', borderRadius: 100, whiteSpace: 'nowrap',
-            fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase',
-            border: `1px solid ${ACCENT}`, color: ACCENT,
-          }}
-        >
-          Beta
-        </span>
-      </div>
+      <CardHeader icon="groups" title={t('partnersTitle')} badge={<StatusBadge>Beta</StatusBadge>} />
       {loadError ? (
         <p className="text-red-400 text-xs" role="alert">{t('partnersError')}</p>
       ) : partners === null ? null : partners.length === 0 ? (

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
+import CardHeader from '@/components/primitives/CardHeader';
+import StatusBadge from '@/components/primitives/StatusBadge';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
@@ -166,15 +168,7 @@ export default function StreakSummaryCard() {
       {/* ── Body: passive AI insight (recap + focus) ── */}
       {showBody && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, ...(hasStreak ? { borderTop: '1px solid var(--inner-card-border)', paddingTop: 14 } : {}) }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: ACCENT }}>auto_fix_high</span>
-              <h3 className="bpm-h3 m-0">Your read</h3>
-            </div>
-            <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 100, whiteSpace: 'nowrap', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', border: `1px solid ${ACCENT}`, color: ACCENT }}>
-              Beta
-            </span>
-          </div>
+          <CardHeader icon="auto_fix_high" title="Your read" badge={<StatusBadge>Beta</StatusBadge>} />
 
           {insightLoading && !hasInsight ? (
             <div aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
