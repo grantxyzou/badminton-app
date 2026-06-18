@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import StatsPlaceholder from '../../components/stats/StatsPlaceholder';
 import enMessages from '../../messages/en.json';
@@ -11,6 +11,14 @@ function renderWithLocale(locale: 'en' | 'zh-CN') {
   return render(
     <NextIntlClientProvider locale={locale} messages={messages}>
       <StatsPlaceholder />
+    </NextIntlClientProvider>,
+  );
+}
+
+function renderWithProps(props: React.ComponentProps<typeof StatsPlaceholder>) {
+  return render(
+    <NextIntlClientProvider locale="en" messages={enMessages}>
+      <StatsPlaceholder {...props} />
     </NextIntlClientProvider>,
   );
 }
@@ -47,5 +55,31 @@ describe('StatsPlaceholder', () => {
     expect(screen.queryByText('费用相关')).toBeNull(); // cost moved to Profile
     expect(screen.getByText('搭档与打法')).toBeTruthy();
     expect(screen.getByText('你的装备')).toBeTruthy();
+  });
+
+  it('renders no tabs in the legacy (no play/gear/assess) case', () => {
+    renderWithLocale('en');
+    expect(screen.queryByRole('button', { name: 'Game stats' })).toBeNull();
+  });
+
+  it('renders the Summary/Game-stats tabs when gamePlaySlot is supplied (no gear)', () => {
+    // Regression guard: play content alone must surface the tab so the game
+    // logger is reachable — the old code dropped gamePlaySlot in this branch.
+    renderWithProps({ gamePlaySlot: <div>PLAY-SLOT</div> });
+    expect(screen.getByRole('button', { name: 'Summary' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Game stats' })).toBeTruthy();
+    // Exactly two tabs — no Equipment register without gear.
+    expect(screen.queryByRole('button', { name: 'Equipment' })).toBeNull();
+    // The play slot lives under Game stats; reachable after switching.
+    expect(screen.queryByText('PLAY-SLOT')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Game stats' }));
+    expect(screen.getByText('PLAY-SLOT')).toBeTruthy();
+  });
+
+  it('renders three tabs when gear content is supplied', () => {
+    renderWithProps({ gearContent: <div>GEAR</div>, gamePlaySlot: <div>PLAY-SLOT</div> });
+    expect(screen.getByRole('button', { name: 'Summary' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Game stats' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Equipment' })).toBeTruthy();
   });
 });

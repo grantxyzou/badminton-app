@@ -182,8 +182,8 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
 
   // Value-Hub Slice-0 splits across the Stats tab's two registers:
   //   • Gear view → RacketRow (your racket + recommendation)
-  //   • Game view → game logger (self-gates on 48h window + attendance) +
-  //     partner-frequency card
+  //   • Game view → game logger (usable any day; decoupled from the session
+  //     window/roster) + partner-frequency card
   // All self-contained; flag-gated. Passing gearContent is what turns on the
   // Game/Gear segmented control in StatsPlaceholder.
   const valueHubOn = isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE');
