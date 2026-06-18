@@ -58,6 +58,31 @@ const config = [
       ],
     },
   },
+  {
+    // Design-token guardrail (standardization Phase 2). Steers inline styles
+    // toward the globals.css tokens instead of hand-typed values. Scoped to
+    // app/components/lib source only (not tests). Shipped as `warn` first —
+    // there's an existing backlog of ~230 hardcoded colors / ~74 raw radii;
+    // the Phase-3 sweeps clear them area-by-area, after which this tightens
+    // to `error`. Note: the `var(--accent, #22c55e)` fallback form is NOT
+    // flagged — the hex there is inside the var() string, not a bare literal.
+    files: ['app/**/*.{ts,tsx}', 'components/**/*.{ts,tsx}', 'lib/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: 'Literal[value=/^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/]',
+          message:
+            'Hardcoded hex color — use a design token from globals.css (var(--accent), --text-*, --sev-*, etc.) instead of a bare hex literal.',
+        },
+        {
+          selector: "Property[key.name='borderRadius'] > Literal[raw=/^[0-9]/]",
+          message:
+            'Raw border-radius — use the radii ladder token: var(--radius-xs|sm|md|lg|xl|pill).',
+        },
+      ],
+    },
+  },
 ];
 
 export default config;
