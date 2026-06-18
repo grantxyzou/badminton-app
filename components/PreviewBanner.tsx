@@ -116,7 +116,7 @@ export default function PreviewBanner() {
               zIndex: 10000,
               background: 'var(--bg-elevated, #1a1a1a)',
               border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 12,
+              borderRadius: 'var(--radius-lg)',
               padding: 8,
               boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
               minWidth: 220,
@@ -139,7 +139,7 @@ export default function PreviewBanner() {
                 gap: 8,
                 color: 'var(--text-primary, #fff)',
                 textDecoration: 'none',
-                borderRadius: 8,
+                borderRadius: 'var(--radius-sm)',
                 fontSize: 14,
               }}
             >
@@ -162,7 +162,7 @@ export default function PreviewBanner() {
                 gap: 8,
                 color: 'var(--text-primary, #fff)',
                 textDecoration: 'none',
-                borderRadius: 8,
+                borderRadius: 'var(--radius-sm)',
                 fontSize: 14,
               }}
             >
@@ -183,7 +183,7 @@ export default function PreviewBanner() {
                 gap: 8,
                 color: 'var(--text-muted, #aaa)',
                 textDecoration: 'none',
-                borderRadius: 8,
+                borderRadius: 'var(--radius-sm)',
                 fontSize: 13,
               }}
             >

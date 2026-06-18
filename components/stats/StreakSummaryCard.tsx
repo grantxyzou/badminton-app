@@ -172,8 +172,8 @@ export default function StreakSummaryCard() {
 
           {insightLoading && !hasInsight ? (
             <div aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div className="animate-pulse" style={{ height: 12, borderRadius: 6, background: 'var(--inner-card-bg)', width: '90%' }} />
-              <div className="animate-pulse" style={{ height: 12, borderRadius: 6, background: 'var(--inner-card-bg)', width: '70%' }} />
+              <div className="animate-pulse" style={{ height: 12, borderRadius: 'var(--radius-xs)', background: 'var(--inner-card-bg)', width: '90%' }} />
+              <div className="animate-pulse" style={{ height: 12, borderRadius: 'var(--radius-xs)', background: 'var(--inner-card-bg)', width: '70%' }} />
               <p style={{ margin: 0, fontSize: 11, color: MUTED }}>Reading the dots…</p>
             </div>
           ) : hasInsight ? (

@@ -353,7 +353,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                 display: 'inline-flex',
                 alignItems: 'center',
                 padding: '3px 9px',
-                borderRadius: 999,
+                borderRadius: 'var(--radius-pill)',
                 fontSize: 10.5,
                 fontWeight: 600,
                 fontFamily: 'var(--font-display, "Space Grotesk")',
@@ -395,7 +395,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             style={{
               height: TIMELINE_BAR_H,
               position: 'relative',
-              borderRadius: 8,
+              borderRadius: 'var(--radius-sm)',
               background: 'linear-gradient(to right, rgba(74,222,128,0.4) 0%, rgba(251,191,36,0.4) 60%, rgba(248,113,113,0.4) 100%)',
               overflow: 'hidden',
             }}
@@ -531,13 +531,13 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                   )}
                 </div>
               </div>
-              <div className="pbar" style={{ marginTop: 8, height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+              <div className="pbar" style={{ marginTop: 8, height: 6, borderRadius: 'var(--radius-pill)', background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
                 <div
                   style={{
                     height: '100%',
                     width: `${pct}%`,
                     background: pct < 50 ? 'var(--amber)' : 'var(--accent)',
-                    borderRadius: 999,
+                    borderRadius: 'var(--radius-pill)',
                   }}
                 />
               </div>
@@ -618,7 +618,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                     style={{
                       display: 'inline-flex',
                       padding: '3px 9px',
-                      borderRadius: 999,
+                      borderRadius: 'var(--radius-pill)',
                       fontSize: 10,
                       fontWeight: 600,
                       fontFamily: 'var(--font-display, "Space Grotesk")',

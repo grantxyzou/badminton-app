@@ -36,7 +36,7 @@ function TubeStepper({ value, onChange }: { value: number; onChange: (next: numb
   const btn: React.CSSProperties = {
     width: 44,
     height: 44,
-    borderRadius: 10,
+    borderRadius: 'var(--radius-md)',
     background: 'var(--inner-card-bg)',
     border: '1px solid var(--inner-card-border)',
   };
