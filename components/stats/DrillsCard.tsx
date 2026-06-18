@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { getIdentity } from '@/lib/identity';
 import type { DrillPick } from '@/lib/drills';
+import CardHeader from '@/components/primitives/CardHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
@@ -71,15 +72,7 @@ export default function DrillsCard() {
 
   const Frame = ({ children }: { children: React.ReactNode }) => (
     <div className="glass-card p-5 space-y-3">
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-        <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: 'var(--accent, #22c55e)', marginTop: 1 }}>
-          fitness_center
-        </span>
-        <div>
-          <h3 className="bpm-h3 m-0">{t('drills.title')}</h3>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0', lineHeight: 1.35 }}>{t('drills.purpose')}</p>
-        </div>
-      </div>
+      <CardHeader icon="fitness_center" title={t('drills.title')} subtitle={t('drills.purpose')} />
       {children}
     </div>
   );

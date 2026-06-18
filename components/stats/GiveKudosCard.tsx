@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { getIdentity } from '@/lib/identity';
 import { useOnline } from '@/lib/useOnline';
 import { KUDOS_TAGS, type KudosTag } from '@/lib/kudos';
+import CardHeader from '@/components/primitives/CardHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
@@ -102,13 +103,7 @@ export default function GiveKudosCard() {
 
   return (
     <div className="glass-card p-5 space-y-3">
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-        <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: 'var(--accent, #22c55e)', marginTop: 1 }}>volunteer_activism</span>
-        <div>
-          <h3 className="bpm-h3 m-0">{t('kudos.giveTitle')}</h3>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0', lineHeight: 1.35 }}>{t('kudos.giveHint')}</p>
-        </div>
-      </div>
+      <CardHeader icon="volunteer_activism" title={t('kudos.giveTitle')} subtitle={t('kudos.giveHint')} />
       {!online && (
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>{t('kudos.offline')}</p>
       )}
