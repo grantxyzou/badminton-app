@@ -464,13 +464,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         ) : isSignupClosed && !effectiveIsSignedUp && !isWaitlisted ? (
           /* ── State: Sign-ups opening soon ── */
           <div className="space-y-4">
-            <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
+            <p className="bpm-h2">{t('signup.heading')}</p>
             <StatusBanner tone="warn" icon="watch_later" title={tStates('openingSoonTitle')} body={tStates('openingSoonBody')} />
           </div>
         ) : isDeadlinePast && !effectiveIsSignedUp && !isWaitlisted ? (
           /* ── State: Deadline passed ── */
           <div className="space-y-4">
-            <p className="text-xl font-bold text-green-400">{t('signup.heading')}</p>
+            <p className="bpm-h2">{t('signup.heading')}</p>
             <StatusBanner
               tone="warn"
               icon="lock_clock"
