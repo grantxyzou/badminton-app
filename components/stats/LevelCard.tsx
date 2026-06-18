@@ -8,6 +8,7 @@ import { isFlagOn } from '@/lib/flags';
 import { useInsight } from '@/lib/useInsight';
 import InsightChip from '@/components/stats/InsightChip';
 import CardHeader from '@/components/primitives/CardHeader';
+import StatusBadge from '@/components/primitives/StatusBadge';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
@@ -125,17 +126,9 @@ export default function LevelCard() {
     <Frame>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
         {level.phase && (
-          <span
-            style={{
-              fontSize: 11, padding: '3px 10px', borderRadius: 100, fontWeight: 600,
-              letterSpacing: '0.04em', textTransform: 'uppercase',
-              border: `1px solid ${level.phase === 'switch' ? 'var(--accent-amber)' : 'var(--accent)'}`,
-              color: level.phase === 'switch' ? 'var(--accent-amber)' : 'var(--accent)',
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <StatusBadge variant="phase" tone={level.phase === 'switch' ? 'amber' : 'accent'}>
             {t(`assess.phase.${level.phase}`)}
-          </span>
+          </StatusBadge>
         )}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginLeft: 'auto' }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 30, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>

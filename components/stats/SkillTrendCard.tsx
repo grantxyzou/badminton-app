@@ -13,6 +13,7 @@ import InsightChip from '@/components/stats/InsightChip';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import CheckInSheet from './CheckInSheet';
 import CardHeader from '@/components/primitives/CardHeader';
+import StatusBadge from '@/components/primitives/StatusBadge';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
@@ -238,17 +239,9 @@ export default function SkillTrendCard() {
       {/* Phase headline + overall */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
         {latest.phase && (
-          <span
-            style={{
-              fontSize: 11, padding: '3px 10px', borderRadius: 100, fontWeight: 600,
-              letterSpacing: '0.04em', textTransform: 'uppercase',
-              border: `1px solid ${latest.phase === 'switch' ? 'var(--accent-amber)' : 'var(--accent)'}`,
-              color: latest.phase === 'switch' ? 'var(--accent-amber)' : 'var(--accent)',
-              whiteSpace: 'nowrap',
-            }}
-          >
+          <StatusBadge variant="phase" tone={latest.phase === 'switch' ? 'amber' : 'accent'}>
             {t(`assess.phase.${latest.phase}`)}
-          </span>
+          </StatusBadge>
         )}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('assess.overall')}</span>
