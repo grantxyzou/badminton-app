@@ -12,6 +12,7 @@ import { useInsight } from '@/lib/useInsight';
 import InsightChip from '@/components/stats/InsightChip';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import CheckInSheet from './CheckInSheet';
+import CardHeader from '@/components/primitives/CardHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
@@ -198,24 +199,16 @@ export default function SkillTrendCard() {
   // Card chrome wraps every state so the section reads consistently.
   const Frame = ({ children }: { children: React.ReactNode }) => (
     <div className="glass-card p-5 space-y-3">
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: 'var(--accent, #22c55e)', marginTop: 1 }}>
-            trending_up
-          </span>
-          <div>
-            <h3 className="bpm-h3 m-0">{t('assess.heroTitle')}</h3>
-            {latest && (
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0', lineHeight: 1.35 }}>{t('assess.purpose')}</p>
-            )}
-          </div>
-        </div>
-        {latest && (
+      <CardHeader
+        icon="trending_up"
+        title={t('assess.heroTitle')}
+        subtitle={latest ? t('assess.purpose') : undefined}
+        action={latest ? (
           <button type="button" onClick={() => setCheckInOpen(true)} className="cc-btn cc-btn-secondary" style={{ whiteSpace: 'nowrap' }}>
             {t('assess.reRate')}
           </button>
-        )}
-      </div>
+        ) : undefined}
+      />
       {children}
     </div>
   );

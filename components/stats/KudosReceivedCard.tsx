@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { getIdentity } from '@/lib/identity';
 import { KUDOS_TAGS, type KudosCount, type KudosTag } from '@/lib/kudos';
+import CardHeader from '@/components/primitives/CardHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
@@ -73,10 +74,7 @@ export default function KudosReceivedCard() {
 
   const Frame = ({ children }: { children: React.ReactNode }) => (
     <div className="glass-card p-5 space-y-3">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: 'var(--accent, #22c55e)' }}>volunteer_activism</span>
-        <h3 className="bpm-h3 m-0">{t('kudos.receivedTitle')}</h3>
-      </div>
+      <CardHeader icon="volunteer_activism" title={t('kudos.receivedTitle')} />
       {children}
     </div>
   );

@@ -7,6 +7,7 @@ import type { CanonicalLevel } from '@/lib/level';
 import { isFlagOn } from '@/lib/flags';
 import { useInsight } from '@/lib/useInsight';
 import InsightChip from '@/components/stats/InsightChip';
+import CardHeader from '@/components/primitives/CardHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
@@ -85,15 +86,7 @@ export default function LevelCard() {
 
   const Frame = ({ children }: { children: React.ReactNode }) => (
     <div className="glass-card p-5 space-y-3">
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-        <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: 'var(--accent, #22c55e)', marginTop: 1 }}>
-          emoji_events
-        </span>
-        <div>
-          <h3 className="bpm-h3 m-0">{t('level.title')}</h3>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0', lineHeight: 1.35 }}>{t('level.purpose')}</p>
-        </div>
-      </div>
+      <CardHeader icon="emoji_events" title={t('level.title')} subtitle={t('level.purpose')} />
       {children}
     </div>
   );

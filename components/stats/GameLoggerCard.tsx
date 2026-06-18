@@ -3,10 +3,10 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { getIdentity } from '@/lib/identity';
 import GameLoggerSheet from './GameLoggerSheet';
+import CardHeader from '@/components/primitives/CardHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
-const ACCENT = 'var(--accent, #22c55e)';
 const LOG_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 function resolveActiveName(): string | null {
@@ -69,13 +69,7 @@ export default function GameLoggerCard() {
 
   return (
     <div className="glass-card p-5 space-y-3">
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-        <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: ACCENT, marginTop: 1 }}>sports_tennis</span>
-        <div>
-          <h3 className="bpm-h3 m-0">{t('logGameTitle')}</h3>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0', lineHeight: 1.35 }}>{t('logGameHint')}</p>
-        </div>
-      </div>
+      <CardHeader icon="sports_tennis" title={t('logGameTitle')} subtitle={t('logGameHint')} />
       <button type="button" onClick={() => setOpen(true)} className="cc-btn cc-btn-primary">
         {t('logGameSubmit')}
       </button>
