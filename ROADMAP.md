@@ -57,15 +57,18 @@ As of **v1.7, stable and `bpm-next` are at full flag parity** — every feature 
 
 ## 2. In-flight (on bpm-next, ahead of stable)
 
-- **Stats game-logger de-gating** — PR **#162** (draft): the post-game score logger becomes usable any day, decoupled from the 48h session window; honest tri-state instead of a silent `null`. Client-only, no API change.
-- **Stats visual polish** (flat cards + AI "Your read" conic rim) rode in unflagged with v1.7; any further polish lands on `main` and auto-deploys to next.
+`main` carries post-v1.7 work auto-deployed to bpm-next, not yet on the stable cut:
+
+- **Stats game-logger de-gating** (#162, merged 2026-06-18) — logger usable any day, decoupled from the 48h session window; honest tri-state instead of silent `null`. Verified live on next.
+- **Stats design-system standardization** (#170–177) — inner-content styling reference, `<ListRow>` primitive, radius-token sweeps, token-guardrail lint→error on `components/stats`.
+- **Dependency patches** (#178) — next 16.2.9, vitest 4.1.9, eslint-config-next 16.2.9.
+- **Stats visual polish** (flat cards + AI "Your read" conic rim) rode in unflagged with v1.7.
 
 > The legacy `.claude/soak.local.md` tracker may still nag about `skill-assess` / `stats-ui-polish` "soaking" — that's **stale**; both promoted to everyone in v1.7. Update or clear it.
 
 ## 3. Open PRs
 
-- **#162** (draft, mine) — `fix(stats)` game-logger de-gating. Mark ready when verified on next.
-- **Dependabot** — **#150** (production-deps group), **#152** (dev-deps group), **#140** (react + @types/react), **#139** (react-dom + @types/react-dom). Batch-review; mind squash→lockfile-desync (CLAUDE.md gotcha).
+**None.** (Dependabot batch resolved 2026-06-18: #150/#152 patches consolidated → #178 merged; React 19 majors #139/#140 closed-deferred — Next 16 peer-accepts React 18, revisit in a quiet window.)
 
 ## 4. Planned / next initiatives
 
@@ -76,10 +79,10 @@ As of **v1.7, stable and `bpm-next` are at full flag parity** — every feature 
 
 ## 5. Prioritized punch list
 
-1. **Value-Hub Slice-0 kill-criteria readout** — gather engagement signal from live users; decide go/no-go on Tracks 1–4.
-2. **Verify PR #162 on next** — game logger reachable on the live preview build (PR marked ready 2026-06-18).
-3. **Dependabot batch** — review #139/#140/#150/#152; reconcile lockfile after each squash.
-4. **Branch cleanup** — see §6 below.
+1. **Value-Hub Slice-0 kill-criteria readout** — gather engagement signal from live users; decide go/no-go on Tracks 1–4. *(The one live item — everything below it is done.)*
+2. ✅ ~~Verify PR #162 on next~~ — done; verified live + merged 2026-06-18.
+3. ✅ ~~Dependabot batch~~ — done; #178 merged (patches), React 19 deferred.
+4. ✅ ~~Branch cleanup~~ — done; full sweep to `main`-only (§6).
 
 ## 6. Branch hygiene
 
