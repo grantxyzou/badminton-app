@@ -28,7 +28,7 @@ function Chip({ color, children }: { color: string; children: React.ReactNode })
       style={{
         fontSize: 10,
         padding: '3px 8px',
-        borderRadius: 100,
+        borderRadius: 'var(--radius-pill)',
         whiteSpace: 'nowrap',
         fontWeight: 600,
         letterSpacing: '0.04em',
@@ -143,8 +143,8 @@ function PartnerBars({ data }: { data: { name: string; count: number }[] }) {
       {data.map((d) => (
         <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 64, fontSize: 12, color: PRIMARY }}>{d.name}</span>
-          <div style={{ flex: 1, height: 10, borderRadius: 100, background: 'var(--inner-card-bg)', overflow: 'hidden' }}>
-            <div style={{ width: `${(d.count / max) * 100}%`, height: '100%', background: ACCENT, borderRadius: 100 }} />
+          <div style={{ flex: 1, height: 10, borderRadius: 'var(--radius-pill)', background: 'var(--inner-card-bg)', overflow: 'hidden' }}>
+            <div style={{ width: `${(d.count / max) * 100}%`, height: '100%', background: ACCENT, borderRadius: 'var(--radius-pill)' }} />
           </div>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: MUTED, minWidth: 24, textAlign: 'right' }}>
             {d.count}
@@ -505,7 +505,7 @@ function SessionRoster() {
           style={{
             fontSize: 11,
             padding: '4px 10px',
-            borderRadius: 100,
+            borderRadius: 'var(--radius-pill)',
             background: 'var(--inner-card-bg)',
             border: '1px solid var(--inner-card-border)',
             color: PRIMARY,
@@ -521,7 +521,7 @@ function SessionRoster() {
 function PaymentLoopClose() {
   return (
     <div style={{ display: 'grid', gap: 6 }}>
-      <div style={{ display: 'flex', gap: 2, height: 8, borderRadius: 100, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', gap: 2, height: 8, borderRadius: 'var(--radius-pill)', overflow: 'hidden' }}>
         <div style={{ flex: 10, background: ACCENT }} />
         <div style={{ flex: 2, background: 'var(--inner-card-border)' }} />
       </div>
