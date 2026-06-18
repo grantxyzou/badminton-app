@@ -198,7 +198,7 @@ function InsightSection({ label, body, accent }: { label: string; body: string; 
       <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: accent ? ACCENT : MUTED }}>
         {label}
       </p>
-      <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.5, color: PRIMARY }}>{body}</p>
+      <p style={{ margin: 0, fontSize: 'var(--fs-md)', lineHeight: 1.5, color: PRIMARY }}>{body}</p>
     </div>
   );
 }
