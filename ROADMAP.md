@@ -26,7 +26,7 @@
 > **Stable:** https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm
 > **Next (preview):** https://vnext-badminton-app-enhcave5djcvafe9.canadacentral-01.azurewebsites.net/bpm
 > **Stack:** Next.js 16 · Azure App Service (dual) · Cosmos DB · Anthropic Claude API
-> **Last updated:** 2026-05-16
+> **Last updated:** 2026-06-18
 >
 > **This file is the index.** Detail lives elsewhere — don't duplicate it here:
 > - **What shipped** → `CHANGELOG.md` (per-version, not chronological by design)
@@ -40,46 +40,53 @@
 
 | Env | URL audience | Current | Notes |
 |---|---|---|---|
-| **bpm-stable** | regular friends | **v1.4** (tag `bpm-stable-v1.4` = `ab566e0`, 2026-05-16) | v1.5/A code present but flag-gated **off** (dormant) |
-| **bpm-next** | beta friends | `main` (`98b4be4` = v1.4 + offline) | auto-deploys every push to `main` |
+| **bpm-stable** | regular friends | **v1.7** (2026-06-13) | Full flag parity with `bpm-next` — every feature flag flipped **on**; only `NEXT_PUBLIC_ENV` differs (preview banner off) |
+| **bpm-next** | beta friends | `main` | auto-deploys every push to `main` |
 
 Promotion = tag a **specific commit** + dispatch `deploy-stable.yml` (never blindly tag `main` — it carries post-soak work; see CLAUDE.md "stable-tag footgun").
+
+> ⚠️ **Tag gap:** the `bpm-stable-v1.7` git tag is not present on the remote (tags stop at `bpm-stable-v1.6`). v1.7 is documented in `CHANGELOG.md` and is live, but the promotion tag was never pushed — reconcile before the next stable cut so rollback targets stay valid.
 
 ---
 
 ## 1. Shipped (stable)
 
-Through **v1.4** — see `CHANGELOG.md` for the full per-version record (v1.0 → v1.4: sign-ups/waitlist, admin, skills, i18n, stats, bird inventory, Command Center, unified Home auth, Send-the-bill/Settle). History ladder (old P0–P1.8) retired — CHANGELOG is authoritative.
+Through **v1.7** — see `CHANGELOG.md` for the full per-version record (v1.0 → v1.7: sign-ups/waitlist, admin, skills, i18n, stats, bird inventory, Command Center, unified Home auth, Send-the-bill/Settle, Ledger + cover-and-remove, Labeled Rail nav + trusted-device sign-up, **skill-accuracy spine + Value-Hub Slice-0**, full app-code audit remediation + a11y + security hardening). History ladder (old P0–P1.8) retired — CHANGELOG is authoritative.
 
-## 2. In-flight (on bpm-next, soaking)
+As of **v1.7, stable and `bpm-next` are at full flag parity** — every feature flag is on for everyone. Offline legible-fail, the skill-assessment spine (`SKILL_ASSESS`), accurate skill level (`SKILL_LEVEL`/`CALIBRATION`/`SMOOTHING`), and Value-Hub Slice-0 (`VALUE_HUB_SLICE`) are all **live**, no longer flag-gated or soaking.
 
-- **Offline legible-fail** — `useOnline` provider + app-wide banner + admin-gate preserve + `AdminErrorBoundary` + entry-point gating + `?tab=` persistence. On `main`/next (`98b4be4`). Plan: `docs/plans/offline-legible-fail.md`. **Soak → stable decision pending** (tag a post-offline commit when ready).
-- **v1.5/A** (writtenOff + Cover) — shipped to stable dormant under `NEXT_PUBLIC_FLAG_LEDGER`; flip when v1.5/B–D land.
+## 2. In-flight (on bpm-next, ahead of stable)
+
+- **Stats game-logger de-gating** — PR **#162** (draft): the post-game score logger becomes usable any day, decoupled from the 48h session window; honest tri-state instead of a silent `null`. Client-only, no API change.
+- **Stats visual polish** (flat cards + AI "Your read" conic rim) rode in unflagged with v1.7; any further polish lands on `main` and auto-deploys to next.
+
+> The legacy `.claude/soak.local.md` tracker may still nag about `skill-assess` / `stats-ui-polish` "soaking" — that's **stale**; both promoted to everyone in v1.7. Update or clear it.
 
 ## 3. Open PRs
 
-- **#97** dependabot `next 16.2.1→16.2.6` — deferred; review post-soak (offline + v1.4 window). Low risk but don't merge during active soaking.
+- **#162** (draft, mine) — `fix(stats)` game-logger de-gating. Mark ready when verified on next.
+- **Dependabot** — **#150** (production-deps group), **#152** (dev-deps group), **#140** (react + @types/react), **#139** (react-dom + @types/react-dom). Batch-review; mind squash→lockfile-desync (CLAUDE.md gotcha).
 
 ## 4. Planned / next initiatives
 
-- **Value-Hub Slice-0** — plan on main (`docs/plans/value-hub-slice-0.md`). Epics #101–105 in the Value-Hub milestone. Kill-criteria gated before Tracks 1–4 start. **Next: build kickoff.**
+- **Value-Hub kill-criteria check** — Slice-0 is **shipped and live**; the critical path now gates on proving engagement against the written kill-criterion in `docs/plans/value-hub-slice-0.md` **before** fanning out Tracks 1–4. No speculative multi-track building (LOCKED block).
 - **Offline backlog** (deferred, tracked) — per-card `loadError` pills for remaining CommandCenter cards (#98); PWA only if "loads while offline" becomes a real requirement (#99).
-- **v1.5/B–D** — ledger page + Command Center row + remove-after-settle. Plan `docs/superpowers/plans/2026-05-13-v1.5a-write-off-cover.md`.
 - **P1.5/A2 — identity recovery bridge** — still pending. Plan `docs/superpowers/plans/2026-04-27-a2-identity-recovery.md`.
 - **Stage-2 / SaaS** — multi-tenant `orgId` migration. Memo `docs/saas-productization-findings.md`. Not started; the one high-risk migration.
 
 ## 5. Prioritized punch list
 
-1. **Smoke stable v1.4** — sign-up flow + Command Center on the real stable URL. Highest priority, real event imminent. *(Note: v1.4 was re-deployed 2026-05-17 with COMMAND_CENTER + SETTLE flags on — was baked dormant in the original 2026-05-16 deploy due to flag-deploy drift; fixed in `de46b41`.)*
-2. **Let offline soak on bpm-next** — no action; gather signal from beta friends.
-3. **Value-Hub Slice-0 build kickoff** — plan is on main, epics are filed, kill-criteria written. Ready to start.
-4. **Offline → stable** — after clean soak: tag a post-offline commit, promote.
+1. **Push the `bpm-stable-v1.7` tag** — close the tag gap (see Deployments) so rollback/promotion targets stay valid.
+2. **Value-Hub Slice-0 kill-criteria readout** — gather engagement signal from live users; decide go/no-go on Tracks 1–4.
+3. **Mark PR #162 ready + verify on next** — game logger reachable on the live preview build.
+4. **Dependabot batch** — review #139/#140/#150/#152; reconcile lockfile after each squash.
 5. **Branch cleanup** — see §6 below.
-6. **Dependabot #97** — merge after soak window clears.
 
 ## 6. Branch hygiene
 
-Delete (merged/redundant/stale): `feat/offline-legible-fail` (merged → `98b4be4`), `fix/offline-admin-gate` (superseded), `feature/command-center-read-apis` + `origin/feature/command-center-data-plumbing` (shipped v1.4), `docs/presentation-decks`, `fix/wire-flags-build-time`, `origin/soak/stats-attendance-2026-05-10`, `fix/audit-followups` (merged #96), `review/value-hub-slice-0` (merged #95). `git branch -D` is `bpm confirm`-gated.
+- `feat/value-hub-slice-0` worktree is **ahead 31 / behind 16** of origin — Slice-0 shipped via other PRs, so reconcile or retire this drifting branch (WIP-cap rule, LOCKED block).
+- `chore/ci-node24-actions` is `[gone]` on origin (merged) — prune locally.
+- Run `git fetch --prune` + audit `git branch -vv` for `[gone]` markers periodically. `git branch -D` is `bpm confirm`-gated.
 
 ## 7. Doc map
 
