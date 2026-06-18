@@ -15,6 +15,7 @@ import CheckInSheet from './CheckInSheet';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import CardHeader from '@/components/primitives/CardHeader';
+import ListRow from '@/components/primitives/ListRow';
 import StatusBadge from '@/components/primitives/StatusBadge';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -366,19 +367,18 @@ function SkillList({
         const thenV = thenMap.get(r.skillKey);
         const nowV = nowMap.get(r.skillKey) ?? r.value;
         return (
-          <button
+          <ListRow
             key={r.skillKey}
-            type="button"
             onClick={() => onPick(r.skillKey)}
-            className="cc-mini-card"
-            style={{ width: '100%', padding: 10, textAlign: 'left', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, cursor: 'pointer' }}
-          >
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.2 }}>{skill.label}</span>
-            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, whiteSpace: 'nowrap' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{nowV}</span>
-              {thenV !== undefined && <Delta value={nowV - thenV} />}
-            </span>
-          </button>
+            ariaLabel={skill.label}
+            title={<span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 1.2 }}>{skill.label}</span>}
+            trailing={
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, whiteSpace: 'nowrap' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md)', fontWeight: 700, color: 'var(--text-primary)' }}>{nowV}</span>
+                {thenV !== undefined && <Delta value={nowV - thenV} />}
+              </span>
+            }
+          />
         );
       })}
     </div>
