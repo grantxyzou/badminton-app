@@ -411,7 +411,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
             value={costPerCourt ?? ''}
             onChange={(e) => setCostPerCourt(e.target.value === '' ? null : Math.max(0, Math.min(500, Number(e.target.value))))}
             placeholder="$ per court"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 10px', fontSize: 13 }}
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 'var(--radius-sm)', padding: '8px 10px', fontSize: 13 }}
           />
           {recentCosts.length > 0 && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -424,7 +424,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
                   style={{
                     fontSize: 11,
                     padding: '2px 8px',
-                    borderRadius: 999,
+                    borderRadius: 'var(--radius-pill)',
                     background: costPerCourt === c ? 'rgba(74,222,128,0.13)' : 'rgba(255,255,255,0.04)',
                     color: costPerCourt === c ? '#86efac' : 'var(--text-secondary)',
                     border: `1px solid ${costPerCourt === c ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.12)'}`,
@@ -510,7 +510,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         <div
           style={{
             padding: 14,
-            borderRadius: 12,
+            borderRadius: 'var(--radius-lg)',
             background: 'rgba(74,222,128,0.13)',
             border: '1px solid rgba(74,222,128,0.3)',
             color: '#86efac',
@@ -596,7 +596,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
         width: 44,
         height: 26,
         background: on ? 'var(--accent)' : 'rgba(255,255,255,0.1)',
-        borderRadius: 999,
+        borderRadius: 'var(--radius-pill)',
         position: 'relative',
         border: 0,
         cursor: 'pointer',
@@ -642,7 +642,7 @@ function Stepper({
         padding: 4,
         background: 'rgba(255,255,255,0.04)',
         border: '1px solid rgba(255,255,255,0.12)',
-        borderRadius: 10,
+        borderRadius: 'var(--radius-md)',
         flexShrink: 0,
       }}
     >

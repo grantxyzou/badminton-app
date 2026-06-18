@@ -223,7 +223,7 @@ function Stat({ label, value }: { label: string; value: number }) {
     <div
       style={{
         padding: 12,
-        borderRadius: 12,
+        borderRadius: 'var(--radius-lg)',
         background: 'var(--input-bg)',
         border: '1px solid var(--border-subtle, rgba(255,255,255,0.06))',
       }}

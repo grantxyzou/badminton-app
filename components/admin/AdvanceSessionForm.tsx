@@ -140,7 +140,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
           role="alert"
           style={{
             padding: '10px 14px',
-            borderRadius: 12,
+            borderRadius: 'var(--radius-lg)',
             background: 'rgba(239,68,68,0.06)',
             border: '1px solid rgba(239,68,68,0.25)',
             color: 'var(--color-red, #ef4444)',

@@ -74,7 +74,7 @@ export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashT
       <div
         className="cc-dgrid"
         role="alert"
-        style={{ gridColumn: '1 / -1', display: 'block', padding: '12px 14px', borderRadius: 16, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}
+        style={{ gridColumn: '1 / -1', display: 'block', padding: '12px 14px', borderRadius: 'var(--radius-xl)', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}
       >
         <p style={{ fontSize: 12, color: 'var(--color-red, #ef4444)', margin: 0 }}>
           Couldn&apos;t load Birds + Roster summaries — refresh to retry.

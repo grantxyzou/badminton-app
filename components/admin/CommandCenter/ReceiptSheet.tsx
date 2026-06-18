@@ -180,14 +180,14 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
                   style={{
                     display: 'flex',
                     justifyContent: 'center',
-                    borderRadius: 12,
+                    borderRadius: 'var(--radius-lg)',
                     overflow: 'hidden',
                   }}
                 >
                   <canvas
                     ref={canvasRef}
                     aria-label="Receipt image preview"
-                    style={{ maxWidth: '100%', height: 'auto', borderRadius: 12 }}
+                    style={{ maxWidth: '100%', height: 'auto', borderRadius: 'var(--radius-lg)' }}
                   />
                 </div>
               )}
@@ -202,7 +202,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
                     whiteSpace: 'pre-wrap',
                     margin: 0,
                     padding: 12,
-                    borderRadius: 12,
+                    borderRadius: 'var(--radius-lg)',
                     background: 'var(--input-bg)',
                     border: '1px solid var(--input-border, rgba(255,255,255,0.08))',
                     color: 'var(--text-primary)',

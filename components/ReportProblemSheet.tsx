@@ -93,7 +93,7 @@ export default function ReportProblemSheet({ open, onClose, name }: Props) {
               style={{
                 width: '100%',
                 padding: 12,
-                borderRadius: 10,
+                borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--glass-border)',
                 background: 'var(--input-bg, rgba(255,255,255,0.05))',
                 color: 'var(--text-primary)',

@@ -32,7 +32,7 @@ export default function InsightChip({ headline, support, kind }: CardSlice) {
         gap: 10,
         alignItems: 'flex-start',
         padding: '10px 12px',
-        borderRadius: 12,
+        borderRadius: 'var(--radius-lg)',
         background: 'var(--inner-card-bg)',
         border: '1px solid var(--inner-card-border)',
       }}
