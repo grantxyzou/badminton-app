@@ -133,7 +133,7 @@ export default function LevelCard() {
           </StatusBadge>
         )}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginLeft: 'auto' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 30, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>
             {level.level.toFixed(1)}
           </span>
           <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('level.ofFive')}</span>

@@ -298,7 +298,7 @@ export default function SkillTrendCard() {
           const nowV = latest.dimensionScores?.[dim] ?? null;
           const thenV = prev?.dimensionScores?.[dim] ?? null;
           return (
-            <div key={dim} className="cc-tile cc-tile-static" style={{ padding: 10, textAlign: 'center' }}>
+            <div key={dim} className="cc-tile cc-tile-static" style={{ padding: 12, borderRadius: 'var(--radius-lg)', textAlign: 'center' }}>
               <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 {t(`assess.dim.${dim}`)}
               </span>

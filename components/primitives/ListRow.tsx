@@ -69,7 +69,7 @@ export default function ListRow({ leading, title, subtitle, trailing, onClick, a
         onClick={onClick}
         aria-label={ariaLabel}
         className="cc-mini-card"
-        style={{ ...LAYOUT, padding: 10, cursor: 'pointer' }}
+        style={{ ...LAYOUT, padding: 12, borderRadius: 'var(--radius-lg)', cursor: 'pointer' }}
       >
         {body}
       </button>
