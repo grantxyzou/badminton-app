@@ -443,7 +443,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
             padding: '8px 12px',
             background: 'rgba(239,68,68,0.06)',
             border: '1px solid rgba(239,68,68,0.2)',
-            borderRadius: 8,
+            borderRadius: 'var(--radius-sm)',
           }}
         >
           {toggleError}
@@ -737,7 +737,7 @@ function ActionRow({
         alignItems: 'center',
         gap: 12,
         padding: '12px 14px',
-        borderRadius: 12,
+        borderRadius: 'var(--radius-lg)',
         background: 'rgba(255,255,255,0.04)',
         border: '1px solid rgba(255,255,255,0.10)',
         cursor: disabled ? 'not-allowed' : 'pointer',

@@ -23,7 +23,7 @@ export default function SessionContextBar({ session, onEditDates }: Props) {
     <button
       onClick={onEditDates}
       className="w-full inner-card-green p-3 flex items-center justify-between transition-all active:scale-[0.98]"
-      style={{ minHeight: 44, borderRadius: 12 }}
+      style={{ minHeight: 44, borderRadius: 'var(--radius-lg)' }}
     >
       <div className="text-left">
         <p className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>Editing</p>

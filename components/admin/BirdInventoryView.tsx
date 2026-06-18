@@ -423,7 +423,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                               onClick={() => setEditForm({ ...editForm, qualityRating: (editForm.qualityRating === n ? undefined : n) })}
                               className="flex items-center justify-center transition-all"
                               style={{
-                                width: 36, height: 36, borderRadius: 8,
+                                width: 36, height: 36, borderRadius: 'var(--radius-sm)',
                                 background: n <= (editForm.qualityRating ?? 0) ? 'var(--inner-card-green-bg)' : 'var(--inner-card-bg)',
                                 border: `1px solid ${n <= (editForm.qualityRating ?? 0) ? 'var(--inner-card-green-border)' : 'var(--inner-card-border)'}`,
                                 color: n <= (editForm.qualityRating ?? 0) ? 'var(--accent)' : 'var(--text-muted)',
@@ -461,7 +461,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                         onClick={cancelEdit}
                         disabled={savingEdit}
                         className="flex-1"
-                        style={{ minHeight: 44, borderRadius: 10, background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)', color: 'var(--text-secondary)', fontWeight: 500 }}
+                        style={{ minHeight: 44, borderRadius: 'var(--radius-md)', background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)', color: 'var(--text-secondary)', fontWeight: 500 }}
                       >
                         Cancel
                       </button>
@@ -601,7 +601,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                     onClick={() => setGroupRating(qualityRating === n ? 0 : n)}
                     className="flex items-center justify-center transition-all"
                     style={{
-                      width: 36, height: 36, borderRadius: 8,
+                      width: 36, height: 36, borderRadius: 'var(--radius-sm)',
                       background: n <= qualityRating ? 'var(--inner-card-green-bg)' : 'var(--inner-card-bg)',
                       border: `1px solid ${n <= qualityRating ? 'var(--inner-card-green-border)' : 'var(--inner-card-border)'}`,
                       color: n <= qualityRating ? 'var(--accent)' : 'var(--text-muted)',

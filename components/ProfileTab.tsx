@@ -584,7 +584,7 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameL
                 color: '#a78bfa',
                 border: '1px solid rgba(167,139,250,0.28)',
                 padding: '3px 10px',
-                borderRadius: 999,
+                borderRadius: 'var(--radius-pill)',
                 fontSize: 10.5,
                 fontFamily: 'var(--font-display, "Space Grotesk")',
                 fontWeight: 600,

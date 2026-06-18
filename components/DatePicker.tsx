@@ -133,7 +133,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
           WebkitBackdropFilter: 'blur(40px) saturate(180%)',
           backdropFilter: 'blur(40px) saturate(180%)',
           border: '1px solid var(--glass-border)',
-          borderRadius: 16,
+          borderRadius: 'var(--radius-xl)',
           padding: '10px 8px',
           boxShadow: 'var(--glass-shadow)',
         }}
@@ -188,7 +188,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
                 aspectRatio: '1',
                 minHeight: 36,
                 minWidth: 36,
-                borderRadius: 6,
+                borderRadius: 'var(--radius-xs)',
                 border: isToday && !isSelected ? '1px solid var(--accent)' : isSelected ? '1px solid var(--inner-card-green-border)' : '1px solid transparent',
                 background: isSelected ? 'var(--inner-card-green-bg)' : 'transparent',
                 color: isSelected ? 'var(--accent)' : 'var(--text-primary)',

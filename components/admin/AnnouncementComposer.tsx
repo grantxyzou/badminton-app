@@ -85,7 +85,7 @@ export default function AnnouncementComposer({ draft, setDraft, maxLength = 800 
     background: active ? 'var(--inner-card-green-bg, rgba(34,197,94,0.15))' : 'transparent',
     color: active ? 'var(--accent, #22c55e)' : 'var(--text-muted)',
     border: `1px solid ${active ? 'var(--accent, #22c55e)' : 'var(--inner-card-border, rgba(255,255,255,0.08))'}`,
-    borderRadius: 10,
+    borderRadius: 'var(--radius-md)',
     cursor: 'pointer',
     fontFamily: 'inherit',
   });
@@ -94,7 +94,7 @@ export default function AnnouncementComposer({ draft, setDraft, maxLength = 800 
     minHeight: 44,
     minWidth: 44,
     padding: '0 10px',
-    borderRadius: 10,
+    borderRadius: 'var(--radius-md)',
     border: '1px solid var(--inner-card-border, rgba(255,255,255,0.08))',
     background: 'var(--inner-card-bg, rgba(255,255,255,0.03))',
     color: 'var(--text-primary, #fff)',

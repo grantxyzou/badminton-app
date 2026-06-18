@@ -171,7 +171,7 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
                     style={{
                       minWidth: 44,
                       minHeight: 44,
-                      borderRadius: 10,
+                      borderRadius: 'var(--radius-md)',
                       border: '1px solid var(--inner-card-border)',
                       background: 'var(--inner-card-bg)',
                       color: 'var(--text-primary)',
@@ -200,7 +200,7 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
                     style={{
                       minWidth: 44,
                       minHeight: 44,
-                      borderRadius: 10,
+                      borderRadius: 'var(--radius-md)',
                       border: '1px solid var(--inner-card-border)',
                       background: 'var(--inner-card-bg)',
                       color: 'var(--text-primary)',
@@ -225,7 +225,7 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
             className="flex-1"
             style={{
               minHeight: 44,
-              borderRadius: 10,
+              borderRadius: 'var(--radius-md)',
               background: 'var(--inner-card-bg)',
               border: '1px solid var(--inner-card-border)',
               color: 'var(--text-secondary)',

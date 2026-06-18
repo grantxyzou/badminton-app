@@ -167,7 +167,7 @@ function FindingCard({ f }: { f: Finding }) {
           fontSize: '0.75rem',
           lineHeight: 1.55,
           padding: '0.5rem 0.75rem',
-          borderRadius: 6,
+          borderRadius: 'var(--radius-xs)',
           background: 'rgba(74,222,128,0.08)',
           borderLeft: '2px solid var(--accent)',
           color: 'var(--sev-fix-text)',  // pastel green (dark) → deep-forest (light)

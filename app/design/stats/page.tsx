@@ -79,7 +79,7 @@ function Arc({
           padding: '16px 18px',
           borderLeft: `3px solid ${ACCENT}`,
           background: 'color-mix(in oklab, var(--accent, #22c55e) 8%, transparent)',
-          borderRadius: 12,
+          borderRadius: 'var(--radius-lg)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
@@ -249,7 +249,7 @@ function NextSession() {
       style={{
         background: 'color-mix(in oklab, var(--accent, #22c55e) 10%, transparent)',
         border: `1px solid ${ACCENT}`,
-        borderRadius: 12,
+        borderRadius: 'var(--radius-lg)',
         padding: 14,
         display: 'grid',
         gap: 4,
