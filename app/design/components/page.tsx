@@ -4,6 +4,11 @@
  * and color so consumers call them bare (no Tailwind companions needed).
  */
 
+import CardHeader from '@/components/primitives/CardHeader';
+import StatusBadge from '@/components/primitives/StatusBadge';
+import ErrorState from '@/components/primitives/ErrorState';
+import EmptyState from '@/components/primitives/EmptyState';
+
 function Row({ title, caption, children }: { title: string; caption?: string; children: React.ReactNode }) {
   return (
     <section style={{ display: 'grid', gap: '0.5rem' }}>
@@ -233,6 +238,24 @@ export default function ComponentsPage() {
             </div>
           ))}
         </div>
+      </Row>
+
+      {/* ── Standardization primitives (live components, not specimens) ──── */}
+      <Row title="STANDARDIZATION PRIMITIVES" caption="The shared composition primitives from components/primitives/. These render the real components, so this is the canonical visual reference — CardHeader (two-tier header spec), StatusBadge (accent/muted/phase), ErrorState + EmptyState (legible-fail).">
+        <CardHeader
+          icon="trending_up"
+          title="Card header"
+          subtitle="icon + bpm-h3 title + --fs-sm subtitle"
+          badge={<StatusBadge>Beta</StatusBadge>}
+        />
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <StatusBadge>Live</StatusBadge>
+          <StatusBadge variant="muted">Coming soon</StatusBadge>
+          <StatusBadge variant="phase" tone="accent">Refine</StatusBadge>
+          <StatusBadge variant="phase" tone="amber">Switch</StatusBadge>
+        </div>
+        <ErrorState message="Couldn't load — refresh to try again" />
+        <EmptyState>No data yet</EmptyState>
       </Row>
     </main>
   );
