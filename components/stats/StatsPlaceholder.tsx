@@ -126,7 +126,12 @@ export default function StatsPlaceholder({
   // on the three-register split (Summary | Game stats | Equipment); without it
   // the tab renders as a single legacy scroll.
   const hasGear = !!gearContent;
-  const useTabs = assessMode || hasGear;
+  const hasPlay = !!gamePlaySlot;
+  // Tabs render whenever there's a register to split into — assessment spine,
+  // gear, OR play content (game logger + partners). The last term keeps the
+  // game logger reachable even if it's ever passed without gear/assessMode,
+  // closing the legacy path that dropped gamePlaySlot entirely.
+  const useTabs = assessMode || hasGear || hasPlay;
   const [view, setView] = useState<'summary' | 'game' | 'equipment'>('summary');
 
   const attendanceCard = attendanceLive && (
@@ -140,15 +145,16 @@ export default function StatsPlaceholder({
     </LiveCard>
   );
 
-  const TABS = (assessMode
+  // Two tabs (Summary | Game stats) unless gear adds an Equipment register.
+  const TABS = (hasGear
     ? [
         { id: 'summary', label: tVH('viewSummary') },
         { id: 'game', label: tVH('viewGameStats') },
+        { id: 'equipment', label: tVH('viewEquipment') },
       ]
     : [
         { id: 'summary', label: tVH('viewSummary') },
         { id: 'game', label: tVH('viewGameStats') },
-        { id: 'equipment', label: tVH('viewEquipment') },
       ]) as { id: 'summary' | 'game' | 'equipment'; label: string }[];
 
   const moreComingLabel = (
@@ -159,8 +165,9 @@ export default function StatsPlaceholder({
 
   // The active view's cards, rendered inside one keyed wrapper below so a
   // segment switch swaps content cleanly.
-  const activeView = assessMode ? (
-    view === 'game' ? (
+  let activeView: React.ReactNode;
+  if (assessMode) {
+    activeView = view === 'game' ? (
       <>
         {/* Synthesis first (AI read + streak), then the raw data it draws on. */}
         {insightSlot}
@@ -169,36 +176,60 @@ export default function StatsPlaceholder({
       </>
     ) : (
       <>{heroSlot}</>
-    )
-  ) : !hasGear ? (
-    <>
-      {heroSlot}
-      {attendanceCard}
-      {skillCard}
-      {moreComingLabel}
-      <div style={gridStyle}>
-        <CompactComingSoonCard icon="groups" title={t('partners.title')} subtitle={t('partners.subtitle')} comingSoon={comingSoon} />
-        <CompactComingSoonCard icon="sports_tennis" title={t('equipment.title')} subtitle={t('equipment.subtitle')} comingSoon={comingSoon} />
-      </div>
-    </>
-  ) : view === 'summary' ? (
-    <>{heroSlot}</>
-  ) : view === 'game' ? (
-    <>
-      {attendanceCard}
-      {/* Value-Hub: game logger + partner frequency. */}
-      {gamePlaySlot}
-      {skillCard}
-    </>
-  ) : (
-    <>
-      {gearContent}
-      {moreComingLabel}
-      <div style={gridStyle}>
-        <CompactComingSoonCard icon="sports_tennis" title={t('equipment.title')} subtitle={t('equipment.subtitle')} comingSoon={comingSoon} />
-      </div>
-    </>
-  );
+    );
+  } else if (hasGear) {
+    activeView = view === 'summary' ? (
+      <>{heroSlot}</>
+    ) : view === 'game' ? (
+      <>
+        {attendanceCard}
+        {/* Value-Hub: game logger + partner frequency. */}
+        {gamePlaySlot}
+        {skillCard}
+      </>
+    ) : (
+      <>
+        {gearContent}
+        {moreComingLabel}
+        <div style={gridStyle}>
+          <CompactComingSoonCard icon="sports_tennis" title={t('equipment.title')} subtitle={t('equipment.subtitle')} comingSoon={comingSoon} />
+        </div>
+      </>
+    );
+  } else if (hasPlay) {
+    // Play content but no gear/assessMode register: two tabs, the game logger
+    // and partners live under Game stats so they stay reachable.
+    activeView = view === 'game' ? (
+      <>
+        {attendanceCard}
+        {gamePlaySlot}
+        {skillCard}
+      </>
+    ) : (
+      <>
+        {heroSlot}
+        {skillCard}
+        {moreComingLabel}
+        <div style={gridStyle}>
+          <CompactComingSoonCard icon="sports_tennis" title={t('equipment.title')} subtitle={t('equipment.subtitle')} comingSoon={comingSoon} />
+        </div>
+      </>
+    );
+  } else {
+    // Legacy single scroll — no tabs (no assessMode, gear, or play content).
+    activeView = (
+      <>
+        {heroSlot}
+        {attendanceCard}
+        {skillCard}
+        {moreComingLabel}
+        <div style={gridStyle}>
+          <CompactComingSoonCard icon="groups" title={t('partners.title')} subtitle={t('partners.subtitle')} comingSoon={comingSoon} />
+          <CompactComingSoonCard icon="sports_tennis" title={t('equipment.title')} subtitle={t('equipment.subtitle')} comingSoon={comingSoon} />
+        </div>
+      </>
+    );
+  }
 
   return (
     <div className="space-y-5 w-full">
