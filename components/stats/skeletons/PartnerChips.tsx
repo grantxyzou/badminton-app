@@ -32,7 +32,7 @@ export default function PartnerChips() {
           marginLeft: 8,
           height: 6,
           flex: 1,
-          borderRadius: 100,
+          borderRadius: 'var(--radius-pill)',
           background: 'linear-gradient(90deg, color-mix(in oklab, var(--accent, #22c55e) 55%, transparent), transparent)',
         }}
       />

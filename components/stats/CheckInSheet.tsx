@@ -145,7 +145,7 @@ export default function CheckInSheet({
           {/* Progress track — only during the quiz steps. */}
           {skill && (
             <div style={{ marginTop: 12 }}>
-              <div className="cc-progress-track" style={{ height: 4, borderRadius: 100, overflow: 'hidden' }}>
+              <div className="cc-progress-track" style={{ height: 4, borderRadius: 'var(--radius-pill)', overflow: 'hidden' }}>
                 <div style={{ width: `${((step + 1) / total) * 100}%`, height: '100%', background: 'var(--accent)', transition: 'width 180ms var(--ease-out-quart, ease-out)' }} />
               </div>
               <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '6px 0 0' }}>{t('assess.step', { n: step + 1, total })}</p>

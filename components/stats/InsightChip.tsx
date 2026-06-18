@@ -50,7 +50,7 @@ export default function InsightChip({ headline, support, kind }: CardSlice) {
         style={{
           fontSize: 9,
           padding: '2px 6px',
-          borderRadius: 100,
+          borderRadius: 'var(--radius-pill)',
           whiteSpace: 'nowrap',
           fontWeight: 600,
           letterSpacing: '0.04em',

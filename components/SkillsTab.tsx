@@ -246,7 +246,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
             style={{
               fontSize: 10,
               padding: '2px 8px',
-              borderRadius: 100,
+              borderRadius: 'var(--radius-pill)',
               fontWeight: 600,
               letterSpacing: '0.04em',
               textTransform: 'uppercase',
