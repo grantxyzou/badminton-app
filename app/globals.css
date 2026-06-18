@@ -393,6 +393,34 @@ body {
   --radius-lg: 12px;
   --radius-xl: 16px;
   --radius-pill: 100px;
+
+  /* Type-size scale — canonical inline font sizes. Use the token
+     (`fontSize: 'var(--fs-sm)'`) or the matching `.fs-*` utility class
+     instead of typing 10/11/12/13/14/16 by hand. Named `--fs-*` to avoid
+     collision with the `--text-*` COLOR tokens. Headlines keep using the
+     opinionated `.bpm-h1/h2/h3` presets. Roles:
+       2xs (10) section labels / micro badges · xs (11) tile labels / meta
+       sm (12) card subtitle / secondary · base (13) body / hints / empty
+       md (14) emphasis values · lg (16) stat values */
+  --fs-2xs: 10px;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-base: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --lh-tight: 1.25;
+  --lh-snug: 1.35;
+  --lh-normal: 1.5;
+
+  /* Inline spacing scale — for inline `padding`/`gap` (`gap: 'var(--space-3)'`).
+     Class-based layout should still prefer Tailwind utilities (p-*, gap-*);
+     these exist so inline styles stop hand-typing 4/6/8/12/16/20. */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 20px;
 }
 
 /* Bare heading elements default to the display family (Space Grotesk) per
@@ -438,6 +466,16 @@ h1, h2, h3, h4 {
   line-height: 1.375;
   letter-spacing: -0.01em;
 }
+
+/* Type-size utilities — size + sensible line-height only (no color/family),
+   so className-based callers map to a role from the `--fs-*` scale above
+   instead of an inline numeric fontSize. Compose with color/weight as needed. */
+.fs-2xs { font-size: var(--fs-2xs); line-height: var(--lh-snug); }
+.fs-xs  { font-size: var(--fs-xs);  line-height: var(--lh-snug); }
+.fs-sm  { font-size: var(--fs-sm);  line-height: var(--lh-snug); }
+.fs-base { font-size: var(--fs-base); line-height: var(--lh-normal); }
+.fs-md  { font-size: var(--fs-md);  line-height: var(--lh-tight); }
+.fs-lg  { font-size: var(--fs-lg);  line-height: var(--lh-tight); }
 
 /* ── TopBar / PageHeader (sticky scroll-condensed) ──
    Per `TopBar Spec.html` design handoff (2026-05-06). At-rest is
