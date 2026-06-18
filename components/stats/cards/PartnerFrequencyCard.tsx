@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import ErrorState from '@/components/primitives/ErrorState';
 import { getIdentity } from '@/lib/identity';
 import { avatarColors } from '@/lib/avatar';
 import CardHeader from '@/components/primitives/CardHeader';
@@ -61,7 +62,7 @@ export default function PartnerFrequencyCard() {
     <div className="glass-card p-5 space-y-3">
       <CardHeader icon="groups" title={t('partnersTitle')} badge={<StatusBadge>Beta</StatusBadge>} />
       {loadError ? (
-        <p className="text-red-400 text-xs" role="alert">{t('partnersError')}</p>
+        <ErrorState message={t('partnersError')} />
       ) : partners === null ? null : partners.length === 0 ? (
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>{t('partnersEmpty')}</p>
       ) : (

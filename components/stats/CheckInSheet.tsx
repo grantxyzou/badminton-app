@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import ErrorState from '@/components/primitives/ErrorState';
+import EmptyState from '@/components/primitives/EmptyState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { SKILLS } from '@/lib/assessment';
 
@@ -164,7 +166,7 @@ export default function CheckInSheet({
                   </p>
                 </div>
               ) : (
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>{t('assess.noGames')}</p>
+                <EmptyState>{t('assess.noGames')}</EmptyState>
               )}
               <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>{t('assess.ratePrompt')}</p>
               <button type="button" onClick={() => setStep(0)} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
@@ -222,8 +224,8 @@ export default function CheckInSheet({
           {step === total && (
             <div className="space-y-4">
               <p style={{ fontSize: 15, color: 'var(--text-primary)', margin: 0, lineHeight: 1.4 }}>{t('assess.reviewCount', { rated: ratedCount, total })}</p>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>{t('assess.reviewPrompt')}</p>
-              {error && <p className="text-red-400 text-xs" role="alert">{error}</p>}
+              <EmptyState>{t('assess.reviewPrompt')}</EmptyState>
+              {error && <ErrorState message={error} />}
               <div style={{ display: 'flex', gap: 10 }}>
                 <button type="button" onClick={() => setStep(total - 1)} className="cc-btn cc-btn-ghost" style={{ flex: 1 }}>
                   {t('assess.back')}

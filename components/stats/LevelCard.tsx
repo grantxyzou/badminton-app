@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import ErrorState from '@/components/primitives/ErrorState';
+import EmptyState from '@/components/primitives/EmptyState';
 import { getIdentity } from '@/lib/identity';
 import type { CanonicalLevel } from '@/lib/level';
 import { isFlagOn } from '@/lib/flags';
@@ -95,7 +97,7 @@ export default function LevelCard() {
   if (state.kind === 'error') {
     return (
       <Frame>
-        <p className="text-red-400 text-xs" role="alert">{t('level.error')}</p>
+        <ErrorState message={t('level.error')} />
       </Frame>
     );
   }
@@ -103,7 +105,7 @@ export default function LevelCard() {
   if (state.kind === 'needsAuth') {
     return (
       <Frame>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>{t('level.needsAuth')}</p>
+        <EmptyState>{t('level.needsAuth')}</EmptyState>
       </Frame>
     );
   }

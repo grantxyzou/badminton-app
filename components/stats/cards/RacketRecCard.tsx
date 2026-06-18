@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import ErrorState from '@/components/primitives/ErrorState';
+import EmptyState from '@/components/primitives/EmptyState';
 import type { CatalogItem } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -32,9 +34,9 @@ export default function RacketRecCard({ name }: { name: string }) {
     <div className="glass-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 4, minHeight: 112 }}>
       <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>{t('weRecommend')}</p>
       {loadError ? (
-        <p className="text-red-400 text-xs" role="alert" style={{ margin: 0 }}>{t('recError')}</p>
+        <ErrorState message={t('recError')} />
       ) : !loaded ? null : !item ? (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>{t('recEmpty')}</p>
+        <EmptyState>{t('recEmpty')}</EmptyState>
       ) : (
         <p style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, margin: 0, lineHeight: 1.25 }}>
           {item.brand} {item.model}

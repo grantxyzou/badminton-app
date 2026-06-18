@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
 import type { CatalogItem } from '@/lib/types';
 
@@ -97,8 +98,8 @@ export default function GearSheet({ name, open, onClose, onSaved }: Props) {
               maxLength={50}
               autoFocus
             />
-            {loadError && <p className="text-red-400 text-xs" role="alert">{t('recError')}</p>}
-            {saveError && <p className="text-red-400 text-xs" role="alert">{t('recError')}</p>}
+            {loadError && <ErrorState message={t('recError')} />}
+            {saveError && <ErrorState message={t('recError')} />}
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {matches.map((c) => (
                 <li key={c.id}>

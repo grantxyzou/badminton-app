@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import ErrorState from '@/components/primitives/ErrorState';
 import { getIdentity } from '@/lib/identity';
 import { KUDOS_TAGS, type KudosCount, type KudosTag } from '@/lib/kudos';
 import CardHeader from '@/components/primitives/CardHeader';
@@ -80,7 +81,7 @@ export default function KudosReceivedCard() {
   );
 
   if (state.kind === 'error') {
-    return <Frame><p className="text-red-400 text-xs" role="alert">{t('kudos.error')}</p></Frame>;
+    return <Frame><ErrorState message={t('kudos.error')} /></Frame>;
   }
   if (state.kind !== 'ok') return null;
 
