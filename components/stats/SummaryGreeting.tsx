@@ -31,7 +31,7 @@ export default function SummaryGreeting() {
         style={{
           fontSize: 10,
           padding: '3px 8px',
-          borderRadius: 100,
+          borderRadius: 'var(--radius-pill)',
           whiteSpace: 'nowrap',
           fontWeight: 600,
           letterSpacing: '0.04em',

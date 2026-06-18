@@ -143,7 +143,7 @@ export default function LevelCard() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span
           aria-hidden="true"
-          style={{ width: 8, height: 8, borderRadius: 100, background: CONF_COLOR[level.confidence], flexShrink: 0 }}
+          style={{ width: 8, height: 8, borderRadius: 'var(--radius-pill)', background: CONF_COLOR[level.confidence], flexShrink: 0 }}
         />
         <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
           {t(`level.confidence.${level.confidence}`)}
