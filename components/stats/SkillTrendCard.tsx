@@ -12,6 +12,8 @@ import { useInsight } from '@/lib/useInsight';
 import InsightChip from '@/components/stats/InsightChip';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import CheckInSheet from './CheckInSheet';
+import ErrorState from '@/components/primitives/ErrorState';
+import EmptyState from '@/components/primitives/EmptyState';
 import CardHeader from '@/components/primitives/CardHeader';
 import StatusBadge from '@/components/primitives/StatusBadge';
 
@@ -190,7 +192,7 @@ export default function SkillTrendCard() {
   if (loadError) {
     return (
       <div className="glass-card p-5">
-        <p className="text-red-400 text-xs" role="alert">{t('assess.error')}</p>
+        <ErrorState message={t('assess.error')} />
       </div>
     );
   }
@@ -219,7 +221,7 @@ export default function SkillTrendCard() {
     return (
       <>
         <Frame>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>{t('assess.empty')}</p>
+          <EmptyState>{t('assess.empty')}</EmptyState>
           <button type="button" onClick={() => setCheckInOpen(true)} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
             {t('assess.rateSkills')}
           </button>
