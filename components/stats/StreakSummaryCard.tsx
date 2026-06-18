@@ -145,7 +145,7 @@ export default function StreakSummaryCard() {
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}
           >
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 700, color: onPersonalBest ? '#fff' : ACCENT, lineHeight: 1 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 700, color: onPersonalBest ? 'white' : ACCENT, lineHeight: 1 }}>
               {streak}
             </span>
           </div>

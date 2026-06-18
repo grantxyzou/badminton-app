@@ -66,7 +66,12 @@ const SHORT: Record<string, string> = {
 const SKILL_BY_KEY = new Map(SKILLS.map((s) => [s.key, s]));
 const DIMENSIONS: Dimension[] = ['technical', 'physical', 'mental'];
 
+// recharts stroke/fill are SVG attributes that can't read CSS var(), so these
+// stay as hex. They're only the initial fallback — the live chart resolves
+// --accent / --text-muted at runtime (see radarColors effect below).
+// eslint-disable-next-line no-restricted-syntax
 const NOW_COLOR = '#4ade80';
+// eslint-disable-next-line no-restricted-syntax
 const THEN_COLOR = '#94a3b8';
 
 function ratingMap(snap: Snapshot | undefined): Map<string, number> {
