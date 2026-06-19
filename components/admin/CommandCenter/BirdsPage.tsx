@@ -49,6 +49,7 @@ function Stars({ n }: { n: number }) {
 export default function BirdsPage({ onBack }: BirdsPageProps) {
   const [purchases, setPurchases] = useState<BirdPurchase[]>([]);
   const [currentStock, setCurrentStock] = useState(0);
+  const [totalAdjustments, setTotalAdjustments] = useState(0);
   const [usedByPurchase, setUsedByPurchase] = useState<Map<string, number>>(new Map());
   const [recentSessionCount, setRecentSessionCount] = useState(0);
   const [recentUsedTotal, setRecentUsedTotal] = useState(0);
@@ -74,6 +75,13 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
   const [deleting, setDeleting] = useState(false);
   const [formError, setFormError] = useState('');
 
+  // Reconcile-count sheet — correct the on-hand total to a physical recount.
+  const [reconcileOpen, setReconcileOpen] = useState(false);
+  const [reconcileCount, setReconcileCount] = useState<number | ''>('');
+  const [reconcileReason, setReconcileReason] = useState('');
+  const [reconcileSaving, setReconcileSaving] = useState(false);
+  const [reconcileError, setReconcileError] = useState('');
+
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(false);
@@ -82,7 +90,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
         fetch(`${BASE}/api/sessions`, { cache: 'no-store' }),
       ]);
-      const birds = birdsRes.ok ? await birdsRes.json() as { purchases: BirdPurchase[]; currentStock: number } : { purchases: [], currentStock: 0 };
+      const birds = birdsRes.ok ? await birdsRes.json() as { purchases: BirdPurchase[]; currentStock: number; totalAdjustments?: number } : { purchases: [], currentStock: 0, totalAdjustments: 0 };
       const sessions = sessionsRes.ok ? await sessionsRes.json() as Session[] : [];
 
       // Build two independent quantities:
@@ -112,6 +120,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
       }
       setPurchases(birds.purchases ?? []);
       setCurrentStock(birds.currentStock ?? 0);
+      setTotalAdjustments(birds.totalAdjustments ?? 0);
       setUsedByPurchase(used);
       setRecentSessionCount(recentSessions);
       setRecentUsedTotal(recentUsed);
@@ -215,6 +224,39 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
       setFormError('Network error.');
     } finally {
       setDeleting(false);
+    }
+  }
+
+  function openReconcileSheet() {
+    setReconcileCount(currentStock);
+    setReconcileReason('');
+    setReconcileError('');
+    setReconcileOpen(true);
+  }
+
+  async function handleReconcile() {
+    const counted = typeof reconcileCount === 'number' ? reconcileCount : NaN;
+    if (!Number.isFinite(counted) || counted < 0) { setReconcileError('Enter the number of tubes you counted.'); return; }
+    if (counted === currentStock) { setReconcileError('That already matches the current count — nothing to change.'); return; }
+    setReconcileSaving(true);
+    setReconcileError('');
+    try {
+      const res = await fetch(`${BASE}/api/birds/reconcile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ countedTotal: counted, ...(reconcileReason.trim() ? { reason: reconcileReason.trim() } : {}) }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setReconcileError(data.error ?? 'Failed to reconcile.');
+        return;
+      }
+      setReconcileOpen(false);
+      await load();
+    } catch {
+      setReconcileError('Network error.');
+    } finally {
+      setReconcileSaving(false);
     }
   }
 
@@ -375,6 +417,11 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             </>
           )}
         </p>
+        {totalAdjustments !== 0 && (
+          <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: '4px 0 0' }}>
+            includes {totalAdjustments > 0 ? '+' : '−'}{Math.abs(totalAdjustments)} from a manual recount
+          </p>
+        )}
         {burnPerSession > 0 && recentSessionCount > 0 && (
           <p
             style={{
@@ -484,6 +531,15 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           >
             <span className="material-icons" style={{ fontSize: 18 }}>add_shopping_cart</span>
             Log purchase
+          </button>
+          <button
+            type="button"
+            className="cc-btn cc-btn-secondary"
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+            onClick={openReconcileSheet}
+          >
+            <span className="material-icons" style={{ fontSize: 18 }}>fact_check</span>
+            Reconcile
           </button>
         </div>
       </div>
@@ -820,6 +876,84 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                 style={{ minWidth: 100 }}
               >
                 {saving ? 'Saving…' : editingId ? 'Save' : 'Add'}
+              </button>
+            </div>
+          </div>
+        </BottomSheetBody>
+      </BottomSheet>
+
+      {/* Reconcile count */}
+      <BottomSheet
+        open={reconcileOpen}
+        onClose={() => setReconcileOpen(false)}
+        ariaLabel="Reconcile count"
+        maxHeight="70vh"
+        className="max-w-sm mx-auto"
+      >
+        <BottomSheetHeader className="flex items-center justify-between p-4">
+          <span style={{ fontSize: 16, fontWeight: 600 }}>Reconcile count</span>
+          <button
+            type="button"
+            onClick={() => setReconcileOpen(false)}
+            aria-label="Close"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <span className="material-icons" style={{ fontSize: 20 }}>close</span>
+          </button>
+        </BottomSheetHeader>
+        <BottomSheetBody className="p-5 pb-8">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+              The app counts <strong style={{ color: 'var(--text-primary)' }}>{currentStock} tubes</strong> on hand
+              (purchased − used). If your physical count differs — broken tubes, gifts, miscounts — enter the real
+              number and we&apos;ll log the difference.
+            </p>
+            <Field label="Tubes actually on hand">
+              <input
+                type="number"
+                inputMode="decimal"
+                step={0.25}
+                min={0}
+                value={reconcileCount}
+                onChange={(e) => setReconcileCount(e.target.value === '' ? '' : Number(e.target.value))}
+              />
+            </Field>
+            {typeof reconcileCount === 'number' && reconcileCount !== currentStock && (
+              <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0, fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
+                adjustment: {reconcileCount - currentStock > 0 ? '+' : '−'}{Math.abs(Math.round((reconcileCount - currentStock) * 100) / 100)} tubes
+              </p>
+            )}
+            <Field label="Reason (optional)">
+              <input
+                type="text"
+                value={reconcileReason}
+                onChange={(e) => setReconcileReason(e.target.value)}
+                placeholder="e.g. 2 tubes water-damaged"
+                maxLength={200}
+              />
+            </Field>
+            {reconcileError && (
+              <p role="alert" style={{ fontSize: 13, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+                {reconcileError}
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setReconcileOpen(false)}
+                className="cc-btn cc-btn-ghost"
+                disabled={reconcileSaving}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleReconcile}
+                className="cc-btn cc-btn-primary"
+                disabled={reconcileSaving}
+                style={{ minWidth: 100 }}
+              >
+                {reconcileSaving ? 'Saving…' : 'Reconcile'}
               </button>
             </div>
           </div>
