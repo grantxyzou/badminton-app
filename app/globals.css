@@ -361,6 +361,10 @@ html,
 body {
   height: 100%;
   overflow-x: hidden;
+  /* Disable double-tap-to-zoom (and the legacy 300ms tap delay) — pairs with
+     the viewport scale cap in layout.tsx to make the iOS web app feel native.
+     `manipulation` still permits scroll + panning, just not the zoom gestures. */
+  touch-action: manipulation;
 }
 
 body {
