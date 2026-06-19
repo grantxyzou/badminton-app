@@ -163,6 +163,24 @@ export interface BirdPurchase {
   createdAt: string;
 }
 
+/**
+ * A manual stock reconciliation. Stored in the same `birds` container as
+ * purchases, discriminated by `type: 'adjustment'`. Lets an admin correct
+ * the computed on-hand count (purchased − used) to match a physical recount
+ * — broken tubes, gifts, miscounts, etc. `delta` is added to currentStock
+ * (can be negative). `countedTotal` is the physical number the admin entered,
+ * kept for the audit trail. Undo = delete the doc by id.
+ */
+export interface BirdAdjustment {
+  id: string;
+  type: 'adjustment';
+  delta: number;
+  countedTotal: number;
+  reason?: string;
+  date: string;
+  createdAt: string;
+}
+
 export interface Announcement {
   id: string;
   text: string;

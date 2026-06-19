@@ -14,8 +14,15 @@ export async function GET(req: NextRequest) {
       .query({ query: 'SELECT * FROM c ORDER BY c.date DESC' })
       .fetchAll();
 
-    // Compute current stock: total purchased - total used across sessions
-    const totalPurchased = resources.reduce((sum: number, p: { tubes: number }) => sum + p.tubes, 0);
+    // The birds container holds two doc kinds, discriminated by `type`:
+    // purchases (no `type` or 'purchase') and reconciliation adjustments
+    // ('adjustment'). Split them so purchase math never sees adjustment docs.
+    const purchases = resources.filter((d: { type?: string }) => d.type !== 'adjustment');
+    const adjustments = resources.filter((d: { type?: string }) => d.type === 'adjustment');
+
+    // Compute current stock: total purchased + manual adjustments - total used
+    const totalPurchased = purchases.reduce((sum: number, p: { tubes: number }) => sum + p.tubes, 0);
+    const totalAdjustments = adjustments.reduce((sum: number, a: { delta?: number }) => sum + (a.delta ?? 0), 0);
 
     const sessionsContainer = getContainer('sessions');
     // Pull datetime alongside the usage shapes so we can compute recent-window
@@ -25,10 +32,24 @@ export async function GET(req: NextRequest) {
       .query({ query: 'SELECT c.birdUsage, c.birdUsages, c.datetime FROM c WHERE IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)' })
       .fetchAll();
 
-    const totalUsed = (sessions as Pick<Session, 'birdUsage' | 'birdUsages'>[]).reduce(
-      (sum, s) => sum + totalTubes(normalizeBirdUsages(s)),
-      0,
-    );
+    // All-time tubes used, both in total and per purchase. The per-purchase
+    // map drives `remainingByPurchase`, which the create-session bird picker
+    // uses to hide depleted purchases (remaining <= 0).
+    const usedByPurchase = new Map<string, number>();
+    let totalUsed = 0;
+    for (const s of sessions as Pick<Session, 'birdUsage' | 'birdUsages'>[]) {
+      for (const u of normalizeBirdUsages(s)) {
+        const t = u.tubes ?? 0;
+        totalUsed += t;
+        usedByPurchase.set(u.purchaseId, (usedByPurchase.get(u.purchaseId) ?? 0) + t);
+      }
+    }
+    totalUsed = Math.round(totalUsed * 100) / 100;
+
+    const remainingByPurchase: Record<string, number> = {};
+    for (const p of purchases as { id: string; tubes: number }[]) {
+      remainingByPurchase[p.id] = Math.round((p.tubes - (usedByPurchase.get(p.id) ?? 0)) * 100) / 100;
+    }
 
     const sixtyDaysAgo = Date.now() - 60 * 86_400_000;
     let recentSessionsLast60d = 0;
@@ -45,9 +66,12 @@ export async function GET(req: NextRequest) {
       : 0;
 
     return NextResponse.json({
-      purchases: resources,
-      currentStock: totalPurchased - totalUsed,
+      purchases,
+      adjustments,
+      remainingByPurchase,
+      currentStock: Math.round((totalPurchased + totalAdjustments - totalUsed) * 100) / 100,
       totalPurchased,
+      totalAdjustments,
       totalUsed,
       // Last-60-day stats — apples-to-apples for burn rate
       recentSessionsLast60d,

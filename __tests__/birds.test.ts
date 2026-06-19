@@ -131,6 +131,26 @@ describe('Birds API', () => {
       expect(data.totalPurchased).toBe(10);
       expect(data.totalUsed).toBe(4); // 2 + 1.5 + 0.5
       expect(data.currentStock).toBe(6);
+      // Per-purchase remaining drives the create-session picker's stock filter.
+      expect(data.remainingByPurchase[purchaseId]).toBe(6);
+    });
+
+    it('reports remainingByPurchase=0 for a fully-used purchase', async () => {
+      const createRes = await POST(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+        name: 'Depleted', tubes: 2, totalCost: 20,
+      }));
+      const { id: purchaseId } = await createRes.json();
+
+      seedPointer('session-2026-05-01');
+      seedSession('session-2026-05-01', {
+        birdUsages: [
+          { purchaseId, purchaseName: 'Depleted', tubes: 2, costPerTube: 10, totalBirdCost: 20 },
+        ],
+      });
+
+      const res = await GET(makeAdminRequest('GET', 'http://localhost:3000/api/birds'));
+      const data = await res.json();
+      expect(data.remainingByPurchase[purchaseId]).toBe(0);
     });
   });
 
