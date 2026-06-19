@@ -58,7 +58,37 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   // Advancing archives the week and is hard to reverse; a single stray tap
   // (it used to sit next to "Edit details") shouldn't trigger it.
   const [confirmingAdvance, setConfirmingAdvance] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const settleFlagOn = isFlagOn('NEXT_PUBLIC_FLAG_SETTLE');
+
+  // Build a ready-to-paste sign-up invite and share it (native share sheet on
+  // mobile, clipboard fallback elsewhere). Lets the admin blast "sign-up is
+  // open, here's the link" to the group chat without hand-writing it.
+  const shareSignupLink = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    const url = `${window.location.origin}${BASE}`;
+    let dateLabel = '';
+    if (session?.datetime) {
+      try {
+        dateLabel = ` (${new Date(session.datetime).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })})`;
+      } catch { /* ignore */ }
+    }
+    const text = `🏸 BPM Badminton — next session sign-up is open${dateLabel}! Tap to sign up: ${url}`;
+    const navAny = navigator as Navigator & { share?: (d: { text: string; url: string; title?: string }) => Promise<void> };
+    try {
+      if (navAny.share) {
+        await navAny.share({ title: 'BPM Badminton', text, url });
+        return;
+      }
+    } catch {
+      // dismissed / failed — fall through to copy
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 1500);
+    } catch { /* nothing more we can do */ }
+  }, [session?.datetime]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -227,6 +257,15 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
             Edit details
           </button>
         )}
+        <button
+          type="button"
+          onClick={shareSignupLink}
+          className="cc-btn cc-btn-secondary"
+          title="Copy/share a sign-up invite link for the group chat."
+        >
+          <span className="material-icons text-base align-middle">share</span>
+          {shareCopied ? 'Copied ✓' : 'Share sign-up'}
+        </button>
         {isSettled && (
           <button
             type="button"

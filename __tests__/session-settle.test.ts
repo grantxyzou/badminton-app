@@ -105,6 +105,66 @@ describe('POST /api/session/settle', () => {
     expect(gone.owedAmount).toBeUndefined();
   });
 
+  it("cover 'absorb': covered player stays in the denominator, admin absorbs their share", async () => {
+    seedPlayer(SID, 'Alice');
+    seedPlayer(SID, 'Bob');
+    seedPlayer(SID, 'Carol');
+    // Dan is covered, absorb-style — he stays in the /4 denominator.
+    seedPlayer(SID, 'Dan', { writtenOff: true, coverMode: 'absorb' });
+    // $60 total / 4 = $15 each. Dan owes 0-but-tracked; coveredTotal = $15.
+    const res = await POST(makeAdminRequest('POST', 'http://localhost:3000/api/session/settle'));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.settled.costPerPerson).toBe(15);
+    expect(json.settled.playerCount).toBe(4);
+    expect(json.settled.coveredTotal).toBe(15);
+
+    const store = getStore();
+    const players = store['players'] as Array<{ name: string; owedAmount?: number }>;
+    expect(players.find((p) => p.name === 'Alice')!.owedAmount).toBe(15);
+    // Absorb-covered carries the per-person figure so the ledger can total it.
+    expect(players.find((p) => p.name === 'Dan')!.owedAmount).toBe(15);
+  });
+
+  it("cover 'resplit': covered player drops out of the denominator, others pay more", async () => {
+    seedPlayer(SID, 'Alice');
+    seedPlayer(SID, 'Bob');
+    seedPlayer(SID, 'Carol');
+    // Dan is covered, resplit-style — excluded from the denominator (/3).
+    seedPlayer(SID, 'Dan', { writtenOff: true, coverMode: 'resplit' });
+    // $60 total / 3 = $20 each. Dan owes $0. No admin absorption.
+    const res = await POST(makeAdminRequest('POST', 'http://localhost:3000/api/session/settle'));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.settled.costPerPerson).toBe(20);
+    expect(json.settled.playerCount).toBe(3);
+    expect(json.settled.coveredTotal).toBeUndefined();
+
+    const store = getStore();
+    const players = store['players'] as Array<{ name: string; owedAmount?: number }>;
+    expect(players.find((p) => p.name === 'Alice')!.owedAmount).toBe(20);
+    expect(players.find((p) => p.name === 'Dan')!.owedAmount).toBe(0);
+  });
+
+  it('legacy writtenOff with no coverMode is treated as absorb', async () => {
+    seedPlayer(SID, 'Alice');
+    seedPlayer(SID, 'Bob');
+    seedPlayer(SID, 'Dan', { writtenOff: true }); // no coverMode
+    // /3 denominator (absorb keeps Dan in). $60 / 3 = $20.
+    const res = await POST(makeAdminRequest('POST', 'http://localhost:3000/api/session/settle'));
+    const json = await res.json();
+    expect(json.settled.costPerPerson).toBe(20);
+    expect(json.settled.playerCount).toBe(3);
+    expect(json.settled.coveredTotal).toBe(20);
+  });
+
+  it('refuses when everyone is covered resplit (denominator would be 0)', async () => {
+    seedPlayer(SID, 'Alice', { writtenOff: true, coverMode: 'resplit' });
+    seedPlayer(SID, 'Bob', { writtenOff: true, coverMode: 'resplit' });
+    const res = await POST(makeAdminRequest('POST', 'http://localhost:3000/api/session/settle'));
+    expect(res.status).toBe(400);
+  });
+
   it('refuses to re-settle without unsettle first (idempotency guard)', async () => {
     seedPlayer(SID, 'Alice');
     seedPlayer(SID, 'Bob');

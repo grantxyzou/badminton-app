@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslations, useFormatter } from 'next-intl';
 import type { Player, Session } from '@/lib/types';
 import { getIdentity, setIdentity } from '@/lib/identity';
-import ShuttleLoader from '@/components/ShuttleLoader';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ShuttleIcon from '@/components/ShuttleIcon';
 import PageHeader from '@/components/primitives/PageHeader';
 import ConfirmInline from '@/components/primitives/ConfirmInline';
@@ -92,7 +92,8 @@ export default function PlayersTab() {
     return (
       <div className="space-y-5">
         <PageHeader>{pageT('title')}</PageHeader>
-        <ShuttleLoader text={t('loading')} />
+        <CardSkeleton height={120} />
+        <CardSkeleton height={200} />
       </div>
     );
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import {
   renderGroupText,
@@ -41,21 +41,23 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
     return renderIndividualText({ ...input, playerName: selectedPlayer });
   }, [input, mode, selectedPlayer]);
 
-  useEffect(() => {
-    if (!open || !input || mode !== 'group') return;
-    let cancelled = false;
-    (async () => {
-      try {
-        await (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready;
-      } catch {}
-      if (cancelled) return;
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const url = renderGroupCanvas(input, canvas);
-      setImageDataUrl(url);
-    })();
-    return () => { cancelled = true; };
-  }, [open, input, mode]);
+  // Callback ref: draw the moment the canvas element mounts, rather than in a
+  // passive effect. The canvas only mounts once `input` has loaded (group
+  // mode), and a passive effect that reads `canvasRef.current` could fire
+  // before the ref attached on that render — leaving the preview stuck blank.
+  // Drawing from the ref callback is deterministic: it runs WITH the element.
+  const drawCanvas = useCallback((canvas: HTMLCanvasElement | null) => {
+    canvasRef.current = canvas;
+    if (!canvas || !input || mode !== 'group') return;
+    // Immediate draw (system-font fallback if web fonts aren't ready yet).
+    setImageDataUrl(renderGroupCanvas(input, canvas));
+    // Best-effort upgrade: redraw with the design fonts once they're ready.
+    const fontsReady = (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready
+      ?? Promise.resolve();
+    fontsReady.then(() => {
+      if (canvasRef.current === canvas) setImageDataUrl(renderGroupCanvas(input, canvas));
+    }).catch(() => {});
+  }, [input, mode]);
 
   async function copyText() {
     setActionError(null);
@@ -176,19 +178,45 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
               )}
 
               {mode === 'group' && (
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    borderRadius: 'var(--radius-lg)',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <canvas
-                    ref={canvasRef}
-                    aria-label="Receipt image preview"
-                    style={{ maxWidth: '100%', height: 'auto', borderRadius: 'var(--radius-lg)' }}
-                  />
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  {/* Offscreen generator — drawn to, then exported as a PNG.
+                      Displaying the exported <img> (rather than the live
+                      <canvas>) keeps sizing stable across re-renders and never
+                      leaves a blank void if the canvas paint races a render. */}
+                  <canvas ref={drawCanvas} aria-hidden="true" style={{ display: 'none' }} />
+                  {imageDataUrl ? (
+                    <img
+                      src={imageDataUrl}
+                      alt="Receipt preview"
+                      style={{
+                        width: '100%',
+                        maxWidth: 300,
+                        height: 'auto',
+                        borderRadius: 'var(--radius-lg)',
+                        display: 'block',
+                      }}
+                    />
+                  ) : (
+                    <div
+                      role="status"
+                      aria-label="Rendering preview"
+                      style={{
+                        width: '100%',
+                        maxWidth: 300,
+                        aspectRatio: '390 / 520',
+                        borderRadius: 'var(--radius-lg)',
+                        background: 'var(--input-bg)',
+                        border: '1px solid var(--input-border, rgba(255,255,255,0.08))',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--text-muted)',
+                        fontSize: 12,
+                      }}
+                    >
+                      Rendering preview…
+                    </div>
+                  )}
                 </div>
               )}
 

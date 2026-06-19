@@ -66,6 +66,10 @@ export interface SettledSnapshot {
   playerCount: number;
   /** Frozen list of active player names — receipt source of truth, immune to later removals. */
   playerNames: string[];
+  /** Total dollars the admin absorbed by covering players in 'absorb' mode
+   *  (Σ costPerPerson over absorb-covered players). 0 / absent when nobody
+   *  was covered. Drives the "You've covered $X this session" summary. */
+  coveredTotal?: number;
 }
 
 export interface BirdUsage {
@@ -98,6 +102,13 @@ export interface Player {
   /** Admin opted to write off this player's debt when removing them post-settle.
    *  When true, ledger views exclude their owedAmount from "expected to collect." */
   writtenOff?: boolean;
+  /** How a covered (writtenOff) player's share is handled at settle:
+   *  - 'absorb'  → the admin eats their share; everyone else pays the same.
+   *                The covered player stays IN the per-person denominator.
+   *  - 'resplit' → the covered player is excluded from the denominator, so
+   *                their share is spread across the remaining payers.
+   *  Absent on a writtenOff player (legacy / pre-v1.6) is treated as 'absorb'. */
+  coverMode?: 'absorb' | 'resplit';
 }
 
 export type RecoveryEvent =

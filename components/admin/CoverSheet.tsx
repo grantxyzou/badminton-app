@@ -6,6 +6,7 @@ import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/Bo
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 export type CoverSheetMode = 'cover-only' | 'cover-and-remove';
+export type CoverChoice = 'absorb' | 'resplit';
 
 interface Props {
   open: boolean;
@@ -15,20 +16,24 @@ interface Props {
   amount: number;
   sessionId: string;
   sessionLabel?: string;
+  /** True when the session already has a frozen bill. Covering then re-runs
+   *  the settle math so everyone's amount reflects the new split immediately
+   *  (resplit raises the others; absorb leaves them unchanged). */
+  wasSettled?: boolean;
   onClose: () => void;
   onCovered: () => void;
 }
 
 /**
- * Unified confirm sheet for the v1.5 "Cover" workflow. Two modes:
- *  - cover-only: one primary button ("I got it") → PATCH writtenOff:true
- *  - cover-and-remove: triggered from roster Remove when player has unpaid
- *      owedAmount. Primary "Cover & remove" PATCHes { writtenOff:true,
- *      removed:true } in ONE atomic call (the players PATCH handler merges both
- *      into a single upsert). Secondary "Remove without covering" PATCHes
- *      removed:true only.
+ * Unified confirm sheet for the "Cover" workflow.
+ *  - cover-only: choose how to cover — "I've got it" (absorb: admin eats the
+ *      share, others unchanged) or "Split across everyone else" (resplit: the
+ *      share spreads to the remaining payers). PATCHes writtenOff:true + coverMode.
+ *  - cover-and-remove: triggered from roster Remove when the player has an unpaid
+ *      owedAmount. "Cover & remove" PATCHes { writtenOff:true, coverMode:'absorb',
+ *      removed:true } atomically; "Remove without covering" PATCHes removed:true.
  *
- * Friend-voice copy per design §3 — "I got it" beats "Mark covered."
+ * Friend-voice copy — "I got it" beats "Mark covered."
  */
 export default function CoverSheet({
   open,
@@ -38,6 +43,7 @@ export default function CoverSheet({
   amount,
   sessionId,
   sessionLabel,
+  wasSettled,
   onClose,
   onCovered,
 }: Props) {
@@ -57,11 +63,28 @@ export default function CoverSheet({
     return res.json();
   }
 
-  async function handleCover() {
+  // Re-freeze the bill after a cover change so the per-person math reflects it.
+  // DELETE preserves paid checkmarks; POST re-stamps owedAmount with the cover
+  // flags applied. Only runs when the session was already settled.
+  async function resettle() {
+    if (!wasSettled) return;
+    const q = sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : '';
+    const del = await fetch(`${BASE}/api/session/settle${q}`, { method: 'DELETE' });
+    if (!del.ok && del.status !== 404) {
+      throw new Error('Could not refresh the bill.');
+    }
+    const post = await fetch(`${BASE}/api/session/settle${q}`, { method: 'POST' });
+    if (!post.ok) {
+      throw new Error('Could not refresh the bill.');
+    }
+  }
+
+  async function doCover(choice: CoverChoice) {
     setSubmitting(true);
     setError('');
     try {
-      await patch({ writtenOff: true });
+      await patch({ writtenOff: true, coverMode: choice });
+      await resettle();
       onCovered();
       onClose();
     } catch {
@@ -75,10 +98,9 @@ export default function CoverSheet({
     setSubmitting(true);
     setError('');
     try {
-      // One atomic PATCH, not two. Two sequential calls could leave the player
-      // covered-but-not-removed if the second failed — and the old catch then
-      // lied ("Couldn't cover") even though the cover had already landed.
-      await patch({ writtenOff: true, removed: true });
+      // One atomic PATCH, not two. Removing implies absorbing their share.
+      await patch({ writtenOff: true, coverMode: 'absorb', removed: true });
+      await resettle();
       onCovered();
       onClose();
     } catch {
@@ -93,6 +115,7 @@ export default function CoverSheet({
     setError('');
     try {
       await patch({ removed: true });
+      await resettle();
       onCovered();
       onClose();
     } catch {
@@ -116,7 +139,7 @@ export default function CoverSheet({
       open={open}
       onClose={onClose}
       ariaLabel="Cover confirmation"
-      maxHeight="50vh"
+      maxHeight="60vh"
       className="max-w-sm mx-auto"
     >
       <BottomSheetHeader className="p-4">
@@ -135,10 +158,24 @@ export default function CoverSheet({
               type="button"
               className="cc-btn cc-btn-primary cc-btn-lg"
               disabled={submitting}
-              onClick={handleCover}
+              onClick={() => doCover('absorb')}
             >
-              {submitting ? '…' : 'I got it'}
+              {submitting ? '…' : "I've got it — I'll cover it"}
             </button>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '-2px 2px 4px' }}>
+              You absorb their share. Everyone else pays the same.
+            </p>
+            <button
+              type="button"
+              className="cc-btn cc-btn-secondary"
+              disabled={submitting}
+              onClick={() => doCover('resplit')}
+            >
+              {submitting ? '…' : 'Split it across everyone else'}
+            </button>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '-2px 2px 4px' }}>
+              Their share is spread over the other players — you pay nothing extra.
+            </p>
             <button
               type="button"
               className="cc-btn cc-btn-ghost"
