@@ -15,9 +15,11 @@ import { useEffect, useRef, useState } from 'react';
  *
  * The body is the scroll container in this app, so listeners live on `document`.
  */
-const THRESHOLD = 70; // px of pull needed to trigger
-const MAX = 110; // px the indicator can travel
+const THRESHOLD = 85; // px of (resisted) pull needed to trigger
+const MAX = 130; // px the indicator can travel
 const RESISTANCE = 0.5; // drag feels heavier than 1:1
+const DEAD_ZONE = 16; // px of raw drag ignored before any pull registers
+const UP_CANCEL = 8; // px of upward movement that disqualifies the gesture as a scroll
 
 export default function PullToRefresh({
   onRefresh,
@@ -33,6 +35,9 @@ export default function PullToRefresh({
   const startY = useRef<number | null>(null);
   const pullRef = useRef(0);
   const refreshingRef = useRef(false);
+  // Once a gesture moves upward (a scroll), it can't become a pull — even if
+  // the finger later crosses back down past the top edge. Cleared per gesture.
+  const disqualified = useRef(false);
   const onRefreshRef = useRef(onRefresh);
   onRefreshRef.current = onRefresh;
 
@@ -49,9 +54,10 @@ export default function PullToRefresh({
       if (refreshingRef.current) return;
       if (window.scrollY > 0 || sheetOpen()) return;
       startY.current = e.touches[0]?.clientY ?? null;
+      disqualified.current = false;
     }
     function onMove(e: TouchEvent) {
-      if (startY.current === null || refreshingRef.current) return;
+      if (startY.current === null || refreshingRef.current || disqualified.current) return;
       // Bail if the page scrolled (user is scrolling content, not pulling).
       if (window.scrollY > 0) {
         startY.current = null;
@@ -59,11 +65,22 @@ export default function PullToRefresh({
         return;
       }
       const dy = (e.touches[0]?.clientY ?? 0) - startY.current;
-      if (dy <= 0) {
+      // Any meaningful upward travel means this is a scroll gesture that
+      // happened to start at the top — never a refresh. Disqualify it so a
+      // scroll-up that bounces at the top edge can't flip into a refresh.
+      if (dy < -UP_CANCEL) {
+        disqualified.current = true;
         setPullBoth(0);
         return;
       }
-      setPullBoth(Math.min(MAX, dy * RESISTANCE));
+      // Dead zone: ignore the first DEAD_ZONE px of drag so a small overscroll
+      // (and the natural jitter at the top of a scroll) registers nothing.
+      const effective = dy - DEAD_ZONE;
+      if (effective <= 0) {
+        setPullBoth(0);
+        return;
+      }
+      setPullBoth(Math.min(MAX, effective * RESISTANCE));
     }
     async function onEnd() {
       if (startY.current === null) return;

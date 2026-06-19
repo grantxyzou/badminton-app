@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import type { Session, BirdPurchase } from '@/lib/types';
 import { normalizeBirdUsages } from '@/lib/birdUsages';
+import { markExternalExcursion } from '@/lib/excursion';
 import AdminBackHeader from './AdminBackHeader';
 import DatePicker from '../DatePicker';
 import StatusBanner from '../primitives/StatusBanner';
@@ -151,6 +152,9 @@ export default function AdvanceSessionForm({ onBack }: Props) {
     const navAny = navigator as Navigator & { share?: (d: { text: string; url: string; title?: string }) => Promise<void> };
     try {
       if (navAny.share) {
+        // iOS may evict the PWA while the share sheet is open — mark so the
+        // return restores the Admin tab instead of bouncing to Home.
+        markExternalExcursion();
         await navAny.share({ title: 'BPM Badminton', text, url });
         return;
       }
