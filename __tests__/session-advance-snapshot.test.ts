@@ -7,6 +7,7 @@ import {
   seedTestAdminMember,
   makeAdminRequest,
 } from './helpers';
+import { getStore } from './helpers';
 import { POST as ADVANCE } from '@/app/api/session/advance/route';
 
 setupAdminPin();
@@ -43,6 +44,80 @@ describe('POST /api/session/advance — snapshot fields', () => {
     expect(body.prevSnapshot.maxPlayers).toBe(14);
     expect(body.prevSnapshot.deadlineOffsetHours).toBe(-2); // deadline is 2h BEFORE start → -2
     expect(Array.isArray(body.anomaliesAtAdvance)).toBe(true);
+  });
+
+  it('carries title + venue from the POST body onto the new session', async () => {
+    seedPointer('session-2026-04-29');
+    seedSession('session-2026-04-29', { courts: 2, costPerCourt: 30, maxPlayers: 12 });
+
+    const req = makeAdminRequest('POST', 'http://localhost:3000/api/session/advance', {
+      datetime: '2026-05-06T20:00:00-04:00',
+      deadline: '2026-05-06T18:00:00-04:00',
+      courts: 2,
+      maxPlayers: 12,
+      title: 'Thursday Smash',
+      locationName: 'Acme Courts',
+      locationAddress: '123 Shuttle Ave',
+    });
+    const res = await ADVANCE(req);
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.title).toBe('Thursday Smash');
+    expect(body.locationName).toBe('Acme Courts');
+    expect(body.locationAddress).toBe('123 Shuttle Ave');
+  });
+
+  it('loads chosen bird tubes into the new session, costed from inventory', async () => {
+    const store = getStore();
+    store['birds'] = [
+      { id: 'pur-a', name: 'Yonex AS-30', tubes: 20, totalCost: 60, costPerTube: 3, date: '2026-04-20', createdAt: new Date().toISOString() },
+    ];
+    seedPointer('session-2026-04-29');
+    seedSession('session-2026-04-29', { courts: 2, costPerCourt: 30, maxPlayers: 12 });
+
+    const req = makeAdminRequest('POST', 'http://localhost:3000/api/session/advance', {
+      datetime: '2026-05-06T20:00:00-04:00',
+      deadline: '2026-05-06T18:00:00-04:00',
+      courts: 2,
+      maxPlayers: 12,
+      birdUsages: [{ purchaseId: 'pur-a', tubes: 2 }],
+    });
+    const res = await ADVANCE(req);
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.birdUsages).toHaveLength(1);
+    expect(body.birdUsages[0]).toMatchObject({
+      purchaseId: 'pur-a',
+      purchaseName: 'Yonex AS-30',
+      tubes: 2,
+      costPerTube: 3,
+      totalBirdCost: 6,
+    });
+  });
+
+  it('skips unknown / zero / malformed bird entries', async () => {
+    const store = getStore();
+    store['birds'] = [
+      { id: 'pur-a', name: 'Yonex AS-30', tubes: 20, totalCost: 60, costPerTube: 3, date: '2026-04-20', createdAt: new Date().toISOString() },
+    ];
+    seedPointer('session-2026-04-29');
+    seedSession('session-2026-04-29', { courts: 2, costPerCourt: 30, maxPlayers: 12 });
+
+    const req = makeAdminRequest('POST', 'http://localhost:3000/api/session/advance', {
+      datetime: '2026-05-06T20:00:00-04:00',
+      deadline: '2026-05-06T18:00:00-04:00',
+      courts: 2,
+      maxPlayers: 12,
+      birdUsages: [
+        { purchaseId: 'pur-a', tubes: 0 },        // zero → skipped
+        { purchaseId: 'nope', tubes: 2 },          // unknown purchase → skipped
+        { purchaseId: 'pur-a', tubes: 0.1 },       // not a 0.25 step → skipped
+      ],
+    });
+    const res = await ADVANCE(req);
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.birdUsages).toBeUndefined();
   });
 
   it('flags cost_changed in anomaliesAtAdvance when costPerCourt differs', async () => {

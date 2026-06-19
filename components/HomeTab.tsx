@@ -6,7 +6,7 @@ import type { Session, Player, Announcement, Release } from '@/lib/types';
 import type { DevOverrides } from '@/components/DevPanel';
 import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
 import { getIdentity, setIdentity, clearIdentity, resolveStaleIdentity } from '@/lib/identity';
-import ShuttleLoader from '@/components/ShuttleLoader';
+import { TabSkeleton } from '@/components/primitives/CardSkeleton';
 import CostCard from '@/components/CostCard';
 import PrevPaymentReminder from '@/components/PrevPaymentReminder';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
@@ -355,7 +355,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   }
 
   if (loading) {
-    return <ShuttleLoader text={t('loading')} />;
+    // Structural skeleton (header + tile row + cards) so the page keeps its
+    // shape and fills in top-to-bottom instead of flashing a centered loader
+    // then snapping the whole layout in at once.
+    return <TabSkeleton />;
   }
 
   const mapsUrl = session?.locationAddress

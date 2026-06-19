@@ -31,11 +31,12 @@ describe('<CoverSheet />', () => {
       />,
     );
     expect(screen.getByText(/Cover Bruce's \$8/i)).toBeTruthy();
-    expect(screen.getByRole('button', { name: /I got it/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /I'll cover it/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Split it across everyone else/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Cancel/i })).toBeTruthy();
   });
 
-  it('"I got it" calls PATCH /api/players with writtenOff:true', async () => {
+  it('"I\'ll cover it" calls PATCH /api/players with writtenOff:true + coverMode:absorb', async () => {
     const onCovered = vi.fn();
     const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ id: 'bruce-1', writtenOff: true }), { status: 200 }),
@@ -55,7 +56,7 @@ describe('<CoverSheet />', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /I got it/i }));
+    fireEvent.click(screen.getByRole('button', { name: /I'll cover it/i }));
 
     await waitFor(() => expect(onCovered).toHaveBeenCalledOnce());
 
@@ -66,7 +67,37 @@ describe('<CoverSheet />', () => {
       id: 'bruce-1',
       sessionId: 'session-2026-05-14',
       writtenOff: true,
+      coverMode: 'absorb',
     });
+
+    fetchSpy.mockRestore();
+  });
+
+  it('"Split it across everyone else" sends coverMode:resplit', async () => {
+    const onCovered = vi.fn();
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ id: 'bruce-1', writtenOff: true }), { status: 200 }),
+    );
+
+    wrap(
+      <CoverSheet
+        open
+        mode="cover-only"
+        playerName="Bruce"
+        amount={8}
+        sessionLabel="Tue, May 14"
+        playerId="bruce-1"
+        sessionId="session-2026-05-14"
+        onClose={() => {}}
+        onCovered={onCovered}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Split it across everyone else/i }));
+    await waitFor(() => expect(onCovered).toHaveBeenCalledOnce());
+
+    const body = JSON.parse(String((fetchSpy.mock.calls[0][1] as RequestInit).body));
+    expect(body).toMatchObject({ id: 'bruce-1', writtenOff: true, coverMode: 'resplit' });
 
     fetchSpy.mockRestore();
   });
@@ -92,7 +123,7 @@ describe('<CoverSheet />', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /I got it/i }));
+    fireEvent.click(screen.getByRole('button', { name: /I'll cover it/i }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeTruthy();
