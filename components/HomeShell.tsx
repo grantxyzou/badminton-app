@@ -69,18 +69,29 @@ export default function HomeShell({ initialAnnouncement }: Props) {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     if (params.has('dev')) setDevMode(true);
+
+    const isTab = (v: string | null): v is Tab =>
+      v === 'home' || v === 'players' || v === 'skills' || v === 'admin' || v === 'profile';
+
+    // Precedence: explicit ?tab= deep-link → restored last tab → Home default.
     const tabParam = params.get('tab');
-    if (tabParam === 'home' || tabParam === 'players' || tabParam === 'skills' || tabParam === 'admin' || tabParam === 'profile') {
+    if (isTab(tabParam)) {
       setActiveTab(tabParam);
-      // Strip the deep-link param after applying so it doesn't linger and
-      // re-trigger on the next reopen. The iOS PWA restores the last URL on
-      // launch — if we leave ?tab=players here, every cold start would land
-      // on Sign-Ups instead of Home. Honor the deep-link once, then clear it
-      // so a fresh open always falls back to the 'home' default.
+      // Strip the param after applying so it doesn't linger in the URL the iOS
+      // PWA restores on cold start (which would then override the Home default).
       const url = new URL(window.location.href);
       url.searchParams.delete('tab');
       window.history.replaceState(window.history.state, '', url);
+      return;
     }
+    // Restore the last tab on an in-app reload, but NOT on a quit/cold start.
+    // sessionStorage is the exact discriminator: it survives a soft reload
+    // (same page session) but is cleared when the PWA is fully quit and
+    // relaunched — so a cold start finds nothing here and stays on Home.
+    try {
+      const saved = window.sessionStorage.getItem('badminton_active_tab');
+      if (isTab(saved)) setActiveTab(saved);
+    } catch { /* sessionStorage unavailable — fall back to Home */ }
   }, []);
 
   // Fetch enough session info for ProfileTab's session label + recovery sheet.
@@ -194,13 +205,13 @@ export default function HomeShell({ initialAnnouncement }: Props) {
   // (e.g. Sign-Ups tab swaps the global aurora for 03 Court markings).
   useEffect(() => {
     document.documentElement.setAttribute('data-tab', activeTab);
-    // NOTE: we intentionally do NOT persist the active tab to the URL.
-    // The iOS PWA restores the last URL on cold start, so writing
-    // ?tab=<tab> here made every reopen land on the last-viewed tab
-    // (usually Sign-Ups) instead of Home. A fresh open should always
-    // start on Home; the mount effect still HONORS an explicit ?tab=
-    // deep-link once (then strips it). Trade-off: a reload no longer
-    // restores the last tab — it returns to Home.
+    // Persist to sessionStorage (NOT the URL): an in-app reload restores the
+    // last tab, but a quit/cold start clears sessionStorage and lands on Home.
+    // Writing it to the URL instead would defeat that — the iOS PWA restores
+    // the last URL on cold start, so it would reopen on the last tab.
+    try {
+      window.sessionStorage.setItem('badminton_active_tab', activeTab);
+    } catch { /* sessionStorage unavailable — restore just won't persist */ }
     return () => {
       // Fallback — if the page unmounts, leave the attribute cleared so any
       // future /design preview routes don't inherit a stale tab value.
