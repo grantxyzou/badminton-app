@@ -3,6 +3,7 @@ import { getContainer, getActiveSessionId, setActiveSessionId, sessionIdFromDate
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { toValidIso } from '@/app/api/session/route';
 import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
+import type { BirdUsage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -133,6 +134,41 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Resolve any bird tubes the admin chose to load into the new session at
+    // creation time. Body shape: birdUsages: [{ purchaseId, tubes }]. We look
+    // each purchase up in the inventory and snapshot its cost (same authoritative
+    // snapshotting as PATCH /api/session/bird-usage), so different-priced brands
+    // are costed correctly. Invalid/zero/unknown entries are skipped silently.
+    let birdUsages: BirdUsage[] = [];
+    if (Array.isArray(body.birdUsages) && body.birdUsages.length > 0) {
+      const birdsContainer = getContainer('birds');
+      const resolved: BirdUsage[] = [];
+      for (const entry of body.birdUsages) {
+        const purchaseId = typeof entry?.purchaseId === 'string' ? entry.purchaseId : '';
+        const tubes = Number(entry?.tubes);
+        if (!purchaseId) continue;
+        if (!Number.isFinite(tubes) || tubes <= 0 || tubes > 100) continue;
+        if (Math.round(tubes * 4) !== tubes * 4) continue; // 0.25 increments only
+        // De-dupe: if the same purchase appears twice, keep the last.
+        const dupeIdx = resolved.findIndex((u) => u.purchaseId === purchaseId);
+        if (dupeIdx !== -1) resolved.splice(dupeIdx, 1);
+        try {
+          const { resource: purchase } = await birdsContainer.item(purchaseId, purchaseId).read();
+          if (!purchase) continue;
+          resolved.push({
+            purchaseId: purchase.id,
+            purchaseName: purchase.name,
+            tubes,
+            costPerTube: purchase.costPerTube,
+            totalBirdCost: Math.round(tubes * purchase.costPerTube * 100) / 100,
+          });
+        } catch {
+          continue;
+        }
+      }
+      birdUsages = resolved;
+    }
+
     const newSession = {
       id: newId,
       sessionId: newId,
@@ -146,6 +182,7 @@ export async function POST(req: NextRequest) {
       maxPlayers: Math.max(1, Math.min(100, parseInt(body.maxPlayers, 10) || 12)),
       signupOpen: false,
       ...(typeof body.costPerCourt === 'number' ? { costPerCourt: Math.max(0, Math.min(500, body.costPerCourt)) } : {}),
+      ...(birdUsages.length > 0 ? { birdUsages } : {}),
       ...(prevSessionDate ? { prevSessionDate } : {}),
       ...(prevCostPerPerson ? { prevCostPerPerson } : {}),
       ...(prevSnapshot ? { prevSnapshot, anomaliesAtAdvance } : {}),

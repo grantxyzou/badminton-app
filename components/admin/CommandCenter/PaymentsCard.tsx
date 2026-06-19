@@ -24,6 +24,7 @@ interface Player {
   /** Stamped at settle time. Frozen — survives retro edits to court/bird costs. */
   owedAmount?: number;
   writtenOff?: boolean;
+  coverMode?: 'absorb' | 'resplit';
 }
 
 /**
@@ -325,6 +326,35 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
     }
   }
 
+  async function actionUncover() {
+    if (!actionTarget) return;
+    setActionError('');
+    try {
+      const res = await fetch(`${BASE}/api/players`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: actionTarget.id, writtenOff: false, ...(isCurrentSession ? {} : { sessionId: viewedSessionId }) }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setActionError(data.error ?? 'Failed to uncover.');
+        return;
+      }
+      // If the bill is already frozen, re-settle so the split reverts (a
+      // re-split cover that's undone must give the others their money back).
+      if (settleFlagOn && viewedSession?.settled) {
+        const q = viewedSessionId ? `?sessionId=${encodeURIComponent(viewedSessionId)}` : '';
+        await fetch(`${BASE}/api/session/settle${q}`, { method: 'DELETE' }).catch(() => {});
+        await fetch(`${BASE}/api/session/settle${q}`, { method: 'POST' }).catch(() => {});
+      }
+      setActionTarget(null);
+      if (viewedSessionId) await loadPlayers(viewedSessionId);
+      void load();
+    } catch {
+      setActionError('Network error.');
+    }
+  }
+
   async function actionResetAccess() {
     if (!actionTarget) return;
     if (!confirm(`Generate a recovery code for ${actionTarget.name}?\n\nThe code expires in 15 minutes.`)) return;
@@ -450,6 +480,17 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
         </p>
       )}
 
+      {/* What the admin absorbed by covering players this session. */}
+      {ledgerFlagOn && settleFlagOn && !!viewedSession?.settled?.coveredTotal && (
+        <p
+          className="text-xs"
+          style={{ color: '#d8b4fe', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <span className="material-icons" style={{ fontSize: 15 }} aria-hidden="true">volunteer_activism</span>
+          You&apos;ve covered ${viewedSession.settled.coveredTotal} this session
+        </p>
+      )}
+
       {/* Active list */}
       {total > 0 && (
         <ul className="space-y-1" role="list">
@@ -472,7 +513,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
                 )}
               </span>
               <div className="flex items-center gap-1 flex-shrink-0">
-                {settleFlagOn && typeof player.owedAmount === 'number' && (
+                {settleFlagOn && typeof player.owedAmount === 'number' && !player.writtenOff && (
                   <span
                     className="text-xs font-medium px-2"
                     style={{
@@ -484,26 +525,41 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
                     ${player.owedAmount}
                   </span>
                 )}
-                <button
-                  type="button"
-                  onClick={() => togglePaid(player)}
-                  disabled={togglingId === player.id}
-                  className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors inline-flex items-center gap-1 ${player.paid ? 'pill-paid' : 'pill-unpaid'} disabled:opacity-50`}
-                  aria-pressed={player.paid === true}
-                >
-                  {togglingId === player.id ? (
-                    '…'
-                  ) : player.paid ? (
-                    <>
-                      <span className="material-icons" style={{ fontSize: 14 }} aria-hidden="true">
-                        check_circle
-                      </span>
-                      Paid
-                    </>
-                  ) : (
-                    'Pending'
-                  )}
-                </button>
+                {ledgerFlagOn && player.writtenOff ? (
+                  <span
+                    className="text-xs font-medium px-3 py-1.5 rounded-full inline-flex items-center gap-1"
+                    style={{ background: 'rgba(216,180,254,0.12)', color: '#d8b4fe' }}
+                    title={player.coverMode === 'resplit'
+                      ? "You're covering this — split across the others"
+                      : "You're covering this — it's on you"}
+                  >
+                    <span className="material-icons" style={{ fontSize: 14 }} aria-hidden="true">
+                      volunteer_activism
+                    </span>
+                    Covered
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => togglePaid(player)}
+                    disabled={togglingId === player.id}
+                    className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors inline-flex items-center gap-1 ${player.paid ? 'pill-paid' : 'pill-unpaid'} disabled:opacity-50`}
+                    aria-pressed={player.paid === true}
+                  >
+                    {togglingId === player.id ? (
+                      '…'
+                    ) : player.paid ? (
+                      <>
+                        <span className="material-icons" style={{ fontSize: 14 }} aria-hidden="true">
+                          check_circle
+                        </span>
+                        Paid
+                      </>
+                    ) : (
+                      'Pending'
+                    )}
+                  </button>
+                )}
                 {onSendIndividualReceipt && (
                   <button
                     type="button"
@@ -657,11 +713,20 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
               <ActionRow
                 icon="paid"
                 label={`Cover their $${actionTarget.owedAmount}`}
+                hint="I'll pay for them — choose how to split it"
                 onClick={() => {
                   setCoverMode('cover-only');
                   setCoverTarget(actionTarget);
                   setActionTarget(null);
                 }}
+              />
+            )}
+            {ledgerFlagOn && actionTarget?.writtenOff && (
+              <ActionRow
+                icon="volunteer_activism"
+                label="Undo cover"
+                hint="They go back to owing their share"
+                onClick={actionUncover}
               />
             )}
             {isCurrentSession && (
@@ -689,6 +754,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
           amount={coverTarget.owedAmount ?? 0}
           sessionId={viewedSessionId ?? ''}
           sessionLabel={fmtSessionLabel(viewedSession?.datetime)}
+          wasSettled={settleFlagOn && !!viewedSession?.settled}
           onClose={() => setCoverTarget(null)}
           onCovered={() => {
             setCoverTarget(null);

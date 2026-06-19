@@ -82,7 +82,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const costPerPerson = Math.round((totalCost / activePlayers.length) * 100) / 100;
+    // Cover-aware denominator. A player the admin is covering (writtenOff)
+    // either:
+    //   - 'resplit' → excluded from the denominator, so their share is spread
+    //     across the remaining payers (group total unchanged, admin pays $0);
+    //   - 'absorb'  → kept in the denominator, so everyone else pays the same
+    //     and the admin eats the covered player's share.
+    // Legacy writtenOff with no coverMode is treated as 'absorb'.
+    const isCovered = (p: Player) => p.writtenOff === true;
+    const isResplit = (p: Player) => isCovered(p) && p.coverMode === 'resplit';
+    const isAbsorb = (p: Player) => isCovered(p) && p.coverMode !== 'resplit';
+
+    const resplitCount = activePlayers.filter(isResplit).length;
+    const denominator = activePlayers.length - resplitCount;
+    if (denominator <= 0) {
+      return NextResponse.json(
+        { error: 'Everyone is covered — nobody left to split the cost across.' },
+        { status: 400 },
+      );
+    }
+
+    const costPerPerson = Math.round((totalCost / denominator) * 100) / 100;
+    const absorbCount = activePlayers.filter(isAbsorb).length;
+    const coveredTotal = Math.round(absorbCount * costPerPerson * 100) / 100;
     const at = new Date().toISOString();
 
     const snapshot: SettledSnapshot = {
@@ -91,8 +113,10 @@ export async function POST(req: NextRequest) {
       totalCost,
       courtTotal,
       birdTotal,
-      playerCount: activePlayers.length,
+      // Denominator the per-person amount was divided by (payers + absorb-covered).
+      playerCount: denominator,
       playerNames: activePlayers.map((p) => p.name),
+      ...(coveredTotal > 0 ? { coveredTotal } : {}),
     };
 
     // Stamp session first. If player updates fail, admin can unsettle & retry.
@@ -109,16 +133,21 @@ export async function POST(req: NextRequest) {
     // upsert throws, partial state is recoverable via DELETE then POST.
     const stampedPlayers: Array<Pick<Player, 'id' | 'name' | 'owedAmount' | 'settledAt'>> = [];
     for (const player of activePlayers) {
+      // resplit-covered players owe nothing (their share went to the payers);
+      // absorb-covered players carry the per-person figure too so the ledger
+      // can total what the admin absorbed — they're just flagged writtenOff so
+      // it's never collected.
+      const owed = isResplit(player) ? 0 : costPerPerson;
       const updated: Player = {
         ...player,
-        owedAmount: costPerPerson,
+        owedAmount: owed,
         settledAt: at,
       };
       await playersContainer.items.upsert(updated);
       stampedPlayers.push({
         id: player.id,
         name: player.name,
-        owedAmount: costPerPerson,
+        owedAmount: owed,
         settledAt: at,
       });
     }

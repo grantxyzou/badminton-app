@@ -12,6 +12,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import StatusBanner from '@/components/primitives/StatusBanner';
 import AdminErrorBoundary from '@/components/AdminErrorBoundary';
+import PullToRefresh from '@/components/PullToRefresh';
 import type { DevOverrides } from '@/components/DevPanel';
 import type { Announcement } from '@/lib/types';
 import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
@@ -42,6 +43,10 @@ interface Props {
 
 export default function HomeShell({ initialAnnouncement }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('home');
+  // Bumped by pull-to-refresh — folded into each tab's React key so the active
+  // tab remounts and re-runs its data fetches (no service worker; refresh ==
+  // refetch the current view).
+  const [refreshNonce, setRefreshNonce] = useState(0);
   const [showAdmin, setShowAdmin] = useState(false);
   // Tri-state: `showAdmin` alone can't tell "confirmed not-admin" from
   // "not determined yet". On a reload landing on ?tab=admin, the bounce
@@ -64,10 +69,29 @@ export default function HomeShell({ initialAnnouncement }: Props) {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     if (params.has('dev')) setDevMode(true);
+
+    const isTab = (v: string | null): v is Tab =>
+      v === 'home' || v === 'players' || v === 'skills' || v === 'admin' || v === 'profile';
+
+    // Precedence: explicit ?tab= deep-link → restored last tab → Home default.
     const tabParam = params.get('tab');
-    if (tabParam === 'home' || tabParam === 'players' || tabParam === 'skills' || tabParam === 'admin' || tabParam === 'profile') {
+    if (isTab(tabParam)) {
       setActiveTab(tabParam);
+      // Strip the param after applying so it doesn't linger in the URL the iOS
+      // PWA restores on cold start (which would then override the Home default).
+      const url = new URL(window.location.href);
+      url.searchParams.delete('tab');
+      window.history.replaceState(window.history.state, '', url);
+      return;
     }
+    // Restore the last tab on an in-app reload, but NOT on a quit/cold start.
+    // sessionStorage is the exact discriminator: it survives a soft reload
+    // (same page session) but is cleared when the PWA is fully quit and
+    // relaunched — so a cold start finds nothing here and stays on Home.
+    try {
+      const saved = window.sessionStorage.getItem('badminton_active_tab');
+      if (isTab(saved)) setActiveTab(saved);
+    } catch { /* sessionStorage unavailable — fall back to Home */ }
   }, []);
 
   // Fetch enough session info for ProfileTab's session label + recovery sheet.
@@ -181,17 +205,13 @@ export default function HomeShell({ initialAnnouncement }: Props) {
   // (e.g. Sign-Ups tab swaps the global aurora for 03 Court markings).
   useEffect(() => {
     document.documentElement.setAttribute('data-tab', activeTab);
-    // Persist the tab in the URL so a reload lands you back where you
-    // were (the mount effect above already READS ?tab=). replaceState,
-    // not push — switching tabs shouldn't pollute the back-stack — and
-    // preserve any other params (?dev, ?tab=admin deep-link, etc.).
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      if (url.searchParams.get('tab') !== activeTab) {
-        url.searchParams.set('tab', activeTab);
-        window.history.replaceState(window.history.state, '', url);
-      }
-    }
+    // Persist to sessionStorage (NOT the URL): an in-app reload restores the
+    // last tab, but a quit/cold start clears sessionStorage and lands on Home.
+    // Writing it to the URL instead would defeat that — the iOS PWA restores
+    // the last URL on cold start, so it would reopen on the last tab.
+    try {
+      window.sessionStorage.setItem('badminton_active_tab', activeTab);
+    } catch { /* sessionStorage unavailable — restore just won't persist */ }
     return () => {
       // Fallback — if the page unmounts, leave the attribute cleared so any
       // future /design preview routes don't inherit a stale tab value.
@@ -199,8 +219,16 @@ export default function HomeShell({ initialAnnouncement }: Props) {
     };
   }, [activeTab]);
 
+  // Pull-to-refresh: remount the active tab (refetches everything) and hold the
+  // spinner briefly so the gesture gets visible feedback even on a fast network.
+  const handlePullRefresh = useCallback(async () => {
+    setRefreshNonce((n) => n + 1);
+    await new Promise((r) => setTimeout(r, 600));
+  }, []);
+
   return (
     <>
+      <PullToRefresh onRefresh={handlePullRefresh} />
       <div className="min-h-screen pb-32">
         <GlassPhysics />
         <ThemeToggle />
@@ -216,12 +244,12 @@ export default function HomeShell({ initialAnnouncement }: Props) {
               />
             </div>
           )}
-          {activeTab === 'home' && <div key="home" className="animate-fadeIn"><HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} /></div>}
-          {activeTab === 'players' && <div key="players" className="animate-fadeIn"><PlayersTab /></div>}
-          {activeTab === 'skills' && <div key="skills" className="animate-fadeIn"><SkillsTab isAdmin={showAdmin} onTabChange={setActiveTab} /></div>}
-          {activeTab === 'admin' && showAdmin && <div key="admin" className="animate-fadeIn"><AdminErrorBoundary><AdminTab onExit={() => setActiveTab('profile')} /></AdminErrorBoundary></div>}
+          {activeTab === 'home' && <div key={`home-${refreshNonce}`} className="animate-fadeIn"><HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} /></div>}
+          {activeTab === 'players' && <div key={`players-${refreshNonce}`} className="animate-fadeIn"><PlayersTab /></div>}
+          {activeTab === 'skills' && <div key={`skills-${refreshNonce}`} className="animate-fadeIn"><SkillsTab isAdmin={showAdmin} onTabChange={setActiveTab} /></div>}
+          {activeTab === 'admin' && showAdmin && <div key={`admin-${refreshNonce}`} className="animate-fadeIn"><AdminErrorBoundary><AdminTab onExit={() => setActiveTab('profile')} /></AdminErrorBoundary></div>}
           {activeTab === 'profile' && (
-            <div key="profile" className="animate-fadeIn">
+            <div key={`profile-${refreshNonce}`} className="animate-fadeIn">
               <ProfileTab
                 sessionId={profileSession.id}
                 sessionLabel={profileSession.label}

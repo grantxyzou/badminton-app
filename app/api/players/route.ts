@@ -508,6 +508,7 @@ export async function PATCH(req: NextRequest) {
       // when only paid is sent.
       if (body.paid === true && typeof body.writtenOff !== 'boolean') {
         updates.writtenOff = false;
+        updates.coverMode = undefined;
       }
     }
     if (typeof body.removed === 'boolean') updates.removed = body.removed;
@@ -517,7 +518,15 @@ export async function PATCH(req: NextRequest) {
       // Mutual exclusion: writtenOff:true forces paid:false. If the client
       // sent both writtenOff:true and paid:true in one body, writtenOff
       // wins (more explicit intent). See v1.5 design §2 "Setter rule".
-      if (body.writtenOff === true) updates.paid = false;
+      if (body.writtenOff === true) {
+        updates.paid = false;
+        // Record how the cover is split (defaults to 'absorb' — admin eats it).
+        updates.coverMode = body.coverMode === 'resplit' ? 'resplit' : 'absorb';
+      } else {
+        // Un-covering clears the mode so a stale 'resplit' can't linger and
+        // skew a future settle (undefined serializes away on upsert).
+        updates.coverMode = undefined;
+      }
     }
 
     const sessionContainer = getContainer('sessions');

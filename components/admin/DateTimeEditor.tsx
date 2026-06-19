@@ -154,30 +154,30 @@ export default function DateTimeEditor({ onBack }: { onBack: () => void }) {
         <div className="glass-card p-5 space-y-3">
           <Label text="Session Date & Time">
             <div className="flex gap-2">
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <DatePicker value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} placeholder="Date" />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <input id="session-start-time" name="startTime" type="time" value={form.time} onChange={setStr('time')} style={{ height: '42px' }} />
               </div>
             </div>
           </Label>
           <Label text="Sign-up Deadline">
             <div className="flex gap-2">
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <DatePicker value={form.deadlineDate} onChange={v => setForm(f => ({ ...f, deadlineDate: v }))} placeholder="Date" />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <input id="session-deadline-time" name="deadlineTime" type="time" value={form.deadlineTime} onChange={setStr('deadlineTime')} style={{ height: '42px' }} />
               </div>
             </div>
           </Label>
           <Label text="Session End">
             <div className="flex gap-2">
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <DatePicker value={form.endDate} onChange={v => setForm(f => ({ ...f, endDate: v }))} placeholder="Date" />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <input id="session-end-time" name="endTime" type="time" value={form.endTime} onChange={setStr('endTime')} style={{ height: '42px' }} />
               </div>
             </div>
