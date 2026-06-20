@@ -17,6 +17,7 @@ import type { DevOverrides } from '@/components/DevPanel';
 import type { Announcement } from '@/lib/types';
 import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
+import { consumeRecentExcursion } from '@/lib/excursion';
 
 // AdminTab + DemoMode + DevPanel are lazy-loaded — most users never trigger
 // these surfaces (admin requires sign-in, DemoMode is URL-gated, DevPanel
@@ -90,8 +91,18 @@ export default function HomeShell({ initialAnnouncement }: Props) {
     // relaunched — so a cold start finds nothing here and stays on Home.
     try {
       const saved = window.sessionStorage.getItem('badminton_active_tab');
-      if (isTab(saved)) setActiveTab(saved);
+      if (isTab(saved)) { setActiveTab(saved); return; }
     } catch { /* sessionStorage unavailable — fall back to Home */ }
+    // Cold start (sessionStorage empty). If we got here because iOS evicted the
+    // PWA while the user stepped out to a share sheet / receipt image (marked
+    // via markExternalExcursion), restore where they were instead of Home. A
+    // real quit-and-reopen leaves no marker → stays on Home.
+    try {
+      if (consumeRecentExcursion()) {
+        const lastTab = window.localStorage.getItem('badminton_last_tab');
+        if (isTab(lastTab)) setActiveTab(lastTab);
+      }
+    } catch { /* localStorage unavailable — fall back to Home */ }
   }, []);
 
   // Fetch enough session info for ProfileTab's session label + recovery sheet.
@@ -211,7 +222,11 @@ export default function HomeShell({ initialAnnouncement }: Props) {
     // the last URL on cold start, so it would reopen on the last tab.
     try {
       window.sessionStorage.setItem('badminton_active_tab', activeTab);
-    } catch { /* sessionStorage unavailable — restore just won't persist */ }
+      // Also mirror to localStorage — sessionStorage is wiped if iOS evicts the
+      // PWA during an external excursion (share sheet / receipt image); the
+      // localStorage copy is what consumeRecentExcursion() restores from.
+      window.localStorage.setItem('badminton_last_tab', activeTab);
+    } catch { /* storage unavailable — restore just won't persist */ }
     return () => {
       // Fallback — if the page unmounts, leave the attribute cleared so any
       // future /design preview routes don't inherit a stale tab value.

@@ -8,6 +8,7 @@ import {
   renderGroupCanvas,
   type ReceiptInput,
 } from '@/lib/receiptTemplate';
+import { markExternalExcursion } from '@/lib/excursion';
 
 interface ReceiptSheetProps {
   open: boolean;
@@ -80,6 +81,9 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
       const navAny = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean; share?: (data: { files: File[] }) => Promise<void> };
       if (navAny.canShare?.({ files: [file] }) && navAny.share) {
         nativeShareTried = true;
+        // iOS may evict the PWA while the share sheet / image preview is open;
+        // mark the excursion so returning restores this (Admin) tab, not Home.
+        markExternalExcursion();
         await navAny.share({ files: [file] });
         return;
       }
@@ -94,6 +98,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
       const a = document.createElement('a');
       a.href = imageDataUrl;
       a.download = 'bpm-receipt.png';
+      markExternalExcursion();
       a.click();
     } catch {
       setActionError('Couldn’t download — try Copy text instead.');
