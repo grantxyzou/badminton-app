@@ -45,35 +45,44 @@ export default function CardSkeleton({
  * blocks, matching the real layout's order and rough heights. Renders instantly
  * on mount so the structure is stable before data lands.
  */
+/**
+ * Home tab BODY skeleton — mirrors HomeTab's real card stack so nothing shifts
+ * when data lands: the Location|When tile row, the announcement/cost card, then
+ * the tall sign-up card. Heights match the live cards (measured ≈108 / 120 /
+ * 210). HomeTab renders the real `<PageHeader>` above this, so there is no
+ * header strip here — the header slot is the real component, not a shimmer.
+ */
 export function TabSkeleton() {
   return (
     <div className="space-y-5" role="status" aria-label="Loading">
-      <div className="shimmer-line rounded-lg" style={{ height: 26, width: '55%' }} />
+      {/* tile row: Location | When */}
       <div className="grid grid-cols-2 gap-3">
-        <CardSkeleton height={72} />
-        <CardSkeleton height={72} />
+        <CardSkeleton height={108} />
+        <CardSkeleton height={108} />
       </div>
-      <CardSkeleton height={110} />
-      <CardSkeleton height={140} />
+      {/* announcement / cost card */}
+      <CardSkeleton height={120} />
+      {/* sign-up card */}
+      <CardSkeleton height={210} />
     </div>
   );
 }
 
 /**
- * Admin Command Center body skeleton — reserves the dashboard's rough
- * footprint (hero + tile row + a card) while admin auth resolves or the
- * console data loads, so the view fades in instead of popping from blank.
- * The page title is rendered separately by the caller's `<PageHeader>`.
+ * Admin dashboard BODY skeleton — mirrors the console's real stack (two action
+ * rows + the tall content block + a section), so the view reserves its shape
+ * while auth resolves / data loads. Heights track the live layout (measured
+ * action rows ≈64–72, content block tall, section ≈180). The page title is
+ * rendered separately by the caller's `<PageHeader>` / `<AdminBackHeader>`, so
+ * there is no header strip here.
  */
 export function AdminTabSkeleton() {
   return (
     <div className="space-y-4" role="status" aria-label="Loading">
-      <CardSkeleton height={120} />
-      <div className="grid grid-cols-2 gap-3">
-        <CardSkeleton height={80} />
-        <CardSkeleton height={80} />
-      </div>
-      <CardSkeleton height={160} />
+      <CardSkeleton height={64} />
+      <CardSkeleton height={72} />
+      <CardSkeleton height={280} />
+      <CardSkeleton height={180} />
     </div>
   );
 }
