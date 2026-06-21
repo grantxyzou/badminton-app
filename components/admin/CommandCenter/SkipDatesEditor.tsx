@@ -79,7 +79,7 @@ export default function SkipDatesEditor() {
   if (loading) return <CardSkeleton height={140} />;
 
   return (
-    <section className="glass-card p-4 space-y-3" aria-label="Skip dates">
+    <section className="glass-card p-4 space-y-3 animate-fadeIn" aria-label="Skip dates">
       <header>
         <h3 className="bpm-h3">Skip dates</h3>
         <p className="text-xs text-gray-400 mt-0.5">

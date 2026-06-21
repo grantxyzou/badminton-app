@@ -96,7 +96,7 @@ export default function ETransferRecipientEditor() {
   if (loading) return <CardSkeleton height={120} />;
 
   return (
-    <section className="glass-card p-4 space-y-3" aria-label="E-transfer recipient">
+    <section className="glass-card p-4 space-y-3 animate-fadeIn" aria-label="E-transfer recipient">
       <header>
         <h3 className="bpm-h3">E-transfer recipient</h3>
         <p className="text-xs text-gray-400 mt-0.5">

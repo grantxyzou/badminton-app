@@ -129,6 +129,9 @@ export default function LevelCard() {
   }
 
   return (
+    // Stable wrapper carries the reveal so the fade plays once on load; the
+    // inline Frame remounting on insight updates stays invisible inside it.
+    <div className="animate-fadeIn">
     <Frame>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
         {level.phase && (
@@ -214,5 +217,6 @@ export default function LevelCard() {
         </div>
       )}
     </Frame>
+    </div>
   );
 }

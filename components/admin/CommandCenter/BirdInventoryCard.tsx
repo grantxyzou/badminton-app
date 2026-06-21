@@ -86,7 +86,7 @@ export default function BirdInventoryCard({ onOpen }: BirdInventoryCardProps = {
   const lowStock = stock < 5;
 
   return (
-    <section className="glass-card p-4 space-y-2" aria-label="Bird inventory">
+    <section className="glass-card p-4 space-y-2 animate-fadeIn" aria-label="Bird inventory">
       <h3 className="bpm-h3">Bird inventory</h3>
       <div className="flex items-baseline gap-2">
         <span

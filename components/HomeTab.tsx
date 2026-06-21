@@ -405,6 +405,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         />
       </div>
 
+      {/* Reveal the data cards together on load. Wrapping below the sticky
+          PageHeader keeps the header out of the transform (containing-block
+          trap) while the card stack fades in once when data lands. */}
+      <div className="space-y-5 animate-fadeIn">
       {/* Tile row: Location | Date & Time */}
       <div className="grid grid-cols-2 gap-3">
         {/* Location tile */}
@@ -710,6 +714,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         hasIdentity={hasIdentity}
         etransferEmail={etransferEmail}
       />
+      </div>
       <ReleaseNotesSheet
         open={releaseSheetOpen}
         releases={releases}
