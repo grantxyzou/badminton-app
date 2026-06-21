@@ -58,3 +58,22 @@ export function TabSkeleton() {
     </div>
   );
 }
+
+/**
+ * Admin Command Center body skeleton — reserves the dashboard's rough
+ * footprint (hero + tile row + a card) while admin auth resolves or the
+ * console data loads, so the view fades in instead of popping from blank.
+ * The page title is rendered separately by the caller's `<PageHeader>`.
+ */
+export function AdminTabSkeleton() {
+  return (
+    <div className="space-y-4" role="status" aria-label="Loading">
+      <CardSkeleton height={120} />
+      <div className="grid grid-cols-2 gap-3">
+        <CardSkeleton height={80} />
+        <CardSkeleton height={80} />
+      </div>
+      <CardSkeleton height={160} />
+    </div>
+  );
+}

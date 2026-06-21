@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import type { PlayerSkills as PersistedPlayerSkills } from '@/lib/types';
 import type { PlayerSkills } from '@/components/SkillsRadar';
-import ShuttleLoader from '@/components/ShuttleLoader';
+import RadarSkeleton from '@/components/stats/skeletons/RadarSkeleton';
 import StatsPlaceholder from '@/components/stats/StatsPlaceholder';
 import AttendanceCardLive from '@/components/stats/cards/AttendanceCardLive';
 import StreakSummaryCard from '@/components/stats/StreakSummaryCard';
@@ -225,7 +225,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   if (loading) {
     return (
       <StatsPlaceholder
-        skillProgressionContent={<ShuttleLoader text="Loading skills..." />}
+        skillProgressionContent={<RadarSkeleton />}
         attendanceContent={attendanceContent}
         heroSlot={heroSlot}
         gamePlaySlot={gamePlaySlot} gearContent={gearContent}

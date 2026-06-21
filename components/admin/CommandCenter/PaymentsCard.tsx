@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import ResetAccessSheet from '../ResetAccessSheet';
 import CoverSheet, { type CoverSheetMode } from '../CoverSheet';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { fmtSessionLabel } from '@/lib/fmt';
 import { isFlagOn } from '@/lib/flags';
 import { useReportFetchFailure } from '@/lib/useOnline';
@@ -404,7 +405,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
     }
   }
 
-  if (loading) return null;
+  if (loading) return <CardSkeleton height={240} />;
 
   return (
     <section className="glass-card p-4 space-y-3" aria-label="Payments">

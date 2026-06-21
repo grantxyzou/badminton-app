@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -75,7 +76,7 @@ export default function SkipDatesEditor() {
     void persist(next);
   }
 
-  if (loading) return null;
+  if (loading) return <CardSkeleton height={140} />;
 
   return (
     <section className="glass-card p-4 space-y-3" aria-label="Skip dates">

@@ -151,14 +151,11 @@ export default function PullToRefresh({
         }}
       >
         <span
-          className={refreshing ? 'animate-spin' : undefined}
+          className="ring-spinner"
           style={{
-            display: 'block',
-            width: 16,
-            height: 16,
-            borderRadius: '50%',
-            border: '2px solid var(--accent, #22c55e)',
-            borderTopColor: 'transparent',
+            // Static ring construction lives in `.ring-spinner`; while idle we
+            // suppress its spin and drive rotation/opacity from pull progress.
+            animationPlayState: refreshing ? 'running' : 'paused',
             opacity: refreshing ? 1 : 0.4 + progress * 0.6,
             transform: refreshing ? undefined : `rotate(${progress * 270}deg)`,
           }}
