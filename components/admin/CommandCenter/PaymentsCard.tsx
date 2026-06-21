@@ -408,7 +408,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
   if (loading) return <CardSkeleton height={240} />;
 
   return (
-    <section className="glass-card p-4 space-y-3" aria-label="Payments">
+    <section className="glass-card p-4 space-y-3 animate-fadeIn" aria-label="Payments">
       {/* Session selector — horizontal chips replace the old prev/next
           chevrons AND the standalone RecentSessionsStrip card (merged here).
           Built from the already-loaded `sessions` list (newest-first by id),

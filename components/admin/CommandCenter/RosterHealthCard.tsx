@@ -74,7 +74,7 @@ export default function RosterHealthCard({ onOpen }: RosterHealthCardProps = {})
   }
 
   return (
-    <section className="glass-card p-4 space-y-3" aria-label="Roster health">
+    <section className="glass-card p-4 space-y-3 animate-fadeIn" aria-label="Roster health">
       <h3 className="bpm-h3">Roster health</h3>
       <div className="grid grid-cols-3 gap-3">
         <RosterStat label="Invite list" value={health.inviteListSize} />

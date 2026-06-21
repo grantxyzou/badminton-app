@@ -82,7 +82,7 @@ export default function GameLoggerCard() {
   }
 
   return (
-    <div className="glass-card p-5 space-y-3">
+    <div className="glass-card p-5 space-y-3 animate-fadeIn">
       <CardHeader icon="sports_tennis" title={t('logGameTitle')} subtitle={t('logGameHint')} />
       <button type="button" onClick={() => setOpen(true)} className="cc-btn cc-btn-primary">
         {t('logGameSubmit')}

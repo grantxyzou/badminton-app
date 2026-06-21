@@ -205,7 +205,11 @@ export default function SkillTrendCard() {
   }
 
   // Loading: reserve the radar card's footprint with a skeleton rather than a
-  // blank gap below the Summary segment control.
+  // blank gap below the Summary segment control. Height is a deliberate middle:
+  // the card is short (~240) for a first-time user (empty "rate skills" CTA) and
+  // tall (~835) once there's assessment data, so no fixed height matches both.
+  // We favor the empty case (a new user's first impression) and let the reveal
+  // fade smooth the gentle downward settle for data-rich users.
   if (!loaded) return <CardSkeleton height={320} />;
 
   // Card chrome wraps every state so the section reads consistently.
@@ -246,6 +250,9 @@ export default function SkillTrendCard() {
   const workOn = workOnNext(latest.ratings);
 
   return (
+    // Stable wrapper carries the reveal so the fade plays once on load; the
+    // inline Frame remounting on insight updates stays invisible inside it.
+    <div className="animate-fadeIn">
     <Frame>
       {/* Phase headline + overall */}
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
@@ -354,6 +361,7 @@ export default function SkillTrendCard() {
 
       <CheckInSheet name={activeName} open={checkInOpen} onClose={() => setCheckInOpen(false)} onSaved={load} previous={nowMap} />
     </Frame>
+    </div>
   );
 }
 

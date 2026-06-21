@@ -143,7 +143,7 @@ export default function AdminConsoleHero({ onOpenAdmin }: AdminConsoleHeroProps)
   ].filter(Boolean).length;
 
   return (
-    <div className="admin-hero">
+    <div className="admin-hero animate-fadeIn">
       <span className="badge">Admin console</span>
       <p className="ah-title">
         {needsYou === 0
