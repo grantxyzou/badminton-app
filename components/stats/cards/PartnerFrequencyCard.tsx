@@ -63,7 +63,16 @@ export default function PartnerFrequencyCard() {
       <CardHeader icon="groups" title={t('partnersTitle')} badge={<StatusBadge>Beta</StatusBadge>} />
       {loadError ? (
         <ErrorState message={t('partnersError')} />
-      ) : partners === null ? null : partners.length === 0 ? (
+      ) : partners === null ? (
+        // Loading: shimmer the avatar-row body so the card reserves its shape.
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }} aria-hidden="true">
+          <div className="shimmer-line" style={{ width: 46, height: 46, borderRadius: '50%' }} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="shimmer-line rounded-lg" style={{ height: 11, width: '40%' }} />
+            <div className="shimmer-line rounded-lg" style={{ height: 16, width: '65%' }} />
+          </div>
+        </div>
+      ) : partners.length === 0 ? (
         <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>{t('partnersEmpty')}</p>
       ) : (
         // Hero the #1 partner — in doubles your most-frequent partner is the
