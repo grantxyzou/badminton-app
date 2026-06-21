@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import { getIdentity } from '@/lib/identity';
 import GameLoggerSheet from './GameLoggerSheet';
 import CardHeader from '@/components/primitives/CardHeader';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
@@ -66,7 +67,9 @@ export default function GameLoggerCard() {
     return () => { live = false; };
   }, [identResolved, activeName]);
 
-  if (status === 'loading' || status === 'no-identity') return null;
+  if (status === 'no-identity') return null;
+  // Loading: reserve the card's footprint instead of rendering blank.
+  if (status === 'loading') return <CardSkeleton height={120} />;
 
   if (status === 'error') {
     return (

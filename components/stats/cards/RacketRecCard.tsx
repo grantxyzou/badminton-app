@@ -35,7 +35,9 @@ export default function RacketRecCard({ name }: { name: string }) {
       <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>{t('weRecommend')}</p>
       {loadError ? (
         <ErrorState message={t('recError')} />
-      ) : !loaded ? null : !item ? (
+      ) : !loaded ? (
+        <span className="shimmer-line rounded-lg" style={{ height: 15, width: '70%' }} aria-hidden="true" />
+      ) : !item ? (
         <EmptyState>{t('recEmpty')}</EmptyState>
       ) : (
         <p style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, margin: 0, lineHeight: 1.25 }}>
