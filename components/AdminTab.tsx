@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 import { getIdentity } from '@/lib/identity';
-import ShuttleLoader from './ShuttleLoader';
+import { AdminTabSkeleton } from './primitives/CardSkeleton';
 import AdminDashboard from './admin/AdminDashboard';
 import PinInput from './PinInput';
 import PageHeader from './primitives/PageHeader';
@@ -59,7 +59,7 @@ export default function AdminTab({ onExit }: { onExit: () => void }) {
     return (
       <div className="space-y-5">
         <PageHeader>{pageT('title')}</PageHeader>
-        <ShuttleLoader />
+        <AdminTabSkeleton />
       </div>
     );
   }

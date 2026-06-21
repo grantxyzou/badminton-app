@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -62,7 +63,7 @@ export default function RosterHealthCard({ onOpen }: RosterHealthCardProps = {})
 
   useEffect(() => { void load(); }, [load]);
 
-  if (loading) return null;
+  if (loading) return <CardSkeleton height={130} />;
   if (!health) {
     return (
       <section className="glass-card p-4 space-y-1 opacity-60" aria-label="Roster health">

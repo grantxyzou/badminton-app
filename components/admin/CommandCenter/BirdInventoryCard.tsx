@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useReportFetchFailure } from '@/lib/useOnline';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -61,7 +62,7 @@ export default function BirdInventoryCard({ onOpen }: BirdInventoryCardProps = {
 
   useEffect(() => { void load(); }, [load]);
 
-  if (loading) return null;
+  if (loading) return <CardSkeleton height={120} />;
   // Distinguish a load failure from a genuinely empty inventory — "No data."
   // on a failed fetch is a lying empty state (CLAUDE.md).
   if (loadError) {

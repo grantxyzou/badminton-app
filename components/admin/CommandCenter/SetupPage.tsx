@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import AdminBackHeader from '../AdminBackHeader';
+import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import { normalizeBirdUsages, mergeBirdUsageEdit } from '@/lib/birdUsages';
 import { renderGroupCanvas, renderGroupText, type ReceiptInput } from '@/lib/receiptTemplate';
 import { withLocalTz } from '@/lib/fmt';
@@ -304,7 +305,14 @@ export default function SetupPage({ onBack }: SetupPageProps) {
     a.click();
   }
 
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="animate-slideInRight space-y-3">
+        <AdminBackHeader onBack={onBack} title="Set up session" />
+        <AdminPageSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="animate-slideInRight" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

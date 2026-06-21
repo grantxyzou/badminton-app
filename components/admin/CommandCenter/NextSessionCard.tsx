@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { fmtSessionLabel as fmtDate } from '@/lib/fmt';
 import { isFlagOn } from '@/lib/flags';
 import type { SettledSnapshot } from '@/lib/types';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -154,7 +155,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
 
   useEffect(() => { void load(); }, [load, refreshKey]);
 
-  if (loading) return null;
+  if (loading) return <CardSkeleton height={180} />;
   if (!session) {
     return (
       <section className="glass-card p-4 space-y-1 opacity-60" aria-label="Next session">
