@@ -86,7 +86,7 @@ export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashT
 
   if (!data) {
     return (
-      <div className="cc-dgrid" role="status" aria-label="Loading">
+      <div key="tiles-loading" className="cc-dgrid" role="status" aria-label="Loading">
         <CardSkeleton height={92} />
         <CardSkeleton height={92} />
       </div>
@@ -96,7 +96,7 @@ export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashT
   const birdsAlertClass = data.birdStock < 5 ? 'cc-dcard alert' : data.birdStock < 10 ? 'cc-dcard warn' : 'cc-dcard';
 
   return (
-    <div className="cc-dgrid">
+    <div key="tiles-loaded" className="cc-dgrid animate-fadeIn">
       <button
         type="button"
         className={birdsAlertClass}
