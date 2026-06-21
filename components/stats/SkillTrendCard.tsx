@@ -12,6 +12,7 @@ import { useInsight } from '@/lib/useInsight';
 import InsightChip from '@/components/stats/InsightChip';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import CheckInSheet from './CheckInSheet';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import CardHeader from '@/components/primitives/CardHeader';
@@ -203,7 +204,9 @@ export default function SkillTrendCard() {
     );
   }
 
-  if (!loaded) return null;
+  // Loading: reserve the radar card's footprint with a skeleton rather than a
+  // blank gap below the Summary segment control.
+  if (!loaded) return <CardSkeleton height={320} />;
 
   // Card chrome wraps every state so the section reads consistently.
   const Frame = ({ children }: { children: React.ReactNode }) => (

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import AdminBackHeader from '../AdminBackHeader';
-import { AdminTabSkeleton } from '@/components/primitives/CardSkeleton';
+import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { fmtShortDate } from '@/lib/fmt';
 import { avatarColors } from '@/lib/avatar';
@@ -365,7 +365,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
     return (
       <div className="animate-slideInRight space-y-3">
         <AdminBackHeader onBack={onBack} title="Roster" />
-        <AdminTabSkeleton />
+        <AdminPageSkeleton />
       </div>
     );
   }

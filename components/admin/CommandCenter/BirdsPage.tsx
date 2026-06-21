@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import AdminBackHeader from '../AdminBackHeader';
-import { AdminTabSkeleton } from '@/components/primitives/CardSkeleton';
+import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import { normalizeBirdUsages } from '@/lib/birdUsages';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import AssignUsageSheet from '../AssignUsageSheet';
@@ -340,7 +340,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
     return (
       <div className="animate-slideInRight space-y-3">
         <AdminBackHeader onBack={onBack} title="Birds" />
-        <AdminTabSkeleton />
+        <AdminPageSkeleton />
       </div>
     );
   }
