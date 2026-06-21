@@ -47,7 +47,7 @@ const CRITICAL: Finding[] = [
     sev: 'med',
     title: 'Infinite animations without IntersectionObserver',
     body: (<><b>Battery-only concern on modern hardware.</b> iOS 17+ and Chrome aggressively throttle off-screen / backgrounded animations, so frame-rate cost is near zero. On-screen continuous motion still draws power but background-app throttling makes this &quot;good hygiene,&quot; not urgent.</>),
-    file: 'ShuttleLoader.tsx · globals.css shimmer',
+    file: 'globals.css (.shimmer-line / .ring-spinner)',
     fix: (<>Add <Code>animation-play-state: paused</Code> on loaders once their IntersectionObserver entry is out of view. Polish pass.</>),
   },
   {

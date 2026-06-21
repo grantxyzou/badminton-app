@@ -1508,44 +1508,18 @@ textarea {
   animation: spin 1s linear infinite;
 }
 
-/* ── BPM waveform loader ── */
-.wave-loader {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  height: 48px;
-}
-
-.wave-bar {
-  width: 4px;
-  border-radius: 2px;
-  background: var(--accent);
-  height: 4px;
-  animation: wave-smash 1.6s ease-in-out infinite;
-  animation-delay: var(--delay, 0s);
-}
-
-@keyframes wave-smash {
-  0%, 100% {
-    height: 4px;
-    opacity: 0.3;
-  }
-  15% {
-    height: calc(var(--intensity, 0.5) * 48px);
-    opacity: 0.9;
-  }
-  40% {
-    height: calc(var(--intensity, 0.5) * 20px);
-    opacity: 0.5;
-  }
-  60% {
-    height: calc(var(--intensity, 0.5) * 30px);
-    opacity: 0.7;
-  }
-  80% {
-    height: 6px;
-    opacity: 0.35;
-  }
+/* ── Ring spinner ──
+   The single circular loading spinner — shared by the cold-start splash
+   (.splash-shuttle) and the pull-to-refresh indicator. Size and stroke
+   width come from the --ring-size / --ring-width vars so one definition
+   covers the 48px splash and the 16px refresh dot. */
+.ring-spinner {
+  width: var(--ring-size, 16px);
+  height: var(--ring-size, 16px);
+  border: var(--ring-width, 2px) solid var(--accent, #22c55e);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
 }
 
 /* ── Shimmer loader ── */
@@ -1658,7 +1632,7 @@ textarea {
 
 /* ── Reduced motion ──
    The blanket rule below collapses every transition/animation to 0.01ms,
-   but GPU-accelerated elements (aurora blobs, wave-bar, shimmer) still
+   but GPU-accelerated elements (aurora blobs, ring-spinner, shimmer) still
    pay for their `will-change` compositor layers. On mobile this keeps
    the GPU warm even when the animation is effectively frozen. Pause the
    animations outright and drop the compositor hints so the GPU can
@@ -1672,7 +1646,7 @@ textarea {
   .aurora-blob-1,
   .aurora-blob-2,
   .aurora-blob-3,
-  .wave-bar,
+  .ring-spinner,
   .shimmer-line,
   .splash-shuttle,
   .splash {
@@ -1941,13 +1915,11 @@ html[data-hydrated="true"] .splash {
   0%, 92% { opacity: 1; visibility: visible; }
   100%    { opacity: 0; visibility: hidden; }
 }
+/* Splash uses the shared .ring-spinner (see layout.tsx) — this only sets its
+   size/stroke. The 48px ring + accent stroke is the cold-start spinner. */
 .splash-shuttle {
-  width: 48px;
-  height: 48px;
-  border: 3px solid var(--accent, #4ade80);
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: splash-spin 0.9s linear infinite;
+  --ring-size: 48px;
+  --ring-width: 3px;
 }
 .splash-title {
   font-family: var(--font-display);
@@ -1960,9 +1932,6 @@ html[data-hydrated="true"] .splash {
   font-size: 0.875rem;
   opacity: 0.7;
   margin: 0;
-}
-@keyframes splash-spin {
-  to { transform: rotate(360deg); }
 }
 @media (prefers-reduced-motion: reduce) {
   .splash-shuttle { animation: none; }

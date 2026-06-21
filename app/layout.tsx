@@ -115,7 +115,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <PreviewBanner />
         {/* Cold-start splash — hidden by CSS once HydrationMark sets data-hydrated */}
         <div className="splash" aria-hidden="true">
-          <div className="splash-shuttle" />
+          <div className="splash-shuttle ring-spinner" />
           <h1 className="splash-title">BPM Badminton</h1>
           <p className="splash-tagline">Weekly sessions</p>
         </div>

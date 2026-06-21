@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -83,7 +84,14 @@ export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashT
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="cc-dgrid" role="status" aria-label="Loading">
+        <CardSkeleton height={92} />
+        <CardSkeleton height={92} />
+      </div>
+    );
+  }
 
   const birdsAlertClass = data.birdStock < 5 ? 'cc-dcard alert' : data.birdStock < 10 ? 'cc-dcard warn' : 'cc-dcard';
 

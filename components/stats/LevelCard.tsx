@@ -10,6 +10,7 @@ import { isFlagOn } from '@/lib/flags';
 import { useInsight } from '@/lib/useInsight';
 import InsightChip from '@/components/stats/InsightChip';
 import CardHeader from '@/components/primitives/CardHeader';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 import StatusBadge from '@/components/primitives/StatusBadge';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -85,7 +86,10 @@ export default function LevelCard() {
 
   useEffect(() => { load(); }, [load]);
 
-  if (!activeName || !loaded) return null;
+  if (!activeName) return null;
+  // Loading: reserve the card's footprint with a skeleton instead of a blank
+  // gap (the Stats Summary used to render nothing here until data landed).
+  if (!loaded) return <CardSkeleton height={120} />;
 
   const Frame = ({ children }: { children: React.ReactNode }) => (
     <div className="glass-card p-5 space-y-3">

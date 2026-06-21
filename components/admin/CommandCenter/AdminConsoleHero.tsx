@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import CardSkeleton from '@/components/primitives/CardSkeleton';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -128,7 +129,7 @@ export default function AdminConsoleHero({ onOpenAdmin }: AdminConsoleHeroProps)
     );
   }
 
-  if (!data) return null;
+  if (!data) return <CardSkeleton height={150} />;
 
   // "X things need you" — count the actionable signals. Birds with NO
   // burn-rate data (fresh install, no usage logged yet) get an 'awaiting'

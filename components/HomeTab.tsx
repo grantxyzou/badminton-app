@@ -355,10 +355,16 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   }
 
   if (loading) {
-    // Structural skeleton (header + tile row + cards) so the page keeps its
-    // shape and fills in top-to-bottom instead of flashing a centered loader
-    // then snapping the whole layout in at once.
-    return <TabSkeleton />;
+    // Render the REAL header (its slot is static text, no data) and skeleton
+    // only the data cards below it — same pattern as PlayersTab — so the page
+    // keeps its exact shape and fills in top-to-bottom instead of flashing a
+    // generic block then snapping the layout in.
+    return (
+      <div className="space-y-5">
+        <PageHeader>BPM Badminton</PageHeader>
+        <TabSkeleton />
+      </div>
+    );
   }
 
   const mapsUrl = session?.locationAddress
