@@ -187,6 +187,14 @@
       "adminAccess": "Admin access",
       "logout": "Log out",
       "reportProblem": "Report a problem"
+    },
+    "unpaid": {
+      "title": "Outstanding payments",
+      "outstanding": "You have <amount></amount> outstanding",
+      "sessionsCount": "across {count, plural, =1 {# session} other {# sessions}}",
+      "mostRecent": "Most recent · {date}",
+      "verify": "Please verify with your e-transfer statement.",
+      "loadError": "Couldn't load — refresh to retry."
     }
   },
   "report": {

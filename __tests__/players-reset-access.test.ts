@@ -4,14 +4,14 @@ import {
   resetMockStore,
   seedPointer,
   seedSession,
-  seedPlayer,
+  seedMember,
   setupAdminPin,
   adminCookieValue,
   makeRequest,
   makeAdminRequest,
   seedAdminMember,
+  getStore,
 } from './helpers';
-import { __resetForTests } from '@/lib/recoveryCodes';
 
 const SESSION = 'session-2026-04-27';
 const URL_PATH = 'http://localhost:3000/api/players/reset-access';
@@ -20,53 +20,66 @@ beforeEach(() => {
   resetMockStore();
   seedAdminMember();
   setupAdminPin();
-  __resetForTests();
   seedPointer(SESSION);
   seedSession(SESSION);
-  process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'true';
 });
 
 describe('POST /api/players/reset-access', () => {
   it('returns 401 for non-admin (no cookie)', async () => {
-    const player = seedPlayer(SESSION, 'Michael');
-    const res = await POST(makeRequest('POST', URL_PATH, { playerId: player.id }));
+    seedMember('Michael');
+    const res = await POST(makeRequest('POST', URL_PATH, { name: 'Michael' }));
     expect(res.status).toBe(401);
   });
 
-  it('mints a 6-digit code for a valid player', async () => {
-    const player = seedPlayer(SESSION, 'Michael');
-    const res = await POST(makeAdminRequest('POST', URL_PATH, { playerId: player.id }));
+  it('mints a 6-digit code for a member by name and stores it on the member doc', async () => {
+    const member = seedMember('Michael');
+    const res = await POST(makeAdminRequest('POST', URL_PATH, { name: 'Michael' }));
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.code).toMatch(/^[0-9]{6}$/);
     expect(typeof data.expiresAt).toBe('number');
     expect(data.expiresAt).toBeGreaterThan(Date.now());
+
+    // Code persists on the member doc (survives cold starts).
+    const stored = (getStore()['members'] as Array<{ id: string; recoveryCode?: unknown }>).find(
+      (m) => m.id === member.id,
+    );
+    expect(stored?.recoveryCode).toBeTruthy();
   });
 
-  it('rejects soft-deleted player with 409', async () => {
-    const player = seedPlayer(SESSION, 'Michael', { removed: true });
-    const res = await POST(makeAdminRequest('POST', URL_PATH, { playerId: player.id }));
-    expect(res.status).toBe(409);
+  it('works for a member who is NOT signed up for the active session', async () => {
+    // The whole point of the fix: no player record is needed.
+    seedMember('Riley');
+    const res = await POST(makeAdminRequest('POST', URL_PATH, { name: 'Riley' }));
+    expect(res.status).toBe(200);
   });
 
-  it('returns 404 when player does not exist', async () => {
-    const res = await POST(makeAdminRequest('POST', URL_PATH, { playerId: 'nonexistent' }));
+  it('matches the member case-insensitively', async () => {
+    seedMember('Michael');
+    const res = await POST(makeAdminRequest('POST', URL_PATH, { name: 'michael' }));
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 404 when no member exists for that name', async () => {
+    const res = await POST(makeAdminRequest('POST', URL_PATH, { name: 'Nobody' }));
     expect(res.status).toBe(404);
   });
 
+  it('returns 400 when name is missing', async () => {
+    const res = await POST(makeAdminRequest('POST', URL_PATH, {}));
+    expect(res.status).toBe(400);
+  });
+
   it('rate-limits at 10 requests/hour from same IP', async () => {
-    const player = seedPlayer(SESSION, 'Michael');
+    seedMember('Michael');
     const cookie = `admin_session=${adminCookieValue()}`;
     const headers = { Cookie: cookie, 'X-Client-IP': '10.0.0.99' };
 
     for (let i = 0; i < 10; i++) {
-      const res = await POST(makeRequest('POST', URL_PATH, { playerId: player.id }, headers));
+      const res = await POST(makeRequest('POST', URL_PATH, { name: 'Michael' }, headers));
       expect(res.status).toBe(200);
     }
-    const res = await POST(makeRequest('POST', URL_PATH, { playerId: player.id }, headers));
+    const res = await POST(makeRequest('POST', URL_PATH, { name: 'Michael' }, headers));
     expect(res.status).toBe(429);
   });
-
-  // Note: the "returns 404 when flag is off" test was removed when the
-  // recovery flag was retired. The endpoint is now unconditionally active.
 });

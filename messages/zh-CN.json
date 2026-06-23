@@ -187,6 +187,14 @@
       "adminAccess": "管理员访问",
       "logout": "退出登录",
       "reportProblem": "报告问题"
+    },
+    "unpaid": {
+      "title": "待付款",
+      "outstanding": "你共有 <amount></amount> 未付",
+      "sessionsCount": "共 {count} 场活动",
+      "mostRecent": "最近一次 · {date}",
+      "verify": "请对照你的转账记录核实。",
+      "loadError": "加载失败——请刷新重试。"
     }
   },
   "report": {

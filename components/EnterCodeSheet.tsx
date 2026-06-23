@@ -11,9 +11,16 @@ interface Props {
   open: boolean;
   onClose: () => void;
   sessionId: string;
+  /**
+   * Called after a successful code redemption. The recovery code clears the
+   * user's old PIN server-side, so the parent should immediately walk them
+   * into setting a new one (RecoveryPinSheet first-set mode). When provided,
+   * this sheet hands off instead of showing its own welcome toast.
+   */
+  onRecovered?: (name: string) => void;
 }
 
-export default function EnterCodeSheet({ open, onClose, sessionId }: Props) {
+export default function EnterCodeSheet({ open, onClose, sessionId, onRecovered }: Props) {
   const t = useTranslations('recovery');
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -42,8 +49,17 @@ export default function EnterCodeSheet({ open, onClose, sessionId }: Props) {
       if (res.status >= 500) { setError('server'); return; }
       if (!res.ok) { setError('invalid'); return; }
       const body = await res.json();
-      setIdentity({ name: name.trim(), token: body.deleteToken, sessionId });
-      setSuccess(name.trim());
+      const recoveredName = name.trim();
+      setIdentity({ name: recoveredName, token: body.deleteToken, sessionId });
+      if (onRecovered) {
+        // Hand off to the parent to prompt a new PIN (the old one was just
+        // cleared). Reset local fields so a reopen starts clean.
+        setName('');
+        setCode('');
+        onRecovered(recoveredName);
+        return;
+      }
+      setSuccess(recoveredName);
       setTimeout(() => { onClose(); setSuccess(null); }, 1500);
     } catch {
       // Network failure (fetch rejects) — also not the user's fault.

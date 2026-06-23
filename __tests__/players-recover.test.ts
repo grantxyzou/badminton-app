@@ -5,6 +5,7 @@ import {
   seedPointer,
   seedSession,
   seedPlayer,
+  seedMember,
   setupAdminPin,
   adminCookieValue,
   makeRequest,
@@ -12,18 +13,16 @@ import {
   getStore,
 } from './helpers';
 import { hashPin } from '@/lib/recoveryHash';
-import { issueCode, __resetForTests } from '@/lib/recoveryCodes';
+import { issueRecoveryCode } from '@/lib/memberRecoveryCode';
 
 const SESSION = 'session-2026-04-27';
 const URL_PATH = 'http://localhost:3000/api/players/recover';
 
 beforeEach(() => {
   resetMockStore();
-  __resetForTests();
   setupAdminPin();
   seedPointer(SESSION);
   seedSession(SESSION);
-  process.env.NEXT_PUBLIC_FLAG_RECOVERY = 'true';
 });
 
 describe('POST /api/players/recover', () => {
@@ -65,9 +64,10 @@ describe('POST /api/players/recover', () => {
     expect(res.cookies.get('member_session')?.value).toBeTruthy();
   });
 
-  it('Code success: consumes a valid issued code', async () => {
-    const player = seedPlayer(SESSION, 'Sarah', { deleteToken: 'old-token' });
-    const { code } = await issueCode(player.id, SESSION);
+  it('Code success: consumes a member-scoped code and mints a fresh token when signed up', async () => {
+    const { code, stored } = await issueRecoveryCode();
+    seedMember('Sarah', { recoveryCode: stored });
+    seedPlayer(SESSION, 'Sarah', { deleteToken: 'old-token' });
 
     const res = await POST(
       makeRequest('POST', URL_PATH, { name: 'Sarah', sessionId: SESSION, code }),
@@ -77,20 +77,71 @@ describe('POST /api/players/recover', () => {
     expect(data.deleteToken).toMatch(/^[0-9a-f]{32}$/);
   });
 
-  it('Code success mints a member_session cookie — the post-reset PIN sheet needs identity proof', async () => {
-    const { seedMember } = await import('./helpers');
+  it('Code success mints a member_session cookie and clears the PIN + code', async () => {
     const oldHash = await hashPin('1234');
-    seedMember('Sarah', { pinHash: oldHash });
-    const player = seedPlayer(SESSION, 'Sarah', { deleteToken: 'old-token' });
-    const { code } = await issueCode(player.id, SESSION);
+    const { code, stored } = await issueRecoveryCode();
+    const member = seedMember('Sarah', { pinHash: oldHash, recoveryCode: stored });
+    seedPlayer(SESSION, 'Sarah', { deleteToken: 'old-token' });
 
     const res = await POST(
       makeRequest('POST', URL_PATH, { name: 'Sarah', sessionId: SESSION, code }),
     );
     expect(res.status).toBe(200);
-    // Consuming the code clears the PIN; the minted cookie is what lets the
-    // user pass the members/me first-set guard when they choose a new PIN.
+    // The minted cookie lets the user pass the members/me first-set guard.
     expect(res.cookies.get('member_session')?.value).toBeTruthy();
+
+    // PIN cleared and code consumed (single-use).
+    const stm = (getStore()['members'] as Array<{ id: string; pinHash?: string; recoveryCode?: unknown }>).find(
+      (m) => m.id === member.id,
+    );
+    expect(stm?.pinHash).toBe('');
+    expect(stm?.recoveryCode).toBeUndefined();
+  });
+
+  it('Code success works for a member NOT signed up (deleteToken null, cookie set)', async () => {
+    const oldHash = await hashPin('1234');
+    const { code, stored } = await issueRecoveryCode();
+    seedMember('Riley', { pinHash: oldHash, recoveryCode: stored });
+    // No player record for the active session.
+
+    const res = await POST(
+      makeRequest('POST', URL_PATH, { name: 'Riley', sessionId: SESSION, code }),
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.deleteToken).toBeNull();
+    expect(res.cookies.get('member_session')?.value).toBeTruthy();
+
+    // No phantom session player gets created by recovery.
+    const players = (getStore()['players'] ?? []) as Array<{ name: string }>;
+    expect(players.find((p) => p.name === 'Riley')).toBeUndefined();
+  });
+
+  it('Wrong code → 401 invalid_credentials', async () => {
+    const { stored } = await issueRecoveryCode();
+    seedMember('Riley', { recoveryCode: stored });
+    const res = await POST(
+      makeRequest('POST', URL_PATH, { name: 'Riley', sessionId: SESSION, code: '000000' }),
+    );
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(data.error).toBe('invalid_credentials');
+  });
+
+  it('Expired code → 401', async () => {
+    const { code, stored } = await issueRecoveryCode();
+    seedMember('Riley', { recoveryCode: { ...stored, expiresAt: Date.now() - 1000 } });
+    const res = await POST(
+      makeRequest('POST', URL_PATH, { name: 'Riley', sessionId: SESSION, code }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('Code path with no member → 401 (constant-time miss)', async () => {
+    const res = await POST(
+      makeRequest('POST', URL_PATH, { name: 'Ghost', sessionId: SESSION, code: '123456' }),
+    );
+    expect(res.status).toBe(401);
   });
 
   it('Wrong PIN: 401 invalid_credentials', async () => {
