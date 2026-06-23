@@ -146,6 +146,9 @@ export default function ProfileTab({
   const [paidThisWeek, setPaidThisWeek] = useState(false);
   const [prevOwe, setPrevOwe] = useState<number | null>(null);
   const [sessionDatetime, setSessionDatetime] = useState<string | null>(null);
+  // Whether the active session is settled (cost frozen). When false, the
+  // "this week" figure is a live estimate — say so rather than asserting "owe".
+  const [settledThisWeek, setSettledThisWeek] = useState(false);
 
   useEffect(() => {
     if (!identity) {
@@ -153,6 +156,7 @@ export default function ProfileTab({
       setPaidThisWeek(false);
       setPrevOwe(null);
       setSessionDatetime(null);
+      setSettledThisWeek(false);
       return;
     }
     let cancelled = false;
@@ -167,6 +171,7 @@ export default function ProfileTab({
         const players = (await pRes.json()) as Array<{ name?: string; removed?: boolean; waitlisted?: boolean; paid?: boolean }>;
         if (cancelled) return;
         setSessionDatetime(typeof session.datetime === 'string' ? session.datetime : null);
+        setSettledThisWeek(!!session.settled);
         const active = players.filter((p) => !p.removed && !p.waitlisted);
         const me = active.find((p) => typeof p.name === 'string' && p.name.toLowerCase() === identity.name.toLowerCase());
         const courtTotal = (session.costPerCourt ?? 0) * (session.courts ?? 0);
@@ -319,6 +324,7 @@ export default function ProfileTab({
         nameLabel={t('playerName')}
         oweThisWeek={oweThisWeek}
         paidThisWeek={paidThisWeek}
+        settledThisWeek={settledThisWeek}
         prevOwe={prevOwe}
         sessionDatetime={sessionDatetime}
       />
@@ -490,6 +496,9 @@ interface ProfileIdentityCardProps {
   oweThisWeek: number | null;
   /** Whether the viewer's player record is marked paid for the active session. */
   paidThisWeek: boolean;
+  /** Whether the active session is settled (cost frozen). When false the
+   *  "this week" amount is a live estimate, shown as such. */
+  settledThisWeek: boolean;
   /** Frozen last-session per-person snapshot, if public; null otherwise. */
   prevOwe: number | null;
   /** Active session datetime (ISO) for the cost row's date/time line. */
@@ -512,7 +521,7 @@ function fmtSessionWhen(iso: string | null): string | null {
   }
 }
 
-function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameLabel, oweThisWeek, paidThisWeek, prevOwe, sessionDatetime }: ProfileIdentityCardProps) {
+function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameLabel, oweThisWeek, paidThisWeek, settledThisWeek, prevOwe, sessionDatetime }: ProfileIdentityCardProps) {
   const ava = profileAvaColors(name);
   const memberSince = fmtMemberSince(memberCreatedAt);
   const showCostRow = oweThisWeek !== null || prevOwe !== null;
@@ -631,12 +640,19 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameL
                 {sessionWhen && (
                   <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{sessionWhen}</p>
                 )}
+                {!paidThisWeek && !settledThisWeek && (
+                  <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>Not finalized yet</p>
+                )}
               </div>
               {paidThisWeek ? (
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent, #22c55e)' }}>Paid ✓</span>
-              ) : (
+              ) : settledThisWeek ? (
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                   You owe {fmtMoney(oweThisWeek)}
+                </span>
+              ) : (
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                  Est. ~{fmtMoney(oweThisWeek)}
                 </span>
               )}
             </div>

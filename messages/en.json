@@ -71,7 +71,8 @@
     "loading": "Loading session...",
     "cost": {
       "label": "Estimated cost",
-      "emphasis": "Cost this week: <amount>{value}</amount>"
+      "emphasis": "Cost this week: <amount>{value}</amount>",
+      "notFinalized": "Not finalized — the final cost is set after the session, and changes as more players join."
     },
     "session": {
       "date": "When",

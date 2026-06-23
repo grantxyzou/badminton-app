@@ -453,6 +453,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         showCostBreakdown={effectiveSession?.showCostBreakdown}
         perPersonCost={perPersonCost}
         datetime={effectiveSession?.datetime}
+        finalized={!!effectiveSession?.settled}
       />
 
       {/* Announcement card — pure club communications surface. */}

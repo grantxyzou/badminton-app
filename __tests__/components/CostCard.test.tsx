@@ -25,6 +25,37 @@ describe('CostCard', () => {
     expect(screen.getByText('~$11.25')).toBeTruthy();
   });
 
+  it('shows the "not finalized" caveat and ~ prefix when unsettled (default)', () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <CostCard
+          showCostBreakdown={true}
+          perPersonCost={11.25}
+          datetime="2026-04-18T19:00:00-04:00"
+          finalized={false}
+        />
+      </NextIntlClientProvider>
+    );
+    expect(screen.getByText(/Not finalized/i)).toBeTruthy();
+    expect(screen.getByText('~$11.25')).toBeTruthy();
+  });
+
+  it('drops the caveat and the ~ prefix once finalized (settled)', () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <CostCard
+          showCostBreakdown={true}
+          perPersonCost={11.25}
+          datetime="2026-04-18T19:00:00-04:00"
+          finalized={true}
+        />
+      </NextIntlClientProvider>
+    );
+    expect(screen.queryByText(/Not finalized/i)).toBeNull();
+    expect(screen.getByText('$11.25')).toBeTruthy();
+    expect(screen.queryByText('~$11.25')).toBeNull();
+  });
+
   it('renders nothing when showCostBreakdown is false', () => {
     const { container } = render(
       <NextIntlClientProvider locale="en" messages={enMessages}>
