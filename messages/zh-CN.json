@@ -71,7 +71,8 @@
     "loading": "正在加载活动…",
     "cost": {
       "label": "预估费用",
-      "emphasis": "本周费用：<amount>{value}</amount>"
+      "emphasis": "本周费用：<amount>{value}</amount>",
+      "notFinalized": "尚未确定——最终费用在活动结束后结算，并会随报名人数增加而变动。"
     },
     "session": {
       "date": "时间",
