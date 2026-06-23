@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import AdminBackHeader from '../AdminBackHeader';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import ResetAccessSheet from '../ResetAccessSheet';
 import { fmtShortDate } from '@/lib/fmt';
 import { avatarColors } from '@/lib/avatar';
 import type { Member, Alias } from '@/lib/types';
@@ -95,6 +96,12 @@ export default function RosterPage({ onBack }: RosterPageProps) {
   const [savingForm, setSavingForm] = useState(false);
   const [deletingForm, setDeletingForm] = useState(false);
   const [formError, setFormError] = useState('');
+  const [resettingPin, setResettingPin] = useState(false);
+  // Reset-access code sheet — issued against the member by name, so it works
+  // for anyone in the roster whether or not they're signed up this week.
+  const [resetSheet, setResetSheet] = useState<{
+    open: boolean; playerName: string; code: string; expiresAt: number;
+  }>({ open: false, playerName: '', code: '', expiresAt: 0 });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -333,6 +340,33 @@ export default function RosterPage({ onBack }: RosterPageProps) {
       setFormError('Network error.');
     } finally {
       setSavingForm(false);
+    }
+  }
+
+  async function handleResetPin() {
+    const name = formName.trim();
+    if (!name) { setFormError('Name required.'); return; }
+    if (!confirm(`Generate a PIN-reset code for ${name}?\n\nThey can use it to set a new PIN — no need to be signed up. The code expires in 15 minutes.`)) return;
+    setResettingPin(true);
+    setFormError('');
+    try {
+      const res = await fetch(`${BASE}/api/players/reset-access`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setFormError(data.error ?? `Failed to generate code (${res.status}).`);
+        return;
+      }
+      const body = await res.json();
+      setSheetOpen(false);
+      setResetSheet({ open: true, playerName: name, code: body.code, expiresAt: body.expiresAt });
+    } catch {
+      setFormError('Network error.');
+    } finally {
+      setResettingPin(false);
     }
   }
 
@@ -687,6 +721,22 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                   />
                   <span>Active</span>
                 </label>
+
+                <Field label="PIN reset">
+                  <button
+                    type="button"
+                    onClick={handleResetPin}
+                    disabled={savingForm || deletingForm || resettingPin}
+                    className="cc-btn cc-btn-secondary"
+                    style={{ alignSelf: 'flex-start' }}
+                  >
+                    {resettingPin ? 'Generating…' : 'Generate reset code'}
+                  </button>
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                    For a player who forgot their PIN. Give them the code — they enter it under
+                    Profile → &ldquo;Have a recovery code?&rdquo; to set a new PIN. No signup needed.
+                  </p>
+                </Field>
               </>
             )}
 
@@ -730,6 +780,14 @@ export default function RosterPage({ onBack }: RosterPageProps) {
           </div>
         </BottomSheetBody>
       </BottomSheet>
+
+      <ResetAccessSheet
+        open={resetSheet.open}
+        onClose={() => setResetSheet((r) => ({ ...r, open: false }))}
+        playerName={resetSheet.playerName}
+        code={resetSheet.code}
+        expiresAt={resetSheet.expiresAt}
+      />
     </div>
   );
 }

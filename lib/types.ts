@@ -138,6 +138,16 @@ export interface Member {
    * a PIN cannot use admin login.
    */
   pinHash?: string;
+  /**
+   * Admin-issued PIN-reset code, persisted on the member so it survives cold
+   * starts (the previous in-memory map lost codes when the B1 dyno slept).
+   * `hash` is scrypt("salt:hash"); single active code per member; consumed
+   * (deleted) on a successful `/api/players/recover` code redemption. Like
+   * `pinHash`, this is a STRIP-CANARY — never send it to a client.
+   */
+  recoveryCode?: { hash: string; expiresAt: number };
+  /** Audit trail of recovery-related events (issue / redeem / fail). */
+  recoveryEvents?: RecoveryEvent[];
   /** Admin-only: organizer's default e-transfer recipient, used by the receipt export. */
   eTransferRecipient?: ETransferRecipient;
   /** Admin-only: dates (YYYY-MM-DD) the admin has marked as skipped. Used by the skip_date anomaly. */

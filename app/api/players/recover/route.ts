@@ -4,7 +4,7 @@ import { setAdminCookie, clearAdminCookie, setMemberCookie } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer } from '@/lib/cosmos';
 import { verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
-import { consumeCode } from '@/lib/recoveryCodes';
+import { verifyRecoveryCode } from '@/lib/memberRecoveryCode';
 import { appendEvent } from '@/lib/recoveryAudit';
 
 /**
@@ -179,37 +179,11 @@ async function handlePost(req: NextRequest) {
   }
 
   // === Code path ===========================================================
-  // Recovery codes are still player-scoped — they're issued against a
-  // specific player.id by `/api/players/reset-access`.
-  if (!player) {
-    await verifyPin(code!, FAKE_HASH);
-    return FAIL();
-  }
-
-  const ok = await consumeCode(player.id, code!);
-  if (!ok) {
-    const updatedEvents = appendEvent(player.recoveryEvents, {
-      event: 'recovery-failed',
-      at: new Date().toISOString(),
-      reason: 'wrong_code',
-    });
-    await playersContainer.items.upsert({ ...player, recoveryEvents: updatedEvents });
-    return FAIL();
-  }
-
-  const newDeleteToken = randomBytes(16).toString('hex');
-  const updatedEvents = appendEvent(player.recoveryEvents, {
-    event: 'recovered-via-code',
-    at: new Date().toISOString(),
-  });
-
-  // Clear the member's canonical PIN hash — the user reached this path
-  // because they forgot the PIN and asked admin for a reset. Leaving the
-  // old hash active means (a) `hasPin: true` blocks them from setting a
-  // new one (RecoveryPinSheet demands the current PIN they don't know),
-  // and (b) anyone who knew the pre-reset PIN could still authenticate.
-  // Clearing here makes the next Profile → "Set PIN" flow render in 2-
-  // field mode (no current-PIN prompt).
+  // Recovery codes are MEMBER-scoped (stored on the member doc by
+  // `/api/players/reset-access`), so redemption no longer requires the user to
+  // be signed up for the active session — recovery is an account operation,
+  // not a session one. A session player is optional: when one exists we also
+  // mint a fresh deleteToken so the user regains self-cancel on their spot.
   const { resources: members } = await membersContainer.items
     .query({
       query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
@@ -217,25 +191,59 @@ async function handlePost(req: NextRequest) {
     })
     .fetchAll();
   const member = members[0] ?? null;
-  if (member) {
-    await membersContainer.items.upsert({ ...member, pinHash: '' });
+
+  if (!member) {
+    // Constant-time miss so attackers can't enumerate members via timing.
+    await verifyPin(code!, FAKE_HASH);
+    return FAIL();
   }
 
-  await playersContainer.items.upsert({
-    ...player,
-    deleteToken: newDeleteToken,
-    recoveryEvents: updatedEvents,
-    // Keep the per-player mirror in sync with the canonical store.
+  const ok = await verifyRecoveryCode(member.recoveryCode, code!);
+  if (!ok) {
+    await membersContainer.items.upsert({
+      ...member,
+      recoveryEvents: appendEvent(member.recoveryEvents, {
+        event: 'recovery-failed',
+        at: new Date().toISOString(),
+        reason: 'wrong_code',
+      }),
+    });
+    return FAIL();
+  }
+
+  // Code matched. Clear it (single-use) and clear the member's canonical PIN
+  // hash — the user reached this path because they forgot the PIN, so any
+  // subsequent "Set PIN" flow should render in 2-field mode (no current-PIN
+  // prompt) and the old PIN must stop authenticating.
+  const { recoveryCode: _consumed, ...memberRest } = member;
+  await membersContainer.items.upsert({
+    ...memberRest,
     pinHash: '',
+    recoveryEvents: appendEvent(member.recoveryEvents, {
+      event: 'recovered-via-code',
+      at: new Date().toISOString(),
+    }),
   });
+
+  // Mint a fresh deleteToken only when a session player exists; otherwise the
+  // user is authenticated but not registered (deleteToken: null), same as the
+  // PIN sign-in path.
+  let newDeleteToken: string | null = null;
+  if (player) {
+    newDeleteToken = randomBytes(16).toString('hex');
+    await playersContainer.items.upsert({
+      ...player,
+      deleteToken: newDeleteToken,
+      // Keep the per-player mirror in sync with the canonical store.
+      pinHash: '',
+    });
+  }
 
   const res = NextResponse.json({ deleteToken: newDeleteToken });
   // Consuming a valid admin-issued recovery code proves identity (same as a PIN
-  // sign-in does on the pin path), so mint the member_session cookie. Without
-  // it the user — who just cleared their PIN — would have no credential for the
-  // members/me first-set guard when they pick a new PIN in the next sheet.
-  if (member) {
-    setMemberCookie(res, String(member.id), String(member.name));
-  }
+  // sign-in does on the pin path), so mint the member_session cookie. This is
+  // what lets the user — who just cleared their PIN — pass the members/me
+  // first-set guard when they pick a new PIN in the next sheet.
+  setMemberCookie(res, String(member.id), String(member.name));
   return res;
 }
