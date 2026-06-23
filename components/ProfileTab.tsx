@@ -6,6 +6,7 @@ import type { Release } from '@/lib/types';
 import EnterCodeSheet from './EnterCodeSheet';
 import CreateAccountSheet from './CreateAccountSheet';
 import RecoveryPinSheet from './RecoveryPinSheet';
+import UnpaidSessionsCard from './UnpaidSessionsCard';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
 import ReportProblemSheet from './ReportProblemSheet';
 import SignInForm from './SignInForm';
@@ -188,6 +189,17 @@ export default function ProfileTab({
     };
   }, [identity]);
 
+  // After a recovery-code redemption, the user's old PIN was cleared server-
+  // side and a member_session cookie was minted. Walk them straight into
+  // setting a new PIN so they leave recovery with a working credential.
+  function handleRecovered() {
+    setEnterCodeOpen(false);
+    setLocalIdentity(getIdentity());
+    setPinIsSet(false); // the code path cleared the PIN → first-set mode
+    setPinAuthed(true); // recover minted the member_session cookie
+    setRecoveryPinOpen(true);
+  }
+
   async function handleLogout() {
     // Single-identity model: logging out as a player also revokes admin
     // status. Otherwise the admin cookie outlived the player session and
@@ -269,6 +281,7 @@ export default function ProfileTab({
           open={enterCodeOpen}
           onClose={() => setEnterCodeOpen(false)}
           sessionId={sessionId}
+          onRecovered={handleRecovered}
         />
         {isAdmin && (
           <div className="glass-card p-5">
@@ -309,6 +322,8 @@ export default function ProfileTab({
         prevOwe={prevOwe}
         sessionDatetime={sessionDatetime}
       />
+
+      <UnpaidSessionsCard name={identity.name} />
 
       {showAdminHero && (
         <>
@@ -363,6 +378,7 @@ export default function ProfileTab({
         open={enterCodeOpen}
         onClose={() => setEnterCodeOpen(false)}
         sessionId={sessionId}
+        onRecovered={handleRecovered}
       />
 
       <ReleaseNotesSheet

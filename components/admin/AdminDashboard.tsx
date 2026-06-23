@@ -191,7 +191,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
     const res = await fetch(`${BASE}/api/players/reset-access`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playerId: player.id }),
+      body: JSON.stringify({ name: player.name }),
     });
     if (!res.ok) {
       alert(`Failed to generate code (${res.status})`);
