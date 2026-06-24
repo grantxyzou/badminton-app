@@ -28,19 +28,20 @@ interface Props {
   /**
    * `profile` (default): renders nothing when the player owes nothing — keeps
    * the Profile tab uncluttered. `home`: occupies the slot the cost estimate
-   * used to hold, so it shows a positive "all paid up" state instead of a gap.
+   * used to hold, so it shows a positive "all paid up" state instead of a gap,
+   * and pads tighter so it sits smaller than the sign-up card below it.
    */
   variant?: 'profile' | 'home';
 }
 
 /**
  * "What do I still owe" surface, shared by Profile and Home so the two can
- * never disagree. Fetches the player's unpaid sessions (settled frozen amounts
- * + computed shares for unsettled past sessions) and shows the total
- * outstanding + most recent unpaid session + a "verify with your e-transfer
- * statement" note. Legible-fail: a load error renders an explicit pill, never a
- * silent "you owe nothing". On `home`, a brief pre-load gap is preferred over
- * flashing "paid up" before the first response (unknown ≠ known-false).
+ * never disagree. Reads like a short invoice: one line per unpaid session
+ * (date + amount), a total, and where to send it. Settled sessions use their
+ * frozen amount; unsettled past sessions use a computed share (see
+ * /api/players/unpaid). Legible-fail: a load error shows an explicit pill,
+ * never a silent "you owe nothing". On `home`, a brief pre-load gap is
+ * preferred over flashing "paid up" before the first response.
  */
 export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props) {
   const t = useTranslations('profile.unpaid');
@@ -91,11 +92,12 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
   const showPaidUp = isHome && owesNothing;
   const title = isHome ? tBal('title') : t('title');
   const titleColor = showPaidUp ? 'var(--accent)' : 'var(--sev-warn, #f59e0b)';
+  const lineItems = data?.sessions ?? [];
 
   return (
     <div
       className="glass-card"
-      style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}
+      style={{ padding: isHome ? 16 : 20, display: 'flex', flexDirection: 'column', gap: 10 }}
     >
       <p className="section-label" style={{ margin: 0, color: titleColor }}>
         {title}
@@ -110,44 +112,42 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
       ) : (
         data && (
           <>
-            <p style={{ margin: 0, fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)' }}>
-              {(isHome ? tBal : t).rich('outstanding', {
-                amount: () => (
-                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
-                    {fmtMoney(data.totalOwed)}
+            {/* Line items — one per unpaid session, no dividers between rows. */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {lineItems.map((s) => (
+                <div
+                  key={s.sessionId}
+                  style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}
+                >
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    {format.dateTime(new Date(s.date), DAY_SHORT)}
                   </span>
-                ),
-              })}
-            </p>
-            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
-              {t('sessionsCount', { count: data.sessionCount })}
-            </p>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                    {fmtMoney(s.owedAmount)}
+                  </span>
+                </div>
+              ))}
+            </div>
 
-            {data.mostRecent && (
-              <div
-                style={{
-                  borderTop: '1px solid var(--inner-card-border)',
-                  paddingTop: 10,
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  justifyContent: 'space-between',
-                  gap: 8,
-                }}
-              >
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  {t('mostRecent', {
-                    date: format.dateTime(new Date(data.mostRecent.date), DAY_SHORT),
-                  })}
-                </span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                  {fmtMoney(data.mostRecent.owedAmount)}
-                </span>
-              </div>
-            )}
+            {/* Total — single hairline rule above, invoice-style. */}
+            <div
+              style={{
+                borderTop: '1px solid var(--inner-card-border)',
+                paddingTop: 10,
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                gap: 8,
+              }}
+            >
+              <span style={{ fontSize: 'var(--fs-md, 14px)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                {(isHome ? tBal : t)('total')}
+              </span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                {fmtMoney(data.totalOwed)}
+              </span>
+            </div>
 
-            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
-              {t('verify')}
-            </p>
             {etransferEmail && (
               <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
                 {tPay('etransfer', { email: etransferEmail })}

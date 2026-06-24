@@ -100,7 +100,7 @@
     },
     "balance": {
       "title": "Your balance",
-      "outstanding": "You owe <amount></amount>",
+      "total": "Total",
       "paidUp": "You're all paid up"
     },
     "releases": {
@@ -195,10 +195,7 @@
     },
     "unpaid": {
       "title": "Outstanding payments",
-      "outstanding": "You have <amount></amount> outstanding",
-      "sessionsCount": "across {count, plural, =1 {# session} other {# sessions}}",
-      "mostRecent": "Most recent · {date}",
-      "verify": "Please verify with your e-transfer statement.",
+      "total": "Total",
       "loadError": "Couldn't load — refresh to retry."
     }
   },
