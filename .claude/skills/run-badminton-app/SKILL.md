@@ -63,6 +63,32 @@ App at **http://localhost:3100/bpm**. The seed creates a signup-open session
 (Fri Jun 5, 11820 Horseshoe Way), 6 invite-list members (Lin has PIN 2468),
 a racket catalog, and skill snapshots — all in memory.
 
+⚠️ **This command sets NO feature flags**, so flag-gated UI (Command Center,
+Ledger, Nav Rail, Settle, Value Hub, the Skill-assessment spine, Kudos, Insight
+Cards) is **dark** — the app looks "behind" bpm-next even though the code is
+identical. To match bpm-next, use the next-mode launch below instead.
+
+## Run as bpm-next (all flags on)
+
+bpm-next builds with `NEXT_PUBLIC_ENV=next` and all 13 `NEXT_PUBLIC_FLAG_*` on.
+Two npm scripts replicate that locally (flag list kept in sync with
+`.github/workflows/deploy-next.yml`):
+
+```bash
+PORT=3100 npm run dev:next:mock   # ★ all vnext features + OFFLINE mock store + seed (safe)
+PORT=3100 npm run dev:next        # all vnext features against the REAL DB in .env.local (mutates prod!)
+```
+
+- **`dev:next:mock`** is the one you almost always want: it prepends
+  `COSMOS_CONNECTION_STRING=` (forces the mock store — wins over `.env.local`
+  because Next doesn't override already-set `process.env`) + the `fresh-thursday`
+  seed, then reuses `dev:next`. Fake data, every feature visible, zero prod risk.
+- **`dev:next`** inherits `.env.local`'s real Cosmos connection — only use it
+  when you deliberately want to see/edit live data.
+- Flags read from `process.env` at runtime in `next dev`, so these take effect
+  immediately (no rebuild). Keep the `dev:next` flag list aligned with
+  `deploy-next.yml` when flags are added/retired — nothing auto-checks it.
+
 ## Drive it with curl (data layer — reliable)
 
 ```bash
