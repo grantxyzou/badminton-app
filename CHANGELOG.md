@@ -54,7 +54,26 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
      Format: `- **Short title** — one-sentence what + why.` See v1.3 below for examples.
      Empty subheadings are fine; delete a section if you don't end up using it. -->
 
-*(empty — everything below shipped to stable in v1.7.)*
+### Added
+
+- **Your balance on Home** — the Home tab now shows what *you* still owe, as a short itemized invoice: a line per unpaid session, then the total. It replaces the rough per-person estimate and adds up every past session you weren't marked paid for, so it's your real running tab — not just one week's guess. The same balance shows on your Profile.
+- **Pull to refresh** — pull down on any tab to refetch the latest sign-ups, cost, and announcements, so you're never looking at a stale screen.
+- **Report a problem** — a "Report a problem" option in Profile lets anyone flag a bug or idea from inside the app; it's saved and emailed straight to the admin.
+- **Bird stock reconciliation** *(admin)* — true up the shuttle count against a physical count in one step, and depleted tubes drop out of the session-create picker so they don't clutter the list.
+
+### Changed
+
+- **Smoother loading** — every tab now loads through one shared skeleton, and cards fade in on the swap instead of popping in out of order.
+- **Log a game any day** — the game-score logger is no longer tied to session day; record a result whenever you played.
+
+### Fixed
+
+- **No accidental zoom on the web app** — pinch and double-tap zoom are off, so the mobile layout stays put.
+- **iOS admin polish** — the date/time pickers, receipt rendering, and the share-sign-up-link flow all behave correctly on iOS now.
+
+### Security
+
+- **PIN reset is member-scoped** — resetting a PIN is now bound to the member it belongs to, closing a gap where a reset wasn't tied to the specific account.
 
 ---
 
