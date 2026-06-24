@@ -69,13 +69,65 @@ describe('GET /api/players/unpaid', () => {
     expect(data.totalOwed).toBe(8);
   });
 
-  it('ignores owed amounts on UNsettled sessions', async () => {
-    seedSession('session-2026-06-15', { datetime: '2026-06-15T19:00:00-04:00' }); // no settled snapshot
-    seedPlayer('session-2026-06-15', 'Lin', { owedAmount: 99, paid: false });
+  it('computes the per-person share for an unsettled PAST priced session', async () => {
+    // $20/court × 2 courts = $40, split across the 4 active attendees = $10 each.
+    // Seeding the full roster matters: seeding only the requester would give a
+    // denominator of 1 → $40 (the trap).
+    const PAST = 'session-2026-05-20';
+    seedSession(PAST, { costPerCourt: 20, courts: 2, datetime: '2026-05-20T19:00:00-04:00' });
+    seedPlayer(PAST, 'Lin', { paid: false });
+    seedPlayer(PAST, 'Viktor', { paid: true }); // paid still counts toward the denominator
+    seedPlayer(PAST, 'Akane', { paid: false });
+    seedPlayer(PAST, 'Kento', { paid: false });
+
+    const res = await get('Lin');
+    const data = await res.json();
+    expect(data.totalOwed).toBe(10);
+    expect(data.mostRecent.sessionId).toBe(PAST);
+  });
+
+  it('contributes 0 for an unsettled past session with no recorded cost', async () => {
+    const PAST = 'session-2026-05-20';
+    seedSession(PAST, { costPerCourt: 0, courts: 0, datetime: '2026-05-20T19:00:00-04:00' });
+    seedPlayer(PAST, 'Lin', { paid: false });
 
     const res = await get('Lin');
     const data = await res.json();
     expect(data.totalOwed).toBe(0);
+  });
+
+  it('never counts the active session via the live compute, even if its datetime is past', async () => {
+    resetMockStore();
+    const ACTIVE_UNSETTLED = 'session-2026-06-20';
+    seedPointer(ACTIVE_UNSETTLED);
+    seedSession(ACTIVE_UNSETTLED, {
+      costPerCourt: 20,
+      courts: 2,
+      datetime: '2026-06-20T19:00:00-04:00',
+    });
+    seedPlayer(ACTIVE_UNSETTLED, 'Lin', { paid: false });
+    seedPlayer(ACTIVE_UNSETTLED, 'Viktor', { paid: false });
+
+    const res = await get('Lin');
+    const data = await res.json();
+    expect(data.totalOwed).toBe(0);
+  });
+
+  it('uses the frozen owedAmount for a settled session, never live cost inputs', async () => {
+    // Absurd live court cost but a small frozen amount — proves the settled
+    // branch reads owedAmount and does not double-count via the live path.
+    const S = 'session-2026-05-10';
+    seedSession(S, {
+      settled: settled(),
+      datetime: '2026-05-10T19:00:00-04:00',
+      costPerCourt: 999,
+      courts: 9,
+    });
+    seedPlayer(S, 'Lin', { owedAmount: 7, paid: false });
+
+    const res = await get('Lin');
+    const data = await res.json();
+    expect(data.sessions.find((x: { sessionId: string }) => x.sessionId === S)?.owedAmount).toBe(7);
   });
 
   it('returns an empty payload when no name is given', async () => {

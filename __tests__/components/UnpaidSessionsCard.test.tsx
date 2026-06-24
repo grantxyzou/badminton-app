@@ -64,4 +64,40 @@ describe('<UnpaidSessionsCard />', () => {
       expect(screen.getByRole('alert')).toBeTruthy();
     });
   });
+
+  it('home variant shows the balance title and owed amount', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          totalOwed: 40,
+          sessionCount: 1,
+          mostRecent: { sessionId: 's1', date: '2026-06-08T19:00:00-04:00', owedAmount: 40 },
+          sessions: [],
+        }),
+        { status: 200 },
+      ),
+    );
+
+    wrap(<UnpaidSessionsCard name="Lin" variant="home" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Your balance')).toBeTruthy();
+    });
+    // $40 appears in both the headline and the most-recent line.
+    expect(screen.getAllByText('$40').length).toBeGreaterThan(0);
+  });
+
+  it('home variant shows a paid-up state when nothing is owed (instead of nothing)', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({ totalOwed: 0, sessionCount: 0, mostRecent: null, sessions: [] }),
+        { status: 200 },
+      ),
+    );
+
+    wrap(<UnpaidSessionsCard name="Lin" variant="home" />);
+    await waitFor(() => {
+      expect(screen.getByText(/all paid up/i)).toBeTruthy();
+    });
+  });
 });

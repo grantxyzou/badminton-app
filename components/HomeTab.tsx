@@ -4,11 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslations, useFormatter } from 'next-intl';
 import type { Session, Player, Announcement, Release } from '@/lib/types';
 import type { DevOverrides } from '@/components/DevPanel';
-import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
 import { getIdentity, setIdentity, clearIdentity, resolveStaleIdentity } from '@/lib/identity';
 import { TabSkeleton } from '@/components/primitives/CardSkeleton';
-import CostCard from '@/components/CostCard';
-import PrevPaymentReminder from '@/components/PrevPaymentReminder';
+import UnpaidSessionsCard from '@/components/UnpaidSessionsCard';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
 import WelcomeCard from './WelcomeCard';
@@ -199,27 +197,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     ? waitlistPlayers.findIndex(p => p.name.toLowerCase() === currentUser.toLowerCase()) + 1
     : 0;
 
-  // Payment calculations — dev overrides let the DevPanel control these values
   const dv = devOverrides;
-  const effectiveSession = dv && session ? {
-    ...session,
-    ...(dv.showCostBreakdown !== undefined ? { showCostBreakdown: dv.showCostBreakdown } : {}),
-    ...(dv.costPerCourt !== undefined ? { costPerCourt: dv.costPerCourt ?? 0 } : {}),
-    ...(dv.courts !== undefined ? { courts: dv.courts } : {}),
-    ...(dv.prevCostPerPerson !== undefined ? { prevCostPerPerson: dv.prevCostPerPerson ?? undefined } : {}),
-    ...(dv.prevCostPerPerson !== undefined && !session.prevSessionDate ? { prevSessionDate: new Date(Date.now() - 7 * 86400000).toISOString() } : {}),
-  } : session;
-  const effectivePlayerCount = dv?.activePlayerCount ?? activePlayers.length;
-
-  const courtTotal = effectiveSession?.costPerCourt && effectiveSession.courts
-    ? effectiveSession.costPerCourt * effectiveSession.courts : 0;
-  const birdTotal = effectiveSession?.showCostBreakdown
-    ? totalBirdCost(normalizeBirdUsages(effectiveSession))
-    : 0;
-  const totalCost = courtTotal + birdTotal;
-  const perPersonCost = totalCost > 0 && effectivePlayerCount > 0
-    ? totalCost / effectivePlayerCount : null;
-  const etransferEmail = process.env.NEXT_PUBLIC_ETRANSFER_EMAIL || null;
 
   // Dev overrides for announcement visibility and signed-up state
   const effectiveAnnouncement = dv?.hasAnnouncement === false ? null
@@ -447,14 +425,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         </div>
       </div>
 
-      {/* Cost per person — standalone card above announcement so cost is
-          visible whether or not the admin has posted an announcement. */}
-      <CostCard
-        showCostBreakdown={effectiveSession?.showCostBreakdown}
-        perPersonCost={perPersonCost}
-        datetime={effectiveSession?.datetime}
-        finalized={!!effectiveSession?.settled}
-      />
+      {/* What the signed-in player still owes — across every past session they
+          weren't marked paid (frozen amount where settled, computed share where
+          not). Replaces the old per-person cost estimate. Same data as the
+          Profile card (shared /api/players/unpaid), so the two always agree. */}
+      {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" />}
 
       {/* Announcement card — pure club communications surface. */}
       {effectiveAnnouncement && (
@@ -704,16 +679,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           }
         }}
         sessionId={session?.id ?? ''}
-      />
-      {/* Payment reminder for previous session — visible whenever the player
-          has identity (i.e. has signed up before), not only when signed up
-          for the current session. Addresses research finding 4.8. */}
-      <PrevPaymentReminder
-        showCostBreakdown={effectiveSession?.showCostBreakdown}
-        prevCostPerPerson={effectiveSession?.prevCostPerPerson}
-        prevSessionDate={effectiveSession?.prevSessionDate}
-        hasIdentity={hasIdentity}
-        etransferEmail={etransferEmail}
       />
       </div>
       <ReleaseNotesSheet
