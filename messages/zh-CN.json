@@ -96,8 +96,12 @@
       "count": "{count, plural, other {# 人已报名}}"
     },
     "payment": {
-      "reminder": "上次活动（{date}）· {amount}/人",
       "etransfer": "转账至 {email}"
+    },
+    "balance": {
+      "title": "你的余额",
+      "outstanding": "你需支付 <amount></amount>",
+      "paidUp": "你已全部付清"
     },
     "releases": {
       "whatsNew": "{version} 有新内容",

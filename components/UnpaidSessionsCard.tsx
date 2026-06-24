@@ -25,21 +25,32 @@ function fmtMoney(n: number): string {
 
 interface Props {
   name: string;
+  /**
+   * `profile` (default): renders nothing when the player owes nothing — keeps
+   * the Profile tab uncluttered. `home`: occupies the slot the cost estimate
+   * used to hold, so it shows a positive "all paid up" state instead of a gap.
+   */
+  variant?: 'profile' | 'home';
 }
 
 /**
- * Profile-side "what do I still owe" surface. Fetches the player's unpaid
- * settled sessions and shows the total outstanding + most recent unpaid
- * session + a "verify with your e-transfer statement" note. Legible-fail:
- * a load error renders an explicit pill, never a silent "you owe nothing".
- * Renders nothing when the player owes nothing.
+ * "What do I still owe" surface, shared by Profile and Home so the two can
+ * never disagree. Fetches the player's unpaid sessions (settled frozen amounts
+ * + computed shares for unsettled past sessions) and shows the total
+ * outstanding + most recent unpaid session + a "verify with your e-transfer
+ * statement" note. Legible-fail: a load error renders an explicit pill, never a
+ * silent "you owe nothing". On `home`, a brief pre-load gap is preferred over
+ * flashing "paid up" before the first response (unknown ≠ known-false).
  */
-export default function UnpaidSessionsCard({ name }: Props) {
+export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props) {
   const t = useTranslations('profile.unpaid');
+  const tBal = useTranslations('home.balance');
   const tPay = useTranslations('home.payment');
   const format = useFormatter();
   const [data, setData] = useState<UnpaidData | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const isHome = variant === 'home';
 
   const etransferEmail = process.env.NEXT_PUBLIC_ETRANSFER_EMAIL || null;
 
@@ -55,12 +66,14 @@ export default function UnpaidSessionsCard({ name }: Props) {
       .then((d) => {
         if (cancelled) return;
         setData(d);
+        setLoaded(true);
         setLoadError(false);
       })
       .catch((err) => {
         if (cancelled) return;
         console.warn('unpaid fetch failed:', err);
         setData(null);
+        setLoaded(true);
         setLoadError(true);
       });
     return () => {
@@ -68,25 +81,37 @@ export default function UnpaidSessionsCard({ name }: Props) {
     };
   }, [name]);
 
-  // Nothing owed and no error → render nothing (no empty-state clutter).
-  if (!loadError && (!data || data.totalOwed <= 0)) return null;
+  const owesNothing = !loadError && (!data || data.totalOwed <= 0);
+
+  // Profile: render nothing while loading or when nothing is owed (no clutter).
+  if (!isHome && owesNothing) return null;
+  // Home: avoid a "paid up" flash before the first response lands.
+  if (isHome && !loaded && !loadError) return null;
+
+  const showPaidUp = isHome && owesNothing;
+  const title = isHome ? tBal('title') : t('title');
+  const titleColor = showPaidUp ? 'var(--accent)' : 'var(--sev-warn, #f59e0b)';
 
   return (
     <div
       className="glass-card"
       style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}
     >
-      <p className="section-label" style={{ margin: 0, color: 'var(--sev-warn, #f59e0b)' }}>
-        {t('title')}
+      <p className="section-label" style={{ margin: 0, color: titleColor }}>
+        {title}
       </p>
 
       {loadError ? (
         <ErrorState message={t('loadError')} />
+      ) : showPaidUp ? (
+        <p style={{ margin: 0, fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)' }}>
+          {tBal('paidUp')}
+        </p>
       ) : (
         data && (
           <>
             <p style={{ margin: 0, fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)' }}>
-              {t.rich('outstanding', {
+              {(isHome ? tBal : t).rich('outstanding', {
                 amount: () => (
                   <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
                     {fmtMoney(data.totalOwed)}

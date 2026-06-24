@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
-import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
+import { sessionCostTotals } from '@/lib/sessionCost';
 import type { Player, Session, SettledSnapshot } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -71,9 +71,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const courtTotal = Math.round(((session.costPerCourt ?? 0) * (session.courts ?? 0)) * 100) / 100;
-    const birdTotal = totalBirdCost(normalizeBirdUsages(session));
-    const totalCost = Math.round((courtTotal + birdTotal) * 100) / 100;
+    const { courtTotal, birdTotal, totalCost } = sessionCostTotals(session);
 
     if (totalCost <= 0) {
       return NextResponse.json(
