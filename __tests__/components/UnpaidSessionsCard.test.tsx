@@ -19,14 +19,17 @@ function wrap(ui: React.ReactElement) {
 }
 
 describe('<UnpaidSessionsCard />', () => {
-  it('renders the outstanding total, most-recent line, and verify message', async () => {
+  it('renders an itemized invoice (a line per session) and a total', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
           totalOwed: 22.5,
           sessionCount: 2,
           mostRecent: { sessionId: 's2', date: '2026-06-08T19:00:00-04:00', owedAmount: 12.5 },
-          sessions: [],
+          sessions: [
+            { sessionId: 's2', date: '2026-06-08T19:00:00-04:00', owedAmount: 12.5 },
+            { sessionId: 's1', date: '2026-06-01T19:00:00-04:00', owedAmount: 10 },
+          ],
         }),
         { status: 200 },
       ),
@@ -37,9 +40,11 @@ describe('<UnpaidSessionsCard />', () => {
     await waitFor(() => {
       expect(screen.getByText('Outstanding payments')).toBeTruthy();
     });
-    // Rich-text amount tag must render the formatted money (not raw <amount>).
+    // One line item per session + a Total row.
+    expect(screen.getByText('$12.50')).toBeTruthy();
+    expect(screen.getByText('$10')).toBeTruthy();
+    expect(screen.getByText('Total')).toBeTruthy();
     expect(screen.getByText('$22.50')).toBeTruthy();
-    expect(screen.getByText(/please verify with your e-transfer statement/i)).toBeTruthy();
   });
 
   it('renders nothing when nothing is owed', async () => {
@@ -72,7 +77,7 @@ describe('<UnpaidSessionsCard />', () => {
           totalOwed: 40,
           sessionCount: 1,
           mostRecent: { sessionId: 's1', date: '2026-06-08T19:00:00-04:00', owedAmount: 40 },
-          sessions: [],
+          sessions: [{ sessionId: 's1', date: '2026-06-08T19:00:00-04:00', owedAmount: 40 }],
         }),
         { status: 200 },
       ),
@@ -83,8 +88,8 @@ describe('<UnpaidSessionsCard />', () => {
     await waitFor(() => {
       expect(screen.getByText('Your balance')).toBeTruthy();
     });
-    // $40 appears in both the headline and the most-recent line.
-    expect(screen.getAllByText('$40').length).toBeGreaterThan(0);
+    // $40 appears in both the line item and the total row.
+    expect(screen.getAllByText('$40').length).toBe(2);
   });
 
   it('home variant shows a paid-up state when nothing is owed (instead of nothing)', async () => {

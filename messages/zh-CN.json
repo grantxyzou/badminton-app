@@ -100,7 +100,7 @@
     },
     "balance": {
       "title": "你的余额",
-      "outstanding": "你需支付 <amount></amount>",
+      "total": "合计",
       "paidUp": "你已全部付清"
     },
     "releases": {
@@ -195,10 +195,7 @@
     },
     "unpaid": {
       "title": "待付款",
-      "outstanding": "你共有 <amount></amount> 未付",
-      "sessionsCount": "共 {count} 场活动",
-      "mostRecent": "最近一次 · {date}",
-      "verify": "请对照你的转账记录核实。",
+      "total": "合计",
       "loadError": "加载失败——请刷新重试。"
     }
   },
