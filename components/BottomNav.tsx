@@ -42,12 +42,17 @@ export default function BottomNav({ activeTab, onTabChange }: Props) {
     { id: 'profile', label: t('profile'), icon: 'person' },
   ];
 
+  // Admin is a sub-screen of Profile (opened from "Admin tools →", exits back
+  // to it), not its own nav slot — so the nav highlights Profile while inside
+  // Admin instead of falling back to Home (findIndex -1 → Math.max → index 0).
+  const navTab: Tab = activeTab === 'admin' ? 'profile' : activeTab;
+
   if (isFlagOn('NEXT_PUBLIC_FLAG_NAV_RAIL')) {
     // Active index drives the shared sliding indicator (--ri). findIndex
-    // is always 0–3 for a valid Tab; Math.max guards the -1 edge.
+    // is always 0–3 for a valid navTab; Math.max guards the -1 edge.
     const activeIndex = Math.max(
       0,
-      visibleTabs.findIndex((tb) => tb.id === activeTab),
+      visibleTabs.findIndex((tb) => tb.id === navTab),
     );
     return (
       <nav
@@ -59,7 +64,7 @@ export default function BottomNav({ activeTab, onTabChange }: Props) {
           <span className="rail-indicator-pill" />
         </span>
         {visibleTabs.map((tab) => {
-          const active = activeTab === tab.id;
+          const active = navTab === tab.id;
           return (
             <button
               key={tab.id}
@@ -88,7 +93,7 @@ export default function BottomNav({ activeTab, onTabChange }: Props) {
       <div className="max-w-lg mx-auto px-4 flex justify-center">
         <div className="nav-glass">
           {visibleTabs.map((tab) => {
-            const active = activeTab === tab.id;
+            const active = navTab === tab.id;
             return (
               <button
                 key={tab.id}
