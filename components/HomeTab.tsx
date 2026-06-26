@@ -7,6 +7,7 @@ import type { DevOverrides } from '@/components/DevPanel';
 import { getIdentity, setIdentity, clearIdentity, resolveStaleIdentity } from '@/lib/identity';
 import { TabSkeleton } from '@/components/primitives/CardSkeleton';
 import UnpaidSessionsCard from '@/components/UnpaidSessionsCard';
+import InstallBanner from '@/components/InstallBanner';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
 import WelcomeCard from './WelcomeCard';
@@ -387,6 +388,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           PageHeader keeps the header out of the transform (containing-block
           trap) while the card stack fades in once when data lands. */}
       <div className="space-y-5 animate-fadeIn">
+      {/* One-time nudge to install to the home screen (mobile browser only). */}
+      <InstallBanner />
       {/* Tile row: Location | Date & Time */}
       <div className="grid grid-cols-2 gap-3">
         {/* Location tile */}

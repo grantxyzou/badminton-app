@@ -57,10 +57,31 @@ const CANONICAL_URL =
   process.env.NEXT_PUBLIC_BASE_URL ??
   'https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm';
 
+// basePath prefix for icon URLs. Next prefixes the auto-injected manifest link
+// but NOT metadata.icons string values, so prefix them here (mirrors the
+// client-side `BASE` convention used across the app).
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_URL),
   title: 'BPM Badminton',
   description: 'Sign up for weekly badminton sessions',
+  // PWA: installable standalone home-screen app. The manifest link is
+  // auto-injected from app/manifest.ts (basePath-prefixed by Next); these
+  // fields add the iOS home-screen behavior + icons (paths prefixed by hand).
+  applicationName: 'BPM Badminton',
+  appleWebApp: {
+    capable: true,
+    title: 'BPM',
+    statusBarStyle: 'black-translucent',
+  },
+  icons: {
+    icon: [
+      { url: `${BASE}/icons/icon-192.png`, sizes: '192x192', type: 'image/png' },
+      { url: `${BASE}/icons/icon-512.png`, sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: `${BASE}/icons/apple-touch-icon-180.png`, sizes: '180x180', type: 'image/png' }],
+  },
   openGraph: {
     title: 'BPM Badminton',
     description: 'Sign up for weekly badminton sessions',
@@ -78,6 +99,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  // Standalone status-bar / Android toolbar tint — matches the dark brand bg
+  // and the cold-start splash (var(--page-bg)).
+  themeColor: '#100F0F',
   // Pinch / double-tap / input-focus zoom disabled by product decision — the
   // accidental-zoom jank on the saved-to-homescreen iOS web app outweighed the
   // benefit here. NOTE: this is a deliberate WCAG 1.4.4 tradeoff (Lighthouse
@@ -94,6 +118,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={locale} className={`${spaceGrotesk.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable}`}>
       <head>
+        {/* iOS standalone launch (no Safari chrome). Next emits the modern
+            `mobile-web-app-capable` from metadata.appleWebApp, but older iOS
+            still reads the apple-prefixed name — declare it explicitly so the
+            home-screen app opens fullscreen on every iOS version. */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Material Symbols Rounded — subsetted to the ~35 glyphs actually used.
@@ -102,7 +131,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             the dynamic icon_names subset, so opt this one out of the rule. */}
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,admin_panel_settings,arrow_back,arrow_forward,article_person,auto_fix_high,bar_chart,bolt,calendar_today,campaign,celebration,check_circle,chevron_left,chevron_right,close,dark_mode,delete,delete_forever,delete_outline,delete_sweep,download,edit,emoji_events,error,error_outline,event,expand_less,expand_more,fact_check,fitness_center,flag,format_list_bulleted,format_list_numbered,group,group_add,groups,help_outline,home,hourglass_empty,hourglass_top,how_to_reg,image,inventory_2,key,light_mode,local_fire_department,lock,lock_clock,logout,more_vert,paid,payments,person,person_add,person_remove,radio_button_unchecked,receipt_long,remove,request_quote,restore,schedule,school,science,search,send,share,shield,sports_tennis,star,subdirectory_arrow_left,translate,trending_up,verified,visibility,volunteer_activism,warning,watch_later&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,add_to_home_screen,admin_panel_settings,arrow_back,arrow_forward,article_person,auto_fix_high,bar_chart,bolt,calendar_today,campaign,celebration,check_circle,chevron_left,chevron_right,close,dark_mode,delete,delete_forever,delete_outline,delete_sweep,download,edit,emoji_events,error,error_outline,event,expand_less,expand_more,fact_check,fitness_center,flag,format_list_bulleted,format_list_numbered,group,group_add,groups,help_outline,home,hourglass_empty,hourglass_top,how_to_reg,image,install_mobile,inventory_2,ios_share,key,light_mode,local_fire_department,lock,lock_clock,logout,more_vert,paid,payments,person,person_add,person_remove,radio_button_unchecked,receipt_long,remove,request_quote,restore,schedule,school,science,search,send,share,shield,sports_tennis,star,subdirectory_arrow_left,translate,trending_up,verified,visibility,volunteer_activism,warning,watch_later&display=swap"
           rel="stylesheet"
         />
       </head>

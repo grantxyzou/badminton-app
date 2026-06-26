@@ -191,7 +191,8 @@
       "releaseNotes": "更新日志",
       "adminAccess": "管理员访问",
       "logout": "退出登录",
-      "reportProblem": "报告问题"
+      "reportProblem": "报告问题",
+      "install": "添加到主屏幕"
     },
     "unpaid": {
       "title": "待付款",
@@ -210,6 +211,27 @@
     "errorServer": "发送失败——请重试。",
     "offline": "你已离线——重新联网后再发送。",
     "close": "关闭"
+  },
+  "install": {
+    "title": "把 BPM 添加到主屏幕",
+    "intro": "把 BPM 保存到主屏幕，它会像普通 App 一样全屏打开。",
+    "done": "知道了",
+    "close": "关闭",
+    "bannerTitle": "把 BPM 添加到主屏幕",
+    "bannerCta": "怎么操作 →",
+    "dismiss": "关闭",
+    "ios": {
+      "step1": "点按 Safari 工具栏里的分享按钮。",
+      "step2": "向下滑动，点按「添加到主屏幕」。",
+      "step3": "点按「添加」——BPM 就会出现在主屏幕上。",
+      "note": "在 Android 上，打开浏览器菜单（⋮），点按「添加到主屏幕」。"
+    },
+    "android": {
+      "step1": "点按浏览器工具栏里的菜单（⋮）。",
+      "step2": "点按「添加到主屏幕」（或「安装应用」）。",
+      "step3": "确认——BPM 就会出现在主屏幕上。",
+      "note": "在 iPhone 上，点按 Safari 的分享按钮，再选「添加到主屏幕」。"
+    }
   },
   "pin": {
     "newLabel": "新 PIN",
