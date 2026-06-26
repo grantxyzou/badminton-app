@@ -9,7 +9,9 @@ import RecoveryPinSheet from './RecoveryPinSheet';
 import UnpaidSessionsCard from './UnpaidSessionsCard';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
 import ReportProblemSheet from './ReportProblemSheet';
+import InstallSheet from './InstallSheet';
 import SignInForm from './SignInForm';
+import { isStandalone } from '@/lib/standalone';
 import PageHeader from './primitives/PageHeader';
 import AdminConsoleHero from './admin/CommandCenter/AdminConsoleHero';
 import { isFlagOn } from '@/lib/flags';
@@ -49,9 +51,18 @@ export default function ProfileTab({
   const [recoveryPinOpen, setRecoveryPinOpen] = useState(false);
   const [releaseSheetOpen, setReleaseSheetOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [installOpen, setInstallOpen] = useState(false);
+  // Only offer "Add to Home Screen" when NOT already installed. Resolved
+  // post-mount (display-mode/navigator.standalone are client-only); defaults
+  // to false so the row shows in the browser, which is exactly when it helps.
+  const [installed, setInstalled] = useState(false);
   const [releases, setReleases] = useState<Release[] | null>([]);
   const tSettings = useTranslations('profile.settings');
   const tNav = useTranslations('nav');
+
+  useEffect(() => {
+    setInstalled(isStandalone());
+  }, []);
 
   useEffect(() => {
     const id = getIdentity();
@@ -365,6 +376,9 @@ export default function ProfileTab({
             },
             { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
             { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setReportOpen(true) },
+            ...(!installed
+              ? [{ icon: 'install_mobile', label: tSettings('install'), onClick: () => setInstallOpen(true) }]
+              : []),
             ...(isAdmin
               ? [{ icon: 'admin_panel_settings', label: tSettings('adminAccess'), onClick: onAdminTools }]
               : []),
@@ -398,6 +412,8 @@ export default function ProfileTab({
         onClose={() => setReportOpen(false)}
         name={identity?.name}
       />
+
+      <InstallSheet open={installOpen} onClose={() => setInstallOpen(false)} />
     </div>
   );
 }

@@ -191,7 +191,8 @@
       "releaseNotes": "What's new",
       "adminAccess": "Admin access",
       "logout": "Log out",
-      "reportProblem": "Report a problem"
+      "reportProblem": "Report a problem",
+      "install": "Add to Home Screen"
     },
     "unpaid": {
       "title": "Outstanding payments",
@@ -210,6 +211,27 @@
     "errorServer": "Couldn't send — please try again.",
     "offline": "You're offline — reconnect to send.",
     "close": "Close"
+  },
+  "install": {
+    "title": "Add BPM to your home screen",
+    "intro": "Save BPM to your home screen and it opens full-screen, like a normal app.",
+    "done": "Got it",
+    "close": "Close",
+    "bannerTitle": "Add BPM to your home screen",
+    "bannerCta": "Show me how →",
+    "dismiss": "Dismiss",
+    "ios": {
+      "step1": "Tap the Share button in Safari's toolbar.",
+      "step2": "Scroll down and tap \"Add to Home Screen\".",
+      "step3": "Tap \"Add\" — BPM lands on your home screen.",
+      "note": "On Android, open the browser menu (⋮) and tap \"Add to Home screen\" instead."
+    },
+    "android": {
+      "step1": "Tap the menu (⋮) in your browser's toolbar.",
+      "step2": "Tap \"Add to Home screen\" (or \"Install app\").",
+      "step3": "Confirm — BPM lands on your home screen.",
+      "note": "On iPhone, tap the Share button in Safari, then \"Add to Home Screen\" instead."
+    }
   },
   "pin": {
     "newLabel": "New PIN",
