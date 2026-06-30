@@ -20,6 +20,51 @@ interface History {
   lifetime: { attended: number; totalPaid: number };
 }
 
+type OwedReason =
+  | 'counted'
+  | 'paid'
+  | 'written_off'
+  | 'removed'
+  | 'waitlisted'
+  | 'unsettled_no_cost'
+  | 'settled_zero_owed'
+  | 'bad_datetime'
+  | 'future_or_active';
+
+interface AuditRow {
+  sessionId: string;
+  date: string;
+  rowName: string;
+  owedAmount: number;
+  counted: boolean;
+  reason: OwedReason;
+}
+
+interface OwedAudit {
+  names: string[];
+  totalOwed: number;
+  countedCount: number;
+  sessionCount: number;
+  sessions: AuditRow[];
+}
+
+/** Short, admin-legible label for why a session is excluded from the owed total. */
+const REASON_LABEL: Record<OwedReason, string> = {
+  counted: 'Counted',
+  paid: 'Paid',
+  written_off: 'Covered',
+  removed: 'Removed',
+  waitlisted: 'Waitlisted',
+  unsettled_no_cost: 'No cost recorded',
+  settled_zero_owed: 'Settled · $0',
+  bad_datetime: 'Bad date',
+  future_or_active: 'Not due yet',
+};
+
+function fmtMoney(n: number): string {
+  return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
+}
+
 interface PlayerProfileSheetProps {
   open: boolean;
   onClose: () => void;
@@ -50,6 +95,8 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [updatingSession, setUpdatingSession] = useState<string | null>(null);
+  const [audit, setAudit] = useState<OwedAudit | null>(null);
+  const [auditError, setAuditError] = useState(false);
 
   useEffect(() => {
     if (!open || !memberId) {
@@ -72,6 +119,36 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
         if (!cancelled) setError('Network error.');
       } finally {
         if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, memberId]);
+
+  // Owed breakdown — explains exactly what the player's "what you owe" card shows
+  // and why each excluded session is excluded. Same classifier as the card.
+  useEffect(() => {
+    if (!open || !memberId) {
+      setAudit(null);
+      setAuditError(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${BASE}/api/admin/owed-audit?memberId=${encodeURIComponent(memberId)}`, { cache: 'no-store' });
+        if (cancelled) return;
+        if (!res.ok) { setAuditError(true); return; }
+        const data = (await res.json()) as OwedAudit;
+        // Defensive: a malformed payload must surface as a load error, never a
+        // crash mid-render (CLAUDE.md legible-fail).
+        if (!data || typeof data.totalOwed !== 'number' || !Array.isArray(data.sessions)) {
+          setAuditError(true);
+          return;
+        }
+        setAudit(data);
+        setAuditError(false);
+      } catch {
+        if (!cancelled) setAuditError(true);
       }
     })();
     return () => { cancelled = true; };
@@ -208,6 +285,73 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
                     +{history.sessions.length - 12} more older sessions
                   </p>
+                )}
+              </section>
+
+              <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                  <p style={{
+                    fontSize: 11,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    color: 'var(--text-muted)',
+                    margin: 0,
+                    fontWeight: 600,
+                  }}>
+                    Owed breakdown
+                  </p>
+                  {audit && (
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {fmtMoney(audit.totalOwed)}
+                    </span>
+                  )}
+                </div>
+
+                {auditError ? (
+                  <p role="alert" style={{ fontSize: 13, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+                    Couldn’t load owed breakdown.
+                  </p>
+                ) : !audit ? (
+                  <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>Loading…</p>
+                ) : audit.sessions.length === 0 ? (
+                  <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>No billable sessions on record.</p>
+                ) : (
+                  <>
+                    {audit.names.length > 1 && (
+                      <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+                        Linked names: {audit.names.join(', ')}
+                      </p>
+                    )}
+                    <ul role="list" style={{ display: 'flex', flexDirection: 'column', gap: 0, listStyle: 'none', margin: 0, padding: 0 }}>
+                      {audit.sessions.map((s, i, arr) => (
+                        <li
+                          key={s.sessionId}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 12,
+                            padding: '10px 0',
+                            borderBottom: i < arr.length - 1 ? '1px solid var(--border-subtle, rgba(255,255,255,0.06))' : 'none',
+                            fontSize: 14,
+                          }}
+                        >
+                          <span style={{ color: s.counted ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                            {s.date ? fmtDate(s.date) : s.sessionId}
+                          </span>
+                          {s.counted ? (
+                            <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                              {fmtMoney(s.owedAmount)}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                              {REASON_LABEL[s.reason]}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
                 )}
               </section>
             </>

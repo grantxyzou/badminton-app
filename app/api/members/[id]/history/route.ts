@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
-import type { Member, Player, Session } from '@/lib/types';
+import { expandAliasNames } from '@/lib/playerIdentity';
+import type { Alias, Member, Player, Session } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,11 +51,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       const { resources: aliasRows } = await aliasesContainer.items
         .query({ query: 'SELECT * FROM c' })
         .fetchAll();
-      const aliasNames = (aliasRows as Array<{ appName?: string; etransferName?: string }>)
-        .filter((a) => typeof a.appName === 'string' && a.appName.toLowerCase() === member.name.toLowerCase())
-        .map((a) => a.etransferName)
-        .filter((n): n is string => typeof n === 'string');
-      const candidateNames = new Set([member.name.toLowerCase(), ...aliasNames.map((n) => n.toLowerCase())]);
+      const candidateNames = expandAliasNames(member.name, aliasRows as Alias[]);
 
       const { resources: allPlayers } = await playersContainer.items
         .query({ query: 'SELECT * FROM c' })

@@ -5,6 +5,8 @@ import {
   seedPointer,
   seedSession,
   seedPlayer,
+  seedMember,
+  seedAlias,
   makeRequest,
 } from './helpers';
 
@@ -136,5 +138,42 @@ describe('GET /api/players/unpaid', () => {
     const data = await res.json();
     expect(data.totalOwed).toBe(0);
     expect(data.mostRecent).toBeNull();
+  });
+
+  it('counts a week signed up under an alias-linked name', async () => {
+    // Lin (app name) e-transfers as "Lin Dan". An older week was recorded
+    // under "Lin Dan"; querying "Lin" must now include it via the alias.
+    seedMember('Lin', { id: 'm-lin' });
+    seedAlias('Lin', 'Lin Dan');
+    seedPlayer(OLDER, 'Lin Dan', { owedAmount: 9, paid: false });
+    seedPlayer(ACTIVE, 'Lin', { owedAmount: 11, paid: false });
+
+    const res = await get('Lin');
+    const data = await res.json();
+    expect(data.totalOwed).toBe(20);
+    expect(data.sessionCount).toBe(2);
+  });
+
+  it('counts a renamed-member week matched by memberId even when the name differs', async () => {
+    // The member is now "Carolina" but an old player row kept "Caro" — linked
+    // by memberId, so it still counts without an alias.
+    seedMember('Carolina', { id: 'm-caro' });
+    seedPlayer(OLDER, 'Caro', { memberId: 'm-caro', owedAmount: 6, paid: false });
+
+    const res = await get('Carolina');
+    const data = await res.json();
+    expect(data.totalOwed).toBe(6);
+    expect(data.sessions[0].sessionId).toBe(OLDER);
+  });
+
+  it('excludes a settled session with a malformed datetime without throwing', async () => {
+    const BAD = 'session-bad';
+    seedSession(BAD, { settled: settled(), datetime: 'not-a-real-date' });
+    seedPlayer(BAD, 'Lin', { owedAmount: 50, paid: false });
+
+    const res = await get('Lin');
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.sessions.find((x: { sessionId: string }) => x.sessionId === BAD)).toBeUndefined();
   });
 });
