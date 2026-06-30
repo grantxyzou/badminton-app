@@ -88,6 +88,18 @@ export function seedMember(name: string, overrides: Record<string, unknown> = {}
   return member;
 }
 
+export function seedAlias(appName: string, etransferName: string) {
+  const store = getStore();
+  if (!store['aliases']) store['aliases'] = [];
+  const alias = {
+    id: `alias-${Math.random().toString(36).slice(2, 8)}`,
+    appName,
+    etransferName,
+  };
+  store['aliases'].push(alias);
+  return alias;
+}
+
 export function seedAnnouncement(sessionId: string, text: string, overrides: Record<string, unknown> = {}) {
   const store = getStore();
   if (!store['announcements']) store['announcements'] = [];
