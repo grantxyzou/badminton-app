@@ -152,6 +152,7 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
             { icon: 'payments', label: 'E-transfer recipient', onClick: () => setView('etransfer') },
             { icon: 'calendar_today', label: 'Skip dates', onClick: () => setView('skip-dates') },
             { icon: 'receipt_long', label: 'Ledger', onClick: () => setView('ledger') },
+            { icon: 'receipt_long', label: 'Past sessions', onClick: () => setView('past-sessions') },
             { icon: 'bolt', label: 'Release notes', onClick: () => setView('releases') },
           ].map((row, idx) => (
             <li
