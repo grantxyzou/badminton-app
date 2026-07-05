@@ -24,6 +24,7 @@ import CommandCenter from './CommandCenter/CommandCenter';
 import BirdsPage from './CommandCenter/BirdsPage';
 import RosterPage from './CommandCenter/RosterPage';
 import SetupPage from './CommandCenter/SetupPage';
+import PastSessionsPage from './CommandCenter/PastSessionsPage';
 import LedgerPage from './LedgerPage';
 import PaymentsCard from './CommandCenter/PaymentsCard';
 import AdminBackHeader from './AdminBackHeader';
@@ -152,6 +153,9 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
         <SkipDatesEditor />
       </div>
     );
+  }
+  if (view === 'past-sessions') {
+    return <PastSessionsPage onBack={goBack} />;
   }
 
   if (isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER')) {
