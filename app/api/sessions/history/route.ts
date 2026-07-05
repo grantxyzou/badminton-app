@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, POINTER_ID } from '@/lib/cosmos';
+import { getContainer, getActiveSessionId, POINTER_ID } from '@/lib/cosmos';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { buildReceiptInput } from '@/lib/buildReceiptInput';
 import type { ETransferRecipient, Member, Session } from '@/lib/types';
@@ -32,17 +32,24 @@ export async function GET(req: NextRequest) {
     // The calling admin's own recipient is the default; a session may override it.
     const { resource: adminMember } = await membersContainer
       .item(auth.memberId, auth.memberId)
-      .read<Member & { eTransferRecipient?: ETransferRecipient }>();
+      .read<Member>();
     const globalRecipient: ETransferRecipient | null = adminMember?.eTransferRecipient ?? null;
 
-    // All real sessions (exclude pointer + legacy). Sort + slice in JS — the
-    // mock store ignores ORDER BY / LIMIT (same contract as sessions/recent).
+    // The currently-active session is owned by the Command Center's live
+    // receipt — this list is for PAST (archived) sessions only. Exclude it
+    // alongside the pointer + legacy docs. (Also keeps unsettled cover-mode
+    // math out of this list, which reads frozen settled snapshots.)
+    const activeId = await getActiveSessionId();
+
+    // All PAST sessions (exclude pointer + legacy + active). Sort + slice in JS
+    // — the mock store ignores ORDER BY / LIMIT (same contract as sessions/recent).
     const { resources: allSessions } = await sessionsContainer.items
       .query({
-        query: 'SELECT * FROM c WHERE c.id != @pointerId AND c.id != @legacyId',
+        query: 'SELECT * FROM c WHERE c.id != @pointerId AND c.id != @legacyId AND c.id != @activeId',
         parameters: [
           { name: '@pointerId', value: POINTER_ID },
           { name: '@legacyId', value: 'current-session' },
+          { name: '@activeId', value: activeId },
         ],
       })
       .fetchAll();
@@ -74,6 +81,8 @@ export async function GET(req: NextRequest) {
 
     const out = sessions.map((s) => {
       const roster = playersBySession.get(s.id) ?? [];
+      // attendanceCount / paidPercent are LIVE (current roster) — deliberately
+      // distinct from receipt.playerNames, which is the frozen settled snapshot.
       const active = roster.filter((p) => !p.removed && !p.waitlisted);
       const paidCount = active.filter((p) => p.paid === true).length;
       const paidPercent = active.length > 0 ? Math.round((paidCount / active.length) * 100) : 0;

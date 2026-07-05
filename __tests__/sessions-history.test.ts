@@ -81,4 +81,16 @@ describe('GET /api/sessions/history', () => {
     const body = await res.json();
     expect(body.error).toBeTruthy();
   });
+
+  it('excludes the currently-active session (this is a PAST-sessions list)', async () => {
+    // Active session exists as a real unsettled doc; it must NOT appear here.
+    seedSession(ACTIVE, { datetime: '2026-06-08T19:00:00-04:00', costPerCourt: 20, courts: 2 });
+    seedSession(PAST, { settled: settled(), datetime: '2026-06-01T19:00:00-04:00' });
+    const res = await GET(makeAdminRequest('GET', URL));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    const ids = data.sessions.map((s: { sessionId: string }) => s.sessionId);
+    expect(ids).toContain(PAST);
+    expect(ids).not.toContain(ACTIVE);
+  });
 });
