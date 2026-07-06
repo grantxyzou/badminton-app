@@ -36,54 +36,54 @@ export default function InstallSheet({ open, onClose }: Props) {
       ];
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')}>
-      <BottomSheetHeader className="flex items-center justify-between">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')} className="max-w-sm mx-auto">
+      <BottomSheetHeader className="flex items-center justify-between px-5 pt-4 pb-2">
         <span className="bpm-h3" style={{ margin: 0 }}>{t('title')}</span>
         <button
           type="button"
           onClick={onClose}
           aria-label={t('close')}
-          className="cc-btn cc-btn-ghost"
-          style={{ padding: 6 }}
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: -8 }}
         >
-          <span className="material-icons" aria-hidden="true" style={{ fontSize: 20 }}>close</span>
+          <span className="material-icons" aria-hidden="true" style={{ fontSize: 20, color: 'var(--text-muted)' }}>close</span>
         </button>
       </BottomSheetHeader>
-      <BottomSheetBody className="p-5 pb-20" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <p style={{ margin: 0, fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)' }}>
+      <BottomSheetBody className="px-5 pb-6" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)' }}>
           {t('intro')}
         </p>
         <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
           {steps.map((s, i) => (
-            <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span
                 aria-hidden="true"
                 style={{
                   flex: '0 0 auto',
-                  width: 28,
-                  height: 28,
+                  width: 30,
+                  height: 30,
                   borderRadius: 'var(--radius-lg)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: 'var(--glass-bg)',
+                  background: 'var(--inner-card-green-bg)',
+                  border: '1px solid var(--inner-card-green-border)',
                   color: 'var(--accent)',
                 }}
               >
-                <span className="material-icons" style={{ fontSize: 18 }}>{s.icon}</span>
+                <span className="material-icons" style={{ fontSize: 17 }}>{s.icon}</span>
               </span>
-              <span style={{ fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)', lineHeight: 'var(--lh-normal, 1.5)' }}>
+              <span className="fs-md" style={{ color: 'var(--text-primary)' }}>
                 {s.text}
               </span>
             </li>
           ))}
         </ol>
-        <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
+        <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>
           {/* Note points readers on the OTHER platform to their steps:
               ios.note describes the Android way, android.note the iOS way. */}
           {ios ? t('ios.note') : t('android.note')}
         </p>
-        <button type="button" onClick={onClose} className="cc-btn cc-btn-primary cc-btn-lg">
+        <button type="button" onClick={onClose} className="cc-btn cc-btn-primary" style={{ width: '100%', marginTop: 4 }}>
           {t('done')}
         </button>
       </BottomSheetBody>
