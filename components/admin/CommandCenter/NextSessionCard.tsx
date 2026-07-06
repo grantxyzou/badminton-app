@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { fmtSessionLabel as fmtDate } from '@/lib/fmt';
+import { fmtSessionLabel as fmtDate, fmtDeadline } from '@/lib/fmt';
 import { isFlagOn } from '@/lib/flags';
 import type { SettledSnapshot } from '@/lib/types';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -60,6 +61,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   // (it used to sit next to "Edit details") shouldn't trigger it.
   const [confirmingAdvance, setConfirmingAdvance] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [togglingSignup, setTogglingSignup] = useState(false);
   const settleFlagOn = isFlagOn('NEXT_PUBLIC_FLAG_SETTLE');
 
   // Build a ready-to-paste sign-up invite and share it (native share sheet on
@@ -153,6 +155,31 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
     }
   }, [load]);
 
+  // Open/close sign-ups in place — optimistic flip + rollback on failure.
+  // `PUT /api/session` is a read-merge and only targets the active session,
+  // which is exactly what this card always shows. Mirrors PaymentsCard's
+  // togglePaid pattern.
+  const toggleSignup = useCallback(async () => {
+    if (!session || togglingSignup) return;
+    const next = !(session.signupOpen === true);
+    setSettleError(null);
+    setTogglingSignup(true);
+    setSession((s) => (s ? { ...s, signupOpen: next } : s));
+    try {
+      const res = await fetch(`${BASE}/api/session`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ signupOpen: next }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+    } catch {
+      setSession((s) => (s ? { ...s, signupOpen: !next } : s));
+      setSettleError("Couldn't update sign-ups. Try again.");
+    } finally {
+      setTogglingSignup(false);
+    }
+  }, [session, togglingSignup]);
+
   useEffect(() => { void load(); }, [load, refreshKey]);
 
   if (loading) return <CardSkeleton height={180} />;
@@ -187,9 +214,18 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
               Sent · ${session.settled?.costPerPerson}
             </span>
           )}
-          <span className={open ? 'cc-pill cc-pill-success' : 'cc-pill cc-pill-muted'}>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={open}
+            onClick={toggleSignup}
+            disabled={togglingSignup}
+            className={open ? 'cc-pill cc-pill-success' : 'cc-pill cc-pill-muted'}
+            style={{ cursor: 'pointer', font: 'inherit' }}
+            title={open ? 'Sign-ups are open — tap to close' : 'Sign-ups are closed — tap to open'}
+          >
             {open ? 'Signup open' : 'Signup closed'}
-          </span>
+          </button>
         </div>
       </header>
 
@@ -213,37 +249,26 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
 
       {countdown && (
         <p className="text-xs text-gray-400">
-          Deadline: <span className="text-gray-200">{countdown === 'closed' ? 'Passed' : countdown + ' left'}</span>
+          Sign up deadline: <span className="text-gray-200">
+            {fmtDeadline(session.deadline)}{countdown === 'closed' ? ' (Passed)' : ` (${countdown} left)`}
+          </span>
         </p>
       )}
 
       <div className="flex flex-wrap gap-2 pt-1">
         {settleFlagOn ? (
-          // Unified "Send the bill" flow. One primary action — pre-send it
-          // settles + opens share; post-send it just opens share again.
-          !isSettled ? (
+          // Post-settle: re-share the frozen bill. Settling itself moved to
+          // the footer "Finalize cost" action, beside Advance.
+          isSettled && onShareCost ? (
             <button
               type="button"
-              onClick={sendBill}
-              disabled={settling}
+              onClick={onShareCost}
               className="cc-btn cc-btn-primary"
-              title="Locks tonight's cost and opens the share sheet for the group chat."
             >
-              <span className="material-icons text-base align-middle">send</span>
-              {settling ? 'Sending…' : 'Send the bill'}
+              <span className="material-icons text-base align-middle">share</span>
+              Share again — ${session.settled?.costPerPerson} each
             </button>
-          ) : (
-            onShareCost && (
-              <button
-                type="button"
-                onClick={onShareCost}
-                className="cc-btn cc-btn-primary"
-              >
-                <span className="material-icons text-base align-middle">share</span>
-                Share again — ${session.settled?.costPerPerson} each
-              </button>
-            )
-          )
+          ) : null
         ) : (
           // Pre-flag stable users keep the simple "Share cost" affordance.
           onShareCost && (
@@ -280,38 +305,27 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
         )}
       </div>
 
-      {/* Advance lives apart from the action row: a stray tap meant for
-          "Edit details" must not start a new week. Ghost-weight + a
-          two-step inline confirm (heavy, hard-to-reverse action). */}
-      {onAdvance && (
+      {/* End-of-night actions live apart from the action row: finalize the
+          cost, then start next week. Advance is ghost-weight + a confirm sheet
+          since it's hard to reverse (a stray tap must not archive the week). */}
+      {((settleFlagOn && !isSettled) || onAdvance) && (
         <div
           className="flex justify-end items-center gap-2 pt-3 mt-1"
           style={{ borderTop: '1px solid var(--divider)' }}
         >
-          {confirmingAdvance ? (
-            <>
-              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Can&apos;t go back to the previous week once you advance.
-              </span>
-              <button
-                type="button"
-                onClick={() => setConfirmingAdvance(false)}
-                className="cc-btn cc-btn-ghost text-xs"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setConfirmingAdvance(false);
-                  onAdvance();
-                }}
-                className="cc-btn cc-btn-danger text-xs"
-              >
-                Confirm advance →
-              </button>
-            </>
-          ) : (
+          {settleFlagOn && !isSettled && (
+            <button
+              type="button"
+              onClick={sendBill}
+              disabled={settling}
+              className="cc-btn cc-btn-primary"
+              title="Locks tonight's cost and opens the share sheet for the group chat."
+            >
+              <span className="material-icons text-base align-middle">send</span>
+              {settling ? 'Finalizing…' : 'Finalize cost'}
+            </button>
+          )}
+          {onAdvance && (
             <button
               type="button"
               onClick={() => setConfirmingAdvance(true)}
@@ -327,6 +341,48 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
         <p role="alert" className="text-xs" style={{ color: 'var(--color-red, #ef4444)' }}>
           {settleError}
         </p>
+      )}
+
+      {/* Advance confirm — a bottom sheet (was an inline two-step confirm). */}
+      {onAdvance && (
+        <BottomSheet
+          open={confirmingAdvance}
+          onClose={() => setConfirmingAdvance(false)}
+          ariaLabel="Advance to next week"
+          maxHeight="50vh"
+          className="max-w-sm mx-auto"
+        >
+          <BottomSheetHeader className="flex items-center justify-between p-4">
+            <span style={{ fontSize: 16, fontWeight: 600 }}>Advance to next week</span>
+            <button
+              type="button"
+              onClick={() => setConfirmingAdvance(false)}
+              aria-label="Close"
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <span className="material-icons" style={{ fontSize: 20 }}>close</span>
+            </button>
+          </BottomSheetHeader>
+          <BottomSheetBody className="p-5 pb-8">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                Can&apos;t go back to the previous week once you advance.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                <button type="button" onClick={() => setConfirmingAdvance(false)} className="cc-btn cc-btn-ghost">
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setConfirmingAdvance(false); onAdvance(); }}
+                  className="cc-btn cc-btn-danger"
+                >
+                  Confirm advance →
+                </button>
+              </div>
+            </div>
+          </BottomSheetBody>
+        </BottomSheet>
       )}
     </section>
   );
