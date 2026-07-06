@@ -40,11 +40,17 @@ export async function POST(req: NextRequest) {
     const { resources: sessions } = await sessionsContainer.items
       .query({ query: 'SELECT c.birdUsage, c.birdUsages FROM c WHERE IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)' })
       .fetchAll();
+    // Sum RAW, round once — the same rule GET /api/birds uses, so this delta
+    // can never disagree with the displayed stock by a rounding penny.
     const totalUsed = (sessions as Pick<Session, 'birdUsage' | 'birdUsages'>[]).reduce(
       (sum, s) => sum + totalTubes(normalizeBirdUsages(s)),
       0,
     );
 
+    // Deliberately UNCLAMPED (GET clamps its display at 0 + reports the
+    // overshoot as stockDrift): the delta must offset the true raw stock so
+    // that after reconciling, raw stock === counted. Clamping here would
+    // under-adjust a drifted inventory.
     const currentStock = Math.round((totalPurchased + totalAdjustments - totalUsed) * 100) / 100;
     const delta = Math.round((counted - currentStock) * 100) / 100;
 
