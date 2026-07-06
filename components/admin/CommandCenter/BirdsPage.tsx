@@ -50,6 +50,7 @@ function Stars({ n }: { n: number }) {
 export default function BirdsPage({ onBack }: BirdsPageProps) {
   const [purchases, setPurchases] = useState<BirdPurchase[]>([]);
   const [currentStock, setCurrentStock] = useState(0);
+  const [stockDrift, setStockDrift] = useState(0);
   const [totalAdjustments, setTotalAdjustments] = useState(0);
   const [usedByPurchase, setUsedByPurchase] = useState<Map<string, number>>(new Map());
   const [recentSessionCount, setRecentSessionCount] = useState(0);
@@ -91,8 +92,15 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
         fetch(`${BASE}/api/sessions`, { cache: 'no-store' }),
       ]);
-      const birds = birdsRes.ok ? await birdsRes.json() as { purchases: BirdPurchase[]; currentStock: number; totalAdjustments?: number } : { purchases: [], currentStock: 0, totalAdjustments: 0 };
-      const sessions = sessionsRes.ok ? await sessionsRes.json() as Session[] : [];
+      // A non-ok response is a load FAILURE, not an empty inventory — falling
+      // back to a zero object here rendered the forbidden lying-empty state
+      // (confident "0 tubes" on a broken backend).
+      if (!birdsRes.ok || !sessionsRes.ok) {
+        setLoadError(true);
+        return;
+      }
+      const birds = await birdsRes.json() as { purchases: BirdPurchase[]; currentStock: number; stockDrift?: number; totalAdjustments?: number };
+      const sessions = await sessionsRes.json() as Session[];
 
       // Build two independent quantities:
       //   - `used` is all-time per-purchase usage (used to compute remaining
@@ -121,6 +129,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
       }
       setPurchases(birds.purchases ?? []);
       setCurrentStock(birds.currentStock ?? 0);
+      setStockDrift(birds.stockDrift ?? 0);
       setTotalAdjustments(birds.totalAdjustments ?? 0);
       setUsedByPurchase(used);
       setRecentSessionCount(recentSessions);
@@ -428,6 +437,12 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         {totalAdjustments !== 0 && (
           <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: '4px 0 0' }}>
             includes {totalAdjustments > 0 ? '+' : '−'}{Math.abs(totalAdjustments)} from a manual recount
+          </p>
+        )}
+        {stockDrift > 0 && (
+          <p role="alert" style={{ fontSize: 11, color: 'var(--amber)', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span className="material-icons" style={{ fontSize: 14 }} aria-hidden="true">warning</span>
+            Records show {stockDrift} more tube{stockDrift === 1 ? '' : 's'} used than purchased — run a recount to true up.
           </p>
         )}
         {burnPerSession > 0 && recentSessionCount > 0 && (
