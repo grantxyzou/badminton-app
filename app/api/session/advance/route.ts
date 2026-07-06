@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId, setActiveSessionId, sessionIdFromDate } from '@/lib/cosmos';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { toValidIso } from '@/app/api/session/route';
-import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
+import { normalizeBirdUsages, totalBirdCost, snapshotBirdUsage } from '@/lib/birdUsages';
 import type { BirdUsage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -135,36 +135,35 @@ export async function POST(req: NextRequest) {
     }
 
     // Resolve any bird tubes the admin chose to load into the new session at
-    // creation time. Body shape: birdUsages: [{ purchaseId, tubes }]. We look
-    // each purchase up in the inventory and snapshot its cost (same authoritative
-    // snapshotting as PATCH /api/session/bird-usage), so different-priced brands
-    // are costed correctly. Invalid/zero/unknown entries are skipped silently.
+    // creation time. Body shape: birdUsages: [{ purchaseId, tubes }]. Each
+    // purchase is looked up and its cost snapshotted via the shared
+    // `snapshotBirdUsage` (same formula as PUT /api/session and PATCH
+    // /api/session/bird-usage). Invalid/zero/unknown entries are skipped
+    // silently. Reads are batched (was an N+1 sequential loop).
     let birdUsages: BirdUsage[] = [];
     if (Array.isArray(body.birdUsages) && body.birdUsages.length > 0) {
-      const birdsContainer = getContainer('birds');
-      const resolved: BirdUsage[] = [];
+      // Validate + de-dupe first (same purchase twice → keep the last, in
+      // last-occurrence order, matching the previous splice-and-push behavior).
+      const wanted = new Map<string, number>();
       for (const entry of body.birdUsages) {
         const purchaseId = typeof entry?.purchaseId === 'string' ? entry.purchaseId : '';
         const tubes = Number(entry?.tubes);
         if (!purchaseId) continue;
         if (!Number.isFinite(tubes) || tubes <= 0 || tubes > 100) continue;
         if (Math.round(tubes * 4) !== tubes * 4) continue; // 0.25 increments only
-        // De-dupe: if the same purchase appears twice, keep the last.
-        const dupeIdx = resolved.findIndex((u) => u.purchaseId === purchaseId);
-        if (dupeIdx !== -1) resolved.splice(dupeIdx, 1);
-        try {
-          const { resource: purchase } = await birdsContainer.item(purchaseId, purchaseId).read();
-          if (!purchase) continue;
-          resolved.push({
-            purchaseId: purchase.id,
-            purchaseName: purchase.name,
-            tubes,
-            costPerTube: purchase.costPerTube,
-            totalBirdCost: Math.round(tubes * purchase.costPerTube * 100) / 100,
-          });
-        } catch {
-          continue;
-        }
+        wanted.delete(purchaseId); // re-insert at the end on dupe
+        wanted.set(purchaseId, tubes);
+      }
+      const birdsContainer = getContainer('birds');
+      const ids = Array.from(wanted.keys());
+      const reads = await Promise.all(
+        ids.map((id) => birdsContainer.item(id, id).read().catch(() => ({ resource: undefined }))),
+      );
+      const resolved: BirdUsage[] = [];
+      for (let i = 0; i < ids.length; i++) {
+        const purchase = reads[i].resource;
+        if (!purchase) continue; // unknown purchase — skip silently (pre-existing contract)
+        resolved.push(snapshotBirdUsage(purchase, wanted.get(ids[i])!));
       }
       birdUsages = resolved;
     }
