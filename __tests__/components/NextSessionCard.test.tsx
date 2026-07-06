@@ -49,6 +49,7 @@ describe('<NextSessionCard />', () => {
       expect(screen.getByText(/3 \/ 12 signed up/)).toBeTruthy();
       expect(screen.getByText(/\+1 waitlist/)).toBeTruthy();
       expect(screen.getByText(/Signup open/)).toBeTruthy();
+      expect(screen.getByText(/Sign up deadline/)).toBeTruthy();
       expect(screen.getByText(/left/)).toBeTruthy();
     });
   });
@@ -65,6 +66,36 @@ describe('<NextSessionCard />', () => {
     await waitFor(() => {
       expect(screen.getByText(/Signup closed/)).toBeTruthy();
     });
+  });
+
+  it('the signup pill toggles sign-ups: optimistic flip + PUT { signupOpen }', async () => {
+    const future = new Date(Date.now() + 3 * 86_400_000).toISOString();
+    let putBody: { signupOpen?: boolean } | null = null;
+    global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : (input as Request).url;
+      const method = init?.method ?? 'GET';
+      if (method === 'PUT' && url.includes('/api/session')) {
+        putBody = JSON.parse(init?.body as string);
+        return new Response('{}', { status: 200 });
+      }
+      if (url.includes('/api/players')) return new Response(JSON.stringify([]), { status: 200 });
+      if (url.includes('/api/session')) {
+        return new Response(JSON.stringify(
+          { id: 's', title: 'X', datetime: future, deadline: future, courts: 2, maxPlayers: 12, signupOpen: true },
+        ), { status: 200 });
+      }
+      return new Response('not found', { status: 404 });
+    }) as typeof fetch;
+
+    render(<NextSessionCard />);
+    const pill = await screen.findByRole('switch', { name: 'Signup open' });
+    fireEvent.click(pill);
+
+    // Optimistic flip in the UI…
+    await waitFor(() => expect(screen.getByText('Signup closed')).toBeTruthy());
+    // …and the persisted PUT.
+    await waitFor(() => expect(putBody).not.toBeNull());
+    expect((putBody as unknown as { signupOpen: boolean }).signupOpen).toBe(false);
   });
 
   it('marks deadline as Passed when in the past', async () => {
@@ -90,32 +121,36 @@ describe('<NextSessionCard />', () => {
       courts: 2, maxPlayers: 12, signupOpen: true,
     };
 
-    it('a single tap on "Advance to next week" does NOT advance — it warns + asks to confirm', async () => {
+    it('a single tap on "Advance to next week" opens a confirm sheet instead of advancing', async () => {
       let advanced = 0;
       mockFetch(makeFetcher(session, []));
       render(<NextSessionCard onAdvance={() => { advanced += 1; }} />);
-      await waitFor(() => expect(screen.getByText('Advance to next week')).toBeTruthy());
+      const trigger = await screen.findByRole('button', { name: 'Advance to next week' });
 
-      fireEvent.click(screen.getByText('Advance to next week'));
+      fireEvent.click(trigger);
 
       expect(advanced).toBe(0);
-      expect(screen.getByText(/Can.t go back to the previous week once you advance/)).toBeTruthy();
-      expect(screen.getByText('Confirm advance →')).toBeTruthy();
+      await waitFor(() => {
+        expect(screen.getByText(/Can.t go back to the previous week once you advance/)).toBeTruthy();
+        expect(screen.getByRole('button', { name: 'Confirm advance →' })).toBeTruthy();
+      });
     });
 
-    it('Cancel reverts without advancing; Confirm calls onAdvance once', async () => {
+    it('Cancel in the sheet does not advance', async () => {
       let advanced = 0;
       mockFetch(makeFetcher(session, []));
       render(<NextSessionCard onAdvance={() => { advanced += 1; }} />);
-      await waitFor(() => expect(screen.getByText('Advance to next week')).toBeTruthy());
-
-      fireEvent.click(screen.getByText('Advance to next week'));
-      fireEvent.click(screen.getByText('Cancel'));
+      fireEvent.click(await screen.findByRole('button', { name: 'Advance to next week' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
       expect(advanced).toBe(0);
-      expect(screen.getByText('Advance to next week')).toBeTruthy();
+    });
 
-      fireEvent.click(screen.getByText('Advance to next week'));
-      fireEvent.click(screen.getByText('Confirm advance →'));
+    it('Confirm advance → calls onAdvance once', async () => {
+      let advanced = 0;
+      mockFetch(makeFetcher(session, []));
+      render(<NextSessionCard onAdvance={() => { advanced += 1; }} />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Advance to next week' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Confirm advance →' }));
       expect(advanced).toBe(1);
     });
   });
@@ -155,13 +190,13 @@ describe('<NextSessionCard />', () => {
       }
     });
 
-    it('shows "Send the bill" when flag on and session not yet settled', async () => {
+    it('shows "Finalize cost" when flag on and session not yet settled', async () => {
       const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
       process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
       try {
         mockFetch(makeFetcher(session, []));
         render(<NextSessionCard onShareCost={() => {}} />);
-        await waitFor(() => expect(screen.getByText(/Send the bill/)).toBeTruthy());
+        await waitFor(() => expect(screen.getByText(/Finalize cost/)).toBeTruthy());
         expect(screen.queryByText(/Sent ·/)).toBeNull();
         expect(screen.queryByText(/Share cost/)).toBeNull();
       } finally {

@@ -110,7 +110,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel="Receipt" maxHeight="80vh" className="max-w-sm mx-auto">
       <BottomSheetHeader className="flex items-center justify-between p-4">
-        <span style={{ fontSize: 16, fontWeight: 600 }}>Share session cost</span>
+        <span className="fs-lg" style={{ fontWeight: 600 }}>Share session cost</span>
         <button
           type="button"
           onClick={onClose}
@@ -137,7 +137,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
               role="alert"
               style={{
                 color: 'var(--color-red, #ef4444)',
-                fontSize: 13,
+                fontSize: 'var(--fs-base)',
                 lineHeight: 1.5,
                 margin: 0,
               }}
@@ -148,18 +148,24 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
 
           {input && (
             <>
-              {/* Mode toggle — uses canonical .segment-control */}
-              <div className="segment-control">
+              {/* Mode toggle — canonical .segment-control needs `flex` on the
+                  wrapper and `flex-1` centered children, else the active pill
+                  overlaps its neighbor (the class sets no display of its own). */}
+              <div className="segment-control flex" role="tablist" aria-label="Receipt mode">
                 <button
                   type="button"
-                  className={mode === 'group' ? 'segment-tab-active' : 'segment-tab-inactive'}
+                  role="tab"
+                  aria-selected={mode === 'group'}
+                  className={`flex-1 flex items-center justify-center text-xs ${mode === 'group' ? 'segment-tab-active' : 'segment-tab-inactive'}`}
                   onClick={() => setMode('group')}
                 >
                   Group
                 </button>
                 <button
                   type="button"
-                  className={mode === 'individual' ? 'segment-tab-active' : 'segment-tab-inactive'}
+                  role="tab"
+                  aria-selected={mode === 'individual'}
+                  className={`flex-1 flex items-center justify-center text-xs ${mode === 'individual' ? 'segment-tab-active' : 'segment-tab-inactive'}`}
                   onClick={() => setMode('individual')}
                   disabled={input.playerNames.length === 0}
                 >
@@ -169,7 +175,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
 
               {mode === 'individual' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <label style={{ fontSize: 12, color: 'var(--text-muted)' }}>Recipient</label>
+                  <label className="section-label" style={{ color: 'var(--text-muted)' }}>Recipient</label>
                   <select
                     value={selectedPlayer ?? ''}
                     onChange={(e) => setSelectedPlayer(e.target.value || null)}
@@ -226,7 +232,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
               )}
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, color: 'var(--text-muted)' }}>Text version</label>
+                <label className="section-label" style={{ color: 'var(--text-muted)' }}>Text version</label>
                 <pre
                   style={{
                     fontFamily: 'var(--font-mono), ui-monospace, monospace',

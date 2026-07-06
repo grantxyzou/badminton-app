@@ -50,3 +50,13 @@ export function fmtFullDate(iso: string | undefined): string {
     return iso.slice(0, 10);
   }
 }
+
+/** Day-of-week + time — 'Thu, 8:00 PM'. Used for the sign-up deadline display. */
+export function fmtDeadline(iso: string | undefined): string {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+  } catch {
+    return iso.slice(0, 10);
+  }
+}
