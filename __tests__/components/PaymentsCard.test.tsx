@@ -284,6 +284,42 @@ describe('<PaymentsCard />', () => {
       }
     });
 
+    it('per-row receipt icon opens the individual receipt for the VIEWED session', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      try {
+        urlFetch(async (url) => {
+          if (url.includes('/api/admin/settings')) {
+            return new Response(JSON.stringify({ eTransferRecipient: { name: 'Grant', email: 'g@x.com' } }), { status: 200 });
+          }
+          if (url.includes('/api/sessions')) {
+            return new Response(JSON.stringify([SETTLED_SESSION]), { status: 200 });
+          }
+          if (url.includes('/api/session')) {
+            return new Response(JSON.stringify(SETTLED_SESSION), { status: 200 });
+          }
+          if (url.includes('/api/players')) {
+            return new Response(JSON.stringify([
+              { id: 'p1', name: 'Daisy', paid: true, owedAmount: 15 },
+              { id: 'p2', name: 'Mei', paid: false, owedAmount: 15 },
+            ]), { status: 200 });
+          }
+          return new Response('not found', { status: 404 });
+        });
+        render(<PaymentsCard />);
+        await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
+        // Icon renders locally now (no onSendIndividualReceipt prop needed).
+        fireEvent.click(screen.getByLabelText('Send receipt to Mei'));
+        await waitFor(() => expect(screen.getByText('Share session cost')).toBeTruthy());
+        // Individual mode, preset to the tapped player — proves it's THIS
+        // session's receipt, not the active-session delegation.
+        const select = screen.getByRole('combobox') as HTMLSelectElement;
+        expect(select.value).toBe('Mei');
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+
     it('v1.5/C: removing a settled debtor opens Cover & remove, not a plain confirm', async () => {
       const prevSettle = process.env.NEXT_PUBLIC_FLAG_SETTLE;
       const prevLedger = process.env.NEXT_PUBLIC_FLAG_LEDGER;

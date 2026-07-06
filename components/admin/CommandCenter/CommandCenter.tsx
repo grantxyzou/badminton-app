@@ -139,7 +139,6 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
       <PaymentsCard
         refreshKey={composedRefresh}
         onOpenPlayer={openPlayer}
-        onSendIndividualReceipt={(name) => openReceipt({ mode: 'individual', playerName: name })}
       />
 
       {/* Profile-style settings list (mirrors ProfileTab's SettingsList).
