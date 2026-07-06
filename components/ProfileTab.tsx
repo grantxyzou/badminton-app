@@ -157,6 +157,7 @@ export default function ProfileTab({
   const [paidThisWeek, setPaidThisWeek] = useState(false);
   const [prevOwe, setPrevOwe] = useState<number | null>(null);
   const [sessionDatetime, setSessionDatetime] = useState<string | null>(null);
+  const [prevSessionDate, setPrevSessionDate] = useState<string | null>(null);
   // Whether the active session is settled (cost frozen). When false, the
   // "this week" figure is a live estimate — say so rather than asserting "owe".
   const [settledThisWeek, setSettledThisWeek] = useState(false);
@@ -167,6 +168,7 @@ export default function ProfileTab({
       setPaidThisWeek(false);
       setPrevOwe(null);
       setSessionDatetime(null);
+      setPrevSessionDate(null);
       setSettledThisWeek(false);
       return;
     }
@@ -196,6 +198,7 @@ export default function ProfileTab({
             ? session.prevCostPerPerson
             : null,
         );
+        setPrevSessionDate(typeof session.prevSessionDate === 'string' ? session.prevSessionDate : null);
       } catch {
         /* leave nulls — the cost row just won't render */
       }
@@ -337,6 +340,7 @@ export default function ProfileTab({
         paidThisWeek={paidThisWeek}
         settledThisWeek={settledThisWeek}
         prevOwe={prevOwe}
+        prevSessionDate={prevSessionDate}
         sessionDatetime={sessionDatetime}
       />
 
@@ -517,6 +521,7 @@ interface ProfileIdentityCardProps {
   settledThisWeek: boolean;
   /** Frozen last-session per-person snapshot, if public; null otherwise. */
   prevOwe: number | null;
+  prevSessionDate: string | null;
   /** Active session datetime (ISO) for the cost row's date/time line. */
   sessionDatetime: string | null;
 }
@@ -525,23 +530,78 @@ function fmtMoney(n: number): string {
   return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
 }
 
-function fmtSessionWhen(iso: string | null): string | null {
+/** Short date for the cost rows — 'Jul 9'. Null-safe. */
+function fmtShortDay(iso: string | null): string | null {
   if (!iso) return null;
   try {
-    const d = new Date(iso);
-    const day = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-    const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-    return `${day} · ${time}`;
+    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   } catch {
     return null;
   }
 }
 
-function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameLabel, oweThisWeek, paidThisWeek, settledThisWeek, prevOwe, sessionDatetime }: ProfileIdentityCardProps) {
+/**
+ * One cost row in the Profile identity card: period + date on the left,
+ * a small qualifier eyebrow over the amount on the right. Same shape for
+ * "This week" (estimated / final / paid) and "Last session" (final), so the
+ * two read as a consistent pair instead of a headline + afterthought.
+ */
+function CostRow({
+  label,
+  date,
+  qualifier,
+  amount,
+  tone,
+}: {
+  label: string;
+  date: string | null;
+  qualifier: string;
+  amount: string;
+  tone: 'primary' | 'muted' | 'accent';
+}) {
+  const amountColor =
+    tone === 'accent' ? 'var(--accent, #22c55e)' : tone === 'muted' ? 'var(--text-secondary)' : 'var(--text-primary)';
+  const qualColor = tone === 'accent' ? 'var(--accent, #22c55e)' : 'var(--text-muted)';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      <div style={{ minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{label}</span>
+        {date && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{date}</span>}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flex: '0 0 auto' }}>
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            color: qualColor,
+            lineHeight: 1.3,
+          }}
+        >
+          {qualifier}
+        </span>
+        <span
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 16,
+            fontWeight: 700,
+            color: amountColor,
+            lineHeight: 1.25,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {amount}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameLabel, oweThisWeek, paidThisWeek, settledThisWeek, prevOwe, prevSessionDate, sessionDatetime }: ProfileIdentityCardProps) {
   const ava = profileAvaColors(name);
   const memberSince = fmtMemberSince(memberCreatedAt);
   const showCostRow = oweThisWeek !== null || prevOwe !== null;
-  const sessionWhen = fmtSessionWhen(sessionDatetime);
 
   return (
     <div
@@ -646,40 +706,26 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameL
             paddingTop: 12,
             display: 'flex',
             flexDirection: 'column',
-            gap: 6,
+            gap: 12,
           }}
         >
           {oweThisWeek !== null && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}>This week</p>
-                {sessionWhen && (
-                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{sessionWhen}</p>
-                )}
-                {!paidThisWeek && !settledThisWeek && (
-                  <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>Not finalized yet</p>
-                )}
-              </div>
-              {paidThisWeek ? (
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent, #22c55e)' }}>Paid ✓</span>
-              ) : settledThisWeek ? (
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                  You owe {fmtMoney(oweThisWeek)}
-                </span>
-              ) : (
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                  Est. ~{fmtMoney(oweThisWeek)}
-                </span>
-              )}
-            </div>
+            <CostRow
+              label="This week"
+              date={fmtShortDay(sessionDatetime)}
+              qualifier={paidThisWeek ? 'Paid ✓' : settledThisWeek ? 'Final cost' : 'Estimated'}
+              amount={fmtMoney(oweThisWeek)}
+              tone={paidThisWeek ? 'accent' : 'primary'}
+            />
           )}
           {prevOwe !== null && (
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Last session</span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-muted)' }}>
-                {fmtMoney(prevOwe)}
-              </span>
-            </div>
+            <CostRow
+              label="Last session"
+              date={fmtShortDay(prevSessionDate)}
+              qualifier="Final cost"
+              amount={fmtMoney(prevOwe)}
+              tone="muted"
+            />
           )}
         </div>
       )}
