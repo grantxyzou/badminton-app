@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tubesUsedAcross, avgTubesPerSession, runwayWeeks, mergeBirdUsageEdit } from '@/lib/birdUsages';
+import { tubesUsedAcross, avgTubesPerSession, runwayWeeks, mergeBirdUsageEdit, snapshotBirdUsage } from '@/lib/birdUsages';
 import type { Session, BirdUsage } from '@/lib/types';
 
 describe('mergeBirdUsageEdit — preserve other purchases when editing one', () => {
@@ -107,5 +107,27 @@ describe('runwayWeeks', () => {
 
   it('returns Infinity when avg is 0 but stock remains', () => {
     expect(runwayWeeks(10, 0)).toBe(Infinity);
+  });
+});
+
+describe('snapshotBirdUsage', () => {
+  const purchase = { id: 'p1', name: 'Victor Master No.3', costPerTube: 21.33 };
+
+  it('snapshots the purchase identity + cost, rounding to cents', () => {
+    const u = snapshotBirdUsage(purchase, 1.5);
+    expect(u).toEqual({
+      purchaseId: 'p1',
+      purchaseName: 'Victor Master No.3',
+      tubes: 1.5,
+      costPerTube: 21.33,
+      totalBirdCost: 31.99, // 1.5 * 21.33 = 31.994999… in float → 31.99 (same as all write paths)
+    });
+  });
+
+  it('rounds penny-fraction products the same way all write paths must', () => {
+    // 0.25 * 21.33 = 5.3325 → 5.33
+    expect(snapshotBirdUsage(purchase, 0.25).totalBirdCost).toBe(5.33);
+    // 3 * 21.33 = 63.99 exactly
+    expect(snapshotBirdUsage(purchase, 3).totalBirdCost).toBe(63.99);
   });
 });

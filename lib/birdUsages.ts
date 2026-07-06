@@ -1,4 +1,4 @@
-import type { BirdUsage, Session } from './types';
+import type { BirdPurchase, BirdUsage, Session } from './types';
 
 /**
  * Reads the bird usages off a session document, tolerating both the
@@ -27,6 +27,26 @@ export function totalTubes(usages: BirdUsage[]): number {
 export function totalBirdCost(usages: BirdUsage[]): number {
   const raw = usages.reduce((sum, u) => sum + (u.totalBirdCost ?? 0), 0);
   return Math.round(raw * 100) / 100;
+}
+
+/**
+ * Build the authoritative `BirdUsage` snapshot for one purchase + tube count.
+ * The SINGLE source of the per-entry cost formula — `PUT /api/session`,
+ * `PATCH /api/session/bird-usage`, and `POST /api/session/advance` all write
+ * through this, so the snapshot shape and rounding can't drift between the
+ * three write paths (each previously inlined its own copy).
+ */
+export function snapshotBirdUsage(
+  purchase: Pick<BirdPurchase, 'id' | 'name' | 'costPerTube'>,
+  tubes: number,
+): BirdUsage {
+  return {
+    purchaseId: purchase.id,
+    purchaseName: purchase.name,
+    tubes,
+    costPerTube: purchase.costPerTube,
+    totalBirdCost: Math.round(tubes * purchase.costPerTube * 100) / 100,
+  };
 }
 
 /**
