@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, POINTER_ID } from '@/lib/cosmos';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
-import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
+import { sessionCostTotals } from '@/lib/sessionCost';
 import type { Session } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -73,9 +73,7 @@ export async function GET(req: NextRequest) {
       const active = (playersBySession.get(s.id) ?? []).filter((p) => !p.removed && !p.waitlisted);
       const paidCount = active.filter((p) => p.paid === true).length;
 
-      const courtTotal = (s.costPerCourt ?? 0) * (s.courts ?? 0);
-      const birdTotal = totalBirdCost(normalizeBirdUsages(s));
-      const totalCost = courtTotal + birdTotal;
+      const { totalCost } = sessionCostTotals(s);
 
       return {
         sessionId: s.id,

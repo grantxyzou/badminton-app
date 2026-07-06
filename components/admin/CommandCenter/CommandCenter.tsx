@@ -11,7 +11,7 @@ import PlayerProfileSheet from './PlayerProfileSheet';
 import ReceiptSheet from './ReceiptSheet';
 import type { AdminView } from '../types';
 import type { ReceiptInput } from '@/lib/receiptTemplate';
-import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
+import { sessionCostTotals } from '@/lib/sessionCost';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -97,9 +97,7 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
       }
 
       const active = players.filter((p) => !p.removed && !p.waitlisted);
-      const courtTotal = (session.costPerCourt ?? 0) * (session.courts ?? 0);
-      const birdTotal = totalBirdCost(normalizeBirdUsages(session));
-      const totalCost = courtTotal + birdTotal;
+      const { totalCost } = sessionCostTotals(session);
       const costPerPerson = active.length > 0 && totalCost > 0
         ? Math.round((totalCost / active.length) * 100) / 100
         : 0;
