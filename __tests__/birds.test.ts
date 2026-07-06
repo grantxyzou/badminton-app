@@ -255,6 +255,55 @@ describe('Birds API', () => {
       expect(res.status).toBe(200);
     });
 
+    it('refuses (409) to delete a purchase that sessions still reference', async () => {
+      const createRes = await POST(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+        name: 'Referenced', tubes: 4, totalCost: 80,
+      }));
+      const { id } = await createRes.json();
+
+      seedPointer('session-2026-06-01');
+      seedSession('session-2026-06-01', {
+        datetime: '2026-06-01T19:00:00-04:00',
+        birdUsages: [
+          { purchaseId: id, purchaseName: 'Referenced', tubes: 2, costPerTube: 20, totalBirdCost: 40 },
+        ],
+      });
+
+      const res = await DELETE(makeAdminRequest('DELETE', 'http://localhost:3000/api/birds', { id }));
+      expect(res.status).toBe(409);
+      const body = await res.json();
+      expect(body.error).toMatch(/used by 1 session/i);
+      expect(body.error).toMatch(/move its tubes/i);
+      expect(body.sessionCount).toBe(1);
+      expect(body.sessionDates).toEqual(['2026-06-01T19:00:00-04:00']);
+
+      // Doc untouched — still visible in GET, stock math intact.
+      const getData = await (await GET(makeAdminRequest('GET', 'http://localhost:3000/api/birds'))).json();
+      expect(getData.purchases).toHaveLength(1);
+      expect(getData.currentStock).toBe(2);
+    });
+
+    it('still deletes an adjustment doc (reconcile undo) even when sessions have usage', async () => {
+      const createRes = await POST(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+        name: 'Stocked', tubes: 4, totalCost: 80,
+      }));
+      const { id: purchaseId } = await createRes.json();
+      seedPointer('session-2026-06-08');
+      seedSession('session-2026-06-08', {
+        birdUsages: [
+          { purchaseId, purchaseName: 'Stocked', tubes: 1, costPerTube: 20, totalBirdCost: 20 },
+        ],
+      });
+      // Create an adjustment via reconcile, then undo it via DELETE.
+      const recRes = await reconcile(makeAdminRequest('POST', 'http://localhost:3000/api/birds/reconcile', {
+        countedTotal: 2,
+      }));
+      const { adjustment } = await recRes.json();
+
+      const res = await DELETE(makeAdminRequest('DELETE', 'http://localhost:3000/api/birds', { id: adjustment.id }));
+      expect(res.status).toBe(200);
+    });
+
     it('rejects missing id', async () => {
       const res = await DELETE(makeAdminRequest('DELETE', 'http://localhost:3000/api/birds', {}));
       expect(res.status).toBe(400);
