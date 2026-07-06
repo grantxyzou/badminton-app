@@ -95,29 +95,40 @@ describe('POST /api/session/advance — snapshot fields', () => {
     });
   });
 
-  it('skips unknown / zero / malformed bird entries', async () => {
+  // Advance now enforces the SAME bird contract as PUT /api/session (PR 2.2):
+  // tubes:0 omits the entry, but a malformed entry 400s and an unknown
+  // purchase 404s (previously all three were silently dropped).
+  function advanceWithBirds(birdUsages: unknown) {
     const store = getStore();
     store['birds'] = [
       { id: 'pur-a', name: 'Yonex AS-30', tubes: 20, totalCost: 60, costPerTube: 3, date: '2026-04-20', createdAt: new Date().toISOString() },
     ];
     seedPointer('session-2026-04-29');
     seedSession('session-2026-04-29', { courts: 2, costPerCourt: 30, maxPlayers: 12 });
-
-    const req = makeAdminRequest('POST', 'http://localhost:3000/api/session/advance', {
+    return ADVANCE(makeAdminRequest('POST', 'http://localhost:3000/api/session/advance', {
       datetime: '2026-05-06T20:00:00-04:00',
       deadline: '2026-05-06T18:00:00-04:00',
       courts: 2,
       maxPlayers: 12,
-      birdUsages: [
-        { purchaseId: 'pur-a', tubes: 0 },        // zero → skipped
-        { purchaseId: 'nope', tubes: 2 },          // unknown purchase → skipped
-        { purchaseId: 'pur-a', tubes: 0.1 },       // not a 0.25 step → skipped
-      ],
-    });
-    const res = await ADVANCE(req);
+      birdUsages,
+    }));
+  }
+
+  it('omits a tubes:0 bird entry (0 = remove) and advances with no birdUsages', async () => {
+    const res = await advanceWithBirds([{ purchaseId: 'pur-a', tubes: 0 }]);
     expect(res.status).toBe(201);
-    const body = await res.json();
-    expect(body.birdUsages).toBeUndefined();
+    expect((await res.json()).birdUsages).toBeUndefined();
+  });
+
+  it('rejects a malformed bird entry with 400 (was silently skipped)', async () => {
+    const res = await advanceWithBirds([{ purchaseId: 'pur-a', tubes: 0.1 }]); // off the 0.25 grid
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/0\.25/);
+  });
+
+  it('rejects an unknown bird purchase with 404 (was silently skipped)', async () => {
+    const res = await advanceWithBirds([{ purchaseId: 'nope', tubes: 2 }]);
+    expect(res.status).toBe(404);
   });
 
   it('flags cost_changed in anomaliesAtAdvance when costPerCourt differs', async () => {

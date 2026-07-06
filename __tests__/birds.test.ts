@@ -75,6 +75,47 @@ describe('Birds API', () => {
       expect(res.status).toBe(400);
     });
 
+    // PR 2.2: POST gained the same grid + ceiling tube validation as every other
+    // bird write. A purchase is a bulk buy, so its ceiling is 1000 (not the
+    // per-session 100). Previously any tubes > 0 was accepted.
+    it.each([
+      { label: 'off the 0.25 grid', tubes: 4.1 },
+      { label: 'over the 1000-tube ceiling', tubes: 1001 },
+    ])('rejects tubes $label with 400', async ({ tubes }) => {
+      const res = await POST(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+        name: 'Test', tubes, totalCost: 80,
+      }));
+      expect(res.status).toBe(400);
+    });
+
+    it('accepts an on-grid purchase at the 1000-tube ceiling', async () => {
+      const res = await POST(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+        name: 'Bulk Buy', tubes: 1000, totalCost: 5000, date: '2026-05-01',
+      }));
+      expect(res.status).toBe(201);
+    });
+
+    // PR 2.2: date is validated to a real YYYY-MM-DD instead of stored verbatim
+    // via slice(0,10) — which let "garbage!!!!" become the persisted date.
+    it.each([
+      { label: 'a non-date string', date: 'garbage!!!!' }, // fails the shape regex
+      { label: 'an impossible calendar date', date: '9999-99-99' }, // passes regex, fails Date.parse
+    ])('rejects $label date with 400', async ({ date }) => {
+      const res = await POST(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+        name: 'Test', tubes: 4, totalCost: 80, date,
+      }));
+      expect(res.status).toBe(400);
+    });
+
+    it('defaults date to today when omitted', async () => {
+      const res = await POST(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+        name: 'Test', tubes: 4, totalCost: 80,
+      }));
+      const data = await res.json();
+      expect(res.status).toBe(201);
+      expect(data.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
     it('rejects non-admin', async () => {
       const res = await POST(makeRequest('POST', 'http://localhost:3000/api/birds', {
         name: 'Test', tubes: 4, totalCost: 80,
@@ -417,6 +458,32 @@ describe('Birds API', () => {
 
       const res = await PATCH(makeAdminRequest('PATCH', 'http://localhost:3000/api/birds', {
         id, tubes: 0,
+      }));
+      expect(res.status).toBe(400);
+    });
+
+    // PR 2.2: PATCH shares POST's tube (grid + 1000 ceiling) and date
+    // (real YYYY-MM-DD) validation — off-grid tubes and garbage date strings
+    // were previously accepted.
+    it.each([
+      { label: 'off the 0.25 grid', tubes: 4.1 },
+      { label: 'over the 1000-tube ceiling', tubes: 1001 },
+    ])('rejects a tubes update $label with 400', async ({ tubes }) => {
+      const { id } = await (await POST(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+        name: 'Test', tubes: 4, totalCost: 80,
+      }))).json();
+      const res = await PATCH(makeAdminRequest('PATCH', 'http://localhost:3000/api/birds', {
+        id, tubes,
+      }));
+      expect(res.status).toBe(400);
+    });
+
+    it('rejects a malformed date update with 400', async () => {
+      const { id } = await (await POST(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+        name: 'Test', tubes: 4, totalCost: 80,
+      }))).json();
+      const res = await PATCH(makeAdminRequest('PATCH', 'http://localhost:3000/api/birds', {
+        id, date: 'garbage!!!!',
       }));
       expect(res.status).toBe(400);
     });

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId, setActiveSessionId, sessionIdFromDate } from '@/lib/cosmos';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { toValidIso } from '@/app/api/session/route';
-import { normalizeBirdUsages, totalBirdCost, snapshotBirdUsage } from '@/lib/birdUsages';
+import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
+import { resolveBirdUsages } from '@/lib/birdWrite';
 import type { BirdUsage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -134,39 +135,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Resolve any bird tubes the admin chose to load into the new session at
-    // creation time. Body shape: birdUsages: [{ purchaseId, tubes }]. Each
-    // purchase is looked up and its cost snapshotted via the shared
-    // `snapshotBirdUsage` (same formula as PUT /api/session and PATCH
-    // /api/session/bird-usage). Invalid/zero/unknown entries are skipped
-    // silently. Reads are batched (was an N+1 sequential loop).
-    let birdUsages: BirdUsage[] = [];
-    if (Array.isArray(body.birdUsages) && body.birdUsages.length > 0) {
-      // Validate + de-dupe first (same purchase twice → keep the last, in
-      // last-occurrence order, matching the previous splice-and-push behavior).
-      const wanted = new Map<string, number>();
-      for (const entry of body.birdUsages) {
-        const purchaseId = typeof entry?.purchaseId === 'string' ? entry.purchaseId : '';
-        const tubes = Number(entry?.tubes);
-        if (!purchaseId) continue;
-        if (!Number.isFinite(tubes) || tubes <= 0 || tubes > 100) continue;
-        if (Math.round(tubes * 4) !== tubes * 4) continue; // 0.25 increments only
-        wanted.delete(purchaseId); // re-insert at the end on dupe
-        wanted.set(purchaseId, tubes);
-      }
-      const birdsContainer = getContainer('birds');
-      const ids = Array.from(wanted.keys());
-      const reads = await Promise.all(
-        ids.map((id) => birdsContainer.item(id, id).read().catch(() => ({ resource: undefined }))),
-      );
-      const resolved: BirdUsage[] = [];
-      for (let i = 0; i < ids.length; i++) {
-        const purchase = reads[i].resource;
-        if (!purchase) continue; // unknown purchase — skip silently (pre-existing contract)
-        resolved.push(snapshotBirdUsage(purchase, wanted.get(ids[i])!));
-      }
-      birdUsages = resolved;
+    // Resolve any bird tubes the admin chose to load into the new session,
+    // through the SAME shared contract PUT /api/session uses (validate → dedup
+    // → drop tubes:0 → batch-read → snapshot). Previously this silently dropped
+    // invalid/unknown entries where PUT 400s — now both reject identically, so
+    // a carried-forward typo surfaces instead of quietly losing tubes.
+    const resolvedBirds = await resolveBirdUsages(body.birdUsages);
+    if (!resolvedBirds.ok) {
+      return NextResponse.json({ error: resolvedBirds.error }, { status: resolvedBirds.status });
     }
+    const birdUsages: BirdUsage[] = resolvedBirds.usages;
 
     const newSession = {
       id: newId,
