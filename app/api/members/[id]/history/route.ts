@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
-import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
+import { sessionCostTotals } from '@/lib/sessionCost';
 import { expandAliasNames } from '@/lib/playerIdentity';
 import type { Alias, Member, Player, Session } from '@/lib/types';
 
@@ -93,9 +93,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
       let costPerPerson = 0;
       if (session) {
-        const courtTotal = (session.costPerCourt ?? 0) * (session.courts ?? 0);
-        const birdTotal = totalBirdCost(normalizeBirdUsages(session));
-        const totalCost = courtTotal + birdTotal;
+        const { totalCost } = sessionCostTotals(session);
         const playerCount = attendanceBySession.get(player.sessionId) ?? 0;
         if (totalCost > 0 && playerCount > 0) {
           costPerPerson = Math.round((totalCost / playerCount) * 100) / 100;
