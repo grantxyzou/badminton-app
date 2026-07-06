@@ -3,11 +3,10 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import AdminBackHeader from '../AdminBackHeader';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
-import { normalizeBirdUsages } from '@/lib/birdUsages';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import AssignUsageSheet from '../AssignUsageSheet';
 import { fmtShortDate as fmtDate } from '@/lib/fmt';
-import type { BirdPurchase, Session } from '@/lib/types';
+import type { BirdPurchase } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -52,7 +51,8 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
   const [currentStock, setCurrentStock] = useState(0);
   const [stockDrift, setStockDrift] = useState(0);
   const [totalAdjustments, setTotalAdjustments] = useState(0);
-  const [usedByPurchase, setUsedByPurchase] = useState<Map<string, number>>(new Map());
+  const [remainingByPurchase, setRemainingByPurchase] = useState<Record<string, number>>({});
+  const [burnPerSession, setBurnPerSession] = useState(0);
   const [recentSessionCount, setRecentSessionCount] = useState(0);
   const [recentUsedTotal, setRecentUsedTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -89,52 +89,35 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
     setLoading(true);
     setLoadError(false);
     try {
-      const [birdsRes, sessionsRes] = await Promise.all([
-        fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
-        fetch(`${BASE}/api/sessions`, { cache: 'no-store' }),
-      ]);
+      const birdsRes = await fetch(`${BASE}/api/birds`, { cache: 'no-store' });
       // A non-ok response is a load FAILURE, not an empty inventory — falling
       // back to a zero object here rendered the forbidden lying-empty state
       // (confident "0 tubes" on a broken backend).
-      if (!birdsRes.ok || !sessionsRes.ok) {
+      if (!birdsRes.ok) {
         setLoadError(true);
         return;
       }
-      const birds = await birdsRes.json() as { purchases: BirdPurchase[]; currentStock: number; stockDrift?: number; totalAdjustments?: number };
-      const sessions = await sessionsRes.json() as Session[];
-
-      // Build two independent quantities:
-      //   - `used` is all-time per-purchase usage (used to compute remaining
-      //     stock per purchase / per brand).
-      //   - `recentUsed` is total tubes consumed in the last 60 days only,
-      //     paired with `recent` (count of sessions in that same window).
-      // Burn rate is `recentUsed / recent` — apples-to-apples. Mixing
-      // all-time usage with recent session count was inflating the burn
-      // rate and shrinking `weeksRunway`.
-      const used = new Map<string, number>();
-      let recentSessions = 0;
-      let recentUsed = 0;
-      const sixtyDaysAgo = Date.now() - 60 * 86_400_000;
-      for (const s of sessions) {
-        const usages = normalizeBirdUsages(s);
-        for (const u of usages) {
-          used.set(u.purchaseId, (used.get(u.purchaseId) ?? 0) + u.tubes);
-        }
-        if (s.datetime) {
-          const t = new Date(s.datetime).getTime();
-          if (Number.isFinite(t) && t >= sixtyDaysAgo) {
-            recentSessions++;
-            for (const u of usages) recentUsed += u.tubes;
-          }
-        }
-      }
+      const birds = await birdsRes.json() as {
+        purchases: BirdPurchase[];
+        currentStock: number;
+        stockDrift?: number;
+        totalAdjustments?: number;
+        remainingByPurchase: Record<string, number>;
+        burnPerSession: number;
+        recentSessionsLast60d: number;
+        recentUsedLast60d: number;
+      };
+      // burnPerSession, remainingByPurchase, and the 60d window stats are
+      // now computed server-side in GET /api/birds — no need to re-fetch
+      // /api/sessions and recompute them on the client.
       setPurchases(birds.purchases ?? []);
       setCurrentStock(birds.currentStock ?? 0);
       setStockDrift(birds.stockDrift ?? 0);
       setTotalAdjustments(birds.totalAdjustments ?? 0);
-      setUsedByPurchase(used);
-      setRecentSessionCount(recentSessions);
-      setRecentUsedTotal(recentUsed);
+      setRemainingByPurchase(birds.remainingByPurchase ?? {});
+      setBurnPerSession(birds.burnPerSession ?? 0);
+      setRecentSessionCount(birds.recentSessionsLast60d ?? 0);
+      setRecentUsedTotal(birds.recentUsedLast60d ?? 0);
     } catch {
       // Offline / network failure: fetch() rejects before returning a
       // Response, so the res.ok guards above never run. Flag it explicitly
@@ -277,12 +260,6 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
     }
   }
 
-  // Burn rate: tubes used in the last 60 days ÷ sessions in the same window.
-  const burnPerSession = useMemo(() => {
-    if (recentSessionCount === 0) return 0;
-    return recentUsedTotal / recentSessionCount;
-  }, [recentUsedTotal, recentSessionCount]);
-
   const weeksRunway = burnPerSession > 0 ? currentStock / burnPerSession : null;
 
   // Brand summaries — grouped by FULL name (e.g. 'Ling-Mei 60' stays
@@ -292,8 +269,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
     const map = new Map<string, BrandSummary & { speedSum: number; speedCount: number; qualitySum: number; qualityCount: number }>();
     for (const p of purchases) {
       const key = p.name?.trim() || '—';
-      const used = usedByPurchase.get(p.id) ?? 0;
-      const remaining = Math.max(0, p.tubes - used);
+      const remaining = remainingByPurchase[p.id] ?? 0;
       const existing = map.get(key) ?? {
         brand: key,
         remaining: 0,
@@ -321,7 +297,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         return { brand: v.brand, remaining: v.remaining, bought: v.bought, speed, quality, weeksLeft };
       });
     return out.sort((a, b) => b.remaining - a.remaining);
-  }, [purchases, usedByPurchase, burnPerSession]);
+  }, [purchases, remainingByPurchase, burnPerSession]);
 
   // Last 60d purchase history.
   const recentPurchases = useMemo(() => {
@@ -657,8 +633,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
       ) : (
         <div className="glass-card" style={{ padding: '4px 0' }}>
           {recentPurchases.map((p, i) => {
-            const used = usedByPurchase.get(p.id) ?? 0;
-            const left = Math.max(0, p.tubes - used);
+            const left = remainingByPurchase[p.id] ?? 0;
             return (
               <button
                 key={p.id}
