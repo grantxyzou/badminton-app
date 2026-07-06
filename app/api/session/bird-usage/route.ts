@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
-import { normalizeBirdUsages } from '@/lib/birdUsages';
+import { normalizeBirdUsages, snapshotBirdUsage } from '@/lib/birdUsages';
 import type { BirdUsage, Session } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -57,13 +57,7 @@ export async function PATCH(req: NextRequest) {
 
     const next: BirdUsage[] = [...existing];
     if (tubes > 0) {
-      next.push({
-        purchaseId: purchase.id,
-        purchaseName: purchase.name,
-        tubes,
-        costPerTube: purchase.costPerTube,
-        totalBirdCost: Math.round(tubes * purchase.costPerTube * 100) / 100,
-      });
+      next.push(snapshotBirdUsage(purchase, tubes));
     }
 
     const updated: Session = { ...session, birdUsages: next };

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId, POINTER_ID, DEFAULT_SESSION } from '@/lib/cosmos';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
+import { snapshotBirdUsage } from '@/lib/birdUsages';
 import type { BirdUsage, ETransferRecipient } from '@/lib/types';
 
 function isValidETransferRecipient(value: unknown): value is ETransferRecipient {
@@ -86,11 +87,12 @@ export async function PUT(req: NextRequest) {
     if (typeof body.showCostBreakdown === 'boolean') updates.showCostBreakdown = body.showCostBreakdown;
 
     // Handle bird usages — array of { purchaseId, tubes }. Each entry is
-    // looked up live so cost snapshots are authoritative.
+    // looked up live so cost snapshots are authoritative. Validate everything
+    // synchronously first, then batch the purchase reads (was an N+1 loop —
+    // one sequential read per entry).
     let birdUsages: BirdUsage[] | undefined = undefined;
     if (Array.isArray(body.birdUsages)) {
-      const entries: BirdUsage[] = [];
-      const birdsContainer = getContainer('birds');
+      const wanted: Array<{ purchaseId: string; tubes: number }> = [];
       for (const entry of body.birdUsages) {
         const tubes = Number(entry?.tubes);
         if (!Number.isFinite(tubes) || tubes <= 0 || tubes > 100) {
@@ -104,17 +106,19 @@ export async function PUT(req: NextRequest) {
         if (typeof purchaseId !== 'string' || !purchaseId) {
           return NextResponse.json({ error: 'Bird purchase must be selected' }, { status: 400 });
         }
-        const { resource: purchase } = await birdsContainer.item(purchaseId, purchaseId).read();
+        wanted.push({ purchaseId, tubes });
+      }
+      const birdsContainer = getContainer('birds');
+      const purchaseReads = await Promise.all(
+        wanted.map((w) => birdsContainer.item(w.purchaseId, w.purchaseId).read()),
+      );
+      const entries: BirdUsage[] = [];
+      for (let i = 0; i < wanted.length; i++) {
+        const purchase = purchaseReads[i].resource;
         if (!purchase) {
           return NextResponse.json({ error: 'Selected bird purchase not found' }, { status: 404 });
         }
-        entries.push({
-          purchaseId: purchase.id,
-          purchaseName: purchase.name,
-          tubes,
-          costPerTube: purchase.costPerTube,
-          totalBirdCost: Math.round(tubes * purchase.costPerTube * 100) / 100,
-        });
+        entries.push(snapshotBirdUsage(purchase, wanted[i].tubes));
       }
       birdUsages = entries;
     }
