@@ -158,6 +158,32 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'ID required' }, { status: 400 });
     }
 
+    // Referential guard: a purchase that sessions' birdUsages still reference
+    // cannot be hard-deleted — its usage would keep counting toward totalUsed
+    // while totalPurchased dropped, silently skewing stock into drift. The
+    // admin moves the tubes first via the existing retro-assign flow
+    // (PATCH /api/session/bird-usage: set 0 on this purchase, re-add on
+    // another), then deletes. Adjustment docs are never referenced by
+    // sessions, so reconcile-undo (deleting an adjustment) is unaffected.
+    const sessionsContainer = getContainer('sessions');
+    const { resources: sessions } = await sessionsContainer.items
+      .query({ query: 'SELECT c.id, c.datetime, c.birdUsage, c.birdUsages FROM c WHERE IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)' })
+      .fetchAll();
+    const referencing = (sessions as Array<Pick<Session, 'birdUsage' | 'birdUsages'> & { datetime?: string }>)
+      .filter((s) => normalizeBirdUsages(s).some((u) => u.purchaseId === id && (u.tubes ?? 0) > 0));
+    if (referencing.length > 0) {
+      const sessionDates = referencing
+        .map((s) => (typeof s.datetime === 'string' ? s.datetime : ''))
+        .filter(Boolean)
+        .sort()
+        .slice(-6); // most recent few — enough to identify, bounded payload
+      return NextResponse.json({
+        error: `This purchase is used by ${referencing.length} session${referencing.length === 1 ? '' : 's'}. Move its tubes to another purchase first (Edit → Assign tubes to sessions), then delete.`,
+        sessionCount: referencing.length,
+        sessionDates,
+      }, { status: 409 });
+    }
+
     const container = getContainer('birds');
     await container.item(id, id).delete();
     return NextResponse.json({ success: true });

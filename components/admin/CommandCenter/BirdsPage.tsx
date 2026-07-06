@@ -75,6 +75,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
   const [formNotes, setFormNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [formError, setFormError] = useState('');
 
   // Reconcile-count sheet — correct the on-hand total to a physical recount.
@@ -148,6 +149,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
   useEffect(() => { void load(); }, [load]);
 
   function openAddSheet() {
+    setConfirmingDelete(false);
     setEditingId(null);
     setFormName('');
     setFormTubes('');
@@ -161,6 +163,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
   }
 
   function openEditSheet(p: BirdPurchase) {
+    setConfirmingDelete(false);
     setEditingId(p.id);
     setFormName(p.name);
     setFormTubes(p.tubes);
@@ -214,7 +217,6 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
 
   async function handleDelete() {
     if (!editingId) return;
-    if (!confirm('Delete this purchase? This cannot be undone.')) return;
     setDeleting(true);
     setFormError('');
     try {
@@ -225,13 +227,18 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        // 409 = referenced by sessions; the server message carries the
+        // "move its tubes first" guidance. Drop back out of the confirm row
+        // so the error is what the admin reads.
         setFormError(data.error ?? 'Failed to delete.');
+        setConfirmingDelete(false);
         return;
       }
       setSheetOpen(false);
       await load();
     } catch {
       setFormError('Network error.');
+      setConfirmingDelete(false);
     } finally {
       setDeleting(false);
     }
@@ -870,37 +877,65 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
               );
             })()}
 
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              {editingId && (
+            {/* Two-step delete confirm — in-sheet (no stacked sheet, no native
+                confirm()). A referenced purchase comes back 409 with guidance
+                ("move its tubes first"), surfaced via formError above. */}
+            {confirmingDelete ? (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span className="fs-sm" style={{ color: 'var(--text-secondary)', flex: 1, minWidth: 160 }}>
+                  Delete this purchase? This cannot be undone.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDelete(false)}
+                  className="cc-btn cc-btn-ghost"
+                  disabled={deleting}
+                >
+                  Keep it
+                </button>
                 <button
                   type="button"
                   onClick={handleDelete}
-                  disabled={saving || deleting}
+                  disabled={deleting}
                   className="cc-btn cc-btn-danger"
-                  aria-label="Delete this purchase"
+                  aria-label="Confirm delete purchase"
                 >
-                  {deleting ? 'Deleting…' : 'Delete'}
+                  {deleting ? 'Deleting…' : 'Confirm delete'}
                 </button>
-              )}
-              <div style={{ flex: 1 }} />
-              <button
-                type="button"
-                onClick={() => setSheetOpen(false)}
-                className="cc-btn cc-btn-ghost"
-                disabled={saving || deleting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="cc-btn cc-btn-primary"
-                disabled={saving || deleting}
-                style={{ minWidth: 100 }}
-              >
-                {saving ? 'Saving…' : editingId ? 'Save' : 'Add'}
-              </button>
-            </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingDelete(true)}
+                    disabled={saving || deleting}
+                    className="cc-btn cc-btn-danger"
+                    aria-label="Delete this purchase"
+                  >
+                    Delete
+                  </button>
+                )}
+                <div style={{ flex: 1 }} />
+                <button
+                  type="button"
+                  onClick={() => setSheetOpen(false)}
+                  className="cc-btn cc-btn-ghost"
+                  disabled={saving || deleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="cc-btn cc-btn-primary"
+                  disabled={saving || deleting}
+                  style={{ minWidth: 100 }}
+                >
+                  {saving ? 'Saving…' : editingId ? 'Save' : 'Add'}
+                </button>
+              </div>
+            )}
           </div>
         </BottomSheetBody>
       </BottomSheet>
