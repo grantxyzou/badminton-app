@@ -267,6 +267,50 @@ describe('PUT /api/session', () => {
     expect(Array.isArray(data.birdUsages)).toBe(true);
     expect(data.birdUsages).toHaveLength(0);
   });
+
+  // Decision 3: tubes:0 is now VALID on PUT and means "remove that purchase's
+  // entry", aligning PUT to the retro-assign PATCH contract. PUT previously
+  // 400'd on tubes <= 0 — this is the one genuinely new PUT behavior in PR 2.2.
+  it('omits a tubes:0 entry and keeps the rest (0 = remove)', async () => {
+    const a = await (await CREATE_BIRD(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+      name: 'Victor A', tubes: 4, totalCost: 80,
+    }))).json();
+    const b = await (await CREATE_BIRD(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+      name: 'Yonex B', tubes: 4, totalCost: 100,
+    }))).json();
+
+    const res = await PUT(makeAdminRequest('PUT', 'http://localhost:3000/api/session', {
+      title: 'Test',
+      courts: 2,
+      maxPlayers: 12,
+      birdUsages: [
+        { purchaseId: a.id, tubes: 2 },
+        { purchaseId: b.id, tubes: 0 }, // 0 = remove this entry
+      ],
+    }));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.birdUsages).toHaveLength(1);
+    expect(data.birdUsages[0].purchaseId).toBe(a.id);
+  });
+
+  it('treats an all-zero birdUsages array as clearing every entry', async () => {
+    const bird = await (await CREATE_BIRD(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+      name: 'Solo', tubes: 4, totalCost: 80,
+    }))).json();
+
+    const res = await PUT(makeAdminRequest('PUT', 'http://localhost:3000/api/session', {
+      title: 'Test',
+      courts: 2,
+      maxPlayers: 12,
+      birdUsages: [{ purchaseId: bird.id, tubes: 0 }],
+    }));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.birdUsages).toHaveLength(0);
+  });
 });
 
 describe('POST /api/session/advance', () => {

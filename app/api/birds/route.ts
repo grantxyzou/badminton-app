@@ -2,8 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { randomBytes } from 'crypto';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
-import { normalizeBirdUsages, totalTubes } from '@/lib/birdUsages';
+import { normalizeBirdUsages, totalTubes, validPurchaseDate } from '@/lib/birdUsages';
 import type { Session } from '@/lib/types';
+
+// A single purchase is a bulk buy — allow far more than a session's per-entry
+// cap (100), but still reject a fat-fingered 99999. Whole/half/quarter tubes
+// only, matching the usage grid.
+const MAX_PURCHASE_TUBES = 1000;
+function validPurchaseTubes(tubes: number): string | null {
+  if (!Number.isFinite(tubes) || tubes <= 0 || tubes > MAX_PURCHASE_TUBES) {
+    return `Tubes must be between 0 and ${MAX_PURCHASE_TUBES}`;
+  }
+  if (Math.round(tubes * 4) !== tubes * 4) return 'Tubes must be in 0.25 increments';
+  return null;
+}
 
 export async function GET(req: NextRequest) {
   if (!isAdminAuthed(req)) return unauthorized();
@@ -112,10 +124,19 @@ export async function POST(req: NextRequest) {
     const name = typeof body.name === 'string' ? body.name.trim().slice(0, 100) : '';
     const tubes = typeof body.tubes === 'number' ? body.tubes : 0;
     const totalCost = typeof body.totalCost === 'number' ? body.totalCost : 0;
-    const date = typeof body.date === 'string' ? body.date.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    // Absent date → today. Provided-but-invalid → 400 (was stored verbatim,
+    // so "garbage!!!!".slice(0,10) became the date).
+    let date: string;
+    if (body.date === undefined || body.date === null) {
+      date = new Date().toISOString().slice(0, 10);
+    } else {
+      date = validPurchaseDate(body.date);
+      if (!date) return NextResponse.json({ error: 'Date must be YYYY-MM-DD' }, { status: 400 });
+    }
 
     if (!name) return NextResponse.json({ error: 'Shuttle name required' }, { status: 400 });
-    if (tubes <= 0) return NextResponse.json({ error: 'Tubes must be greater than 0' }, { status: 400 });
+    const tubesError = validPurchaseTubes(tubes);
+    if (tubesError) return NextResponse.json({ error: tubesError }, { status: 400 });
     if (totalCost <= 0) return NextResponse.json({ error: 'Cost must be greater than 0' }, { status: 400 });
 
     const purchase: Record<string, unknown> = {
@@ -217,15 +238,18 @@ export async function PATCH(req: NextRequest) {
       updated.name = name;
     }
     if (typeof body.tubes === 'number') {
-      if (body.tubes <= 0) return NextResponse.json({ error: 'Tubes must be greater than 0' }, { status: 400 });
+      const tubesError = validPurchaseTubes(body.tubes);
+      if (tubesError) return NextResponse.json({ error: tubesError }, { status: 400 });
       updated.tubes = body.tubes;
     }
     if (typeof body.totalCost === 'number') {
       if (body.totalCost <= 0) return NextResponse.json({ error: 'Cost must be greater than 0' }, { status: 400 });
       updated.totalCost = Math.round(body.totalCost * 100) / 100;
     }
-    if (typeof body.date === 'string') {
-      updated.date = body.date.slice(0, 10);
+    if (body.date !== undefined) {
+      const date = validPurchaseDate(body.date);
+      if (!date) return NextResponse.json({ error: 'Date must be YYYY-MM-DD' }, { status: 400 });
+      updated.date = date;
     }
 
     // Recalculate costPerTube only when cost inputs change

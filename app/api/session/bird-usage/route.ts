@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
-import { normalizeBirdUsages, snapshotBirdUsage } from '@/lib/birdUsages';
+import { normalizeBirdUsages, snapshotBirdUsage, validateBirdEntry } from '@/lib/birdUsages';
 import type { BirdUsage, Session } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -22,17 +22,14 @@ export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
     const sessionId = typeof body?.sessionId === 'string' ? body.sessionId : '';
-    const purchaseId = typeof body?.purchaseId === 'string' ? body.purchaseId : '';
-    const tubes = Number(body?.tubes);
-
     if (!sessionId) return NextResponse.json({ error: 'sessionId required' }, { status: 400 });
-    if (!purchaseId) return NextResponse.json({ error: 'purchaseId required' }, { status: 400 });
-    if (!Number.isFinite(tubes) || tubes < 0 || tubes > 100) {
-      return NextResponse.json({ error: 'tubes must be between 0 and 100' }, { status: 400 });
-    }
-    if (Math.round(tubes * 4) !== tubes * 4) {
-      return NextResponse.json({ error: 'tubes must be in 0.25 increments' }, { status: 400 });
-    }
+
+    // Same tube/purchase contract as every other bird write (tubes ∈ [0,100],
+    // 0.25 grid, 0 = remove). This endpoint always allowed 0 as "remove"; the
+    // shared validator now makes that the rule everywhere.
+    const v = validateBirdEntry({ purchaseId: body?.purchaseId, tubes: body?.tubes });
+    if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
+    const { purchaseId, tubes } = v.value;
 
     const sessionsContainer = getContainer('sessions');
     const { resources } = await sessionsContainer.items
