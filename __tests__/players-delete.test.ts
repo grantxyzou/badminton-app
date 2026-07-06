@@ -8,6 +8,7 @@ import {
   makeRequest,
   makeAdminRequest,
   seedAdminMember,
+  getStore,
 } from './helpers';
 import { DELETE } from '@/app/api/players/route';
 
@@ -47,7 +48,7 @@ describe('DELETE /api/players', () => {
       expect(data.success).toBe(true);
 
       // ASSERT: player is soft-deleted in the store — removed flag is set
-      const store = global._mockStore as Record<string, Record<string, unknown>[]>;
+      const store = getStore() as Record<string, Record<string, unknown>[]>;
       const stored = store['players'].find((p) => p.id === player.id);
       expect(stored?.removed).toBe(true);
       expect(stored?.cancelledBySelf).toBe(true);
@@ -128,7 +129,7 @@ describe('DELETE /api/players', () => {
       expect(data.count).toBe(3);
 
       // ASSERT: store has no remaining player records for the session
-      const store = global._mockStore as Record<string, Record<string, unknown>[]>;
+      const store = getStore() as Record<string, Record<string, unknown>[]>;
       const remaining = (store['players'] ?? []).filter((p) => p.sessionId === SESSION_ID);
       expect(remaining).toHaveLength(0);
     });
@@ -154,7 +155,7 @@ describe('DELETE /api/players', () => {
       expect(data.count).toBe(2);
 
       // ASSERT: every player in the store now has removed: true
-      const store = global._mockStore as Record<string, Record<string, unknown>[]>;
+      const store = getStore() as Record<string, Record<string, unknown>[]>;
       const players = (store['players'] ?? []).filter((p) => p.sessionId === SESSION_ID);
       expect(players.every((p) => p.removed === true)).toBe(true);
     });
