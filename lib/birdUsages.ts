@@ -30,6 +30,46 @@ export function totalBirdCost(usages: BirdUsage[]): number {
 }
 
 /**
+ * The one bird-tube validation contract, shared by every write path.
+ * Tubes ∈ [0, 100] on the 0.25 grid; `0` is valid and means "remove this
+ * purchase's entry" (Decision: session PUT, the retro-assign PATCH, and
+ * advance all agree). `purchaseId` must be a non-empty string.
+ *
+ * Returns the normalized `{ purchaseId, tubes }` or a human-readable error —
+ * callers turn `!ok` into a 400.
+ */
+export function validateBirdEntry(
+  entry: { purchaseId?: unknown; tubes?: unknown } | null | undefined,
+): { ok: true; value: { purchaseId: string; tubes: number } } | { ok: false; error: string } {
+  const tubes = Number(entry?.tubes);
+  if (!Number.isFinite(tubes) || tubes < 0 || tubes > 100) {
+    return { ok: false, error: 'Bird tubes must be between 0 and 100' };
+  }
+  // Multiple of 0.25 — rejects 0.33, 1.7, etc. (0.25-grid values are exact in
+  // binary floating point, so this comparison is safe).
+  if (Math.round(tubes * 4) !== tubes * 4) {
+    return { ok: false, error: 'Bird tubes must be in 0.25 increments' };
+  }
+  const purchaseId = entry?.purchaseId;
+  if (typeof purchaseId !== 'string' || !purchaseId) {
+    return { ok: false, error: 'Bird purchase must be selected' };
+  }
+  return { ok: true, value: { purchaseId, tubes } };
+}
+
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Validate a purchase `date` to a real `YYYY-MM-DD` string, or return '' if it
+ * isn't one. (POST/PATCH /api/birds previously stored `body.date.slice(0,10)`
+ * verbatim — so "garbage!!!!" became the stored date.)
+ */
+export function validPurchaseDate(input: unknown): string {
+  const s = typeof input === 'string' ? input.slice(0, 10) : '';
+  return YMD_RE.test(s) && !Number.isNaN(Date.parse(s)) ? s : '';
+}
+
+/**
  * Build the authoritative `BirdUsage` snapshot for one purchase + tube count.
  * The SINGLE source of the per-entry cost formula — `PUT /api/session`,
  * `PATCH /api/session/bird-usage`, and `POST /api/session/advance` all write

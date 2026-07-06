@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId, POINTER_ID, DEFAULT_SESSION } from '@/lib/cosmos';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
-import { snapshotBirdUsage } from '@/lib/birdUsages';
+import { resolveBirdUsages } from '@/lib/birdWrite';
 import type { BirdUsage, ETransferRecipient } from '@/lib/types';
 
 function isValidETransferRecipient(value: unknown): value is ETransferRecipient {
@@ -86,41 +86,17 @@ export async function PUT(req: NextRequest) {
     if (typeof body.costPerCourt === 'number') updates.costPerCourt = Math.max(0, Math.min(500, body.costPerCourt));
     if (typeof body.showCostBreakdown === 'boolean') updates.showCostBreakdown = body.showCostBreakdown;
 
-    // Handle bird usages — array of { purchaseId, tubes }. Each entry is
-    // looked up live so cost snapshots are authoritative. Validate everything
-    // synchronously first, then batch the purchase reads (was an N+1 loop —
-    // one sequential read per entry).
+    // Handle bird usages — array of { purchaseId, tubes }. Resolved through the
+    // shared contract (validate → dedup → drop tubes:0 → batch-read → snapshot)
+    // so this and advance can never validate or cost differently. An entry with
+    // tubes:0 removes that purchase (Decision: 0 = remove, same as the
+    // retro-assign PATCH). Only run when the client actually sent the array —
+    // absent means "leave birdUsages untouched".
     let birdUsages: BirdUsage[] | undefined = undefined;
     if (Array.isArray(body.birdUsages)) {
-      const wanted: Array<{ purchaseId: string; tubes: number }> = [];
-      for (const entry of body.birdUsages) {
-        const tubes = Number(entry?.tubes);
-        if (!Number.isFinite(tubes) || tubes <= 0 || tubes > 100) {
-          return NextResponse.json({ error: 'Bird tubes must be between 0 and 100' }, { status: 400 });
-        }
-        // Multiple of 0.25 — rejects 0.33, 1.7, etc.
-        if (Math.round(tubes * 4) !== tubes * 4) {
-          return NextResponse.json({ error: 'Bird tubes must be in 0.25 increments' }, { status: 400 });
-        }
-        const purchaseId = entry?.purchaseId;
-        if (typeof purchaseId !== 'string' || !purchaseId) {
-          return NextResponse.json({ error: 'Bird purchase must be selected' }, { status: 400 });
-        }
-        wanted.push({ purchaseId, tubes });
-      }
-      const birdsContainer = getContainer('birds');
-      const purchaseReads = await Promise.all(
-        wanted.map((w) => birdsContainer.item(w.purchaseId, w.purchaseId).read()),
-      );
-      const entries: BirdUsage[] = [];
-      for (let i = 0; i < wanted.length; i++) {
-        const purchase = purchaseReads[i].resource;
-        if (!purchase) {
-          return NextResponse.json({ error: 'Selected bird purchase not found' }, { status: 404 });
-        }
-        entries.push(snapshotBirdUsage(purchase, wanted[i].tubes));
-      }
-      birdUsages = entries;
+      const resolved = await resolveBirdUsages(body.birdUsages);
+      if (!resolved.ok) return NextResponse.json({ error: resolved.error }, { status: resolved.status });
+      birdUsages = resolved.usages;
     }
 
     if (body.eTransferRecipient !== undefined && !isValidETransferRecipient(body.eTransferRecipient)) {
