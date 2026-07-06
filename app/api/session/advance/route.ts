@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId, setActiveSessionId, sessionIdFromDate } from '@/lib/cosmos';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { toValidIso } from '@/app/api/session/route';
-import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
 import { resolveBirdUsages } from '@/lib/birdWrite';
+import { sessionCostTotals } from '@/lib/sessionCost';
 import type { BirdUsage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -91,9 +91,7 @@ export async function POST(req: NextRequest) {
         prevCostPerPerson = currentSession.settled.costPerPerson;
         prevSessionDate = currentSession.datetime;
       } else {
-        const courtTotal = (currentSession.costPerCourt ?? 0) * (currentSession.courts ?? 0);
-        const birdTotal = totalBirdCost(normalizeBirdUsages(currentSession));
-        const totalCost = courtTotal + birdTotal;
+        const { totalCost } = sessionCostTotals(currentSession);
         if (totalCost > 0) {
           const playersContainer = getContainer('players');
           const { resources: prevPlayers } = await playersContainer.items

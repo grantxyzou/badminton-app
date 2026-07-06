@@ -16,7 +16,7 @@ import PageHeader from './primitives/PageHeader';
 import AdminConsoleHero from './admin/CommandCenter/AdminConsoleHero';
 import { isFlagOn } from '@/lib/flags';
 import { avatarColors as profileAvaColors } from '@/lib/avatar';
-import { normalizeBirdUsages, totalBirdCost } from '@/lib/birdUsages';
+import { sessionCostTotals } from '@/lib/sessionCost';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -187,9 +187,8 @@ export default function ProfileTab({
         setSettledThisWeek(!!session.settled);
         const active = players.filter((p) => !p.removed && !p.waitlisted);
         const me = active.find((p) => typeof p.name === 'string' && p.name.toLowerCase() === identity.name.toLowerCase());
-        const courtTotal = (session.costPerCourt ?? 0) * (session.courts ?? 0);
-        const birdTotal = session.showCostBreakdown ? totalBirdCost(normalizeBirdUsages(session)) : 0;
-        const total = courtTotal + birdTotal;
+        const { courtTotal, birdTotal } = sessionCostTotals(session);
+        const total = courtTotal + (session.showCostBreakdown ? birdTotal : 0);
         const per = session.showCostBreakdown && total > 0 && active.length > 0 ? total / active.length : null;
         setOweThisWeek(me ? per : null);
         setPaidThisWeek(!!me?.paid);
