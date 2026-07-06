@@ -52,13 +52,12 @@ export function canCover(
 interface PaymentsCardProps {
   refreshKey?: number;
   onOpenPlayer?: (memberId: string, name: string) => void;
-  onSendIndividualReceipt?: (playerName: string) => void;
   /** When rendered standalone (e.g. drilled in from the Ledger), preselect
    *  this session's chip instead of defaulting to the active session. */
   initialSessionId?: string | null;
 }
 
-export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndividualReceipt, initialSessionId }: PaymentsCardProps) {
+export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSessionId }: PaymentsCardProps) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [viewedSessionId, setViewedSessionId] = useState<string | null>(null);
@@ -96,10 +95,12 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
     open: false, playerName: '', code: '', expiresAt: 0,
   });
 
-  // Group-receipt sheet for the VIEWED session (owned here — CommandCenter's
-  // receipt path is active-session-only, so it can't render a past session's
-  // receipt). Mirrors PastSessionsPage.
+  // Receipt sheet for the VIEWED session — group OR per-player individual —
+  // owned here because CommandCenter's receipt path is active-session-only and
+  // can't render a past session's receipt. Mirrors PastSessionsPage.
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [receiptMode, setReceiptMode] = useState<'group' | 'individual'>('group');
+  const [receiptPlayer, setReceiptPlayer] = useState<string | null>(null);
   const [globalRecipient, setGlobalRecipient] = useState<ETransferRecipient | null>(null);
 
   const isCurrentSession = activeSessionId === viewedSessionId;
@@ -227,6 +228,12 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
     () => (viewedSession ? buildReceiptInput(viewedSession, allPlayers, receiptRecipient) : null),
     [viewedSession, allPlayers, receiptRecipient],
   );
+
+  const openReceiptSheet = useCallback((mode: 'group' | 'individual', playerName?: string) => {
+    setReceiptMode(mode);
+    setReceiptPlayer(playerName ?? null);
+    setReceiptOpen(true);
+  }, []);
 
   /* ── Actions ── */
 
@@ -536,7 +543,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
               </span>
               <button
                 type="button"
-                onClick={() => setReceiptOpen(true)}
+                onClick={() => openReceiptSheet('group')}
                 disabled={receiptBuild?.costPerPerson == null}
                 className="cc-btn cc-btn-secondary"
                 style={{ fontSize: 12, padding: '4px 12px' }}
@@ -628,10 +635,10 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
                     )}
                   </button>
                 )}
-                {onSendIndividualReceipt && (
+                {settleFlagOn && receiptBuild?.costPerPerson != null && (
                   <button
                     type="button"
-                    onClick={() => onSendIndividualReceipt(player.name)}
+                    onClick={() => openReceiptSheet('individual', player.name)}
                     className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1"
                     aria-label={`Send receipt to ${player.name}`}
                     title="Send individual receipt"
@@ -843,13 +850,14 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
         />
       )}
 
-      {/* Group receipt for the VIEWED session (past or current). */}
+      {/* Group or individual receipt for the VIEWED session (past or current). */}
       <ReceiptSheet
         open={receiptOpen}
         onClose={() => setReceiptOpen(false)}
         input={receiptBuild?.input ?? null}
         error={receiptBuild?.error}
-        initialMode="group"
+        initialMode={receiptMode}
+        initialPlayerName={receiptPlayer ?? undefined}
       />
     </section>
   );
