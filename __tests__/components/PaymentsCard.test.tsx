@@ -187,6 +187,103 @@ describe('<PaymentsCard />', () => {
       }
     });
 
+    it('summary header: shows players · % paid · $ each for the viewed session', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      try {
+        fetchSettledPlayers([
+          { id: 'p1', name: 'Daisy', paid: true, owedAmount: 15 },
+          { id: 'p2', name: 'Mei', paid: false, owedAmount: 15 },
+        ]);
+        render(<PaymentsCard />);
+        await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
+        expect(screen.getByText(/2 players.*50% paid/)).toBeTruthy();
+        // The amount is a single "$15 each" node — it must NOT inflate the
+        // per-row exact-'$15' count (still 2 rows).
+        expect(screen.getByText('$15 each')).toBeTruthy();
+        expect(screen.getAllByText('$15').length).toBe(2);
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+
+    it('summary header: hides the $ each line + Share button when settle flag is off', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'false';
+      try {
+        fetchSettledPlayers([{ id: 'p1', name: 'Daisy', paid: true, owedAmount: 15 }]);
+        render(<PaymentsCard />);
+        await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
+        expect(screen.queryByText(/each/i)).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Share receipt' })).toBeNull();
+        // Line 1 (cost-independent) still renders.
+        expect(screen.getByText(/1 player/)).toBeTruthy();
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+
+    it('summary header: Share disabled + "—" when the session has no cost', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      try {
+        // ACTIVE_SESSION is unsettled with no court/bird cost → no per-person amount.
+        fetchPlayers([{ id: 'p1', name: 'Daisy', paid: false }]);
+        render(<PaymentsCard />);
+        await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
+        const share = screen.getByRole('button', { name: 'Share receipt' });
+        expect((share as HTMLButtonElement).disabled).toBe(true);
+        expect(screen.getByText('—')).toBeTruthy();
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+
+    it('summary header: Share enabled but shows the recipient reason when none is set', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      try {
+        // fetchSettledPlayers 404s /api/admin/settings → no recipient.
+        fetchSettledPlayers([{ id: 'p1', name: 'Daisy', paid: true, owedAmount: 15 }]);
+        render(<PaymentsCard />);
+        await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
+        const share = screen.getByRole('button', { name: 'Share receipt' });
+        expect((share as HTMLButtonElement).disabled).toBe(false);
+        fireEvent.click(share);
+        await waitFor(() => expect(screen.getByText(/e-transfer recipient/i)).toBeTruthy());
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+
+    it('summary header: Share opens the receipt sheet when a recipient is set', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      try {
+        urlFetch(async (url) => {
+          if (url.includes('/api/admin/settings')) {
+            return new Response(JSON.stringify({ eTransferRecipient: { name: 'Grant', email: 'g@x.com' } }), { status: 200 });
+          }
+          if (url.includes('/api/sessions')) {
+            return new Response(JSON.stringify([SETTLED_SESSION]), { status: 200 });
+          }
+          if (url.includes('/api/session')) {
+            return new Response(JSON.stringify(SETTLED_SESSION), { status: 200 });
+          }
+          if (url.includes('/api/players')) {
+            return new Response(JSON.stringify([{ id: 'p1', name: 'Daisy', paid: true, owedAmount: 15 }]), { status: 200 });
+          }
+          return new Response('not found', { status: 404 });
+        });
+        render(<PaymentsCard />);
+        await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
+        fireEvent.click(screen.getByRole('button', { name: 'Share receipt' }));
+        await waitFor(() => expect(screen.getByText('Share session cost')).toBeTruthy());
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+
     it('v1.5/C: removing a settled debtor opens Cover & remove, not a plain confirm', async () => {
       const prevSettle = process.env.NEXT_PUBLIC_FLAG_SETTLE;
       const prevLedger = process.env.NEXT_PUBLIC_FLAG_LEDGER;

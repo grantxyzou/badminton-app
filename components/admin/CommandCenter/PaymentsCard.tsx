@@ -8,7 +8,9 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { fmtSessionLabel } from '@/lib/fmt';
 import { isFlagOn } from '@/lib/flags';
 import { useReportFetchFailure } from '@/lib/useOnline';
-import type { SettledSnapshot } from '@/lib/types';
+import { buildReceiptInput } from '@/lib/buildReceiptInput';
+import ReceiptSheet from './ReceiptSheet';
+import type { Session, ETransferRecipient } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -47,14 +49,6 @@ export function canCover(
   );
 }
 
-interface SessionLite {
-  id: string;
-  datetime?: string;
-  maxPlayers?: number;
-  /** Present when the session was settled. PaymentsCard reads costPerPerson off this. */
-  settled?: SettledSnapshot;
-}
-
 interface PaymentsCardProps {
   refreshKey?: number;
   onOpenPlayer?: (memberId: string, name: string) => void;
@@ -65,7 +59,7 @@ interface PaymentsCardProps {
 }
 
 export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndividualReceipt, initialSessionId }: PaymentsCardProps) {
-  const [sessions, setSessions] = useState<SessionLite[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [viewedSessionId, setViewedSessionId] = useState<string | null>(null);
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
@@ -102,6 +96,12 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
     open: false, playerName: '', code: '', expiresAt: 0,
   });
 
+  // Group-receipt sheet for the VIEWED session (owned here — CommandCenter's
+  // receipt path is active-session-only, so it can't render a past session's
+  // receipt). Mirrors PastSessionsPage.
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [globalRecipient, setGlobalRecipient] = useState<ETransferRecipient | null>(null);
+
   const isCurrentSession = activeSessionId === viewedSessionId;
   const viewedSession = sessions.find((s) => s.id === viewedSessionId);
   const settleFlagOn = isFlagOn('NEXT_PUBLIC_FLAG_SETTLE');
@@ -122,8 +122,8 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
         setActiveSessionId(null);
         return;
       }
-      const current = await sessionRes.json() as SessionLite;
-      const archived = await sessionsRes.json() as SessionLite[];
+      const current = await sessionRes.json() as Session;
+      const archived = await sessionsRes.json() as Session[];
 
       const all = current ? [current, ...archived.filter((s) => s.id !== current.id)] : archived;
       const sorted = all
@@ -172,6 +172,23 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
 
   useEffect(() => { void load(); }, [load, refreshKey]);
 
+  // The admin's own e-transfer recipient — the fallback used to address a
+  // receipt when the viewed session has no per-session override. A missing or
+  // failed recipient is NOT a load error: it just yields the receipt's
+  // "set a recipient first" reason, so it must not touch loadError.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${BASE}/api/admin/settings`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const s = await res.json() as { eTransferRecipient?: ETransferRecipient | null };
+        if (!cancelled) setGlobalRecipient(s.eTransferRecipient ?? null);
+      } catch { /* recipient stays null → NO_RECIPIENT path, not a load error */ }
+    })();
+    return () => { cancelled = true; };
+  }, [refreshKey]);
+
   // Auto-dismiss the paid-toggle error after 4.5s. Without this, the banner
   // sticks around until the next toggle attempt, which can read as
   // "still failing" after a successful retry. Closes #62.
@@ -198,6 +215,18 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
   }, [allPlayers]);
 
   const total = lists.active.length;
+  const paidCount = lists.active.filter((p) => p.paid === true).length;
+  const paidPercent = total > 0 ? Math.round((paidCount / total) * 100) : 0;
+
+  // Single resolver — the SAME one behind /api/sessions/history and
+  // PastSessionsPage — so the header's "$Y each" and the receipt agree with
+  // the Past-sessions list by construction. Returns costPerPerson even when
+  // the recipient is null (the number needs no recipient; the receipt does).
+  const receiptRecipient = viewedSession?.eTransferRecipient ?? globalRecipient;
+  const receiptBuild = useMemo(
+    () => (viewedSession ? buildReceiptInput(viewedSession, allPlayers, receiptRecipient) : null),
+    [viewedSession, allPlayers, receiptRecipient],
+  );
 
   /* ── Actions ── */
 
@@ -479,6 +508,44 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
         >
           {toggleError}
         </p>
+      )}
+
+      {/* Per-session summary header — mirrors the Past sessions row for the
+          viewed chip. Line 1 is cost-independent; line 2 (amount + Share)
+          is gated on settleFlagOn like the other dollar surfaces below. */}
+      {!loadError && !playersError && viewedSession && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <p className="text-xs" style={{ color: 'var(--text-muted)', margin: 0 }}>
+            {[
+              fmtSessionLabel(viewedSession.datetime),
+              `${total} player${total === 1 ? '' : 's'}`,
+              total > 0 ? `${paidPercent}% paid` : '',
+            ].filter(Boolean).join(' · ')}
+          </p>
+          {settleFlagOn && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <span
+                className="fs-md"
+                style={{
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-mono), ui-monospace, monospace',
+                  fontWeight: 600,
+                }}
+              >
+                {receiptBuild?.costPerPerson != null ? `$${receiptBuild.costPerPerson} each` : '—'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setReceiptOpen(true)}
+                disabled={receiptBuild?.costPerPerson == null}
+                className="cc-btn cc-btn-secondary"
+                style={{ fontSize: 12, padding: '4px 12px' }}
+              >
+                Share receipt
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {/* What the admin absorbed by covering players this session. */}
@@ -775,6 +842,15 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, onSendIndiv
           expiresAt={resetSheet.expiresAt}
         />
       )}
+
+      {/* Group receipt for the VIEWED session (past or current). */}
+      <ReceiptSheet
+        open={receiptOpen}
+        onClose={() => setReceiptOpen(false)}
+        input={receiptBuild?.input ?? null}
+        error={receiptBuild?.error}
+        initialMode="group"
+      />
     </section>
   );
 }
