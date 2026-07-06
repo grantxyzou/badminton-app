@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import * as cosmos from '@/lib/cosmos';
 import {
   resetMockStore,
   setupAdminPin,
@@ -10,6 +11,7 @@ import {
   seedAdminMember,
 } from './helpers';
 import { GET, POST, DELETE, PATCH } from '@/app/api/birds/route';
+import { POST as reconcile } from '@/app/api/birds/reconcile/route';
 
 describe('Birds API', () => {
   beforeEach(() => {
@@ -151,6 +153,93 @@ describe('Birds API', () => {
       const res = await GET(makeAdminRequest('GET', 'http://localhost:3000/api/birds'));
       const data = await res.json();
       expect(data.remainingByPurchase[purchaseId]).toBe(0);
+    });
+
+    it('returns 503 when the read throws (not a lying 200 + zero stock)', async () => {
+      vi.spyOn(cosmos, 'getContainer').mockImplementation(() => {
+        throw new Error('cosmos down');
+      });
+      try {
+        const res = await GET(makeAdminRequest('GET', 'http://localhost:3000/api/birds'));
+        expect(res.status).toBe(503);
+        const body = await res.json();
+        expect(body.error).toBeTruthy();
+      } finally {
+        vi.restoreAllMocks();
+      }
+    });
+
+    it('clamps over-consumed stock at 0 and reports the overshoot as stockDrift', async () => {
+      // Purchase 2 tubes, but sessions recorded 5 used (e.g. the purchase was
+      // edited down after the fact) → raw stock would be -3.
+      const createRes = await POST(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+        name: 'Over-used', tubes: 2, totalCost: 20,
+      }));
+      const { id: purchaseId } = await createRes.json();
+
+      seedPointer('session-2026-05-08');
+      seedSession('session-2026-05-08', {
+        birdUsages: [
+          { purchaseId, purchaseName: 'Over-used', tubes: 5, costPerTube: 10, totalBirdCost: 50 },
+        ],
+      });
+
+      const res = await GET(makeAdminRequest('GET', 'http://localhost:3000/api/birds'));
+      const data = await res.json();
+      expect(data.currentStock).toBe(0);        // clamped, never negative
+      expect(data.stockDrift).toBe(3);          // overshoot surfaced, not hidden
+      expect(data.remainingByPurchase[purchaseId]).toBe(0); // per-purchase clamp
+    });
+
+    it('GET stock and reconcile agree: counting exactly the displayed stock is a no-op', async () => {
+      await POST(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+        name: 'Parity', tubes: 10, totalCost: 100,
+      }));
+      const { id: purchaseId } = (await (await GET(makeAdminRequest('GET', 'http://localhost:3000/api/birds'))).json()).purchases[0];
+      seedPointer('session-2026-05-15');
+      seedSession('session-2026-05-15', {
+        birdUsages: [
+          { purchaseId, purchaseName: 'Parity', tubes: 0.25, costPerTube: 10, totalBirdCost: 2.5 },
+          { purchaseId, purchaseName: 'Parity', tubes: 0.5, costPerTube: 10, totalBirdCost: 5 },
+        ],
+      });
+
+      const getData = await (await GET(makeAdminRequest('GET', 'http://localhost:3000/api/birds'))).json();
+      expect(getData.currentStock).toBe(9.25);
+      const res = await reconcile(makeAdminRequest('POST', 'http://localhost:3000/api/birds/reconcile', {
+        countedTotal: getData.currentStock,
+      }));
+      // Same number on both sides → "already matches" (400 no-op), never a
+      // spurious penny adjustment.
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toMatch(/already matches/i);
+    });
+
+    it('off-grid legacy usage: counting zero reconciles to exactly minus the displayed stock', async () => {
+      // 0.1-tube values are off the 0.25 grid AND inexact in binary — the
+      // raw-sum-round-once rule must keep GET's displayed stock and
+      // reconcile's delta in exact agreement anyway.
+      await POST(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+        name: 'OffGrid', tubes: 10, totalCost: 100,
+      }));
+      const { id: purchaseId } = (await (await GET(makeAdminRequest('GET', 'http://localhost:3000/api/birds'))).json()).purchases[0];
+      seedPointer('session-2026-05-22');
+      seedSession('session-2026-05-22', {
+        birdUsages: [
+          { purchaseId, purchaseName: 'OffGrid', tubes: 0.1, costPerTube: 10, totalBirdCost: 1 },
+          { purchaseId, purchaseName: 'OffGrid', tubes: 0.1, costPerTube: 10, totalBirdCost: 1 },
+          { purchaseId, purchaseName: 'OffGrid', tubes: 0.1, costPerTube: 10, totalBirdCost: 1 },
+        ],
+      });
+
+      const getData = await (await GET(makeAdminRequest('GET', 'http://localhost:3000/api/birds'))).json();
+      const res = await reconcile(makeAdminRequest('POST', 'http://localhost:3000/api/birds/reconcile', {
+        countedTotal: 0,
+      }));
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.delta).toBe(-getData.currentStock);
     });
   });
 

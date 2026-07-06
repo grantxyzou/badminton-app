@@ -57,6 +57,8 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
   const [currentStock, setCurrentStock] = useState(0);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+  // Distinct from loaded-but-empty — see loadAll's !ok guard.
+  const [loadError, setLoadError] = useState(false);
   const [shuttleName, setShuttleName] = useState('');
   const [tubes, setTubes] = useState(0);
   const [totalCost, setTotalCost] = useState(0);
@@ -76,21 +78,25 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const [birdsRes, sessionsRes] = await Promise.all([
         fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
         fetch(`${BASE}/api/sessions`, { cache: 'no-store' }),
       ]);
-      if (birdsRes.ok) {
-        const data = await birdsRes.json();
-        setPurchases(data.purchases ?? []);
-        setCurrentStock(data.currentStock ?? 0);
+      // A failed fetch must NOT render the same UI as an empty inventory
+      // (lying-empty rule) — "0 tubes / out of stock" on a broken backend
+      // reads as "time to reorder".
+      if (!birdsRes.ok || !sessionsRes.ok) {
+        setLoadError(true);
+        return;
       }
-      if (sessionsRes.ok) {
-        setSessions((await sessionsRes.json()) as Session[]);
-      }
+      const data = await birdsRes.json();
+      setPurchases(data.purchases ?? []);
+      setCurrentStock(data.currentStock ?? 0);
+      setSessions((await sessionsRes.json()) as Session[]);
     } catch {
-      /* ignore */
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -218,6 +224,21 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
     } finally {
       setSavingEdit(false);
     }
+  }
+
+  if (loadError) {
+    return (
+      <div className="animate-slideInRight space-y-4">
+        <AdminBackHeader onBack={onBack} title="Bird Inventory" />
+        <div role="alert" style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+          <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Couldn&apos;t load bird inventory</p>
+          <p style={{ fontSize: 13, marginTop: 6 }}>You may be offline. Reconnect, then retry.</p>
+          <button type="button" className="btn-primary" style={{ marginTop: 14 }} onClick={() => void loadAll()}>
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

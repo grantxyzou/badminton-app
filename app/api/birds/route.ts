@@ -35,20 +35,27 @@ export async function GET(req: NextRequest) {
     // All-time tubes used, both in total and per purchase. The per-purchase
     // map drives `remainingByPurchase`, which the create-session bird picker
     // uses to hide depleted purchases (remaining <= 0).
+    // Sum RAW and round once at the end — the same rule reconcile uses, so a
+    // stock-take delta can never be a rounding penny off from the stock this
+    // GET displays. (Previously totalUsed was pre-rounded before the stock
+    // formula while reconcile summed raw.)
     const usedByPurchase = new Map<string, number>();
-    let totalUsed = 0;
+    let totalUsedRaw = 0;
     for (const s of sessions as Pick<Session, 'birdUsage' | 'birdUsages'>[]) {
       for (const u of normalizeBirdUsages(s)) {
         const t = u.tubes ?? 0;
-        totalUsed += t;
+        totalUsedRaw += t;
         usedByPurchase.set(u.purchaseId, (usedByPurchase.get(u.purchaseId) ?? 0) + t);
       }
     }
-    totalUsed = Math.round(totalUsed * 100) / 100;
+    const totalUsed = Math.round(totalUsedRaw * 100) / 100;
 
+    // Clamped at 0 for display — a purchase can be over-consumed (e.g. its
+    // tubes were edited down after sessions used them), but negative
+    // "remaining" is meaningless to the picker (which hides remaining <= 0).
     const remainingByPurchase: Record<string, number> = {};
     for (const p of purchases as { id: string; tubes: number }[]) {
-      remainingByPurchase[p.id] = Math.round((p.tubes - (usedByPurchase.get(p.id) ?? 0)) * 100) / 100;
+      remainingByPurchase[p.id] = Math.max(0, Math.round((p.tubes - (usedByPurchase.get(p.id) ?? 0)) * 100) / 100);
     }
 
     const sixtyDaysAgo = Date.now() - 60 * 86_400_000;
@@ -65,11 +72,21 @@ export async function GET(req: NextRequest) {
       ? recentUsedLast60d / recentSessionsLast60d
       : 0;
 
+    // Stock can go negative when recorded usage exceeds recorded purchases
+    // (a purchase edited down or deleted after sessions consumed it). Display
+    // clamps at 0; the overshoot is surfaced as `stockDrift` so the skew is
+    // visible instead of silently rendering "-3 tubes on hand".
+    const currentStockRaw = Math.round((totalPurchased + totalAdjustments - totalUsedRaw) * 100) / 100;
+    const currentStock = Math.max(0, currentStockRaw);
+    const stockDrift = currentStockRaw < 0 ? Math.abs(currentStockRaw) : 0;
+
     return NextResponse.json({
       purchases,
       adjustments,
       remainingByPurchase,
-      currentStock: Math.round((totalPurchased + totalAdjustments - totalUsed) * 100) / 100,
+      currentStock,
+      /** Tubes recorded as used beyond recorded purchases (0 when records balance). */
+      stockDrift,
       totalPurchased,
       totalAdjustments,
       totalUsed,
@@ -79,8 +96,11 @@ export async function GET(req: NextRequest) {
       burnPerSession,
     });
   } catch (error) {
+    // 503, never a lying 200 + zero stock (CLAUDE.md: lying empty state is
+    // forbidden) — a confident "0 tubes on hand" on a broken backend reads
+    // as "time to reorder". Clients guard on res.ok.
     console.error('GET birds error:', error);
-    return NextResponse.json({ purchases: [], currentStock: 0 });
+    return NextResponse.json({ error: 'Failed to load bird inventory' }, { status: 503 });
   }
 }
 
