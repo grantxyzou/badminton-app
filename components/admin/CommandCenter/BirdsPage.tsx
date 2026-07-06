@@ -310,6 +310,18 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
       .sort((a, b) => (a.date < b.date ? 1 : -1));
   }, [purchases]);
 
+  // Purchases older than 60 days — exposed below the recent list so
+  // they remain selectable for retro-assigning tubes to sessions.
+  const olderPurchases = useMemo(() => {
+    const sixtyDaysAgo = Date.now() - 60 * 86_400_000;
+    return purchases
+      .filter((p) => {
+        const t = new Date(p.date).getTime();
+        return Number.isFinite(t) && t < sixtyDaysAgo;
+      })
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [purchases]);
+
   // Runway timeline math: clamp at 8 weeks for the bar; "empty" marker
   // sits at runway/8 of the bar width.
   const runwayPct = useMemo(() => {
@@ -709,6 +721,103 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             );
           })}
         </div>
+      )}
+
+      {/* Older purchases — always rendered so purchases >60 days old can be retro-assigned */}
+      {olderPurchases.length > 0 && (
+        <>
+          <p
+            style={{
+              fontFamily: 'var(--font-display, "Space Grotesk")',
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.16em',
+              textTransform: 'uppercase',
+              color: 'var(--ink-faint)',
+              margin: '14px 4px 6px',
+            }}
+          >
+            Older purchases
+          </p>
+          <div className="glass-card" style={{ padding: '4px 0' }}>
+            {olderPurchases.map((p, i) => {
+              const left = remainingByPurchase[p.id] ?? 0;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => openEditSheet(p)}
+                  aria-label={`Edit purchase: ${p.name} on ${fmtDate(p.date)}`}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    textAlign: 'left',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    padding: '12px 16px',
+                    border: 'none',
+                    borderTop: i ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                    transition: 'background 120ms ease',
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
+                      <p style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 13.5, fontWeight: 600, margin: 0 }}>
+                        {p.name}
+                      </p>
+                      <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>
+                        {fmtDate(p.date)} · {p.tubes} tube{p.tubes === 1 ? '' : 's'}
+                        {typeof p.speed === 'number' && ` · spd ${p.speed}`}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                      <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 13, fontWeight: 600 }}>
+                        ${p.totalCost.toFixed(2)}
+                      </span>
+                      <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 10, color: 'var(--ink-faint)' }}>
+                        ${p.costPerTube.toFixed(2)}/t
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, gap: 10 }}>
+                    {typeof p.qualityRating === 'number' && <Stars n={p.qualityRating} />}
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        padding: '3px 9px',
+                        borderRadius: 'var(--radius-pill)',
+                        fontSize: 10,
+                        fontWeight: 600,
+                        fontFamily: 'var(--font-display, "Space Grotesk")',
+                        background: 'rgba(255,255,255,0.06)',
+                        color: 'var(--text-muted)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      {left} left
+                    </span>
+                    {p.notes && (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: 'var(--ink-faint)',
+                          flex: 1,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {p.notes}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* Add / Edit purchase sheet */}
