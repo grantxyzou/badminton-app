@@ -76,10 +76,10 @@ describe('<PaymentsCard />', () => {
     await waitFor(() => {
       expect(screen.getByText('Daisy')).toBeTruthy();
     });
-    // The summary header is intentionally gone — the strip + per-row
-    // pills carry payment state now.
+    // The old "X of Y paid" summary line is gone — the strip + per-row
+    // pills carry payment state now. The card keeps a plain "Payments" title.
     expect(screen.queryByText(/of 3 paid/i)).toBeNull();
-    expect(screen.queryByText('Payments')).toBeNull();
+    expect(screen.getByText('Payments')).toBeTruthy();
   });
 
   it('toggles paid optimistically and PATCHes the API', async () => {
