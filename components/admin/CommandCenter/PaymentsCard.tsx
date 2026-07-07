@@ -487,7 +487,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       {/* Load-error affordance preserved from the removed header (the
           lying-empty-state rule forbids dropping it). */}
       {(loadError || playersError) && (
-        <p role="alert" className="text-xs" style={{ color: 'var(--color-red)', margin: 0 }}>
+        <p role="alert" className="fs-sm" style={{ color: 'var(--color-red)', margin: 0 }}>
           Couldn&apos;t load — refresh to retry
         </p>
       )}
@@ -497,7 +497,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           rule). The "X of Y paid" count was removed by design; this is
           the no-roster case, not the count. */}
       {!loadError && !playersError && total === 0 && (
-        <p className="text-xs" style={{ color: 'var(--text-muted)', margin: 0 }}>
+        <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
           No active players
         </p>
       )}
@@ -524,7 +524,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           is gated on settleFlagOn like the other dollar surfaces below. */}
       {!loadError && !playersError && viewedSession && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <p className="text-xs" style={{ color: 'var(--text-muted)', margin: 0 }}>
+          <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
             {[
               fmtSessionLabel(viewedSession.datetime),
               `${total} player${total === 1 ? '' : 's'}`,
@@ -560,7 +560,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       {/* What the admin absorbed by covering players this session. */}
       {ledgerFlagOn && settleFlagOn && !!viewedSession?.settled?.coveredTotal && (
         <p
-          className="text-xs"
+          className="fs-sm"
           style={{ color: '#d8b4fe', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}
         >
           <span className="material-icons" style={{ fontSize: 'var(--icon-sm)' }} aria-hidden="true">volunteer_activism</span>
@@ -573,7 +573,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
         <ul className="space-y-1" role="list">
           {lists.active.map((player) => (
             <li key={player.id} className="flex items-center justify-between gap-3 py-2">
-              <span className="text-sm flex items-center gap-2 flex-1 min-w-0">
+              <span className="fs-md flex items-center gap-2 flex-1 min-w-0">
                 {onOpenPlayer && player.memberId ? (
                   <button
                     type="button"
@@ -586,13 +586,13 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                   <span className="truncate">{player.name}</span>
                 )}
                 {player.selfReportedPaid && !player.paid && (
-                  <span className="text-xs flex-shrink-0" style={{ color: '#fcd34d' }}>self-reported</span>
+                  <span className="fs-sm flex-shrink-0" style={{ color: '#fcd34d' }}>self-reported</span>
                 )}
               </span>
               <div className="flex items-center gap-1 flex-shrink-0">
                 {settleFlagOn && typeof player.owedAmount === 'number' && !player.writtenOff && (
                   <span
-                    className="text-xs font-medium px-2"
+                    className="fs-sm font-medium px-2"
                     style={{
                       color: '#d8b4fe',
                       fontFamily: 'var(--font-mono), ui-monospace, monospace',
@@ -604,7 +604,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                 )}
                 {ledgerFlagOn && player.writtenOff ? (
                   <span
-                    className="text-xs font-medium px-3 py-1.5 rounded-full inline-flex items-center gap-1"
+                    className="fs-sm font-medium px-3 py-1.5 rounded-full inline-flex items-center gap-1"
                     style={{ background: 'rgba(216,180,254,0.12)', color: '#d8b4fe' }}
                     title={player.coverMode === 'resplit'
                       ? "You're covering this — split across the others"
@@ -620,7 +620,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                     type="button"
                     onClick={() => togglePaid(player)}
                     disabled={togglingId === player.id}
-                    className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors inline-flex items-center gap-1 ${player.paid ? 'pill-paid' : 'pill-unpaid'} disabled:opacity-50`}
+                    className={`fs-sm font-medium px-3 py-1.5 rounded-full transition-colors inline-flex items-center gap-1 ${player.paid ? 'pill-paid' : 'pill-unpaid'} disabled:opacity-50`}
                     aria-pressed={player.paid === true}
                   >
                     {togglingId === player.id ? (
@@ -641,21 +641,21 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                   <button
                     type="button"
                     onClick={() => openReceiptSheet('individual', player.name)}
-                    className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1"
+                    className="fs-sm text-gray-400 hover:text-gray-200 px-2 py-1"
                     aria-label={`Send receipt to ${player.name}`}
                     title="Send individual receipt"
                   >
-                    <span className="material-icons text-base align-middle">receipt_long</span>
+                    <span className="material-icons fs-lg align-middle">receipt_long</span>
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => { setActionTarget(player); setActionError(''); }}
-                  className="text-xs text-gray-400 hover:text-gray-200 px-1 py-1"
+                  className="fs-sm text-gray-400 hover:text-gray-200 px-1 py-1"
                   aria-label={`More actions for ${player.name}`}
                   title="More"
                 >
-                  <span className="material-icons text-base align-middle">more_vert</span>
+                  <span className="material-icons fs-lg align-middle">more_vert</span>
                 </button>
               </div>
             </li>

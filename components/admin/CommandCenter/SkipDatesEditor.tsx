@@ -82,7 +82,7 @@ export default function SkipDatesEditor() {
     <section className="glass-card p-4 space-y-3 animate-fadeIn" aria-label="Skip dates">
       <header>
         <h3 className="bpm-h3">Skip dates</h3>
-        <p className="text-xs text-gray-400 mt-0.5">
+        <p className="fs-sm text-gray-400 mt-0.5">
           Dates the system will warn you about when advancing — holidays, travel, venue closures.
         </p>
       </header>
@@ -92,7 +92,7 @@ export default function SkipDatesEditor() {
           type="date"
           value={adding}
           onChange={(e) => { setAdding(e.target.value); setError(''); }}
-          className="flex-1 text-sm rounded-lg p-2"
+          className="flex-1 fs-md rounded-lg p-2"
           style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
         />
         <button
@@ -112,7 +112,7 @@ export default function SkipDatesEditor() {
           {dates.map((d) => (
             <li
               key={d}
-              className="text-xs px-3 py-1 rounded-full inline-flex items-center gap-1"
+              className="fs-sm px-3 py-1 rounded-full inline-flex items-center gap-1"
               style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
             >
               {d}
@@ -131,7 +131,7 @@ export default function SkipDatesEditor() {
       )}
 
       {dates.length === 0 && (
-        <p className="text-xs text-gray-500">No skip dates yet.</p>
+        <p className="fs-sm text-gray-500">No skip dates yet.</p>
       )}
     </section>
   );

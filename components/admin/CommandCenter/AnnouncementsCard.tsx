@@ -158,7 +158,7 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
       <header>
         <h3 className="bpm-h3">Announcements</h3>
         <p
-          className="text-xs text-gray-400 mt-0.5"
+          className="fs-sm text-gray-400 mt-0.5"
           role={loadError ? 'alert' : undefined}
           style={loadError ? { color: 'var(--color-red)' } : undefined}
         >
@@ -178,18 +178,18 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
             placeholder="Type your announcement…"
             rows={3}
             maxLength={800}
-            className="w-full text-sm rounded-lg p-3"
+            className="w-full fs-md rounded-lg p-3"
             style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
           />
 
           {polished && (
-            <div className="rounded-lg p-3 text-sm" style={{ background: 'rgba(124,58,237,0.10)', border: '1px solid rgba(124,58,237,0.3)' }}>
+            <div className="rounded-lg p-3 fs-md" style={{ background: 'rgba(124,58,237,0.10)', border: '1px solid rgba(124,58,237,0.3)' }}>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium" style={{ color: '#c4b5fd' }}>AI polished version</span>
+                <span className="fs-sm font-medium" style={{ color: '#c4b5fd' }}>AI polished version</span>
                 <button
                   type="button"
                   onClick={() => setDraft(polished)}
-                  className="text-xs underline-offset-2 hover:underline"
+                  className="fs-sm underline-offset-2 hover:underline"
                   style={{ color: '#c4b5fd' }}
                 >
                   Use this
@@ -236,7 +236,7 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
           {items.map((a) => (
             <li
               key={a.id}
-              className="rounded-lg p-3 text-sm leading-relaxed"
+              className="rounded-lg p-3 fs-md leading-relaxed"
               style={{ background: 'rgba(var(--glass-tint), 0.04)' }}
             >
               {editingId === a.id ? (
@@ -246,7 +246,7 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
                     onChange={(e) => setEditText(e.target.value)}
                     rows={3}
                     maxLength={800}
-                    className="w-full text-sm rounded-lg p-3"
+                    className="w-full fs-md rounded-lg p-3"
                     style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
                   />
                   {editError && <p className="field-error">{editError}</p>}
@@ -273,21 +273,21 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
                 <>
                   <div className="announcement-body">{renderMarkdown(a.text)}</div>
                   <div className="flex items-center justify-between mt-2">
-                    <time className="text-xs text-gray-400">
+                    <time className="fs-sm text-gray-400">
                       {new Date(a.time).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                     </time>
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => startEdit(a)}
-                        className="text-xs text-gray-400 hover:text-gray-200"
+                        className="fs-sm text-gray-400 hover:text-gray-200"
                       >
                         Edit
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDelete(a.id)}
-                        className="text-xs text-gray-400 hover:text-red-400"
+                        className="fs-sm text-gray-400 hover:text-red-400"
                       >
                         Delete
                       </button>
