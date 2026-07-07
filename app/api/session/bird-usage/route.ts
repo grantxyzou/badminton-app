@@ -45,7 +45,8 @@ export async function PATCH(req: NextRequest) {
 
     const birdsContainer = getContainer('birds');
     const { resource: purchase } = await birdsContainer.item(purchaseId, purchaseId).read();
-    if (!purchase) {
+    // Reject unknown ids AND adjustment docs (no costPerTube → NaN cost).
+    if (!purchase || purchase.type === 'adjustment') {
       return NextResponse.json({ error: 'Purchase not found' }, { status: 404 });
     }
 
