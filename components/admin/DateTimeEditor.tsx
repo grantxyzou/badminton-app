@@ -180,7 +180,7 @@ export default function DateTimeEditor({ onBack }: { onBack: () => void }) {
               </div>
             </div>
           </Label>
-          {error && <p className="text-red-400 text-xs" role="alert">{error}</p>}
+          {error && <p className="field-error" role="alert">{error}</p>}
           <button
             type="submit"
             disabled={saving || !dirty}

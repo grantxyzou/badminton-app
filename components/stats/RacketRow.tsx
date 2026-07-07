@@ -69,7 +69,7 @@ export default function RacketRow() {
         >
           <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: 0 }}>{t('yourRacket')}</p>
           {loadError ? (
-            <span className="text-red-400 text-xs" role="alert">{t('recError')}</span>
+            <span className="field-error" role="alert">{t('recError')}</span>
           ) : !loaded ? (
             <span className="shimmer-line rounded-lg" style={{ height: 15, width: '70%' }} aria-hidden="true" />
           ) : racketLabel ? (

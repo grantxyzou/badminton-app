@@ -468,7 +468,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                         style={{ resize: 'none' }}
                       />
                     </Label>
-                    {editError && <p className="text-red-400 text-xs" role="alert">{editError}</p>}
+                    {editError && <p className="field-error" role="alert">{editError}</p>}
                     <div className="flex gap-2">
                       <button
                         onClick={handleSaveEdit}
@@ -647,7 +647,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
               style={{ resize: 'none' }}
             />
           </Label>
-          {addError && <p className="text-red-400 text-xs" role="alert">{addError}</p>}
+          {addError && <p className="field-error" role="alert">{addError}</p>}
           <button
             type="submit"
             disabled={adding || !shuttleName.trim() || tubes <= 0}
