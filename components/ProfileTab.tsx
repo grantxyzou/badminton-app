@@ -641,7 +641,7 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameL
             fontWeight: 600,
             fontSize: 'var(--fs-stat)',
             flexShrink: 0,
-            border: '1px solid rgba(255,255,255,0.10)',
+            border: '1px solid rgba(var(--glass-tint), 0.10)',
           }}
         >
           {name.slice(0, 1).toUpperCase()}
