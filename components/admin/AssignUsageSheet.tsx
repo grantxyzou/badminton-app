@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import type { BirdPurchase, Session } from '@/lib/types';
 import { normalizeBirdUsages } from '@/lib/birdUsages';
+import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -37,6 +38,8 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const online = useOnline();
+  const reportFetchFailure = useReportFetchFailure();
 
   const loadSessions = useCallback(async () => {
     if (!purchase) return;
@@ -95,8 +98,12 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
     }
     setSaving(true);
     setError('');
-    try {
-      for (const row of changed) {
+
+    const failed: Row[] = [];
+    let savedCount = 0;
+
+    for (const row of changed) {
+      try {
         const res = await fetch(`${BASE}/api/session/bird-usage`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -107,16 +114,36 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
           }),
         });
         if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error ?? `Failed to update ${row.sessionId}`);
+          failed.push(row);
+        } else {
+          savedCount++;
         }
+      } catch {
+        failed.push(row);
+        reportFetchFailure();
       }
+    }
+
+    setSaving(false);
+
+    if (savedCount > 0) {
+      // Mark successfully saved rows as clean so the admin can retry only the failed ones.
+      const failedIds = new Set(failed.map((r) => r.sessionId));
+      setRows((prev) =>
+        prev.map((r) =>
+          changed.some((c) => c.sessionId === r.sessionId) && !failedIds.has(r.sessionId)
+            ? { ...r, initial: r.tubes }
+            : r,
+        ),
+      );
       onSaved();
+    }
+
+    if (failed.length === 0) {
       onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed');
-    } finally {
-      setSaving(false);
+    } else {
+      const labels = failed.map((r) => fmtSessionDate(r.datetime)).join(', ');
+      setError(`Saved ${savedCount} of ${changed.length} — couldn't update ${labels}`);
     }
   }
 
@@ -236,11 +263,11 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
           <button
             type="button"
             onClick={handleSave}
-            disabled={saving || !dirty}
+            disabled={saving || !dirty || !online}
             className="cc-btn cc-btn-primary flex-1"
             style={{ minHeight: 44 }}
           >
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? 'Saving…' : !online ? 'Offline' : 'Save'}
           </button>
         </div>
       </BottomSheetBody>
