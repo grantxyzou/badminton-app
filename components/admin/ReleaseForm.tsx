@@ -241,7 +241,7 @@ ${rawNotes}`;
         <textarea id="release-body-zh" name="bodyZh" value={bodyZh} onChange={(e) => setBodyZh(e.target.value)} className="input w-full min-h-[100px]" />
       </div>
 
-      {error && <p className="text-red-400 text-xs" role="alert">{error}</p>}
+      {error && <p className="field-error" role="alert">{error}</p>}
 
       <div className="flex gap-2">
         <button type="button" onClick={onCancel} className="btn-ghost flex-1">Cancel</button>

@@ -105,7 +105,7 @@ export default function SkipDatesEditor() {
         </button>
       </div>
 
-      {error && <p className="text-xs text-red-400" role="alert">{error}</p>}
+      {error && <p className="field-error" role="alert">{error}</p>}
 
       {dates.length > 0 && (
         <ul className="flex flex-wrap gap-2" role="list">

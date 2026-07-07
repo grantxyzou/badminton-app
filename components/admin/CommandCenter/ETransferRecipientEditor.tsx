@@ -175,7 +175,7 @@ export default function ETransferRecipientEditor() {
             </p>
           </Field>
 
-          {error && <p className="text-xs text-red-400" role="alert">{error}</p>}
+          {error && <p className="field-error" role="alert">{error}</p>}
 
           <div className="flex flex-wrap gap-2 justify-end">
             <button

@@ -215,7 +215,7 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
               {adding ? '...' : 'Add'}
             </button>
           </div>
-          {addError && <p className="text-red-400 text-xs" role="alert">{addError}</p>}
+          {addError && <p className="field-error" role="alert">{addError}</p>}
           {membersLoading ? (
             <ShimmerLoader lines={3} />
           ) : members.length > 0 ? (
@@ -286,7 +286,7 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
                       className="flex-1 text-sm"
                     />
                   </div>
-                  {editError && <p className="text-red-400 text-xs" role="alert">{editError}</p>}
+                  {editError && <p className="field-error" role="alert">{editError}</p>}
                   <div className="flex gap-2">
                     <button onClick={() => handleSaveEdit(alias.id)} className="cc-btn cc-btn-primary text-xs" style={{ minHeight: 44 }}>Save</button>
                     <button onClick={() => setEditingId(null)} className="btn-ghost text-xs px-3 py-1.5" style={{ minHeight: 44 }}>Cancel</button>
@@ -367,7 +367,7 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
               className="flex-1"
             />
           </div>
-          {aliasAddError && <p className="text-red-400 text-xs" role="alert">{aliasAddError}</p>}
+          {aliasAddError && <p className="field-error" role="alert">{aliasAddError}</p>}
           <button type="submit" disabled={aliasAdding} className="cc-btn cc-btn-primary cc-btn-lg" style={{ minHeight: 44 }}>
             {aliasAdding ? 'Adding...' : 'Add Alias'}
           </button>
