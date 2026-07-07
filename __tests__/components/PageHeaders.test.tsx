@@ -53,7 +53,7 @@ describe('PageHeaders', () => {
   it('AdminTab renders "Admin" as an h1', () => {
     render(
       <NextIntlClientProvider locale="en" messages={enMessages}>
-        <AdminTab />
+        <AdminTab onExit={() => {}} />
       </NextIntlClientProvider>
     );
     const heading = screen.getByRole('heading', { level: 1 });
