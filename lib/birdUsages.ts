@@ -30,10 +30,30 @@ export function totalBirdCost(usages: BirdUsage[]): number {
 }
 
 /**
- * The one bird-tube validation contract, shared by every write path.
- * Tubes ∈ [0, 100] on the 0.25 grid; `0` is valid and means "remove this
- * purchase's entry" (Decision: session PUT, the retro-assign PATCH, and
- * advance all agree). `purchaseId` must be a non-empty string.
+ * The one tube-count check, shared by every bird write path. Rejects a
+ * non-finite number, anything outside `[min, max]`, or an off-grid value
+ * (must be a multiple of 0.25). Returns `null` when valid, else a
+ * human-readable error. `min`/`max` vary by caller — usage entries allow
+ * `[0, 100]` (0 = remove); a bulk purchase requires `[0.25, 1000]`.
+ *
+ * 0.25-grid values are exact in binary floating point, so `Math.round(t*4)
+ * !== t*4` is a safe grid test.
+ */
+export function validateTubeCount(tubes: number, min = 0, max = 100): string | null {
+  if (!Number.isFinite(tubes) || tubes < min || tubes > max) {
+    return `Bird tubes must be between ${min} and ${max}`;
+  }
+  if (Math.round(tubes * 4) !== tubes * 4) {
+    return 'Bird tubes must be in 0.25 increments';
+  }
+  return null;
+}
+
+/**
+ * The one bird-tube validation contract for usage entries, shared by every
+ * usage write path. Tubes ∈ [0, 100] on the 0.25 grid; `0` is valid and means
+ * "remove this purchase's entry" (Decision: session PUT, the retro-assign
+ * PATCH, and advance all agree). `purchaseId` must be a non-empty string.
  *
  * Returns the normalized `{ purchaseId, tubes }` or a human-readable error —
  * callers turn `!ok` into a 400.
@@ -42,14 +62,8 @@ export function validateBirdEntry(
   entry: { purchaseId?: unknown; tubes?: unknown } | null | undefined,
 ): { ok: true; value: { purchaseId: string; tubes: number } } | { ok: false; error: string } {
   const tubes = Number(entry?.tubes);
-  if (!Number.isFinite(tubes) || tubes < 0 || tubes > 100) {
-    return { ok: false, error: 'Bird tubes must be between 0 and 100' };
-  }
-  // Multiple of 0.25 — rejects 0.33, 1.7, etc. (0.25-grid values are exact in
-  // binary floating point, so this comparison is safe).
-  if (Math.round(tubes * 4) !== tubes * 4) {
-    return { ok: false, error: 'Bird tubes must be in 0.25 increments' };
-  }
+  const tubesError = validateTubeCount(tubes, 0, 100);
+  if (tubesError) return { ok: false, error: tubesError };
   const purchaseId = entry?.purchaseId;
   if (typeof purchaseId !== 'string' || !purchaseId) {
     return { ok: false, error: 'Bird purchase must be selected' };
