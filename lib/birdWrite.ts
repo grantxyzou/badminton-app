@@ -34,11 +34,25 @@ export async function resolveBirdUsages(raw: unknown): Promise<ResolveBirdUsages
   if (wanted.length === 0) return { ok: true, usages: [] };
 
   const birds = getContainer('birds');
-  const reads = await Promise.all(wanted.map(([id]) => birds.item(id, id).read()));
+  let reads;
+  try {
+    reads = await Promise.all(wanted.map(([id]) => birds.item(id, id).read()));
+  } catch {
+    // A transient inventory read failure (throttle / network blip) must fail
+    // LEGIBLY and retryably — not silently drop bird cost (legible-fail rule)
+    // nor bubble an opaque 500. A 404-miss does NOT throw (resource is just
+    // undefined), so this only catches genuine read errors.
+    return { ok: false, status: 503, error: 'Could not read bird inventory. Please try again.' };
+  }
   const usages: BirdUsage[] = [];
   for (let i = 0; i < wanted.length; i++) {
     const purchase = reads[i].resource;
-    if (!purchase) return { ok: false, status: 404, error: 'Selected bird purchase not found' };
+    // Reject unknown ids AND adjustment docs — an adjustment has no costPerTube,
+    // so snapshotting one yields NaN cost (CLAUDE.md: never let adjustment docs
+    // into bird cost math).
+    if (!purchase || purchase.type === 'adjustment') {
+      return { ok: false, status: 404, error: 'Selected bird purchase not found' };
+    }
     usages.push(snapshotBirdUsage(purchase, wanted[i][1]));
   }
   return { ok: true, usages };

@@ -15,6 +15,7 @@ import { GET, PUT } from '@/app/api/session/route';
 import { POST as ADVANCE } from '@/app/api/session/advance/route';
 import { GET as GET_COSTS } from '@/app/api/sessions/costs/route';
 import { POST as CREATE_BIRD } from '@/app/api/birds/route';
+import { POST as RECONCILE_BIRDS } from '@/app/api/birds/reconcile/route';
 
 setupAdminPin();
 
@@ -251,6 +252,29 @@ describe('PUT /api/session', () => {
     });
     const res = await PUT(req);
     expect(res.status).toBe(404);
+  });
+
+  it('rejects an adjustment doc id used as a purchaseId (would snapshot NaN cost)', async () => {
+    // Adjustment docs live in the birds container but have no costPerTube —
+    // snapshotting one yields NaN cost. A read by id succeeds (it's a real doc),
+    // so the write path must reject it by `type`, not just by existence.
+    const bird = await (await CREATE_BIRD(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
+      name: 'Stocked', tubes: 4, totalCost: 80,
+    }))).json();
+    const rec = await (await RECONCILE_BIRDS(makeAdminRequest('POST', 'http://localhost:3000/api/birds/reconcile', {
+      countedTotal: 2,
+    }))).json();
+    expect(rec.adjustment?.type).toBe('adjustment');
+
+    const res = await PUT(makeAdminRequest('PUT', 'http://localhost:3000/api/session', {
+      title: 'Test',
+      courts: 2,
+      maxPlayers: 12,
+      birdUsages: [{ purchaseId: rec.adjustment.id, tubes: 1 }],
+    }));
+    expect(res.status).toBe(404);
+    // Sanity: the real purchase still works, so this isn't a blanket reject.
+    expect(bird.id).toBeTruthy();
   });
 
   it('clears bird usages with an empty array', async () => {
