@@ -291,7 +291,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
             </button>
           </div>
           {addError && (
-            <p id="skills-add-error" role="alert" className="text-red-400 text-xs">
+            <p id="skills-add-error" role="alert" className="field-error">
               {addError}
             </p>
           )}
