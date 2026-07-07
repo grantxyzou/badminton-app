@@ -31,7 +31,7 @@ export default function SessionContextBar({ session, onEditDates }: Props) {
           {session?.datetime ? fmtSessionDate(session.datetime) : 'No session'}
         </p>
       </div>
-      <span className="material-icons" style={{ fontSize: 16, color: 'var(--text-muted)' }}>edit</span>
+      <span className="material-icons" style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-muted)' }}>edit</span>
     </button>
   );
 }

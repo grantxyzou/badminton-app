@@ -77,7 +77,7 @@ export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashT
         role="alert"
         style={{ gridColumn: '1 / -1', display: 'block', padding: '12px 14px', borderRadius: 'var(--radius-xl)', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}
       >
-        <p style={{ fontSize: 12, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: 0 }}>
           Couldn&apos;t load Birds + Roster summaries — refresh to retry.
         </p>
       </div>
@@ -129,7 +129,7 @@ export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashT
         </span>
         <span className="big" style={{ color: 'var(--accent)' }}>
           {data.activeMembers}
-          <span style={{ color: 'var(--ink-faint)', fontSize: 14, fontWeight: 500 }}>/{data.totalMembers}</span>
+          <span style={{ color: 'var(--ink-faint)', fontSize: 'var(--fs-md)', fontWeight: 500 }}>/{data.totalMembers}</span>
         </span>
         <span className="small">
           active{data.dormantMembers > 0 && ` · ${data.dormantMembers} dormant`}

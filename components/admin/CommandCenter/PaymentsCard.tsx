@@ -472,7 +472,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                 onClick={() => setViewedSessionId(s.id)}
                 className="cc-session-chip flex-shrink-0"
               >
-                <span style={{ fontSize: 13, fontWeight: 600, display: 'block' }}>
+                <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, display: 'block' }}>
                   {fmtSessionLabel(s.datetime)}
                 </span>
                 <span style={{ fontSize: 10.5, display: 'block', marginTop: 2, opacity: 0.7 }}>
@@ -487,7 +487,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       {/* Load-error affordance preserved from the removed header (the
           lying-empty-state rule forbids dropping it). */}
       {(loadError || playersError) && (
-        <p role="alert" className="text-xs" style={{ color: 'var(--color-red, #ef4444)', margin: 0 }}>
+        <p role="alert" className="text-xs" style={{ color: 'var(--color-red)', margin: 0 }}>
           Couldn&apos;t load — refresh to retry
         </p>
       )}
@@ -506,8 +506,8 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
         <p
           role="alert"
           style={{
-            fontSize: 12,
-            color: 'var(--color-red, #ef4444)',
+            fontSize: 'var(--fs-sm)',
+            color: 'var(--color-red)',
             margin: 0,
             padding: '8px 12px',
             background: 'rgba(239,68,68,0.06)',
@@ -548,7 +548,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                 onClick={() => openReceiptSheet('group')}
                 disabled={receiptBuild?.costPerPerson == null}
                 className="cc-btn cc-btn-secondary"
-                style={{ fontSize: 12, padding: '4px 12px' }}
+                style={{ fontSize: 'var(--fs-sm)', padding: '4px 12px' }}
               >
                 Share receipt
               </button>
@@ -610,7 +610,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                       ? "You're covering this — split across the others"
                       : "You're covering this — it's on you"}
                   >
-                    <span className="material-icons" style={{ fontSize: 14 }} aria-hidden="true">
+                    <span className="material-icons" style={{ fontSize: 'var(--fs-md)' }} aria-hidden="true">
                       volunteer_activism
                     </span>
                     Covered
@@ -627,7 +627,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                       '…'
                     ) : player.paid ? (
                       <>
-                        <span className="material-icons" style={{ fontSize: 14 }} aria-hidden="true">
+                        <span className="material-icons" style={{ fontSize: 'var(--fs-md)' }} aria-hidden="true">
                           check_circle
                         </span>
                         Paid
@@ -692,7 +692,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       {/* Waitlist */}
       {lists.waitlisted.length > 0 && (
         <div style={{ marginTop: 4 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--amber)', margin: '14px 2px 6px' }}>
+          <p style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--amber)', margin: '14px 2px 6px' }}>
             {lists.waitlisted.length} waitlisted
           </p>
           <ul role="list" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -705,7 +705,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                     onClick={() => handlePromote(p)}
                     disabled={busyId === p.id}
                     className="cc-btn cc-btn-secondary"
-                    style={{ fontSize: 11, padding: '4px 10px' }}
+                    style={{ fontSize: 'var(--fs-xs)', padding: '4px 10px' }}
                   >
                     {busyId === p.id ? '…' : 'Promote'}
                   </button>
@@ -725,7 +725,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
             style={{ background: 'transparent', border: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '8px 2px', color: 'var(--text-secondary)' }}
             aria-expanded={!removedCollapsed}
           >
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               {lists.removed.length} removed
             </span>
             <span className="material-icons" style={{ fontSize: 18, color: 'var(--text-muted)' }}>
@@ -738,7 +738,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                 <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 13.5 }}>
                   <span style={{ flex: 1, color: 'var(--text-muted)', textDecoration: 'line-through' }}>{p.name}</span>
                   {p.removedAt && (
-                    <span style={{ fontSize: 10, color: 'var(--ink-faint)', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
+                    <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
                       {p.cancelledBySelf ? 'cancelled' : 'removed'} {fmtSessionLabel(p.removedAt)}
                     </span>
                   )}
@@ -748,7 +748,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                       onClick={() => handleRestore(p)}
                       disabled={busyId === p.id}
                       className="cc-btn cc-btn-secondary"
-                      style={{ fontSize: 11, padding: '4px 10px' }}
+                      style={{ fontSize: 'var(--fs-xs)', padding: '4px 10px' }}
                     >
                       {busyId === p.id ? '…' : 'Restore'}
                     </button>
@@ -769,20 +769,20 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
         className="max-w-sm mx-auto"
       >
         <BottomSheetHeader className="flex items-center justify-between p-4">
-          <span style={{ fontSize: 16, fontWeight: 600 }}>{actionTarget?.name ?? 'Player'}</span>
+          <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{actionTarget?.name ?? 'Player'}</span>
           <button
             type="button"
             onClick={() => { setActionTarget(null); setActionError(''); }}
             aria-label="Close"
             style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            <span className="material-icons" style={{ fontSize: 20 }}>close</span>
+            <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
           </button>
         </BottomSheetHeader>
         <BottomSheetBody className="p-5 pb-8">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {actionError && (
-              <p role="alert" style={{ fontSize: 13, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: 0 }}>
                 {actionError}
               </p>
             )}
@@ -901,7 +901,7 @@ function ActionRow({
     >
       <span
         className="material-icons"
-        style={{ fontSize: 20, color: destructive ? 'var(--red-soft)' : 'var(--text-secondary)' }}
+        style={{ fontSize: 'var(--fs-stat)', color: destructive ? 'var(--red-soft)' : 'var(--text-secondary)' }}
       >
         {icon}
       </span>
@@ -910,7 +910,7 @@ function ActionRow({
           {label}
         </span>
         {hint && (
-          <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{hint}</span>
+          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: 2 }}>{hint}</span>
         )}
       </span>
     </button>

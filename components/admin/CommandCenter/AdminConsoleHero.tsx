@@ -122,7 +122,7 @@ export default function AdminConsoleHero({ onOpenAdmin }: AdminConsoleHeroProps)
         className="admin-hero"
         style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'linear-gradient(160deg, rgba(239,68,68,0.06), rgba(255,255,255,0.02))' }}
       >
-        <span className="badge" style={{ color: 'var(--color-red, #ef4444)' }}>Admin console</span>
+        <span className="badge" style={{ color: 'var(--color-red)' }}>Admin console</span>
         <p className="ah-title">Couldn&apos;t load</p>
         <p className="ah-subtitle">Refresh to retry — your stats aren&apos;t available right now.</p>
       </div>

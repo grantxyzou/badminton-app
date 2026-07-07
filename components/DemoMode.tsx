@@ -78,7 +78,7 @@ export default function DemoMode({ onClose }: Props) {
         >
           Demo mode
         </h1>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+        <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
           Placeholder. A guided tour of the app lands here in a future pass.
         </p>
       </div>

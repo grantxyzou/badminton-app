@@ -144,11 +144,11 @@ export default function CoverSheet({
     >
       <BottomSheetHeader className="p-4">
         <h2 className="bpm-h3" style={{ margin: 0 }}>{title}</h2>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>{subtitle}</p>
+        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '4px 0 0' }}>{subtitle}</p>
       </BottomSheetHeader>
       <BottomSheetBody className="p-4 pb-8" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {error && (
-          <p role="alert" style={{ fontSize: 12, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+          <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: 0 }}>
             {error}
           </p>
         )}
@@ -162,7 +162,7 @@ export default function CoverSheet({
             >
               {submitting ? '…' : "I've got it — I'll cover it"}
             </button>
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '-2px 2px 4px' }}>
+            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: '-2px 2px 4px' }}>
               You absorb their share. Everyone else pays the same.
             </p>
             <button
@@ -173,7 +173,7 @@ export default function CoverSheet({
             >
               {submitting ? '…' : 'Split it across everyone else'}
             </button>
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '-2px 2px 4px' }}>
+            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: '-2px 2px 4px' }}>
               Their share is spread over the other players — you pay nothing extra.
             </p>
             <button

@@ -266,7 +266,7 @@ export default function ProfileTab({
               alignItems: 'center',
               gap: 8,
               color: 'var(--text-muted)',
-              fontSize: 11,
+              fontSize: 'var(--fs-xs)',
               textTransform: 'uppercase',
               letterSpacing: '0.1em',
             }}
@@ -314,7 +314,7 @@ export default function ProfileTab({
           type="button"
           onClick={() => setReportOpen(true)}
           className="btn-ghost"
-          style={{ width: '100%', fontSize: 13 }}
+          style={{ width: '100%', fontSize: 'var(--fs-base)' }}
         >
           {tSettings('reportProblem')}
         </button>
@@ -437,7 +437,7 @@ function SettingsList({ title, rows }: { title?: string; rows: SettingsRow[] }) 
         <p
           style={{
             padding: '14px 16px 8px',
-            fontSize: 11,
+            fontSize: 'var(--fs-xs)',
             fontWeight: 600,
             letterSpacing: '0.08em',
             textTransform: 'uppercase',
@@ -462,7 +462,7 @@ function SettingsList({ title, rows }: { title?: string; rows: SettingsRow[] }) 
                 background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
-                color: row.destructive ? 'var(--color-amber, #f59e0b)' : 'var(--text-primary)',
+                color: row.destructive ? 'var(--color-amber)' : 'var(--text-primary)',
                 fontSize: 15,
                 textAlign: 'left',
               }}
@@ -470,13 +470,13 @@ function SettingsList({ title, rows }: { title?: string; rows: SettingsRow[] }) 
               <span
                 className="material-icons"
                 aria-hidden="true"
-                style={{ fontSize: 20, color: 'var(--text-secondary)' }}
+                style={{ fontSize: 'var(--fs-stat)', color: 'var(--text-secondary)' }}
               >
                 {row.icon}
               </span>
               <span style={{ flex: 1 }}>{row.label}</span>
               {row.meta && (
-                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{row.meta}</span>
+                <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>{row.meta}</span>
               )}
               <span
                 className="material-icons"
@@ -564,13 +564,13 @@ function CostRow({
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
       <div style={{ minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{label}</span>
-        {date && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{date}</span>}
+        <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)' }}>{label}</span>
+        {date && <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{date}</span>}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flex: '0 0 auto' }}>
         <span
           style={{
-            fontSize: 10,
+            fontSize: 'var(--fs-2xs)',
             fontWeight: 700,
             letterSpacing: '0.06em',
             textTransform: 'uppercase',
@@ -583,7 +583,7 @@ function CostRow({
         <span
           style={{
             fontFamily: 'var(--font-mono)',
-            fontSize: 16,
+            fontSize: 'var(--fs-lg)',
             fontWeight: 700,
             color: amountColor,
             lineHeight: 1.25,
@@ -615,7 +615,7 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameL
       <p
         style={{
           fontFamily: 'var(--font-display, "Space Grotesk")',
-          fontSize: 10,
+          fontSize: 'var(--fs-2xs)',
           fontWeight: 700,
           letterSpacing: '0.16em',
           textTransform: 'uppercase',
@@ -639,7 +639,7 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameL
             justifyContent: 'center',
             fontFamily: 'var(--font-display, "Space Grotesk")',
             fontWeight: 600,
-            fontSize: 20,
+            fontSize: 'var(--fs-stat)',
             flexShrink: 0,
             border: '1px solid rgba(255,255,255,0.10)',
           }}
@@ -650,7 +650,7 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameL
           <p
             style={{
               fontFamily: 'var(--font-display, "Space Grotesk")',
-              fontSize: 22,
+              fontSize: 'var(--fs-stat-lg)',
               fontWeight: 700,
               letterSpacing: '-0.02em',
               margin: 0,
@@ -740,7 +740,7 @@ function ProfileEyebrow({ children }: { children: React.ReactNode }) {
     <p
       style={{
         fontFamily: 'var(--font-display, "Space Grotesk")',
-        fontSize: 11,
+        fontSize: 'var(--fs-xs)',
         fontWeight: 700,
         letterSpacing: '0.16em',
         textTransform: 'uppercase',
