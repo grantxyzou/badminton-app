@@ -131,7 +131,7 @@ export default function NameAutocompleteInput({
               aria-selected={i === active}
               onMouseDown={() => selectSuggestion(s)}
               onMouseEnter={() => setActiveIndex(i)}
-              className="w-full text-left px-4 py-2.5 text-sm transition-colors cursor-pointer"
+              className="w-full text-left px-4 py-2.5 fs-md transition-colors cursor-pointer"
               style={{
                 color: 'var(--text-primary)',
                 background: i === active ? 'rgba(var(--glass-tint), 0.06)' : 'transparent',

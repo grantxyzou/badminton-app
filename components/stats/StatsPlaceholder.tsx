@@ -37,7 +37,7 @@ function CompactComingSoonCard({ icon, title, subtitle, comingSoon }: CompactCar
         <StatusBadge variant="muted">{comingSoon}</StatusBadge>
       </div>
       <h3
-        className="text-xs font-semibold m-0"
+        className="fs-sm font-semibold m-0"
         style={{ color: 'var(--text-primary)', lineHeight: 1.25 }}
       >
         {title}
@@ -238,7 +238,7 @@ export default function StatsPlaceholder({
           short wrapper would un-stick it). Subhead is a sibling pinned tight
           to the title via inline marginTop (beats the space-y-5 gap). */}
       <PageHeader>{t('heading')}</PageHeader>
-      <p className="text-sm text-gray-400 px-2" style={{ marginTop: 4 }}>{t('subhead')}</p>
+      <p className="fs-md text-gray-400 px-2" style={{ marginTop: 4 }}>{t('subhead')}</p>
 
       {useTabs && (
         <div className="flex justify-center">
@@ -248,7 +248,7 @@ export default function StatsPlaceholder({
                 key={tab.id}
                 type="button"
                 onClick={() => setView(tab.id)}
-                className={`flex-1 flex items-center justify-center text-xs transition-all ${
+                className={`flex-1 flex items-center justify-center fs-sm transition-all ${
                   view === tab.id ? 'segment-tab-active' : 'segment-tab-inactive'
                 }`}
               >

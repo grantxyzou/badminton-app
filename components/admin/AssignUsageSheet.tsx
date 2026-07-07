@@ -155,7 +155,7 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
             Assign to session
           </h2>
           {purchase && (
-            <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>
+            <p className="fs-sm mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>
               {purchase.name} · ${purchase.costPerTube.toFixed(2)}/tube
             </p>
           )}
@@ -171,10 +171,10 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
       </BottomSheetHeader>
 
       <BottomSheetBody className="p-5 pb-8">
-        {loading && <p className="text-sm text-gray-400">Loading sessions…</p>}
+        {loading && <p className="fs-md text-gray-400">Loading sessions…</p>}
 
         {!loading && rows.length === 0 && (
-          <p className="text-sm text-gray-400">No sessions yet.</p>
+          <p className="fs-md text-gray-400">No sessions yet.</p>
         )}
 
         {!loading && rows.length > 0 && (
@@ -182,10 +182,10 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
             {rows.map((r) => (
               <div key={r.sessionId} className="glass-card-soft p-3 flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  <p className="fs-md font-medium" style={{ color: 'var(--text-primary)' }}>
                     {r.title ?? 'Session'}
                   </p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <p className="fs-sm" style={{ color: 'var(--text-muted)' }}>
                     {fmtSessionDate(r.datetime)}
                   </p>
                 </div>

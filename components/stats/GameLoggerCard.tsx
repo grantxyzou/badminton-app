@@ -74,7 +74,7 @@ export default function GameLoggerCard() {
   if (status === 'error') {
     return (
       <div className="glass-card p-5">
-        <p className="text-xs" role="alert" style={{ color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+        <p className="fs-sm" role="alert" style={{ color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
           {t('logGameError')}
         </p>
       </div>

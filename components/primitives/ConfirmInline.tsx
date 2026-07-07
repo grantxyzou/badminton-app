@@ -4,7 +4,7 @@
  * twice (active row + waitlist row) with subtly different styling
  * each time:
  *
- *   <div className="flex items-center gap-2 text-xs">
+ *   <div className="flex items-center gap-2 fs-sm">
  *     <span className="text-gray-400">{message}</span>
  *     <button onClick={onYes} className="text-red-400 …">{yesLabel}</button>
  *     <button onClick={onNo} className="text-gray-400 …">{noLabel}</button>
@@ -40,7 +40,7 @@ export default function ConfirmInline({
       ? 'text-red-400 hover:text-red-300'
       : 'text-green-400 hover:text-green-300';
   return (
-    <div className="flex items-center gap-2 text-xs">
+    <div className="flex items-center gap-2 fs-sm">
       <span className="text-gray-400">{message}</span>
       <button
         type="button"
