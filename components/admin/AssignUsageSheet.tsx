@@ -242,7 +242,7 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
           </div>
         )}
 
-        {error && <p className="text-red-400 text-xs mt-2" role="alert">{error}</p>}
+        {error && <p className="field-error mt-2" role="alert">{error}</p>}
 
         <div className="flex gap-2 mt-4">
           <button

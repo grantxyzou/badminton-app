@@ -530,7 +530,7 @@ h1, h2, h3, h4 {
    line rendered below an input. One class so the pattern is deduped and
    theme-aware (was hand-coded as `text-red-400 text-xs` across ~30 sites). */
 .field-error {
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   line-height: var(--lh-snug);
   color: var(--sev-crit-text);
 }

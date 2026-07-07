@@ -192,7 +192,7 @@ export default function PlayersTab() {
                         </button>
                       )}
                       {cancelError && (
-                        <span className="text-xs text-red-400">{cancelError}</span>
+                        <span className="field-error">{cancelError}</span>
                       )}
                     </div>
                   )}
@@ -252,7 +252,7 @@ export default function PlayersTab() {
                           </button>
                         )}
                         {cancelError && (
-                          <span className="text-xs text-red-400">{cancelError}</span>
+                          <span className="field-error">{cancelError}</span>
                         )}
                       </div>
                     )}

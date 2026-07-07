@@ -199,7 +199,7 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
             </div>
           )}
 
-          {error && <p className="text-xs text-red-400" role="alert">{error}</p>}
+          {error && <p className="field-error" role="alert">{error}</p>}
 
           <div className="flex flex-wrap gap-2 justify-end">
             <button
@@ -249,7 +249,7 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
                     className="w-full text-sm rounded-lg p-3"
                     style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.12)' }}
                   />
-                  {editError && <p className="text-xs text-red-400">{editError}</p>}
+                  {editError && <p className="field-error">{editError}</p>}
                   <div className="flex gap-2 justify-end">
                     <button
                       type="button"

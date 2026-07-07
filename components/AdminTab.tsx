@@ -98,7 +98,7 @@ export default function AdminTab({ onExit }: { onExit: () => void }) {
                 ariaInvalid={!!error}
                 autoFocus={!!name}
               />
-              {error && <p id="admin-error" role="alert" className="text-xs text-red-400">{error}</p>}
+              {error && <p id="admin-error" role="alert" className="field-error">{error}</p>}
               <button
                 type="submit"
                 disabled={checking || !name.trim() || pin.length !== 4}

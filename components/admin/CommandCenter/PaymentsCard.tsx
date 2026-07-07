@@ -687,7 +687,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           </button>
         </form>
       )}
-      {addError && <p role="alert" className="text-xs text-red-400">{addError}</p>}
+      {addError && <p role="alert" className="field-error">{addError}</p>}
 
       {/* Waitlist */}
       {lists.waitlisted.length > 0 && (

@@ -69,7 +69,7 @@ export default function ReleasesView({ onBack }: Props) {
             {t('newButton')}
           </button>
 
-          {error && <p className="text-red-400 text-xs" role="alert">{error}</p>}
+          {error && <p className="field-error" role="alert">{error}</p>}
           {loading ? (
             <p className="text-sm text-gray-400">Loading…</p>
           ) : releases.length === 0 ? (

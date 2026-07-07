@@ -465,7 +465,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
             );
           })()}
 
-          {advanceError && <p className="text-red-400 text-xs">{advanceError}</p>}
+          {advanceError && <p className="field-error">{advanceError}</p>}
 
           {success ? (
             <div className="space-y-3">

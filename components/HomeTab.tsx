@@ -558,7 +558,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   />
                 </>
               )}
-              {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
+              {error && <p id="signup-error" role="alert" className="field-error">{error}</p>}
               <button
                 type="submit"
                 disabled={
@@ -630,7 +630,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   />
                 </>
               )}
-              {error && <p id="signup-error" role="alert" className="text-red-400 text-xs">{error}</p>}
+              {error && <p id="signup-error" role="alert" className="field-error">{error}</p>}
               <button
                 type="submit"
                 disabled={

@@ -255,7 +255,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
               {anno.posting ? 'Posting\u2026' : 'Post to Home'}
             </button>
           )}
-          {anno.postError && <p className="text-red-400 text-xs">{anno.postError}</p>}
+          {anno.postError && <p className="field-error">{anno.postError}</p>}
         </div>
 
         {/* Posted announcements */}
@@ -263,7 +263,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
           <div className="glass-card p-5 space-y-3">
             <h3 className="section-label-muted">ACTIVE ANNOUNCEMENTS</h3>
             <div className="space-y-2">
-              {anno.deletePostError && <p className="text-xs text-red-400 mb-1">{anno.deletePostError}</p>}
+              {anno.deletePostError && <p className="field-error mb-1">{anno.deletePostError}</p>}
               {anno.announcements.map((a) =>
                 anno.editingAnnoId === a.id ? (
                   <div key={a.id} className="glass-card-soft p-3 space-y-2">
@@ -276,7 +276,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                       className="w-full text-sm"
                     />
                     <p className="text-right text-xs text-gray-500">{anno.editAnnoText.length}/800</p>
-                    {anno.editAnnoError && <p className="text-red-400 text-xs">{anno.editAnnoError}</p>}
+                    {anno.editAnnoError && <p className="field-error">{anno.editAnnoError}</p>}
                     <div className="flex gap-2">
                       <button
                         onClick={() => anno.handleSaveAnno(a.id)}
@@ -485,12 +485,12 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
               {pm.adding ? '\u2026' : 'Add'}
             </button>
           </div>
-          {pm.addError && <p id="add-error" role="alert" className="text-red-400 text-xs">{pm.addError}</p>}
+          {pm.addError && <p id="add-error" role="alert" className="field-error">{pm.addError}</p>}
         </form>
 
         {/* Waitlisted players */}
         {pm.promoteError && (
-          <p role="alert" className="text-xs text-red-400 px-1">{pm.promoteError}</p>
+          <p role="alert" className="field-error px-1">{pm.promoteError}</p>
         )}
         {pm.waitlistPlayers.length > 0 && (
           <div className="glass-card overflow-hidden">
@@ -526,7 +526,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
 
         {/* Removed players */}
         {pm.restoreError && (
-          <p role="alert" className="text-xs text-red-400 px-1">{pm.restoreError}</p>
+          <p role="alert" className="field-error px-1">{pm.restoreError}</p>
         )}
         {pm.removedPlayers.length > 0 && (
           <div className="glass-card overflow-hidden">
@@ -682,7 +682,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
               >
                 Cancel
               </button>
-              {pm.clearError && <p role="alert" className="text-xs text-red-400 text-center">{pm.clearError}</p>}
+              {pm.clearError && <p role="alert" className="field-error text-center">{pm.clearError}</p>}
             </div>
           </div>
         </>,
