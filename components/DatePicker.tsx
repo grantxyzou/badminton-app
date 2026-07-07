@@ -146,7 +146,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
           aria-label="Previous month"
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
         >
-          <span className="material-icons" style={{ fontSize: 18 }}>chevron_left</span>
+          <span className="material-icons" style={{ fontSize: 'var(--icon-md)' }}>chevron_left</span>
         </button>
         <span style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '0.75rem' }}>
           {MONTHS_FULL[viewMonth]} {viewYear}
@@ -157,7 +157,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
           aria-label="Next month"
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
         >
-          <span className="material-icons" style={{ fontSize: 18 }}>chevron_right</span>
+          <span className="material-icons" style={{ fontSize: 'var(--icon-md)' }}>chevron_right</span>
         </button>
       </div>
 

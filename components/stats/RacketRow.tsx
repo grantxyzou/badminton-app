@@ -73,7 +73,7 @@ export default function RacketRow() {
           ) : !loaded ? (
             <span className="shimmer-line rounded-lg" style={{ height: 15, width: '70%' }} aria-hidden="true" />
           ) : racketLabel ? (
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, lineHeight: 1.25 }}>{racketLabel}</span>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 600, lineHeight: 1.25 }}>{racketLabel}</span>
           ) : (
             <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)' }}>{t('noRacketYet')}</span>
           )}

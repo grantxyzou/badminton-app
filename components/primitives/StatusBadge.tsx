@@ -36,7 +36,7 @@ const BASE: CSSProperties = {
 export default function StatusBadge({ children, variant = 'accent', tone = 'accent' }: StatusBadgeProps) {
   let style: CSSProperties;
   if (variant === 'muted') {
-    style = { ...BASE, fontSize: 9, padding: '2px 7px', border: '1px solid var(--inner-card-border)', color: 'var(--text-muted)' };
+    style = { ...BASE, fontSize: 'var(--fs-2xs)', padding: '2px 7px', border: '1px solid var(--inner-card-border)', color: 'var(--text-muted)' };
   } else if (variant === 'phase') {
     const c = tone === 'amber' ? 'var(--accent-amber)' : 'var(--accent)';
     style = { ...BASE, fontSize: 'var(--fs-xs)', padding: '3px 10px', border: `1px solid ${c}`, color: c };

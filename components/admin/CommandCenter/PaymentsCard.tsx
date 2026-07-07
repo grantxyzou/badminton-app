@@ -475,7 +475,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                 <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, display: 'block' }}>
                   {fmtSessionLabel(s.datetime)}
                 </span>
-                <span style={{ fontSize: 10.5, display: 'block', marginTop: 2, opacity: 0.7 }}>
+                <span style={{ fontSize: 'var(--fs-xs)', display: 'block', marginTop: 2, opacity: 0.7 }}>
                   {isActive ? 'Current' : sent ? 'Sent' : 'Past'}
                 </span>
               </button>
@@ -563,7 +563,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           className="text-xs"
           style={{ color: '#d8b4fe', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}
         >
-          <span className="material-icons" style={{ fontSize: 15 }} aria-hidden="true">volunteer_activism</span>
+          <span className="material-icons" style={{ fontSize: 'var(--icon-sm)' }} aria-hidden="true">volunteer_activism</span>
           You&apos;ve covered ${viewedSession.settled.coveredTotal} this session
         </p>
       )}
@@ -697,7 +697,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           </p>
           <ul role="list" style={{ display: 'flex', flexDirection: 'column' }}>
             {lists.waitlisted.map((p) => (
-              <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(var(--glass-tint), 0.04)', fontSize: 13.5 }}>
+              <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(var(--glass-tint), 0.04)', fontSize: 'var(--fs-md)' }}>
                 <span style={{ flex: 1, color: 'var(--text-secondary)' }}>{p.name}</span>
                 {isCurrentSession && (
                   <button
@@ -728,14 +728,14 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
             <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
               {lists.removed.length} removed
             </span>
-            <span className="material-icons" style={{ fontSize: 18, color: 'var(--text-muted)' }}>
+            <span className="material-icons" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>
               {removedCollapsed ? 'expand_more' : 'expand_less'}
             </span>
           </button>
           {!removedCollapsed && (
             <ul role="list">
               {lists.removed.map((p) => (
-                <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(var(--glass-tint), 0.04)', fontSize: 13.5 }}>
+                <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(var(--glass-tint), 0.04)', fontSize: 'var(--fs-md)' }}>
                   <span style={{ flex: 1, color: 'var(--text-muted)', textDecoration: 'line-through' }}>{p.name}</span>
                   {p.removedAt && (
                     <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
@@ -906,7 +906,7 @@ function ActionRow({
         {icon}
       </span>
       <span style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-        <span style={{ fontSize: 13.5, fontWeight: 500, color: destructive ? 'var(--red-soft)' : 'var(--text-primary)' }}>
+        <span style={{ fontSize: 'var(--fs-md)', fontWeight: 500, color: destructive ? 'var(--red-soft)' : 'var(--text-primary)' }}>
           {label}
         </span>
         {hint && (
