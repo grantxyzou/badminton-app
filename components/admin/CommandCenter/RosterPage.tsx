@@ -45,7 +45,7 @@ function Avatar({ name, size = 32 }: { name: string; size?: number }) {
         fontWeight: 600,
         fontSize: size * 0.42,
         flexShrink: 0,
-        border: '1px solid rgba(255,255,255,0.1)',
+        border: '1px solid rgba(var(--glass-tint), 0.1)',
       }}
     >
       {name.slice(0, 1).toUpperCase()}
@@ -63,7 +63,7 @@ function Sparkline({ presence }: { presence: Array<1 | null> }) {
             width: 7,
             height: 7,
             borderRadius: 2,
-            background: v === 1 ? 'var(--accent)' : 'rgba(255,255,255,0.1)',
+            background: v === 1 ? 'var(--accent)' : 'rgba(var(--glass-tint), 0.1)',
           }}
         />
       ))}
@@ -423,8 +423,8 @@ export default function RosterPage({ onBack }: RosterPageProps) {
           alignItems: 'center',
           gap: 8,
           padding: '10px 14px',
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.12)',
+          background: 'rgba(var(--glass-tint), 0.04)',
+          border: '1px solid rgba(var(--glass-tint), 0.12)',
           borderRadius: 'var(--radius-lg)',
           color: 'var(--text-muted)',
         }}
@@ -461,8 +461,8 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                 gap: 5,
                 padding: '6px 11px',
                 borderRadius: 'var(--radius-pill)',
-                background: on ? 'rgba(74,222,128,0.13)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${on ? 'rgba(74,222,128,0.35)' : 'rgba(255,255,255,0.12)'}`,
+                background: on ? 'rgba(74,222,128,0.13)' : 'rgba(var(--glass-tint), 0.04)',
+                border: `1px solid ${on ? 'rgba(74,222,128,0.35)' : 'rgba(var(--glass-tint), 0.12)'}`,
                 fontFamily: 'var(--font-display, "Space Grotesk")',
                 fontSize: 11.5,
                 fontWeight: 500,
@@ -526,7 +526,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                   padding: '10px 24px',
                   alignItems: 'center',
                   gap: 12,
-                  borderBottom: '1px solid rgba(255,255,255,0.04)',
+                  borderBottom: '1px solid rgba(var(--glass-tint), 0.04)',
                 }}
                 aria-label={`Edit ${r.member.name}`}
               >
