@@ -5,9 +5,50 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, setMemberCookie } from '@/lib/auth';
 import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import { appendEvent } from '@/lib/recoveryAudit';
+import { isOverCapacity } from '@/lib/capacity';
 import type { RecoveryEvent } from '@/lib/types';
 
 const BLOCKLISTED_PINS = new Set(['0000', '1111', '1234', '4321', '1212']);
+
+// Single definition of a session's "active" (not-removed, not-waitlisted)
+// players — shared by the pre-insert capacity check and the post-insert
+// reconciliation (#79) so the two can never disagree on who counts.
+const ACTIVE_PLAYERS_QUERY =
+  'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)';
+
+/**
+ * Close the signup capacity race (#79). The pre-insert count check and the
+ * insert aren't atomic, so concurrent signups can both pass the check and land
+ * active, exceeding maxPlayers. Once our own record `doc` is committed, re-derive
+ * the active set and, if `doc` is past the cap in the deterministic first-come
+ * order (see lib/capacity.ts), demote it — to the waitlist when the caller opted
+ * in, else roll the just-created record back and report the session full.
+ *
+ * Every concurrent racer runs this against the same committed rows and only
+ * demotes itself when over the line, so the active count converges to
+ * `<= maxPlayers` with no coordination. The in-memory mock store is synchronous
+ * (one request in flight at a time) so it can't reproduce the interleave — the
+ * ordering core is unit-tested (capacity.test.ts) and full concurrency proof is
+ * the real-Cosmos test in #82.
+ */
+async function reconcileCapacity(
+  container: ReturnType<typeof getContainer>,
+  sessionId: string,
+  doc: { id: string; timestamp?: string; [k: string]: unknown },
+  maxPlayers: number,
+  joinWaitlist: boolean,
+): Promise<'kept' | 'waitlisted' | 'full'> {
+  const { resources } = await container.items
+    .query({ query: ACTIVE_PLAYERS_QUERY, parameters: [{ name: '@sessionId', value: sessionId }] })
+    .fetchAll();
+  if (!isOverCapacity(resources, doc.id, maxPlayers)) return 'kept';
+  if (joinWaitlist) {
+    await container.items.upsert({ ...doc, waitlisted: true });
+    return 'waitlisted';
+  }
+  await container.item(doc.id, sessionId).delete();
+  return 'full';
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -151,10 +192,7 @@ export async function POST(req: NextRequest) {
         })
         .fetchAll(),
       container.items
-        .query({
-          query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
-          parameters: [{ name: '@sessionId', value: sessionId }],
-        })
+        .query({ query: ACTIVE_PLAYERS_QUERY, parameters: [{ name: '@sessionId', value: sessionId }] })
         .fetchAll(),
     ]);
 
@@ -315,6 +353,18 @@ export async function POST(req: NextRequest) {
 
     const { resource } = await container.items.create(player);
 
+    // Close the capacity race (#79): the pre-insert check + this create aren't
+    // atomic, so concurrent signups can both land active. Reconcile against the
+    // now-committed active set and demote ourselves if we're past the cap.
+    let waitlisted = player.waitlisted;
+    if (!player.waitlisted) {
+      const outcome = await reconcileCapacity(container, sessionId, player, maxPlayers, joinWaitlist);
+      if (outcome === 'full') {
+        return NextResponse.json({ error: 'Session is full' }, { status: 409 });
+      }
+      waitlisted = outcome === 'waitlisted';
+    }
+
     // Update member stats + mirror pinHash for unified admin auth
     if (matchedMember) {
       await membersContainer.items.upsert({
@@ -326,7 +376,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Return the deleteToken once so the client can store it for self-cancellation
-    const { pinHash: _ph, ...safeResource } = resource as unknown as Record<string, unknown>;
+    // (waitlisted reflects any race-demotion above).
+    const { pinHash: _ph, ...safeResource } =
+      { ...(resource as unknown as Record<string, unknown>), waitlisted } as Record<string, unknown>;
     const out = NextResponse.json({ ...safeResource, deleteToken }, { status: 201 });
     // Trust this device for future sign-ups when this request proved (sign-in)
     // or created (first PIN) the member's PIN — the "stay logged in" model.
