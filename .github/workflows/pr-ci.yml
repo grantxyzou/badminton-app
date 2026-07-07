@@ -49,6 +49,12 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Typecheck gate. `next build` does NOT run `tsc --noEmit`, so a type
+      # error in a module the build doesn't reach (or in a test file) can
+      # slip past build + tests. Running it here fails the PR instead.
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Run tests
         run: npm test
 
