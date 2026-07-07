@@ -69,6 +69,8 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ### Fixed
 
+- **Data numbers render in the right font** — costs, PINs, streaks, and other tabular numbers now use the intended monospace face everywhere (some were quietly falling back to the body font).
+- **Light-mode polish** — subtle card tints and a few button hover colors now adapt correctly to light theme instead of showing washed-out or low-contrast hues.
 - **No accidental zoom on the web app** — pinch and double-tap zoom are off, so the mobile layout stays put.
 - **iOS admin polish** — the date/time pickers, receipt rendering, and the share-sign-up-link flow all behave correctly on iOS now.
 
