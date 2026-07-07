@@ -16,7 +16,7 @@ All CSS classes, tokens, and component styles live in `app/globals.css` and the 
 
 6. **Semantic icon usage.** **Material Symbols Rounded** (subsetted webfont, ~43 glyphs) carry meaning alongside text and are colored contextually — green for success, red for errors, amber for waitlist, blue for dates, purple for admin. The brand `<ShuttleIcon />` replaces `sports_tennis` anywhere the UI references the sport itself (empty states, loaders, brand chrome). Call-sites use `.material-icons` class for backwards compat — the class is aliased to the new font.
 
-7. **Consistent state feedback.** Every async operation disables buttons and shows inline text feedback. Errors surface as `text-red-400 text-xs` immediately below the relevant input.
+7. **Consistent state feedback.** Every async operation disables buttons and shows inline text feedback. Errors surface via the `.field-error` class (`role="alert"`, `--sev-crit-text`, `--fs-sm`) immediately below the relevant input — the single, theme-aware home for the inline error message (replaces hand-written `text-red-400 text-xs`).
 
 8. **Theme-aware.** Dark and light modes via `data-theme` attribute on `<html>`. CSS custom properties in `globals.css` drive all color values. Prefer existing Tailwind classes with light-mode overrides over new inline colors.
 
