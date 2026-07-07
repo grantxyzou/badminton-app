@@ -113,7 +113,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
           style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)' }}
         >
           <p style={{ fontWeight: 600, color: 'var(--text)' }}>Couldn&apos;t load the ledger</p>
-          <p style={{ fontSize: 13, marginTop: 6 }}>
+          <p style={{ fontSize: 'var(--fs-base)', marginTop: 6 }}>
             Backend may be cold-starting. Reconnect, then retry.
           </p>
           <button
@@ -143,7 +143,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
     <div className="animate-slideInRight space-y-3">
       <AdminBackHeader onBack={onBack} title="Ledger" />
 
-      <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: '0 4px' }}>
+      <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '0 4px' }}>
         Who owes what. Cover anyone you don&apos;t want to chase.
       </p>
 
@@ -171,7 +171,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
             padding: '48px 24px',
             textAlign: 'center',
             color: 'var(--text-muted)',
-            fontSize: 14,
+            fontSize: 'var(--fs-md)',
           }}
         >
           Nothing settled in this window. Try widening the range.
@@ -197,7 +197,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
           {/* Honest-headline sub-line — always shown, even at $0 covered. */}
           <p
             style={{
-              fontSize: 12,
+              fontSize: 'var(--fs-sm)',
               color: 'var(--ink-faint)',
               margin: '0 4px',
               fontFamily: 'var(--font-mono, "JetBrains Mono")',
@@ -210,7 +210,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
           {!showPlayerTab && (
             <p
               style={{
-                fontSize: 13,
+                fontSize: 'var(--fs-base)',
                 color: 'var(--accent)',
                 fontWeight: 600,
                 margin: '4px 4px 0',
@@ -282,14 +282,14 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
                       <p
                         style={{
                           fontFamily: 'var(--font-display, "Space Grotesk")',
-                          fontSize: 14,
+                          fontSize: 'var(--fs-md)',
                           fontWeight: 600,
                           margin: 0,
                         }}
                       >
                         {fmtSessionLabel(s.date)}
                       </p>
-                      <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: '2px 0 0' }}>
+                      <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
                         {money(s.totalCost)} · {s.attendanceCount} player
                         {s.attendanceCount === 1 ? '' : 's'}
                       </p>
@@ -341,14 +341,14 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
                       <p
                         style={{
                           fontFamily: 'var(--font-display, "Space Grotesk")',
-                          fontSize: 14,
+                          fontSize: 'var(--fs-md)',
                           fontWeight: 600,
                           margin: 0,
                         }}
                       >
                         {p.name}
                       </p>
-                      <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: '2px 0 0' }}>
+                      <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
                         {p.sessionCount} unpaid session{p.sessionCount === 1 ? '' : 's'}
                       </p>
                     </div>

@@ -116,7 +116,7 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin }: SignIn
             background: 'transparent',
             border: 'none',
             color: 'var(--text-secondary)',
-            fontSize: 12,
+            fontSize: 'var(--fs-sm)',
             textDecoration: 'underline',
             cursor: 'pointer',
             alignSelf: 'center',
@@ -130,22 +130,22 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin }: SignIn
         </button>
       )}
       {error === 'invalid' && (
-        <p role="alert" style={{ color: 'var(--color-red, #ef4444)', fontSize: 12, margin: 0 }}>
+        <p role="alert" style={{ color: 'var(--color-red)', fontSize: 'var(--fs-sm)', margin: 0 }}>
           {t('errorInvalid')}
         </p>
       )}
       {error === 'rate_limited' && (
-        <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12, margin: 0 }}>
+        <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)', margin: 0 }}>
           {t('errorRateLimited')}
         </p>
       )}
       {error === 'admin_logged_in' && (
-        <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12, margin: 0 }}>
+        <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)', margin: 0 }}>
           {t('errorAdminLoggedIn')}
         </p>
       )}
       {error === 'network' && (
-        <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12, margin: 0 }}>
+        <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)', margin: 0 }}>
           {t('errorNetwork')}
         </p>
       )}

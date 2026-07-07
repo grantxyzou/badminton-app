@@ -30,7 +30,7 @@ function CompactComingSoonCard({ icon, title, subtitle, comingSoon }: CompactCar
         <span
           className="material-icons"
           aria-hidden="true"
-          style={{ fontSize: 20, color: 'var(--accent, #22c55e)' }}
+          style={{ fontSize: 'var(--fs-stat)', color: 'var(--accent, #22c55e)' }}
         >
           {icon}
         </span>
@@ -42,7 +42,7 @@ function CompactComingSoonCard({ icon, title, subtitle, comingSoon }: CompactCar
       >
         {title}
       </h3>
-      <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, lineHeight: 1.35 }}>{subtitle}</p>
+      <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.35 }}>{subtitle}</p>
     </div>
   );
 }
@@ -96,7 +96,7 @@ interface Props {
 }
 
 const sectionLabelStyle: React.CSSProperties = {
-  fontSize: 10,
+  fontSize: 'var(--fs-2xs)',
   letterSpacing: '0.08em',
   color: 'var(--text-muted)',
   textTransform: 'none',

@@ -236,7 +236,7 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
                     aria-label={`${(member.role ?? 'member') === 'admin' ? 'Remove admin role from' : 'Make admin'} ${member.name}`}
                     title={(member.role ?? 'member') === 'admin' ? 'Admin' : 'Make admin'}
                   >
-                    <span className="material-icons" style={{ fontSize: 16 }}>shield</span>
+                    <span className="material-icons" style={{ fontSize: 'var(--fs-lg)' }}>shield</span>
                   </button>
                   <button
                     type="button"
@@ -245,7 +245,7 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
                     style={{ color: 'var(--text-muted)', minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     aria-label={`Remove ${member.name}`}
                   >
-                    <span className="material-icons" style={{ fontSize: 16 }}>close</span>
+                    <span className="material-icons" style={{ fontSize: 'var(--fs-lg)' }}>close</span>
                   </button>
                 </div>
               ))}

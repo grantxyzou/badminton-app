@@ -67,7 +67,7 @@ export default function RacketRow() {
           className="glass-card"
           style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 4, minHeight: 112, textAlign: 'left', cursor: 'pointer' }}
         >
-          <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>{t('yourRacket')}</p>
+          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: 0 }}>{t('yourRacket')}</p>
           {loadError ? (
             <span className="text-red-400 text-xs" role="alert">{t('recError')}</span>
           ) : !loaded ? (
@@ -75,7 +75,7 @@ export default function RacketRow() {
           ) : racketLabel ? (
             <span style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, lineHeight: 1.25 }}>{racketLabel}</span>
           ) : (
-            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('noRacketYet')}</span>
+            <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)' }}>{t('noRacketYet')}</span>
           )}
         </button>
 

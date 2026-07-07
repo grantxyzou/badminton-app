@@ -65,14 +65,14 @@ export default function ReportProblemSheet({ open, onClose, name }: Props) {
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')} className="max-w-lg mx-auto">
       <BottomSheetHeader className="flex items-center justify-between p-4">
-        <span style={{ fontSize: 16, fontWeight: 600 }}>{t('title')}</span>
+        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('title')}</span>
         <button
           type="button"
           onClick={onClose}
           aria-label={t('close')}
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <span className="material-icons" style={{ fontSize: 20 }}>close</span>
+          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
         </button>
       </BottomSheetHeader>
       <BottomSheetBody className="p-5 pb-8">
@@ -82,7 +82,7 @@ export default function ReportProblemSheet({ open, onClose, name }: Props) {
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>{t('help')}</p>
+            <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: 0 }}>{t('help')}</p>
             <textarea
               aria-label={t('placeholder')}
               placeholder={t('placeholder')}
@@ -99,7 +99,7 @@ export default function ReportProblemSheet({ open, onClose, name }: Props) {
                 color: 'var(--text-primary)',
                 resize: 'vertical',
                 fontFamily: 'inherit',
-                fontSize: 14,
+                fontSize: 'var(--fs-md)',
               }}
             />
             <button
@@ -112,17 +112,17 @@ export default function ReportProblemSheet({ open, onClose, name }: Props) {
               {submitting ? t('sending') : t('send')}
             </button>
             {!online && (
-              <p role="status" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>
+              <p role="status" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)' }}>
                 {t('offline')}
               </p>
             )}
             {error === 'required' && (
-              <p role="alert" style={{ color: 'var(--color-red, #ef4444)', fontSize: 12 }}>
+              <p role="alert" style={{ color: 'var(--color-red)', fontSize: 'var(--fs-sm)' }}>
                 {t('errorRequired')}
               </p>
             )}
             {error === 'server' && (
-              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>
+              <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)' }}>
                 {t('errorServer')}
               </p>
             )}

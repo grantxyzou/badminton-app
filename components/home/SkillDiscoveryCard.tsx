@@ -64,10 +64,10 @@ export default function SkillDiscoveryCard({
         onClick={onOpen}
         style={{ flex: 1, textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
       >
-        <p style={{ fontSize: 14, color: 'var(--text-primary)', margin: 0, fontWeight: 600, lineHeight: 1.3 }}>
+        <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: 0, fontWeight: 600, lineHeight: 1.3 }}>
           {signedUp ? t('skillDiscovery.titleSignedUp') : t('skillDiscovery.title')}
         </p>
-        <p style={{ fontSize: 13, color: 'var(--accent, #22c55e)', margin: '2px 0 0', fontWeight: 600 }}>
+        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--accent, #22c55e)', margin: '2px 0 0', fontWeight: 600 }}>
           {t('skillDiscovery.cta')} →
         </p>
       </button>
@@ -78,7 +78,7 @@ export default function SkillDiscoveryCard({
         className="flex items-center justify-center rounded-full"
         style={{ width: 28, height: 28, background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)', flexShrink: 0 }}
       >
-        <span className="material-icons" style={{ fontSize: 16, color: 'var(--text-muted)' }}>close</span>
+        <span className="material-icons" style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-muted)' }}>close</span>
       </button>
     </div>
   );

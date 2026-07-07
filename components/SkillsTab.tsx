@@ -244,7 +244,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span
             style={{
-              fontSize: 10,
+              fontSize: 'var(--fs-2xs)',
               padding: '2px 8px',
               borderRadius: 'var(--radius-pill)',
               fontWeight: 600,
@@ -257,7 +257,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
           >
             Sample
           </span>
-          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>
+          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 0 }}>
             Example profile — self-rating coming soon.
           </p>
         </div>

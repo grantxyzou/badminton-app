@@ -93,7 +93,7 @@ export default function KudosReceivedCard() {
           return (
             <li key={tag} style={{
               display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 'var(--radius-pill)',
-              border: '1px solid var(--border, rgba(255,255,255,0.12))', fontSize: 13, color: 'var(--text-secondary)',
+              border: '1px solid var(--border))', fontSize: 'var(--fs-base)', color: 'var(--text-secondary)',
             }}>
               <span aria-hidden="true">{TAG_EMOJI[tag]}</span>
               <span>{t(`kudos.tag.${tag}`)}</span>
