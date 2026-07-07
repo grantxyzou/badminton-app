@@ -139,7 +139,7 @@ export default function CheckInSheet({
               className="flex items-center justify-center rounded-full"
               style={{ width: 32, height: 32, background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)' }}
             >
-              <span className="material-icons" style={{ fontSize: 18, color: 'var(--text-muted)' }}>close</span>
+              <span className="material-icons" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>close</span>
             </button>
           </div>
           {/* Progress track — only during the quiz steps. */}
@@ -160,7 +160,7 @@ export default function CheckInSheet({
               {mirror && mirror.played > 0 ? (
                 <div className="p-4 rounded-xl" style={{ background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)' }}>
                   <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('assess.mirrorTitle')}</p>
-                  <p style={{ fontSize: 15, color: 'var(--text-primary)', margin: '6px 0 0', lineHeight: 1.4 }}>
+                  <p style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-primary)', margin: '6px 0 0', lineHeight: 1.4 }}>
                     {t('assess.mirrorRecord', { won: mirror.won, played: mirror.played })}
                     {mirror.topPartner ? ` ${t('assess.mirrorPartner', { name: mirror.topPartner })}` : ''}
                   </p>
@@ -203,7 +203,7 @@ export default function CheckInSheet({
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-base)', fontWeight: 700, color: isActive ? 'var(--accent)' : 'var(--text-muted)' }}>{level}</span>
-                      {isActive && <span className="material-icons" aria-hidden="true" style={{ fontSize: 15, color: 'var(--accent)' }}>check_circle</span>}
+                      {isActive && <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-sm)', color: 'var(--accent)' }}>check_circle</span>}
                     </div>
                     <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.45, color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)', margin: 0 }}>{anchor}</p>
                   </button>
@@ -223,7 +223,7 @@ export default function CheckInSheet({
           {/* Review + save */}
           {step === total && (
             <div className="space-y-4">
-              <p style={{ fontSize: 15, color: 'var(--text-primary)', margin: 0, lineHeight: 1.4 }}>{t('assess.reviewCount', { rated: ratedCount, total })}</p>
+              <p style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-primary)', margin: 0, lineHeight: 1.4 }}>{t('assess.reviewCount', { rated: ratedCount, total })}</p>
               <EmptyState>{t('assess.reviewPrompt')}</EmptyState>
               {error && <ErrorState message={error} />}
               <div style={{ display: 'flex', gap: 10 }}>

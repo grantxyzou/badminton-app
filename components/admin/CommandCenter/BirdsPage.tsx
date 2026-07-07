@@ -84,7 +84,7 @@ function PurchaseRow({
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
-          <p style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 13.5, fontWeight: 600, margin: 0 }}>
+          <p style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 'var(--fs-md)', fontWeight: 600, margin: 0 }}>
             {p.name}
           </p>
           <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: 0 }}>
@@ -485,7 +485,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                 alignItems: 'center',
                 padding: '3px 9px',
                 borderRadius: 'var(--radius-pill)',
-                fontSize: 10.5,
+                fontSize: 'var(--fs-xs)',
                 fontWeight: 600,
                 fontFamily: 'var(--font-display, "Space Grotesk")',
                 letterSpacing: '0.02em',
@@ -624,7 +624,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
             onClick={openAddSheet}
           >
-            <span className="material-icons" style={{ fontSize: 18 }}>add_shopping_cart</span>
+            <span className="material-icons" style={{ fontSize: 'var(--icon-md)' }}>add_shopping_cart</span>
             Log purchase
           </button>
           <button
@@ -633,7 +633,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
             onClick={openReconcileSheet}
           >
-            <span className="material-icons" style={{ fontSize: 18 }}>fact_check</span>
+            <span className="material-icons" style={{ fontSize: 'var(--icon-md)' }}>fact_check</span>
             Reconcile
           </button>
         </div>

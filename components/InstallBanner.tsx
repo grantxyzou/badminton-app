@@ -84,7 +84,7 @@ export default function InstallBanner() {
           className="cc-btn cc-btn-ghost"
           style={{ padding: 6, flex: '0 0 auto' }}
         >
-          <span className="material-icons" aria-hidden="true" style={{ fontSize: 18 }}>close</span>
+          <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)' }}>close</span>
         </button>
       </div>
       <InstallSheet open={open} onClose={() => setOpen(false)} />

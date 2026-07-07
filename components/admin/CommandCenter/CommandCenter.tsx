@@ -169,7 +169,7 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
                   border: 'none',
                   cursor: 'pointer',
                   color: 'var(--text-primary)',
-                  fontSize: 15,
+                  fontSize: 'var(--fs-lg)',
                   textAlign: 'left',
                 }}
               >
