@@ -56,7 +56,7 @@ export default function SkillDiscoveryCard({
 
   return (
     <div className="glass-card p-4" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <span className="material-icons" aria-hidden="true" style={{ fontSize: 24, color: 'var(--accent, #22c55e)', flexShrink: 0 }}>
+      <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-lg)', color: 'var(--accent, #22c55e)', flexShrink: 0 }}>
         trending_up
       </span>
       <button

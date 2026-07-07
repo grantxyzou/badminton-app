@@ -94,7 +94,7 @@ export default function ReleasesView({ onBack }: Props) {
                       aria-label={`Edit ${r.version}`}
                       title="Edit"
                     >
-                      <span className="material-icons" style={{ fontSize: 18 }}>edit</span>
+                      <span className="material-icons" style={{ fontSize: 'var(--icon-md)' }}>edit</span>
                     </button>
                     <button
                       type="button"
@@ -104,7 +104,7 @@ export default function ReleasesView({ onBack }: Props) {
                       aria-label={`Delete ${r.version}`}
                       title="Delete"
                     >
-                      <span className="material-icons" style={{ fontSize: 18 }}>delete</span>
+                      <span className="material-icons" style={{ fontSize: 'var(--icon-md)' }}>delete</span>
                     </button>
                   </div>
                 </li>

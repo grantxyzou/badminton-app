@@ -143,7 +143,7 @@ export default function PreviewBanner() {
                 fontSize: 'var(--fs-md)',
               }}
             >
-              <span className="material-icons" aria-hidden="true" style={{ fontSize: 18, color: '#ef4444' }}>
+              <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: '#ef4444' }}>
                 error
               </span>
               Report a bug
@@ -166,7 +166,7 @@ export default function PreviewBanner() {
                 fontSize: 'var(--fs-md)',
               }}
             >
-              <span className="material-icons" aria-hidden="true" style={{ fontSize: 18, color: 'var(--accent, #22c55e)' }}>
+              <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--accent, #22c55e)' }}>
                 auto_fix_high
               </span>
               Suggest a feature
@@ -187,7 +187,7 @@ export default function PreviewBanner() {
                 fontSize: 'var(--fs-base)',
               }}
             >
-              <span className="material-icons" aria-hidden="true" style={{ fontSize: 18 }}>
+              <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)' }}>
                 schedule
               </span>
               Private email instead
