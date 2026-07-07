@@ -35,6 +35,15 @@ const EXTRA_TOKEN_SELECTORS = [
     message:
       'Bare rgba() literal — use a design token (var(--glass-border), --divider, --text-*, --sev-*, etc.) so the value is theme-aware.',
   },
+  {
+    // Bare Tailwind text-size classes (space/edge-delimited so responsive/state
+    // variants like `md:text-sm` and unrelated classes like `text-gray-300` are
+    // NOT matched). Steers to the design type-scale utilities. All bare uses were
+    // migrated in the audit, so this adds ~0 warnings today and just guards regressions.
+    selector: 'Literal[value=/(^|\\s)text-(xs|sm|base)(\\s|$)/]',
+    message:
+      'Raw Tailwind text-size class — use the design type-scale utility instead (text-xs→fs-sm, text-sm→fs-md, text-base→fs-lg).',
+  },
 ];
 
 /** @type {import('eslint').Linter.Config[]} */
@@ -115,6 +124,20 @@ const config = [
     files: ['components/stats/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-syntax': ['error', ...DESIGN_TOKEN_SELECTORS],
+    },
+  },
+  {
+    // Fully-swept areas (design-audit item #5). These have ZERO hex / raw radius /
+    // numeric fontSize / bare rgba / bare Tailwind text-size, so they graduate to
+    // ERROR on the FULL selector set — any re-introduced drift fails CI, locking in
+    // the cleanup. Add areas here as each reaches zero drift.
+    files: [
+      'components/primitives/**/*.{ts,tsx}',
+      'components/home/**/*.{ts,tsx}',
+      'components/BottomSheet/**/*.{ts,tsx}',
+    ],
+    rules: {
+      'no-restricted-syntax': ['error', ...DESIGN_TOKEN_SELECTORS, ...EXTRA_TOKEN_SELECTORS],
     },
   },
 ];
