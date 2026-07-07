@@ -156,7 +156,7 @@ export default function AnnouncementComposer({ draft, setDraft, maxLength = 800 
       {/* Editor / Preview pane */}
       {isPreview ? (
         <div
-          className="announcement-body text-sm text-gray-200 leading-relaxed glass-card p-4"
+          className="announcement-body fs-md text-gray-200 leading-relaxed glass-card p-4"
           style={{ minHeight: '5rem' }}
           aria-label="Announcement preview"
         >
@@ -175,7 +175,7 @@ export default function AnnouncementComposer({ draft, setDraft, maxLength = 800 
           maxLength={maxLength}
         />
       )}
-      <p className="text-right text-xs text-gray-500">{draft.length}/{maxLength}</p>
+      <p className="text-right fs-sm text-gray-500">{draft.length}/{maxLength}</p>
     </div>
   );
 }

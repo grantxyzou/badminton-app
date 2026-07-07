@@ -98,7 +98,7 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
     <section className="glass-card p-4 space-y-3" aria-label="Anomalies">
       <header className="flex items-center justify-between">
         <h3 className="bpm-h3">Heads up</h3>
-        <span className="text-xs text-gray-400">{items.length}</span>
+        <span className="fs-sm text-gray-400">{items.length}</span>
       </header>
       <ul className="space-y-2" role="list">
         {items.map((anomaly) => (
@@ -119,7 +119,7 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
             }}
           >
             <span
-              className="material-icons text-base"
+              className="material-icons fs-lg"
               aria-hidden="true"
               style={{
                 color:
@@ -132,14 +132,14 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
             >
               {anomaly.severity === 'blocking' ? 'error' : 'warning'}
             </span>
-            <p className="flex-1 text-sm leading-relaxed">{anomaly.message}</p>
+            <p className="flex-1 fs-md leading-relaxed">{anomaly.message}</p>
             {anomaly.dismissable && (
               <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
                 <button
                   type="button"
                   onClick={() => dismiss(anomaly.code)}
                   disabled={dismissing.has(anomaly.code)}
-                  className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1 disabled:opacity-50"
+                  className="fs-sm text-gray-400 hover:text-gray-200 px-2 py-1 disabled:opacity-50"
                   aria-label={`Dismiss ${anomaly.code}`}
                 >
                   Dismiss

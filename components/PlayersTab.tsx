@@ -109,7 +109,7 @@ export default function PlayersTab() {
       <div className="space-y-5">
         <PageHeader>{pageT('title')}</PageHeader>
         <div className="p-10 text-center">
-          <p className="text-sm text-gray-400" role="alert">{t('loadError')}</p>
+          <p className="fs-md text-gray-400" role="alert">{t('loadError')}</p>
           <div className="h-3" />
           <button type="button" onClick={() => loadPlayers()} className="cc-btn cc-btn-ghost">{t('retry')}</button>
         </div>
@@ -127,7 +127,7 @@ export default function PlayersTab() {
               Material's sports_tennis racquet. */}
           <ShuttleIcon size={36} color="var(--text-muted)" ariaLabel="No players yet" />
           <div className="h-2" />
-          <p className="text-gray-500 text-sm">{t('empty')}</p>
+          <p className="text-gray-500 fs-md">{t('empty')}</p>
         </div>
       </div>
     );
@@ -160,13 +160,13 @@ export default function PlayersTab() {
                      rows animate; poll refreshes don't replay it. */
                   style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                 >
-                  <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">
+                  <span className="fs-sm text-gray-500 w-5 text-right font-mono tabular-nums">
                     {i + 1}
                   </span>
-                  <span className="flex-1 text-sm text-gray-200 font-medium">
+                  <span className="flex-1 fs-md text-gray-200 font-medium">
                     {player.name}
                     {isMe && (
-                      <span className="ml-1.5 text-xs font-normal" style={{ color: 'var(--text-muted)' }}>
+                      <span className="ml-1.5 fs-sm font-normal" style={{ color: 'var(--text-muted)' }}>
                         {t('youSuffix')}
                       </span>
                     )}
@@ -186,7 +186,7 @@ export default function PlayersTab() {
                           type="button"
                           onClick={() => setConfirmingCancel(true)}
                           disabled={!online}
-                          className="text-xs text-red-400 hover:text-red-300 transition-colors ml-1"
+                          className="fs-sm text-red-400 hover:text-red-300 transition-colors ml-1"
                         >
                           {t('cancelAction')}
                         </button>
@@ -220,13 +220,13 @@ export default function PlayersTab() {
                     className={`flex items-center px-3 py-2.5 gap-3 rounded-xl animate-fadeIn${isMe ? ' player-highlight-amber' : ''}`}
                     style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                   >
-                    <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">
+                    <span className="fs-sm text-gray-500 w-5 text-right font-mono tabular-nums">
                       {activePlayers.length + i + 1}
                     </span>
-                    <span className="flex-1 text-sm text-gray-400 font-medium">
+                    <span className="flex-1 fs-md text-gray-400 font-medium">
                       {player.name}
                       {isMe && (
-                        <span className="ml-1.5 text-xs font-normal" style={{ color: 'var(--text-muted)' }}>
+                        <span className="ml-1.5 fs-sm font-normal" style={{ color: 'var(--text-muted)' }}>
                           {t('youSuffix')}
                         </span>
                       )}
@@ -246,7 +246,7 @@ export default function PlayersTab() {
                             type="button"
                             onClick={() => setConfirmingCancel(true)}
                             disabled={!online}
-                            className="text-xs text-red-400 hover:text-red-300 transition-colors ml-1"
+                            className="fs-sm text-red-400 hover:text-red-300 transition-colors ml-1"
                           >
                             {t('leaveAction')}
                           </button>

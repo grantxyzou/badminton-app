@@ -187,7 +187,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
     return (
       <section className="glass-card p-4 space-y-1 opacity-60" aria-label="Next session">
         <h3 className="bpm-h3">Next session</h3>
-        <p className="text-xs text-gray-400">No active session.</p>
+        <p className="fs-sm text-gray-400">No active session.</p>
       </section>
     );
   }
@@ -203,7 +203,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       <header className="flex items-center justify-between gap-3">
         <div>
           <h3 className="bpm-h3">{fmtDate(session.datetime)}</h3>
-          <p className="text-xs text-gray-400 mt-0.5">{session.title ?? 'Session'}</p>
+          <p className="fs-sm text-gray-400 mt-0.5">{session.title ?? 'Session'}</p>
         </div>
         <div className="flex items-center gap-2">
           {isSettled && (
@@ -230,10 +230,10 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       </header>
 
       <div className="space-y-2">
-        <div className="flex items-baseline justify-between text-sm">
+        <div className="flex items-baseline justify-between fs-md">
           <span className="text-gray-300">{activeCount} / {cap} signed up</span>
           {waitlistCount > 0 && (
-            <span className="text-xs text-gray-400">+{waitlistCount} waitlist</span>
+            <span className="fs-sm text-gray-400">+{waitlistCount} waitlist</span>
           )}
         </div>
         <div className="h-1.5 rounded-full overflow-hidden cc-progress-track">
@@ -248,7 +248,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       </div>
 
       {countdown && (
-        <p className="text-xs text-gray-400">
+        <p className="fs-sm text-gray-400">
           Sign up deadline: <span className="text-gray-200">
             {fmtDeadline(session.deadline)}{countdown === 'closed' ? ' (Passed)' : ` (${countdown} left)`}
           </span>
@@ -265,7 +265,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
               onClick={onShareCost}
               className="cc-btn cc-btn-primary"
             >
-              <span className="material-icons text-base align-middle">share</span>
+              <span className="material-icons fs-lg align-middle">share</span>
               Share again — ${session.settled?.costPerPerson} each
             </button>
           ) : null
@@ -273,7 +273,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
           // Pre-flag stable users keep the simple "Share cost" affordance.
           onShareCost && (
             <button type="button" onClick={onShareCost} className="cc-btn cc-btn-primary">
-              <span className="material-icons text-base align-middle">request_quote</span>
+              <span className="material-icons fs-lg align-middle">request_quote</span>
               Share cost
             </button>
           )
@@ -289,7 +289,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
           className="cc-btn cc-btn-secondary"
           title="Copy/share a sign-up invite link for the group chat."
         >
-          <span className="material-icons text-base align-middle">share</span>
+          <span className="material-icons fs-lg align-middle">share</span>
           {shareCopied ? 'Copied ✓' : 'Share sign-up'}
         </button>
         {isSettled && (
@@ -297,7 +297,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
             type="button"
             onClick={editBill}
             disabled={settling}
-            className="cc-btn cc-btn-ghost text-xs"
+            className="cc-btn cc-btn-ghost fs-sm"
             title="Made a typo? Clears the bill so you can re-send. Paid checkmarks stay."
           >
             {settling ? 'Editing…' : 'Edit bill'}
@@ -321,7 +321,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
               className="cc-btn cc-btn-primary"
               title="Locks tonight's cost and opens the share sheet for the group chat."
             >
-              <span className="material-icons text-base align-middle">send</span>
+              <span className="material-icons fs-lg align-middle">send</span>
               {settling ? 'Finalizing…' : 'Finalize cost'}
             </button>
           )}
@@ -329,7 +329,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
             <button
               type="button"
               onClick={() => setConfirmingAdvance(true)}
-              className="cc-btn cc-btn-ghost text-xs"
+              className="cc-btn cc-btn-ghost fs-sm"
             >
               Advance to next week
             </button>
@@ -338,7 +338,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       )}
 
       {settleError && (
-        <p role="alert" className="text-xs" style={{ color: 'var(--color-red)' }}>
+        <p role="alert" className="fs-sm" style={{ color: 'var(--color-red)' }}>
           {settleError}
         </p>
       )}

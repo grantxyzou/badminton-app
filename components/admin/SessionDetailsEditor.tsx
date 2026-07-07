@@ -10,7 +10,7 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 function Label({ text, children }: { text: string; children: React.ReactNode }) {
   return (
     <label className="block space-y-1">
-      <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{text}</span>
+      <span className="fs-sm font-medium" style={{ color: 'var(--text-muted)' }}>{text}</span>
       {children}
     </label>
   );
@@ -18,7 +18,7 @@ function Label({ text, children }: { text: string; children: React.ReactNode }) 
 
 function CardDescription({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+    <p className="fs-sm" style={{ color: 'var(--text-muted)' }}>
       {children}
     </p>
   );
@@ -58,7 +58,7 @@ function TubeStepper({ value, onChange }: { value: number; onChange: (next: numb
         <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-stat)' }}>remove</span>
       </button>
       <span
-        className="text-base font-semibold tabular-nums"
+        className="fs-lg font-semibold tabular-nums"
         style={{ color: 'var(--text-primary)', minWidth: 48, textAlign: 'center' }}
         aria-live="polite"
       >
@@ -286,7 +286,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
         {/* ── Card 1: Session Details ── */}
         <div className="glass-card p-5 space-y-4">
           <div className="space-y-1">
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <h3 className="fs-md font-semibold" style={{ color: 'var(--text-primary)' }}>
               Session Details
             </h3>
             <CardDescription>Venue, capacity, and sign-up controls.</CardDescription>
@@ -312,8 +312,8 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
             return (
               <div className="flex items-center justify-between pt-1">
                 <div>
-                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Sign-ups</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <p className="fs-md font-medium" style={{ color: 'var(--text-primary)' }}>Sign-ups</p>
+                  <p className="fs-sm" style={{ color: 'var(--text-muted)' }}>
                     {isSessionFinished
                       ? 'This session has ended — advance to start a new one'
                       : form.signupOpen ? 'Open — players can sign up' : 'Closed — players cannot sign up'}
@@ -338,7 +338,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
         {/* ── Card 2: Cost Details ── */}
         <div className="glass-card p-5 space-y-4">
           <div className="space-y-1">
-            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <h3 className="fs-md font-semibold" style={{ color: 'var(--text-primary)' }}>
               Cost Details
             </h3>
             <CardDescription>How much each player pays per session.</CardDescription>
@@ -347,7 +347,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
           <Label text="Cost per court">
             <div className="relative">
               {form.costPerCourt !== null && form.costPerCourt > 0 && (
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: 'var(--text-muted)' }}>$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 fs-md pointer-events-none" style={{ color: 'var(--text-muted)' }}>$</span>
               )}
               <input
                 id="session-cost-per-court"
@@ -372,7 +372,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
             style={{ borderTop: '1px solid var(--glass-border)' }}
           >
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <span className="fs-md font-semibold" style={{ color: 'var(--text-primary)' }}>
                 Bird usage
               </span>
               <button
@@ -383,7 +383,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
                     birdUsages: [...f.birdUsages, { purchaseId: '', tubes: 0 }],
                   }))
                 }
-                className="text-xs font-medium px-2 py-1 rounded-md"
+                className="fs-sm font-medium px-2 py-1 rounded-md"
                 style={{ color: 'var(--accent)', background: 'var(--inner-card-bg)' }}
               >
                 + Add from inventory
@@ -391,7 +391,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
             </div>
 
             {form.birdUsages.length === 0 && (
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              <p className="fs-sm" style={{ color: 'var(--text-muted)' }}>
                 No bird usage recorded.
               </p>
             )}
@@ -485,7 +485,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
                         return (
                           <div className="flex items-center justify-between gap-2 min-h-8">
                             <p
-                              className="text-xs"
+                              className="fs-sm"
                               style={{ color: complete ? 'var(--accent)' : 'var(--text-muted)' }}
                             >
                               {tubesSlot} × {costSlot} = {totalSlot}
@@ -522,10 +522,10 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
                 className="flex items-center justify-between pt-3"
                 style={{ borderTop: '1px solid var(--glass-border)' }}
               >
-                <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                <span className="fs-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                   Total bird cost
                 </span>
-                <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+                <span className="fs-md font-bold" style={{ color: 'var(--accent)' }}>
                   ${birdTotal.toFixed(2)}
                 </span>
               </div>
@@ -538,20 +538,20 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
               className="pt-3 space-y-1"
               style={{ borderTop: '1px solid var(--glass-border)' }}
             >
-              <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+              <p className="fs-sm font-medium" style={{ color: 'var(--text-muted)' }}>
                 Per person preview
               </p>
               {activePlayerCount > 0 && perPerson !== null ? (
                 <>
-                  <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  <p className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
                     (${courtTotal.toFixed(2)} courts + ${birdTotal.toFixed(2)} birds) ÷ {activePlayerCount}
                   </p>
-                  <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+                  <p className="fs-md font-bold" style={{ color: 'var(--accent)' }}>
                     ${perPerson.toFixed(2)} per player
                   </p>
                 </>
               ) : (
-                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                <p className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
                   No players signed up yet.
                 </p>
               )}
@@ -561,10 +561,10 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
           {/* ── Show cost toggle (now a real switch) ── */}
           <div className="flex items-center justify-between pt-1">
             <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+              <p className="fs-md font-medium" style={{ color: 'var(--text-primary)' }}>
                 Show cost to players
               </p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              <p className="fs-sm" style={{ color: 'var(--text-muted)' }}>
                 {form.showCostBreakdown ? 'Visible on the Home announcement' : 'Hidden from players'}
               </p>
             </div>

@@ -156,7 +156,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
                   type="button"
                   role="tab"
                   aria-selected={mode === 'group'}
-                  className={`flex-1 flex items-center justify-center text-xs ${mode === 'group' ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+                  className={`flex-1 flex items-center justify-center fs-sm ${mode === 'group' ? 'segment-tab-active' : 'segment-tab-inactive'}`}
                   onClick={() => setMode('group')}
                 >
                   Group
@@ -165,7 +165,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
                   type="button"
                   role="tab"
                   aria-selected={mode === 'individual'}
-                  className={`flex-1 flex items-center justify-center text-xs ${mode === 'individual' ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+                  className={`flex-1 flex items-center justify-center fs-sm ${mode === 'individual' ? 'segment-tab-active' : 'segment-tab-inactive'}`}
                   onClick={() => setMode('individual')}
                   disabled={input.playerNames.length === 0}
                 >

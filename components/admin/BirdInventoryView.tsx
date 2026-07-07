@@ -13,7 +13,7 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 function Label({ text, children }: { text: string; children: React.ReactNode }) {
   return (
     <label className="block space-y-1">
-      <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{text}</span>
+      <span className="fs-sm font-medium" style={{ color: 'var(--text-muted)' }}>{text}</span>
       {children}
     </label>
   );
@@ -261,11 +261,11 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
             >
               {currentStock}
             </span>
-            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            <span className="fs-md" style={{ color: 'var(--text-muted)' }}>
               tube{currentStock === 1 ? '' : 's'} remaining
             </span>
           </div>
-          <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+          <div className="flex items-center gap-2 fs-sm" style={{ color: 'var(--text-muted)' }}>
             <span
               className="material-icons"
               aria-hidden="true"
@@ -278,19 +278,19 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
           <div className="grid grid-cols-3 gap-2 pt-2" style={{ borderTop: '1px solid var(--inner-card-border)' }}>
             <div>
               <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Avg/session</p>
-              <p className="text-base font-semibold tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+              <p className="fs-lg font-semibold tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
                 {avgPerSession || '—'}
               </p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Total used</p>
-              <p className="text-base font-semibold tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+              <p className="fs-lg font-semibold tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
                 {totalUsed}
               </p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Brands</p>
-              <p className="text-base font-semibold tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
+              <p className="fs-lg font-semibold tabular-nums" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
                 {brandGroups.length}
               </p>
             </div>
@@ -325,8 +325,8 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                   }}
                 >
                   <div style={{ textAlign: 'left' }}>
-                    <p className="text-sm font-semibold">{g.brand}</p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    <p className="fs-md font-semibold">{g.brand}</p>
+                    <p className="fs-sm" style={{ color: 'var(--text-muted)' }}>
                       <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)' }}>
                         {g.remaining}
                       </span>
@@ -351,7 +351,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                       const used = usedByPurchase.get(p.id) ?? 0;
                       const remaining = Math.max(0, p.tubes - used);
                       return (
-                        <div key={p.id} className="text-xs flex justify-between" style={{ color: 'var(--text-muted)' }}>
+                        <div key={p.id} className="fs-sm flex justify-between" style={{ color: 'var(--text-muted)' }}>
                           <span>{parseBirdName(p.name).model || p.name}</span>
                           <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)' }}>
                             {remaining}/{p.tubes}
@@ -491,8 +491,8 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                 ) : (
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                      <p className="fs-md font-medium" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
+                      <p className="fs-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
                         {new Date(p.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                         {' · '}
                         {p.tubes} tube{p.tubes !== 1 ? 's' : ''} bought
@@ -502,12 +502,12 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                         {p.qualityRating && ` · ${p.qualityRating}/5`}
                       </p>
                       {p.notes && (
-                        <p className="text-xs mt-0.5 italic" style={{ color: 'var(--text-muted)' }}>{p.notes}</p>
+                        <p className="fs-sm mt-0.5 italic" style={{ color: 'var(--text-muted)' }}>{p.notes}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       {p.totalCost > 0 && (
-                        <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>${p.totalCost.toFixed(2)}</span>
+                        <span className="fs-md font-medium" style={{ color: 'var(--text-secondary)' }}>${p.totalCost.toFixed(2)}</span>
                       )}
                       <button
                         onClick={() => setAssignPurchase(p)}
@@ -546,7 +546,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
         </div>
       ) : (
         <div className="glass-card p-5">
-          <p className="text-sm text-center py-2" style={{ color: 'var(--text-muted)' }}>No purchases recorded yet.</p>
+          <p className="fs-md text-center py-2" style={{ color: 'var(--text-muted)' }}>No purchases recorded yet.</p>
         </div>
       )}
 

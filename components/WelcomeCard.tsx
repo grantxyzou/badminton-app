@@ -25,12 +25,12 @@ function WelcomeCard({ onDismiss }: WelcomeCardProps) {
           <span className="material-icons" style={{ fontSize: '18px' }}>close</span>
         </button>
       </div>
-      <ul className="space-y-1.5 text-sm text-gray-300">
+      <ul className="space-y-1.5 fs-md text-gray-300">
         <li>{t('schedule')}</li>
         <li>{t('invite')}</li>
         <li>{t('payment')}</li>
       </ul>
-      <p className="text-xs text-gray-400">{t('help')}</p>
+      <p className="fs-sm text-gray-400">{t('help')}</p>
     </div>
   );
 }

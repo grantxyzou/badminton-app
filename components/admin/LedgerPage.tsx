@@ -156,7 +156,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
             role="tab"
             aria-selected={range === r.key}
             onClick={() => setRange(r.key)}
-            className={`flex-1 text-xs rounded-full ${
+            className={`flex-1 fs-sm rounded-full ${
               range === r.key ? 'segment-tab-active' : 'segment-tab-inactive'
             }`}
           >
@@ -227,7 +227,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
               role="tab"
               aria-selected={activeTab === 'session'}
               onClick={() => setTab('session')}
-              className={`flex-1 text-xs rounded-full ${
+              className={`flex-1 fs-sm rounded-full ${
                 activeTab === 'session' ? 'segment-tab-active' : 'segment-tab-inactive'
               }`}
             >
@@ -239,7 +239,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
                 role="tab"
                 aria-selected={activeTab === 'player'}
                 onClick={() => setTab('player')}
-                className={`flex-1 text-xs rounded-full ${
+                className={`flex-1 fs-sm rounded-full ${
                   activeTab === 'player' ? 'segment-tab-active' : 'segment-tab-inactive'
                 }`}
               >

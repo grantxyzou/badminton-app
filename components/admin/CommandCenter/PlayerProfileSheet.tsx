@@ -268,7 +268,7 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
                               type="button"
                               onClick={() => handleTogglePaid(s)}
                               disabled={updatingSession === s.sessionId}
-                              className={`text-xs font-medium px-3 py-1.5 rounded-full ${s.paid ? 'pill-paid' : 'pill-unpaid'} disabled:opacity-50`}
+                              className={`fs-sm font-medium px-3 py-1.5 rounded-full ${s.paid ? 'pill-paid' : 'pill-unpaid'} disabled:opacity-50`}
                               aria-pressed={s.paid}
                               aria-label={`Mark ${s.paid ? 'unpaid' : 'paid'} for ${fmtDate(s.date)}`}
                               title="Tap to toggle paid status"

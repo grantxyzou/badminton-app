@@ -135,7 +135,7 @@ export default function SkillsRadar({
               <button
                 key={m}
                 onClick={() => setMode(m)}
-                className={`flex-1 flex items-center justify-center text-xs capitalize transition-all ${
+                className={`flex-1 flex items-center justify-center fs-sm capitalize transition-all ${
                   mode === m ? 'segment-tab-active' : 'segment-tab-inactive'
                 }`}
               >
@@ -177,7 +177,7 @@ export default function SkillsRadar({
                 style={{ width: 8, height: 8, background: color }}
               />
               <span
-                className="text-sm font-medium whitespace-nowrap"
+                className="fs-md font-medium whitespace-nowrap"
                 style={{ color: isActive ? color : 'var(--text-secondary)' }}
               >
                 {p.name}
@@ -241,7 +241,7 @@ export default function SkillsRadar({
       </div>
 
       {/* Helper text */}
-      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+      <p className="fs-sm" style={{ color: 'var(--text-muted)' }}>
         Tap a category to see your ACE level description
       </p>
 
@@ -257,10 +257,10 @@ export default function SkillsRadar({
               className="glass-card p-3 text-left transition-all active:scale-[0.97]"
               style={{ minHeight: 44 }}
             >
-              <p className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+              <p className="fs-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                 {dim.name}
               </p>
-              <p className="text-sm font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
+              <p className="fs-md font-bold mt-1" style={{ color: 'var(--text-primary)' }}>
                 {score > 0 ? `${score} — ${levelName}` : 'Not rated'}
               </p>
             </button>
@@ -404,7 +404,7 @@ function DetailContent({
           }}
         >
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+            <span className="fs-md font-bold" style={{ color: 'var(--text-primary)' }}>
               {playerName}
             </span>
             <span
@@ -417,7 +417,7 @@ function DetailContent({
               {score} — {levelName}
             </span>
           </div>
-          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+          <p className="fs-md leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
             {dim.levels[score]}
           </p>
         </div>
@@ -430,7 +430,7 @@ function DetailContent({
         style={{ height: 44 }}
       >
         <span className="material-icons" style={{ fontSize: 16 }}>edit</span>
-        <span className="text-sm font-medium">Edit level</span>
+        <span className="fs-md font-medium">Edit level</span>
       </button>
 
       {/* All levels */}
@@ -449,19 +449,19 @@ function DetailContent({
           return (
             <div key={l.level} className="flex gap-3">
               <span
-                className="text-sm font-bold shrink-0 mt-0.5"
+                className="fs-md font-bold shrink-0 mt-0.5"
                 style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-muted)', width: 14 }}
               >
                 {l.level}
               </span>
               <div className="min-w-0">
                 <span
-                  className="text-sm font-semibold"
+                  className="fs-md font-semibold"
                   style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)' }}
                 >
                   {l.name} —{' '}
                 </span>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
                   {dim.levels[l.level]?.slice(0, 80)}...
                 </span>
               </div>
@@ -483,7 +483,7 @@ function EditContent({
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+      <p className="fs-sm" style={{ color: 'var(--text-muted)' }}>
         Tap a level to set your rating for {dim.name}
       </p>
 
@@ -503,7 +503,7 @@ function EditContent({
           >
             <div className="flex items-center gap-2 mb-1">
               <span
-                className="text-sm font-bold"
+                className="fs-md font-bold"
                 style={{ color: isActive ? 'var(--accent)' : 'var(--text-secondary)' }}
               >
                 {l.level}. {l.name}
@@ -514,7 +514,7 @@ function EditContent({
                 </span>
               )}
             </div>
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            <p className="fs-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
               {dim.levels[l.level]}
             </p>
           </button>

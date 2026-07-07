@@ -24,7 +24,7 @@ function withLocalTz(date: string, time: string): string {
 function Label({ text, children }: { text: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <p className="text-xs text-gray-400">{text}</p>
+      <p className="fs-sm text-gray-400">{text}</p>
       {children}
     </div>
   );
@@ -249,7 +249,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
 
       <form onSubmit={handleAdvance}>
         <div className="glass-card p-5 space-y-3">
-          <p className="text-xs text-gray-400">Creates a new session. The current session will be archived.</p>
+          <p className="fs-sm text-gray-400">Creates a new session. The current session will be archived.</p>
 
           <Label text="Session Name">
             <input
@@ -367,7 +367,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
           <Label text="Cost per court">
             <div className="relative">
               {costPerCourt !== null && costPerCourt > 0 && (
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm pointer-events-none" style={{ color: 'var(--text-muted)' }}>$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 fs-md pointer-events-none" style={{ color: 'var(--text-muted)' }}>$</span>
               )}
               <input
                 id="advance-cost-per-court"
@@ -423,7 +423,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                         style={{ background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)' }}
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
+                          <p className="fs-md font-medium truncate" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
                           <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
                             ${p.costPerTube.toFixed(2)}/tube · {remaining} left
                           </p>
@@ -524,11 +524,11 @@ export default function AdvanceSessionForm({ onBack }: Props) {
         </BottomSheetHeader>
         <BottomSheetBody>
           <div className="space-y-4 pb-6">
-            <p className="text-sm text-gray-200">
+            <p className="fs-md text-gray-200">
               <strong>{date}</strong> is on your skip list — typically a holiday, travel date, or
               known venue closure.
             </p>
-            <p className="text-xs text-gray-400">
+            <p className="fs-sm text-gray-400">
               You can advance anyway if this is intentional. The skip date stays on the list.
             </p>
             <div className="flex flex-wrap gap-2 justify-end pt-2">

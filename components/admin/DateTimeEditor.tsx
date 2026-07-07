@@ -10,7 +10,7 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 function Label({ text, children }: { text: string; children: React.ReactNode }) {
   return (
     <label className="block space-y-1">
-      <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{text}</span>
+      <span className="fs-sm font-medium" style={{ color: 'var(--text-muted)' }}>{text}</span>
       {children}
     </label>
   );

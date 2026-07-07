@@ -233,12 +233,12 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
           {/* AI result */}
           {anno.polished && (
             <div className="inner-card-green p-3 space-y-2">
-              <p className="text-xs font-semibold text-green-400">AI Result</p>
-              <p className="text-sm text-gray-200 leading-relaxed">{anno.polished}</p>
+              <p className="fs-sm font-semibold text-green-400">AI Result</p>
+              <p className="fs-md text-gray-200 leading-relaxed">{anno.polished}</p>
               <button
                 onClick={() => anno.handlePost(anno.polished)}
                 disabled={anno.posting}
-                className="cc-btn cc-btn-primary cc-btn-lg text-sm"
+                className="cc-btn cc-btn-primary cc-btn-lg fs-md"
               >
                 {anno.posting ? 'Posting\u2026' : 'Post to Home'}
               </button>
@@ -273,19 +273,19 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                       value={anno.editAnnoText}
                       onChange={(e) => anno.setEditAnnoText(e.target.value)}
                       maxLength={800}
-                      className="w-full text-sm"
+                      className="w-full fs-md"
                     />
-                    <p className="text-right text-xs text-gray-500">{anno.editAnnoText.length}/800</p>
+                    <p className="text-right fs-sm text-gray-500">{anno.editAnnoText.length}/800</p>
                     {anno.editAnnoError && <p className="field-error">{anno.editAnnoError}</p>}
                     <div className="flex gap-2">
                       <button
                         onClick={() => anno.handleSaveAnno(a.id)}
                         disabled={anno.savingAnno || !anno.editAnnoText.trim()}
-                        className="cc-btn cc-btn-primary text-xs"
+                        className="cc-btn cc-btn-primary fs-sm"
                       >
                         {anno.savingAnno ? 'Saving\u2026' : 'Save'}
                       </button>
-                      <button onClick={() => anno.cancelEditAnno()} className="btn-ghost text-xs px-3 py-1.5">
+                      <button onClick={() => anno.cancelEditAnno()} className="btn-ghost fs-sm px-3 py-1.5">
                         Cancel
                       </button>
                     </div>
@@ -293,23 +293,23 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                 ) : (
                   <div key={a.id} className="glass-card-soft p-3">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="announcement-body text-sm text-gray-200 flex-1">{renderMarkdown(a.text)}</div>
+                      <div className="announcement-body fs-md text-gray-200 flex-1">{renderMarkdown(a.text)}</div>
                       <div className="flex gap-3 shrink-0">
                         <button
                           onClick={() => anno.startEditAnno(a)}
-                          className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                          className="fs-sm text-blue-400 hover:text-blue-300 transition-colors"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => anno.handleDeleteAnnouncement(a.id)}
-                          className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                          className="fs-sm text-red-400 hover:text-red-300 transition-colors"
                         >
                           Delete
                         </button>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
+                    <p className="fs-sm text-gray-500 mt-1 flex items-center gap-1.5">
                       <span>
                         {new Date(a.time).toLocaleString(undefined, {
                           month: 'short',
@@ -345,13 +345,13 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
               <span className="material-icons" style={{ fontSize: 'var(--icon-lg)' }}>chevron_left</span>
             </button>
             <div className="text-center">
-              <p className="text-sm font-semibold text-white">
+              <p className="fs-md font-semibold text-white">
                 {nav.viewedSession ? fmtSessionNav(nav.viewedSession.datetime) : '\u2014'}
               </p>
               {nav.isViewingActive ? (
-                <p className="text-xs text-green-400 font-medium">Current session</p>
+                <p className="fs-sm text-green-400 font-medium">Current session</p>
               ) : (
-                <p className="text-xs text-gray-400">Past session</p>
+                <p className="fs-sm text-gray-400">Past session</p>
               )}
             </div>
             <button
@@ -371,7 +371,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
           {pm.loading ? (
             <div className="px-4"><ShimmerLoader lines={4} /></div>
           ) : pm.players.length === 0 ? (
-            <p className="text-center text-gray-500 text-sm p-8">No players signed up yet.</p>
+            <p className="text-center text-gray-500 fs-md p-8">No players signed up yet.</p>
           ) : (
             <div>
               <div className="list-header-green flex items-center justify-between">
@@ -381,7 +381,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={pm.handleExportCSV}
-                    className="text-xs font-normal hover:text-green-300 transition-colors flex items-center gap-1"
+                    className="fs-sm font-normal hover:text-green-300 transition-colors flex items-center gap-1"
                   >
                     <span className="material-icons" style={{ fontSize: 'var(--fs-base)' }}>download</span>
                     Export CSV
@@ -400,14 +400,14 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                         <div className="absolute right-0 top-full mt-1 z-50 w-52 rounded-xl overflow-hidden border border-white/10" style={{ background: 'var(--dropdown-bg)', backdropFilter: 'blur(12px)' }}>
                           <button
                             onClick={() => { pm.setMoreMenuOpen(false); pm.setClearMode('soft'); pm.setClearError(''); pm.setConfirmingClear(true); }}
-                            className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/10 transition-colors flex items-center gap-3"
+                            className="w-full text-left px-4 py-3 fs-md text-gray-300 hover:bg-white/10 transition-colors flex items-center gap-3"
                           >
                             <span className="material-icons text-gray-500" style={{ fontSize: 'var(--icon-md)' }}>delete_sweep</span>
                             Clear Session
                           </button>
                           <button
                             onClick={() => { pm.setMoreMenuOpen(false); pm.setClearMode('hard'); pm.setClearError(''); pm.setConfirmingClear(true); }}
-                            className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-white/10 transition-colors flex items-center gap-3"
+                            className="w-full text-left px-4 py-3 fs-md text-red-400 hover:bg-white/10 transition-colors flex items-center gap-3"
                           >
                             <span className="material-icons" style={{ fontSize: 'var(--icon-md)' }}>delete_forever</span>
                             Purge All Records
@@ -421,8 +421,8 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
               <div className="divide-y" style={{ borderColor: 'var(--divider)' }}>
                 {pm.players.map((player, i) => (
                   <div key={player.id} className="flex items-center px-4 py-3 gap-3">
-                    <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">{i + 1}</span>
-                    <span className="flex-1 text-sm text-gray-200 font-medium">{player.name}</span>
+                    <span className="fs-sm text-gray-500 w-5 text-right font-mono tabular-nums">{i + 1}</span>
+                    <span className="flex-1 fs-md text-gray-200 font-medium">{player.name}</span>
                     {player.selfReportedPaid && !player.paid && (
                       <span className="cc-pill cc-pill-amber" style={{ fontSize: 'var(--fs-2xs)', padding: '2px 6px' }}>
                         reported
@@ -431,14 +431,14 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                     <button
                       onClick={() => pm.handleTogglePaid(player)}
                       disabled={pm.togglingId === player.id}
-                      className={`text-xs font-medium transition-colors px-3 py-1.5 rounded-full ${player.paid ? 'pill-paid' : 'pill-unpaid'}`}
+                      className={`fs-sm font-medium transition-colors px-3 py-1.5 rounded-full ${player.paid ? 'pill-paid' : 'pill-unpaid'}`}
                       style={{ minHeight: 32 }}
                     >
                       {pm.savedId === player.id ? '\u2713' : pm.togglingId === player.id ? '\u2026' : player.paid ? 'Paid' : 'Pending'}
                     </button>
                     <button
                       onClick={() => handleResetAccess(player)}
-                      className="text-xs text-gray-500 hover:text-blue-400 transition-colors flex items-center gap-1 px-2"
+                      className="fs-sm text-gray-500 hover:text-blue-400 transition-colors flex items-center gap-1 px-2"
                       title={`Reset access for ${player.name}`}
                       aria-label={`Reset access for ${player.name}`}
                       style={{ minHeight: 44, minWidth: 44, justifyContent: 'center' }}
@@ -449,7 +449,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                     <button
                       onClick={() => pm.handleRemove(player)}
                       disabled={pm.removingId === player.id}
-                      className="text-xs text-gray-500 hover:text-amber-400 transition-colors flex items-center gap-1 px-2"
+                      className="fs-sm text-gray-500 hover:text-amber-400 transition-colors flex items-center gap-1 px-2"
                       title={`Remove ${player.name}`}
                       aria-label={`Remove ${player.name}`}
                       style={{ minHeight: 44, minWidth: 44, justifyContent: 'center' }}
@@ -500,19 +500,19 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
             <div className="divide-y" style={{ borderColor: 'var(--divider)' }}>
               {pm.waitlistPlayers.map((player, i) => (
                 <div key={player.id} className="flex items-center px-4 py-3 gap-3">
-                  <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">{pm.players.length + i + 1}</span>
-                  <span className="flex-1 text-sm text-gray-300 font-medium">{player.name}</span>
+                  <span className="fs-sm text-gray-500 w-5 text-right font-mono tabular-nums">{pm.players.length + i + 1}</span>
+                  <span className="flex-1 fs-md text-gray-300 font-medium">{player.name}</span>
                   <button
                     onClick={() => pm.handlePromote(player)}
                     disabled={pm.promotingId === player.id}
-                    className="text-xs text-amber-400 hover:text-amber-300 transition-colors py-2 px-1"
+                    className="fs-sm text-amber-400 hover:text-amber-300 transition-colors py-2 px-1"
                   >
                     {pm.promotingId === player.id ? '\u2026' : 'Promote'}
                   </button>
                   <button
                     onClick={() => pm.handleRemove(player)}
                     disabled={pm.removingId === player.id}
-                    className="text-xs text-gray-500 hover:text-red-400 transition-colors p-1 flex items-center gap-1"
+                    className="fs-sm text-gray-500 hover:text-red-400 transition-colors p-1 flex items-center gap-1"
                     title={`Remove ${player.name}`}
                   >
                     <span className="material-icons" style={{ fontSize: 'var(--fs-lg)' }}>person_remove</span>
@@ -559,11 +559,11 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                 })
                 .map((player, i) => (
                 <div key={player.id} className="flex items-center px-4 py-3 gap-3">
-                  <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">{i + 1}</span>
+                  <span className="fs-sm text-gray-500 w-5 text-right font-mono tabular-nums">{i + 1}</span>
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm text-gray-500 font-medium line-through">{player.name}</span>
+                    <span className="fs-md text-gray-500 font-medium line-through">{player.name}</span>
                     {player.removedAt && (
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="fs-sm text-gray-500 mt-0.5">
                         {player.cancelledBySelf ? 'Cancelled' : 'Removed'} &middot; {new Date(player.removedAt).toLocaleString(undefined, {
                           month: 'short', day: 'numeric',
                           hour: '2-digit', minute: '2-digit',
@@ -573,14 +573,14 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                   </div>
                   <button
                     onClick={() => pm.handleRestore(player)}
-                    className="text-xs text-amber-400 hover:text-amber-300 transition-colors p-1 flex items-center gap-1"
+                    className="fs-sm text-amber-400 hover:text-amber-300 transition-colors p-1 flex items-center gap-1"
                     title={`Restore ${player.name}`}
                   >
                     <span className="material-icons" style={{ fontSize: 'var(--fs-lg)' }}>restore</span>
                     <span className="hidden sm:inline">Restore</span>
                   </button>
                   {pm.confirmingPurgeId === player.id ? (
-                    <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-2 fs-sm">
                       <span className="text-gray-400">Delete?</span>
                       <button onClick={() => { pm.handlePurgeSingle(player); pm.setConfirmingPurgeId(null); }} className="text-red-400 hover:text-red-300 transition-colors">Yes</button>
                       <button onClick={() => pm.setConfirmingPurgeId(null)} className="text-gray-400 hover:text-white transition-colors">No</button>
@@ -588,7 +588,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                   ) : (
                     <button
                       onClick={() => pm.setConfirmingPurgeId(player.id)}
-                      className="text-xs text-gray-500 hover:text-red-400 transition-colors p-1 flex items-center gap-1"
+                      className="fs-sm text-gray-500 hover:text-red-400 transition-colors p-1 flex items-center gap-1"
                       title={`Permanently delete ${player.name}`}
                     >
                       <span className="material-icons" style={{ fontSize: 'var(--fs-lg)' }}>delete_forever</span>
@@ -646,7 +646,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                 <p id="clear-dialog-title" className="font-semibold text-white">
                   {pm.clearMode === 'soft' ? 'Clear session for new week?' : 'Permanently delete all records?'}
                 </p>
-                <p className="text-sm text-gray-400">
+                <p className="fs-md text-gray-400">
                   {pm.clearMode === 'soft' ? (
                     <>All <span className="text-white font-semibold">{pm.players.length}</span> player{pm.players.length !== 1 ? 's' : ''} will be moved to Cancelled. Data stays in the database.</>
                   ) : (
@@ -678,7 +678,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
               </button>
               <button
                 onClick={() => { pm.setConfirmingClear(false); pm.setClearError(''); }}
-                className="w-full text-sm text-gray-400 hover:text-white transition-colors py-2"
+                className="w-full fs-md text-gray-400 hover:text-white transition-colors py-2"
               >
                 Cancel
               </button>

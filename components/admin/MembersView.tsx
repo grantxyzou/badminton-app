@@ -178,7 +178,7 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
         <div className="flex items-center justify-between">
           <div>
             <p className="section-label">INVITE LIST</p>
-            {inviteCollapsed && <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{members.length} member{members.length !== 1 ? 's' : ''}</p>}
+            {inviteCollapsed && <p className="fs-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>{members.length} member{members.length !== 1 ? 's' : ''}</p>}
           </div>
           <button
             type="button"
@@ -190,7 +190,7 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
             <span className="material-icons icon-md">{inviteCollapsed ? 'expand_more' : 'expand_less'}</span>
           </button>
         </div>
-        {!inviteCollapsed && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Only people on this list can sign up. Leave empty to allow anyone.</p>}
+        {!inviteCollapsed && <p className="fs-sm" style={{ color: 'var(--text-muted)' }}>Only people on this list can sign up. Leave empty to allow anyone.</p>}
         {!inviteCollapsed && (<>
           <div className="flex gap-2">
             <input
@@ -223,9 +223,9 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
               {members.map((member) => (
                 <div key={member.id} className="flex items-center justify-between py-1.5 px-3 rounded-xl bg-white/5">
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{member.name}</span>
+                    <span className="fs-md" style={{ color: 'var(--text-primary)' }}>{member.name}</span>
                     {member.sessionCount > 0 && (
-                      <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>{member.sessionCount} session{member.sessionCount !== 1 ? 's' : ''}</span>
+                      <span className="fs-sm ml-2" style={{ color: 'var(--text-muted)' }}>{member.sessionCount} session{member.sessionCount !== 1 ? 's' : ''}</span>
                     )}
                   </div>
                   <button
@@ -274,7 +274,7 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
                       onChange={(e) => setEditAppName(e.target.value)}
                       maxLength={50}
                       autoComplete="off"
-                      className="flex-1 text-sm"
+                      className="flex-1 fs-md"
                     />
                     <input
                       name="editEtransferName"
@@ -283,23 +283,23 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
                       onChange={(e) => setEditEtransferName(e.target.value)}
                       maxLength={50}
                       autoComplete="off"
-                      className="flex-1 text-sm"
+                      className="flex-1 fs-md"
                     />
                   </div>
                   {editError && <p className="field-error" role="alert">{editError}</p>}
                   <div className="flex gap-2">
-                    <button onClick={() => handleSaveEdit(alias.id)} className="cc-btn cc-btn-primary text-xs" style={{ minHeight: 44 }}>Save</button>
-                    <button onClick={() => setEditingId(null)} className="btn-ghost text-xs px-3 py-1.5" style={{ minHeight: 44 }}>Cancel</button>
+                    <button onClick={() => handleSaveEdit(alias.id)} className="cc-btn cc-btn-primary fs-sm" style={{ minHeight: 44 }}>Save</button>
+                    <button onClick={() => setEditingId(null)} className="btn-ghost fs-sm px-3 py-1.5" style={{ minHeight: 44 }}>Cancel</button>
                   </div>
                 </div>
               ) : (
                 <div key={alias.id} className="flex items-center gap-3 px-4 py-3">
-                  <span className="text-sm font-medium flex-1" style={{ color: 'var(--text-primary)' }}>{alias.appName}</span>
+                  <span className="fs-md font-medium flex-1" style={{ color: 'var(--text-primary)' }}>{alias.appName}</span>
                   <span className="material-icons icon-sm" style={{ color: 'var(--text-muted)' }}>arrow_back</span>
-                  <span className="text-sm flex-1" style={{ color: 'var(--text-secondary)' }}>{alias.etransferName}</span>
-                  <button onClick={() => startEdit(alias)} className="text-xs text-blue-400 hover:text-blue-300 transition-colors" style={{ minHeight: 44, display: 'flex', alignItems: 'center' }}>Edit</button>
+                  <span className="fs-md flex-1" style={{ color: 'var(--text-secondary)' }}>{alias.etransferName}</span>
+                  <button onClick={() => startEdit(alias)} className="fs-sm text-blue-400 hover:text-blue-300 transition-colors" style={{ minHeight: 44, display: 'flex', alignItems: 'center' }}>Edit</button>
                   {confirmingDeleteId === alias.id ? (
-                    <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-2 fs-sm">
                       <span style={{ color: 'var(--text-muted)' }}>Delete?</span>
                       <button
                         onClick={() => { handleDeleteAlias(alias.id); setConfirmingDeleteId(null); }}
@@ -320,7 +320,7 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
                   ) : (
                     <button
                       onClick={() => setConfirmingDeleteId(alias.id)}
-                      className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                      className="fs-sm text-red-400 hover:text-red-300 transition-colors"
                       style={{ minHeight: 44, display: 'flex', alignItems: 'center' }}
                     >
                       Delete
@@ -332,14 +332,14 @@ export default function MembersView({ onBack }: { onBack: () => void }) {
           </div>
         </div>
       ) : (
-        <p className="text-sm text-center py-4" style={{ color: 'var(--text-muted)' }}>No aliases yet — add one to map names for e-transfer.</p>
+        <p className="fs-md text-center py-4" style={{ color: 'var(--text-muted)' }}>No aliases yet — add one to map names for e-transfer.</p>
       )}
 
       {/* Add alias form — below the list so the submit button is in the
           thumb zone for one-handed use. */}
       <div className="glass-card p-5 space-y-3">
         <p className="section-label">ADD ALIAS</p>
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Link each player&apos;s app name to their e-transfer name for payment tracking.</p>
+        <p className="fs-sm" style={{ color: 'var(--text-muted)' }}>Link each player&apos;s app name to their e-transfer name for payment tracking.</p>
         <form onSubmit={handleAddAlias} className="space-y-3">
           <div className="flex gap-2">
             <input

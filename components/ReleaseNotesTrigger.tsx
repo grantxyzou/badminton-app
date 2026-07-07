@@ -34,7 +34,7 @@ function ReleaseNotesTrigger({ releases, onOpen }: ReleaseNotesTriggerProps) {
     <button
       type="button"
       onClick={onOpen}
-      className={`text-xs px-2 transition-colors text-left ${
+      className={`fs-sm px-2 transition-colors text-left ${
         isUnread ? 'terminal-accent-text font-semibold' : 'text-gray-400'
       }`}
     >

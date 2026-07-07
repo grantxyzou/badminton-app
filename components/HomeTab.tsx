@@ -406,12 +406,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 href={mapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-gray-300 underline underline-offset-2 decoration-dotted line-clamp-2 block"
+                className="fs-sm text-gray-300 underline underline-offset-2 decoration-dotted line-clamp-2 block"
               >
                 {session.locationAddress}
               </a>
             ) : (
-              <p className="text-xs text-gray-300 line-clamp-2">{session.locationAddress}</p>
+              <p className="fs-sm text-gray-300 line-clamp-2">{session.locationAddress}</p>
             )
           ) : null}
         </div>
@@ -438,7 +438,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       {effectiveAnnouncement && (
         <div className="glass-card p-5 space-y-2">
           <p className="section-label">{t('announcement.label')}</p>
-          <div className="announcement-body text-sm text-gray-200 leading-relaxed">
+          <div className="announcement-body fs-md text-gray-200 leading-relaxed">
             {renderMarkdown(effectiveAnnouncement.text)}
           </div>
         </div>
@@ -475,7 +475,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="bpm-h2">{t('signup.heading')}</p>
-              <p key={spotsTotal - activePlayers.length} className="text-sm text-gray-400 animate-count-tick">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
+              <p key={spotsTotal - activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
             </div>
             <StatusBanner
               tone="success"
@@ -494,7 +494,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
             <div className="flex items-start justify-between">
               <p className="bpm-h2">{t('signup.heading')}</p>
               <div className="text-right">
-                <p className="text-xs text-gray-400">{tStates('waitlistLabel')}</p>
+                <p className="fs-sm text-gray-400">{tStates('waitlistLabel')}</p>
                 <p className="text-2xl font-bold text-amber-400 leading-none mt-0.5">
                   #{waitlistPosition}
                 </p>
@@ -515,7 +515,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="bpm-h2">{t('signup.heading')}</p>
-              <p key={activePlayers.length} className="text-sm text-gray-400 animate-count-tick">{t('signup.spotsFull', { count: activePlayers.length })}</p>
+              <p key={activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsFull', { count: activePlayers.length })}</p>
             </div>
             <StatusBanner tone="warn" icon="lock" title={t('signup.full')} body={t('signup.allSpotsTaken', { total: spotsTotal })} />
             <form onSubmit={handleJoinWaitlist} className="space-y-3">
@@ -574,7 +574,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 <button
                   type="button"
                   onClick={() => setEnterCodeOpen(true)}
-                  className="text-xs underline mx-auto"
+                  className="fs-sm underline mx-auto"
                   style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px 12px', minHeight: 44 }}
                 >
                   {t('signup.forgotPin')}
@@ -587,7 +587,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           <div className="space-y-4">
             <div className="flex items-start justify-between">
               <p className="bpm-h2">{t('signup.heading')}</p>
-              <p key={spotsTotal - activePlayers.length} className="text-sm text-gray-400 animate-count-tick">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
+              <p key={spotsTotal - activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
             </div>
             <form onSubmit={handleSignUp} className="space-y-3">
               <NameAutocompleteInput
@@ -647,14 +647,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 <button
                   type="button"
                   onClick={() => setEnterCodeOpen(true)}
-                  className="text-xs underline mx-auto"
+                  className="fs-sm underline mx-auto"
                   style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px 12px', minHeight: 44 }}
                 >
                   {t('signup.forgotPin')}
                 </button>
               )}
               {session?.deadline && authMode === 'anon' && (
-                <p className={`text-center text-xs font-medium ${isDeadlineApproaching ? 'text-red-400' : 'text-gray-400'}`}>
+                <p className={`text-center fs-sm font-medium ${isDeadlineApproaching ? 'text-red-400' : 'text-gray-400'}`}>
                   {t('signup.closesOn', { date: format.dateTime(new Date(session.deadline), DAY_LONG) })}
                 </p>
               )}
