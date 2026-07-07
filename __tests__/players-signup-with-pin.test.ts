@@ -93,7 +93,7 @@ describe('POST /api/players with PIN (v1.4 unified Home sign-in fix)', () => {
     // with a new salt. Verify the stored pinHash is unchanged by reading
     // the mock store directly.
     const { getStore } = await import('./helpers');
-    const storedBefore = (getStore().members?.find((m: { name?: string }) => m.name === 'Lin') as { pinHash?: string })?.pinHash;
+    const storedBefore = ((getStore().members as { name?: string; pinHash?: string }[] | undefined)?.find((m) => m.name === 'Lin') as { pinHash?: string })?.pinHash;
     expect(storedBefore).toBeTruthy();
 
     const req = makeRequest('POST', 'http://localhost:3000/api/players', {
@@ -103,7 +103,7 @@ describe('POST /api/players with PIN (v1.4 unified Home sign-in fix)', () => {
     const res = await POST(req);
     expect(res.status).toBe(201);
 
-    const storedAfter = (getStore().members?.find((m: { name?: string }) => m.name === 'Lin') as { pinHash?: string })?.pinHash;
+    const storedAfter = ((getStore().members as { name?: string; pinHash?: string }[] | undefined)?.find((m) => m.name === 'Lin') as { pinHash?: string })?.pinHash;
     expect(storedAfter).toBe(storedBefore);
   });
 });
