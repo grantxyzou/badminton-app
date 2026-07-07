@@ -25,6 +25,8 @@ const REQUIRED_TOKENS = [
   '--fs-2xs', '--fs-xs', '--fs-sm', '--fs-base', '--fs-md', '--fs-lg',
   // stats headline data scale + compat aliases (design-audit P0/P1)
   '--fs-stat', '--fs-stat-lg', '--color-red', '--color-amber', '--sev-warn',
+  // icon glyph-size ladder (mirrors .icon-* classes; design-audit item #3)
+  '--icon-xs', '--icon-sm', '--icon-md', '--icon-lg', '--icon-xl',
   // type families (--font-mono was a phantom token; see design-audit)
   '--font-display', '--font-sans', '--font-mono',
   '--lh-tight', '--lh-snug', '--lh-normal',

@@ -516,7 +516,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                         title="Assign to session"
                         style={{ color: 'var(--accent)', minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
-                        <span className="material-icons" style={{ fontSize: 18 }}>add</span>
+                        <span className="material-icons" style={{ fontSize: 'var(--icon-md)' }}>add</span>
                       </button>
                       <button
                         onClick={() => startEdit(p)}

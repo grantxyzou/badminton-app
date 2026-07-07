@@ -429,7 +429,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
           color: 'var(--text-muted)',
         }}
       >
-        <span className="material-icons" style={{ fontSize: 18 }}>search</span>
+        <span className="material-icons" style={{ fontSize: 'var(--icon-md)' }}>search</span>
         <input
           type="text"
           value={search}
@@ -441,7 +441,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
             border: 0,
             outline: 0,
             color: 'var(--text-primary)',
-            fontSize: 13.5,
+            fontSize: 'var(--fs-md)',
           }}
         />
       </div>
@@ -464,7 +464,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                 background: on ? 'rgba(74,222,128,0.13)' : 'rgba(var(--glass-tint), 0.04)',
                 border: `1px solid ${on ? 'rgba(74,222,128,0.35)' : 'rgba(var(--glass-tint), 0.12)'}`,
                 fontFamily: 'var(--font-display, "Space Grotesk")',
-                fontSize: 11.5,
+                fontSize: 'var(--fs-sm)',
                 fontWeight: 500,
                 color: on ? '#c5f5d3' : 'var(--text-secondary)',
                 cursor: 'pointer',
@@ -551,7 +551,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                           border: '1px solid rgba(74,222,128,0.25)',
                           padding: '1px 6px',
                           borderRadius: 'var(--radius-pill)',
-                          fontSize: 9,
+                          fontSize: 'var(--fs-2xs)',
                           fontWeight: 600,
                           letterSpacing: '0.04em',
                         }}
@@ -567,7 +567,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                           border: '1px solid rgba(167,139,250,0.28)',
                           padding: '1px 6px',
                           borderRadius: 'var(--radius-pill)',
-                          fontSize: 9,
+                          fontSize: 'var(--fs-2xs)',
                           fontWeight: 600,
                           letterSpacing: '0.04em',
                         }}
@@ -601,7 +601,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                     )}
                   </div>
                 </div>
-                <span className="material-icons" style={{ fontSize: 18, color: 'var(--ink-faint)' }}>more_vert</span>
+                <span className="material-icons" style={{ fontSize: 'var(--icon-md)', color: 'var(--ink-faint)' }}>more_vert</span>
               </button>
             ))}
           </div>
@@ -637,7 +637,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
             zIndex: 6,
           }}
         >
-          <span className="material-icons" style={{ fontSize: 26 }}>person_add</span>
+          <span className="material-icons" style={{ fontSize: 'var(--icon-lg)' }}>person_add</span>
         </button>,
         document.body,
       )}

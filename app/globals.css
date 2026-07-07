@@ -455,6 +455,15 @@ body {
      tokens so those hand-typed 20/22px values stop being magic numbers. */
   --fs-stat: 20px;
   --fs-stat-lg: 22px;
+  /* Icon glyph-size ladder — token mirror of the .icon-xs..xl utility classes
+     (below), so inline `.material-icons` styles use a token instead of a raw px.
+     Same values as the classes; these exist for the inline-style call sites the
+     way --fs-* mirrors .fs-*. */
+  --icon-xs: 13px;
+  --icon-sm: 16px;
+  --icon-md: 18px;
+  --icon-lg: 24px;
+  --icon-xl: 40px;
   --lh-tight: 1.25;
   --lh-snug: 1.35;
   --lh-normal: 1.5;

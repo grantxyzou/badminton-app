@@ -409,7 +409,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         {/* Court row */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{courts} court{courts === 1 ? '' : 's'} × cost</span>
+            <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>{courts} court{courts === 1 ? '' : 's'} × cost</span>
             <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 'var(--fs-sm)' }}>${courtCost.toFixed(2)}</span>
           </div>
           <input
@@ -451,8 +451,8 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         {tubePurchase && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{tubes} tubes {tubePurchase.name}</span>
-              <span style={{ fontSize: 10.5, color: atMax ? 'var(--amber)' : 'var(--ink-faint)' }}>
+              <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>{tubes} tubes {tubePurchase.name}</span>
+              <span style={{ fontSize: 'var(--fs-xs)', color: atMax ? 'var(--amber)' : 'var(--ink-faint)' }}>
                 at ${tubePurchase.costPerTube.toFixed(2)}/tube
                 {remainingAfter !== null && ` · ${remainingAfter} left after`}
                 {atMax && ' · max for this purchase'}
@@ -482,7 +482,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
             style={{
               padding: '14px 16px',
               fontFamily: 'var(--font-mono, "JetBrains Mono")',
-              fontSize: 11.5,
+              fontSize: 'var(--fs-sm)',
               color: 'var(--text-secondary)',
               lineHeight: 1.6,
               whiteSpace: 'pre-wrap',
