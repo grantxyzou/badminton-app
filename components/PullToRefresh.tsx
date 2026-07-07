@@ -15,11 +15,12 @@ import { useEffect, useRef, useState } from 'react';
  *
  * The body is the scroll container in this app, so listeners live on `document`.
  */
-const THRESHOLD = 85; // px of (resisted) pull needed to trigger
-const MAX = 130; // px the indicator can travel
-const RESISTANCE = 0.5; // drag feels heavier than 1:1
-const DEAD_ZONE = 16; // px of raw drag ignored before any pull registers
+const THRESHOLD = 115; // px of (resisted) pull needed to trigger (~283px raw drag)
+const MAX = 160; // px the indicator can travel
+const RESISTANCE = 0.45; // drag feels heavier than 1:1
+const DEAD_ZONE = 28; // px of raw drag ignored before any pull registers
 const UP_CANCEL = 8; // px of upward movement that disqualifies the gesture as a scroll
+const H_SLOP = 10; // px of horizontal travel tolerated before a sideways drag disqualifies the gesture
 
 export default function PullToRefresh({
   onRefresh,
@@ -33,6 +34,7 @@ export default function PullToRefresh({
   // re-attaching listeners on every render — re-attaching mid-gesture drops
   // touchmove events.
   const startY = useRef<number | null>(null);
+  const startX = useRef<number | null>(null);
   const pullRef = useRef(0);
   const refreshingRef = useRef(false);
   // Once a gesture moves upward (a scroll), it can't become a pull — even if
@@ -54,6 +56,7 @@ export default function PullToRefresh({
       if (refreshingRef.current) return;
       if (window.scrollY > 0 || sheetOpen()) return;
       startY.current = e.touches[0]?.clientY ?? null;
+      startX.current = e.touches[0]?.clientX ?? null;
       disqualified.current = false;
     }
     function onMove(e: TouchEvent) {
@@ -69,6 +72,16 @@ export default function PullToRefresh({
       // happened to start at the top — never a refresh. Disqualify it so a
       // scroll-up that bounces at the top edge can't flip into a refresh.
       if (dy < -UP_CANCEL) {
+        disqualified.current = true;
+        setPullBoth(0);
+        return;
+      }
+      // Horizontal-dominant gesture (a sideways / diagonal swipe that happened to
+      // start at the top) is never a pull. Disqualify once horizontal travel both
+      // exceeds vertical and clears a small slop floor, so early sub-slop jitter
+      // can't kill a genuine straight-down pull.
+      const dx = (e.touches[0]?.clientX ?? 0) - (startX.current ?? 0);
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > H_SLOP) {
         disqualified.current = true;
         setPullBoth(0);
         return;
