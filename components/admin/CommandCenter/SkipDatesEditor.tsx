@@ -93,7 +93,7 @@ export default function SkipDatesEditor() {
           value={adding}
           onChange={(e) => { setAdding(e.target.value); setError(''); }}
           className="flex-1 text-sm rounded-lg p-2"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}
+          style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
         />
         <button
           type="button"
@@ -113,7 +113,7 @@ export default function SkipDatesEditor() {
             <li
               key={d}
               className="text-xs px-3 py-1 rounded-full inline-flex items-center gap-1"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}
+              style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
             >
               {d}
               <button
