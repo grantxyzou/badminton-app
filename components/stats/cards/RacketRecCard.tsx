@@ -40,7 +40,7 @@ export default function RacketRecCard({ name }: { name: string }) {
       ) : !item ? (
         <EmptyState>{t('recEmpty')}</EmptyState>
       ) : (
-        <p style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, margin: 0, lineHeight: 1.25 }}>
+        <p style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 600, margin: 0, lineHeight: 1.25 }}>
           {item.brand} {item.model}
         </p>
       )}

@@ -26,7 +26,7 @@ export default function SummaryGreeting() {
       <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-stat-lg)', color: 'var(--accent, #22c55e)', flexShrink: 0 }}>
         auto_fix_high
       </span>
-      <p style={{ margin: 0, fontSize: 15, lineHeight: 1.45, color: 'var(--text-primary)', flex: 1, minWidth: 0 }}>{greeting}</p>
+      <p style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: 1.45, color: 'var(--text-primary)', flex: 1, minWidth: 0 }}>{greeting}</p>
       <span
         style={{
           fontSize: 'var(--fs-2xs)',

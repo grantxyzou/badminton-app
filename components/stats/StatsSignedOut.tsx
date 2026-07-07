@@ -24,7 +24,7 @@ export default function StatsSignedOut({ onSignIn }: { onSignIn?: () => void }) 
           gap: 12,
         }}
       >
-        <span className="material-icons" aria-hidden="true" style={{ fontSize: 40, color: 'var(--text-muted)', opacity: 0.7 }}>
+        <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-xl)', color: 'var(--text-muted)', opacity: 0.7 }}>
           trending_up
         </span>
         <p style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>

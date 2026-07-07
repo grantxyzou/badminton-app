@@ -109,7 +109,7 @@ export default function PartnerFrequencyCard() {
                   <p style={{ margin: 0, fontSize: 19, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
                     {top.name}
                   </p>
-                  <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-secondary)' }}>
+                  <p style={{ margin: 0, fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>
                     {t('partnersTogether', { count: top.count })}
                   </p>
                 </div>
@@ -117,7 +117,7 @@ export default function PartnerFrequencyCard() {
             );
           })()}
           {partners.length > 1 && (
-            <p style={{ margin: 0, fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            <p style={{ margin: 0, fontSize: 'var(--fs-base)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
               {partners.slice(1).map((p) => `${p.name} ${p.count}`).join('  ·  ')}
             </p>
           )}

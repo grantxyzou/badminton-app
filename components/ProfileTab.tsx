@@ -463,7 +463,7 @@ function SettingsList({ title, rows }: { title?: string; rows: SettingsRow[] }) 
                 border: 'none',
                 cursor: 'pointer',
                 color: row.destructive ? 'var(--color-amber)' : 'var(--text-primary)',
-                fontSize: 15,
+                fontSize: 'var(--fs-lg)',
                 textAlign: 'left',
               }}
             >
@@ -662,7 +662,7 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameL
             {name}
           </p>
           {memberSince && (
-            <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+            <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginTop: 2 }}>
               Member since {memberSince}
             </p>
           )}
@@ -685,7 +685,7 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameL
                 border: '1px solid rgba(167,139,250,0.28)',
                 padding: '3px 10px',
                 borderRadius: 'var(--radius-pill)',
-                fontSize: 10.5,
+                fontSize: 'var(--fs-xs)',
                 fontFamily: 'var(--font-display, "Space Grotesk")',
                 fontWeight: 600,
                 letterSpacing: '0.04em',

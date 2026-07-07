@@ -186,7 +186,7 @@ export default function AdminConsoleHero({ onOpenAdmin }: AdminConsoleHeroProps)
         style={{ marginTop: 14, gap: 8 }}
       >
         Open admin home
-        <span className="material-icons" style={{ fontSize: 18 }}>arrow_forward</span>
+        <span className="material-icons" style={{ fontSize: 'var(--icon-md)' }}>arrow_forward</span>
       </button>
     </div>
   );

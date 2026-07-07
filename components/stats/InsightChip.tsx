@@ -37,7 +37,7 @@ export default function InsightChip({ headline, support, kind }: CardSlice) {
         border: '1px solid var(--inner-card-border)',
       }}
     >
-      <span className="material-icons" aria-hidden="true" style={{ fontSize: 18, color: ACCENT, marginTop: 1, flexShrink: 0 }}>
+      <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: ACCENT, marginTop: 1, flexShrink: 0 }}>
         {icon}
       </span>
       <div style={{ minWidth: 0, flex: 1 }}>
@@ -48,7 +48,7 @@ export default function InsightChip({ headline, support, kind }: CardSlice) {
         aria-label="AI generated"
         title="AI generated"
         style={{
-          fontSize: 9,
+          fontSize: 'var(--fs-2xs)',
           padding: '2px 6px',
           borderRadius: 'var(--radius-pill)',
           whiteSpace: 'nowrap',

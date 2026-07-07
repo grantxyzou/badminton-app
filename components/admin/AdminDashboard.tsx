@@ -342,7 +342,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
               className="text-white disabled:opacity-20 transition-opacity p-1"
               aria-label="Previous session"
             >
-              <span className="material-icons" style={{ fontSize: 24 }}>chevron_left</span>
+              <span className="material-icons" style={{ fontSize: 'var(--icon-lg)' }}>chevron_left</span>
             </button>
             <div className="text-center">
               <p className="text-sm font-semibold text-white">
@@ -361,7 +361,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
               className="text-white disabled:opacity-20 transition-opacity p-1"
               aria-label="Next session"
             >
-              <span className="material-icons" style={{ fontSize: 24 }}>chevron_right</span>
+              <span className="material-icons" style={{ fontSize: 'var(--icon-lg)' }}>chevron_right</span>
             </button>
           </div>
         )}
@@ -392,7 +392,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                       className="hover:text-green-300 transition-colors p-0.5"
                       aria-label="More actions"
                     >
-                      <span className="material-icons" style={{ fontSize: 18 }}>more_vert</span>
+                      <span className="material-icons" style={{ fontSize: 'var(--icon-md)' }}>more_vert</span>
                     </button>
                     {pm.moreMenuOpen && (
                       <>
@@ -402,14 +402,14 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                             onClick={() => { pm.setMoreMenuOpen(false); pm.setClearMode('soft'); pm.setClearError(''); pm.setConfirmingClear(true); }}
                             className="w-full text-left px-4 py-3 text-sm text-gray-300 hover:bg-white/10 transition-colors flex items-center gap-3"
                           >
-                            <span className="material-icons text-gray-500" style={{ fontSize: 18 }}>delete_sweep</span>
+                            <span className="material-icons text-gray-500" style={{ fontSize: 'var(--icon-md)' }}>delete_sweep</span>
                             Clear Session
                           </button>
                           <button
                             onClick={() => { pm.setMoreMenuOpen(false); pm.setClearMode('hard'); pm.setClearError(''); pm.setConfirmingClear(true); }}
                             className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-white/10 transition-colors flex items-center gap-3"
                           >
-                            <span className="material-icons" style={{ fontSize: 18 }}>delete_forever</span>
+                            <span className="material-icons" style={{ fontSize: 'var(--icon-md)' }}>delete_forever</span>
                             Purge All Records
                           </button>
                         </div>
@@ -424,7 +424,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                     <span className="text-xs text-gray-500 w-5 text-right font-mono tabular-nums">{i + 1}</span>
                     <span className="flex-1 text-sm text-gray-200 font-medium">{player.name}</span>
                     {player.selfReportedPaid && !player.paid && (
-                      <span className="cc-pill cc-pill-amber" style={{ fontSize: 9, padding: '2px 6px' }}>
+                      <span className="cc-pill cc-pill-amber" style={{ fontSize: 'var(--fs-2xs)', padding: '2px 6px' }}>
                         reported
                       </span>
                     )}
@@ -443,7 +443,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                       aria-label={`Reset access for ${player.name}`}
                       style={{ minHeight: 44, minWidth: 44, justifyContent: 'center' }}
                     >
-                      <span className="material-icons" style={{ fontSize: 18 }}>key</span>
+                      <span className="material-icons" style={{ fontSize: 'var(--icon-md)' }}>key</span>
                       <span className="hidden sm:inline">Reset</span>
                     </button>
                     <button
@@ -454,7 +454,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                       aria-label={`Remove ${player.name}`}
                       style={{ minHeight: 44, minWidth: 44, justifyContent: 'center' }}
                     >
-                      <span className="material-icons" style={{ fontSize: 18 }}>person_remove</span>
+                      <span className="material-icons" style={{ fontSize: 'var(--icon-md)' }}>person_remove</span>
                       <span className="hidden sm:inline">Remove</span>
                     </button>
                   </div>

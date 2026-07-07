@@ -70,7 +70,7 @@ export default function InstallSheet({ open, onClose }: Props) {
                   color: 'var(--accent)',
                 }}
               >
-                <span className="material-icons" style={{ fontSize: 17 }}>{s.icon}</span>
+                <span className="material-icons" style={{ fontSize: 'var(--icon-md)' }}>{s.icon}</span>
               </span>
               <span className="fs-md" style={{ color: 'var(--text-primary)' }}>
                 {s.text}
