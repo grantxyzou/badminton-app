@@ -99,7 +99,7 @@ export default function ETransferRecipientEditor() {
     <section className="glass-card p-4 space-y-3 animate-fadeIn" aria-label="E-transfer recipient">
       <header>
         <h3 className="bpm-h3">E-transfer recipient</h3>
-        <p className="text-xs text-gray-400 mt-0.5">
+        <p className="fs-sm text-gray-400 mt-0.5">
           Used by the Share cost button on the Next Session card.
         </p>
       </header>
@@ -107,22 +107,22 @@ export default function ETransferRecipientEditor() {
       {!editing && (
         <>
           {recipient ? (
-            <div className="text-sm space-y-1">
+            <div className="fs-md space-y-1">
               <p>
-                <span className="text-gray-400 text-xs">Name </span>
+                <span className="text-gray-400 fs-sm">Name </span>
                 <span>{recipient.name}</span>
               </p>
               <p>
-                <span className="text-gray-400 text-xs">Email </span>
-                <span className="font-mono text-xs">{recipient.email}</span>
+                <span className="text-gray-400 fs-sm">Email </span>
+                <span className="font-mono fs-sm">{recipient.email}</span>
               </p>
               <p>
-                <span className="text-gray-400 text-xs">Memo </span>
-                <span className="font-mono text-xs">{recipient.memo ?? DEFAULT_MEMO}</span>
+                <span className="text-gray-400 fs-sm">Memo </span>
+                <span className="font-mono fs-sm">{recipient.memo ?? DEFAULT_MEMO}</span>
               </p>
             </div>
           ) : (
-            <p className="text-sm text-gray-400">
+            <p className="fs-md text-gray-400">
               Not set — add one to enable cost sharing.
             </p>
           )}
@@ -145,7 +145,7 @@ export default function ETransferRecipientEditor() {
               onChange={(e) => setDraftName(e.target.value)}
               maxLength={100}
               placeholder="Your name (as shown to senders)"
-              className="w-full text-sm rounded-lg p-2"
+              className="w-full fs-md rounded-lg p-2"
               style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
             />
           </Field>
@@ -156,7 +156,7 @@ export default function ETransferRecipientEditor() {
               onChange={(e) => setDraftEmail(e.target.value)}
               maxLength={200}
               placeholder="e-transfer recipient address"
-              className="w-full text-sm rounded-lg p-2 font-mono"
+              className="w-full fs-md rounded-lg p-2 font-mono"
               style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
             />
           </Field>
@@ -167,10 +167,10 @@ export default function ETransferRecipientEditor() {
               onChange={(e) => setDraftMemo(e.target.value)}
               maxLength={200}
               placeholder={DEFAULT_MEMO}
-              className="w-full text-sm rounded-lg p-2 font-mono"
+              className="w-full fs-md rounded-lg p-2 font-mono"
               style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="fs-sm text-gray-500 mt-1">
               Use <code>{'{date}'}</code> for the session date and <code>{'{name}'}</code> for the player name.
             </p>
           </Field>
@@ -204,7 +204,7 @@ export default function ETransferRecipientEditor() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <label className="text-xs text-gray-400">{label}</label>
+      <label className="fs-sm text-gray-400">{label}</label>
       {children}
     </div>
   );

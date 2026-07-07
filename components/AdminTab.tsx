@@ -72,7 +72,7 @@ export default function AdminTab({ onExit }: { onExit: () => void }) {
           <div className="glass-card p-6 w-full max-w-xs space-y-5">
             <div className="text-center">
               <span className="material-icons icon-xl text-green-400">lock</span>
-              <p className="text-sm text-gray-400 mt-2">{pageT('signInHelp')}</p>
+              <p className="fs-md text-gray-400 mt-2">{pageT('signInHelp')}</p>
             </div>
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>

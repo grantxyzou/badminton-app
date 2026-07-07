@@ -68,7 +68,7 @@ export default function RosterHealthCard({ onOpen }: RosterHealthCardProps = {})
     return (
       <section className="glass-card p-4 space-y-1 opacity-60" aria-label="Roster health">
         <h3 className="bpm-h3">Roster health</h3>
-        <p className="text-xs text-gray-400">No data.</p>
+        <p className="fs-sm text-gray-400">No data.</p>
       </section>
     );
   }
@@ -108,7 +108,7 @@ function RosterStat({
       <p className="bpm-h2" style={{ color: tone === 'warning' ? '#fcd34d' : 'inherit' }}>
         {value}
       </p>
-      <p className="text-xs text-gray-400 mt-0.5">{label}</p>
+      <p className="fs-sm text-gray-400 mt-0.5">{label}</p>
     </div>
   );
 }

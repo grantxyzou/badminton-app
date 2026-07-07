@@ -71,16 +71,16 @@ export default function ReleasesView({ onBack }: Props) {
 
           {error && <p className="field-error" role="alert">{error}</p>}
           {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="fs-md text-gray-400">Loading…</p>
           ) : releases.length === 0 ? (
-            <p className="text-sm text-gray-400">No releases yet.</p>
+            <p className="fs-md text-gray-400">No releases yet.</p>
           ) : (
             <ul className="space-y-2">
               {releases.map((r) => (
                 <li key={r.id} className="glass-card p-3 flex justify-between items-start">
                   <div>
-                    <p className="text-sm font-semibold text-white">{r.version} · {r.title.en}</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="fs-md font-semibold text-white">{r.version} · {r.title.en}</p>
+                    <p className="fs-sm text-gray-400">
                       {new Date(r.publishedAt).toLocaleDateString()}
                       {r.editedAt && <> · edited {new Date(r.editedAt).toLocaleDateString()}</>}
                     </p>

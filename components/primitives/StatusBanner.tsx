@@ -12,8 +12,8 @@ import type { ReactNode } from 'react';
  *   <div className="status-banner-orange">
  *     <span className="material-icons icon-status text-amber-400">{icon}</span>
  *     <div>
- *       <p className="font-semibold text-amber-300 text-sm">{title}</p>
- *       <p className="text-xs text-gray-400 mt-0.5">{body}</p>
+ *       <p className="font-semibold text-amber-300 fs-md">{title}</p>
+ *       <p className="fs-sm text-gray-400 mt-0.5">{body}</p>
  *     </div>
  *   </div>
  *
@@ -65,8 +65,8 @@ export default function StatusBanner({ tone, icon, title, body, celebrate }: Sta
         {icon}
       </span>
       <div>
-        <p className={`font-semibold text-sm ${TITLE_TONE_CLASS[tone]}`}>{title}</p>
-        {body && <p className="text-xs text-gray-400 mt-0.5">{body}</p>}
+        <p className={`font-semibold fs-md ${TITLE_TONE_CLASS[tone]}`}>{title}</p>
+        {body && <p className="fs-sm text-gray-400 mt-0.5">{body}</p>}
       </div>
     </div>
   );
