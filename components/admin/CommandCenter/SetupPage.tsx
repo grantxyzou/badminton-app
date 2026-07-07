@@ -388,7 +388,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
           display: 'flex',
           flexDirection: 'column',
           gap: 14,
-          background: 'linear-gradient(160deg, rgba(74,222,128,0.06), rgba(255,255,255,0.02))',
+          background: 'linear-gradient(160deg, rgba(74,222,128,0.06), rgba(var(--glass-tint), 0.02))',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
@@ -404,7 +404,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
           </span>
         </div>
 
-        <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
+        <div style={{ height: 1, background: 'rgba(var(--glass-tint), 0.06)' }} />
 
         {/* Court row */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -419,7 +419,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
             value={costPerCourt ?? ''}
             onChange={(e) => setCostPerCourt(e.target.value === '' ? null : Math.max(0, Math.min(500, Number(e.target.value))))}
             placeholder="$ per court"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 'var(--radius-sm)', padding: '8px 10px', fontSize: 'var(--fs-base)' }}
+            style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)', borderRadius: 'var(--radius-sm)', padding: '8px 10px', fontSize: 'var(--fs-base)' }}
           />
           {recentCosts.length > 0 && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -433,9 +433,9 @@ export default function SetupPage({ onBack }: SetupPageProps) {
                     fontSize: 'var(--fs-xs)',
                     padding: '2px 8px',
                     borderRadius: 'var(--radius-pill)',
-                    background: costPerCourt === c ? 'rgba(74,222,128,0.13)' : 'rgba(255,255,255,0.04)',
+                    background: costPerCourt === c ? 'rgba(74,222,128,0.13)' : 'rgba(var(--glass-tint), 0.04)',
                     color: costPerCourt === c ? '#86efac' : 'var(--text-secondary)',
-                    border: `1px solid ${costPerCourt === c ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.12)'}`,
+                    border: `1px solid ${costPerCourt === c ? 'rgba(74,222,128,0.3)' : 'rgba(var(--glass-tint), 0.12)'}`,
                     cursor: 'pointer',
                     fontFamily: 'var(--font-mono, "JetBrains Mono")',
                   }}
@@ -603,7 +603,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
       style={{
         width: 44,
         height: 26,
-        background: on ? 'var(--accent)' : 'rgba(255,255,255,0.1)',
+        background: on ? 'var(--accent)' : 'rgba(var(--glass-tint), 0.1)',
         borderRadius: 'var(--radius-pill)',
         position: 'relative',
         border: 0,
@@ -648,8 +648,8 @@ function Stepper({
         alignItems: 'center',
         gap: 4,
         padding: 4,
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(255,255,255,0.12)',
+        background: 'rgba(var(--glass-tint), 0.04)',
+        border: '1px solid rgba(var(--glass-tint), 0.12)',
         borderRadius: 'var(--radius-md)',
         flexShrink: 0,
       }}
@@ -662,7 +662,7 @@ function Stepper({
         style={{
           width: 28,
           height: 28,
-          background: 'rgba(255,255,255,0.04)',
+          background: 'rgba(var(--glass-tint), 0.04)',
           border: 0,
           borderRadius: 7,
           color: 'var(--text-primary)',
@@ -683,7 +683,7 @@ function Stepper({
         style={{
           width: 28,
           height: 28,
-          background: 'rgba(255,255,255,0.04)',
+          background: 'rgba(var(--glass-tint), 0.04)',
           border: 0,
           borderRadius: 7,
           color: 'var(--text-primary)',

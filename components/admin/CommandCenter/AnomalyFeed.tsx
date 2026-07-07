@@ -111,11 +111,11 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
                   ? 'rgba(239, 68, 68, 0.12)'
                   : anomaly.severity === 'warning'
                     ? 'rgba(245, 158, 11, 0.10)'
-                    : 'rgba(255, 255, 255, 0.04)',
+                    : 'rgba(var(--glass-tint), 0.04)',
               border:
                 anomaly.severity === 'blocking'
                   ? '1px solid rgba(239, 68, 68, 0.3)'
-                  : '1px solid rgba(255, 255, 255, 0.08)',
+                  : '1px solid rgba(var(--glass-tint), 0.08)',
             }}
           >
             <span
