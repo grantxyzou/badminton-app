@@ -7,6 +7,7 @@ import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/Bo
 import AssignUsageSheet from '../AssignUsageSheet';
 import { fmtShortDate as fmtDate } from '@/lib/fmt';
 import type { BirdPurchase } from '@/lib/types';
+import { splitPurchasesByRecency } from '@/lib/birdPurchaseGroups';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -299,28 +300,14 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
     return out.sort((a, b) => b.remaining - a.remaining);
   }, [purchases, remainingByPurchase, burnPerSession]);
 
-  // Last 60d purchase history.
-  const recentPurchases = useMemo(() => {
-    const sixtyDaysAgo = Date.now() - 60 * 86_400_000;
-    return purchases
-      .filter((p) => {
-        const t = new Date(p.date).getTime();
-        return Number.isFinite(t) && t >= sixtyDaysAgo;
-      })
-      .sort((a, b) => (a.date < b.date ? 1 : -1));
-  }, [purchases]);
-
-  // Purchases older than 60 days — exposed below the recent list so
-  // they remain selectable for retro-assigning tubes to sessions.
-  const olderPurchases = useMemo(() => {
-    const sixtyDaysAgo = Date.now() - 60 * 86_400_000;
-    return purchases
-      .filter((p) => {
-        const t = new Date(p.date).getTime();
-        return Number.isFinite(t) && t < sixtyDaysAgo;
-      })
-      .sort((a, b) => (a.date < b.date ? 1 : -1));
-  }, [purchases]);
+  // Split purchases into the last-60d list and everything older (each
+  // newest-first). Older purchases stay selectable below the recent list so
+  // their tubes can still be retro-assigned to sessions. The pure split lives
+  // in lib/birdPurchaseGroups so it's unit-testable.
+  const { recent: recentPurchases, older: olderPurchases } = useMemo(
+    () => splitPurchasesByRecency(purchases),
+    [purchases],
+  );
 
   // Runway timeline math: clamp at 8 weeks for the bar; "empty" marker
   // sits at runway/8 of the bar width.
