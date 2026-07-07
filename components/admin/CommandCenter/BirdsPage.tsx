@@ -47,6 +47,96 @@ function Stars({ n }: { n: number }) {
   );
 }
 
+/**
+ * One tappable purchase row (name/date/tubes · cost · rating · tubes-left).
+ * Shared by the "recent" and "older" purchase lists so the two can't drift —
+ * `index` only drives the top hairline (none on the first row).
+ */
+function PurchaseRow({
+  purchase: p,
+  index,
+  left,
+  onEdit,
+}: {
+  purchase: BirdPurchase;
+  index: number;
+  left: number;
+  onEdit: (p: BirdPurchase) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onEdit(p)}
+      aria-label={`Edit purchase: ${p.name} on ${fmtDate(p.date)}`}
+      style={{
+        display: 'block',
+        width: '100%',
+        textAlign: 'left',
+        background: 'transparent',
+        cursor: 'pointer',
+        padding: '12px 16px',
+        border: 'none',
+        borderTop: index ? '1px solid rgba(255,255,255,0.05)' : 'none',
+        transition: 'background 120ms ease',
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
+          <p style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 13.5, fontWeight: 600, margin: 0 }}>
+            {p.name}
+          </p>
+          <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>
+            {fmtDate(p.date)} · {p.tubes} tube{p.tubes === 1 ? '' : 's'}
+            {typeof p.speed === 'number' && ` · spd ${p.speed}`}
+          </p>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+          <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 13, fontWeight: 600 }}>
+            ${p.totalCost.toFixed(2)}
+          </span>
+          <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 10, color: 'var(--ink-faint)' }}>
+            ${p.costPerTube.toFixed(2)}/t
+          </span>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, gap: 10 }}>
+        {typeof p.qualityRating === 'number' && <Stars n={p.qualityRating} />}
+        <span
+          style={{
+            display: 'inline-flex',
+            padding: '3px 9px',
+            borderRadius: 'var(--radius-pill)',
+            fontSize: 10,
+            fontWeight: 600,
+            fontFamily: 'var(--font-display, "Space Grotesk")',
+            background: 'rgba(255,255,255,0.06)',
+            color: 'var(--text-muted)',
+            border: '1px solid rgba(255,255,255,0.1)',
+          }}
+        >
+          {left} left
+        </span>
+        {p.notes && (
+          <span
+            style={{
+              fontSize: 11,
+              color: 'var(--ink-faint)',
+              flex: 1,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {p.notes}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
+
 export default function BirdsPage({ onBack }: BirdsPageProps) {
   const [purchases, setPurchases] = useState<BirdPurchase[]>([]);
   const [currentStock, setCurrentStock] = useState(0);
@@ -631,82 +721,9 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 4px' }}>No purchases in the last 60 days.</p>
       ) : (
         <div className="glass-card" style={{ padding: '4px 0' }}>
-          {recentPurchases.map((p, i) => {
-            const left = remainingByPurchase[p.id] ?? 0;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => openEditSheet(p)}
-                aria-label={`Edit purchase: ${p.name} on ${fmtDate(p.date)}`}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  textAlign: 'left',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  padding: '12px 16px',
-                  border: 'none',
-                  borderTop: i ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                  transition: 'background 120ms ease',
-                }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-              >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
-                    <p style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 13.5, fontWeight: 600, margin: 0 }}>
-                      {p.name}
-                    </p>
-                    <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>
-                      {fmtDate(p.date)} · {p.tubes} tube{p.tubes === 1 ? '' : 's'}
-                      {typeof p.speed === 'number' && ` · spd ${p.speed}`}
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                    <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 13, fontWeight: 600 }}>
-                      ${p.totalCost.toFixed(2)}
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 10, color: 'var(--ink-faint)' }}>
-                      ${p.costPerTube.toFixed(2)}/t
-                    </span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, gap: 10 }}>
-                  {typeof p.qualityRating === 'number' && <Stars n={p.qualityRating} />}
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      padding: '3px 9px',
-                      borderRadius: 'var(--radius-pill)',
-                      fontSize: 10,
-                      fontWeight: 600,
-                      fontFamily: 'var(--font-display, "Space Grotesk")',
-                      background: 'rgba(255,255,255,0.06)',
-                      color: 'var(--text-muted)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                    }}
-                  >
-                    {left} left
-                  </span>
-                  {p.notes && (
-                    <span
-                      style={{
-                        fontSize: 11,
-                        color: 'var(--ink-faint)',
-                        flex: 1,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {p.notes}
-                    </span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
+          {recentPurchases.map((p, i) => (
+            <PurchaseRow key={p.id} purchase={p} index={i} left={remainingByPurchase[p.id] ?? 0} onEdit={openEditSheet} />
+          ))}
         </div>
       )}
 
@@ -727,82 +744,9 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             Older purchases
           </p>
           <div className="glass-card" style={{ padding: '4px 0' }}>
-            {olderPurchases.map((p, i) => {
-              const left = remainingByPurchase[p.id] ?? 0;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => openEditSheet(p)}
-                  aria-label={`Edit purchase: ${p.name} on ${fmtDate(p.date)}`}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    textAlign: 'left',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    padding: '12px 16px',
-                    border: 'none',
-                    borderTop: i ? '1px solid rgba(255,255,255,0.05)' : 'none',
-                    transition: 'background 120ms ease',
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
-                      <p style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 13.5, fontWeight: 600, margin: 0 }}>
-                        {p.name}
-                      </p>
-                      <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>
-                        {fmtDate(p.date)} · {p.tubes} tube{p.tubes === 1 ? '' : 's'}
-                        {typeof p.speed === 'number' && ` · spd ${p.speed}`}
-                      </p>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                      <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 13, fontWeight: 600 }}>
-                        ${p.totalCost.toFixed(2)}
-                      </span>
-                      <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 10, color: 'var(--ink-faint)' }}>
-                        ${p.costPerTube.toFixed(2)}/t
-                      </span>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, gap: 10 }}>
-                    {typeof p.qualityRating === 'number' && <Stars n={p.qualityRating} />}
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        padding: '3px 9px',
-                        borderRadius: 'var(--radius-pill)',
-                        fontSize: 10,
-                        fontWeight: 600,
-                        fontFamily: 'var(--font-display, "Space Grotesk")',
-                        background: 'rgba(255,255,255,0.06)',
-                        color: 'var(--text-muted)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                      }}
-                    >
-                      {left} left
-                    </span>
-                    {p.notes && (
-                      <span
-                        style={{
-                          fontSize: 11,
-                          color: 'var(--ink-faint)',
-                          flex: 1,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {p.notes}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
+            {olderPurchases.map((p, i) => (
+              <PurchaseRow key={p.id} purchase={p} index={i} left={remainingByPurchase[p.id] ?? 0} onEdit={openEditSheet} />
+            ))}
           </div>
         </>
       )}
