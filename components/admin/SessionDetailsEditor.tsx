@@ -582,7 +582,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
         </div>
 
         {/* ── Error + Update ── */}
-        {error && <p className="text-red-400 text-xs px-1" role="alert">{error}</p>}
+        {error && <p className="field-error px-1" role="alert">{error}</p>}
         <button
           type="submit"
           disabled={saving || !dirty}

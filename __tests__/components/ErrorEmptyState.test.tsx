@@ -11,7 +11,7 @@ describe('ErrorState', () => {
     render(<ErrorState message="Couldn't load" />);
     const el = screen.getByRole('alert');
     expect(el.textContent).toBe("Couldn't load");
-    expect(el.className).toContain('text-red-400');
+    expect(el.className).toContain('field-error');
   });
 });
 
