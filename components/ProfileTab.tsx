@@ -149,7 +149,7 @@ export default function ProfileTab({
     };
   }, [identity]);
 
-  // Cost-to-pay summary for the identity card. Mirrors HomeTab's CostCard calc:
+  // Cost-to-pay summary for the identity card.
   // per-person = (court + bird totals) / active count, shown only when the
   // admin has made the breakdown public (showCostBreakdown). `paid` comes from
   // the viewer's own player record; `prevOwe` is the frozen last-session snapshot.
