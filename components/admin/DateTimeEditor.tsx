@@ -93,13 +93,11 @@ export default function DateTimeEditor({ onBack }: { onBack: () => void }) {
           maxPlayers: s?.maxPlayers ?? 12,
           signupOpen: s?.signupOpen !== false,
           costPerCourt: s?.costPerCourt ?? 0,
-          birdTubesUsed: s?.birdUsage?.tubes ?? 0,
           showCostBreakdown: s?.showCostBreakdown ?? false,
           ...form,
           datetime,
           endDatetime,
           deadline,
-          birdUsage: (s?.birdUsage?.tubes ?? 0) > 0 ? { tubes: s!.birdUsage!.tubes } : null,
         }),
       });
       if (res.ok) {
