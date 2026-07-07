@@ -153,7 +153,7 @@ describe('SkillsRadar — sheet lifecycle (characterization, M1 mitigation)', ()
     // Characterization: clicking a level triggers a PATCH to /api/skills
     // with the new level for the active dimension.
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toContain('/api/skills');
     expect(init.method).toBe('PATCH');
     const body = JSON.parse(init.body as string);
