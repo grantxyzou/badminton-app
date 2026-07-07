@@ -73,7 +73,7 @@ export default function PartnerFrequencyCard() {
           </div>
         </div>
       ) : partners.length === 0 ? (
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>{t('partnersEmpty')}</p>
+        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>{t('partnersEmpty')}</p>
       ) : (
         // Hero the #1 partner — in doubles your most-frequent partner is the
         // meaningful relationship, so lead with "who you play most with" rather
@@ -105,7 +105,7 @@ export default function PartnerFrequencyCard() {
                   {top.name.slice(0, 1).toUpperCase()}
                 </span>
                 <div style={{ minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>{t('partnersMostWith')}</p>
+                  <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{t('partnersMostWith')}</p>
                   <p style={{ margin: 0, fontSize: 19, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
                     {top.name}
                   </p>

@@ -38,7 +38,7 @@ function Stars({ n }: { n: number }) {
         <span
           key={i}
           className="material-icons"
-          style={{ fontSize: 12, color: i <= n ? 'var(--amber)' : 'rgba(255,255,255,0.18)' }}
+          style={{ fontSize: 'var(--fs-sm)', color: i <= n ? 'var(--amber)' : 'rgba(255,255,255,0.18)' }}
         >
           star
         </span>
@@ -87,16 +87,16 @@ function PurchaseRow({
           <p style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 13.5, fontWeight: 600, margin: 0 }}>
             {p.name}
           </p>
-          <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>
+          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: 0 }}>
             {fmtDate(p.date)} · {p.tubes} tube{p.tubes === 1 ? '' : 's'}
             {typeof p.speed === 'number' && ` · spd ${p.speed}`}
           </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-          <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 13, fontWeight: 600 }}>
+          <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 'var(--fs-base)', fontWeight: 600 }}>
             ${p.totalCost.toFixed(2)}
           </span>
-          <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 10, color: 'var(--ink-faint)' }}>
+          <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)' }}>
             ${p.costPerTube.toFixed(2)}/t
           </span>
         </div>
@@ -108,7 +108,7 @@ function PurchaseRow({
             display: 'inline-flex',
             padding: '3px 9px',
             borderRadius: 'var(--radius-pill)',
-            fontSize: 10,
+            fontSize: 'var(--fs-2xs)',
             fontWeight: 600,
             fontFamily: 'var(--font-display, "Space Grotesk")',
             background: 'rgba(255,255,255,0.06)',
@@ -121,7 +121,7 @@ function PurchaseRow({
         {p.notes && (
           <span
             style={{
-              fontSize: 11,
+              fontSize: 'var(--fs-xs)',
               color: 'var(--ink-faint)',
               flex: 1,
               overflow: 'hidden',
@@ -432,7 +432,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         <AdminBackHeader onBack={onBack} title="Birds" />
         <div role="alert" style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
           <p style={{ fontWeight: 600, color: 'var(--text)' }}>Couldn&apos;t load birds</p>
-          <p style={{ fontSize: 13, marginTop: 6 }}>You may be offline. Reconnect, then retry.</p>
+          <p style={{ fontSize: 'var(--fs-base)', marginTop: 6 }}>You may be offline. Reconnect, then retry.</p>
           <button
             type="button"
             className="cc-btn cc-btn-ghost"
@@ -460,7 +460,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           background: 'linear-gradient(160deg, rgba(74,222,128,0.08), rgba(255,255,255,0.02))',
         }}
       >
-        <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0 }}>Runs out in</p>
+        <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>Runs out in</p>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 2 }}>
           <span
             style={{
@@ -498,7 +498,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             </span>
           )}
         </div>
-        <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '6px 0 0' }}>
+        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: '6px 0 0' }}>
           <strong style={{ color: 'var(--text-primary)' }}>{currentStock} tubes</strong> on hand
           {burnPerSession > 0 && (
             <>
@@ -507,20 +507,20 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           )}
         </p>
         {totalAdjustments !== 0 && (
-          <p style={{ fontSize: 11, color: 'var(--ink-faint)', margin: '4px 0 0' }}>
+          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--ink-faint)', margin: '4px 0 0' }}>
             includes {totalAdjustments > 0 ? '+' : '−'}{Math.abs(totalAdjustments)} from a manual recount
           </p>
         )}
         {stockDrift > 0 && (
-          <p role="alert" style={{ fontSize: 11, color: 'var(--amber)', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span className="material-icons" style={{ fontSize: 14 }} aria-hidden="true">warning</span>
+          <p role="alert" style={{ fontSize: 'var(--fs-xs)', color: 'var(--amber)', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span className="material-icons" style={{ fontSize: 'var(--fs-md)' }} aria-hidden="true">warning</span>
             Records show {stockDrift} more tube{stockDrift === 1 ? '' : 's'} used than purchased — run a recount to true up.
           </p>
         )}
         {burnPerSession > 0 && recentSessionCount > 0 && (
           <p
             style={{
-              fontSize: 11,
+              fontSize: 'var(--fs-xs)',
               color: 'var(--ink-faint)',
               margin: '4px 0 0',
               fontFamily: 'var(--font-mono, "JetBrains Mono")',
@@ -588,7 +588,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                     top: -14,
                     left: -22,
                     fontFamily: 'var(--font-mono, "JetBrains Mono")',
-                    fontSize: 10,
+                    fontSize: 'var(--fs-2xs)',
                     color: 'var(--red-soft)',
                     fontWeight: 600,
                     whiteSpace: 'nowrap',
@@ -605,7 +605,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
               justifyContent: 'space-between',
               marginTop: 6,
               fontFamily: 'var(--font-mono, "JetBrains Mono")',
-              fontSize: 11,
+              fontSize: 'var(--fs-xs)',
               color: 'var(--ink-faint)',
             }}
           >
@@ -643,7 +643,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
       <p
         style={{
           fontFamily: 'var(--font-display, "Space Grotesk")',
-          fontSize: 11,
+          fontSize: 'var(--fs-xs)',
           fontWeight: 700,
           letterSpacing: '0.16em',
           textTransform: 'uppercase',
@@ -654,7 +654,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         In stock
       </p>
       {brands.length === 0 && (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 4px' }}>No active inventory.</p>
+        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '0 4px' }}>No active inventory.</p>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {brands.map((b) => {
@@ -663,8 +663,8 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             <div key={b.brand} className="glass-card" style={{ padding: '12px 14px' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                  <p style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 14, fontWeight: 600, margin: 0 }}>{b.brand}</p>
-                  <p style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', gap: 6, alignItems: 'center', margin: 0 }}>
+                  <p style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 'var(--fs-md)', fontWeight: 600, margin: 0 }}>{b.brand}</p>
+                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', display: 'flex', gap: 6, alignItems: 'center', margin: 0 }}>
                     {b.speed !== null && <>spd {b.speed}</>}
                     {b.speed !== null && b.quality !== null && ' · '}
                     {b.quality !== null && <Stars n={b.quality} />}
@@ -673,10 +673,10 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                   <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>
                     {b.remaining}
-                    <span style={{ color: 'var(--ink-faint)', fontSize: 12, fontWeight: 500 }}>/{b.bought}</span>
+                    <span style={{ color: 'var(--ink-faint)', fontSize: 'var(--fs-sm)', fontWeight: 500 }}>/{b.bought}</span>
                   </span>
                   {b.weeksLeft !== null && (
-                    <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 10, color: 'var(--ink-faint)' }}>
+                    <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)' }}>
                       ~{b.weeksLeft}w
                     </span>
                   )}
@@ -701,7 +701,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
       <p
         style={{
           fontFamily: 'var(--font-display, "Space Grotesk")',
-          fontSize: 11,
+          fontSize: 'var(--fs-xs)',
           fontWeight: 700,
           letterSpacing: '0.16em',
           textTransform: 'uppercase',
@@ -713,12 +713,12 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         }}
       >
         Purchase history
-        <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--text-secondary)', fontWeight: 500, fontSize: 11 }}>
+        <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--text-secondary)', fontWeight: 500, fontSize: 'var(--fs-xs)' }}>
           last 60d
         </span>
       </p>
       {recentPurchases.length === 0 ? (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 4px' }}>No purchases in the last 60 days.</p>
+        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '0 4px' }}>No purchases in the last 60 days.</p>
       ) : (
         <div className="glass-card" style={{ padding: '4px 0' }}>
           {recentPurchases.map((p, i) => (
@@ -733,7 +733,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           <p
             style={{
               fontFamily: 'var(--font-display, "Space Grotesk")',
-              fontSize: 11,
+              fontSize: 'var(--fs-xs)',
               fontWeight: 700,
               letterSpacing: '0.16em',
               textTransform: 'uppercase',
@@ -760,7 +760,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         className="max-w-sm mx-auto"
       >
         <BottomSheetHeader className="flex items-center justify-between p-4">
-          <span style={{ fontSize: 16, fontWeight: 600 }}>{editingId ? 'Edit purchase' : 'Log purchase'}</span>
+          <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{editingId ? 'Edit purchase' : 'Log purchase'}</span>
           <button
             type="button"
             onClick={() => setSheetOpen(false)}
@@ -776,7 +776,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
               justifyContent: 'center',
             }}
           >
-            <span className="material-icons" style={{ fontSize: 20 }}>close</span>
+            <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
           </button>
         </BottomSheetHeader>
         <BottomSheetBody className="p-5 pb-8">
@@ -868,7 +868,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             </Field>
 
             {formError && (
-              <p role="alert" style={{ fontSize: 13, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: 0 }}>
                 {formError}
               </p>
             )}
@@ -886,7 +886,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                   className="cc-btn cc-btn-secondary"
                   style={{ alignSelf: 'flex-start' }}
                 >
-                  <span className="material-icons" style={{ fontSize: 16 }}>event</span>
+                  <span className="material-icons" style={{ fontSize: 'var(--fs-lg)' }}>event</span>
                   Assign tubes to sessions
                 </button>
               );
@@ -964,19 +964,19 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         className="max-w-sm mx-auto"
       >
         <BottomSheetHeader className="flex items-center justify-between p-4">
-          <span style={{ fontSize: 16, fontWeight: 600 }}>Reconcile count</span>
+          <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>Reconcile count</span>
           <button
             type="button"
             onClick={() => setReconcileOpen(false)}
             aria-label="Close"
             style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            <span className="material-icons" style={{ fontSize: 20 }}>close</span>
+            <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
           </button>
         </BottomSheetHeader>
         <BottomSheetBody className="p-5 pb-8">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
               The app counts <strong style={{ color: 'var(--text-primary)' }}>{currentStock} tubes</strong> on hand
               (purchased − used). If your physical count differs — broken tubes, gifts, miscounts — enter the real
               number and we&apos;ll log the difference.
@@ -992,7 +992,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
               />
             </Field>
             {typeof reconcileCount === 'number' && reconcileCount !== currentStock && (
-              <p style={{ fontSize: 12, color: 'var(--ink-faint)', margin: 0, fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
+              <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--ink-faint)', margin: 0, fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
                 adjustment: {reconcileCount - currentStock > 0 ? '+' : '−'}{Math.abs(Math.round((reconcileCount - currentStock) * 100) / 100)} tubes
               </p>
             )}
@@ -1006,7 +1006,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
               />
             </Field>
             {reconcileError && (
-              <p role="alert" style={{ fontSize: 13, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: 0 }}>
                 {reconcileError}
               </p>
             )}
@@ -1047,7 +1047,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
 function Field({ label, children, style }: { label: string; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, ...style }}>
-      <label style={{ fontSize: 12, color: 'var(--text-muted)' }}>{label}</label>
+      <label style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{label}</label>
       {children}
     </div>
   );

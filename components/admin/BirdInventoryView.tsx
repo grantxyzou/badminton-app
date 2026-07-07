@@ -232,7 +232,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
         <AdminBackHeader onBack={onBack} title="Bird Inventory" />
         <div role="alert" style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
           <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Couldn&apos;t load bird inventory</p>
-          <p style={{ fontSize: 13, marginTop: 6 }}>You may be offline. Reconnect, then retry.</p>
+          <p style={{ fontSize: 'var(--fs-base)', marginTop: 6 }}>You may be offline. Reconnect, then retry.</p>
           <button type="button" className="btn-primary" style={{ marginTop: 14 }} onClick={() => void loadAll()}>
             Retry
           </button>
@@ -269,7 +269,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
             <span
               className="material-icons"
               aria-hidden="true"
-              style={{ fontSize: 16, color: runwayColor }}
+              style={{ fontSize: 'var(--fs-lg)', color: runwayColor }}
             >
               trending_up
             </span>
@@ -341,7 +341,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                       {' total'}
                     </p>
                   </div>
-                  <span className="material-icons" aria-hidden="true" style={{ fontSize: 20, color: 'var(--text-muted)' }}>
+                  <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-stat)', color: 'var(--text-muted)' }}>
                     {expanded ? 'expand_less' : 'expand_more'}
                   </span>
                 </button>
@@ -448,7 +448,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                                 background: n <= (editForm.qualityRating ?? 0) ? 'var(--inner-card-green-bg)' : 'var(--inner-card-bg)',
                                 border: `1px solid ${n <= (editForm.qualityRating ?? 0) ? 'var(--inner-card-green-border)' : 'var(--inner-card-border)'}`,
                                 color: n <= (editForm.qualityRating ?? 0) ? 'var(--accent)' : 'var(--text-muted)',
-                                fontSize: 13, fontWeight: 600,
+                                fontSize: 'var(--fs-base)', fontWeight: 600,
                               }}
                             >
                               {n}
@@ -524,7 +524,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                         aria-label={`Edit purchase of ${p.name}`}
                         style={{ color: 'var(--text-muted)', minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
-                        <span className="material-icons" style={{ fontSize: 16 }}>edit</span>
+                        <span className="material-icons" style={{ fontSize: 'var(--fs-lg)' }}>edit</span>
                       </button>
                       <button
                         onClick={() => handleDelete(p.id)}
@@ -533,7 +533,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                         aria-label={`Delete purchase of ${p.name}`}
                         style={{ color: 'var(--text-muted)', minHeight: 44, minWidth: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       >
-                        <span className="material-icons" style={{ fontSize: 16 }}>
+                        <span className="material-icons" style={{ fontSize: 'var(--fs-lg)' }}>
                           {deletingId === p.id ? 'hourglass_empty' : 'delete'}
                         </span>
                       </button>
@@ -626,7 +626,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                       background: n <= qualityRating ? 'var(--inner-card-green-bg)' : 'var(--inner-card-bg)',
                       border: `1px solid ${n <= qualityRating ? 'var(--inner-card-green-border)' : 'var(--inner-card-border)'}`,
                       color: n <= qualityRating ? 'var(--accent)' : 'var(--text-muted)',
-                      fontSize: 13, fontWeight: 600,
+                      fontSize: 'var(--fs-base)', fontWeight: 600,
                     }}
                   >
                     {n}

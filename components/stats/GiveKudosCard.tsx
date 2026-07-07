@@ -105,12 +105,12 @@ export default function GiveKudosCard() {
     <div className="glass-card p-5 space-y-3">
       <CardHeader icon="volunteer_activism" title={t('kudos.giveTitle')} subtitle={t('kudos.giveHint')} />
       {!online && (
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>{t('kudos.offline')}</p>
+        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>{t('kudos.offline')}</p>
       )}
       <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
         {coPlayers.map((name) => (
           <li key={name} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{name}</span>
+            <span style={{ fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>{name}</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {KUDOS_TAGS.map((tag) => {
                 const st = status[`${name}:${tag}`];
@@ -124,7 +124,7 @@ export default function GiveKudosCard() {
                     aria-pressed={sent}
                     className="cc-btn cc-btn-ghost"
                     style={{
-                      fontSize: 12, padding: '4px 10px',
+                      fontSize: 'var(--fs-sm)', padding: '4px 10px',
                       opacity: sent ? 0.55 : 1,
                       borderColor: sent ? 'var(--accent)' : undefined,
                       color: sent ? 'var(--accent)' : undefined,
