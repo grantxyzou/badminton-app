@@ -2,19 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { randomBytes } from 'crypto';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
-import { normalizeBirdUsages, totalTubes, validPurchaseDate } from '@/lib/birdUsages';
+import { normalizeBirdUsages, totalTubes, validPurchaseDate, validateTubeCount } from '@/lib/birdUsages';
 import type { Session } from '@/lib/types';
 
 // A single purchase is a bulk buy — allow far more than a session's per-entry
-// cap (100), but still reject a fat-fingered 99999. Whole/half/quarter tubes
-// only, matching the usage grid.
+// cap (100), but still reject a fat-fingered 99999. A purchase must be a
+// positive tube count (0.25 is the smallest grid value), so `min` is 0.25 —
+// unlike usage entries where 0 legitimately means "remove". Grid math lives in
+// the shared `validateTubeCount` so it can't drift from the usage-write path.
 const MAX_PURCHASE_TUBES = 1000;
 function validPurchaseTubes(tubes: number): string | null {
-  if (!Number.isFinite(tubes) || tubes <= 0 || tubes > MAX_PURCHASE_TUBES) {
-    return `Tubes must be between 0 and ${MAX_PURCHASE_TUBES}`;
-  }
-  if (Math.round(tubes * 4) !== tubes * 4) return 'Tubes must be in 0.25 increments';
-  return null;
+  return validateTubeCount(tubes, 0.25, MAX_PURCHASE_TUBES);
 }
 
 export async function GET(req: NextRequest) {
