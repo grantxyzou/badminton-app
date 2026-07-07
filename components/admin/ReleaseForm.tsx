@@ -160,12 +160,12 @@ ${rawNotes}`;
   return (
     <div className="space-y-4">
       {!isEdit && (
-        <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+        <p className="fs-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
           {t('howItWorks')}
         </p>
       )}
       <div>
-        <label htmlFor="release-version" className="block text-xs text-gray-400 mb-1">Version</label>
+        <label htmlFor="release-version" className="block fs-sm text-gray-400 mb-1">Version</label>
         <input
           id="release-version"
           name="version"
@@ -179,7 +179,7 @@ ${rawNotes}`;
       {!isEdit && (
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label htmlFor="release-raw-notes" className="block text-xs text-gray-400">Raw notes</label>
+            <label htmlFor="release-raw-notes" className="block fs-sm text-gray-400">Raw notes</label>
             <button
               type="button"
               onClick={loadFromChangelog}
@@ -222,22 +222,22 @@ ${rawNotes}`;
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label htmlFor="release-title-en" className="block text-xs text-gray-400 mb-1">Title (EN)</label>
+          <label htmlFor="release-title-en" className="block fs-sm text-gray-400 mb-1">Title (EN)</label>
           <input id="release-title-en" name="titleEn" type="text" value={titleEn} onChange={(e) => setTitleEn(e.target.value)} className="input w-full" />
         </div>
         <div>
-          <label htmlFor="release-title-zh" className="block text-xs text-gray-400 mb-1">Title (中文)</label>
+          <label htmlFor="release-title-zh" className="block fs-sm text-gray-400 mb-1">Title (中文)</label>
           <input id="release-title-zh" name="titleZh" type="text" value={titleZh} onChange={(e) => setTitleZh(e.target.value)} className="input w-full" />
         </div>
       </div>
 
       <div>
-        <label htmlFor="release-body-en" className="block text-xs text-gray-400 mb-1">Body (EN)</label>
+        <label htmlFor="release-body-en" className="block fs-sm text-gray-400 mb-1">Body (EN)</label>
         <textarea id="release-body-en" name="bodyEn" value={bodyEn} onChange={(e) => setBodyEn(e.target.value)} className="input w-full min-h-[100px]" />
       </div>
 
       <div>
-        <label htmlFor="release-body-zh" className="block text-xs text-gray-400 mb-1">Body (中文)</label>
+        <label htmlFor="release-body-zh" className="block fs-sm text-gray-400 mb-1">Body (中文)</label>
         <textarea id="release-body-zh" name="bodyZh" value={bodyZh} onChange={(e) => setBodyZh(e.target.value)} className="input w-full min-h-[100px]" />
       </div>
 

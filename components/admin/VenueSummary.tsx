@@ -24,10 +24,10 @@ export default function VenueSummary({ session, onEdit }: Props) {
       style={{ minHeight: 44 }}
     >
       <div className="min-w-0">
-        <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+        <p className="fs-md font-medium truncate" style={{ color: 'var(--text-primary)' }}>
           {session.locationName || 'No venue set'}
         </p>
-        <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>
+        <p className="fs-sm mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>
           {details}
         </p>
       </div>

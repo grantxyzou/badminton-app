@@ -27,7 +27,7 @@ export default function SessionContextBar({ session, onEditDates }: Props) {
     >
       <div className="text-left">
         <p className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>Editing</p>
-        <p className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>
+        <p className="fs-md font-semibold" style={{ color: 'var(--accent)' }}>
           {session?.datetime ? fmtSessionDate(session.datetime) : 'No session'}
         </p>
       </div>
