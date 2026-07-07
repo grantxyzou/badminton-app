@@ -45,7 +45,7 @@ export default function AttendanceSessionStrip({ history, limit = 8 }: Props) {
 
   if (sessions.length === 0) {
     return (
-      <p style={{ margin: 0, fontSize: 12, color: MUTED }}>
+      <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: MUTED }}>
         No sessions in this window yet.
       </p>
     );

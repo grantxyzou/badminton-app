@@ -97,7 +97,7 @@ export default class AdminErrorBoundary extends Component<Props, State> {
           <p style={{ fontWeight: 600, color: 'var(--text)' }}>
             {this.state.isChunkError ? 'Admin needs a connection' : 'Couldn’t load admin'}
           </p>
-          <p style={{ fontSize: 13, marginTop: 6 }}>
+          <p style={{ fontSize: 'var(--fs-base)', marginTop: 6 }}>
             {this.state.isChunkError
               ? 'It’ll reload automatically when you’re back online.'
               : 'Something went wrong loading this view.'}

@@ -18,10 +18,10 @@ import type { ReactNode } from 'react';
  * Replaces e.g.:
  *
  *   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
- *     <span className="material-icons" style={{ fontSize: 22 }}>trending_up</span>
+ *     <span className="material-icons" style={{ fontSize: 'var(--fs-stat-lg)' }}>trending_up</span>
  *     <div>
  *       <h3 className="bpm-h3 m-0">{title}</h3>
- *       <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, marginTop: 2 }}>{sub}</p>
+ *       <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: 0, marginTop: 2 }}>{sub}</p>
  *     </div>
  *   </div>
  *
@@ -60,7 +60,7 @@ export default function CardHeader({
         <span
           className="material-icons"
           aria-hidden="true"
-          style={{ fontSize: 22, color: iconColor, ...(subtitle ? { marginTop: 1 } : null) }}
+          style={{ fontSize: 'var(--fs-stat-lg)', color: iconColor, ...(subtitle ? { marginTop: 1 } : null) }}
         >
           {icon}
         </span>

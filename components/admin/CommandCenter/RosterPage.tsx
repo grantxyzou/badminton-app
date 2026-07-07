@@ -474,7 +474,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
               <span
                 style={{
                   fontFamily: 'var(--font-mono, "JetBrains Mono")',
-                  fontSize: 10,
+                  fontSize: 'var(--fs-2xs)',
                   marginLeft: 2,
                   color: on ? '#86efac' : 'var(--ink-faint)',
                 }}
@@ -489,7 +489,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
       {/* Groups */}
       <div style={{ margin: '12px -16px 0' }}>
         {groups.length === 0 && (
-          <p style={{ padding: '24px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+          <p style={{ padding: '24px 16px', textAlign: 'center', fontSize: 'var(--fs-base)', color: 'var(--text-muted)' }}>
             No matches.
           </p>
         )}
@@ -508,8 +508,8 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                 zIndex: 1,
               }}
             >
-              <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 13, fontWeight: 700 }}>{letter}</span>
-              <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 10, color: 'var(--ink-faint)' }}>{people.length}</span>
+              <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 'var(--fs-base)', fontWeight: 700 }}>{letter}</span>
+              <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)' }}>{people.length}</span>
             </div>
             {people.map((r) => (
               <button
@@ -536,7 +536,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                     <span
                       style={{
                         fontFamily: 'var(--font-display, "Space Grotesk")',
-                        fontSize: 14,
+                        fontSize: 'var(--fs-md)',
                         fontWeight: 600,
                         color: r.status === 'dormant' ? 'var(--text-muted)' : 'var(--text-primary)',
                       }}
@@ -576,7 +576,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                       </span>
                     )}
                     {r.hasAlias && (
-                      <span className="material-icons" style={{ fontSize: 12, color: 'var(--ink-faint)' }} title="E-transfer alias linked">
+                      <span className="material-icons" style={{ fontSize: 'var(--fs-sm)', color: 'var(--ink-faint)' }} title="E-transfer alias linked">
                         article_person
                       </span>
                     )}
@@ -587,7 +587,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                       alignItems: 'center',
                       gap: 8,
                       fontFamily: 'var(--font-mono, "JetBrains Mono")',
-                      fontSize: 10,
+                      fontSize: 'var(--fs-2xs)',
                       color: 'var(--ink-faint)',
                     }}
                   >
@@ -651,7 +651,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
         className="max-w-sm mx-auto"
       >
         <BottomSheetHeader className="flex items-center justify-between p-4">
-          <span style={{ fontSize: 16, fontWeight: 600 }}>{editingId ? 'Edit member' : 'Add member'}</span>
+          <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{editingId ? 'Edit member' : 'Add member'}</span>
           <button
             type="button"
             onClick={() => setSheetOpen(false)}
@@ -667,7 +667,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
               justifyContent: 'center',
             }}
           >
-            <span className="material-icons" style={{ fontSize: 20 }}>close</span>
+            <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
           </button>
         </BottomSheetHeader>
 
@@ -691,7 +691,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                 maxLength={100}
                 placeholder="Name on e-transfers, if different"
               />
-              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: '4px 0 0' }}>
                 Used to match incoming payments when the e-transfer name doesn&apos;t match the in-app name.
               </p>
             </Field>
@@ -732,7 +732,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                   >
                     {resettingPin ? 'Generating…' : 'Generate reset code'}
                   </button>
-                  <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: '4px 0 0' }}>
                     For a player who forgot their PIN. Give them the code — they enter it under
                     Profile → &ldquo;Have a recovery code?&rdquo; to set a new PIN. No signup needed.
                   </p>
@@ -741,7 +741,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
             )}
 
             {formError && (
-              <p role="alert" style={{ fontSize: 13, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: 0 }}>
                 {formError}
               </p>
             )}
@@ -795,7 +795,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <label style={{ fontSize: 12, color: 'var(--text-muted)' }}>{label}</label>
+      <label style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{label}</label>
       {children}
     </div>
   );

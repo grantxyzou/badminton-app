@@ -98,10 +98,10 @@ export default function AttendanceCardLive() {
   if (!activeName) {
     return (
       <div style={{ display: 'grid', gap: 10 }}>
-        <p style={{ margin: 0, fontSize: 13, color: PRIMARY, fontWeight: 600 }}>
+        <p style={{ margin: 0, fontSize: 'var(--fs-base)', color: PRIMARY, fontWeight: 600 }}>
           Your stats
         </p>
-        <p style={{ margin: 0, fontSize: 12, color: MUTED, lineHeight: 1.45 }}>
+        <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: MUTED, lineHeight: 1.45 }}>
           Sign in or create an account to see your personalized stats.
         </p>
       </div>
@@ -111,7 +111,7 @@ export default function AttendanceCardLive() {
   if (loading && !data) return <LoadingStrip weeks={weeks} />;
   if (!data) {
     return (
-      <p style={{ margin: 0, fontSize: 12, color: MUTED }} role="alert">
+      <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: MUTED }} role="alert">
         Couldn’t load that — refresh to try again.
       </p>
     );
@@ -129,16 +129,16 @@ export default function AttendanceCardLive() {
   return (
     <div style={{ display: 'grid', gap: 10 }}>
       <div style={{ display: 'flex', gap: 14, alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-        <p style={{ margin: 0, fontSize: 12, color: MUTED, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+        <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: MUTED, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
           Your recent form
         </p>
         {isPreviewPick && (
-          <span style={{ fontSize: 11, color: MUTED }}>
+          <span style={{ fontSize: 'var(--fs-xs)', color: MUTED }}>
             viewing as <strong style={{ color: PRIMARY }}>{activeName}</strong>{' '}
             <button
               type="button"
               onClick={clearPickedName}
-              style={{ background: 'transparent', border: 'none', color: ACCENT, cursor: 'pointer', padding: 0, fontSize: 11 }}
+              style={{ background: 'transparent', border: 'none', color: ACCENT, cursor: 'pointer', padding: 0, fontSize: 'var(--fs-xs)' }}
             >
               change
             </button>
@@ -147,7 +147,7 @@ export default function AttendanceCardLive() {
       </div>
       <AttendanceSessionStrip history={data.history} limit={RECENT} />
       {recent.length > 0 && (
-        <p style={{ margin: 0, fontSize: 13, color: PRIMARY }}>
+        <p style={{ margin: 0, fontSize: 'var(--fs-base)', color: PRIMARY }}>
           <strong>{recentAttended}</strong> of your last {recent.length}
           {streak >= 2 ? <span style={{ color: MUTED }}> · {streak}-session streak</span> : null}
         </p>

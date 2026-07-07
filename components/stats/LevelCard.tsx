@@ -121,7 +121,7 @@ export default function LevelCard() {
   if (level.level === null) {
     return (
       <Frame>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
+        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: 0 }}>
           {level.explanation[0] ?? t('level.empty')}
         </p>
       </Frame>
@@ -140,10 +140,10 @@ export default function LevelCard() {
           </StatusBadge>
         )}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginLeft: 'auto' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-stat)', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>
             {level.level.toFixed(1)}
           </span>
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('level.ofFive')}</span>
+          <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)' }}>{t('level.ofFive')}</span>
         </div>
       </div>
 
@@ -152,7 +152,7 @@ export default function LevelCard() {
           aria-hidden="true"
           style={{ width: 8, height: 8, borderRadius: 'var(--radius-pill)', background: CONF_COLOR[level.confidence], flexShrink: 0 }}
         />
-        <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
           {t(`level.confidence.${level.confidence}`)}
         </span>
       </div>
@@ -162,12 +162,12 @@ export default function LevelCard() {
       {level.pendingPromotion && (
         <p
           style={{
-            fontSize: 12, lineHeight: 1.45, margin: 0,
+            fontSize: 'var(--fs-sm)', lineHeight: 1.45, margin: 0,
             color: 'var(--accent-amber, #f59e0b)',
             display: 'flex', alignItems: 'center', gap: 6,
           }}
         >
-          <span className="material-icons" aria-hidden="true" style={{ fontSize: 16 }}>trending_up</span>
+          <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-lg)' }}>trending_up</span>
           {t('level.onTrack', { phase: t(`assess.phase.${level.pendingPromotion}`) })}
         </p>
       )}
@@ -187,7 +187,7 @@ export default function LevelCard() {
             {showCompare ? t('level.compare.hide') : t('level.compare.cta')}
           </button>
           {showCompare && (
-            <p style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--text-secondary)', margin: 0 }}>
+            <p style={{ fontSize: 'var(--fs-sm)', lineHeight: 1.5, color: 'var(--text-secondary)', margin: 0 }}>
               {t(`level.compare.${level.blindSpot.direction}`)}
             </p>
           )}
@@ -210,7 +210,7 @@ export default function LevelCard() {
           {showHow && (
             <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
               {level.explanation.map((line, i) => (
-                <li key={i} style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--text-secondary)' }}>{line}</li>
+                <li key={i} style={{ fontSize: 'var(--fs-sm)', lineHeight: 1.45, color: 'var(--text-secondary)' }}>{line}</li>
               ))}
             </ul>
           )}

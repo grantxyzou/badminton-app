@@ -87,7 +87,7 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
           border: '1px solid rgba(239,68,68,0.2)',
         }}
       >
-        <p style={{ fontSize: 12, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: 0 }}>
           Couldn&apos;t load anomalies — try refreshing.
         </p>
       </section>
@@ -145,7 +145,7 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
                   Dismiss
                 </button>
                 {dismissError === anomaly.code && (
-                  <span style={{ fontSize: 10, color: 'var(--color-red, #ef4444)' }}>
+                  <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--color-red)' }}>
                     Failed — retry
                   </span>
                 )}

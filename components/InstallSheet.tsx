@@ -45,7 +45,7 @@ export default function InstallSheet({ open, onClose }: Props) {
           aria-label={t('close')}
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: -8 }}
         >
-          <span className="material-icons" aria-hidden="true" style={{ fontSize: 20, color: 'var(--text-muted)' }}>close</span>
+          <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-stat)', color: 'var(--text-muted)' }}>close</span>
         </button>
       </BottomSheetHeader>
       <BottomSheetBody className="px-5 pb-6" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

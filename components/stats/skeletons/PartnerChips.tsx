@@ -16,10 +16,10 @@ export default function PartnerChips() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 11,
+              fontSize: 'var(--fs-xs)',
               fontWeight: 600,
               letterSpacing: '0.02em',
-              border: '1.5px solid var(--bg-surface, #1a1a1a)',
+              border: '1.5px solid var(--bg-surface)',
               marginLeft: i === 0 ? 0 : -10,
             }}
           >

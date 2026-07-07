@@ -79,7 +79,7 @@ export default function AnnouncementComposer({ draft, setDraft, maxLength = 800 
   const tabStyle = (active: boolean): React.CSSProperties => ({
     padding: '8px 14px',
     minHeight: 36,
-    fontSize: 12,
+    fontSize: 'var(--fs-sm)',
     fontWeight: 600,
     letterSpacing: '0.02em',
     background: active ? 'var(--inner-card-green-bg, rgba(34,197,94,0.15))' : 'transparent',
@@ -142,13 +142,13 @@ export default function AnnouncementComposer({ draft, setDraft, maxLength = 800 
             I
           </button>
           <button type="button" onClick={() => handleFormat('ul')} aria-label="Bulleted list (- item)" title="Bulleted list — prefixes each line with -" style={formatBtnStyle}>
-            <span className="material-icons" style={{ fontSize: 20 }}>format_list_bulleted</span>
+            <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>format_list_bulleted</span>
           </button>
           <button type="button" onClick={() => handleFormat('ol')} aria-label="Numbered list (1. item)" title="Numbered list — prefixes each line with 1. 2. …" style={formatBtnStyle}>
-            <span className="material-icons" style={{ fontSize: 20 }}>format_list_numbered</span>
+            <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>format_list_numbered</span>
           </button>
           <button type="button" onClick={() => handleFormat('br')} aria-label="Paragraph break (blank line)" title="Paragraph break — inserts a blank line" style={formatBtnStyle}>
-            <span className="material-icons" style={{ fontSize: 20 }}>subdirectory_arrow_left</span>
+            <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>subdirectory_arrow_left</span>
           </button>
         </div>
       )}

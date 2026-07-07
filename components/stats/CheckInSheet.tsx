@@ -146,9 +146,9 @@ export default function CheckInSheet({
           {skill && (
             <div style={{ marginTop: 12 }}>
               <div className="cc-progress-track" style={{ height: 4, borderRadius: 'var(--radius-pill)', overflow: 'hidden' }}>
-                <div style={{ width: `${((step + 1) / total) * 100}%`, height: '100%', background: 'var(--accent)', transition: 'width 180ms var(--ease-out-quart, ease-out)' }} />
+                <div style={{ width: `${((step + 1) / total) * 100}%`, height: '100%', background: 'var(--accent)', transition: 'width 180ms var(--ease-out-quart)' }} />
               </div>
-              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '6px 0 0' }}>{t('assess.step', { n: step + 1, total })}</p>
+              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: '6px 0 0' }}>{t('assess.step', { n: step + 1, total })}</p>
             </div>
           )}
         </BottomSheetHeader>
@@ -159,7 +159,7 @@ export default function CheckInSheet({
             <div className="space-y-4">
               {mirror && mirror.played > 0 ? (
                 <div className="p-4 rounded-xl" style={{ background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)' }}>
-                  <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('assess.mirrorTitle')}</p>
+                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('assess.mirrorTitle')}</p>
                   <p style={{ fontSize: 15, color: 'var(--text-primary)', margin: '6px 0 0', lineHeight: 1.4 }}>
                     {t('assess.mirrorRecord', { won: mirror.won, played: mirror.played })}
                     {mirror.topPartner ? ` ${t('assess.mirrorPartner', { name: mirror.topPartner })}` : ''}
@@ -168,7 +168,7 @@ export default function CheckInSheet({
               ) : (
                 <EmptyState>{t('assess.noGames')}</EmptyState>
               )}
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>{t('assess.ratePrompt')}</p>
+              <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>{t('assess.ratePrompt')}</p>
               <button type="button" onClick={() => setStep(0)} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
                 {t('assess.start')}
               </button>
@@ -179,7 +179,7 @@ export default function CheckInSheet({
           {skill && (
             <div className="space-y-3">
               <div>
-                <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   {t(`assess.dim.${skill.dimension}`)}
                 </p>
                 <h3 className="bpm-h3 m-0" style={{ marginTop: 2 }}>{skill.label}</h3>
@@ -202,10 +202,10 @@ export default function CheckInSheet({
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: isActive ? 'var(--accent)' : 'var(--text-muted)' }}>{level}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-base)', fontWeight: 700, color: isActive ? 'var(--accent)' : 'var(--text-muted)' }}>{level}</span>
                       {isActive && <span className="material-icons" aria-hidden="true" style={{ fontSize: 15, color: 'var(--accent)' }}>check_circle</span>}
                     </div>
-                    <p style={{ fontSize: 13, lineHeight: 1.45, color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)', margin: 0 }}>{anchor}</p>
+                    <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.45, color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)', margin: 0 }}>{anchor}</p>
                   </button>
                 );
               })}

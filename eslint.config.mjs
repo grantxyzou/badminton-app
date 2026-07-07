@@ -16,6 +16,27 @@ const DESIGN_TOKEN_SELECTORS = [
   },
 ];
 
+// Extended guardrail (design-audit P0). These cover the two largest UNGUARDED
+// drift categories from the audit: hand-typed numeric `fontSize` and bare
+// `rgba()` literals. Kept SEPARATE from DESIGN_TOKEN_SELECTORS and wired only
+// into the app-wide `warn` rule — NOT the per-area `error` overrides — because
+// there is still a backlog (odd sizes like 15/18/19 with no scale token, and
+// legitimate rgba in a few spots). Area sweeps tokenize these, after which the
+// area can graduate to `error` by switching to [...DESIGN_TOKEN_SELECTORS,
+// ...EXTRA_TOKEN_SELECTORS] in its override.
+const EXTRA_TOKEN_SELECTORS = [
+  {
+    selector: "Property[key.name='fontSize'] > Literal[raw=/^[0-9]/]",
+    message:
+      'Raw font-size — use the type scale token (var(--fs-2xs|xs|sm|base|md|lg|stat|stat-lg)) or a .fs-* utility class instead of a hand-typed pixel number.',
+  },
+  {
+    selector: 'Literal[value=/rgba\\(\\s*\\d/]',
+    message:
+      'Bare rgba() literal — use a design token (var(--glass-border), --divider, --text-*, --sev-*, etc.) so the value is theme-aware.',
+  },
+];
+
 /** @type {import('eslint').Linter.Config[]} */
 const config = [
   {
@@ -83,7 +104,7 @@ const config = [
     // flagged — the hex there is inside the var() string, not a bare literal.
     files: ['app/**/*.{ts,tsx}', 'components/**/*.{ts,tsx}', 'lib/**/*.{ts,tsx}'],
     rules: {
-      'no-restricted-syntax': ['warn', ...DESIGN_TOKEN_SELECTORS],
+      'no-restricted-syntax': ['warn', ...DESIGN_TOKEN_SELECTORS, ...EXTRA_TOKEN_SELECTORS],
     },
   },
   {

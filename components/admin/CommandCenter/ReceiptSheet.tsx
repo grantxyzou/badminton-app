@@ -126,7 +126,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
             justifyContent: 'center',
           }}
         >
-          <span className="material-icons" style={{ fontSize: 20 }}>close</span>
+          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
         </button>
       </BottomSheetHeader>
 
@@ -136,7 +136,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
             <p
               role="alert"
               style={{
-                color: 'var(--color-red, #ef4444)',
+                color: 'var(--color-red)',
                 fontSize: 'var(--fs-base)',
                 lineHeight: 1.5,
                 margin: 0,
@@ -222,7 +222,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
                         alignItems: 'center',
                         justifyContent: 'center',
                         color: 'var(--text-muted)',
-                        fontSize: 12,
+                        fontSize: 'var(--fs-sm)',
                       }}
                     >
                       Rendering preview…
@@ -236,7 +236,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
                 <pre
                   style={{
                     fontFamily: 'var(--font-mono), ui-monospace, monospace',
-                    fontSize: 12,
+                    fontSize: 'var(--fs-sm)',
                     lineHeight: 1.55,
                     whiteSpace: 'pre-wrap',
                     margin: 0,
@@ -252,7 +252,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
               </div>
 
               {actionError && (
-                <p role="alert" style={{ fontSize: 12, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+                <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: 0 }}>
                   {actionError}
                 </p>
               )}

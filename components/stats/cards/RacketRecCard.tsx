@@ -32,7 +32,7 @@ export default function RacketRecCard({ name }: { name: string }) {
 
   return (
     <div className="glass-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 4, minHeight: 112 }}>
-      <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>{t('weRecommend')}</p>
+      <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: 0 }}>{t('weRecommend')}</p>
       {loadError ? (
         <ErrorState message={t('recError')} />
       ) : !loaded ? (

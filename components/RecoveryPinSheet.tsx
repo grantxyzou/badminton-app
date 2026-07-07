@@ -109,20 +109,20 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={title} maxHeight="75vh" className="max-w-lg mx-auto">
       <BottomSheetHeader className="flex items-center justify-between p-4">
-        <span style={{ fontSize: 16, fontWeight: 600 }}>{title}</span>
+        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{title}</span>
         <button
           type="button"
           onClick={onClose}
           aria-label={tRecovery('close')}
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <span className="material-icons" style={{ fontSize: 20 }}>close</span>
+          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
         </button>
       </BottomSheetHeader>
       <BottomSheetBody className="p-5 pb-8">
         {firstSetBlocked ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <p role="alert" style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+            <p role="alert" style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
               {t('pinNeedsSignIn')}
             </p>
             <button type="button" className="cc-btn cc-btn-secondary cc-btn-lg" onClick={onClose}>
@@ -133,7 +133,7 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {hasPin && (
             <div>
-              <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>{tPin('currentLabel')}</p>
+              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 4 }}>{tPin('currentLabel')}</p>
               <PinInput
                 value={currentPin}
                 onChange={(v) => { setCurrentPin(v); setPinError(null); }}
@@ -145,7 +145,7 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
             </div>
           )}
           <div>
-            <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>{tPin('newLabel')}</p>
+            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 4 }}>{tPin('newLabel')}</p>
             <PinInput
               value={newPin}
               onChange={(v) => { setNewPin(v); setPinError(null); }}
@@ -155,7 +155,7 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
             />
           </div>
           <div>
-            <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>{tPin('confirmLabel')}</p>
+            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 4 }}>{tPin('confirmLabel')}</p>
             <PinInput
               value={confirmPin}
               onChange={(v) => { setConfirmPin(v); setPinError(null); }}
@@ -164,37 +164,37 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
             />
           </div>
           {pinError === 'too_common' && (
-            <p role="alert" style={{ fontSize: 12, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+            <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: 0 }}>
               {t('pinTooCommon')}
             </p>
           )}
           {pinError === 'invalid' && (
-            <p role="alert" style={{ fontSize: 12, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+            <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: 0 }}>
               {t('pinInvalid')}
             </p>
           )}
           {pinError === 'wrong_current' && (
-            <p role="alert" style={{ fontSize: 12, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+            <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: 0 }}>
               {t('pinWrongCurrent')}
             </p>
           )}
           {pinError === 'rate_limited' && (
-            <p role="alert" style={{ fontSize: 12, color: 'var(--color-amber, #f59e0b)', margin: 0 }}>
+            <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-amber)', margin: 0 }}>
               {t('pinRateLimited')}
             </p>
           )}
           {pinError === 'failed' && (
-            <p role="alert" style={{ fontSize: 12, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+            <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: 0 }}>
               {t('pinUpdateFailed')}
             </p>
           )}
           {pinError === 'needs_signin' && (
-            <p role="alert" style={{ fontSize: 12, color: 'var(--color-amber, #f59e0b)', margin: 0 }}>
+            <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-amber)', margin: 0 }}>
               {t('pinNeedsSignIn')}
             </p>
           )}
           {newPin && confirmPin && newPin !== confirmPin && (
-            <p role="alert" style={{ fontSize: 12, color: 'var(--color-red, #ef4444)', margin: 0 }}>
+            <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: 0 }}>
               {tPin('mismatch')}
             </p>
           )}

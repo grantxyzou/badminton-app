@@ -176,7 +176,7 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
                 <span
                   className="material-icons"
                   aria-hidden="true"
-                  style={{ fontSize: 20, color: 'var(--text-secondary)' }}
+                  style={{ fontSize: 'var(--fs-stat)', color: 'var(--text-secondary)' }}
                 >
                   {row.icon}
                 </span>

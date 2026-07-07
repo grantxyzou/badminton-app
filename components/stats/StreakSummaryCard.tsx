@@ -145,18 +145,18 @@ export default function StreakSummaryCard() {
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}
           >
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 700, color: onPersonalBest ? 'white' : ACCENT, lineHeight: 1 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-stat-lg)', fontWeight: 700, color: onPersonalBest ? 'white' : ACCENT, lineHeight: 1 }}>
               {streak}
             </span>
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ margin: 0, fontSize: 11, color: MUTED, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            <p style={{ margin: 0, fontSize: 'var(--fs-xs)', color: MUTED, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
               {onPersonalBest ? `${name} — Personal Best` : `${name}'s Streak`}
             </p>
-            <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: PRIMARY, lineHeight: 1.25, marginTop: 2 }}>
+            <p style={{ margin: 0, fontSize: 'var(--fs-lg)', fontWeight: 600, color: PRIMARY, lineHeight: 1.25, marginTop: 2 }}>
               {streak === 1 ? "You're on a 1-week streak" : `You're on a ${streak}-week streak`}
             </p>
-            <p style={{ margin: 0, fontSize: 12, color: MUTED, marginTop: 2 }}>
+            <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: MUTED, marginTop: 2 }}>
               {onPersonalBest
                 ? `Tied or beating your longest run of ${longestStreak}.`
                 : `Longest run: ${longestStreak} week${longestStreak === 1 ? '' : 's'}. Keep showing up.`}
@@ -174,7 +174,7 @@ export default function StreakSummaryCard() {
             <div aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div className="animate-pulse" style={{ height: 12, borderRadius: 'var(--radius-xs)', background: 'var(--inner-card-bg)', width: '90%' }} />
               <div className="animate-pulse" style={{ height: 12, borderRadius: 'var(--radius-xs)', background: 'var(--inner-card-bg)', width: '70%' }} />
-              <p style={{ margin: 0, fontSize: 11, color: MUTED }}>Reading the dots…</p>
+              <p style={{ margin: 0, fontSize: 'var(--fs-xs)', color: MUTED }}>Reading the dots…</p>
             </div>
           ) : hasInsight ? (
             <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -182,7 +182,7 @@ export default function StreakSummaryCard() {
               {insight?.focus && <InsightSection label="This week · Focus" body={insight.focus} accent />}
             </div>
           ) : (
-            <p role="alert" style={{ margin: 0, fontSize: 12, color: MUTED }}>
+            <p role="alert" style={{ margin: 0, fontSize: 'var(--fs-sm)', color: MUTED }}>
               Couldn’t load your read — refresh to retry.
             </p>
           )}
@@ -195,7 +195,7 @@ export default function StreakSummaryCard() {
 function InsightSection({ label, body, accent }: { label: string; body: string; accent?: boolean }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: accent ? ACCENT : MUTED }}>
+      <p style={{ margin: 0, fontSize: 'var(--fs-2xs)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: accent ? ACCENT : MUTED }}>
         {label}
       </p>
       <p style={{ margin: 0, fontSize: 'var(--fs-md)', lineHeight: 1.5, color: PRIMARY }}>{body}</p>

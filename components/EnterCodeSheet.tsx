@@ -72,14 +72,14 @@ export default function EnterCodeSheet({ open, onClose, sessionId, onRecovered }
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={t('codePathTitle')} className="max-w-lg mx-auto">
       <BottomSheetHeader className="flex items-center justify-between p-4">
-        <span style={{ fontSize: 16, fontWeight: 600 }}>{t('codePathTitle')}</span>
+        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('codePathTitle')}</span>
         <button
           type="button"
           onClick={onClose}
           aria-label={t('close')}
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <span className="material-icons" style={{ fontSize: 20 }}>close</span>
+          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
         </button>
       </BottomSheetHeader>
       <BottomSheetBody className="p-5 pb-8">
@@ -89,7 +89,7 @@ export default function EnterCodeSheet({ open, onClose, sessionId, onRecovered }
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+            <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: 0 }}>
               {t('codePathHelp')}
             </p>
             <input
@@ -125,22 +125,22 @@ export default function EnterCodeSheet({ open, onClose, sessionId, onRecovered }
               {t('submitCode')}
             </button>
             {error === 'invalid' && (
-              <p role="alert" style={{ color: 'var(--color-red, #ef4444)', fontSize: 12 }}>
+              <p role="alert" style={{ color: 'var(--color-red)', fontSize: 'var(--fs-sm)' }}>
                 {t('errorInvalid')}
               </p>
             )}
             {error === 'rate_limited' && (
-              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>
+              <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)' }}>
                 {t('errorRateLimited')}
               </p>
             )}
             {error === 'admin_logged_in' && (
-              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>
+              <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)' }}>
                 {t('errorAdminLoggedIn')}
               </p>
             )}
             {error === 'server' && (
-              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>
+              <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)' }}>
                 {t('errorNetwork')}
               </p>
             )}

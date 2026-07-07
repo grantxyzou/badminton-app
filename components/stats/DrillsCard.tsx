@@ -103,13 +103,13 @@ export default function DrillsCard() {
         {state.drills.map((d) => (
           <li key={d.id} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{d.title}</span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)' }}>
+              <span style={{ fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>{d.title}</span>
+              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)' }}>
                 {t('drills.minutes', { n: d.minutes })} · {t(`drills.setting.${d.setting}`)}
               </span>
             </div>
-            <span style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--text-secondary)' }}>{d.description}</span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>{d.reason}</span>
+            <span style={{ fontSize: 'var(--fs-sm)', lineHeight: 1.45, color: 'var(--text-secondary)' }}>{d.description}</span>
+            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontStyle: 'italic' }}>{d.reason}</span>
           </li>
         ))}
       </ul>

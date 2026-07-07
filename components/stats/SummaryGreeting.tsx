@@ -23,13 +23,13 @@ export default function SummaryGreeting() {
       style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}
       aria-label="Your AI summary"
     >
-      <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: 'var(--accent, #22c55e)', flexShrink: 0 }}>
+      <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-stat-lg)', color: 'var(--accent, #22c55e)', flexShrink: 0 }}>
         auto_fix_high
       </span>
       <p style={{ margin: 0, fontSize: 15, lineHeight: 1.45, color: 'var(--text-primary)', flex: 1, minWidth: 0 }}>{greeting}</p>
       <span
         style={{
-          fontSize: 10,
+          fontSize: 'var(--fs-2xs)',
           padding: '3px 8px',
           borderRadius: 'var(--radius-pill)',
           whiteSpace: 'nowrap',

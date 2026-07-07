@@ -347,6 +347,36 @@
   --sev-code-text: #15803d;
 }
 
+/* ── Compatibility aliases (design-audit P0) ──
+   These custom properties were referenced via var() across the app
+   (e.g. `var(--color-red, #ef4444)`) but never defined, so they always
+   resolved to a hardcoded, NON-theme-aware fallback. Defining them here
+   (dark values == the previous fallbacks, so dark mode is a visual no-op)
+   makes those call sites theme-aware and pulls them into the token system.
+   Prefer the semantic tokens above in NEW code; these exist so existing
+   call sites stop being frozen literals. */
+:root {
+  --color-red: #ef4444;
+  --color-amber: #f59e0b;
+  --text: var(--text-primary);
+  --border: rgba(255, 255, 255, 0.12);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --sev-warn: #f59e0b;
+  --bg-surface: #1a1a1a;
+  --bg-elevated: #1a1a1a;
+  /* easeOutQuart — was silently falling back to plain `ease-out`. */
+  --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+[data-theme="light"] {
+  --color-red: #dc2626;
+  --color-amber: #b45309;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-subtle: rgba(0, 0, 0, 0.05);
+  --sev-warn: #b45309;
+  --bg-surface: #ffffff;
+  --bg-elevated: #ffffff;
+}
+
 /* ══════════════════════════════════════════════════════════
    Base resets
    ══════════════════════════════════════════════════════════ */
@@ -386,7 +416,15 @@ body {
   --font-sans:
     var(--ff-ibm-plex, 'IBM Plex Sans'),
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  /* --font-mono is set in .bpm-mono below and via --ff-jetbrains. */
+  /* --font-mono (JetBrains Mono, the "data" face) — resolves through the
+     next/font variable --ff-jetbrains (app/layout.tsx). Was previously
+     UNDEFINED: ~67 `var(--font-mono)` call sites (47 with no fallback) were
+     silently inheriting the sans body font, so tabular/data numbers (levels,
+     streaks, PINs, money, timestamps) lost their monospace face. Defining it
+     here — same phantom-token fix as the aliases above — repairs all sites. */
+  --font-mono:
+    var(--ff-jetbrains, 'JetBrains Mono'),
+    ui-monospace, 'SF Mono', Menlo, monospace;
 
   /* Corner radii ladder — rectangular surfaces capped at 16px per design
      bundle v3. Use these tokens in inline styles (`borderRadius:
@@ -412,6 +450,11 @@ body {
   --fs-base: 13px;
   --fs-md: 14px;
   --fs-lg: 16px;
+  /* Stats-tab headline data numbers (Level, Overall, streak count, partner
+     counts) — a deliberate larger mono scale with no Home equivalent. Named
+     tokens so those hand-typed 20/22px values stop being magic numbers. */
+  --fs-stat: 20px;
+  --fs-stat-lg: 22px;
   --lh-tight: 1.25;
   --lh-snug: 1.35;
   --lh-normal: 1.5;
@@ -480,6 +523,17 @@ h1, h2, h3, h4 {
 .fs-base { font-size: var(--fs-base); line-height: var(--lh-normal); }
 .fs-md  { font-size: var(--fs-md);  line-height: var(--lh-tight); }
 .fs-lg  { font-size: var(--fs-lg);  line-height: var(--lh-tight); }
+.fs-stat    { font-size: var(--fs-stat);    line-height: 1; }
+.fs-stat-lg { font-size: var(--fs-stat-lg); line-height: 1; }
+
+/* Sanctioned inline field-error text (DESIGN.md §7): the red, xs, role="alert"
+   line rendered below an input. One class so the pattern is deduped and
+   theme-aware (was hand-coded as `text-red-400 text-xs` across ~30 sites). */
+.field-error {
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+  color: var(--sev-crit-text);
+}
 
 /* ── TopBar / PageHeader (sticky scroll-condensed) ──
    Per `TopBar Spec.html` design handoff (2026-05-06). At-rest is

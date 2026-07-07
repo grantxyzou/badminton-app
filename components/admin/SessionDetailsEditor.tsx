@@ -55,7 +55,7 @@ function TubeStepper({ value, onChange }: { value: number; onChange: (next: numb
           cursor: canDec ? 'pointer' : 'not-allowed',
         }}
       >
-        <span className="material-icons" aria-hidden="true" style={{ fontSize: 20 }}>remove</span>
+        <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-stat)' }}>remove</span>
       </button>
       <span
         className="text-base font-semibold tabular-nums"
@@ -71,7 +71,7 @@ function TubeStepper({ value, onChange }: { value: number; onChange: (next: numb
         className="flex items-center justify-center"
         style={{ ...btn, color: 'var(--text-primary)', cursor: 'pointer' }}
       >
-        <span className="material-icons" aria-hidden="true" style={{ fontSize: 20 }}>add</span>
+        <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-stat)' }}>add</span>
       </button>
     </div>
   );
@@ -449,7 +449,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
                             style={{
                               right: 10,
                               transform: 'translateY(-50%)',
-                              fontSize: 20,
+                              fontSize: 'var(--fs-stat)',
                               color: 'var(--text-muted)',
                             }}
                           >
@@ -506,7 +506,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
                             width: 32,
                           }}
                         >
-                          <span className="material-icons" aria-hidden="true" style={{ fontSize: 20 }}>delete_outline</span>
+                          <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-stat)' }}>delete_outline</span>
                         </button>
                       </div>
                         );

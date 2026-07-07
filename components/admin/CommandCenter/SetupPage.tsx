@@ -346,7 +346,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
             <input type="time" value={deadlineTime} onChange={(e) => setDeadlineTime(e.target.value)} style={{ flex: 1 }} />
           </div>
           {deadlineOffsetHours !== null && deadlineOffsetHours > 0 && (
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
+            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: '4px 0 0', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
               {Math.round(deadlineOffsetHours)}h before session
             </p>
           )}
@@ -372,8 +372,8 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 13, fontWeight: 600 }}>Sign-ups open</span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Players can join now</span>
+            <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 'var(--fs-base)', fontWeight: 600 }}>Sign-ups open</span>
+            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>Players can join now</span>
           </div>
           <Toggle on={signupOpen} onChange={setSignupOpen} />
         </div>
@@ -392,14 +392,14 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 11, color: 'var(--ink-faint)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Per player</span>
-          <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 10, color: 'var(--ink-faint)' }}>auto-calc</span>
+          <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 'var(--fs-xs)', color: 'var(--ink-faint)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Per player</span>
+          <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)' }}>auto-calc</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
           <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 48, fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1, color: 'var(--accent)' }}>
             ${perPlayer}
           </span>
-          <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 11, color: 'var(--ink-faint)' }}>
+          <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 'var(--fs-xs)', color: 'var(--ink-faint)' }}>
             ${totalCost.toFixed(2)} ÷ {Math.max(1, activePlayerCount)}
           </span>
         </div>
@@ -410,7 +410,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 12.5, color: 'var(--text-secondary)' }}>{courts} court{courts === 1 ? '' : 's'} × cost</span>
-            <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 12 }}>${courtCost.toFixed(2)}</span>
+            <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 'var(--fs-sm)' }}>${courtCost.toFixed(2)}</span>
           </div>
           <input
             type="number"
@@ -419,18 +419,18 @@ export default function SetupPage({ onBack }: SetupPageProps) {
             value={costPerCourt ?? ''}
             onChange={(e) => setCostPerCourt(e.target.value === '' ? null : Math.max(0, Math.min(500, Number(e.target.value))))}
             placeholder="$ per court"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 'var(--radius-sm)', padding: '8px 10px', fontSize: 13 }}
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 'var(--radius-sm)', padding: '8px 10px', fontSize: 'var(--fs-base)' }}
           />
           {recentCosts.length > 0 && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 10, color: 'var(--ink-faint)' }}>Recent:</span>
+              <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)' }}>Recent:</span>
               {recentCosts.map((c) => (
                 <button
                   key={c}
                   type="button"
                   onClick={() => setCostPerCourt(c)}
                   style={{
-                    fontSize: 11,
+                    fontSize: 'var(--fs-xs)',
                     padding: '2px 8px',
                     borderRadius: 'var(--radius-pill)',
                     background: costPerCourt === c ? 'rgba(74,222,128,0.13)' : 'rgba(255,255,255,0.04)',
@@ -468,7 +468,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 0' }}>
-          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Show cost on Home announcement</span>
+          <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>Show cost on Home announcement</span>
           <Toggle on={showCostBreakdown} onChange={setShowCostBreakdown} />
         </div>
       </div>
@@ -495,7 +495,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
               {copied ? 'Copied ✓' : 'Copy'}
             </button>
             <button type="button" onClick={shareImage} className="cc-btn cc-btn-primary" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <span className="material-icons" style={{ fontSize: 16 }}>image</span>
+              <span className="material-icons" style={{ fontSize: 'var(--fs-lg)' }}>image</span>
               Share image
             </button>
           </div>
@@ -505,12 +505,12 @@ export default function SetupPage({ onBack }: SetupPageProps) {
 
       {/* Save bar */}
       {loadError && (
-        <p role="alert" style={{ fontSize: 13, color: 'var(--color-red, #ef4444)', margin: '6px 4px 0' }}>
+        <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '6px 4px 0' }}>
           Couldn&apos;t load the current session — saving is disabled to avoid overwriting it. Refresh to retry.
         </p>
       )}
       {saveError && (
-        <p role="alert" style={{ fontSize: 13, color: 'var(--color-red, #ef4444)', margin: '6px 4px 0' }}>
+        <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '6px 4px 0' }}>
           {saveError}
         </p>
       )}
@@ -562,7 +562,7 @@ function SecLabel({ children, right }: { children: React.ReactNode; right?: stri
     <p
       style={{
         fontFamily: 'var(--font-display, "Space Grotesk")',
-        fontSize: 11,
+        fontSize: 'var(--fs-xs)',
         fontWeight: 700,
         letterSpacing: '0.16em',
         textTransform: 'uppercase',
@@ -576,7 +576,7 @@ function SecLabel({ children, right }: { children: React.ReactNode; right?: stri
     >
       <span>{children}</span>
       {right && (
-        <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', fontWeight: 500, fontSize: 11 }}>
+        <span style={{ textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', fontWeight: 500, fontSize: 'var(--fs-xs)' }}>
           {right}
         </span>
       )}
@@ -587,7 +587,7 @@ function SecLabel({ children, right }: { children: React.ReactNode; right?: stri
 function Field({ label, children, style }: { label: string; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, ...style }}>
-      <label style={{ fontSize: 10, color: 'var(--ink-faint)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</label>
+      <label style={{ fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</label>
       {children}
     </div>
   );
@@ -670,9 +670,9 @@ function Stepper({
           opacity: decDisabled || value <= 0 ? 0.4 : 1,
         }}
       >
-        <span className="material-icons" style={{ fontSize: 14 }}>remove</span>
+        <span className="material-icons" style={{ fontSize: 'var(--fs-md)' }}>remove</span>
       </button>
-      <span style={{ minWidth: 36, textAlign: 'center', fontFamily: 'var(--font-display, "Space Grotesk")', fontWeight: 600, fontSize: 12 }}>
+      <span style={{ minWidth: 36, textAlign: 'center', fontFamily: 'var(--font-display, "Space Grotesk")', fontWeight: 600, fontSize: 'var(--fs-sm)' }}>
         {value}
       </span>
       <button
@@ -691,7 +691,7 @@ function Stepper({
           opacity: incDisabled ? 0.4 : 1,
         }}
       >
-        <span className="material-icons" style={{ fontSize: 14 }}>add</span>
+        <span className="material-icons" style={{ fontSize: 'var(--fs-md)' }}>add</span>
       </button>
     </div>
   );

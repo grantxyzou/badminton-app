@@ -242,7 +242,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {value ? formatDisplay(value) : placeholder}
         </span>
-        <span className="material-icons" style={{ fontSize: 14, flexShrink: 0, color: 'var(--text-muted)' }}>
+        <span className="material-icons" style={{ fontSize: 'var(--fs-md)', flexShrink: 0, color: 'var(--text-muted)' }}>
           calendar_today
         </span>
       </button>

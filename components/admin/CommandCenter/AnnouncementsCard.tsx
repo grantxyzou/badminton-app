@@ -160,7 +160,7 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
         <p
           className="text-xs text-gray-400 mt-0.5"
           role={loadError ? 'alert' : undefined}
-          style={loadError ? { color: 'var(--color-red, #ef4444)' } : undefined}
+          style={loadError ? { color: 'var(--color-red)' } : undefined}
         >
           {loadError
             ? "Couldn't load — refresh to retry"

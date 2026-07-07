@@ -30,7 +30,7 @@ export default function StatsSignedOut({ onSignIn }: { onSignIn?: () => void }) 
         <p style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
           {t('assess.signedOutTitle')}
         </p>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, maxWidth: 280, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: 0, maxWidth: 280, lineHeight: 1.5 }}>
           {t('assess.signedOutBody')}
         </p>
         {onSignIn && (

@@ -52,7 +52,7 @@ export default function InstallBanner() {
         <span
           aria-hidden="true"
           className="material-icons"
-          style={{ fontSize: 22, color: 'var(--accent)', flex: '0 0 auto' }}
+          style={{ fontSize: 'var(--fs-stat-lg)', color: 'var(--accent)', flex: '0 0 auto' }}
         >
           install_mobile
         </span>
@@ -68,7 +68,7 @@ export default function InstallBanner() {
               padding: 0,
               background: 'none',
               border: 'none',
-              fontSize: 12,
+              fontSize: 'var(--fs-sm)',
               color: 'var(--accent)',
               fontWeight: 600,
               cursor: 'pointer',

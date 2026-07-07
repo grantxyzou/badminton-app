@@ -91,7 +91,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
 
   const showPaidUp = isHome && owesNothing;
   const title = isHome ? tBal('title') : t('title');
-  const titleColor = showPaidUp ? 'var(--accent)' : 'var(--sev-warn, #f59e0b)';
+  const titleColor = showPaidUp ? 'var(--accent)' : 'var(--sev-warn)';
   const lineItems = data?.sessions ?? [];
 
   return (
@@ -119,7 +119,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
                   key={s.sessionId}
                   style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}
                 >
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                     {format.dateTime(new Date(s.date), DAY_SHORT)}
                   </span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
@@ -149,7 +149,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
             </div>
 
             {etransferEmail && (
-              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>
+              <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                 {tPay('etransfer', { email: etransferEmail })}
               </p>
             )}

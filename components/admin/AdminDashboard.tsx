@@ -383,7 +383,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                     onClick={pm.handleExportCSV}
                     className="text-xs font-normal hover:text-green-300 transition-colors flex items-center gap-1"
                   >
-                    <span className="material-icons" style={{ fontSize: 13 }}>download</span>
+                    <span className="material-icons" style={{ fontSize: 'var(--fs-base)' }}>download</span>
                     Export CSV
                   </button>
                   <div className="relative">
@@ -515,7 +515,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                     className="text-xs text-gray-500 hover:text-red-400 transition-colors p-1 flex items-center gap-1"
                     title={`Remove ${player.name}`}
                   >
-                    <span className="material-icons" style={{ fontSize: 16 }}>person_remove</span>
+                    <span className="material-icons" style={{ fontSize: 'var(--fs-lg)' }}>person_remove</span>
                     <span className="hidden sm:inline">Remove</span>
                   </button>
                 </div>
@@ -576,7 +576,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                     className="text-xs text-amber-400 hover:text-amber-300 transition-colors p-1 flex items-center gap-1"
                     title={`Restore ${player.name}`}
                   >
-                    <span className="material-icons" style={{ fontSize: 16 }}>restore</span>
+                    <span className="material-icons" style={{ fontSize: 'var(--fs-lg)' }}>restore</span>
                     <span className="hidden sm:inline">Restore</span>
                   </button>
                   {pm.confirmingPurgeId === player.id ? (
@@ -591,7 +591,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                       className="text-xs text-gray-500 hover:text-red-400 transition-colors p-1 flex items-center gap-1"
                       title={`Permanently delete ${player.name}`}
                     >
-                      <span className="material-icons" style={{ fontSize: 16 }}>delete_forever</span>
+                      <span className="material-icons" style={{ fontSize: 'var(--fs-lg)' }}>delete_forever</span>
                       <span className="hidden sm:inline">Delete</span>
                     </button>
                   )}

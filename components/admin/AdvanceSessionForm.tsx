@@ -239,8 +239,8 @@ export default function AdvanceSessionForm({ onBack }: Props) {
             borderRadius: 'var(--radius-lg)',
             background: 'rgba(239,68,68,0.06)',
             border: '1px solid rgba(239,68,68,0.25)',
-            color: 'var(--color-red, #ef4444)',
-            fontSize: 13,
+            color: 'var(--color-red)',
+            fontSize: 'var(--fs-base)',
           }}
         >
           Couldn&apos;t load current session — fields below show defaults, not your last week&apos;s settings. Refresh before advancing.

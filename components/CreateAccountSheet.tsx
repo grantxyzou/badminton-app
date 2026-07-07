@@ -94,14 +94,14 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')} maxHeight="75vh" className="max-w-lg mx-auto">
       <BottomSheetHeader className="flex items-center justify-between p-4">
-        <span style={{ fontSize: 16, fontWeight: 600 }}>{t('title')}</span>
+        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('title')}</span>
         <button
           type="button"
           onClick={onClose}
           aria-label={tRecovery('close')}
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <span className="material-icons" style={{ fontSize: 20 }}>close</span>
+          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
         </button>
       </BottomSheetHeader>
       <BottomSheetBody className="p-5 pb-8">
@@ -111,7 +111,7 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>{t('body')}</p>
+            <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0 }}>{t('body')}</p>
             <input
               type="text"
               aria-label={t('nameLabel')}
@@ -122,11 +122,11 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
               autoComplete="nickname"
             />
             <div>
-              <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('pinLabel')}</p>
+              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 4 }}>{t('pinLabel')}</p>
               <PinInput value={pin} onChange={setPin} digits={4} label={t('pinLabel')} ariaInvalid={error === 'pin_problem'} />
             </div>
             <div>
-              <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>{t('confirmPinLabel')}</p>
+              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 4 }}>{t('confirmPinLabel')}</p>
               <PinInput value={confirmPin} onChange={setConfirmPin} digits={4} label={t('confirmPinLabel')} ariaInvalid={error === 'pin_problem'} />
             </div>
             <button
@@ -139,16 +139,16 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
               {submitting ? t('submitting') : t('submit')}
             </button>
             {error === 'pin_problem' && (
-              <p role="alert" style={{ color: 'var(--color-red, #ef4444)', fontSize: 12 }}>{t('errorPinProblem')}</p>
+              <p role="alert" style={{ color: 'var(--color-red)', fontSize: 'var(--fs-sm)' }}>{t('errorPinProblem')}</p>
             )}
             {error === 'try_later' && (
-              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>{t('errorTryLater')}</p>
+              <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)' }}>{t('errorTryLater')}</p>
             )}
             {error === 'account_exists' && (
-              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>{t('errorAccountExists')}</p>
+              <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)' }}>{t('errorAccountExists')}</p>
             )}
             {error === 'invite_only' && (
-              <p role="alert" style={{ color: 'var(--color-amber, #f59e0b)', fontSize: 12 }}>{t('errorInviteOnly')}</p>
+              <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)' }}>{t('errorInviteOnly')}</p>
             )}
           </div>
         )}

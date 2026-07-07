@@ -41,8 +41,8 @@ export default function InsightChip({ headline, support, kind }: CardSlice) {
         {icon}
       </span>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.35 }}>{headline}</p>
-        {support && <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4 }}>{support}</p>}
+        <p style={{ margin: 0, fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.35 }}>{headline}</p>
+        {support && <p style={{ margin: '2px 0 0', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', lineHeight: 1.4 }}>{support}</p>}
       </div>
       <span
         aria-label="AI generated"
