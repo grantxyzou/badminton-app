@@ -104,7 +104,7 @@ function RosterStat({
   tone?: 'neutral' | 'warning';
 }) {
   return (
-    <div className="rounded-lg p-3" style={{ background: 'rgba(255, 255, 255, 0.04)' }}>
+    <div className="rounded-lg p-3" style={{ background: 'rgba(var(--glass-tint), 0.04)' }}>
       <p className="bpm-h2" style={{ color: tone === 'warning' ? '#fcd34d' : 'inherit' }}>
         {value}
       </p>

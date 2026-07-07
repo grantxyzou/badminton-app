@@ -38,7 +38,7 @@ function Stars({ n }: { n: number }) {
         <span
           key={i}
           className="material-icons"
-          style={{ fontSize: 'var(--fs-sm)', color: i <= n ? 'var(--amber)' : 'rgba(255,255,255,0.18)' }}
+          style={{ fontSize: 'var(--fs-sm)', color: i <= n ? 'var(--amber)' : 'rgba(var(--glass-tint), 0.18)' }}
         >
           star
         </span>
@@ -76,10 +76,10 @@ function PurchaseRow({
         cursor: 'pointer',
         padding: '12px 16px',
         border: 'none',
-        borderTop: index ? '1px solid rgba(255,255,255,0.05)' : 'none',
+        borderTop: index ? '1px solid rgba(var(--glass-tint), 0.05)' : 'none',
         transition: 'background 120ms ease',
       }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(var(--glass-tint), 0.03)'; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
@@ -111,9 +111,9 @@ function PurchaseRow({
             fontSize: 'var(--fs-2xs)',
             fontWeight: 600,
             fontFamily: 'var(--font-display, "Space Grotesk")',
-            background: 'rgba(255,255,255,0.06)',
+            background: 'rgba(var(--glass-tint), 0.06)',
             color: 'var(--text-muted)',
-            border: '1px solid rgba(255,255,255,0.1)',
+            border: '1px solid rgba(var(--glass-tint), 0.1)',
           }}
         >
           {left} left
@@ -457,7 +457,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           padding: 18,
           overflow: 'hidden',
           position: 'relative',
-          background: 'linear-gradient(160deg, rgba(74,222,128,0.08), rgba(255,255,255,0.02))',
+          background: 'linear-gradient(160deg, rgba(74,222,128,0.08), rgba(var(--glass-tint), 0.02))',
         }}
       >
         <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>Runs out in</p>
@@ -682,7 +682,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                   )}
                 </div>
               </div>
-              <div className="pbar" style={{ marginTop: 8, height: 6, borderRadius: 'var(--radius-pill)', background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+              <div className="pbar" style={{ marginTop: 8, height: 6, borderRadius: 'var(--radius-pill)', background: 'rgba(var(--glass-tint), 0.07)', overflow: 'hidden' }}>
                 <div
                   style={{
                     height: '100%',
@@ -848,7 +848,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                       className="material-icons"
                       style={{
                         fontSize: 24,
-                        color: i <= formQuality ? 'var(--amber)' : 'rgba(255,255,255,0.18)',
+                        color: i <= formQuality ? 'var(--amber)' : 'rgba(var(--glass-tint), 0.18)',
                       }}
                     >
                       star

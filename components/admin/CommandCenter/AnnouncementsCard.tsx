@@ -179,7 +179,7 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
             rows={3}
             maxLength={800}
             className="w-full text-sm rounded-lg p-3"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}
+            style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
           />
 
           {polished && (
@@ -237,7 +237,7 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
             <li
               key={a.id}
               className="rounded-lg p-3 text-sm leading-relaxed"
-              style={{ background: 'rgba(255,255,255,0.04)' }}
+              style={{ background: 'rgba(var(--glass-tint), 0.04)' }}
             >
               {editingId === a.id ? (
                 <div className="space-y-2">
@@ -247,7 +247,7 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
                     rows={3}
                     maxLength={800}
                     className="w-full text-sm rounded-lg p-3"
-                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.12)' }}
+                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
                   />
                   {editError && <p className="field-error">{editError}</p>}
                   <div className="flex gap-2 justify-end">
