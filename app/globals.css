@@ -320,6 +320,13 @@
   [data-theme="light"] .hover\:text-red-400:hover { color: #dc2626; }
   [data-theme="light"] .hover\:text-green-300:hover { color: #22c55e; }
   [data-theme="light"] .hover\:text-amber-300:hover { color: #b45309; }
+  /* Gaps closed in the design-audit palette pass — these hover utilities were
+     used without a light override, so on light theme they showed the raw
+     (low-contrast) Tailwind hue on hover. Values mirror the base overrides above. */
+  [data-theme="light"] .hover\:text-amber-400:hover { color: #d97706; }
+  [data-theme="light"] .hover\:text-blue-400:hover { color: #2563eb; }
+  [data-theme="light"] .hover\:text-blue-300:hover { color: #1d4ed8; }
+  [data-theme="light"] .hover\:text-gray-200:hover { color: #374151; }
 }
 [data-theme="light"] .border-white\/10 { border-color: rgba(0, 0, 0, 0.08); }
 
