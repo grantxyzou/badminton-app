@@ -31,7 +31,7 @@ export default function VenueSummary({ session, onEdit }: Props) {
           {details}
         </p>
       </div>
-      <span className="material-icons ml-2 shrink-0" style={{ fontSize: 16, color: 'var(--text-muted)' }}>edit</span>
+      <span className="material-icons ml-2 shrink-0" style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-muted)' }}>edit</span>
     </button>
   );
 }

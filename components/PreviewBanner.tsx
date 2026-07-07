@@ -114,7 +114,7 @@ export default function PreviewBanner() {
               top: BANNER_HEIGHT + 8,
               right: 12,
               zIndex: 10000,
-              background: 'var(--bg-elevated, #1a1a1a)',
+              background: 'var(--bg-elevated)',
               border: '1px solid rgba(255,255,255,0.12)',
               borderRadius: 'var(--radius-lg)',
               padding: 8,
@@ -140,7 +140,7 @@ export default function PreviewBanner() {
                 color: 'var(--text-primary, #fff)',
                 textDecoration: 'none',
                 borderRadius: 'var(--radius-sm)',
-                fontSize: 14,
+                fontSize: 'var(--fs-md)',
               }}
             >
               <span className="material-icons" aria-hidden="true" style={{ fontSize: 18, color: '#ef4444' }}>
@@ -163,7 +163,7 @@ export default function PreviewBanner() {
                 color: 'var(--text-primary, #fff)',
                 textDecoration: 'none',
                 borderRadius: 'var(--radius-sm)',
-                fontSize: 14,
+                fontSize: 'var(--fs-md)',
               }}
             >
               <span className="material-icons" aria-hidden="true" style={{ fontSize: 18, color: 'var(--accent, #22c55e)' }}>
@@ -184,7 +184,7 @@ export default function PreviewBanner() {
                 color: 'var(--text-muted, #aaa)',
                 textDecoration: 'none',
                 borderRadius: 'var(--radius-sm)',
-                fontSize: 13,
+                fontSize: 'var(--fs-base)',
               }}
             >
               <span className="material-icons" aria-hidden="true" style={{ fontSize: 18 }}>

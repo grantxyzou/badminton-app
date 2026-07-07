@@ -338,7 +338,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       )}
 
       {settleError && (
-        <p role="alert" className="text-xs" style={{ color: 'var(--color-red, #ef4444)' }}>
+        <p role="alert" className="text-xs" style={{ color: 'var(--color-red)' }}>
           {settleError}
         </p>
       )}
@@ -353,14 +353,14 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
           className="max-w-sm mx-auto"
         >
           <BottomSheetHeader className="flex items-center justify-between p-4">
-            <span style={{ fontSize: 16, fontWeight: 600 }}>Advance to next week</span>
+            <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>Advance to next week</span>
             <button
               type="button"
               onClick={() => setConfirmingAdvance(false)}
               aria-label="Close"
               style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              <span className="material-icons" style={{ fontSize: 20 }}>close</span>
+              <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
             </button>
           </BottomSheetHeader>
           <BottomSheetBody className="p-5 pb-8">

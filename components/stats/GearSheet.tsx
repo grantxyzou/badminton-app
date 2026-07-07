@@ -71,24 +71,24 @@ export default function GearSheet({ name, open, onClose, onSaved }: Props) {
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={t('racketSheetTitle')} maxHeight="75vh" className="max-w-lg mx-auto">
       <BottomSheetHeader className="flex items-center justify-between p-4">
-        <span style={{ fontSize: 16, fontWeight: 600 }}>{t('racketSheetTitle')}</span>
+        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('racketSheetTitle')}</span>
         <button
           type="button"
           onClick={onClose}
           aria-label={tRecovery('close')}
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <span className="material-icons" style={{ fontSize: 20 }}>close</span>
+          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
         </button>
       </BottomSheetHeader>
       <BottomSheetBody className="p-5 pb-8">
         {savedLabel ? (
-          <p style={{ textAlign: 'center', fontSize: 16, color: 'var(--text-primary)' }}>
+          <p style={{ textAlign: 'center', fontSize: 'var(--fs-lg)', color: 'var(--text-primary)' }}>
             {t('gearSaved')} {savedLabel}
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>{t('racketSheetHint')}</p>
+            <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0 }}>{t('racketSheetHint')}</p>
             <input
               type="text"
               aria-label={t('racketSheetTitle')}
