@@ -146,7 +146,7 @@ export default function ETransferRecipientEditor() {
               maxLength={100}
               placeholder="Your name (as shown to senders)"
               className="w-full text-sm rounded-lg p-2"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}
+              style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
             />
           </Field>
           <Field label="Email">
@@ -157,7 +157,7 @@ export default function ETransferRecipientEditor() {
               maxLength={200}
               placeholder="e-transfer recipient address"
               className="w-full text-sm rounded-lg p-2 font-mono"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}
+              style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
             />
           </Field>
           <Field label="Memo template (optional)">
@@ -168,7 +168,7 @@ export default function ETransferRecipientEditor() {
               maxLength={200}
               placeholder={DEFAULT_MEMO}
               className="w-full text-sm rounded-lg p-2 font-mono"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}
+              style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
             />
             <p className="text-xs text-gray-500 mt-1">
               Use <code>{'{date}'}</code> for the session date and <code>{'{name}'}</code> for the player name.

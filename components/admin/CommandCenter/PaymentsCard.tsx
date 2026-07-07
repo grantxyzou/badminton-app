@@ -697,7 +697,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           </p>
           <ul role="list" style={{ display: 'flex', flexDirection: 'column' }}>
             {lists.waitlisted.map((p) => (
-              <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 13.5 }}>
+              <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(var(--glass-tint), 0.04)', fontSize: 13.5 }}>
                 <span style={{ flex: 1, color: 'var(--text-secondary)' }}>{p.name}</span>
                 {isCurrentSession && (
                   <button
@@ -735,7 +735,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           {!removedCollapsed && (
             <ul role="list">
               {lists.removed.map((p) => (
-                <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 13.5 }}>
+                <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(var(--glass-tint), 0.04)', fontSize: 13.5 }}>
                   <span style={{ flex: 1, color: 'var(--text-muted)', textDecoration: 'line-through' }}>{p.name}</span>
                   {p.removedAt && (
                     <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
@@ -891,8 +891,8 @@ function ActionRow({
         gap: 12,
         padding: '12px 14px',
         borderRadius: 'var(--radius-lg)',
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(255,255,255,0.10)',
+        background: 'rgba(var(--glass-tint), 0.04)',
+        border: '1px solid rgba(var(--glass-tint), 0.10)',
         cursor: disabled ? 'not-allowed' : 'pointer',
         textAlign: 'left',
         opacity: disabled ? 0.5 : 1,
