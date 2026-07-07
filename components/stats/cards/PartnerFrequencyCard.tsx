@@ -99,7 +99,7 @@ export default function PartnerFrequencyCard() {
                     fontWeight: 600,
                     fontSize: 19,
                     flexShrink: 0,
-                    border: '1px solid rgba(255,255,255,0.10)',
+                    border: '1px solid rgba(var(--glass-tint), 0.10)',
                   }}
                 >
                   {top.name.slice(0, 1).toUpperCase()}

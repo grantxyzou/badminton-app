@@ -115,7 +115,7 @@ export default function PreviewBanner() {
               right: 12,
               zIndex: 10000,
               background: 'var(--bg-elevated)',
-              border: '1px solid rgba(255,255,255,0.12)',
+              border: '1px solid rgba(var(--glass-tint), 0.12)',
               borderRadius: 'var(--radius-lg)',
               padding: 8,
               boxShadow: '0 10px 30px rgba(0,0,0,0.5)',

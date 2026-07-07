@@ -200,7 +200,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
-              onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.08)'; }}
+              onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(var(--glass-tint), 0.08)'; }}
               onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
             >
               {day}

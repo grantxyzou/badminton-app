@@ -134,7 +134,7 @@ export default function NameAutocompleteInput({
               className="w-full text-left px-4 py-2.5 text-sm transition-colors cursor-pointer"
               style={{
                 color: 'var(--text-primary)',
-                background: i === active ? 'rgba(255,255,255,0.06)' : 'transparent',
+                background: i === active ? 'rgba(var(--glass-tint), 0.06)' : 'transparent',
               }}
             >
               {s}
