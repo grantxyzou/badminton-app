@@ -97,7 +97,7 @@ export default function PartnerFrequencyCard() {
                     justifyContent: 'center',
                     fontFamily: 'var(--font-display, "Space Grotesk")',
                     fontWeight: 600,
-                    fontSize: 19,
+                    fontSize: 'var(--fs-stat)',
                     flexShrink: 0,
                     border: '1px solid rgba(var(--glass-tint), 0.10)',
                   }}
@@ -106,7 +106,7 @@ export default function PartnerFrequencyCard() {
                 </span>
                 <div style={{ minWidth: 0 }}>
                   <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{t('partnersMostWith')}</p>
-                  <p style={{ margin: 0, fontSize: 19, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                  <p style={{ margin: 0, fontSize: 'var(--fs-stat)', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
                     {top.name}
                   </p>
                   <p style={{ margin: 0, fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>

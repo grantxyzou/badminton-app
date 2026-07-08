@@ -27,7 +27,7 @@ export default function StatsSignedOut({ onSignIn }: { onSignIn?: () => void }) 
         <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-xl)', color: 'var(--text-muted)', opacity: 0.7 }}>
           trending_up
         </span>
-        <p style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+        <p className="bpm-h3" style={{ color: 'var(--text-primary)', margin: 0 }}>
           {t('assess.signedOutTitle')}
         </p>
         <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: 0, maxWidth: 280, lineHeight: 1.5 }}>

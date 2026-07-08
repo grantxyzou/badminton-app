@@ -117,7 +117,6 @@ export default function AttendanceCardLive() {
     );
   }
 
-  const { streak } = data;
   const isPreviewPick = getIdentity()?.name?.toLowerCase() !== activeName.toLowerCase();
 
   // Recent-form framing: the last N sessions, and how many of *those* the
@@ -149,7 +148,7 @@ export default function AttendanceCardLive() {
       {recent.length > 0 && (
         <p style={{ margin: 0, fontSize: 'var(--fs-base)', color: PRIMARY }}>
           <strong>{recentAttended}</strong> of your last {recent.length}
-          {streak >= 2 ? <span style={{ color: MUTED }}> · {streak}-session streak</span> : null}
+
         </p>
       )}
     </div>
