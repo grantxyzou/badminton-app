@@ -10,6 +10,7 @@ import { SKILLS, topStrengths, workOnNext, type Rating, type Dimension, type Pha
 import { isFlagOn } from '@/lib/flags';
 import { useInsight } from '@/lib/useInsight';
 import InsightChip from '@/components/stats/InsightChip';
+import StatCard, { type StatTone } from '@/components/stats/StatCard';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import CheckInSheet from './CheckInSheet';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
@@ -17,7 +18,6 @@ import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import CardHeader from '@/components/primitives/CardHeader';
 import ListRow from '@/components/primitives/ListRow';
-import StatusBadge from '@/components/primitives/StatusBadge';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
@@ -66,6 +66,8 @@ const SHORT: Record<string, string> = {
 
 const SKILL_BY_KEY = new Map(SKILLS.map((s) => [s.key, s]));
 const DIMENSIONS: Dimension[] = ['technical', 'physical', 'mental'];
+// Dimension → gradient tone for the Technical / Physical / Mental tiles.
+const DIM_TONE: Record<Dimension, StatTone> = { technical: 'blue', physical: 'accent', mental: 'amber' };
 
 // recharts stroke/fill are SVG attributes that can't read CSS var(), so these
 // stay as hex. They're only the initial fallback — the live chart resolves
@@ -89,7 +91,7 @@ function Delta({ value }: { value: number }) {
   return (
     <span
       style={{
-        fontSize: 11,
+        fontSize: 'var(--fs-xs)',
         fontWeight: 600,
         color: up ? 'var(--accent, #22c55e)' : 'var(--text-muted)',
         fontFamily: 'var(--font-mono)',
@@ -218,9 +220,8 @@ export default function SkillTrendCard() {
       <CardHeader
         icon="trending_up"
         title={t('assess.heroTitle')}
-        subtitle={latest ? t('assess.purpose') : undefined}
         action={latest ? (
-          <button type="button" onClick={() => setCheckInOpen(true)} className="cc-btn cc-btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+          <button type="button" onClick={() => setCheckInOpen(true)} className="cc-btn cc-btn-ghost" style={{ whiteSpace: 'nowrap' }}>
             {t('assess.reRate')}
           </button>
         ) : undefined}
@@ -250,47 +251,35 @@ export default function SkillTrendCard() {
   const workOn = workOnNext(latest.ratings);
 
   return (
-    // Stable wrapper carries the reveal so the fade plays once on load; the
-    // inline Frame remounting on insight updates stays invisible inside it.
-    <div className="animate-fadeIn">
-    <Frame>
-      {/* Phase headline + overall */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-        {latest.phase && (
-          <StatusBadge variant="phase" tone={latest.phase === 'switch' ? 'amber' : 'accent'}>
-            {t(`assess.phase.${latest.phase}`)}
-          </StatusBadge>
-        )}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('assess.overall')}</span>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>
-            {fmt(latest.overall)}
-          </span>
-          {prev && latest.overall !== null && prev.overall !== null && (
-            <Delta value={latest.overall - prev.overall} />
-          )}
+    // The read + level live in the Level card; here a single card holds the
+    // always-on radar with strengths / work-on as legends on the right.
+    <div className="animate-fadeIn space-y-3">
+      <div className="glass-card p-5 space-y-3">
+      {/* Dimension tiles — Technical / Physical / Mental averages, in-card above the radar. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-3)' }}>
+        {DIMENSIONS.map((dim) => (
+          <StatCard
+            key={dim}
+            tone={DIM_TONE[dim]}
+            size="tile"
+            label={t(`assess.dim.${dim}`)}
+            value={fmt(latest.dimensionScores?.[dim] ?? null)}
+          />
+        ))}
+      </div>
+
+      {/* Radar (left) + strengths / work-on legends (right, narrow). */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 104px', gap: 'var(--space-3)', alignItems: 'center' }}>
+        <RadarBlock data={chartData} hasThen={!!prev} nowColor={radarColors.now} thenColor={radarColors.then} thenLabel={t('assess.then')} nowLabel={t('assess.now')} height={240} fontSize={9} />
+        <div className="space-y-3">
+          <Legend title={t('assess.strengths')} items={strengths} nowMap={nowMap} accent />
+          <Legend title={t('assess.workOn')} items={workOn} nowMap={nowMap} />
         </div>
       </div>
 
-      {/* The Switch callout — the key narrative moment (spec §6). */}
-      {latest.phase === 'switch' && (
-        <p style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--text-secondary)', margin: 0 }}>
-          {t('assess.switchCallout')}
-        </p>
-      )}
-
-      {/* Radar (decorative, aria-hidden): the 14-skill now-vs-then overlay.
-          The accessible truth is the sr-only summary + dimension tiles + the
-          skill list below. */}
-      <RadarBlock data={chartData} hasThen={!!prev} nowColor={radarColors.now} thenColor={radarColors.then} thenLabel={t('assess.then')} nowLabel={t('assess.now')} />
-      <p className="sr-only">
-        {t('assess.overall')} {fmt(latest.overall)}
-        {latest.phase ? `, ${t(`assess.phase.${latest.phase}`)}` : ''}.
-      </p>
-
-      {/* Legend (only meaningful with a prior snapshot) */}
+      {/* now / then key, or the first-rating baseline hint. */}
       {prev ? (
-        <div style={{ display: 'flex', gap: 16, justifyContent: 'center', fontSize: 11, color: 'var(--text-muted)' }}>
+        <div style={{ display: 'flex', gap: 16, justifyContent: 'center', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 14, height: 0, borderTop: `2px dashed ${radarColors.then}` }} /> {t('assess.then')}
           </span>
@@ -299,48 +288,32 @@ export default function SkillTrendCard() {
           </span>
         </div>
       ) : (
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, textAlign: 'center' }}>{t('assess.baseline')}</p>
+        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0, textAlign: 'center' }}>{t('assess.baseline')}</p>
       )}
-
-      {/* Dimension scores with deltas */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-        {DIMENSIONS.map((dim) => {
-          const nowV = latest.dimensionScores?.[dim] ?? null;
-          const thenV = prev?.dimensionScores?.[dim] ?? null;
-          return (
-            <div key={dim} className="cc-tile cc-tile-static" style={{ padding: 12, borderRadius: 'var(--radius-lg)', textAlign: 'center' }}>
-              <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                {t(`assess.dim.${dim}`)}
-              </span>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4, marginTop: 2 }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{fmt(nowV)}</span>
-                {nowV !== null && thenV !== null && <Delta value={nowV - thenV} />}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Strengths + work-on (tap to read the anchor you picked) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 12 }}>
-        <SkillList title={t('assess.strengths')} items={strengths} nowMap={nowMap} thenMap={thenMap} onPick={setSheetSkill} />
-        <SkillList title={t('assess.workOn')} items={workOn} nowMap={nowMap} thenMap={thenMap} onPick={setSheetSkill} />
-      </div>
 
       {insightsOn && insight?.trend && <InsightChip {...insight.trend} />}
 
-      {/* Full per-skill profile (spec §7.2/§7.5) — collapsible; also the
-          accessible representation of the aria-hidden radar. */}
+      {/* Actions — Update (re-rate) + All skills toggle share one row, same level. */}
       <div className="space-y-3">
-        <button
-          type="button"
-          onClick={() => setShowAll((v) => !v)}
-          aria-expanded={showAll}
-          className="cc-btn cc-btn-ghost"
-          style={{ width: '100%', justifyContent: 'center' }}
-        >
-          {showAll ? t('assess.hideSkills') : t('assess.allSkills')}
-        </button>
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <button
+            type="button"
+            onClick={() => setCheckInOpen(true)}
+            className="cc-btn cc-btn-ghost"
+            style={{ flex: 1, justifyContent: 'center', whiteSpace: 'nowrap' }}
+          >
+            {t('assess.reRate')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowAll((v) => !v)}
+            aria-expanded={showAll}
+            className="cc-btn cc-btn-ghost"
+            style={{ flex: 1, justifyContent: 'center' }}
+          >
+            {showAll ? t('assess.hideSkills') : t('assess.allSkills')}
+          </button>
+        </div>
         {showAll && (
           <div className="space-y-3">
             {DIMENSIONS.map((dim) => {
@@ -354,13 +327,39 @@ export default function SkillTrendCard() {
           </div>
         )}
       </div>
+      </div>
 
       {sheetSkill && (
         <SkillAnchorSheet skillKey={sheetSkill} value={nowMap.get(sheetSkill) ?? 0} onClose={() => setSheetSkill(null)} />
       )}
 
       <CheckInSheet name={activeName} open={checkInOpen} onClose={() => setCheckInOpen(false)} onSaved={load} previous={nowMap} />
-    </Frame>
+    </div>
+  );
+}
+
+function Legend({
+  title, items, nowMap, accent,
+}: {
+  title: string;
+  items: Rating[];
+  nowMap: Map<string, number>;
+  accent?: boolean;
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="section-label" style={{ fontSize: 'var(--fs-2xs)', letterSpacing: '0.08em', color: 'var(--text-muted)', margin: 0 }}>{title}</p>
+      {items.map((r) => {
+        const skill = SKILL_BY_KEY.get(r.skillKey);
+        if (!skill) return null;
+        const v = nowMap.get(r.skillKey) ?? r.value;
+        return (
+          <div key={r.skillKey} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.3, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{SHORT[skill.key] ?? skill.label}</span>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-sm)', fontWeight: 700, color: accent ? 'var(--accent)' : 'var(--text-muted)' }}>{v}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -376,7 +375,7 @@ function SkillList({
 }) {
   return (
     <div className="space-y-2">
-      <p className="section-label" style={{ fontSize: 10, letterSpacing: '0.08em', color: 'var(--text-muted)', margin: 0 }}>{title}</p>
+      <p className="section-label" style={{ fontSize: 'var(--fs-2xs)', letterSpacing: '0.08em', color: 'var(--text-muted)', margin: 0 }}>{title}</p>
       {items.map((r) => {
         const skill = SKILL_BY_KEY.get(r.skillKey);
         if (!skill) return null;
@@ -424,7 +423,7 @@ function SkillAnchorSheet({ skillKey, value, onClose }: { skillKey: string; valu
             className="flex items-center justify-center rounded-full"
             style={{ width: 32, height: 32, background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)' }}
           >
-            <span className="material-icons" style={{ fontSize: 18, color: 'var(--text-muted)' }}>close</span>
+            <span className="material-icons" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>close</span>
           </button>
         </BottomSheetHeader>
         <BottomSheetBody className="px-5 pb-8" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
@@ -442,12 +441,12 @@ function SkillAnchorSheet({ skillKey, value, onClose }: { skillKey: string; valu
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: isActive ? 'var(--accent, #22c55e)' : 'var(--text-muted)' }}>{level}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-base)', fontWeight: 700, color: isActive ? 'var(--accent, #22c55e)' : 'var(--text-muted)' }}>{level}</span>
                     {isActive && (
-                      <span className="material-icons" style={{ fontSize: 15, color: 'var(--accent, #22c55e)' }}>check_circle</span>
+                      <span className="material-icons" style={{ fontSize: 'var(--icon-sm)', color: 'var(--accent, #22c55e)' }}>check_circle</span>
                     )}
                   </div>
-                  <p style={{ fontSize: 13, lineHeight: 1.45, color: isActive ? 'var(--text-primary)' : 'var(--text-muted)', margin: 0 }}>{anchor}</p>
+                  <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.45, color: isActive ? 'var(--text-primary)' : 'var(--text-muted)', margin: 0 }}>{anchor}</p>
                 </div>
               );
             })}

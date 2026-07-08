@@ -9,8 +9,8 @@ import StatsPlaceholder from '@/components/stats/StatsPlaceholder';
 import AttendanceCardLive from '@/components/stats/cards/AttendanceCardLive';
 import StreakSummaryCard from '@/components/stats/StreakSummaryCard';
 import SummaryGreeting from '@/components/stats/SummaryGreeting';
-import PartnerFrequencyCard from '@/components/stats/cards/PartnerFrequencyCard';
 import GameLoggerCard from '@/components/stats/GameLoggerCard';
+import GameStatTiles from '@/components/stats/GameStatTiles';
 import RacketRow from '@/components/stats/RacketRow';
 import { isFlagOn } from '@/lib/flags';
 import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
@@ -194,9 +194,11 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
     <>
       <GameLoggerCard />
       {kudosOn && <GiveKudosCard />}
-      <PartnerFrequencyCard />
     </>
   ) : undefined;
+  // Game-stats summary tiles (Recent form + Top partner) — replaces the standalone
+  // partner card; renders at the top of the Game stats view.
+  const gameTilesSlot = showPlay ? <GameStatTiles /> : undefined;
 
   // Skill-assessment spine: two-tab layout. Summary = skill trend; Game stats =
   // AI read (StreakSummaryCard) + attendance + logger + partner. The AI read
@@ -212,6 +214,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
         assessMode
         heroSlot={heroSlot}
         gamePlaySlot={gamePlaySlot}
+        gameTilesSlot={gameTilesSlot}
         attendanceContent={attendanceContent}
         insightSlot={insightCardsOn ? undefined : <StreakSummaryCard />}
       />
@@ -219,7 +222,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   }
 
   if (!isAdmin) {
-    return <StatsPlaceholder attendanceContent={attendanceContent} heroSlot={heroSlot} gamePlaySlot={gamePlaySlot} gearContent={gearContent} />;
+    return <StatsPlaceholder attendanceContent={attendanceContent} heroSlot={heroSlot} gamePlaySlot={gamePlaySlot} gameTilesSlot={gameTilesSlot} gearContent={gearContent} />;
   }
 
   if (loading) {
@@ -228,7 +231,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
         skillProgressionContent={<RadarSkeleton />}
         attendanceContent={attendanceContent}
         heroSlot={heroSlot}
-        gamePlaySlot={gamePlaySlot} gearContent={gearContent}
+        gamePlaySlot={gamePlaySlot} gameTilesSlot={gameTilesSlot} gearContent={gearContent}
       />
     );
   }
@@ -305,7 +308,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
       skillProgressionContent={skillProgressionContent}
       attendanceContent={attendanceContent}
       heroSlot={heroSlot}
-      gamePlaySlot={gamePlaySlot} gearContent={gearContent}
+      gamePlaySlot={gamePlaySlot} gameTilesSlot={gameTilesSlot} gearContent={gearContent}
     />
   );
 }

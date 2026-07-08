@@ -11,10 +11,12 @@ import { useInsight } from '@/lib/useInsight';
 import InsightChip from '@/components/stats/InsightChip';
 import CardHeader from '@/components/primitives/CardHeader';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
-import StatusBadge from '@/components/primitives/StatusBadge';
+import StatCard from '@/components/stats/StatCard';
+import { SKILLS, topStrengths, workOnNext, type Rating } from '@/lib/assessment';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
+const SKILL_BY_KEY = new Map(SKILLS.map((s) => [s.key, s]));
 
 /** Same identity chain as the other stats cards: real identity → stats
  *  preview-name → null. Real identity wins so the level keys to the real player. */
@@ -36,12 +38,6 @@ type LoadState =
   | { kind: 'error' }
   | { kind: 'needsAuth' };
 
-const CONF_COLOR: Record<CanonicalLevel['confidence'], string> = {
-  low: 'var(--text-muted)',
-  medium: 'var(--accent-amber, #f59e0b)',
-  high: 'var(--accent, #22c55e)',
-};
-
 /**
  * Private "Your level" card — the canonical 1–5 read folded from the member's
  * self check-ins (+ legacy stage fallback). Legible-fail throughout: an explicit
@@ -53,8 +49,10 @@ export default function LevelCard() {
   const [activeName, setActiveName] = useState<string | null>(null);
   const [state, setState] = useState<LoadState>({ kind: 'idle' });
   const [loaded, setLoaded] = useState(false);
-  const [showHow, setShowHow] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
+  // The one-line "read" (sharpest skill → next focus) folded from the latest
+  // self-assessment; the standalone "your game over time" read was merged here.
+  const [read, setRead] = useState<{ strength: string | null; focus: string | null }>({ strength: null, focus: null });
   // Distributed AI insight — a short, non-obvious chip about the level. Shared
   // (memoized) fetch across the greeting + the other card chips.
   const insightsOn = isFlagOn('NEXT_PUBLIC_FLAG_INSIGHT_CARDS');
@@ -85,6 +83,26 @@ export default function LevelCard() {
   }, [activeName]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Second, independent read: the latest self-assessment drives the one-line
+  // "sharpest → next" summary that used to be its own card.
+  useEffect(() => {
+    if (!activeName) return;
+    fetch(`${BASE}/api/assessments?name=${encodeURIComponent(activeName)}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const snaps = (d?.assessments ?? []) as { ratings: Rating[] }[];
+        const latest = snaps[snaps.length - 1];
+        if (!latest) { setRead({ strength: null, focus: null }); return; }
+        const s = topStrengths(latest.ratings)[0];
+        const w = workOnNext(latest.ratings)[0];
+        setRead({
+          strength: s ? SKILL_BY_KEY.get(s.skillKey)?.label ?? null : null,
+          focus: w ? SKILL_BY_KEY.get(w.skillKey)?.label ?? null : null,
+        });
+      })
+      .catch(() => setRead({ strength: null, focus: null }));
+  }, [activeName]);
 
   if (!activeName) return null;
   // Loading: reserve the card's footprint with a skeleton instead of a blank
@@ -128,95 +146,77 @@ export default function LevelCard() {
     );
   }
 
+  const phaseLabel = level.phase ? t(`assess.phase.${level.phase}`) : null;
+  const heroCaption = phaseLabel
+    ? `${phaseLabel} · ${t(`level.confidence.${level.confidence}`)}`
+    : t(`level.confidence.${level.confidence}`);
+  const hasRead = !!read.strength && !!read.focus && read.strength !== read.focus;
+  const hasDetail =
+    hasRead || !!level.pendingPromotion || !!level.blindSpot || (insightsOn && !!insight?.level);
+
   return (
-    // Stable wrapper carries the reveal so the fade plays once on load; the
-    // inline Frame remounting on insight updates stays invisible inside it.
-    <div className="animate-fadeIn">
-    <Frame>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
-        {level.phase && (
-          <StatusBadge variant="phase" tone={level.phase === 'switch' ? 'amber' : 'accent'}>
-            {t(`assess.phase.${level.phase}`)}
-          </StatusBadge>
-        )}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginLeft: 'auto' }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-stat)', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1 }}>
-            {level.level.toFixed(1)}
-          </span>
-          <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)' }}>{t('level.ofFive')}</span>
-        </div>
-      </div>
+    // Stable wrapper carries the reveal so the fade plays once on load.
+    <div className="animate-fadeIn space-y-3">
+      <StatCard
+        tone="accent"
+        icon="emoji_events"
+        label={t('level.title')}
+        value={level.level.toFixed(1)}
+        unit={t('level.ofFive')}
+        caption={heroCaption}
+        size="hero"
+      />
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span
-          aria-hidden="true"
-          style={{ width: 8, height: 8, borderRadius: 'var(--radius-pill)', background: CONF_COLOR[level.confidence], flexShrink: 0 }}
-        />
-        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-          {t(`level.confidence.${level.confidence}`)}
-        </span>
-      </div>
-
-      {/* Phase 3: a higher phase the latest check-in reached but hysteresis
-          hasn't confirmed — framed as encouragement, never a downgrade. */}
-      {level.pendingPromotion && (
-        <p
-          style={{
-            fontSize: 'var(--fs-sm)', lineHeight: 1.45, margin: 0,
-            color: 'var(--accent-amber, #f59e0b)',
-            display: 'flex', alignItems: 'center', gap: 6,
-          }}
-        >
-          <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-lg)' }}>trending_up</span>
-          {t('level.onTrack', { phase: t(`assess.phase.${level.pendingPromotion}`) })}
-        </p>
-      )}
-
-      {/* Opt-in, asymmetric "blind spot": the comparison is revealed only on a
-          deliberate tap, and the 'below' direction is reframed forward-looking
-          with no deficit number (locked decision). */}
-      {level.blindSpot && (
-        <div className="space-y-2">
-          <button
-            type="button"
-            onClick={() => setShowCompare((v) => !v)}
-            aria-expanded={showCompare}
-            className="cc-btn cc-btn-ghost"
-            style={{ width: '100%', justifyContent: 'center' }}
-          >
-            {showCompare ? t('level.compare.hide') : t('level.compare.cta')}
-          </button>
-          {showCompare && (
-            <p style={{ fontSize: 'var(--fs-sm)', lineHeight: 1.5, color: 'var(--text-secondary)', margin: 0 }}>
-              {t(`level.compare.${level.blindSpot.direction}`)}
+      {hasDetail && (
+        <div className="glass-card p-4 space-y-2">
+          {/* The one-line read merged in from the old "your game over time" card. */}
+          {hasRead && (
+            <p style={{ fontSize: 'var(--fs-md)', lineHeight: 1.5, color: 'var(--text-primary)', margin: 0 }}>
+              {t.rich('assess.readLede', {
+                strength: read.strength ?? '',
+                workOn: read.focus ?? '',
+                b: (c) => <b style={{ color: 'var(--accent)', fontWeight: 600 }}>{c}</b>,
+              })}
             </p>
           )}
-        </div>
-      )}
-
-      {insightsOn && insight?.level && <InsightChip {...insight.level} />}
-
-      {level.explanation.length > 0 && (
-        <div className="space-y-2">
-          <button
-            type="button"
-            onClick={() => setShowHow((v) => !v)}
-            aria-expanded={showHow}
-            className="cc-btn cc-btn-ghost"
-            style={{ width: '100%', justifyContent: 'center' }}
-          >
-            {showHow ? t('level.hideDetails') : t('level.howTitle')}
-          </button>
-          {showHow && (
-            <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {level.explanation.map((line, i) => (
-                <li key={i} style={{ fontSize: 'var(--fs-sm)', lineHeight: 1.45, color: 'var(--text-secondary)' }}>{line}</li>
-              ))}
-            </ul>
+          {/* A higher phase the latest check-in reached but hysteresis hasn't
+              confirmed — framed as encouragement, never a downgrade. */}
+          {level.pendingPromotion && (
+            <p
+              style={{
+                fontSize: 'var(--fs-sm)', lineHeight: 1.45, margin: 0,
+                color: 'var(--accent-amber, #f59e0b)',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-lg)' }}>trending_up</span>
+              {t('level.onTrack', { phase: t(`assess.phase.${level.pendingPromotion}`) })}
+            </p>
           )}
+
+          {/* Opt-in, asymmetric "blind spot": revealed only on a deliberate tap. */}
+          {level.blindSpot && (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setShowCompare((v) => !v)}
+                aria-expanded={showCompare}
+                className="cc-btn cc-btn-ghost"
+                style={{ width: '100%', justifyContent: 'center' }}
+              >
+                {showCompare ? t('level.compare.hide') : t('level.compare.cta')}
+              </button>
+              {showCompare && (
+                <p style={{ fontSize: 'var(--fs-sm)', lineHeight: 1.5, color: 'var(--text-secondary)', margin: 0 }}>
+                  {t(`level.compare.${level.blindSpot.direction}`)}
+                </p>
+              )}
+            </div>
+          )}
+
+          {insightsOn && insight?.level && <InsightChip {...insight.level} />}
         </div>
       )}
-    </Frame>
     </div>
   );
 }

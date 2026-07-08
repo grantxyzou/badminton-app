@@ -93,6 +93,9 @@ interface Props {
   /** Passive AI "Your read" card (streak headline + insight). In assessMode it
    *  leads the Game stats view; the synthesis sits above the raw data. */
   insightSlot?: React.ReactNode;
+  /** Game-stats summary tiles (Recent form + Top partner) — the gradient stat
+   *  row rendered at the top of the Game stats view. */
+  gameTilesSlot?: React.ReactNode;
 }
 
 const sectionLabelStyle: React.CSSProperties = {
@@ -116,6 +119,7 @@ export default function StatsPlaceholder({
   gearContent,
   assessMode = false,
   insightSlot,
+  gameTilesSlot,
 }: Props = {}) {
   const t = useTranslations('stats');
   const tVH = useTranslations('valueHub');
@@ -169,7 +173,8 @@ export default function StatsPlaceholder({
   if (assessMode) {
     activeView = view === 'game' ? (
       <>
-        {/* Synthesis first (AI read + streak), then the raw data it draws on. */}
+        {/* Quick stat tiles up top, then the AI read + the raw data it draws on. */}
+        {gameTilesSlot}
         {insightSlot}
         {attendanceCard}
         {gamePlaySlot}
@@ -182,8 +187,9 @@ export default function StatsPlaceholder({
       <>{heroSlot}</>
     ) : view === 'game' ? (
       <>
+        {gameTilesSlot}
         {attendanceCard}
-        {/* Value-Hub: game logger + partner frequency. */}
+        {/* Value-Hub: game logger. */}
         {gamePlaySlot}
         {skillCard}
       </>
@@ -201,6 +207,7 @@ export default function StatsPlaceholder({
     // and partners live under Game stats so they stay reachable.
     activeView = view === 'game' ? (
       <>
+        {gameTilesSlot}
         {attendanceCard}
         {gamePlaySlot}
         {skillCard}
