@@ -25,8 +25,11 @@ export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
     const name = url.searchParams.get('name')?.trim().slice(0, 50) ?? '';
-    const weeksRaw = Number(url.searchParams.get('weeks'));
-    const weeks = Number.isFinite(weeksRaw) ? Math.min(Math.max(weeksRaw, 1), 260) : 12;
+    // Default to 12 when absent. Note: `Number(null)` is 0 (finite), so reading
+    // the raw param directly would make an omitted `weeks` resolve to a 1-week
+    // window, not 12 — default the string before coercing.
+    const weeksParam = Number(url.searchParams.get('weeks') ?? '12');
+    const weeks = Number.isFinite(weeksParam) && weeksParam > 0 ? Math.min(Math.floor(weeksParam), 260) : 12;
     if (!name) return NextResponse.json({ partners: [] });
 
     const cutoff = cutoffSessionId(weeks);
