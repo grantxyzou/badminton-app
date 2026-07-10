@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { getIdentity } from '@/lib/identity';
 import AttendanceSessionStrip, { recentSessions } from './AttendanceSessionStrip';
 
@@ -38,6 +39,7 @@ function resolveActiveName(): string | null {
 }
 
 export default function AttendanceCardLive() {
+  const t = useTranslations('stats');
   const [activeName, setActiveName] = useState<string | null>(null);
   const [resolved, setResolved] = useState(false);
   const [data, setData] = useState<AttendanceResponse | null>(null);
@@ -99,10 +101,10 @@ export default function AttendanceCardLive() {
     return (
       <div style={{ display: 'grid', gap: 10 }}>
         <p style={{ margin: 0, fontSize: 'var(--fs-base)', color: PRIMARY, fontWeight: 600 }}>
-          Your stats
+          {t('attendanceLive.title')}
         </p>
         <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: MUTED, lineHeight: 1.45 }}>
-          Sign in or create an account to see your personalized stats.
+          {t('attendanceLive.prompt')}
         </p>
       </div>
     );
@@ -112,7 +114,7 @@ export default function AttendanceCardLive() {
   if (!data) {
     return (
       <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: MUTED }} role="alert">
-        Couldn’t load that — refresh to try again.
+        {t('attendanceLive.loadError')}
       </p>
     );
   }
@@ -129,17 +131,17 @@ export default function AttendanceCardLive() {
     <div style={{ display: 'grid', gap: 10 }}>
       <div style={{ display: 'flex', gap: 14, alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap' }}>
         <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: MUTED, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-          Your recent form
+          {t('attendanceLive.recentForm')}
         </p>
         {isPreviewPick && (
           <span style={{ fontSize: 'var(--fs-xs)', color: MUTED }}>
-            viewing as <strong style={{ color: PRIMARY }}>{activeName}</strong>{' '}
+            {t('attendanceLive.viewingAs')} <strong style={{ color: PRIMARY }}>{activeName}</strong>{' '}
             <button
               type="button"
               onClick={clearPickedName}
               style={{ background: 'transparent', border: 'none', color: ACCENT, cursor: 'pointer', padding: 0, fontSize: 'var(--fs-xs)' }}
             >
-              change
+              {t('attendanceLive.change')}
             </button>
           </span>
         )}
@@ -147,8 +149,7 @@ export default function AttendanceCardLive() {
       <AttendanceSessionStrip history={data.history} limit={RECENT} />
       {recent.length > 0 && (
         <p style={{ margin: 0, fontSize: 'var(--fs-base)', color: PRIMARY }}>
-          <strong>{recentAttended}</strong> of your last {recent.length}
-
+          <strong>{recentAttended}</strong> {t('attendanceLive.ofLast', { count: recent.length })}
         </p>
       )}
     </div>
