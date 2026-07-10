@@ -8,6 +8,7 @@ import AssignUsageSheet from '../AssignUsageSheet';
 import { fmtShortDate as fmtDate } from '@/lib/fmt';
 import type { BirdPurchase } from '@/lib/types';
 import { splitPurchasesByRecency } from '@/lib/birdPurchaseGroups';
+import { currentPricePerTube } from '@/lib/birdUsages';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -24,11 +25,9 @@ interface BirdsPageProps {
 
 interface BrandSummary {
   brand: string;
-  remaining: number;
   bought: number;
   speed: number | null;
   quality: number | null;
-  weeksLeft: number | null;
 }
 
 function Stars({ n }: { n: number }) {
@@ -55,12 +54,10 @@ function Stars({ n }: { n: number }) {
 function PurchaseRow({
   purchase: p,
   index,
-  left,
   onEdit,
 }: {
   purchase: BirdPurchase;
   index: number;
-  left: number;
   onEdit: (p: BirdPurchase) => void;
 }) {
   return (
@@ -101,38 +98,25 @@ function PurchaseRow({
           </span>
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, gap: 10 }}>
-        {typeof p.qualityRating === 'number' && <Stars n={p.qualityRating} />}
-        <span
-          style={{
-            display: 'inline-flex',
-            padding: '3px 9px',
-            borderRadius: 'var(--radius-pill)',
-            fontSize: 'var(--fs-2xs)',
-            fontWeight: 600,
-            fontFamily: 'var(--font-display, "Space Grotesk")',
-            background: 'rgba(var(--glass-tint), 0.06)',
-            color: 'var(--text-muted)',
-            border: '1px solid rgba(var(--glass-tint), 0.1)',
-          }}
-        >
-          {left} left
-        </span>
-        {p.notes && (
-          <span
-            style={{
-              fontSize: 'var(--fs-xs)',
-              color: 'var(--ink-faint)',
-              flex: 1,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {p.notes}
-          </span>
-        )}
-      </div>
+      {(typeof p.qualityRating === 'number' || p.notes) && (
+        <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, gap: 10 }}>
+          {typeof p.qualityRating === 'number' && <Stars n={p.qualityRating} />}
+          {p.notes && (
+            <span
+              style={{
+                fontSize: 'var(--fs-xs)',
+                color: 'var(--ink-faint)',
+                flex: 1,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {p.notes}
+            </span>
+          )}
+        </div>
+      )}
     </button>
   );
 }
@@ -142,7 +126,6 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
   const [currentStock, setCurrentStock] = useState(0);
   const [stockDrift, setStockDrift] = useState(0);
   const [totalAdjustments, setTotalAdjustments] = useState(0);
-  const [remainingByPurchase, setRemainingByPurchase] = useState<Record<string, number>>({});
   const [burnPerSession, setBurnPerSession] = useState(0);
   const [recentSessionCount, setRecentSessionCount] = useState(0);
   const [recentUsedTotal, setRecentUsedTotal] = useState(0);
@@ -205,7 +188,6 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
       setCurrentStock(birds.currentStock ?? 0);
       setStockDrift(birds.stockDrift ?? 0);
       setTotalAdjustments(birds.totalAdjustments ?? 0);
-      setRemainingByPurchase(birds.remainingByPurchase ?? {});
       setBurnPerSession(birds.burnPerSession ?? 0);
       setRecentSessionCount(birds.recentSessionsLast60d ?? 0);
       setRecentUsedTotal(birds.recentUsedLast60d ?? 0);
@@ -352,43 +334,40 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
   }
 
   const weeksRunway = burnPerSession > 0 ? currentStock / burnPerSession : null;
+  const currentPrice = useMemo(() => currentPricePerTube(purchases), [purchases]);
 
   // Brand summaries — grouped by FULL name (e.g. 'Ling-Mei 60' stays
-  // distinct from 'Ling-Mei 76'). Empty rows (remaining === 0) are
-  // filtered out so the In-stock list only shows what's actually on hand.
+  // distinct from 'Ling-Mei 76'). Under the pooled shuttle model per-batch
+  // "remaining" is no longer meaningful, so this is a purchased-totals +
+  // speed/quality digest per brand (no per-brand runway).
   const brands = useMemo<BrandSummary[]>(() => {
     const map = new Map<string, BrandSummary & { speedSum: number; speedCount: number; qualitySum: number; qualityCount: number }>();
     for (const p of purchases) {
       const key = p.name?.trim() || '—';
-      const remaining = remainingByPurchase[p.id] ?? 0;
       const existing = map.get(key) ?? {
         brand: key,
-        remaining: 0,
         bought: 0,
         speed: null,
         quality: null,
-        weeksLeft: null,
         speedSum: 0,
         speedCount: 0,
         qualitySum: 0,
         qualityCount: 0,
       };
-      existing.remaining += remaining;
       existing.bought += p.tubes;
       if (typeof p.speed === 'number') { existing.speedSum += p.speed; existing.speedCount++; }
       if (typeof p.qualityRating === 'number') { existing.qualitySum += p.qualityRating; existing.qualityCount++; }
       map.set(key, existing);
     }
     const out: BrandSummary[] = Array.from(map.values())
-      .filter((v) => v.remaining > 0)
+      .filter((v) => v.bought > 0)
       .map((v) => {
         const speed = v.speedCount > 0 ? Math.round(v.speedSum / v.speedCount) : null;
         const quality = v.qualityCount > 0 ? Math.round(v.qualitySum / v.qualityCount) : null;
-        const weeksLeft = burnPerSession > 0 ? Math.max(0, Math.round((v.remaining / burnPerSession) * 10) / 10) : null;
-        return { brand: v.brand, remaining: v.remaining, bought: v.bought, speed, quality, weeksLeft };
+        return { brand: v.brand, bought: v.bought, speed, quality };
       });
-    return out.sort((a, b) => b.remaining - a.remaining);
-  }, [purchases, remainingByPurchase, burnPerSession]);
+    return out.sort((a, b) => b.bought - a.bought);
+  }, [purchases]);
 
   // Split purchases into the last-60d list and everything older (each
   // newest-first). Older purchases stay selectable below the recent list so
@@ -500,6 +479,9 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         </div>
         <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: '6px 0 0' }}>
           <strong style={{ color: 'var(--text-primary)' }}>{currentStock} tubes</strong> on hand
+          {currentPrice > 0 && (
+            <>{' · '}<strong style={{ color: 'var(--text-primary)' }}>${currentPrice.toFixed(2)}/tube</strong> now</>
+          )}
           {burnPerSession > 0 && (
             <>
               {' '}· burning <strong style={{ color: 'var(--text-primary)' }}>{burnPerSession.toFixed(2)}/session</strong>
@@ -651,50 +633,32 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           margin: '14px 4px 6px',
         }}
       >
-        In stock
+        Brands
       </p>
       {brands.length === 0 && (
-        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '0 4px' }}>No active inventory.</p>
+        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '0 4px' }}>No purchases yet.</p>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {brands.map((b) => {
-          const pct = b.bought > 0 ? (b.remaining / b.bought) * 100 : 0;
-          return (
-            <div key={b.brand} className="glass-card" style={{ padding: '12px 14px' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                  <p style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 'var(--fs-md)', fontWeight: 600, margin: 0 }}>{b.brand}</p>
-                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', display: 'flex', gap: 6, alignItems: 'center', margin: 0 }}>
-                    {b.speed !== null && <>spd {b.speed}</>}
-                    {b.speed !== null && b.quality !== null && ' · '}
-                    {b.quality !== null && <Stars n={b.quality} />}
-                  </p>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                  <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>
-                    {b.remaining}
-                    <span style={{ color: 'var(--ink-faint)', fontSize: 'var(--fs-sm)', fontWeight: 500 }}>/{b.bought}</span>
-                  </span>
-                  {b.weeksLeft !== null && (
-                    <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)' }}>
-                      ~{b.weeksLeft}w
-                    </span>
-                  )}
-                </div>
+        {brands.map((b) => (
+          <div key={b.brand} className="glass-card" style={{ padding: '12px 14px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                <p style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 'var(--fs-md)', fontWeight: 600, margin: 0 }}>{b.brand}</p>
+                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', display: 'flex', gap: 6, alignItems: 'center', margin: 0 }}>
+                  {b.speed !== null && <>spd {b.speed}</>}
+                  {b.speed !== null && b.quality !== null && ' · '}
+                  {b.quality !== null && <Stars n={b.quality} />}
+                </p>
               </div>
-              <div className="pbar" style={{ marginTop: 8, height: 6, borderRadius: 'var(--radius-pill)', background: 'rgba(var(--glass-tint), 0.07)', overflow: 'hidden' }}>
-                <div
-                  style={{
-                    height: '100%',
-                    width: `${pct}%`,
-                    background: pct < 50 ? 'var(--amber)' : 'var(--accent)',
-                    borderRadius: 'var(--radius-pill)',
-                  }}
-                />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>
+                  {b.bought}
+                  <span style={{ color: 'var(--ink-faint)', fontSize: 'var(--fs-sm)', fontWeight: 500 }}> bought</span>
+                </span>
               </div>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
 
       {/* Purchase history */}
@@ -722,7 +686,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
       ) : (
         <div className="glass-card" style={{ padding: '4px 0' }}>
           {recentPurchases.map((p, i) => (
-            <PurchaseRow key={p.id} purchase={p} index={i} left={remainingByPurchase[p.id] ?? 0} onEdit={openEditSheet} />
+            <PurchaseRow key={p.id} purchase={p} index={i} onEdit={openEditSheet} />
           ))}
         </div>
       )}
@@ -745,7 +709,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           </p>
           <div className="glass-card" style={{ padding: '4px 0' }}>
             {olderPurchases.map((p, i) => (
-              <PurchaseRow key={p.id} purchase={p} index={i} left={remainingByPurchase[p.id] ?? 0} onEdit={openEditSheet} />
+              <PurchaseRow key={p.id} purchase={p} index={i} onEdit={openEditSheet} />
             ))}
           </div>
         </>
