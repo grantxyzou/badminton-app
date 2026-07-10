@@ -61,7 +61,14 @@ export async function GET(req: NextRequest) {
       return db.localeCompare(da);
     });
 
-    const windowSessions = sorted.slice(0, weeks);
+    // Exclude sessions that haven't happened yet. Advancing to a new week
+    // creates a future-dated session that nobody has attended — leaving it in
+    // would sort to history[0] and break the current streak to 0 (or, once the
+    // player signs up, over-count a not-yet-played session). The streak must be
+    // computed over played sessions only.
+    const now = Date.now();
+    const played = sorted.filter((s) => !s.datetime || new Date(s.datetime).getTime() <= now);
+    const windowSessions = played.slice(0, weeks);
     if (windowSessions.length === 0) {
       return NextResponse.json({
         name,

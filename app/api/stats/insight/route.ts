@@ -190,8 +190,13 @@ export async function GET(req: NextRequest) {
   const cacheFresh = !!existing && existing.sessionId === activeSessionId && assessmentMatches;
   // The cache is keyed by the shape the current flag wants: a flag flip leaves a
   // doc with the wrong field set, which misses here and regenerates once.
-  if (cacheFresh && cardsOn && existing!.greeting) {
-    return NextResponse.json({ account: true, greeting: existing!.greeting, level: existing!.level ?? null, trend: existing!.trend ?? null, generatedAt: existing!.generatedAt, cached: true });
+  // A persisted cards-doc always has at least one non-null slice (the generator
+  // bails without writing when all three are null), so "any slice present" is
+  // the correct freshness test. Keying on `greeting` alone made a legitimately
+  // null greeting (with a level/trend chip) miss the cache on every view and
+  // re-call Claude — breaking the one-call-per-member-per-session guarantee.
+  if (cacheFresh && cardsOn && (existing!.greeting || existing!.level || existing!.trend)) {
+    return NextResponse.json({ account: true, greeting: existing!.greeting ?? null, level: existing!.level ?? null, trend: existing!.trend ?? null, generatedAt: existing!.generatedAt, cached: true });
   }
   if (cacheFresh && !cardsOn && existing!.recap) {
     return NextResponse.json({ account: true, recap: existing!.recap, focus: existing!.focus, generatedAt: existing!.generatedAt, cached: true });
@@ -335,8 +340,12 @@ async function buildSnapshot({
     (playerHits.resources as { sessionId?: string }[]).map((p) => p.sessionId).filter((id): id is string => typeof id === 'string'),
   );
 
+  // Exclude not-yet-played (future-dated) sessions so the streak/attendance
+  // snapshot matches the attendance route — an upcoming session must not break
+  // or inflate the current streak. (See app/api/stats/attendance/route.ts.)
+  const nowMs = Date.now();
   const recentSessions = (sessionHits.resources as { id: string; datetime: string | null }[])
-    .filter((s) => s.datetime)
+    .filter((s) => s.datetime && new Date(s.datetime).getTime() <= nowMs)
     .sort((a, b) => (a.datetime ?? '').localeCompare(b.datetime ?? ''));
 
   const history = recentSessions.map((s) => ({ id: s.id, datetime: s.datetime as string, attended: attendedSessionIds.has(s.id) }));
