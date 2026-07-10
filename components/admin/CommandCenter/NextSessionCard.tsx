@@ -118,6 +118,17 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   // (admin presses again to share to a different chat), only the
   // share-sheet step runs.
   const sendBill = useCallback(async () => {
+    // Guardrail: finalizing while sign-ups are still open freezes the split at
+    // the current headcount — anyone who signs up later won't change what's
+    // owed. This is the #1 way an admin ends up with a stale per-person amount
+    // (settle early at 9 players → everyone locked at that rate even when 11
+    // eventually play). Warn before locking.
+    if (session?.signupOpen === true) {
+      const ok = confirm(
+        `Sign-ups are still open — finalizing now locks the split at ${activeCount} player${activeCount === 1 ? '' : 's'}. Anyone who signs up later won't change what everyone owes.\n\nClose sign-ups (or wait until after the session) first if the roster isn't final.\n\nFinalize anyway?`,
+      );
+      if (!ok) return;
+    }
     setSettleError(null);
     setSettling(true);
     try {
@@ -134,7 +145,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
     } finally {
       setSettling(false);
     }
-  }, [load, onShareCost]);
+  }, [load, onShareCost, session?.signupOpen, activeCount]);
 
   const editBill = useCallback(async () => {
     if (!confirm("Edit the bill? This clears what each person owes (paid checkmarks stay).")) return;
@@ -197,6 +208,13 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const countdown = fmtCountdown(session.deadline);
   const open = session.signupOpen === true;
   const isSettled = settleFlagOn && !!session.settled;
+  // The active roster no longer matches what was frozen at finalize time — the
+  // per-person split is now stale. Gated on activeCount > 0 so a failed player
+  // load (0) can't false-alarm. `playerNames.length` is the raw active count
+  // captured at settle, the apples-to-apples comparison to `activeCount`.
+  const settledRosterSize = session.settled?.playerNames?.length;
+  const rosterChanged =
+    isSettled && activeCount > 0 && typeof settledRosterSize === 'number' && settledRosterSize !== activeCount;
 
   return (
     <section className="glass-card p-4 space-y-3 animate-fadeIn" aria-label="Next session">
@@ -335,6 +353,19 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
             </button>
           )}
         </div>
+      )}
+
+      {rosterChanged && (
+        <p
+          role="status"
+          className="fs-sm"
+          style={{ color: 'var(--amber)', margin: 0, display: 'flex', alignItems: 'flex-start', gap: 6 }}
+        >
+          <span className="material-icons" style={{ fontSize: 'var(--icon-sm)', flexShrink: 0 }} aria-hidden="true">warning</span>
+          <span>
+            Roster changed since you finalized ({activeCount} now vs {settledRosterSize} when sent) — the split is stale. Tap &ldquo;Edit bill&rdquo; to recompute.
+          </span>
+        </p>
       )}
 
       {settleError && (
