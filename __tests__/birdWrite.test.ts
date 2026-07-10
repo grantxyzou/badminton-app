@@ -56,4 +56,44 @@ describe('resolveBirdUsages', () => {
       expect(r.usages[0]).toMatchObject({ purchaseId: 'p1', purchaseName: 'Yonex AS-30', tubes: 2, totalBirdCost: 24 });
     }
   });
+
+  // A pooled entry (Model B: one "tubes used" number, no batch) snapshots at the
+  // CURRENT price = the most recent purchase's costPerTube.
+  function stubBirdsWithPurchases(purchases: unknown[], read?: () => Promise<{ resource: unknown }>) {
+    vi.spyOn(cosmos, 'getContainer').mockReturnValue({
+      item: () => ({ read: read ?? (() => Promise.resolve({ resource: undefined })) }),
+      items: { query: () => ({ fetchAll: () => Promise.resolve({ resources: purchases }) }) },
+    } as unknown as ReturnType<typeof cosmos.getContainer>);
+  }
+
+  it('snapshots a pooled entry at the current (latest) price-per-tube', async () => {
+    stubBirdsWithPurchases([
+      { costPerTube: 30, date: '2026-06-01' },
+      { costPerTube: 35, date: '2026-07-01' }, // latest → $35 is the going rate
+    ]);
+    const r = await resolveBirdUsages([{ pooled: true, tubes: 1.25 }]);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.usages).toHaveLength(1);
+      expect(r.usages[0]).toMatchObject({
+        purchaseId: 'pool', purchaseName: 'Shuttles', tubes: 1.25, costPerTube: 35, totalBirdCost: 43.75,
+      });
+    }
+  });
+
+  it('ignores adjustment docs when picking the current pooled price', async () => {
+    stubBirdsWithPurchases([
+      { costPerTube: 35, date: '2026-07-01' },
+      { type: 'adjustment', date: '2026-07-05' }, // no costPerTube — must not win
+    ]);
+    const r = await resolveBirdUsages([{ pooled: true, tubes: 1 }]);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.usages[0]).toMatchObject({ costPerTube: 35, totalBirdCost: 35 });
+  });
+
+  it('pooled tubes:0 is dropped (removes the shuttle line)', async () => {
+    stubBirdsWithPurchases([{ costPerTube: 35, date: '2026-07-01' }]);
+    const r = await resolveBirdUsages([{ pooled: true, tubes: 0 }]);
+    expect(r).toEqual({ ok: true, usages: [] });
+  });
 });
