@@ -590,7 +590,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                 )}
               </span>
               <div className="flex items-center gap-1 flex-shrink-0">
-                {settleFlagOn && typeof player.owedAmount === 'number' && !player.writtenOff && (
+                {settleFlagOn && !!viewedSession?.settled && typeof player.owedAmount === 'number' && !player.writtenOff && (
                   <span
                     className="fs-sm font-medium px-2"
                     style={{
