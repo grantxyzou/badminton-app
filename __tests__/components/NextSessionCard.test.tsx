@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
 import NextSessionCard from '@/components/admin/CommandCenter/NextSessionCard';
 
@@ -214,6 +214,90 @@ describe('<NextSessionCard />', () => {
         expect(screen.getByText(/Share again — \$15 each/)).toBeTruthy();
         expect(screen.getByText(/Edit bill/)).toBeTruthy();
         expect(screen.queryByText(/Send the bill/)).toBeNull();
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+
+    it('warns before finalizing while sign-ups are open, and aborts if declined', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      let settlePosted = false;
+      global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : (input as Request).url;
+        const method = init?.method ?? 'GET';
+        if (method === 'POST' && url.includes('/api/session/settle')) { settlePosted = true; return new Response('{}', { status: 200 }); }
+        if (url.includes('/api/players')) return new Response(JSON.stringify([{ id: 'p1' }, { id: 'p2' }, { id: 'p3' }]), { status: 200 });
+        if (url.includes('/api/session')) return new Response(JSON.stringify(
+          { id: 's', title: 'X', datetime: new Date(Date.now() + 86_400_000).toISOString(), deadline: new Date(Date.now() + 3_600_000).toISOString(), courts: 2, maxPlayers: 12, signupOpen: true },
+        ), { status: 200 });
+        return new Response('nf', { status: 404 });
+      }) as typeof fetch;
+      try {
+        render(<NextSessionCard onShareCost={() => {}} />);
+        fireEvent.click(await screen.findByRole('button', { name: /Finalize cost/ }));
+        expect(confirmSpy).toHaveBeenCalledTimes(1);
+        expect(confirmSpy.mock.calls[0][0]).toMatch(/3 players/);
+        await waitFor(() => expect(confirmSpy).toHaveBeenCalled());
+        expect(settlePosted).toBe(false);
+      } finally {
+        confirmSpy.mockRestore();
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+
+    it('finalizes when the open-signups warning is accepted', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      let settlePosted = false;
+      global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : (input as Request).url;
+        const method = init?.method ?? 'GET';
+        if (method === 'POST' && url.includes('/api/session/settle')) { settlePosted = true; return new Response('{}', { status: 200 }); }
+        if (url.includes('/api/players')) return new Response(JSON.stringify([{ id: 'p1' }, { id: 'p2' }]), { status: 200 });
+        if (url.includes('/api/session')) return new Response(JSON.stringify(
+          { id: 's', title: 'X', datetime: new Date(Date.now() + 86_400_000).toISOString(), deadline: new Date(Date.now() + 3_600_000).toISOString(), courts: 2, maxPlayers: 12, signupOpen: true },
+        ), { status: 200 });
+        return new Response('nf', { status: 404 });
+      }) as typeof fetch;
+      try {
+        render(<NextSessionCard onShareCost={() => {}} />);
+        fireEvent.click(await screen.findByRole('button', { name: /Finalize cost/ }));
+        expect(confirmSpy).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(settlePosted).toBe(true));
+      } finally {
+        confirmSpy.mockRestore();
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+
+    it('flags a stale split when the roster changed since finalizing', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      try {
+        // Frozen at 6 players; 3 active now → stale.
+        mockFetch(makeFetcher(settledSession, [{ id: 'p1' }, { id: 'p2' }, { id: 'p3' }]));
+        render(<NextSessionCard onShareCost={() => {}} />);
+        await waitFor(() => expect(screen.getByText(/Roster changed since you finalized/)).toBeTruthy());
+        expect(screen.getByText(/3 now vs 6 when sent/)).toBeTruthy();
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+
+    it('does NOT flag a stale split when the roster still matches', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      try {
+        // 6 frozen, 6 active now → matches, no nudge.
+        mockFetch(makeFetcher(settledSession, [
+          { id: 'p1' }, { id: 'p2' }, { id: 'p3' }, { id: 'p4' }, { id: 'p5' }, { id: 'p6' },
+        ]));
+        render(<NextSessionCard onShareCost={() => {}} />);
+        await waitFor(() => expect(screen.getByText(/Sent · \$15/)).toBeTruthy());
+        expect(screen.queryByText(/Roster changed since you finalized/)).toBeNull();
       } finally {
         process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
       }
