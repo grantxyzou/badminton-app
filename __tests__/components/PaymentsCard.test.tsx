@@ -187,6 +187,26 @@ describe('<PaymentsCard />', () => {
       }
     });
 
+    it('hides per-row $ once the session is unsettled, even if owedAmount lingers on player docs', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      try {
+        // ACTIVE_SESSION is unsettled, but the players still carry a frozen
+        // owedAmount from a settle that was later undone ("Edit bill"). The
+        // stale amount must NOT render — a per-person owed only means anything
+        // while the session is settled. (Regression: it used to stay on-screen.)
+        fetchPlayers([
+          { id: 'p1', name: 'Daisy', paid: true, owedAmount: 19.28 },
+          { id: 'p2', name: 'Mei', paid: false, owedAmount: 19.28 },
+        ]);
+        render(<PaymentsCard />);
+        await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
+        expect(screen.queryByText('$19.28')).toBeNull();
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+
     it('summary header: shows players · % paid · $ each for the viewed session', async () => {
       const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
       process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
