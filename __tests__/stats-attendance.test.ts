@@ -137,4 +137,24 @@ describe('GET /api/stats/attendance', () => {
     const data = await res.json();
     expect(data.weeks).toBeLessThanOrEqual(52);
   });
+
+  it('excludes a not-yet-played future session from history and streak', async () => {
+    // Three past sessions, all attended → a real 3-session streak.
+    const past = makeSessionIds(3);
+    past.forEach((id, i) => seedSession(id, { datetime: isoForDaysAgo(i * 7 + 7) }));
+    past.forEach((id) => seedPlayer(id, 'Grant'));
+    // Upcoming session next week — nobody has played it yet (no player row).
+    const future = new Date();
+    future.setDate(future.getDate() + 7);
+    const futureId = `session-${future.toISOString().slice(0, 10)}`;
+    seedSession(futureId, { datetime: future.toISOString() });
+
+    const res = await GET(
+      makeRequest('GET', 'http://localhost:3000/api/stats/attendance?name=Grant&weeks=12'),
+    );
+    const data = await res.json();
+    // The future session must neither appear in history nor reset the streak to 0.
+    expect(data.history.some((h: { sessionId: string }) => h.sessionId === futureId)).toBe(false);
+    expect(data.streak).toBe(3);
+  });
 });

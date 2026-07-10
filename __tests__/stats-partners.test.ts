@@ -31,6 +31,23 @@ describe('GET /api/stats/partners', () => {
     expect(body.partners.find((p: { name: string }) => p.name === 'Carolina').count).toBe(1);
   });
 
+  it('defaults to a 12-week window when weeks is omitted (not a 1-week window)', async () => {
+    // A session 4 weeks ago — inside a 12-week window, outside a 1-week one.
+    // Guards the `Number(null) === 0` trap that made an omitted `weeks` resolve
+    // to a 1-week window and silently drop older partners.
+    const players = getContainer('players');
+    const d = new Date();
+    d.setDate(d.getDate() - 28);
+    const sid = `session-${d.toISOString().slice(0, 10)}`;
+    await players.items.upsert({ id: 'pd1', sessionId: sid, name: 'Lin' });
+    await players.items.upsert({ id: 'pd2', sessionId: sid, name: 'Akane' });
+
+    const res = await GET(get('/api/stats/partners?name=Lin'));
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.partners.find((p: { name: string }) => p.name === 'Akane')?.count).toBe(1);
+  });
+
   it('404s when the flag is off', async () => {
     process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'false';
     const res = await GET(get('/api/stats/partners?name=Lin'));
