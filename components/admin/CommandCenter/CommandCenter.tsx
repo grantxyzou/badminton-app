@@ -129,6 +129,7 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
         onEdit={() => setView('session-details')}
         onAdvance={() => setView('advance')}
         onShareCost={() => openReceipt({ mode: 'group' })}
+        onChanged={() => setLocalRefresh((n) => n + 1)}
       />
       <AdminDashTiles
         onOpenBirds={() => setView('birds')}

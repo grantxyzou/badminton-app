@@ -69,7 +69,8 @@ export default function SetupPage({ onBack }: SetupPageProps) {
   const [originalSessionTubes, setOriginalSessionTubes] = useState<Map<string, number>>(new Map());
 
   // Live data for the Share preview.
-  const [activePlayerCount, setActivePlayerCount] = useState(0);
+  const [activePlayerNames, setActivePlayerNames] = useState<string[]>([]);
+  const activePlayerCount = activePlayerNames.length;
   const [recipient, setRecipient] = useState<{ name: string; email: string; memo?: string } | null>(null);
 
   // Recent costs for chip suggestions
@@ -95,7 +96,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
       const session = sessionRes.ok ? await sessionRes.json() as Session : null;
       const birds = birdsRes.ok ? await birdsRes.json() as { purchases: BirdPurchase[]; currentStock?: number } : null;
       const allSessions = sessionsRes.ok ? await sessionsRes.json() as Session[] : [];
-      const players = playersRes.ok ? await playersRes.json() as Array<{ removed?: boolean; waitlisted?: boolean }> : [];
+      const players = playersRes.ok ? await playersRes.json() as Array<{ name?: string; removed?: boolean; waitlisted?: boolean }> : [];
       const members = membersRes.ok ? await membersRes.json() as Array<{ role?: string; eTransferRecipient?: { name: string; email: string; memo?: string } }> : [];
       const costs = recentCostsRes.ok ? await recentCostsRes.json() as { costs: number[] } : null;
 
@@ -144,7 +145,9 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         }
       }
 
-      setActivePlayerCount(players.filter((p) => !p.removed && !p.waitlisted).length);
+      setActivePlayerNames(
+        players.filter((p) => !p.removed && !p.waitlisted).map((p) => p.name).filter((n): n is string => !!n),
+      );
 
       const adminMember = Array.isArray(members) ? members.find((m) => m.role === 'admin') : null;
       const sessionRecipient = (session as Session & { eTransferRecipient?: { name: string; email: string; memo?: string } } | null)?.eTransferRecipient;
@@ -261,11 +264,11 @@ export default function SetupPage({ onBack }: SetupPageProps) {
       costPerPerson: perPlayer,
       courts,
       totalCost,
-      playerNames: [],
+      playerNames: activePlayerNames,
       recipient: { name: recipient.name, email: recipient.email },
       memoTemplate: recipient.memo,
     };
-  }, [recipient, date, time, perPlayer, courts, totalCost]);
+  }, [recipient, date, time, perPlayer, courts, totalCost, activePlayerNames]);
 
   const previewText = receiptInput ? renderGroupText(receiptInput) : '';
 
