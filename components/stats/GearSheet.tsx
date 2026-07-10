@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
+import { useOnline } from '@/lib/useOnline';
 import type { CatalogItem } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -23,6 +24,8 @@ interface Props {
 export default function GearSheet({ name, open, onClose, onSaved }: Props) {
   const t = useTranslations('valueHub');
   const tRecovery = useTranslations('recovery');
+  const tStats = useTranslations('stats');
+  const online = useOnline();
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [query, setQuery] = useState('');
   const [saving, setSaving] = useState(false);
@@ -100,12 +103,15 @@ export default function GearSheet({ name, open, onClose, onSaved }: Props) {
             />
             {loadError && <ErrorState message={t('recError')} />}
             {saveError && <ErrorState message={t('recError')} />}
+            {!online && (
+              <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>{tStats('offline')}</p>
+            )}
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {matches.map((c) => (
                 <li key={c.id}>
                   <button
                     type="button"
-                    disabled={saving}
+                    disabled={!online || saving}
                     onClick={() => pick(c)}
                     className="cc-btn cc-btn-ghost"
                     style={{ width: '100%', justifyContent: 'flex-start' }}

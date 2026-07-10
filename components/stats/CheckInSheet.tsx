@@ -6,6 +6,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { SKILLS } from '@/lib/assessment';
+import { useOnline } from '@/lib/useOnline';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -35,6 +36,7 @@ export default function CheckInSheet({
   previous?: Map<string, number>;
 }) {
   const t = useTranslations('stats');
+  const online = useOnline();
   const total = SKILLS.length;
   // step: -1 = mirror/intro, 0..total-1 = a skill, total = review/save
   const [step, setStep] = useState(-1);
@@ -226,11 +228,14 @@ export default function CheckInSheet({
               <p style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-primary)', margin: 0, lineHeight: 1.4 }}>{t('assess.reviewCount', { rated: ratedCount, total })}</p>
               <EmptyState>{t('assess.reviewPrompt')}</EmptyState>
               {error && <ErrorState message={error} />}
+              {!online && (
+                <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>{t('offline')}</p>
+              )}
               <div style={{ display: 'flex', gap: 10 }}>
                 <button type="button" onClick={() => setStep(total - 1)} className="cc-btn cc-btn-ghost" style={{ flex: 1 }}>
                   {t('assess.back')}
                 </button>
-                <button type="button" onClick={submit} disabled={busy || ratedCount === 0} className="cc-btn cc-btn-primary" style={{ flex: 2 }}>
+                <button type="button" onClick={submit} disabled={!online || busy || ratedCount === 0} className="cc-btn cc-btn-primary" style={{ flex: 2 }}>
                   {busy ? t('assess.saving') : t('assess.save')}
                 </button>
               </div>

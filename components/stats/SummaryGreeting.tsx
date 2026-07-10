@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useInsight } from '@/lib/useInsight';
 import StatusBadge from '@/components/primitives/StatusBadge';
 
@@ -14,6 +15,7 @@ import StatusBadge from '@/components/primitives/StatusBadge';
  * so the AI provenance is honest.
  */
 export default function SummaryGreeting() {
+  const t = useTranslations('stats');
   const { data } = useInsight(true);
   const greeting = data?.greeting ?? null;
   if (!greeting) return null;
@@ -22,14 +24,14 @@ export default function SummaryGreeting() {
     <div
       className="glass-card insight-rim animate-fadeIn"
       style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', alignItems: 'center', gap: 12 }}
-      aria-label="Your AI summary"
+      aria-label={t('summaryGreeting.ariaLabel')}
     >
       <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-stat-lg)', color: 'var(--accent, #22c55e)', flexShrink: 0 }}>
         auto_fix_high
       </span>
       <p style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: 1.45, color: 'var(--text-primary)', flex: 1, minWidth: 0 }}>{greeting}</p>
       <span style={{ flexShrink: 0 }}>
-        <StatusBadge>Beta</StatusBadge>
+        <StatusBadge>{t('summaryGreeting.beta')}</StatusBadge>
       </span>
     </div>
   );

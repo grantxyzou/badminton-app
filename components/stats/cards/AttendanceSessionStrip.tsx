@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 /**
  * Recent-form attendance row. Shows the last N actual sessions as larger
  * played/missed dots (newest on the right) — a sports-style "form guide" that
@@ -41,12 +43,13 @@ export function recentSessions(history: HistoryEntry[], limit = 8) {
 }
 
 export default function AttendanceSessionStrip({ history, limit = 8 }: Props) {
+  const t = useTranslations('stats');
   const sessions = recentSessions(history, limit);
 
   if (sessions.length === 0) {
     return (
       <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: MUTED }}>
-        No sessions in this window yet.
+        {t('sessionStrip.empty')}
       </p>
     );
   }
@@ -54,11 +57,11 @@ export default function AttendanceSessionStrip({ history, limit = 8 }: Props) {
   return (
     <div
       role="img"
-      aria-label={`Recent form across the last ${sessions.length} session${sessions.length === 1 ? '' : 's'}`}
+      aria-label={t('sessionStrip.ariaLabel', { count: sessions.length })}
       style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}
     >
       {sessions.map((s) => {
-        const label = `${s.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} — ${s.attended ? 'played' : 'missed'}`;
+        const label = `${s.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} — ${s.attended ? t('sessionStrip.played') : t('sessionStrip.missed')}`;
         return (
           <div
             key={s.sessionId}
