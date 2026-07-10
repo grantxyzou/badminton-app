@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Session, BirdPurchase } from '@/lib/types';
-import { normalizeBirdUsages } from '@/lib/birdUsages';
+import { normalizeBirdUsages, totalTubes, totalBirdCost, currentPricePerTube } from '@/lib/birdUsages';
 import { markExternalExcursion } from '@/lib/excursion';
 import AdminBackHeader from './AdminBackHeader';
 import DatePicker from '../DatePicker';
@@ -53,8 +53,8 @@ export default function AdvanceSessionForm({ onBack }: Props) {
   // Bird inventory + the tubes the admin chooses to load into the new session
   // at creation time. Keyed by purchaseId so different-priced brands cost right.
   const [purchases, setPurchases] = useState<BirdPurchase[]>([]);
-  const [remainingByPurchase, setRemainingByPurchase] = useState<Record<string, number>>({});
-  const [birdTubes, setBirdTubes] = useState<Record<string, number>>({});
+  const [tubes, setTubes] = useState(0);
+  const [pricePerTube, setPricePerTube] = useState(0);
   const [advancing, setAdvancing] = useState(false);
   const [advanceError, setAdvanceError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -80,13 +80,13 @@ export default function AdvanceSessionForm({ onBack }: Props) {
         setTitle(data.title ?? '');
         setLocationName(data.locationName ?? '');
         setLocationAddress(data.locationAddress ?? '');
-        // Carry last week's bird selection forward so lingering inventory
-        // doesn't get stranded — admin can adjust before creating.
-        const prevTubes: Record<string, number> = {};
-        for (const u of normalizeBirdUsages(data)) {
-          if (u.tubes > 0) prevTubes[u.purchaseId] = u.tubes;
-        }
-        setBirdTubes(prevTubes);
+        // Carry last week's shuttle usage forward (blended price), so lingering
+        // stock isn't stranded — admin can adjust before creating.
+        const usages = normalizeBirdUsages(data);
+        const carriedTubes = totalTubes(usages);
+        const carriedCost = totalBirdCost(usages);
+        setTubes(carriedTubes);
+        setPricePerTube(carriedTubes > 0 ? Math.round((carriedCost / carriedTubes) * 100) / 100 : 0);
       })
       .catch(() => {
         // Critical fetch — without it the form shows generic defaults
@@ -109,9 +109,10 @@ export default function AdvanceSessionForm({ onBack }: Props) {
     // Bird inventory so the admin can load tubes into the new session at creation.
     fetch(`${BASE}/api/birds`, { cache: 'no-store' })
       .then(r => r.ok ? r.json() : { purchases: [] })
-      .then((data: { purchases?: BirdPurchase[]; remainingByPurchase?: Record<string, number> }) => {
+      .then((data: { purchases?: BirdPurchase[] }) => {
         setPurchases(Array.isArray(data.purchases) ? data.purchases : []);
-        setRemainingByPurchase(data.remainingByPurchase ?? {});
+        // Fresh session (no carry-forward) still gets the latest going rate.
+        setPricePerTube(prev => prev > 0 ? prev : currentPricePerTube(Array.isArray(data.purchases) ? data.purchases : []));
       })
       .catch(() => {});
     // Skip dates from the auth-gated admin endpoint (not the public
@@ -170,21 +171,11 @@ export default function AdvanceSessionForm({ onBack }: Props) {
     }
   }
 
-  function bumpTubes(purchaseId: string, delta: number) {
-    setBirdTubes(prev => {
-      const current = prev[purchaseId] ?? 0;
-      // Don't let the admin assign more than is on hand for this purchase.
-      // A carried-forward value already above remaining is kept as its own
-      // ceiling (so it can only go down), never force-bumped up.
-      const remaining = remainingByPurchase[purchaseId];
-      const cap = typeof remaining === 'number' ? Math.max(remaining, current) : 20;
-      const next = Math.max(0, Math.min(cap, Math.round((current + delta) * 4) / 4));
-      const updated = { ...prev };
-      if (next > 0) updated[purchaseId] = next;
-      else delete updated[purchaseId];
-      return updated;
-    });
+  function bumpTubes(delta: number) {
+    setTubes(prev => Math.max(0, Math.min(100, Math.round((prev + delta) * 4) / 4)));
   }
+
+  const autoPrice = useMemo(() => currentPricePerTube(purchases), [purchases]);
 
   async function performAdvance() {
     setAdvancing(true);
@@ -202,9 +193,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
           ...(title.trim() ? { title: title.trim() } : {}),
           locationName: locationName.trim(),
           locationAddress: locationAddress.trim(),
-          birdUsages: Object.entries(birdTubes)
-            .filter(([, t]) => t > 0)
-            .map(([purchaseId, tubes]) => ({ purchaseId, tubes })),
+          birdUsages: tubes > 0 ? [{ pooled: true, tubes, pricePerTube }] : [],
           ...(costPerCourt !== null ? { costPerCourt } : {}),
         }),
       });
@@ -399,71 +388,65 @@ export default function AdvanceSessionForm({ onBack }: Props) {
             )}
           </Label>
 
-          {(() => {
-            // Only offer purchases that still have stock on hand. A depleted
-            // purchase (remaining <= 0) is hidden so it doesn't clutter the
-            // list — UNLESS it's already selected (carried over from last
-            // session), in which case it stays visible so the admin can see
-            // and adjust it.
-            const visible = purchases.filter(
-              p => (remainingByPurchase[p.id] ?? 0) > 0 || (birdTubes[p.id] ?? 0) > 0,
-            );
-            if (visible.length === 0) return null;
-            return (
-              <Label text="Birds for this session">
-                <div className="space-y-2">
-                  {visible.map(p => {
-                    const tubes = birdTubes[p.id] ?? 0;
-                    const remaining = remainingByPurchase[p.id] ?? 0;
-                    const atCap = tubes >= Math.max(remaining, tubes);
-                    return (
-                      <div
-                        key={p.id}
-                        className="flex items-center justify-between gap-3 rounded-xl p-3"
-                        style={{ background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)' }}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="fs-md font-medium truncate" style={{ color: 'var(--text-primary)' }}>{p.name}</p>
-                          <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                            ${p.costPerTube.toFixed(2)}/tube · {remaining} left
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => bumpTubes(p.id, -0.5)}
-                            aria-label={`Decrease ${p.name} tubes`}
-                            disabled={tubes <= 0}
-                            style={{ minWidth: 40, minHeight: 40, borderRadius: 'var(--radius-md)', border: '1px solid var(--inner-card-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 18, opacity: tubes <= 0 ? 0.4 : 1 }}
-                          >
-                            −
-                          </button>
-                          <span
-                            className="tabular-nums"
-                            style={{ minWidth: 44, textAlign: 'center', fontFamily: 'var(--font-mono)', fontWeight: 600, color: tubes > 0 ? 'var(--accent)' : 'var(--text-muted)' }}
-                          >
-                            {tubes}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => bumpTubes(p.id, 0.5)}
-                            aria-label={`Increase ${p.name} tubes`}
-                            disabled={atCap}
-                            style={{ minWidth: 40, minHeight: 40, borderRadius: 'var(--radius-md)', border: '1px solid var(--inner-card-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 18, opacity: atCap ? 0.4 : 1 }}
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <p className="text-[10px] pt-1" style={{ color: 'var(--text-muted)' }}>
-                  Only showing tubes still in stock — adjust which go into this session.
+          <Label text="Shuttles for this session">
+            <div
+              className="flex items-center justify-between gap-3 rounded-xl p-3"
+              style={{ background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)' }}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="fs-md font-medium" style={{ color: 'var(--text-primary)' }}>Shuttles used</p>
+                <p className="text-[11px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                  {tubes} tube{tubes === 1 ? '' : 's'} × ${pricePerTube.toFixed(2)} = ${(Math.round(tubes * pricePerTube * 100) / 100).toFixed(2)}
                 </p>
-              </Label>
-            );
-          })()}
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => bumpTubes(-0.25)}
+                  aria-label="Decrease shuttle tubes"
+                  disabled={tubes <= 0}
+                  style={{ minWidth: 40, minHeight: 40, borderRadius: 'var(--radius-md)', border: '1px solid var(--inner-card-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 18, opacity: tubes <= 0 ? 0.4 : 1 }}
+                >
+                  −
+                </button>
+                <span className="tabular-nums" style={{ minWidth: 44, textAlign: 'center', fontFamily: 'var(--font-mono)', fontWeight: 600, color: tubes > 0 ? 'var(--accent)' : 'var(--text-muted)' }}>
+                  {tubes}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => bumpTubes(0.25)}
+                  aria-label="Increase shuttle tubes"
+                  disabled={tubes >= 100}
+                  style={{ minWidth: 40, minHeight: 40, borderRadius: 'var(--radius-md)', border: '1px solid var(--inner-card-border)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 18, opacity: tubes >= 100 ? 0.4 : 1 }}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>$ / tube</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step={0.5}
+                value={pricePerTube || ''}
+                onChange={e => setPricePerTube(e.target.value === '' ? 0 : Math.max(0, Math.min(10000, Number(e.target.value))))}
+                placeholder="$ per tube"
+                className="fs-md"
+                style={{ flex: 1, background: 'var(--input-bg)', border: '1px solid var(--inner-card-border)', borderRadius: 'var(--radius-md)', padding: '8px 10px', color: 'var(--text-primary)' }}
+              />
+              {autoPrice > 0 && Math.abs(autoPrice - pricePerTube) > 0.005 && (
+                <button
+                  type="button"
+                  onClick={() => setPricePerTube(autoPrice)}
+                  className="text-[11px]"
+                  style={{ padding: '4px 8px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--inner-card-border)', background: 'var(--input-bg)', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  Latest ${autoPrice.toFixed(2)}
+                </button>
+              )}
+            </div>
+          </Label>
 
           {advanceError && <p className="field-error">{advanceError}</p>}
 
