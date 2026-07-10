@@ -292,6 +292,45 @@
         "nice_shot": "好球"
       }
     },
+    "offline": "你已离线——重新联网后再保存。",
+    "streak": {
+      "personalBestLabel": "{name} — 个人最佳",
+      "streakLabel": "{name}的连续出勤",
+      "streakLine": "你已连续出勤 {count, plural, other {# 周}}",
+      "personalBestSub": "追平或超越了你最长的 {count} 周纪录。",
+      "longestRunSub": "最长连续 {count, plural, other {# 周}}。继续保持。",
+      "ariaStreak": "{count, plural, other {{name}连续出勤 # 周}}",
+      "ariaInsight": "{name}的解读",
+      "readTitle": "为你解读",
+      "beta": "测试版",
+      "reading": "正在解读…",
+      "lastWeek": "上周",
+      "focus": "本周 · 重点",
+      "readError": "解读加载不出来 — 刷新再试一次。"
+    },
+    "attendanceLive": {
+      "title": "你的数据",
+      "prompt": "登录或创建账户，查看你的专属数据。",
+      "loadError": "暂时加载不出来 — 刷新再试一次。",
+      "recentForm": "你的近期状态",
+      "viewingAs": "正在查看",
+      "change": "更改",
+      "ofLast": "／最近 {count} 场"
+    },
+    "sessionStrip": {
+      "empty": "此时间段内还没有场次。",
+      "ariaLabel": "{count, plural, other {最近 # 场的近期状态}}",
+      "played": "已参加",
+      "missed": "缺席"
+    },
+    "summaryGreeting": {
+      "ariaLabel": "你的 AI 总结",
+      "beta": "测试版"
+    },
+    "insightChip": {
+      "aiGenerated": "AI 生成",
+      "aiBadge": "AI"
+    },
     "comingSoon": "即将推出",
     "moreComing": "更多指标制作中",
     "progression": {

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
+import { useOnline } from '@/lib/useOnline';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -21,6 +22,8 @@ interface Props {
 export default function GameLoggerSheet({ you, sessionId, open, onClose, onLogged }: Props) {
   const t = useTranslations('valueHub');
   const tRecovery = useTranslations('recovery');
+  const tStats = useTranslations('stats');
+  const online = useOnline();
   const [partner, setPartner] = useState('');
   const [opp1, setOpp1] = useState('');
   const [opp2, setOpp2] = useState('');
@@ -107,7 +110,10 @@ export default function GameLoggerSheet({ you, sessionId, open, onClose, onLogge
               </div>
             </div>
             {error && <ErrorState message={t('recError')} />}
-            <button type="button" disabled={!valid || busy} onClick={submit} className="cc-btn cc-btn-primary cc-btn-lg" style={{ marginTop: 4 }}>
+            {!online && (
+              <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>{tStats('offline')}</p>
+            )}
+            <button type="button" disabled={!online || !valid || busy} onClick={submit} className="cc-btn cc-btn-primary cc-btn-lg" style={{ marginTop: 4 }}>
               {t('logGameSubmit')}
             </button>
           </div>

@@ -292,6 +292,45 @@
         "nice_shot": "Nice shot"
       }
     },
+    "offline": "You're offline — reconnect to save.",
+    "streak": {
+      "personalBestLabel": "{name} — Personal Best",
+      "streakLabel": "{name}'s Streak",
+      "streakLine": "You're on a {count, plural, one {# week} other {# weeks}} streak",
+      "personalBestSub": "Tied or beating your longest run of {count}.",
+      "longestRunSub": "Longest run: {count, plural, one {# week} other {# weeks}}. Keep showing up.",
+      "ariaStreak": "{count, plural, one {# week attendance streak for {name}} other {# weeks attendance streak for {name}}}",
+      "ariaInsight": "Insight for {name}",
+      "readTitle": "Your read",
+      "beta": "Beta",
+      "reading": "Reading the dots…",
+      "lastWeek": "Last week",
+      "focus": "This week · Focus",
+      "readError": "Couldn't load your read — refresh to retry."
+    },
+    "attendanceLive": {
+      "title": "Your stats",
+      "prompt": "Sign in or create an account to see your personalized stats.",
+      "loadError": "Couldn't load that — refresh to try again.",
+      "recentForm": "Your recent form",
+      "viewingAs": "viewing as",
+      "change": "change",
+      "ofLast": "of your last {count}"
+    },
+    "sessionStrip": {
+      "empty": "No sessions in this window yet.",
+      "ariaLabel": "Recent form across the last {count, plural, one {# session} other {# sessions}}",
+      "played": "played",
+      "missed": "missed"
+    },
+    "summaryGreeting": {
+      "ariaLabel": "Your AI summary",
+      "beta": "Beta"
+    },
+    "insightChip": {
+      "aiGenerated": "AI generated",
+      "aiBadge": "AI"
+    },
     "comingSoon": "Coming soon",
     "moreComing": "other metrics in the making",
     "progression": {

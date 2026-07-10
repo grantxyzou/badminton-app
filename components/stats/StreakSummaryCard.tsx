@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
 import CardHeader from '@/components/primitives/CardHeader';
 import StatusBadge from '@/components/primitives/StatusBadge';
@@ -46,6 +47,7 @@ function resolveActiveName(): string | null {
 }
 
 export default function StreakSummaryCard() {
+  const t = useTranslations('stats');
   const [activeName, setActiveName] = useState<string | null>(null);
   const [streakData, setStreakData] = useState<StreakData | null>(null);
   const [insight, setInsight] = useState<InsightData | null>(null);
@@ -133,7 +135,7 @@ export default function StreakSummaryCard() {
       className={`glass-card${showRim ? ' insight-rim' : ''}${generating ? ' is-generating' : ''}`}
       style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}
       aria-busy={generating || undefined}
-      aria-label={hasStreak ? `${streak} week attendance streak for ${name}` : `Insight for ${name}`}
+      aria-label={hasStreak ? t('streak.ariaStreak', { count: streak, name }) : t('streak.ariaInsight', { name })}
     >
       {/* ── Headline: attendance streak ── */}
       {hasStreak && (
@@ -151,15 +153,15 @@ export default function StreakSummaryCard() {
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <p style={{ margin: 0, fontSize: 'var(--fs-xs)', color: MUTED, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-              {onPersonalBest ? `${name} — Personal Best` : `${name}'s Streak`}
+              {onPersonalBest ? t('streak.personalBestLabel', { name }) : t('streak.streakLabel', { name })}
             </p>
             <p style={{ margin: 0, fontSize: 'var(--fs-lg)', fontWeight: 600, color: PRIMARY, lineHeight: 1.25, marginTop: 2 }}>
-              {streak === 1 ? "You're on a 1-week streak" : `You're on a ${streak}-week streak`}
+              {t('streak.streakLine', { count: streak })}
             </p>
             <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: MUTED, marginTop: 2 }}>
               {onPersonalBest
-                ? `Tied or beating your longest run of ${longestStreak}.`
-                : `Longest run: ${longestStreak} week${longestStreak === 1 ? '' : 's'}. Keep showing up.`}
+                ? t('streak.personalBestSub', { count: longestStreak })
+                : t('streak.longestRunSub', { count: longestStreak })}
             </p>
           </div>
         </div>
@@ -168,22 +170,22 @@ export default function StreakSummaryCard() {
       {/* ── Body: passive AI insight (recap + focus) ── */}
       {showBody && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, ...(hasStreak ? { borderTop: '1px solid var(--inner-card-border)', paddingTop: 14 } : {}) }}>
-          <CardHeader icon="auto_fix_high" title="Your read" badge={<StatusBadge>Beta</StatusBadge>} />
+          <CardHeader icon="auto_fix_high" title={t('streak.readTitle')} badge={<StatusBadge>{t('streak.beta')}</StatusBadge>} />
 
           {insightLoading && !hasInsight ? (
             <div aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div className="animate-pulse" style={{ height: 12, borderRadius: 'var(--radius-xs)', background: 'var(--inner-card-bg)', width: '90%' }} />
               <div className="animate-pulse" style={{ height: 12, borderRadius: 'var(--radius-xs)', background: 'var(--inner-card-bg)', width: '70%' }} />
-              <p style={{ margin: 0, fontSize: 'var(--fs-xs)', color: MUTED }}>Reading the dots…</p>
+              <p style={{ margin: 0, fontSize: 'var(--fs-xs)', color: MUTED }}>{t('streak.reading')}</p>
             </div>
           ) : hasInsight ? (
             <div className="animate-fadeIn" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {insight?.recap && <InsightSection label="Last week" body={insight.recap} />}
-              {insight?.focus && <InsightSection label="This week · Focus" body={insight.focus} accent />}
+              {insight?.recap && <InsightSection label={t('streak.lastWeek')} body={insight.recap} />}
+              {insight?.focus && <InsightSection label={t('streak.focus')} body={insight.focus} accent />}
             </div>
           ) : (
             <p role="alert" style={{ margin: 0, fontSize: 'var(--fs-sm)', color: MUTED }}>
-              Couldn’t load your read — refresh to retry.
+              {t('streak.readError')}
             </p>
           )}
         </div>

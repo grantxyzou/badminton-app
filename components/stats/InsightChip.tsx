@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { CardSlice } from '@/lib/useInsight';
 
 /**
@@ -23,6 +24,7 @@ const ICON_BY_KIND: Record<string, string> = {
 const ACCENT = 'var(--accent, #22c55e)';
 
 export default function InsightChip({ headline, support, kind }: CardSlice) {
+  const t = useTranslations('stats');
   const icon = ICON_BY_KIND[kind] ?? 'auto_fix_high';
   return (
     <div
@@ -45,8 +47,8 @@ export default function InsightChip({ headline, support, kind }: CardSlice) {
         {support && <p style={{ margin: '2px 0 0', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', lineHeight: 1.4 }}>{support}</p>}
       </div>
       <span
-        aria-label="AI generated"
-        title="AI generated"
+        aria-label={t('insightChip.aiGenerated')}
+        title={t('insightChip.aiGenerated')}
         style={{
           fontSize: 'var(--fs-2xs)',
           padding: '2px 6px',
@@ -60,7 +62,7 @@ export default function InsightChip({ headline, support, kind }: CardSlice) {
           flexShrink: 0,
         }}
       >
-        AI
+        {t('insightChip.aiBadge')}
       </span>
     </div>
   );
