@@ -34,12 +34,24 @@ export async function resolveBirdUsages(raw: unknown): Promise<ResolveBirdUsages
   // price with no specific batch (Model B). Detected before validateBirdEntry
   // (which requires a purchaseId) and keyed by the POOLED_PURCHASE_ID sentinel,
   // so per-purchase entries and the single pooled bucket coexist in one map.
+  // A manually-entered price on the pooled entry overrides the auto (latest
+  // purchase) price — the fallback for when no purchase is recorded yet, and an
+  // override when a batch was bought at a one-off price. Null → use the auto price.
+  let pooledPrice: number | null = null;
   const byId = new Map<string, number>();
   for (const entry of raw) {
     if (entry && typeof entry === 'object' && (entry as { pooled?: unknown }).pooled === true) {
       const tubes = Number((entry as { tubes?: unknown }).tubes);
       const err = validateTubeCount(tubes, 0, 100);
       if (err) return { ok: false, status: 400, error: err };
+      const rawPrice = (entry as { pricePerTube?: unknown }).pricePerTube;
+      if (rawPrice !== undefined && rawPrice !== null && rawPrice !== '') {
+        const p = Number(rawPrice);
+        if (!Number.isFinite(p) || p < 0 || p > 10000) {
+          return { ok: false, status: 400, error: 'Price per tube must be between 0 and 10000' };
+        }
+        pooledPrice = p; // last occurrence wins
+      }
       byId.set(POOLED_PURCHASE_ID, tubes); // last occurrence wins
       continue;
     }
@@ -80,19 +92,24 @@ export async function resolveBirdUsages(raw: unknown): Promise<ResolveBirdUsages
     }
   }
 
-  // Pooled entry: snapshot at the current price-per-tube (latest purchase).
+  // Pooled entry: snapshot at the manual price if one was given, else the
+  // current price-per-tube (latest purchase). Only reads inventory when it
+  // needs the auto price.
   if (pooled.length > 0) {
-    let purchases;
-    try {
-      const { resources } = await birds.items
-        .query({ query: 'SELECT c.costPerTube, c.date, c.type FROM c' })
-        .fetchAll();
-      purchases = (resources as Array<Pick<BirdPurchase, 'costPerTube' | 'date'> & { type?: string }>)
-        .filter((d) => d.type !== 'adjustment');
-    } catch {
-      return { ok: false, status: 503, error: 'Could not read bird inventory. Please try again.' };
+    let price = pooledPrice;
+    if (price === null) {
+      try {
+        const { resources } = await birds.items
+          .query({ query: 'SELECT c.costPerTube, c.date, c.type FROM c' })
+          .fetchAll();
+        const purchases = (resources as Array<Pick<BirdPurchase, 'costPerTube' | 'date'> & { type?: string }>)
+          .filter((d) => d.type !== 'adjustment');
+        price = currentPricePerTube(purchases);
+      } catch {
+        return { ok: false, status: 503, error: 'Could not read bird inventory. Please try again.' };
+      }
     }
-    usages.push(snapshotPooledUsage(pooled[0][1], currentPricePerTube(purchases)));
+    usages.push(snapshotPooledUsage(pooled[0][1], price));
   }
 
   return { ok: true, usages };
