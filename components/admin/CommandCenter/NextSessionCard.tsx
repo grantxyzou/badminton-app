@@ -35,6 +35,12 @@ interface NextSessionCardProps {
    *  to the group chat" action. Belongs alongside session details since
    *  it's about the session, not about whose payment has come in. */
   onShareCost?: () => void;
+  /** Fired after a settle/unsettle succeeds. The parent bumps its shared
+   *  refresh key so sibling cards (esp. PaymentsCard, which reads the frozen
+   *  per-person + owed amounts) reload instead of showing the pre-change
+   *  snapshot. Without it, unsettling here leaves the Payments card showing a
+   *  stale "$X each". */
+  onChanged?: () => void;
 }
 
 function fmtCountdown(deadline: string | undefined): string | null {
@@ -50,7 +56,7 @@ function fmtCountdown(deadline: string | undefined): string | null {
   return `${mins}m`;
 }
 
-export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onShareCost }: NextSessionCardProps) {
+export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onShareCost, onChanged }: NextSessionCardProps) {
   const [session, setSession] = useState<Session | null>(null);
   const [activeCount, setActiveCount] = useState<number>(0);
   const [waitlistCount, setWaitlistCount] = useState<number>(0);
@@ -139,13 +145,14 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
         return;
       }
       await load();
+      onChanged?.();
       onShareCost?.();
     } catch {
       setSettleError("Couldn't reach server. Try again.");
     } finally {
       setSettling(false);
     }
-  }, [load, onShareCost, session?.signupOpen, activeCount]);
+  }, [load, onChanged, onShareCost, session?.signupOpen, activeCount]);
 
   const editBill = useCallback(async () => {
     if (!confirm("Edit the bill? This clears what each person owes (paid checkmarks stay).")) return;
@@ -159,12 +166,13 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
         return;
       }
       await load();
+      onChanged?.();
     } catch {
       setSettleError("Couldn't reach server. Try again.");
     } finally {
       setSettling(false);
     }
-  }, [load]);
+  }, [load, onChanged]);
 
   // Open/close sign-ups in place — optimistic flip + rollback on failure.
   // `PUT /api/session` is a read-merge and only targets the active session,
