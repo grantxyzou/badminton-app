@@ -104,6 +104,53 @@ export function snapshotBirdUsage(
 }
 
 /**
+ * Sentinel `purchaseId` for a POOLED shuttle usage — a session that logged a
+ * single "tubes used" number at the current price-per-tube, with no specific
+ * purchase batch (the simplified "Model B" shuttle model). It is deliberately
+ * NOT a real purchase id (those are `randomBytes` hex), so:
+ *   - `remainingByPurchase` (which iterates real purchases) never attributes a
+ *     pooled tube to a batch — but `totalUsed`/`currentStock` still count it
+ *     (they sum every usage's `tubes`), so overall stock stays correct;
+ *   - the DELETE referential guard and AssignUsageSheet (both match a real
+ *     purchase id) simply ignore pooled entries.
+ * Cost still flows through the snapshotted `totalBirdCost`, so receipts /
+ * settle / history are unchanged.
+ */
+export const POOLED_PURCHASE_ID = 'pool';
+
+/**
+ * The "current price per tube" = the most recent purchase's `costPerTube`
+ * (latest by `date`). Buying a new batch at a new price moves the going rate;
+ * each session snapshots this at log time so past sessions never shift.
+ * Returns 0 when there are no priced purchases (caller shows $0 / "set a price").
+ */
+export function currentPricePerTube(
+  purchases: Array<Pick<BirdPurchase, 'costPerTube' | 'date'>>,
+): number {
+  let latest: Pick<BirdPurchase, 'costPerTube' | 'date'> | null = null;
+  for (const p of purchases) {
+    if (typeof p.costPerTube !== 'number' || !Number.isFinite(p.costPerTube)) continue;
+    if (!latest || (p.date ?? '') >= (latest.date ?? '')) latest = p;
+  }
+  return latest ? latest.costPerTube : 0;
+}
+
+/**
+ * Build a pooled `BirdUsage` snapshot: a session's single "tubes used" at the
+ * current price-per-tube, tagged with the `POOLED_PURCHASE_ID` sentinel. Same
+ * frozen cost shape as `snapshotBirdUsage`, so cost math is identical.
+ */
+export function snapshotPooledUsage(tubes: number, pricePerTube: number): BirdUsage {
+  return {
+    purchaseId: POOLED_PURCHASE_ID,
+    purchaseName: 'Shuttles',
+    tubes,
+    costPerTube: pricePerTube,
+    totalBirdCost: Math.round(tubes * pricePerTube * 100) / 100,
+  };
+}
+
+/**
  * Apply a single-purchase tube edit to a session's full usage map WITHOUT
  * dropping the other purchases. Returns the `{ purchaseId, tubes }` array that
  * `PUT /api/session` accepts (the server re-derives cost from the purchase).
