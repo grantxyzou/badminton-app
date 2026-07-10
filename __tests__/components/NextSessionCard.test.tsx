@@ -163,12 +163,15 @@ describe('<NextSessionCard />', () => {
     };
     const settledSession = {
       ...session,
+      // costPerCourt × courts (45 × 2 = 90) matches settled.totalCost, so the
+      // live cost equals the frozen cost → no false "cost changed" nudge.
+      costPerCourt: 45,
       settled: {
         at: '2026-05-08T20:00:00.000Z',
         costPerPerson: 15,
         totalCost: 90,
-        courtTotal: 60,
-        birdTotal: 30,
+        courtTotal: 90,
+        birdTotal: 0,
         playerCount: 6,
         playerNames: ['Alice', 'Bob', 'Carol', 'Dan', 'Eve', 'Frank'],
       },
@@ -287,17 +290,37 @@ describe('<NextSessionCard />', () => {
       }
     });
 
-    it('does NOT flag a stale split when the roster still matches', async () => {
+    it('does NOT flag a stale split when the roster and cost still match', async () => {
       const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
       process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
       try {
-        // 6 frozen, 6 active now → matches, no nudge.
+        // 6 frozen, 6 active now + live cost == frozen cost → no nudge at all.
         mockFetch(makeFetcher(settledSession, [
           { id: 'p1' }, { id: 'p2' }, { id: 'p3' }, { id: 'p4' }, { id: 'p5' }, { id: 'p6' },
         ]));
         render(<NextSessionCard onShareCost={() => {}} />);
         await waitFor(() => expect(screen.getByText(/Sent · \$15/)).toBeTruthy());
         expect(screen.queryByText(/Roster changed since you finalized/)).toBeNull();
+        expect(screen.queryByText(/cost changed since you finalized/i)).toBeNull();
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+
+    it('flags a stale bill when the cost changed after finalizing (Edit-bill footgun)', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      try {
+        // Frozen at $90 total, but the court cost was edited down (30 × 2 = 60
+        // live) after finalizing → the bill is stale until unsettled.
+        const costEdited = { ...settledSession, costPerCourt: 30 };
+        mockFetch(makeFetcher(costEdited, [
+          { id: 'p1' }, { id: 'p2' }, { id: 'p3' }, { id: 'p4' }, { id: 'p5' }, { id: 'p6' },
+        ]));
+        render(<NextSessionCard onShareCost={() => {}} />);
+        await waitFor(() => expect(screen.getByText(/cost changed since you finalized/i)).toBeTruthy());
+        // Names the frozen vs live totals and points at Edit bill.
+        expect(screen.getByText(/\$60\.00 now vs \$90\.00 when sent/)).toBeTruthy();
       } finally {
         process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
       }

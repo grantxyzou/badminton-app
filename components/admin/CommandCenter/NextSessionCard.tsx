@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { fmtSessionLabel as fmtDate, fmtDeadline } from '@/lib/fmt';
 import { isFlagOn } from '@/lib/flags';
-import type { SettledSnapshot } from '@/lib/types';
+import type { SettledSnapshot, BirdUsage } from '@/lib/types';
+import { sessionCostTotals } from '@/lib/sessionCost';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 
@@ -18,6 +19,8 @@ interface Session {
   maxPlayers?: number;
   signupOpen?: boolean;
   costPerCourt?: number;
+  birdUsage?: BirdUsage;
+  birdUsages?: BirdUsage[];
   settled?: SettledSnapshot;
 }
 
@@ -223,6 +226,21 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const settledRosterSize = session.settled?.playerNames?.length;
   const rosterChanged =
     isSettled && activeCount > 0 && typeof settledRosterSize === 'number' && settledRosterSize !== activeCount;
+  // The cost inputs changed after finalizing. A finalized bill is frozen, so
+  // editing court/bird cost does NOT update what people owe — the Payments card
+  // keeps showing the frozen per-person until the admin unsettles. This is the
+  // single most confusing footgun (admin edits the cost, saves, and the amount
+  // "won't change"). Surface it explicitly.
+  const frozenTotal = session.settled?.totalCost;
+  const liveTotal = sessionCostTotals({
+    costPerCourt: session.costPerCourt ?? 0,
+    courts: session.courts ?? 0,
+    birdUsage: session.birdUsage,
+    birdUsages: session.birdUsages,
+  }).totalCost;
+  const costChanged =
+    isSettled && typeof frozenTotal === 'number' && Math.abs(liveTotal - frozenTotal) > 0.01;
+  const staleBill = rosterChanged || costChanged;
 
   return (
     <section className="glass-card p-4 space-y-3 animate-fadeIn" aria-label="Next session">
@@ -363,7 +381,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
         </div>
       )}
 
-      {rosterChanged && (
+      {staleBill && (
         <p
           role="status"
           className="fs-sm"
@@ -371,7 +389,15 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
         >
           <span className="material-icons" style={{ fontSize: 'var(--icon-sm)', flexShrink: 0 }} aria-hidden="true">warning</span>
           <span>
-            Roster changed since you finalized ({activeCount} now vs {settledRosterSize} when sent) — the split is stale. Tap &ldquo;Edit bill&rdquo; to recompute.
+            {costChanged ? (
+              <>
+                This bill is locked at ${session.settled?.costPerPerson} each. The cost changed since you finalized (${liveTotal.toFixed(2)} now vs ${frozenTotal?.toFixed(2)} when sent) — editing the cost doesn&rsquo;t update a bill that&rsquo;s already out. Tap &ldquo;Edit bill&rdquo; to unfreeze, then Finalize again.
+              </>
+            ) : (
+              <>
+                Roster changed since you finalized ({activeCount} now vs {settledRosterSize} when sent) — the split is stale. Tap &ldquo;Edit bill&rdquo; to recompute.
+              </>
+            )}
           </span>
         </p>
       )}
