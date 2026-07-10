@@ -96,4 +96,25 @@ describe('resolveBirdUsages', () => {
     const r = await resolveBirdUsages([{ pooled: true, tubes: 0 }]);
     expect(r).toEqual({ ok: true, usages: [] });
   });
+
+  it('a manual pricePerTube overrides the auto (latest-purchase) price', async () => {
+    stubBirdsWithPurchases([{ costPerTube: 35, date: '2026-07-01' }]);
+    const r = await resolveBirdUsages([{ pooled: true, tubes: 2, pricePerTube: 40 }]);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.usages[0]).toMatchObject({ costPerTube: 40, totalBirdCost: 80 });
+  });
+
+  it('falls back to a manual price when there are no purchases yet', async () => {
+    stubBirdsWithPurchases([]); // auto price would be 0
+    const r = await resolveBirdUsages([{ pooled: true, tubes: 1, pricePerTube: 35 }]);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.usages[0]).toMatchObject({ costPerTube: 35, totalBirdCost: 35 });
+  });
+
+  it('rejects an out-of-range manual price with 400', async () => {
+    stubBirdsWithPurchases([]);
+    const r = await resolveBirdUsages([{ pooled: true, tubes: 1, pricePerTube: -5 }]);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.status).toBe(400);
+  });
 });
