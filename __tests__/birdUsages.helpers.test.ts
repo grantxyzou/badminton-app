@@ -1,6 +1,35 @@
 import { describe, it, expect } from 'vitest';
-import { tubesUsedAcross, avgTubesPerSession, runwayWeeks, mergeBirdUsageEdit, snapshotBirdUsage } from '@/lib/birdUsages';
+import { tubesUsedAcross, avgTubesPerSession, runwayWeeks, mergeBirdUsageEdit, snapshotBirdUsage, currentPricePerTube, snapshotPooledUsage, POOLED_PURCHASE_ID } from '@/lib/birdUsages';
 import type { Session, BirdUsage } from '@/lib/types';
+
+describe('currentPricePerTube — latest purchase sets the going rate', () => {
+  it('returns the most recent purchase price by date', () => {
+    expect(currentPricePerTube([
+      { costPerTube: 30, date: '2026-06-01' },
+      { costPerTube: 35, date: '2026-07-01' },
+      { costPerTube: 33, date: '2026-05-20' },
+    ])).toBe(35);
+  });
+  it('returns 0 when there are no priced purchases', () => {
+    expect(currentPricePerTube([])).toBe(0);
+  });
+});
+
+describe('snapshotPooledUsage — pooled shuttle line at current price', () => {
+  it('tags the pooled sentinel and freezes the cost', () => {
+    expect(snapshotPooledUsage(1.25, 35)).toEqual({
+      purchaseId: POOLED_PURCHASE_ID,
+      purchaseName: 'Shuttles',
+      tubes: 1.25,
+      costPerTube: 35,
+      totalBirdCost: 43.75,
+    });
+  });
+  it('rounds cost to cents', () => {
+    // 1.5 * 38.89 = 58.335 → 58.34
+    expect(snapshotPooledUsage(1.5, 38.89).totalBirdCost).toBe(58.34);
+  });
+});
 
 describe('mergeBirdUsageEdit — preserve other purchases when editing one', () => {
   const sorted = (arr: { purchaseId: string; tubes: number }[]) =>
