@@ -302,5 +302,52 @@ describe('<NextSessionCard />', () => {
         process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
       }
     });
+
+    it('fires onChanged after a successful finalize (so sibling cards reload)', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      let changed = 0;
+      global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : (input as Request).url;
+        const method = init?.method ?? 'GET';
+        if (method === 'POST' && url.includes('/api/session/settle')) return new Response('{}', { status: 200 });
+        if (url.includes('/api/players')) return new Response(JSON.stringify([{ id: 'p1' }, { id: 'p2' }]), { status: 200 });
+        // signupOpen:false → no confirm guard on finalize.
+        if (url.includes('/api/session')) return new Response(JSON.stringify(
+          { id: 's', title: 'X', datetime: new Date(Date.now() + 86_400_000).toISOString(), deadline: new Date(Date.now() + 3_600_000).toISOString(), courts: 2, maxPlayers: 12, signupOpen: false },
+        ), { status: 200 });
+        return new Response('nf', { status: 404 });
+      }) as typeof fetch;
+      try {
+        render(<NextSessionCard onShareCost={() => {}} onChanged={() => { changed += 1; }} />);
+        fireEvent.click(await screen.findByRole('button', { name: /Finalize cost/ }));
+        await waitFor(() => expect(changed).toBe(1));
+      } finally {
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
+
+    it('fires onChanged after a successful unsettle (Edit bill)', async () => {
+      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
+      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      let changed = 0;
+      global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : (input as Request).url;
+        const method = init?.method ?? 'GET';
+        if (method === 'DELETE' && url.includes('/api/session/settle')) return new Response('{}', { status: 200 });
+        if (url.includes('/api/players')) return new Response(JSON.stringify([]), { status: 200 });
+        if (url.includes('/api/session')) return new Response(JSON.stringify(settledSession), { status: 200 });
+        return new Response('nf', { status: 404 });
+      }) as typeof fetch;
+      try {
+        render(<NextSessionCard onShareCost={() => {}} onChanged={() => { changed += 1; }} />);
+        fireEvent.click(await screen.findByRole('button', { name: /Edit bill/ }));
+        await waitFor(() => expect(changed).toBe(1));
+      } finally {
+        confirmSpy.mockRestore();
+        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
+      }
+    });
   });
 });
