@@ -171,10 +171,26 @@ export default function SetupPage({ onBack }: SetupPageProps) {
     [birdPurchases, tubePurchaseId],
   );
 
+  // Cost of shuttle purchases OTHER than the one this form edits. A session can
+  // carry tubes from ≥2 purchases (retro-assigned on the Birds page), but this
+  // form only edits ONE. Counting just the edited purchase made the total (and
+  // the "$ each" + share preview) read LOW — a stray second entry silently
+  // inflated the real bill while the form showed a smaller number. Total them
+  // all so the form never disagrees with the receipt/settle.
+  const otherBirdCost = useMemo(() => {
+    let sum = 0;
+    for (const [pid, t] of originalSessionTubes) {
+      if (pid === tubePurchaseId) continue; // edited line counted below
+      const p = birdPurchases.find((x) => x.id === pid);
+      if (p) sum += t * p.costPerTube;
+    }
+    return Math.round(sum * 100) / 100;
+  }, [originalSessionTubes, tubePurchaseId, birdPurchases]);
+
   const birdCost = useMemo(() => {
-    if (!tubePurchase) return 0;
-    return Math.round(tubes * tubePurchase.costPerTube * 100) / 100;
-  }, [tubes, tubePurchase]);
+    const edited = tubePurchase ? tubes * tubePurchase.costPerTube : 0;
+    return Math.round((edited + otherBirdCost) * 100) / 100;
+  }, [tubes, tubePurchase, otherBirdCost]);
 
   const courtCost = useMemo(() => (costPerCourt ?? 0) * courts, [costPerCourt, courts]);
   const totalCost = courtCost + birdCost;
@@ -468,6 +484,16 @@ export default function SetupPage({ onBack }: SetupPageProps) {
               incDisabled={atMax}
             />
           </div>
+        )}
+
+        {/* This session also carries shuttles from another purchase, which this
+            form can't edit. Surface its cost (it's already in the total) and
+            point to where it CAN be changed, so a stray entry can't hide. */}
+        {otherBirdCost > 0 && (
+          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--amber)', margin: 0, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+            <span className="material-icons" style={{ fontSize: 'var(--icon-sm)', flexShrink: 0 }} aria-hidden="true">warning</span>
+            <span>+${otherBirdCost.toFixed(2)} of shuttles from another purchase is also on this session (included in the total above). Edit or remove it on the Birds page.</span>
+          </p>
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 0' }}>
