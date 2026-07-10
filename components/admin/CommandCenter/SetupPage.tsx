@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import AdminBackHeader from '../AdminBackHeader';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
-import { normalizeBirdUsages, mergeBirdUsageEdit } from '@/lib/birdUsages';
+import { normalizeBirdUsages, totalTubes, totalBirdCost, currentPricePerTube } from '@/lib/birdUsages';
 import { renderGroupCanvas, renderGroupText, type ReceiptInput } from '@/lib/receiptTemplate';
 import { withLocalTz } from '@/lib/fmt';
 import type { BirdPurchase, Session } from '@/lib/types';
@@ -57,16 +57,10 @@ export default function SetupPage({ onBack }: SetupPageProps) {
   const [signupOpen, setSignupOpen] = useState(true);
   const [showCostBreakdown, setShowCostBreakdown] = useState(true);
 
-  // Bird tubes — single-purchase model: pick the most recent purchase with stock.
+  // Bird tubes — pooled model: one "tubes used" count × an editable price/tube.
   const [birdPurchases, setBirdPurchases] = useState<BirdPurchase[]>([]);
-  const [birdUsedByPurchase, setBirdUsedByPurchase] = useState<Map<string, number>>(new Map());
-  const [tubePurchaseId, setTubePurchaseId] = useState<string | null>(null);
   const [tubes, setTubes] = useState(0);
-  // Snapshot of what THIS session had logged at load time, keyed by
-  // purchaseId. Lets the cap math credit back the session's own existing
-  // allocation when computing "how many more can I take from this
-  // purchase right now?" — without double-counting it.
-  const [originalSessionTubes, setOriginalSessionTubes] = useState<Map<string, number>>(new Map());
+  const [pricePerTube, setPricePerTube] = useState(0);
 
   // Live data for the Share preview.
   const [activePlayerNames, setActivePlayerNames] = useState<string[]>([]);
@@ -82,10 +76,9 @@ export default function SetupPage({ onBack }: SetupPageProps) {
     setLoading(true);
     setLoadError(false);
     try {
-      const [sessionRes, birdsRes, sessionsRes, playersRes, membersRes, recentCostsRes] = await Promise.all([
+      const [sessionRes, birdsRes, playersRes, membersRes, recentCostsRes] = await Promise.all([
         fetch(`${BASE}/api/session`, { cache: 'no-store' }),
         fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
-        fetch(`${BASE}/api/sessions`, { cache: 'no-store' }),
         fetch(`${BASE}/api/players`, { cache: 'no-store' }),
         fetch(`${BASE}/api/members`, { cache: 'no-store' }),
         fetch(`${BASE}/api/sessions/costs`, { cache: 'no-store' }),
@@ -95,7 +88,6 @@ export default function SetupPage({ onBack }: SetupPageProps) {
       if (!sessionRes.ok) setLoadError(true);
       const session = sessionRes.ok ? await sessionRes.json() as Session : null;
       const birds = birdsRes.ok ? await birdsRes.json() as { purchases: BirdPurchase[]; currentStock?: number } : null;
-      const allSessions = sessionsRes.ok ? await sessionsRes.json() as Session[] : [];
       const players = playersRes.ok ? await playersRes.json() as Array<{ name?: string; removed?: boolean; waitlisted?: boolean }> : [];
       const members = membersRes.ok ? await membersRes.json() as Array<{ role?: string; eTransferRecipient?: { name: string; email: string; memo?: string } }> : [];
       const costs = recentCostsRes.ok ? await recentCostsRes.json() as { costs: number[] } : null;
@@ -116,34 +108,20 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         setSignupOpen(session.signupOpen !== false);
         setShowCostBreakdown(session.showCostBreakdown !== false);
 
-        // Pre-set birdUsage from current session if any
         const existingUsages = normalizeBirdUsages(session);
-        if (existingUsages.length > 0) {
-          setTubePurchaseId(existingUsages[0].purchaseId);
-          setTubes(existingUsages[0].tubes);
-        }
-        const orig = new Map<string, number>();
-        for (const u of existingUsages) orig.set(u.purchaseId, u.tubes);
-        setOriginalSessionTubes(orig);
+        const loadedTubes = totalTubes(existingUsages);
+        const loadedCost = totalBirdCost(existingUsages);
+        setTubes(loadedTubes);
+        // Preserve the exact existing cost on load (blended price for legacy
+        // multi-batch sessions); fall back to the latest purchase price.
+        setPricePerTube(
+          loadedTubes > 0
+            ? Math.round((loadedCost / loadedTubes) * 100) / 100
+            : currentPricePerTube(birds?.purchases ?? []),
+        );
       }
 
-      if (birds?.purchases) {
-        setBirdPurchases(birds.purchases);
-        // Build usage map from all sessions to know remaining per purchase
-        const used = new Map<string, number>();
-        for (const s of allSessions) {
-          const usages = normalizeBirdUsages(s);
-          for (const u of usages) used.set(u.purchaseId, (used.get(u.purchaseId) ?? 0) + u.tubes);
-        }
-        setBirdUsedByPurchase(used);
-
-        // If session didn't have a tubePurchaseId, default to most recent purchase with stock.
-        if (!tubePurchaseId && birds.purchases.length > 0) {
-          const sortedByDate = [...birds.purchases].sort((a, b) => (a.date < b.date ? 1 : -1));
-          const target = sortedByDate.find((p) => p.tubes - (used.get(p.id) ?? 0) > 0) ?? sortedByDate[0];
-          if (target) setTubePurchaseId(target.id);
-        }
-      }
+      if (birds?.purchases) setBirdPurchases(birds.purchases);
 
       setActivePlayerNames(
         players.filter((p) => !p.removed && !p.waitlisted).map((p) => p.name).filter((n): n is string => !!n),
@@ -161,36 +139,13 @@ export default function SetupPage({ onBack }: SetupPageProps) {
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { void load(); }, [load]);
 
-  const tubePurchase = useMemo(
-    () => birdPurchases.find((p) => p.id === tubePurchaseId) ?? null,
-    [birdPurchases, tubePurchaseId],
-  );
+  const birdCost = useMemo(() => Math.round(tubes * pricePerTube * 100) / 100, [tubes, pricePerTube]);
 
-  // Cost of shuttle purchases OTHER than the one this form edits. A session can
-  // carry tubes from ≥2 purchases (retro-assigned on the Birds page), but this
-  // form only edits ONE. Counting just the edited purchase made the total (and
-  // the "$ each" + share preview) read LOW — a stray second entry silently
-  // inflated the real bill while the form showed a smaller number. Total them
-  // all so the form never disagrees with the receipt/settle.
-  const otherBirdCost = useMemo(() => {
-    let sum = 0;
-    for (const [pid, t] of originalSessionTubes) {
-      if (pid === tubePurchaseId) continue; // edited line counted below
-      const p = birdPurchases.find((x) => x.id === pid);
-      if (p) sum += t * p.costPerTube;
-    }
-    return Math.round(sum * 100) / 100;
-  }, [originalSessionTubes, tubePurchaseId, birdPurchases]);
-
-  const birdCost = useMemo(() => {
-    const edited = tubePurchase ? tubes * tubePurchase.costPerTube : 0;
-    return Math.round((edited + otherBirdCost) * 100) / 100;
-  }, [tubes, tubePurchase, otherBirdCost]);
+  const autoPrice = useMemo(() => currentPricePerTube(birdPurchases), [birdPurchases]);
 
   const courtCost = useMemo(() => (costPerCourt ?? 0) * courts, [costPerCourt, courts]);
   const totalCost = courtCost + birdCost;
@@ -200,31 +155,8 @@ export default function SetupPage({ onBack }: SetupPageProps) {
     return hoursBetween({ date, time }, { date: deadlineDate, time: deadlineTime });
   }, [date, time, deadlineDate, deadlineTime]);
 
-  // Max tubes this session can take from the selected purchase:
-  //   purchase.tubes - (used across all OTHER sessions for this purchase)
-  // Where "other" = total used minus whatever THIS session originally had
-  // for this purchase (so editing in place doesn't artificially shrink the
-  // ceiling).
-  const maxTubesForThisSession = useMemo(() => {
-    if (!tubePurchase) return 0;
-    const totalUsed = birdUsedByPurchase.get(tubePurchase.id) ?? 0;
-    const ownOriginal = originalSessionTubes.get(tubePurchase.id) ?? 0;
-    const usedElsewhere = Math.max(0, totalUsed - ownOriginal);
-    return Math.max(0, tubePurchase.tubes - usedElsewhere);
-  }, [tubePurchase, birdUsedByPurchase, originalSessionTubes]);
-
-  const remainingAfter = useMemo(() => {
-    if (!tubePurchase) return null;
-    return Math.max(0, maxTubesForThisSession - tubes);
-  }, [tubePurchase, maxTubesForThisSession, tubes]);
-
-  const atMax = tubePurchase !== null && tubes >= maxTubesForThisSession;
-
   function bumpTubes(delta: number) {
-    setTubes((prev) => {
-      const next = Math.round((prev + delta) * 4) / 4;
-      return Math.max(0, Math.min(maxTubesForThisSession, next));
-    });
+    setTubes((prev) => Math.max(0, Math.min(100, Math.round((prev + delta) * 4) / 4)));
   }
 
   async function save() {
@@ -249,10 +181,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         ...(costPerCourt !== null ? { costPerCourt } : {}),
       };
 
-      // Merge the single-purchase edit into the session's FULL usage map so a
-      // session carrying tubes from ≥2 purchases isn't collapsed to one. The
-      // server re-derives cost from { purchaseId, tubes }.
-      body.birdUsages = mergeBirdUsageEdit(originalSessionTubes, tubePurchase?.id ?? null, tubes);
+      body.birdUsages = tubes > 0 ? [{ pooled: true, tubes, pricePerTube }] : [];
 
       const res = await fetch(`${BASE}/api/session`, {
         method: 'PUT',
@@ -466,35 +395,39 @@ export default function SetupPage({ onBack }: SetupPageProps) {
           )}
         </div>
 
-        {/* Tubes row */}
-        {tubePurchase && (
+        {/* Shuttles: pooled tubes used × price per tube */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>{tubes} tubes {tubePurchase.name}</span>
-              <span style={{ fontSize: 'var(--fs-xs)', color: atMax ? 'var(--amber)' : 'var(--ink-faint)' }}>
-                at ${tubePurchase.costPerTube.toFixed(2)}/tube
-                {remainingAfter !== null && ` · ${remainingAfter} left after`}
-                {atMax && ' · max for this purchase'}
+              <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>Shuttles used</span>
+              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--ink-faint)', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
+                {tubes} tube{tubes === 1 ? '' : 's'} × ${pricePerTube.toFixed(2)} = ${birdCost.toFixed(2)}
               </span>
             </div>
-            <Stepper
-              value={tubes}
-              onDec={() => bumpTubes(-0.25)}
-              onInc={() => bumpTubes(0.25)}
-              incDisabled={atMax}
-            />
+            <Stepper value={tubes} onDec={() => bumpTubes(-0.25)} onInc={() => bumpTubes(0.25)} incDisabled={tubes >= 100} />
           </div>
-        )}
-
-        {/* This session also carries shuttles from another purchase, which this
-            form can't edit. Surface its cost (it's already in the total) and
-            point to where it CAN be changed, so a stray entry can't hide. */}
-        {otherBirdCost > 0 && (
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--amber)', margin: 0, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-            <span className="material-icons" style={{ fontSize: 'var(--icon-sm)', flexShrink: 0 }} aria-hidden="true">warning</span>
-            <span>+${otherBirdCost.toFixed(2)} of shuttles from another purchase is also on this session (included in the total above). Edit or remove it on the Birds page.</span>
-          </p>
-        )}
+          <input
+            type="number"
+            inputMode="decimal"
+            step={0.5}
+            value={pricePerTube || ''}
+            onChange={(e) => setPricePerTube(e.target.value === '' ? 0 : Math.max(0, Math.min(10000, Number(e.target.value))))}
+            placeholder="$ per tube"
+            style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)', borderRadius: 'var(--radius-sm)', padding: '8px 10px', fontSize: 'var(--fs-base)' }}
+          />
+          {autoPrice > 0 && Math.abs(autoPrice - pricePerTube) > 0.005 && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)' }}>Latest:</span>
+              <button
+                type="button"
+                onClick={() => setPricePerTube(autoPrice)}
+                style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: 'var(--radius-pill)', background: 'rgba(var(--glass-tint), 0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(var(--glass-tint), 0.12)', cursor: 'pointer', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}
+              >
+                ${autoPrice.toFixed(2)}/tube
+              </button>
+            </div>
+          )}
+        </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 0' }}>
           <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>Show cost on Home announcement</span>
