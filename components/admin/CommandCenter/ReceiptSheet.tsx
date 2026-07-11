@@ -72,12 +72,24 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
   }
 
   async function shareImage() {
-    if (!imageDataUrl) return;
+    const canvas = canvasRef.current;
+    if (!canvas || !imageDataUrl) return;
     setActionError(null);
+    // Build the Blob straight from the canvas rather than round-tripping
+    // through `fetch(dataUrl).then(r => r.blob())`. Fetching a `data:` URI to
+    // reconstruct a Blob is a known-flaky pattern in iOS Safari's standalone
+    // (home-screen PWA) context — the preview `<img src={dataUrl}>` decodes
+    // fine (no fetch involved), but the shared file can come out truncated/
+    // corrupted ("can't be displayed"). canvas.toBlob() hands back the bitmap
+    // directly with no intermediate base64 string round trip.
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) {
+      setActionError('Couldn’t generate the image — try again.');
+      return;
+    }
+    const file = new File([blob], 'bpm-receipt.png', { type: 'image/png' });
     let nativeShareTried = false;
     try {
-      const blob = await (await fetch(imageDataUrl)).blob();
-      const file = new File([blob], `bpm-receipt.png`, { type: 'image/png' });
       const navAny = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean; share?: (data: { files: File[] }) => Promise<void> };
       if (navAny.canShare?.({ files: [file] }) && navAny.share) {
         nativeShareTried = true;
@@ -95,11 +107,13 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
       if (!nativeShareTried) console.warn('shareImage:', err);
     }
     try {
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = imageDataUrl;
+      a.href = url;
       a.download = 'bpm-receipt.png';
       markExternalExcursion();
       a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
       setActionError('Couldn’t download — try Copy text instead.');
     }
