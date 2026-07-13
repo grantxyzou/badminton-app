@@ -14,15 +14,15 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.100.1",
+    "@anthropic-ai/sdk": "^0.111.0",
     "@azure/cosmos": "^4.9.3",
-    "@formatjs/intl-localematcher": "^0.8.9",
-    "next": "^16.2.9",
-    "next-intl": "^4.12.0",
-    "nodemailer": "^9.0.0",
+    "@formatjs/intl-localematcher": "^0.8.12",
+    "next": "^16.2.10",
+    "next-intl": "^4.13.2",
+    "nodemailer": "^9.0.3",
     "react": "^18",
     "react-dom": "^18",
-    "recharts": "^3.8.1"
+    "recharts": "^3.9.2"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
