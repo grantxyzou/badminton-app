@@ -61,6 +61,7 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **Report a problem** — a "Report a problem" option in Profile lets anyone flag a bug or idea from inside the app; it's saved and emailed straight to the admin.
 - **Bird stock reconciliation** *(admin)* — true up the shuttle count against a physical count in one step, and depleted tubes drop out of the session-create picker so they don't clutter the list.
 - **Add to Home Screen** — BPM is now installable: save it from your browser and it opens full-screen like a real app (no browser chrome), with a shuttlecock icon. A one-time hint on Home and a Profile entry walk you through it on iPhone and Android. No service worker — it still needs a connection to open, same as before.
+- **Notifications when sign-ups open** — turn on notifications in Profile and your phone buzzes the moment sign-ups open for the week, instead of you having to remember to check. About one a week, and you can turn it off whenever. On iPhone you'll need BPM on your Home Screen first — the app walks you through it. (Reminders for the sign-up deadline and unpaid balances are coming next.)
 
 ### Changed
 
