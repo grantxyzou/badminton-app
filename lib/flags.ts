@@ -28,7 +28,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_SKILL_SMOOTHING'
   | 'NEXT_PUBLIC_FLAG_SKILL_DRILLS'
   | 'NEXT_PUBLIC_FLAG_KUDOS'
-  | 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS';
+  | 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS'
+  | 'NEXT_PUBLIC_FLAG_PUSH_NOTIFY';
 
 interface FlagMeta {
   description: string;
@@ -102,6 +103,11 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'after distributed insights are promoted to stable + lived-in for 2 weeks',
   },
+  NEXT_PUBLIC_FLAG_PUSH_NOTIFY: {
+    description: 'Web Push notifications (docs/plans/push-notifications.md). Ships a push-only service worker (public/sw.js — NO fetch handler, so the "legible-fail" offline posture is untouched), a new `pushSubscriptions` container (PK /memberId), member-cookie-bound subscribe/unsubscribe, and an opt-in row on Profile. Phase 1 wires ONE trigger: the sign-up-open notification, fired from the signupOpen false->true edge in PUT /api/session and de-duped by session.signupOpenNotifiedAt. Deadline-closing + payment reminders (cron-driven) are Phase 2. Payloads are English-only until Member.locale lands. On for bpm-next + dev; off on bpm-stable until promoted.',
+    owner: 'grant',
+    plannedRemoval: 'after push notifications are promoted to stable + lived-in for 2 weeks',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -132,6 +138,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_KUDOS;
     case 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS':
       return process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS;
+    case 'NEXT_PUBLIC_FLAG_PUSH_NOTIFY':
+      return process.env.NEXT_PUBLIC_FLAG_PUSH_NOTIFY;
   }
 }
 
