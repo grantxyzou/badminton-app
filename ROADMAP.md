@@ -26,7 +26,7 @@
 > **Stable:** https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm
 > **Next (preview):** https://vnext-badminton-app-enhcave5djcvafe9.canadacentral-01.azurewebsites.net/bpm
 > **Stack:** Next.js 16 · Azure App Service (dual) · Cosmos DB · Anthropic Claude API
-> **Last updated:** 2026-06-18
+> **Last updated:** 2026-08-16
 >
 > **This file is the index.** Detail lives elsewhere — don't duplicate it here:
 > - **What shipped** → `CHANGELOG.md` (per-version, not chronological by design)
@@ -40,8 +40,18 @@
 
 | Env | URL audience | Current | Notes |
 |---|---|---|---|
-| **bpm-stable** | regular friends | **v1.7** (2026-06-13) | Full flag parity with `bpm-next` — every feature flag flipped **on**; only `NEXT_PUBLIC_ENV` differs (preview banner off) |
-| **bpm-next** | beta friends | `main` | auto-deploys every push to `main` |
+| **bpm-stable** | regular friends | **v1.7** (2026-06-13) | Flag parity with `bpm-next` except `INSIGHT_CARDS`, added to `deploy-stable.yml` 2026-08-16 and live from v1.8 |
+| **bpm-next** | beta friends | `main` (`a831157`, 2026-07-10) | auto-deploys every push to `main` |
+
+> ⚠️ **Stable is ~50 commits / 2 months behind `main`, and that gap is now a live
+> defect, not just lag.** Both deployments share one Cosmos DB. Shuttle Model B
+> (#230–#234) writes pooled usage as `purchaseId: 'pool'`, a sentinel with no
+> matching purchase doc. v1.7's `SetupPage` resolves `tubePurchase` to
+> `undefined` for it, so the stable admin UI **hides the shuttle line and shows a
+> per-player cost with the shuttle cost missing**, then **fails Save with a 404
+> "Selected bird purchase not found"**. `POST /api/session/advance` on v1.7 is
+> unaffected (it ignores `birdUsages`). The v1.8 promotion is the fix — no code
+> needs writing. Until then, do session cost setup from the `bpm-next` URL.
 
 Promotion = tag a **specific commit** + dispatch `deploy-stable.yml` (never blindly tag `main` — it carries post-soak work; see CLAUDE.md "stable-tag footgun").
 
@@ -57,37 +67,49 @@ As of **v1.7, stable and `bpm-next` are at full flag parity** — every feature 
 
 ## 2. In-flight (on bpm-next, ahead of stable)
 
-`main` carries post-v1.7 work auto-deployed to bpm-next, not yet on the stable cut:
+`main` carries post-v1.7 work auto-deployed to bpm-next, not yet on the stable cut. Full user-facing list is in `CHANGELOG.md` `Unreleased` (backfilled 2026-08-16). The load-bearing ones:
 
-- **Stats game-logger de-gating** (#162, merged 2026-06-18) — logger usable any day, decoupled from the 48h session window; honest tri-state instead of silent `null`. Verified live on next.
-- **Stats design-system standardization** (#170–177) — inner-content styling reference, `<ListRow>` primitive, radius-token sweeps, token-guardrail lint→error on `components/stats`.
-- **Dependency patches** (#178) — next 16.2.9, vitest 4.1.9, eslint-config-next 16.2.9.
-- **Stats visual polish** (flat cards + AI "Your read" conic rim) rode in unflagged with v1.7.
+- **Shuttle Model B — pooled cost** (#230–#234) — a session logs one "tubes × price" number instead of per-batch selection. **This is the change that breaks stable**; see the deployments warning above.
+- **Cost/settle correctness run** (#225–#229) — settle guarded while sign-ups are open, stale owed amounts cleared on unsettle, Payments reload after settle, "0 of us" preview, stale-bill warning, cost form totals all purchases.
+- **Sign-up capacity race closed** (#222) — deterministic reconciliation; the documented "can exceed maxPlayers by 1–2" gotcha is fixed.
+- **Birds hardening stack** (#205–#214) — honest failures, clamped stock, referential delete guard, one validation contract.
+- **Payments/receipts** (#195–#198) — past-session receipt browsing, per-session summary header, owed audit.
+- **Stats** — Summary redesign (tiles + radar), window/cache alignment (#223), i18n + offline gating (#224).
+- **Design-audit remediation** (P0–P2) — phantom tokens resolved, icon/font-size tokenization, guardrail lint→error on cleared areas. Item #6 deliberately deferred; see `docs/plans/design-audit-remediation.md`.
 
-> The legacy `.claude/soak.local.md` tracker may still nag about `skill-assess` / `stats-ui-polish` "soaking" — that's **stale**; both promoted to everyone in v1.7. Update or clear it.
+> `.claude/soak.local.md` does not exist in this checkout, so the stale-soak nag isn't firing. Template at `docs/automation/soak.local.md` if you want it back.
 
-## 3. Open PRs
+## 3. Open PRs (6, as of 2026-08-16)
 
-**None.** (Dependabot batch resolved 2026-06-18: #150/#152 patches consolidated → #178 merged; React 19 majors #139/#140 closed-deferred — Next 16 peer-accepts React 18, revisit in a quiet window.)
+| PR | State | Note |
+|---|---|---|
+| **#241** Web Push, wired to sign-ups-open | draft, CI green, mergeable | Needs owner-only VAPID setup (repo var + Azure App Settings) and a real-device test plan. **Names no track** — parked behind the Slice-0 gate per the LOCKED Change Rule. |
+| **#240** js-yaml (security group) | CI **failing** | `npm ci` rejects the branch lockfile: *"Missing: @swc/helpers@0.5.23"*. `main`'s lock pins 0.5.15 under next 16.2.9. Recreate/rebase — not a code fix. |
+| **#239** production-deps ×7 | no CI run | Open since 2026-07-27. |
+| **#237** development-deps ×5 | no CI run | Open since 2026-07-13. |
+| **#215** `tsc --noEmit` CI gate | open | Still valid — no workflow runs a typecheck today. Base is `fix/tsc-test-typing` (#208); **retarget to `main`** before landing. |
+| **#208** clear 7 tsc errors in tests | open, **dirty** | **Superseded** by #220 (`28167b9`). Close it. |
 
 ## 4. Planned / next initiatives
 
-- **Value-Hub kill-criteria check** — Slice-0 is **shipped and live**; the critical path now gates on proving engagement against the written kill-criterion in `docs/plans/value-hub-slice-0.md` **before** fanning out Tracks 1–4. No speculative multi-track building (LOCKED block).
+- **Value-Hub kill-criteria check** — ⚠️ **the experiment never ran.** The recommendation card and racket picker have **never rendered on either deployment**: `SkillsTab.tsx` passes `gearContent` only when `SKILL_ASSESS` is *off*, and v1.7 turned that spine on for everyone, so the Stats tab's Equipment register is parked (deliberately — see the code comment) on both. The 4-week kill-criterion clock has notionally been running since 2026-06-13 against a surface nobody could see, and the v1.7 changelog entry claiming it live was wrong (corrected 2026-08-16). Two further problems even if it had rendered: `RacketRecCard` has **no click target at all** (a `<div>` with one fetch on mount), and the repo has **no analytics of any kind** — so "interact more than once" was never measurable. The game-log half *is* measurable retroactively from `gameResults.loggedBy` + `loggedAt`. **Decision needed:** un-park Equipment (needs an `equipment` branch in `StatsPlaceholder`'s `assessMode` view, not just passing the prop) and restart the clock with real instrumentation, or rewrite the criterion against data already captured. Tracks 1–4 stay blocked either way.
 - **Offline backlog** (deferred, tracked) — per-card `loadError` pills for remaining CommandCenter cards (#98); PWA only if "loads while offline" becomes a real requirement (#99).
 - **P1.5/A2 — identity recovery bridge** — still pending. Plan `docs/superpowers/plans/2026-04-27-a2-identity-recovery.md`.
 - **Stage-2 / SaaS** — multi-tenant `orgId` migration. Memo `docs/saas-productization-findings.md`. Not started; the one high-risk migration.
 
 ## 5. Prioritized punch list
 
-1. **Value-Hub Slice-0 kill-criteria readout** — gather engagement signal from live users; decide go/no-go on Tracks 1–4. *(The one live item — everything below it is done.)*
-2. ✅ ~~Verify PR #162 on next~~ — done; verified live + merged 2026-06-18.
-3. ✅ ~~Dependabot batch~~ — done; #178 merged (patches), React 19 deferred.
-4. ✅ ~~Branch cleanup~~ — done; full sweep to `main`-only (§6).
+1. **Cut v1.8.** It is the fix for the stable pooled-shuttle defect above, not just hygiene. Blocked on item 2.
+2. **Fix #238** (receipt image "save does nothing" on iPhone) — **release gate.** Stable still runs the pre-`a831157` receipt code, so promoting as-is would ship the regression to friends. `a831157` changed the save leg's href from a `data:` URL to a `blob:` object URL and added an `await` before `a.click()`, which is how WebKit's transient activation gets lost. Note a second, fully unfixed copy at `SetupPage.tsx:233-254`, and zero test coverage on the path.
+3. **Slice-0 decision** — see §4. Needs a product call before any code.
+4. **PR hygiene** — close #208, retarget + land #215, recreate #240 (security), then #239/#237.
+5. **Flag debt** — 9 of 13 flags in `lib/flags.ts` are past their stated removal condition (`COMMAND_CENTER`/`SETTLE` by ~11 weeks). `main`-only churn; shouldn't gate the release.
+6. **Dead code** — `mergeBirdUsageEdit` (`lib/birdUsages.ts:170`) lost its only production consumer in #232; only tests reference it now.
 
 ## 6. Branch hygiene
 
 - ✅ **Full branch sweep 2026-06-18:** retired `feat/value-hub-slice-0` (worktree + local + remote — fully superseded by the v1.7 PRs; PR #118 closed unmerged) and pruned every merged branch: `chore/ci-node24-actions`, `claude/app-review-upcoming-HtKgE` (#162), `feat/in-app-problem-report` (#151, squash-merged; remote already gone).
-- Local branches now: **`main` only.** Single clean worktree.
+- **2026-08-16:** local is `main` + `claude/project-status-85q1oq` (the converge work). Stale remotes still carrying open PRs: `claude/app-overview-s6xb2h` (#241), `chore/ci-tsc-typecheck-gate` (#215), `fix/tsc-test-typing` (#208 — delete when #208 is closed), plus three dependabot branches.
 - Run `git fetch --prune` + audit `git branch -vv` for `[gone]` markers periodically. `git branch -D` is `bpm confirm`-gated.
 
 ## 7. Doc map
