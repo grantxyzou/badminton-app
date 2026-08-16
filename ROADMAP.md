@@ -40,18 +40,12 @@
 
 | Env | URL audience | Current | Notes |
 |---|---|---|---|
-| **bpm-stable** | regular friends | **v1.7** (2026-06-13) | Flag parity with `bpm-next` except `INSIGHT_CARDS`, added to `deploy-stable.yml` 2026-08-16 and live from v1.8 |
-| **bpm-next** | beta friends | `main` (`a831157`, 2026-07-10) | auto-deploys every push to `main` |
+| **bpm-stable** | regular friends | **v1.8** (2026-08-16) | Full flag parity with `bpm-next` (incl. `INSIGHT_CARDS`); only `NEXT_PUBLIC_ENV` differs |
+| **bpm-next** | beta friends | `main` | auto-deploys every push to `main` |
 
-> ⚠️ **Stable is ~50 commits / 2 months behind `main`, and that gap is now a live
-> defect, not just lag.** Both deployments share one Cosmos DB. Shuttle Model B
-> (#230–#234) writes pooled usage as `purchaseId: 'pool'`, a sentinel with no
-> matching purchase doc. v1.7's `SetupPage` resolves `tubePurchase` to
-> `undefined` for it, so the stable admin UI **hides the shuttle line and shows a
-> per-player cost with the shuttle cost missing**, then **fails Save with a 404
-> "Selected bird purchase not found"**. `POST /api/session/advance` on v1.7 is
-> unaffected (it ignores `birdUsages`). The v1.8 promotion is the fix — no code
-> needs writing. Until then, do session cost setup from the `bpm-next` URL.
+Tag `bpm-stable-v1.8` → the 2026-08-16 release commit (the commit introducing
+this line; the v1.7-era pooled-shuttle incompatibility — stable showing $0
+shuttles and 404ing on Save — is resolved by this promotion).
 
 Promotion = tag a **specific commit** + dispatch `deploy-stable.yml` (never blindly tag `main` — it carries post-soak work; see CLAUDE.md "stable-tag footgun").
 
@@ -67,7 +61,7 @@ As of **v1.7, stable and `bpm-next` are at full flag parity** — every feature 
 
 ## 2. In-flight (on bpm-next, ahead of stable)
 
-`main` carries post-v1.7 work auto-deployed to bpm-next, not yet on the stable cut. Full user-facing list is in `CHANGELOG.md` `Unreleased` (backfilled 2026-08-16). The load-bearing ones:
+**All of the below shipped to stable in v1.8 (2026-08-16)** — kept here as the record of what that cut carried. Full user-facing list is in `CHANGELOG.md` under v1.8. The load-bearing ones:
 
 - **Shuttle Model B — pooled cost** (#230–#234) — a session logs one "tubes × price" number instead of per-batch selection. **This is the change that breaks stable**; see the deployments warning above.
 - **Cost/settle correctness run** (#225–#229) — settle guarded while sign-ups are open, stale owed amounts cleared on unsettle, Payments reload after settle, "0 of us" preview, stale-bill warning, cost form totals all purchases.
@@ -103,12 +97,12 @@ As of **v1.7, stable and `bpm-next` are at full flag parity** — every feature 
 
 ## 5. Prioritized punch list
 
-1. **Cut v1.8.** It is the fix for the stable pooled-shuttle defect above, not just hygiene. Blocked on item 2.
-2. **Fix #238** (receipt image "save does nothing" on iPhone) — **release gate.** Stable still runs the pre-`a831157` receipt code, so promoting as-is would ship the regression to friends. `a831157` changed the save leg's href from a `data:` URL to a `blob:` object URL and added an `await` before `a.click()`, which is how WebKit's transient activation gets lost. Note a second, fully unfixed copy at `SetupPage.tsx:233-254`, and zero test coverage on the path.
-3. **Slice-0 decision** — see §4. Needs a product call before any code.
-4. **PR hygiene** — close #208, retarget + land #215, recreate #240 (security), then #239/#237.
-5. **Flag debt** — 9 of 13 flags in `lib/flags.ts` are past their stated removal condition (`COMMAND_CENTER`/`SETTLE` by ~11 weeks). `main`-only churn; shouldn't gate the release.
-6. **Dead code** — `mergeBirdUsageEdit` (`lib/birdUsages.ts:170`) lost its only production consumer in #232; only tests reference it now.
+1. ✅ ~~Cut v1.8~~ — tagged + promoted 2026-08-16; fixes the stable pooled-shuttle defect.
+2. ✅ ~~Fix #238~~ — landed in v1.8 via `lib/shareImage.ts` (share-or-save with legible outcomes); awaiting reporter confirmation on the issue.
+3. **Slice-0 kill-criteria readout** — clock restarted with the v1.8 ship; decide on/after **~2026-09-13** via `GET /api/admin/slice0` (see §4).
+4. **PR hygiene** — #208/#215 closed (superseded). Remaining: dependabot #240 (owner must comment `@dependabot recreate` — bot commands from agent comments are defanged), then #239/#237.
+5. **Flag debt** — now effectively 13 of 13 flags past or at their removal condition once v1.8 has lived on stable 2 weeks (~2026-08-30). A dedicated retirement sweep is the natural next code task.
+6. **Dead code** — `mergeBirdUsageEdit` (`lib/birdUsages.ts`) lost its only production consumer in #232; only tests reference it now. Fold into the flag sweep.
 
 ## 6. Branch hygiene
 

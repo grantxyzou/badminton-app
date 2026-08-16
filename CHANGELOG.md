@@ -54,6 +54,12 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
      Format: `- **Short title** — one-sentence what + why.` See v1.3 below for examples.
      Empty subheadings are fine; delete a section if you don't end up using it. -->
 
+---
+
+## v1.8 — Pooled shuttle costs + settle correctness (2026-08-16)
+
+This cut closes the two-month gap between stable and `bpm-next` — most importantly it makes stable able to *read* the pooled shuttle usage that `bpm-next` had been writing since July (v1.7's admin cost form showed $0 shuttles and refused to save those sessions).
+
 ### Added
 
 - **Your balance on Home** — the Home tab now shows what *you* still owe, as a short itemized invoice: a line per unpaid session, then the total. It replaces the rough per-person estimate and adds up every past session you weren't marked paid for, so it's your real running tab — not just one week's guess. The same balance shows on your Profile.
