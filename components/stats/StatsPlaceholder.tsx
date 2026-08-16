@@ -179,6 +179,22 @@ export default function StatsPlaceholder({
         {attendanceCard}
         {gamePlaySlot}
       </>
+    ) : view === 'equipment' && hasGear ? (
+      // Equipment used to be unreachable here: this branch had no `equipment`
+      // case, so `TABS` (which goes three-wide off `hasGear`) could render a
+      // tab that fell through to the Summary hero. In practice `SkillsTab`
+      // never passed `gearContent` under the assessment spine, so the register
+      // was dark on both deployments for ~9 weeks. Mirrors the `hasGear`
+      // branch below so Equipment looks the same under either spine.
+      // `hasGear` is checked alongside `view` so a stale view can't render an
+      // empty register.
+      <>
+        {gearContent}
+        {moreComingLabel}
+        <div style={gridStyle}>
+          <CompactComingSoonCard icon="sports_tennis" title={t('equipment.title')} subtitle={t('equipment.subtitle')} comingSoon={comingSoon} />
+        </div>
+      </>
     ) : (
       <>{heroSlot}</>
     );

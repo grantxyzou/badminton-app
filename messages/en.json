@@ -483,6 +483,8 @@
     "viewEquipment": "Equipment",
     "recTitle": "Players like you often use",
     "recCta": "See gear",
+    "recWhyShow": "Why this?",
+    "recWhyHide": "Hide",
     "recEmpty": "Add your racket to get a pick.",
     "recError": "Couldn't load that — refresh to try again",
     "partnersTitle": "Your regular partners",

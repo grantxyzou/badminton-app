@@ -188,8 +188,13 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   // Game/Gear segmented control in StatsPlaceholder.
   const valueHubOn = isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE');
   const showPlay = skillAssessOn || valueHubOn;
-  // Gear (racket + recommendation) is parked under the assessment spine.
-  const gearContent = !skillAssessOn && valueHubOn ? <RacketRow /> : undefined;
+  // Gear follows its OWN flag. It used to be suppressed whenever the assessment
+  // spine was on (`!skillAssessOn && valueHubOn`) — but v1.7 turned that spine
+  // on for everyone, so RacketRow / RacketRecCard / GearSheet never rendered on
+  // either deployment, while the Value-Hub Slice-0 kill-criterion was written
+  // against rec-card engagement. The criterion was measuring an invisible
+  // surface. Equipment is now its own register under both spines.
+  const gearContent = valueHubOn ? <RacketRow /> : undefined;
   const gamePlaySlot = showPlay ? (
     <>
       <GameLoggerCard />
@@ -200,10 +205,10 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   // partner card; renders at the top of the Game stats view.
   const gameTilesSlot = showPlay ? <GameStatTiles /> : undefined;
 
-  // Skill-assessment spine: two-tab layout. Summary = skill trend; Game stats =
-  // AI read (StreakSummaryCard) + attendance + logger + partner. The AI read
-  // now folds in the self-assessment trend (see /api/stats/insight). Equipment
-  // stays parked.
+  // Skill-assessment spine: Summary = skill trend; Game stats = AI read
+  // (StreakSummaryCard) + attendance + logger + partner; Equipment = the racket
+  // row, when the value-hub flag is on. The AI read now folds in the
+  // self-assessment trend (see /api/stats/insight).
   if (skillAssessOn) {
     if (!identResolved) return null;
     if (!activeName) {
@@ -215,6 +220,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
         heroSlot={heroSlot}
         gamePlaySlot={gamePlaySlot}
         gameTilesSlot={gameTilesSlot}
+        gearContent={gearContent}
         attendanceContent={attendanceContent}
         insightSlot={insightCardsOn ? undefined : <StreakSummaryCard />}
       />
