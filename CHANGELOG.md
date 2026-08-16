@@ -91,6 +91,7 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **No accidental zoom on the web app** — pinch and double-tap zoom are off, so the mobile layout stays put.
 - **iOS admin polish** — the date/time pickers, receipt rendering, and the share-sign-up-link flow all behave correctly on iOS now.
 - **Shared receipt image on iPhone** — the receipt image shared from a home-screen install arrived as a file Photos refused to open; share and download now hand over the same PNG.
+- **Saving the cost image does something, or says why not** *(#238)* — on iPhone, tapping to save the receipt image could do nothing at all: no file, no error, no sign anything had happened. Sharing works as before; when a save isn't possible the app now tells you to press and hold the preview and choose "Save to Photos" instead of failing in silence. Cancelling the share sheet stays silent, because that isn't an error. The same fix covers the Share image button on the session set-up screen, which had been missed entirely.
 - **Nav highlights Profile in Admin** — opening admin tools from Profile no longer lights up Home in the bottom bar.
 - **Pull-to-refresh is less trigger-happy** — scrolling up at the top of a tab no longer fires a refresh you didn't ask for.
 - **Add to Home Screen sheet** — the iPhone install walkthrough no longer overflows on small screens.

@@ -8,7 +8,7 @@ import {
   renderGroupCanvas,
   type ReceiptInput,
 } from '@/lib/receiptTemplate';
-import { markExternalExcursion } from '@/lib/excursion';
+import { shareOrSaveImage } from '@/lib/shareImage';
 
 interface ReceiptSheetProps {
   open: boolean;
@@ -24,6 +24,9 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(initialPlayerName ?? null);
   const [copied, setCopied] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  // iOS can't be handed a file programmatically once the share sheet is out of
+  // the picture, so we point at the preview above instead of failing silently.
+  const [saveHint, setSaveHint] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string>('');
 
@@ -32,6 +35,8 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
       setMode(initialMode);
       setSelectedPlayer(initialPlayerName ?? null);
       setCopied(false);
+      setActionError(null);
+      setSaveHint(false);
     }
   }, [open, initialMode, initialPlayerName]);
 
@@ -72,51 +77,13 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
   }
 
   async function shareImage() {
-    const canvas = canvasRef.current;
-    if (!canvas || !imageDataUrl) return;
     setActionError(null);
-    // Build the Blob straight from the canvas rather than round-tripping
-    // through `fetch(dataUrl).then(r => r.blob())`. Fetching a `data:` URI to
-    // reconstruct a Blob is a known-flaky pattern in iOS Safari's standalone
-    // (home-screen PWA) context — the preview `<img src={dataUrl}>` decodes
-    // fine (no fetch involved), but the shared file can come out truncated/
-    // corrupted ("can't be displayed"). canvas.toBlob() hands back the bitmap
-    // directly with no intermediate base64 string round trip.
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-    if (!blob) {
-      setActionError('Couldn’t generate the image — try again.');
-      return;
-    }
-    const file = new File([blob], 'bpm-receipt.png', { type: 'image/png' });
-    let nativeShareTried = false;
-    try {
-      const navAny = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean; share?: (data: { files: File[] }) => Promise<void> };
-      if (navAny.canShare?.({ files: [file] }) && navAny.share) {
-        nativeShareTried = true;
-        // iOS may evict the PWA while the share sheet / image preview is open;
-        // mark the excursion so returning restores this (Admin) tab, not Home.
-        markExternalExcursion();
-        await navAny.share({ files: [file] });
-        return;
-      }
-    } catch (err) {
-      // Native share failure (user dismissed, or platform error). If we
-      // had a native path available, the dismissal isn't an error worth
-      // surfacing — fall through to download silently. Anything else gets
-      // logged so debugging is possible.
-      if (!nativeShareTried) console.warn('shareImage:', err);
-    }
-    try {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'bpm-receipt.png';
-      markExternalExcursion();
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch {
-      setActionError('Couldn’t download — try Copy text instead.');
-    }
+    setSaveHint(false);
+    const outcome = await shareOrSaveImage(canvasRef.current);
+    // Every branch says something or deliberately says nothing — the one thing
+    // this must never do is complete invisibly (#238).
+    if (outcome.kind === 'error') setActionError(outcome.message);
+    else if (outcome.kind === 'manual-save') setSaveHint(true);
   }
 
   if (!input && !error) return null;
@@ -203,7 +170,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
               )}
 
               {mode === 'group' && (
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                   {/* Offscreen generator — drawn to, then exported as a PNG.
                       Displaying the exported <img> (rather than the live
                       <canvas>) keeps sizing stable across re-renders and never
@@ -241,6 +208,20 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
                     >
                       Rendering preview…
                     </div>
+                  )}
+                  {saveHint && (
+                    <p
+                      role="status"
+                      style={{
+                        fontSize: 'var(--fs-sm)',
+                        color: 'var(--text-muted)',
+                        margin: 0,
+                        textAlign: 'center',
+                        maxWidth: 300,
+                      }}
+                    >
+                      To save it, press and hold the image above, then choose “Save to Photos”.
+                    </p>
                   )}
                 </div>
               )}
