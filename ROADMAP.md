@@ -44,8 +44,11 @@
 | **bpm-next** | beta friends | `main` | auto-deploys every push to `main` |
 
 Tag `bpm-stable-v1.8` → the 2026-08-16 release commit (the commit introducing
-this line; the v1.7-era pooled-shuttle incompatibility — stable showing $0
-shuttles and 404ing on Save — is resolved by this promotion).
+this line). Two things are resolved by this promotion: the v1.7-era
+pooled-shuttle incompatibility (stable showing $0 shuttles and 404ing on Save),
+and a working Equipment tab — v1.8 was **re-cut** to include the racket-catalog
+seed and the recognition-first picker, because promoting the earlier cut would
+have shipped friends an Equipment tab with an empty racket list.
 
 Promotion = tag a **specific commit** + dispatch `deploy-stable.yml` (never blindly tag `main` — it carries post-soak work; see CLAUDE.md "stable-tag footgun").
 
@@ -87,8 +90,8 @@ As of **v1.7, stable and `bpm-next` are at full flag parity** — every feature 
 ## 4. Planned / next initiatives
 
 - **Value-Hub kill-criteria check** — **clock restarted 2026-08-16; decide on/after ~2026-09-13.**
-  - *What went wrong:* the experiment never ran. `SkillsTab` passed `gearContent` only when `SKILL_ASSESS` was *off*, and v1.7 turned that spine on for everyone, so the rec card, racket picker and gear sheet **never rendered on either deployment**. The criterion was measuring an invisible surface for ~9 weeks. The v1.7 changelog entry claiming it live has been corrected.
-  - *Fixed:* Equipment is now its own register under both spines (`StatsPlaceholder`'s `assessMode` branch gained the missing `equipment` case; pinned by a regression test). `RacketRecCard` is a real button that discloses the `reason` the recommend API was already returning and throwing away.
+  - *What went wrong — two independent faults.* (1) The experiment never rendered: `SkillsTab` passed `gearContent` only when `SKILL_ASSESS` was *off*, and v1.7 turned that spine on for everyone, so the rec card, racket picker and gear sheet **never appeared on either deployment**. (2) Even un-parked it had **no data**: `equipmentCatalog` is seeded only in the mock-store path of `lib/cosmos.ts`, and the script meant to seed production POSTs to an endpoint that was never built — so the live container held **zero rackets** from day one. The criterion was unmeasurable on both counts for ~9 weeks. The v1.7 changelog entry claiming it live has been corrected.
+  - *Fixed:* Equipment is now its own register under both spines (`StatsPlaceholder`'s `assessMode` branch gained the missing `equipment` case; pinned by a regression test). `RacketRecCard` is a real button that discloses the `reason` the recommend API was already returning and throwing away. `lib/catalogSeed.ts` fills the catalog on first read (idempotent on deterministic ids, self-heals a partial seed) so it cannot be empty again.
   - *Now measurable:* `POST /api/events` writes append-only, identity-bound `EngagementEvent` docs (`events`, PK `/memberId`). **Read the gate with `GET /api/admin/slice0`** — it reports both halves against their 40% / 30% thresholds, plus racket-saves as a secondary signal, with attendance as the denominator. It returns `verdict: null` rather than a confident "kill" on an empty cohort.
   - Tracks 1–4 (#102–#105) stay blocked until that readout says otherwise.
 - **Offline backlog** (deferred, tracked) — per-card `loadError` pills for remaining CommandCenter cards (#98); PWA only if "loads while offline" becomes a real requirement (#99).
