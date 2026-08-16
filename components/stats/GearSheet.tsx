@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
+import EmptyState from '@/components/primitives/EmptyState';
 import ListRow from '@/components/primitives/ListRow';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
 import { useOnline } from '@/lib/useOnline';
@@ -45,6 +46,7 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
   const [brand, setBrand] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [savedLabel, setSavedLabel] = useState<string | null>(null);
@@ -55,12 +57,14 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
     // Reset transient state each time the sheet opens.
     setSavedLabel(null);
     setSaveError(false);
+    setLoaded(false);
     fetch(`${BASE}/api/equipment/catalog?category=racket`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
         if (!live) return;
         const items = (d.items ?? []) as CatalogItem[];
         setCatalog(items);
+        setLoaded(true);
         setLoadError(false);
         // Pre-select the current racket so reopening shows where you stand,
         // and land on its brand tab. Otherwise start on the first brand.
@@ -70,7 +74,7 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
         setSelectedId(current?.id ?? null);
         setBrand(current?.brand ?? items[0]?.brand ?? null);
       })
-      .catch(() => { if (live) setLoadError(true); });
+      .catch(() => { if (live) { setLoadError(true); setLoaded(true); } });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -137,6 +141,16 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
             <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0 }}>{t('racketSheetHint')}</p>
 
             {loadError && <ErrorState message={t('recError')} />}
+
+            {/* Loaded-but-empty must not look like a working screen with
+                nothing on it. Before this, an empty catalog rendered a title,
+                a hint and a dead Save button — indistinguishable from broken,
+                which is exactly the lying-empty-state the repo forbids. (It
+                was not hypothetical: the production container held zero
+                rackets, see lib/catalogSeed.ts.) */}
+            {loaded && !loadError && catalog.length === 0 && (
+              <EmptyState>{t('racketCatalogEmpty')}</EmptyState>
+            )}
 
             {/* Brand tabs. 3 brands today, so a segment control reads whole-
                 catalog-at-a-glance; revisit as chips if curation grows past ~4.

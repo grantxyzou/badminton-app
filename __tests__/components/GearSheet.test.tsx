@@ -135,6 +135,24 @@ describe('GearSheet (recognition over recall)', () => {
     expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('says so when the catalog is empty, instead of rendering a blank sheet', async () => {
+    // Regression: the production container held zero rackets, and the sheet
+    // drew a title, a hint and a dead Save button — loaded-empty was
+    // indistinguishable from broken.
+    global.fetch = vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url).includes('/api/equipment/catalog')) {
+        return new Response(JSON.stringify({ items: [] }), { status: 200 });
+      }
+      return new Response('{}', { status: 404 });
+    }) as unknown as typeof fetch;
+
+    renderSheet();
+    expect(await screen.findByText(/No rackets in the catalog yet/)).toBeTruthy();
+    // No brand tabs, and Save stays inert.
+    expect(screen.queryByRole('tab')).toBeNull();
+    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('shows the error pill, not a fake empty catalog, when the load fails', async () => {
     global.fetch = vi.fn(async () => new Response('{}', { status: 500 })) as unknown as typeof fetch;
     renderSheet();
