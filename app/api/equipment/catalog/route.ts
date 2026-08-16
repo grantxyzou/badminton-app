@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, ensureContainer } from '@/lib/cosmos';
+import { getContainer } from '@/lib/cosmos';
+import { ensureCatalogSeeded } from '@/lib/catalogSeed';
 import { isFlagOn } from '@/lib/flags';
 import type { EquipmentCategory } from '@/lib/types';
 
@@ -7,23 +8,14 @@ export const dynamic = 'force-dynamic';
 
 const VALID: EquipmentCategory[] = ['racket', 'string', 'shoe', 'shuttle', 'bag', 'grip'];
 
-let ready: Promise<void> | null = null;
-function ensureCatalog(): Promise<void> {
-  if (!ready) {
-    ready = ensureContainer('equipmentCatalog', '/category').catch((err) => {
-      ready = null;
-      throw err;
-    });
-  }
-  return ready;
-}
-
 export async function GET(req: NextRequest) {
   if (!isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
   try {
-    await ensureCatalog();
+    // Creates the container AND fills it from the curated seed if empty — the
+    // production container was never seeded, so this read used to return [].
+    await ensureCatalogSeeded();
     const raw = new URL(req.url).searchParams.get('category');
     const category = (VALID as string[]).includes(raw ?? '') ? raw! : 'racket';
     const container = getContainer('equipmentCatalog');

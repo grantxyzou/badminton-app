@@ -54,6 +54,10 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
      Format: `- **Short title** — one-sentence what + why.` See v1.3 below for examples.
      Empty subheadings are fine; delete a section if you don't end up using it. -->
 
+### Fixed
+
+- **The racket catalog was empty** — picking your racket showed no rackets at all, and the recommendation card had nothing to recommend, because the catalog was never loaded into the live database. It now fills itself, so both work.
+
 ### Changed
 
 - **Racket picker: browse, don't type** — picking your racket is now brand tabs and tappable model rows (with the "4U · head-heavy · stiff" spec line to jog recognition) instead of a search box that needed you to remember the model name. Tapping selects; a separate Save button commits — so browsing can't accidentally overwrite your pick. Your current racket comes pre-selected on its brand tab.

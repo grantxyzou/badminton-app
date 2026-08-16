@@ -472,6 +472,7 @@
     "racketSheetTitle": "What's your racket?",
     "racketSheetHint": "Tap your brand, then your racket.",
     "racketSelected": "selected",
+    "racketCatalogEmpty": "No rackets in the catalog yet — check back shortly.",
     "save": "Save",
     "gearSaved": "Saved!",
     "yourRacket": "Your racket",
