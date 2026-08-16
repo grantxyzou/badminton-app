@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, ensureContainer } from '@/lib/cosmos';
+import { getContainer } from '@/lib/cosmos';
+import { ensureCatalogSeeded } from '@/lib/catalogSeed';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { recommendRacket } from '@/lib/recommend';
@@ -8,16 +9,9 @@ import type { CatalogItem } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
-let ready: Promise<void> | null = null;
-function ensureCatalog(): Promise<void> {
-  if (!ready) {
-    ready = ensureContainer('equipmentCatalog', '/category').catch((err) => {
-      ready = null;
-      throw err;
-    });
-  }
-  return ready;
-}
+// Shared with /api/equipment/catalog: creates the container AND fills it from
+// the curated seed. Without this the container is empty in real Cosmos and
+// there is simply nothing to recommend.
 
 /**
  * Name → subject id, mirroring `resolveSubject` in app/api/stats/level/route.ts:
@@ -59,7 +53,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ item: null, reason: null });
   }
   try {
-    await ensureCatalog();
+    await ensureCatalogSeeded();
     const name = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50) ?? '';
 
     // Stage now rides the canonical skill level (folds self check-ins + game
