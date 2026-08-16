@@ -54,19 +54,11 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
      Format: `- **Short title** — one-sentence what + why.` See v1.3 below for examples.
      Empty subheadings are fine; delete a section if you don't end up using it. -->
 
-### Fixed
-
-- **The racket catalog was empty** — picking your racket showed no rackets at all, and the recommendation card had nothing to recommend, because the catalog was never loaded into the live database. It now fills itself, so both work.
-
-### Changed
-
-- **Racket picker: browse, don't type** — picking your racket is now brand tabs and tappable model rows (with the "4U · head-heavy · stiff" spec line to jog recognition) instead of a search box that needed you to remember the model name. Tapping selects; a separate Save button commits — so browsing can't accidentally overwrite your pick. Your current racket comes pre-selected on its brand tab.
-
 ---
 
-## v1.8 — Pooled shuttle costs + settle correctness (2026-08-16)
+## v1.8 — Pooled shuttle costs, settle correctness, and a working Equipment tab (2026-08-16)
 
-This cut closes the two-month gap between stable and `bpm-next` — most importantly it makes stable able to *read* the pooled shuttle usage that `bpm-next` had been writing since July (v1.7's admin cost form showed $0 shuttles and refused to save those sessions).
+This cut closes the two-month gap between stable and `bpm-next` — most importantly it makes stable able to *read* the pooled shuttle usage that `bpm-next` had been writing since July (v1.7's admin cost form showed $0 shuttles and refused to save those sessions). It also brings the Equipment tab to life: the racket picker and recommendation had never rendered for anyone, and the catalog behind them had never been loaded.
 
 ### Added
 
@@ -89,9 +81,11 @@ This cut closes the two-month gap between stable and `bpm-next` — most importa
 - **Bird inventory, slimmed** *(admin)* — brand cards show what you bought and the stock caption shows today's price per tube. Per-batch "X left" is gone: pooled tubes don't belong to one batch, so that number would have been misleading.
 - **Command Center polish** *(admin)* — a pass over the admin home for clearer tiles, tighter spacing, and fewer taps to the things you touch every week.
 - **Profile cost row** — the amount you owe now reads as the primary number with its context beneath, instead of the two competing for attention.
+- **Racket picker: browse, don't type** — picking your racket is now brand tabs and tappable model rows (with the "4U · head-heavy · stiff" spec line to jog recognition) instead of a search box that needed you to remember the model name. Tapping selects; a separate Save button commits — so browsing can't accidentally overwrite your pick. Your current racket comes pre-selected on its brand tab.
 
 ### Fixed
 
+- **The racket catalog was empty** — picking your racket showed no rackets at all, and the recommendation card had nothing to recommend, because the catalog was never loaded into the live database. It now fills itself, so both work.
 - **Sign-ups can't overshoot the cap** — two people tapping "I'm in" at the same moment could push a session one or two players over its limit. Sign-ups now reconcile deterministically, so the cap holds.
 - **Finalizing the bill is guarded** — you can't settle a session while sign-ups are still open (one more person joining would make the split wrong the instant you finalized), and if the cost changes after you've finalized, the app now says so instead of leaving a stale bill in place.
 - **Owed amounts stop lying after an unsettle** — unsettling clears the frozen per-player figures instead of leaving last week's numbers on screen, and the Payments card reloads after settle/unsettle so what you see matches what you just did.
