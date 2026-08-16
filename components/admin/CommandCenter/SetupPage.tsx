@@ -6,6 +6,7 @@ import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import { normalizeBirdUsages, totalTubes, totalBirdCost, currentPricePerTube } from '@/lib/birdUsages';
 import { renderGroupCanvas, renderGroupText, type ReceiptInput } from '@/lib/receiptTemplate';
 import { withLocalTz } from '@/lib/fmt';
+import { shareOrSaveImage } from '@/lib/shareImage';
 import type { BirdPurchase, Session } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -71,6 +72,9 @@ export default function SetupPage({ onBack }: SetupPageProps) {
   const [recentCosts, setRecentCosts] = useState<number[]>([]);
 
   const [copied, setCopied] = useState(false);
+  // Share/save outcome. This screen previously swallowed every failure, so a
+  // tap that did nothing looked identical to one that worked (#238).
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -232,25 +236,22 @@ export default function SetupPage({ onBack }: SetupPageProps) {
 
   async function shareImage() {
     if (!receiptInput) return;
-    // Render to a transient canvas (off-DOM is fine) and grab data URL.
+    setShareMessage(null);
+    // Render to a transient canvas (off-DOM is fine). `renderGroupCanvas`
+    // returns '' when it can't get a 2d context — that's a real failure, not
+    // something to bail out of silently.
     const canvas = canvasRef.current ?? document.createElement('canvas');
-    const url = renderGroupCanvas(receiptInput, canvas);
-    if (!url) return;
-    try {
-      const blob = await (await fetch(url)).blob();
-      const file = new File([blob], 'bpm-receipt.png', { type: 'image/png' });
-      const navAny = navigator as Navigator & { canShare?: (data: { files: File[] }) => boolean; share?: (data: { files: File[] }) => Promise<void> };
-      if (navAny.canShare?.({ files: [file] }) && navAny.share) {
-        await navAny.share({ files: [file] });
-        return;
-      }
-    } catch {
-      // fall through to download
+    if (!renderGroupCanvas(receiptInput, canvas)) {
+      setShareMessage('Couldn’t render the image — try Copy instead.');
+      return;
     }
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'bpm-receipt.png';
-    a.click();
+    const outcome = await shareOrSaveImage(canvas);
+    if (outcome.kind === 'error') setShareMessage(outcome.message);
+    else if (outcome.kind === 'manual-save') {
+      // No image preview on this screen to long-press, so Copy is the honest
+      // out — unlike ReceiptSheet, which can point at its rendered <img>.
+      setShareMessage('iOS can’t save this automatically — use Copy, or share it from the Payments receipt.');
+    }
   }
 
   if (loading) {
@@ -461,6 +462,11 @@ export default function SetupPage({ onBack }: SetupPageProps) {
               Share image
             </button>
           </div>
+          {shareMessage && (
+            <p role="status" style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '6px 4px 0' }}>
+              {shareMessage}
+            </p>
+          )}
           <canvas ref={canvasRef} style={{ display: 'none' }} aria-hidden="true" />
         </>
       )}
