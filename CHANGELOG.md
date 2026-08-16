@@ -61,18 +61,40 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **Report a problem** — a "Report a problem" option in Profile lets anyone flag a bug or idea from inside the app; it's saved and emailed straight to the admin.
 - **Bird stock reconciliation** *(admin)* — true up the shuttle count against a physical count in one step, and depleted tubes drop out of the session-create picker so they don't clutter the list.
 - **Add to Home Screen** — BPM is now installable: save it from your browser and it opens full-screen like a real app (no browser chrome), with a shuttlecock icon. A one-time hint on Home and a Profile entry walk you through it on iPhone and Android. No service worker — it still needs a connection to open, same as before.
+- **Past sessions and their receipts** *(admin)* — browse any past session's cost-per-person and re-copy or re-share its receipt, so "what did we pay in June?" doesn't mean digging through messages.
+- **Payments summary header** *(admin)* — each session's payments view now leads with date · players · % paid · $/each and a Share button, so the state of the week's collection reads at a glance.
+- **Owed audit** *(admin)* — cross-checks outstanding balances against session history, so a mismatch surfaces instead of quietly sitting in someone's running total.
+- **Stats Summary, redesigned** — the Summary view leads with per-dimension tiles alongside the trend radar, instead of stacking separate cards down the page.
 
 ### Changed
 
 - **Smoother loading** — every tab now loads through one shared skeleton, and cards fade in on the swap instead of popping in out of order.
 - **Log a game any day** — the game-score logger is no longer tied to session day; record a result whenever you played.
+- **Shuttles are one number now** *(admin)* — a session logs "tubes used × price per tube" instead of picking which batch each tube came from. The price fills in from your most recent purchase and you can override it for a one-off. Sessions logged the old multi-batch way still open correctly and flatten to the simpler shape the next time you save.
+- **Bird inventory, slimmed** *(admin)* — brand cards show what you bought and the stock caption shows today's price per tube. Per-batch "X left" is gone: pooled tubes don't belong to one batch, so that number would have been misleading.
+- **Command Center polish** *(admin)* — a pass over the admin home for clearer tiles, tighter spacing, and fewer taps to the things you touch every week.
+- **Profile cost row** — the amount you owe now reads as the primary number with its context beneath, instead of the two competing for attention.
 
 ### Fixed
 
+- **Sign-ups can't overshoot the cap** — two people tapping "I'm in" at the same moment could push a session one or two players over its limit. Sign-ups now reconcile deterministically, so the cap holds.
+- **Finalizing the bill is guarded** — you can't settle a session while sign-ups are still open (one more person joining would make the split wrong the instant you finalized), and if the cost changes after you've finalized, the app now says so instead of leaving a stale bill in place.
+- **Owed amounts stop lying after an unsettle** — unsettling clears the frozen per-player figures instead of leaving last week's numbers on screen, and the Payments card reloads after settle/unsettle so what you see matches what you just did.
+- **"0 of us" cost preview** — the per-person preview no longer divides by an empty roster before anyone has signed up.
+- **The cost form totals every shuttle purchase** — it was summing only the batch it happened to be editing, understating the session's cost.
+- **Receipts follow the session you're looking at** — an individual receipt opened from a past session showed the *active* session's numbers; it now uses the one on screen.
+- **Unpaid sessions match on identity** — outstanding balances are matched by member identity rather than by name, so a rename or a near-duplicate name can't hide or double-count what's owed.
+- **Bird inventory fails honestly** *(admin)* — a failed inventory read shows an error instead of a confident zero, stock can't go negative, and deleting a purchase a session still references is blocked with an in-sheet confirm rather than silently breaking that session's cost.
+- **Stats measure one period, not three** — the streak window, the AI insight cache, and the partner card's default window each covered a slightly different span; they now agree.
 - **Data numbers render in the right font** — costs, PINs, streaks, and other tabular numbers now use the intended monospace face everywhere (some were quietly falling back to the body font).
 - **Light-mode polish** — subtle card tints and a few button hover colors now adapt correctly to light theme instead of showing washed-out or low-contrast hues.
 - **No accidental zoom on the web app** — pinch and double-tap zoom are off, so the mobile layout stays put.
 - **iOS admin polish** — the date/time pickers, receipt rendering, and the share-sign-up-link flow all behave correctly on iOS now.
+- **Shared receipt image on iPhone** — the receipt image shared from a home-screen install arrived as a file Photos refused to open; share and download now hand over the same PNG.
+- **Nav highlights Profile in Admin** — opening admin tools from Profile no longer lights up Home in the bottom bar.
+- **Pull-to-refresh is less trigger-happy** — scrolling up at the top of a tab no longer fires a refresh you didn't ask for.
+- **Add to Home Screen sheet** — the iPhone install walkthrough no longer overflows on small screens.
+- **Stats works offline the way the rest of the app does** — the sheets that write data are disabled while you're offline (with the banner explaining why) instead of failing after you tap, and the last hardcoded English strings in Stats are translated.
 
 ### Security
 
@@ -87,7 +109,8 @@ This cut flips **every** remaining feature flag on, so stable and `bpm-next` are
 ### Added
 
 - **Skill self-assessment** *(flag-gated `NEXT_PUBLIC_FLAG_SKILL_ASSESS`, now on for everyone)* — periodic anchor-card check-in across 14 skills, a then-vs-now trend radar, phase placement, and an AI "Your read" that folds in the assessment. *(now live)*
-- **Value-Hub Slice-0** *(flag-gated `NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE`, now on for everyone)* — racket pick → recommendation card, 48h game logger, and partner-frequency Stats card. *(now live)*
+- **Value-Hub Slice-0** *(flag-gated `NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE`, now on for everyone)* — 48h game logger and partner-frequency Stats card. *(now live)*
+  > **Correction (2026-08-16):** this entry originally also claimed "racket pick → recommendation card" shipped. It did not. The Stats tab parks its Equipment register whenever the skill-assessment spine is on (`SkillsTab.tsx` — `gearContent` is only passed when `SKILL_ASSESS` is off), and this same cut turned that spine on for everyone. So the racket picker and the recommendation card have never rendered on either deployment. The game logger and partner card are unaffected — they live in the Game register and did ship. This matters because the Value-Hub Slice-0 kill-criterion is written against rec-card engagement; see `ROADMAP.md`.
 - **Accurate skill level** *(flag-gated `NEXT_PUBLIC_FLAG_SKILL_LEVEL` / `…_CALIBRATION` / `…_SMOOTHING`, now on for everyone)* — a private "Your level" card on Stats that folds your check-ins into one 1–5 level, sharpens it against your logged game results (with an opt-in "how your games compare" note), and smooths it so a single check-in can't swing your phase. Feeds the AI "Your read". *(now live)*
 
 ### Changed
