@@ -65,6 +65,7 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **Payments summary header** *(admin)* — each session's payments view now leads with date · players · % paid · $/each and a Share button, so the state of the week's collection reads at a glance.
 - **Owed audit** *(admin)* — cross-checks outstanding balances against session history, so a mismatch surfaces instead of quietly sitting in someone's running total.
 - **Stats Summary, redesigned** — the Summary view leads with per-dimension tiles alongside the trend radar, instead of stacking separate cards down the page.
+- **Equipment tab on Stats** — your racket and the recommendation beside it now have their own tab, alongside Summary and Game stats. They were built a while ago but had never actually appeared for anyone; this is the first build where you can see them. Tap the recommendation to find out why it was picked for you.
 
 ### Changed
 

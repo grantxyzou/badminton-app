@@ -82,4 +82,44 @@ describe('StatsPlaceholder', () => {
     expect(screen.getByRole('button', { name: 'Game stats' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Equipment' })).toBeTruthy();
   });
+
+  it('reaches the Equipment register under the assessment spine', () => {
+    // Regression guard for the Slice-0 blackout: `assessMode` had no `equipment`
+    // case, so selecting the third tab fell through to the Summary hero. Paired
+    // with SkillsTab never passing gearContent under the spine, the rec card and
+    // racket picker rendered on NEITHER deployment for ~9 weeks while the
+    // kill-criterion was notionally being measured against them.
+    renderWithProps({
+      assessMode: true,
+      heroSlot: <div>HERO</div>,
+      gearContent: <div>GEAR</div>,
+      gamePlaySlot: <div>PLAY-SLOT</div>,
+    });
+    expect(screen.getByRole('button', { name: 'Equipment' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Equipment' }));
+    expect(screen.getByText('GEAR')).toBeTruthy();
+    // The specific failure mode: Equipment must not silently show Summary.
+    expect(screen.queryByText('HERO')).toBeNull();
+  });
+
+  it('keeps two tabs under the assessment spine when gear is absent', () => {
+    renderWithProps({
+      assessMode: true,
+      heroSlot: <div>HERO</div>,
+      gamePlaySlot: <div>PLAY-SLOT</div>,
+    });
+    expect(screen.queryByRole('button', { name: 'Equipment' })).toBeNull();
+    expect(screen.getByText('HERO')).toBeTruthy();
+  });
+
+  it('still shows the hero on Summary when gear is present under the spine', () => {
+    renderWithProps({
+      assessMode: true,
+      heroSlot: <div>HERO</div>,
+      gearContent: <div>GEAR</div>,
+    });
+    expect(screen.getByText('HERO')).toBeTruthy();
+    expect(screen.queryByText('GEAR')).toBeNull();
+  });
 });

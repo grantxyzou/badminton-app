@@ -319,3 +319,22 @@ export interface GameResult {
   loggedBy: string;
   loggedAt: string;
 }
+
+/**
+ * One recorded engagement interaction (`events` container, PK `/memberId`).
+ *
+ * Written per-event, never upserted: the Value-Hub Slice-0 kill-criterion asks
+ * whether a member interacted "more than once", which needs the history rather
+ * than a latest-state row.
+ */
+export interface EngagementEvent {
+  id: string;
+  /** Partition key. From the member_session cookie, so it can't be spoofed. */
+  memberId: string;
+  /** Display name at the time of the event — convenience for readouts. */
+  name: string;
+  /** Allowlisted in app/api/events/route.ts; not free text. */
+  kind: 'rec_card_tap';
+  /** ISO 8601. Sortable as a plain string, so range queries are string compares. */
+  at: string;
+}
