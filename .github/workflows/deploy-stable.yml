@@ -29,6 +29,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Mirrors the PR gate, so a type error can't reach a deploy either.
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Run tests
         run: npm test
 

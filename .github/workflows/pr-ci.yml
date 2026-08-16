@@ -49,6 +49,13 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # `next build` does NOT run a full typecheck, so a type error in a module
+      # the build never reaches — or in any test file — passes both `build` and
+      # `test` and only surfaces on a cold `tsc`. The incremental
+      # `tsconfig.tsbuildinfo` cache hid exactly that for 7 errors until #220.
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Run tests
         run: npm test
 
