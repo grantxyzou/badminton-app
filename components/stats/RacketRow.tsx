@@ -88,6 +88,7 @@ export default function RacketRow() {
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         onSaved={loadGear}
+        currentLabel={racketLabel}
       />
     </>
   );
