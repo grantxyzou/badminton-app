@@ -50,6 +50,7 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
   const [loadError, setLoadError] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [savedLabel, setSavedLabel] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     if (!open) return;
@@ -58,6 +59,7 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
     setSavedLabel(null);
     setSaveError(false);
     setLoaded(false);
+    setQuery('');
     fetch(`${BASE}/api/equipment/catalog?category=racket`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
@@ -86,10 +88,16 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
     return seen;
   }, [catalog]);
 
-  const models = useMemo(
-    () => catalog.filter((c) => c.brand === brand),
-    [catalog, brand],
-  );
+  // A query searches the WHOLE catalog and bypasses the brand tabs —
+  // filtering within the selected brand would hide matches and read as broken.
+  const models = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return catalog.filter((c) => c.brand === brand);
+    return catalog.filter((c) => {
+      const series = typeof c.attributes?.series === 'string' ? c.attributes.series : '';
+      return `${c.brand} ${c.model} ${series}`.toLowerCase().includes(q);
+    });
+  }, [catalog, brand, query]);
 
   const selected = useMemo(
     () => catalog.find((c) => c.id === selectedId) ?? null,
@@ -152,10 +160,29 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
               <EmptyState>{t('racketCatalogEmpty')}</EmptyState>
             )}
 
+            {catalog.length > 0 && (
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t('searchPlaceholder')}
+                aria-label={t('searchPlaceholder')}
+                className="fs-md"
+                style={{
+                  width: '100%', padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)',
+                  background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-primary)',
+                }}
+              />
+            )}
+
             {/* Brand tabs. 3 brands today, so a segment control reads whole-
                 catalog-at-a-glance; revisit as chips if curation grows past ~4.
-                Canonical pattern: wrapper needs `flex`, tabs need flex-1. */}
-            {brands.length > 0 && (
+                Canonical pattern: wrapper needs `flex`, tabs need flex-1.
+                Hidden while a query is active — search bypasses the brand
+                filter entirely, so showing tabs that aren't in play reads
+                as broken. */}
+            {!query.trim() && brands.length > 0 && (
               <div className="segment-control flex" role="tablist" aria-label={t('racketSheetTitle')}>
                 {brands.map((b) => (
                   <button
@@ -192,6 +219,10 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
                 );
               })}
             </ul>
+
+            {loaded && !loadError && catalog.length > 0 && models.length === 0 && (
+              <EmptyState>{t('searchNoMatches')}</EmptyState>
+            )}
 
             {saveError && <ErrorState message={t('recError')} />}
             {!online && (
