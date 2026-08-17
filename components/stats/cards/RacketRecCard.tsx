@@ -4,13 +4,14 @@ import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { recordEngagement } from '@/lib/engagement';
+import { compareRackets } from '@/lib/racketSpecs';
 import type { CatalogItem } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /**
  * Compact "We recommend" card — the secondary half of the Stats racket row
- * (your racket is primary, this is the nudge beside it). Stage-aware pick with
+ * (your racket is primary/hero, this is the nudge stacked below it). Stage-aware pick with
  * all-rounder fallback (see lib/recommend.ts). Legible-fail per CLAUDE.md: a
  * load failure shows a distinct error pill; while loading it shows neither a
  * fake pick nor an error.
@@ -22,7 +23,7 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  * `<div>` with nothing to interact with — the metric could never have been
  * anything but zero. The tap is recorded via `recordEngagement`.
  */
-export default function RacketRecCard({ name }: { name: string }) {
+export default function RacketRecCard({ name, mine }: { name: string; mine: CatalogItem | null }) {
   const t = useTranslations('valueHub');
   const [item, setItem] = useState<CatalogItem | null>(null);
   const [reason, setReason] = useState<string | null>(null);
@@ -66,14 +67,24 @@ export default function RacketRecCard({ name }: { name: string }) {
 
   const label = <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: 0 }}>{t('weRecommend')}</p>;
 
+  const comparison = item ? compareRackets(mine, item) : null;
+  const compareLine = comparison ? (
+    <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: 0 }}>
+      {item?.brand} · {t(`compare${comparison.charAt(0).toUpperCase()}${comparison.slice(1)}`)}
+    </p>
+  ) : item ? (
+    <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: 0 }}>{item.brand}</p>
+  ) : null;
+
   // Only interactive once there's a pick AND a reason to reveal. A button that
   // expands nothing is worse than a plain card — and it would inflate the very
   // metric this exists to measure.
   if (!item || !reason) {
     return (
-      <div className="glass-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 4, minHeight: 112 }}>
+      <div className="glass-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
         {label}
         {body}
+        {compareLine}
       </div>
     );
   }
@@ -89,7 +100,6 @@ export default function RacketRecCard({ name }: { name: string }) {
         display: 'flex',
         flexDirection: 'column',
         gap: 4,
-        minHeight: 112,
         textAlign: 'left',
         cursor: 'pointer',
         width: '100%',
@@ -97,6 +107,7 @@ export default function RacketRecCard({ name }: { name: string }) {
     >
       {label}
       {body}
+      {compareLine}
       {expanded && (
         <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
           {reason}

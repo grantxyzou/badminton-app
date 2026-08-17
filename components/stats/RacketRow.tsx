@@ -1,10 +1,10 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
-import { useTranslations } from 'next-intl';
 import { getIdentity } from '@/lib/identity';
 import GearSheet from './GearSheet';
 import RacketRecCard from './cards/RacketRecCard';
-import type { PlayerGear } from '@/lib/types';
+import YourRacketCard from './cards/YourRacketCard';
+import type { PlayerGear, CatalogItem } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
@@ -23,12 +23,12 @@ function resolveActiveName(): string | null {
 }
 
 /**
- * Stats racket row: two cards side-by-side. Left = YOUR racket (primary,
- * tappable to pick/change). Right = the recommendation (secondary nudge).
- * Picking a racket refetches gear so the left card updates immediately.
+ * Stats racket row: a vertical stack. Your racket leads (hero treatment,
+ * tappable to pick/change); the recommendation follows below it, compared
+ * against what you already own. Picking a racket refetches gear so the
+ * catalog item resolves fresh and both cards update immediately.
  */
 export default function RacketRow() {
-  const t = useTranslations('valueHub');
   const [activeName, setActiveName] = useState<string | null>(null);
   const [racketLabel, setRacketLabel] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -39,6 +39,9 @@ export default function RacketRow() {
     setActiveName(resolveActiveName());
   }, []);
 
+  const [catalogItem, setCatalogItem] = useState<CatalogItem | null>(null);
+  const [catalogId, setCatalogId] = useState<string | null>(null);
+
   const loadGear = useCallback(() => {
     if (!activeName) return;
     fetch(`${BASE}/api/equipment/gear?name=${encodeURIComponent(activeName)}`, { cache: 'no-store' })
@@ -47,6 +50,7 @@ export default function RacketRow() {
         const gear = d.gear as PlayerGear | null;
         const racket = gear?.items?.find((i) => i.category === 'racket');
         setRacketLabel(racket?.label ?? null);
+        setCatalogId(racket?.catalogId ?? null);
         setLoaded(true);
         setLoadError(false);
       })
@@ -55,32 +59,35 @@ export default function RacketRow() {
 
   useEffect(() => { loadGear(); }, [loadGear]);
 
+  // Resolve the catalog row so the card can show specs. A dangling catalogId
+  // leaves catalogItem null and the card falls back to the stored label.
+  useEffect(() => {
+    if (!catalogId) { setCatalogItem(null); return; }
+    let live = true;
+    fetch(`${BASE}/api/equipment/catalog?category=racket`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => {
+        if (!live) return;
+        const items = (d.items ?? []) as CatalogItem[];
+        setCatalogItem(items.find((i) => i.id === catalogId) ?? null);
+      })
+      .catch(() => { if (live) setCatalogItem(null); });
+    return () => { live = false; };
+  }, [catalogId]);
+
   if (!activeName) return null;
 
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
-        {/* Left — your racket (primary), tappable to pick or change */}
-        <button
-          type="button"
-          onClick={() => setSheetOpen(true)}
-          className="glass-card"
-          style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 4, minHeight: 112, textAlign: 'left', cursor: 'pointer' }}
-        >
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: 0 }}>{t('yourRacket')}</p>
-          {loadError ? (
-            <span className="field-error" role="alert">{t('recError')}</span>
-          ) : !loaded ? (
-            <span className="shimmer-line rounded-lg" style={{ height: 15, width: '70%' }} aria-hidden="true" />
-          ) : racketLabel ? (
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 600, lineHeight: 1.25 }}>{racketLabel}</span>
-          ) : (
-            <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)' }}>{t('noRacketYet')}</span>
-          )}
-        </button>
-
-        {/* Right — recommendation (secondary) */}
-        <RacketRecCard name={activeName} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <YourRacketCard
+          item={catalogItem}
+          label={racketLabel}
+          loading={!loaded}
+          error={loadError}
+          onEdit={() => setSheetOpen(true)}
+        />
+        <RacketRecCard name={activeName} mine={catalogItem} />
       </div>
 
       <GearSheet
