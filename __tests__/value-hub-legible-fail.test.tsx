@@ -21,7 +21,7 @@ describe('RacketRecCard legible-fail', () => {
   it('while loading, shows the card title but no recommendation or error', () => {
     // Never-resolving fetch keeps the component in its initial (loaded === false) state.
     globalThis.fetch = vi.fn(() => new Promise(() => {})) as unknown as typeof fetch;
-    render(wrap(<RacketRecCard name="Lin" />));
+    render(wrap(<RacketRecCard name="Lin" mine={null} />));
     expect(screen.getByText('We recommend')).toBeTruthy();
     // No fake recommendation and no error while still loading.
     expect(screen.queryByRole('alert')).toBeNull();
@@ -29,7 +29,7 @@ describe('RacketRecCard legible-fail', () => {
 
   it('renders an error pill on load failure — not a silent empty card', async () => {
     globalThis.fetch = vi.fn(() => Promise.reject(new Error('network'))) as unknown as typeof fetch;
-    render(wrap(<RacketRecCard name="Lin" />));
+    render(wrap(<RacketRecCard name="Lin" mine={null} />));
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain("Couldn't load");
   });
