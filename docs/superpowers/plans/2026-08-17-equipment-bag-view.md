@@ -408,9 +408,21 @@ const FLEX_ORDER = ['Flexible', 'Medium', 'Medium-Stiff', 'Stiff', 'Extra Stiff'
 
 function rank(order: string[], raw: string | null): number | null {
   if (!raw) return null;
+  // Combined classes ("4U/5U", "5U/G6") take their first term. G6 is a grip
+  // size, not a weight class, and must never be ranked as one.
   const head = raw.split('/')[0].trim().toLowerCase();
   const index = order.findIndex((o) => o.toLowerCase() === head);
   return index === -1 ? null : index;
+}
+
+/** light | heavy | even | null(unknown). Strips a leading "slightly ". */
+function balanceClass(raw: string | null): 'light' | 'heavy' | 'even' | null {
+  if (!raw) return null;
+  const value = raw.trim().toLowerCase().replace(/^slightly\s+/, '');
+  if (value.includes('head-light')) return 'light';
+  if (value.includes('head-heavy')) return 'heavy';
+  if (value === 'even') return 'even';
+  return null;
 }
 
 /**
@@ -430,10 +442,20 @@ export function compareRackets(mine: CatalogItem | null, theirs: CatalogItem): s
     return theirsWeight < mineWeight ? 'lighter' : 'heavier';
   }
 
-  const mineBalance = attr(mine, 'balance')?.toLowerCase();
-  const theirsBalance = attr(theirs, 'balance')?.toLowerCase();
-  if (mineBalance && theirsBalance && mineBalance !== theirsBalance) {
-    return theirsBalance.includes('light') ? 'moreHeadLight' : 'moreHeadHeavy';
+  // Classify, never substring-match. `Even` contains no "light" (so a naive
+  // test calls a neutral racket head-heavy), and "Slightly head-heavy"
+  // contains "light" inside *slightly* (so it inverts). Both values are real
+  // catalog data.
+  const mineBalance = balanceClass(attr(mine, 'balance'));
+  const theirsBalance = balanceClass(attr(theirs, 'balance'));
+  // Only a definite, differing direction earns a phrase — `even` and unknown
+  // fall through to flex, which is an honest difference we can name.
+  if (
+    (mineBalance === 'light' || mineBalance === 'heavy') &&
+    (theirsBalance === 'light' || theirsBalance === 'heavy') &&
+    mineBalance !== theirsBalance
+  ) {
+    return theirsBalance === 'light' ? 'moreHeadLight' : 'moreHeadHeavy';
   }
 
   const mineFlex = rank(FLEX_ORDER, attr(mine, 'flex'));
