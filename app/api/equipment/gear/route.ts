@@ -120,8 +120,16 @@ export async function POST(req: NextRequest) {
     const prior = await readGearDoc(auth.memberId);
     const existing = prior?.items ?? [];
     const catalogId = typeof body.item.catalogId === 'string' ? body.item.catalogId : null;
+    const label = String(body.item.label ?? '').slice(0, 80);
 
-    if (catalogId && existing.some((i) => i.catalogId === catalogId)) {
+    // Primary dedupe key is catalogId. Free-text ("Other") entries have no
+    // catalogId, so without a fallback a caller could add the same racket
+    // repeatedly by omitting it — dedupe those on the normalized label
+    // against other catalogId-less entries.
+    const isDuplicate = catalogId
+      ? existing.some((i) => i.catalogId === catalogId)
+      : existing.some((i) => !i.catalogId && i.label.trim().toLowerCase() === label.trim().toLowerCase());
+    if (isDuplicate) {
       return NextResponse.json({ error: 'duplicate_racket' }, { status: 409 });
     }
     if (rackets(prior ?? null).length >= MAX_RACKETS) {
@@ -132,16 +140,19 @@ export async function POST(req: NextRequest) {
       id: randomBytes(12).toString('hex'),
       catalogId,
       category: body.item.category,
-      label: String(body.item.label ?? '').slice(0, 80),
+      label,
       acquiredAt: body.item.acquiredAt,
       notes: typeof body.item.notes === 'string' ? body.item.notes.slice(0, 200) : undefined,
     };
 
     const items = [...existing, incoming];
-    // Only the first racket claims the pointer — adding never yanks the
-    // player's current racket out from under them.
+    // Only claim the pointer when the bag had NO rackets before this add —
+    // a legacy bag (rackets present, pointer absent) already has an
+    // effective active racket via activeRacket()'s items[0] fallback, and
+    // appending must never silently move it onto the new racket.
+    const priorRackets = rackets(prior ?? null);
     const activeRacketId = prior?.activeRacketId
-      ?? (incoming.category === 'racket' ? incoming.id : undefined);
+      ?? (priorRackets.length === 0 && incoming.category === 'racket' ? incoming.id : undefined);
 
     return NextResponse.json({ gear: await writeGearDoc(auth.memberId, prior, { items, activeRacketId }) });
   } catch (error) {

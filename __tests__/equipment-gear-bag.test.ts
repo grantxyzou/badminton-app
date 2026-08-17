@@ -1,10 +1,16 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { POST, PATCH, DELETE, GET } from '../app/api/equipment/gear/route';
-import { resetMockStore, seedMember, memberCookieValue, makeRequest, makeGetRequest, setupAdminPin } from './helpers';
+import {
+  resetMockStore, seedMember, memberCookieValue, makeRequest, makeGetRequest, setupAdminPin,
+  getStore, makeAdminRequest, seedAdminMember,
+} from './helpers';
+import { activeRacket } from '../lib/activeRacket';
 import type { PlayerGear } from '../lib/types';
 
 const NAME = 'Lin';
 const MEMBER_ID = 'member-lin';
+const OTHER_NAME = 'Viktor';
+const OTHER_MEMBER_ID = 'member-viktor';
 
 // NOTE the argument order: makeRequest(method, url, body, headers) — method
 // first. And memberCookieValue returns the bare cookie VALUE, so it must be
@@ -32,8 +38,18 @@ beforeEach(() => {
   resetMockStore();
   setupAdminPin(); // sets SESSION_SECRET so member_session cookies sign/verify deterministically
   seedMember(NAME, { id: MEMBER_ID });
+  seedMember(OTHER_NAME, { id: OTHER_MEMBER_ID });
   process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
 });
+
+// A caller authenticated as a DIFFERENT member — the impersonation case this
+// endpoint's auth exists to prevent. Member names are enumerable, so
+// name-only access would be a takeover hole.
+function otherMemberRequest(method: string, body?: Record<string, unknown>) {
+  return makeRequest(method, 'http://localhost/api/equipment/gear', body, {
+    Cookie: `member_session=${memberCookieValue(OTHER_NAME, OTHER_MEMBER_ID)}`,
+  });
+}
 
 function deleteRequest(itemId: string) {
   return makeRequest('DELETE', `http://localhost/api/equipment/gear?name=${NAME}&itemId=${itemId}`,
@@ -77,6 +93,51 @@ describe('POST /api/equipment/gear', () => {
     expect(res.status).toBe(401);
   });
 
+  it('rejects a caller authenticated as a different member', async () => {
+    const res = await POST(otherMemberRequest('POST', { name: NAME, item: RACKET_A }));
+    expect(res.status).toBe(401);
+  });
+
+  it('allows an admin to add gear for a member they do not own', async () => {
+    seedAdminMember();
+    const res = await POST(makeAdminRequest('POST', 'http://localhost/api/equipment/gear', { name: NAME, item: RACKET_A }));
+    expect(res.status).toBe(200);
+    expect((await readGear())?.items).toHaveLength(1);
+  });
+
+  // Task 7's activeRacket() resolver treats a bag with rackets but no
+  // explicit pointer as "the first racket is active" (the legacy-document
+  // contract). Appending to such a bag must not silently move the pointer
+  // onto the newly-added racket, even though prior?.activeRacketId reads as
+  // undefined for both a legacy bag and a genuinely-empty one.
+  it('does not steal the pointer when appending to a legacy bag with no explicit pointer', async () => {
+    const store = getStore();
+    store['playerGear'] = [
+      {
+        id: `gear-${MEMBER_ID}`,
+        memberId: MEMBER_ID,
+        items: [
+          { id: 'legacy-1', catalogId: 'racket-legacy-1', category: 'racket', label: 'Legacy One' },
+          { id: 'legacy-2', catalogId: 'racket-legacy-2', category: 'racket', label: 'Legacy Two' },
+        ],
+        updatedAt: new Date().toISOString(),
+        // no activeRacketId — legacy contract
+      },
+    ];
+    await POST(bagRequest('POST', { name: NAME, item: RACKET_A }));
+    const gear = await readGear();
+    expect(gear?.activeRacketId).toBeUndefined();
+    expect(activeRacket(gear)?.id).toBe('legacy-1');
+  });
+
+  it('rejects a duplicate free-text racket by label when catalogId is absent', async () => {
+    const freeText = { category: 'racket', label: 'My Old Racket' };
+    await POST(bagRequest('POST', { name: NAME, item: freeText }));
+    const res = await POST(bagRequest('POST', { name: NAME, item: freeText }));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe('duplicate_racket');
+  });
+
   // The limiter is keyed on name+IP and is module-level in-memory state that
   // resetMockStore() does NOT clear. Every other test here gets a unique IP
   // from makeRequest and so never trips it; this one pins a dedicated IP that
@@ -112,6 +173,12 @@ describe('PATCH /api/equipment/gear', () => {
     const res = await PATCH(unauthedRequest('PATCH', { name: NAME, activeRacketId: 'x' }));
     expect(res.status).toBe(401);
   });
+
+  it('rejects a caller authenticated as a different member', async () => {
+    await POST(bagRequest('POST', { name: NAME, item: RACKET_A }));
+    const res = await PATCH(otherMemberRequest('PATCH', { name: NAME, activeRacketId: 'x' }));
+    expect(res.status).toBe(401);
+  });
 });
 
 describe('DELETE /api/equipment/gear', () => {
@@ -141,5 +208,13 @@ describe('DELETE /api/equipment/gear', () => {
     const gear = await readGear();
     expect(gear?.items).toHaveLength(0);
     expect(gear?.activeRacketId).toBeUndefined();
+  });
+
+  it('rejects a caller authenticated as a different member', async () => {
+    const first = await POST(bagRequest('POST', { name: NAME, item: RACKET_A }));
+    const targetId = ((await first.json()).gear as PlayerGear).items[0].id;
+    const res = await DELETE(makeRequest('DELETE', `http://localhost/api/equipment/gear?name=${NAME}&itemId=${targetId}`,
+      undefined, { Cookie: `member_session=${memberCookieValue(OTHER_NAME, OTHER_MEMBER_ID)}` }));
+    expect(res.status).toBe(401);
   });
 });
