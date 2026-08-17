@@ -88,6 +88,17 @@ describe('POST /api/equipment/gear', () => {
     expect((await res.json()).error).toBe('bag_full');
   });
 
+  // Fix wave 2026-08: an unvalidated category bypassed MAX_RACKETS (which
+  // only counts rackets()) and produced an item BagList never renders — no
+  // delete affordance, and it wrote an arbitrary string into a field typed
+  // EquipmentCategory.
+  it('rejects an item with a category outside the EquipmentCategory union', async () => {
+    const res = await POST(bagRequest('POST', { name: NAME, item: { ...RACKET_A, category: 'kitchen-sink' } }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('invalid_category');
+    expect(await readGear()).toBeNull();
+  });
+
   it('rejects a caller without the member cookie', async () => {
     const res = await POST(unauthedRequest('POST', { name: NAME, item: RACKET_A }));
     expect(res.status).toBe(401);

@@ -5,13 +5,14 @@ import { verifyMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { rackets } from '@/lib/activeRacket';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import type { PlayerGear, GearItem } from '@/lib/types';
+import type { PlayerGear, GearItem, EquipmentCategory } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 const MAX_RACKETS = 10;
 const BAG_WRITES_PER_HOUR = 20;
 const HOUR_MS = 60 * 60 * 1000;
+const VALID_CATEGORIES = new Set<EquipmentCategory>(['racket', 'string', 'shoe', 'shuttle', 'bag', 'grip']);
 
 let ready: Promise<void> | null = null;
 function ensureGear(): Promise<void> {
@@ -113,6 +114,13 @@ export async function POST(req: NextRequest) {
     if (!name) return NextResponse.json({ error: 'name_required' }, { status: 400 });
     if (!body.item || typeof body.item !== 'object') {
       return NextResponse.json({ error: 'item_required' }, { status: 400 });
+    }
+    // Reject anything outside the EquipmentCategory union before it can land
+    // in the doc. Unvalidated, a non-'racket' value would bypass MAX_RACKETS
+    // (which only counts rackets()) and produce an item BagList never
+    // renders — no delete affordance, so the user can't remove it.
+    if (!VALID_CATEGORIES.has(body.item.category)) {
+      return NextResponse.json({ error: 'invalid_category' }, { status: 400 });
     }
     const auth = await authorizeBagWrite(req, name);
     if (auth.error) return auth.error;
@@ -252,32 +260,54 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
 
+    const prior = await readGearDoc(memberId);
+    const existing = prior?.items ?? [];
+    const catalogId = typeof body.item.catalogId === 'string' ? body.item.catalogId : null;
+    const label = String(body.item.label ?? '').slice(0, 80);
+
+    // Bag-aware since the final-review fix wave (2026-08): bpm-stable still
+    // runs the pre-branch client, which saves via PUT, while bpm-next saves
+    // via POST — and both deployments share one Cosmos DB. The old PUT wiped
+    // every existing item of the same category before writing, so a
+    // stable-side player saving one racket would silently delete every other
+    // racket (and the activeRacketId pointer) a next-side player had built in
+    // the same bag. Mirrors POST's append/dedupe semantics so either client
+    // is safe against the other. Unlike POST, PUT is idempotent by contract:
+    // a match (by catalogId, or by normalized label when catalogId is
+    // absent) UPDATES that item in place instead of appending a duplicate or
+    // 409ing, so re-saving the same racket twice is a no-op on bag shape.
+    const matchIndex = catalogId
+      ? existing.findIndex((i) => i.catalogId === catalogId)
+      : existing.findIndex((i) => !i.catalogId && i.label.trim().toLowerCase() === label.trim().toLowerCase());
+
     const incoming: GearItem = {
-      id: typeof body.item.id === 'string' ? body.item.id : randomBytes(12).toString('hex'),
-      catalogId: typeof body.item.catalogId === 'string' ? body.item.catalogId : null,
+      id: matchIndex >= 0 ? existing[matchIndex].id
+        : (typeof body.item.id === 'string' ? body.item.id : randomBytes(12).toString('hex')),
+      catalogId,
       category: body.item.category,
-      label: String(body.item.label ?? '').slice(0, 80),
+      label,
       acquiredAt: body.item.acquiredAt,
       tensionLbs: typeof body.item.tensionLbs === 'number' ? body.item.tensionLbs : undefined,
       notes: typeof body.item.notes === 'string' ? body.item.notes.slice(0, 200) : undefined,
     };
 
-    const container = getContainer('playerGear');
-    const { resource: existing } = await container.item(`gear-${memberId}`, memberId).read();
-    const prior = existing as PlayerGear | undefined;
+    let items: GearItem[];
+    if (matchIndex >= 0) {
+      items = existing.map((i, idx) => (idx === matchIndex ? incoming : i));
+    } else {
+      if (rackets(prior ?? null).length >= MAX_RACKETS) {
+        return NextResponse.json({ error: 'bag_full' }, { status: 409 });
+      }
+      items = [...existing, incoming];
+    }
 
-    // One racket at a time in Slice-0: replace any existing item of the same category.
-    const keptItems = (prior?.items ?? []).filter((i) => i.category !== incoming.category);
-    const doc: PlayerGear = {
-      id: `gear-${memberId}`,
-      memberId,
-      items: [...keptItems, incoming],
-      stringLog: prior?.stringLog,
-      shoesMileageSessions: prior?.shoesMileageSessions,
-      updatedAt: new Date().toISOString(),
-    };
-    const { resource } = await container.items.upsert(doc);
-    return NextResponse.json({ gear: resource });
+    // Same pointer rule as POST: preserve an existing pointer untouched, and
+    // only claim it for the incoming racket when the bag had none before.
+    const priorRackets = rackets(prior ?? null);
+    const activeRacketId = prior?.activeRacketId
+      ?? (priorRackets.length === 0 && incoming.category === 'racket' ? incoming.id : undefined);
+
+    return NextResponse.json({ gear: await writeGearDoc(memberId, prior, { items, activeRacketId }) });
   } catch (error) {
     console.error('PUT equipment/gear error:', error);
     return NextResponse.json({ error: 'save_failed' }, { status: 500 });
