@@ -15,7 +15,8 @@
 - Flag: everything ships under the existing `NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE`. No new flag.
 - `CatalogItem.category` is the Cosmos **partition key** and must always be the literal `'racket'`. The source file's `category` field means play-style and must never be written there.
 - Schema changes are additive and optional only — stable and next share one Cosmos DB.
-- Gear writes are member-scoped (Security Rule 12): `verifyMemberAuth` owner match OR `isAdminAuthedWithMember`. Auth before body parsing (Rule 3); rate limit before auth (Rule 4); `getClientIp(req)` for IP (Rule 6).
+- Gear writes are member-scoped (Security Rule 12): `verifyMemberAuth` owner match OR `isAdminAuthedWithMember`. Rate limit before auth (Rule 4); `getClientIp(req)` for IP (Rule 6), never `req.ip`.
+- **Ordering caveat, deliberate:** Rule 3 says "auth before body parsing", but these handlers take the target `name` from the request body, so the body must be parsed before the member can be resolved and the caller authorized. The existing `PUT` already works this way. The rule's intent — no DB work or side effects before the auth gate — is preserved: parsing is followed immediately by the rate-limit check, then member resolution, then auth, and nothing mutates before that gate passes.
 - No raw inline `fontSize` numbers, hex literals, or bare `text-xs/sm/base` classes — use `--fs-*` tokens / `.fs-*` classes. `components/stats` errors on `DESIGN_TOKEN_SELECTORS`.
 - Component tests need `// @vitest-environment jsdom`, manual `afterEach(cleanup)`, and a `<NextIntlClientProvider locale="en" messages={enMessages}>` wrapper.
 - New `messages/*.json` keys go under the existing `valueHub` namespace — no new top-level branch (avoids the next-intl HMR restart trap).
@@ -1176,6 +1177,21 @@ describe('POST /api/equipment/gear', () => {
     const res = await POST(unauthedRequest('POST', { name: NAME, item: RACKET_A }));
     expect(res.status).toBe(401);
   });
+
+  // The limiter is keyed on name+IP and is module-level in-memory state that
+  // resetMockStore() does NOT clear. Every other test here gets a unique IP
+  // from makeRequest and so never trips it; this one pins a dedicated IP that
+  // no other test uses, so the count is its own.
+  it('rate-limits a flood of bag writes from one IP', async () => {
+    const pinned = { Cookie: `member_session=${memberCookieValue(NAME, MEMBER_ID)}`, 'X-Client-IP': '203.0.113.77' };
+    let last = 200;
+    for (let i = 0; i < 22; i += 1) {
+      const res = await POST(makeRequest('POST', 'http://localhost/api/equipment/gear',
+        { name: NAME, item: { ...RACKET_A, catalogId: `racket-flood-${i}`, label: `F${i}` } }, pinned));
+      last = res.status;
+    }
+    expect(last).toBe(429);
+  });
 });
 
 describe('PATCH /api/equipment/gear', () => {
@@ -1242,14 +1258,26 @@ In `app/api/equipment/gear/route.ts`, add above the handlers:
 ```ts
 import { randomBytes } from 'crypto';
 import { rackets } from '@/lib/activeRacket';
-import { getClientIp } from '@/lib/rateLimit';
+import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 
 const MAX_RACKETS = 10;
+const BAG_WRITES_PER_HOUR = 20;
+const HOUR_MS = 60 * 60 * 1000;
 
-/** Shared preamble: flag, rate limit, auth, member resolution. Order is
- *  deliberate — rate limit before auth (Rule 4), auth before any DB work
- *  beyond the member lookup the auth check itself needs (Rule 3). */
+/**
+ * Shared gate for the three bag verbs: rate limit, then member resolution,
+ * then ownership. Rate limit comes first (Rule 4) so it cannot be bypassed by
+ * an unauthorized caller, and nothing mutates before ownership passes.
+ *
+ * Keyed on name+IP rather than memberId+IP: the key must be computable before
+ * the member lookup, or the limiter sits behind the DB call it exists to
+ * protect.
+ */
 async function authorizeBagWrite(req: NextRequest, name: string) {
+  const key = `gear-bag:${name.toLowerCase()}:${getClientIp(req)}`;
+  if (!checkRateLimit(key, BAG_WRITES_PER_HOUR, HOUR_MS)) {
+    return { error: NextResponse.json({ error: 'rate_limited' }, { status: 429 }) };
+  }
   const memberId = await resolveMemberId(name);
   if (!memberId) return { error: NextResponse.json({ error: 'member_not_found' }, { status: 404 }) };
   const caller = verifyMemberAuth(req);
