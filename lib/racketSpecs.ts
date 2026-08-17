@@ -54,6 +54,19 @@ function rank(order: string[], raw: string | null): number | null {
 }
 
 /**
+ * Classify a balance string to one of three states: 'light', 'heavy', 'even', or unknown.
+ * Strips leading "slightly " qualifier before matching.
+ */
+function classifyBalance(raw: string | null): 'light' | 'heavy' | 'even' | null {
+  if (!raw) return null;
+  const normalized = raw.toLowerCase().replace(/^slightly\s+/, '');
+  if (normalized.includes('light')) return 'light';
+  if (normalized.includes('heavy')) return 'heavy';
+  if (normalized === 'even') return 'even';
+  return null;
+}
+
+/**
  * How a recommended racket differs from the one the player already has.
  * Returns an i18n key suffix, or null when there is nothing useful to say.
  *
@@ -70,10 +83,10 @@ export function compareRackets(mine: CatalogItem | null, theirs: CatalogItem): s
     return theirsWeight < mineWeight ? 'lighter' : 'heavier';
   }
 
-  const mineBalance = attr(mine, 'balance')?.toLowerCase();
-  const theirsBalance = attr(theirs, 'balance')?.toLowerCase();
-  if (mineBalance && theirsBalance && mineBalance !== theirsBalance) {
-    return theirsBalance.includes('light') ? 'moreHeadLight' : 'moreHeadHeavy';
+  const mineBalance = classifyBalance(attr(mine, 'balance'));
+  const theirsBalance = classifyBalance(attr(theirs, 'balance'));
+  if (mineBalance && theirsBalance && mineBalance !== 'even' && theirsBalance !== 'even' && mineBalance !== theirsBalance) {
+    return theirsBalance === 'light' ? 'moreHeadLight' : 'moreHeadHeavy';
   }
 
   const mineFlex = rank(FLEX_ORDER, attr(mine, 'flex'));
