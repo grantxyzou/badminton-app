@@ -41,12 +41,21 @@ export default function RacketRow() {
 
   const [catalogItem, setCatalogItem] = useState<CatalogItem | null>(null);
   const [catalogId, setCatalogId] = useState<string | null>(null);
+  // True once the catalog lookup for the current catalogId has resolved, one
+  // way or another (found / not found / fetch failed). Nothing with no
+  // catalogId to resolve counts as settled by definition. Gates what the hero
+  // card is shown so the stored label never gets replaced by a spec-rich
+  // display and then silently "reflow" underneath it — see YourRacketCard's
+  // docstring contract.
+  const [catalogSettled, setCatalogSettled] = useState(true);
 
   const loadGear = useCallback(() => {
-    if (!activeName) return;
+    if (!activeName) return undefined;
+    let live = true;
     fetch(`${BASE}/api/equipment/gear?name=${encodeURIComponent(activeName)}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
+        if (!live) return;
         const gear = d.gear as PlayerGear | null;
         const racket = gear?.items?.find((i) => i.category === 'racket');
         setRacketLabel(racket?.label ?? null);
@@ -54,15 +63,20 @@ export default function RacketRow() {
         setLoaded(true);
         setLoadError(false);
       })
-      .catch(() => { setLoadError(true); setLoaded(true); });
+      .catch(() => { if (live) { setLoadError(true); setLoaded(true); } });
+    // A stale gear response (superseded by a re-fetch after saving a new
+    // racket) must not clobber the fresher one — it now carries catalogId too,
+    // which would otherwise propagate a wrong spec line and rec-card compare.
+    return () => { live = false; };
   }, [activeName]);
 
-  useEffect(() => { loadGear(); }, [loadGear]);
+  useEffect(() => loadGear(), [loadGear]);
 
   // Resolve the catalog row so the card can show specs. A dangling catalogId
   // leaves catalogItem null and the card falls back to the stored label.
   useEffect(() => {
-    if (!catalogId) { setCatalogItem(null); return; }
+    if (!catalogId) { setCatalogItem(null); setCatalogSettled(true); return; }
+    setCatalogSettled(false);
     let live = true;
     fetch(`${BASE}/api/equipment/catalog?category=racket`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
@@ -71,7 +85,8 @@ export default function RacketRow() {
         const items = (d.items ?? []) as CatalogItem[];
         setCatalogItem(items.find((i) => i.id === catalogId) ?? null);
       })
-      .catch(() => { if (live) setCatalogItem(null); });
+      .catch(() => { if (live) setCatalogItem(null); })
+      .finally(() => { if (live) setCatalogSettled(true); });
     return () => { live = false; };
   }, [catalogId]);
 
@@ -81,7 +96,12 @@ export default function RacketRow() {
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <YourRacketCard
-          item={catalogItem}
+          // Hold the stored label until the catalog lookup settles, so the
+          // hero renders once in its final shape instead of the plain label
+          // popping in first and the model/brand/specs reflowing in under it
+          // a beat later. A catalog failure also lands here (settled, item
+          // still null) — it degrades to the label, not a permanent shimmer.
+          item={catalogSettled ? catalogItem : null}
           label={racketLabel}
           loading={!loaded}
           error={loadError}
