@@ -91,12 +91,17 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
         setCatalog(items);
         setLoaded(true);
         setLoadError(false);
-        // Pre-select the current racket so reopening shows where you stand,
-        // and land on its brand tab. Otherwise start on the first brand.
+        // Land on the current racket's brand tab so reopening shows where
+        // you stand, without pre-selecting it — currentLabel is always
+        // something already in the bag (it's the player's active racket),
+        // and Save now POSTs an ADD. Pre-selecting it made the sheet's most
+        // obvious action (open, tap Save) a guaranteed 409 duplicate_racket.
+        // Only relevant now for browsing context; a genuine re-add of an
+        // in-bag racket via manual tap+Save still 409s as it should.
         const current = currentLabel
           ? items.find((c) => `${c.brand} ${c.model}` === currentLabel)
           : undefined;
-        setSelectedId(current?.id ?? null);
+        setSelectedId(null);
         setBrand(current?.brand ?? items[0]?.brand ?? null);
       })
       .catch(() => { if (live) { setLoadError(true); setLoaded(true); } });
