@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { getIdentity } from '@/lib/identity';
 import GearSheet from './GearSheet';
 import RacketRecCard from './cards/RacketRecCard';
@@ -50,13 +50,23 @@ export default function RacketRow() {
   // docstring contract.
   const [catalogSettled, setCatalogSettled] = useState(true);
 
+  // Monotonic op counter, same pattern as GearSheet's gearOpRef: loadGear
+  // fires both on mount and every time GearSheet's onSaved calls it after a
+  // mutation (save/activate/remove). A plain per-call `live` closure only
+  // guards a call against ITS OWN unmount — it does nothing to order two
+  // overlapping loadGear() calls against each other. Rapid activate→remove
+  // fires two GETs; without this, the older can resolve after the newer and
+  // clobber the hero card with a stale (possibly just-deleted) racket, with
+  // nothing left to refetch and correct it since onSaved already ran.
+  const gearOpRef = useRef(0);
+
   const loadGear = useCallback(() => {
-    if (!activeName) return undefined;
-    let live = true;
+    if (!activeName) return;
+    const opId = ++gearOpRef.current;
     fetch(`${BASE}/api/equipment/gear?name=${encodeURIComponent(activeName)}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
-        if (!live) return;
+        if (opId !== gearOpRef.current) return;
         const gear = d.gear as PlayerGear | null;
         const racket = activeRacket(gear);
         setRacketLabel(racket?.label ?? null);
@@ -64,14 +74,10 @@ export default function RacketRow() {
         setLoaded(true);
         setLoadError(false);
       })
-      .catch(() => { if (live) { setLoadError(true); setLoaded(true); } });
-    // A stale gear response (superseded by a re-fetch after saving a new
-    // racket) must not clobber the fresher one — it now carries catalogId too,
-    // which would otherwise propagate a wrong spec line and rec-card compare.
-    return () => { live = false; };
+      .catch(() => { if (opId === gearOpRef.current) { setLoadError(true); setLoaded(true); } });
   }, [activeName]);
 
-  useEffect(() => loadGear(), [loadGear]);
+  useEffect(() => { loadGear(); }, [loadGear]);
 
   // Resolve the catalog row so the card can show specs. A dangling catalogId
   // leaves catalogItem null and the card falls back to the stored label.

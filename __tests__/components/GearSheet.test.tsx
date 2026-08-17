@@ -119,14 +119,18 @@ describe('GearSheet (recognition over recall)', () => {
     expect(body.name).toBe('Lin');
   });
 
-  it('pre-selects the current racket and lands on its brand tab', async () => {
+  // Fix wave 2026-08: currentLabel is always something already in the bag
+  // (it's the player's active racket), and Save now POSTs an add rather than
+  // an idempotent replace — pre-selecting it made opening the sheet and
+  // tapping Save (the most obvious action) a guaranteed 409 duplicate_racket.
+  it('lands on the current racket’s brand tab without pre-selecting it', async () => {
     mockFetch();
     renderSheet({ currentLabel: 'Victor DriveX 9X' });
-    // Victor tab is active and the row is marked selected.
+    // Victor tab is active for browsing context, but nothing is selected.
     expect(await screen.findByText('DriveX 9X')).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Victor' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByRole('button', { name: /DriveX 9X — selected/ })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Save — DriveX 9X' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /DriveX 9X — selected/ })).toBeNull();
+    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('tapping the selected model again deselects it', async () => {
