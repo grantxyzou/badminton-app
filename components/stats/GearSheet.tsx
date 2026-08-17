@@ -17,7 +17,10 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
-  /** The player's current racket label ("Brand Model"), to pre-select it. */
+  /** The player's current racket label ("Brand Model"). Used only to land
+   *  the sheet on the right brand tab for context — NOT to pre-select it
+   *  (see FIX 2, 2026-08: it's always something already in the bag, and
+   *  pre-selecting it made Save a guaranteed 409 duplicate_racket). */
   currentLabel?: string | null;
 }
 
