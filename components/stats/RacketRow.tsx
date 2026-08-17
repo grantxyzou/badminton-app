@@ -4,6 +4,7 @@ import { getIdentity } from '@/lib/identity';
 import GearSheet from './GearSheet';
 import RacketRecCard from './cards/RacketRecCard';
 import YourRacketCard from './cards/YourRacketCard';
+import { activeRacket } from '@/lib/activeRacket';
 import type { PlayerGear, CatalogItem } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -57,7 +58,7 @@ export default function RacketRow() {
       .then((d) => {
         if (!live) return;
         const gear = d.gear as PlayerGear | null;
-        const racket = gear?.items?.find((i) => i.category === 'racket');
+        const racket = activeRacket(gear);
         setRacketLabel(racket?.label ?? null);
         setCatalogId(racket?.catalogId ?? null);
         setLoaded(true);
