@@ -87,8 +87,9 @@ describe('GearSheet (recognition over recall)', () => {
     renderSheet();
     fireEvent.click(await screen.findByText('Astrox 88D Pro'));
 
-    // Only the catalog GET has fired; no PUT to gear.
-    expect(calls.filter((c) => c.url.includes('/gear'))).toHaveLength(0);
+    // The catalog GET and the alongside gear-doc GET (for the bag) have
+    // fired, but selecting a model must not write — no POST to gear.
+    expect(calls.filter((c) => c.url.includes('/gear') && c.init?.method === 'POST')).toHaveLength(0);
     // Save button arms and names the selection.
     expect(screen.getByRole('button', { name: 'Save — Astrox 88D Pro' })).toBeTruthy();
   });
@@ -101,16 +102,16 @@ describe('GearSheet (recognition over recall)', () => {
     expect((save as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('Save PUTs the selected catalogId and shows the saved state', async () => {
+  it('Save POSTs the selected catalogId and shows the saved state', async () => {
     const calls = mockFetch();
     renderSheet();
     fireEvent.click(await screen.findByText('Nanoflare 800'));
     fireEvent.click(screen.getByRole('button', { name: 'Save — Nanoflare 800' }));
 
     await waitFor(() => expect(screen.getByText(/Saved!/)).toBeTruthy());
-    const put = calls.find((c) => c.url.includes('/gear'));
-    expect(put).toBeTruthy();
-    const body = JSON.parse(String(put!.init!.body));
+    const post = calls.find((c) => c.url.includes('/gear') && c.init?.method === 'POST');
+    expect(post).toBeTruthy();
+    const body = JSON.parse(String(post!.init!.body));
     expect(body.item.catalogId).toBe('racket-yonex-nanoflare-800');
     expect(body.item.label).toBe('Yonex Nanoflare 800');
     expect(body.name).toBe('Lin');

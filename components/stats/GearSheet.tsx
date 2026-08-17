@@ -4,9 +4,11 @@ import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import ListRow from '@/components/primitives/ListRow';
+import BagList from './BagList';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
 import { useOnline } from '@/lib/useOnline';
-import type { CatalogItem } from '@/lib/types';
+import { rackets, activeRacket } from '@/lib/activeRacket';
+import type { CatalogItem, PlayerGear } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -43,12 +45,17 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
   const tStats = useTranslations('stats');
   const online = useOnline();
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
+  const [gear, setGear] = useState<PlayerGear | null>(null);
   const [brand, setBrand] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  // 409s (duplicate/full bag) are a legible refusal, not a crash — kept
+  // separate from saveError so the two never get conflated into one generic
+  // "something broke" pill.
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [savedLabel, setSavedLabel] = useState<string | null>(null);
   const [query, setQuery] = useState('');
 
@@ -58,6 +65,7 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
     // Reset transient state each time the sheet opens.
     setSavedLabel(null);
     setSaveError(false);
+    setSaveMessage(null);
     setLoaded(false);
     setQuery('');
     fetch(`${BASE}/api/equipment/catalog?category=racket`, { cache: 'no-store' })
@@ -77,9 +85,16 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
         setBrand(current?.brand ?? items[0]?.brand ?? null);
       })
       .catch(() => { if (live) { setLoadError(true); setLoaded(true); } });
+    // Loaded alongside the catalog, independently: the bag is supplementary
+    // to the picker, so a failed gear read must not block or error the whole
+    // sheet — it just means BagList has nothing to show yet.
+    fetch(`${BASE}/api/equipment/gear?name=${encodeURIComponent(name)}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => { if (live) setGear((d.gear as PlayerGear | null) ?? null); })
+      .catch(() => { /* bag is supplementary; leave gear at its prior/null value */ });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, name]);
 
   // Catalog order is curation order — keep it for both tabs and rows.
   const brands = useMemo(() => {
@@ -108,17 +123,70 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
     if (!selected) return;
     setSaving(true);
     setSaveError(false);
+    setSaveMessage(null);
     try {
       const label = `${selected.brand} ${selected.model}`;
       const res = await fetch(`${BASE}/api/equipment/gear`, {
-        method: 'PUT',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, item: { catalogId: selected.id, category: 'racket', label } }),
       });
+      if (res.status === 409) {
+        const { error } = await res.json();
+        setSaveMessage(error === 'bag_full' ? t('bagFull') : t('bagDuplicate'));
+        return;
+      }
       if (!res.ok) throw new Error(String(res.status));
+      const d = await res.json();
+      setGear((d.gear as PlayerGear | null) ?? null);
       setSavedLabel(label);
       onSaved();
       setTimeout(() => { onClose(); }, 900);
+    } catch {
+      setSaveError(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Setting the pointer. Tapping the already-active racket is a no-op in the
+  // UI (BagList renders a badge, not a button, for that row) — this guard is
+  // defense in depth so the same rule holds even if a caller changes.
+  async function activate(itemId: string) {
+    if (activeRacket(gear)?.id === itemId) return;
+    setSaving(true);
+    setSaveError(false);
+    setSaveMessage(null);
+    try {
+      const res = await fetch(`${BASE}/api/equipment/gear`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, activeRacketId: itemId }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      const d = await res.json();
+      setGear((d.gear as PlayerGear | null) ?? null);
+      onSaved();
+    } catch {
+      setSaveError(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove(itemId: string) {
+    setSaving(true);
+    setSaveError(false);
+    setSaveMessage(null);
+    try {
+      const res = await fetch(
+        `${BASE}/api/equipment/gear?name=${encodeURIComponent(name)}&itemId=${encodeURIComponent(itemId)}`,
+        { method: 'DELETE' },
+      );
+      if (!res.ok) throw new Error(String(res.status));
+      const d = await res.json();
+      setGear((d.gear as PlayerGear | null) ?? null);
+      onSaved();
     } catch {
       setSaveError(true);
     } finally {
@@ -159,6 +227,14 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
             {loaded && !loadError && catalog.length === 0 && (
               <EmptyState>{t('racketCatalogEmpty')}</EmptyState>
             )}
+
+            <BagList
+              items={rackets(gear)}
+              activeId={activeRacket(gear)?.id}
+              onActivate={activate}
+              onRemove={remove}
+              busy={saving || !online}
+            />
 
             {catalog.length > 0 && (
               <input
@@ -224,6 +300,7 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
               <EmptyState>{t('searchNoMatches')}</EmptyState>
             )}
 
+            {saveMessage && <ErrorState message={saveMessage} />}
             {saveError && <ErrorState message={t('recError')} />}
             {!online && (
               <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>{tStats('offline')}</p>
