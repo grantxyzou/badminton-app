@@ -52,9 +52,19 @@ describe('YourRacketCard', () => {
     expect(screen.getByText('Tap to pick yours')).toBeTruthy();
   });
 
+  // The question is the card's permanent label — it must never move behind a
+  // conditional. Exercise the loading state directly rather than trusting the
+  // other tests to cover it incidentally.
+  it('still asks the question while loading, alongside a shimmer placeholder', () => {
+    const { container } = renderCard({ loading: true });
+    expect(screen.getByText('What is the racket you are using today?')).toBeTruthy();
+    expect(container.querySelector('.shimmer-line')).toBeTruthy();
+  });
+
   // Lying-empty-state rule: a load failure must not look like "no racket yet".
   it('shows an error, not the empty prompt, when the load failed', () => {
     renderCard({ error: true });
+    expect(screen.getByText('What is the racket you are using today?')).toBeTruthy();
     expect(screen.getByRole('alert')).toBeTruthy();
     expect(screen.queryByText('Tap to pick yours')).toBeNull();
   });
