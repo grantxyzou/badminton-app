@@ -107,11 +107,16 @@ its output is committed — it is not part of the runtime path.
 │ using today?                       │
 │                                    │
 │   Astrox 88D Pro              ✎    │  hero — display font, --fs-stat
-│   Yonex · 4U · head-heavy · stiff  │  spec line, --fs-sm, --text-muted
+│   Yonex                            │  brand, --fs-sm
+│                                    │
+│   Built for power · Head-heavy     │  plain-language line, --fs-md
+│   4U (83–88g) · Extra Stiff        │  spec line, --fs-sm --text-muted
 └────────────────────────────────────┘
 ┌────────────────────────────────────┐
 │ WE RECOMMEND                       │  section label, --fs-2xs
-│ Victor Thruster Ryuga II       ⌄   │
+│ Thruster Ryuga II                  │
+│ Victor · Lighter than yours        │  the comparison, --fs-sm
+│ Why this?                       ⌄  │
 └────────────────────────────────────┘
 ```
 
@@ -121,12 +126,67 @@ the player answers.
 
 Per the inner-content reference in CLAUDE.md: `.glass-card` at 16px radius, 20px
 padding (`p-5`) for the content card. The hero uses `--fs-stat` (20px) — this is
-the Stats tab, which already owns that larger data scale. The spec line reuses
-`specLine()`, already written in `GearSheet.tsx:25`; it moves to a shared module
-so both surfaces render specs identically.
+the Stats tab, which already owns that larger data scale.
 
-`RacketRecCard` keeps its current compact treatment, minus the `minHeight: 112`
-that existed only to match the left card's height in the grid.
+#### Making the specs legible
+
+`specLine()` (`GearSheet.tsx:25`) renders `"4U · head-heavy · stiff"`. That is
+precise and, to anyone who does not already know rackets, opaque — which fails
+the friend-voice bar this app is built to. Two source fields fix it without
+inventing copy:
+
+- **`weightGrams`** disambiguates the weight class inline: `4U (83–88g)`. A
+  player who has never heard of "4U" still learns their racket is 83–88 grams.
+  Rendered as an en-dash range.
+- **`notes`** is already plain English ("Flagship smash racket, pro-level feel").
+  It is the only field written for a human rather than a spec sheet.
+
+Card content is therefore **two tiers**, most-human first:
+
+| Tier | Content | Source | Type |
+|---|---|---|---|
+| Plain language | `Built for power · Head-heavy` | `attributes.playStyle` (normalized) + `balance` | `--fs-md`, `--text-primary` |
+| Specs | `4U (83–88g) · Extra Stiff` | `weight` + `weightGrams` + `flex` | `--fs-sm`, `--text-muted` |
+
+`playStyle` normalizes for display only: the source's 20 free-text values collapse
+to their leading word (`"Power (beginner step-up)"` → `Power`,
+`"All-round / Speed"` → `All-round`) and render as `Built for {power}`. Slashed
+values keep the first term. This is a display transform — the raw string stays in
+`attributes.playStyle` untouched, and nothing branches on it.
+
+`notes` is **not** on the card face. At up to ~40 characters it competes with the
+model name for the eye, and it repeats what the two tiers already say. It belongs
+in the picker rows, where a player is comparing models and the extra sentence
+earns its space.
+
+Any field may be absent on the 15 legacy items (they have no `weightGrams`,
+`series`, or `notes`). Every line degrades by omission — a missing `weightGrams`
+renders bare `4U`, a missing `playStyle` drops the plain-language line entirely
+and the spec line moves up. No placeholder dashes, no empty rows.
+
+#### The recommendation card
+
+`RacketRecCard` keeps its compact treatment, minus the `minHeight: 112` that
+existed only to match the left card's height in the grid. It gains one line: **how
+the pick differs from what the player already has.**
+
+A recommendation with no relationship to your current racket is a name you have
+no reason to trust. The comparison is computed client-side from the two
+`CatalogItem`s already in hand — no API change:
+
+| Dimension | Compare | Renders |
+|---|---|---|
+| Weight | `weight` class (5U < 4U < 3U) | `Lighter than yours` / `Heavier than yours` |
+| Balance | `balance` | `More head-light` / `More head-heavy` |
+| Flex | `flex` (Flexible < Medium < Medium-Stiff < Stiff < Extra Stiff) | `More flexible` / `Stiffer` |
+
+The **first** dimension that differs wins, in that order — weight is the most
+felt difference, flex the least. Identical on all three, or the player has no
+racket set, renders the brand alone, as today. One phrase only: a card that lists
+three deltas is a spec diff, not a nudge.
+
+The existing tap-to-expand `reason` from `/api/recommend` is unchanged, and stays
+the card's engagement affordance (Slice-0 kill-criterion).
 
 ### 3. Search in `GearSheet`
 
@@ -236,6 +296,9 @@ distinct from loaded-empty).
 | `DELETE` | removes; removing active repoints; removing last clears pointer; non-owner → 401. |
 | Search | matches brand, model, series, case-insensitively; query bypasses brand tabs; no matches → `EmptyState` not `ErrorState`. |
 | `RacketRow` | hero renders active racket; empty state renders prompt; load failure renders error pill, not empty. |
+| Card content | `4U` + `83-88` → `4U (83–88g)`; missing `weightGrams` → bare `4U`; missing `playStyle` → plain-language line omitted entirely, no empty row; legacy 15-item racket (no `weightGrams`/`series`) renders without gaps. |
+| `playStyle` normalize | `"Power (beginner step-up)"` → `Power`; `"All-round / Speed"` → `All-round`; `"Speed/Control"` → `Speed`; raw string in `attributes` is not mutated. |
+| Rec comparison | lighter/heavier by weight class; falls through to balance when weight ties; to flex when both tie; identical on all three → brand only; no current racket → brand only; exactly one phrase ever renders. |
 
 Existing suite is 1111 tests; these add roughly 25.
 
