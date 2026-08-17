@@ -104,21 +104,40 @@ describe('/api/equipment/gear', () => {
     expect(body.gear.items[0].label).toBe('Yonex Astrox 88');
   });
 
-  it('PUT preserves an existing activeRacketId when adding a new racket', async () => {
+  // Fix wave 2026-08 (second pass): a first draft of this fix mirrored
+  // POST's "preserve the existing pointer" rule onto PUT, and this test was
+  // written to pin THAT behavior — locking in a real bug (PUT A then PUT B
+  // left items as [A, B] but the pointer, and the hero card, stuck on A).
+  // PUT's contract is "set my racket," not "add to my bag": the incoming
+  // racket must always become the active one, so the assertion below is
+  // flipped from the original "pointer stays put" to "pointer follows the
+  // most recent PUT."
+  it('PUT always moves the pointer to the incoming racket — "set my racket," not "add to my bag"', async () => {
     const first = await PUT(putAs('m-lin', 'Lin', { name: 'Lin', item: { catalogId: 'r1', category: 'racket', label: 'Astrox 88' } }));
     const firstGear = (await first.json()).gear;
-    const pointer = firstGear.activeRacketId;
-    expect(pointer).toBeTruthy();
+    const firstId = firstGear.items[0].id;
+    expect(firstGear.activeRacketId).toBe(firstId);
 
-    await PUT(putAs('m-lin', 'Lin', { name: 'Lin', item: { catalogId: 'r2', category: 'racket', label: 'Nanoflare 800' } }));
+    const second = await PUT(putAs('m-lin', 'Lin', { name: 'Lin', item: { catalogId: 'r2', category: 'racket', label: 'Nanoflare 800' } }));
+    const secondGear = (await second.json()).gear;
+    const secondId = secondGear.items.find((i: { catalogId: string }) => i.catalogId === 'r2').id;
+
     const getRes = await GET(get('/api/equipment/gear?name=Lin'));
     const body = await getRes.json();
-    expect(body.gear.activeRacketId).toBe(pointer);
+    // Both rackets survive (FIX 1's append/sibling-preservation) ...
+    expect(body.gear.items).toHaveLength(2);
+    // ... but the pointer tracks the racket most recently PUT, not the
+    // first one saved.
+    expect(body.gear.activeRacketId).toBe(secondId);
+    expect(body.gear.activeRacketId).not.toBe(firstId);
   });
 
-  it('PUT sets the pointer only when the bag was empty', async () => {
-    // A legacy bag with rackets but no pointer must not have the pointer
-    // stolen by a subsequent PUT — mirrors POST's rule.
+  // Same correction as above, for the legacy-bag case: a bag with rackets
+  // but no explicit pointer (activeRacket() falls back to items[0]) must
+  // still have its pointer claimed by a PUT — POST's "don't steal the
+  // pointer from a legacy bag" rule is specific to POST's add-to-bag
+  // contract and does not apply to PUT's set-my-racket contract.
+  it('PUT points at the incoming racket even into a legacy pointerless bag', async () => {
     const container = getContainer('playerGear');
     await container.items.upsert({
       id: 'gear-m-lin',
@@ -127,10 +146,12 @@ describe('/api/equipment/gear', () => {
       updatedAt: new Date().toISOString(),
     });
 
-    await PUT(putAs('m-lin', 'Lin', { name: 'Lin', item: { catalogId: 'r-new', category: 'racket', label: 'New Racket' } }));
+    const res = await PUT(putAs('m-lin', 'Lin', { name: 'Lin', item: { catalogId: 'r-new', category: 'racket', label: 'New Racket' } }));
+    const newId = (await res.json()).gear.items.find((i: { catalogId: string }) => i.catalogId === 'r-new').id;
+
     const getRes = await GET(get('/api/equipment/gear?name=Lin'));
     const body = await getRes.json();
-    expect(body.gear.activeRacketId).toBeUndefined();
+    expect(body.gear.activeRacketId).toBe(newId);
   });
 
   it('rejects an anonymous PUT (no member cookie)', async () => {

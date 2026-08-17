@@ -309,11 +309,17 @@ export async function PUT(req: NextRequest) {
       items = [...existing, incoming];
     }
 
-    // Same pointer rule as POST: preserve an existing pointer untouched, and
-    // only claim it for the incoming racket when the bag had none before.
-    const priorRackets = rackets(prior ?? null);
-    const activeRacketId = prior?.activeRacketId
-      ?? (priorRackets.length === 0 && incoming.category === 'racket' ? incoming.id : undefined);
+    // NOT the same pointer rule as POST. POST's contract is "add to my bag",
+    // so preserving the existing pointer is correct there. PUT's contract is
+    // "set my racket" — a caller PUTting a racket means "this is the one I'm
+    // using now," so the incoming racket must always become the active one.
+    // Preserving the prior pointer here (as an earlier pass of this fix
+    // wrongly did, mirroring POST) meant PUT A then PUT B left `items` as
+    // [A, B] but activeRacket() still resolved to A — the hero card kept
+    // showing the old racket after a successful "Saved!", while the bag
+    // silently grew. A legacy pointerless bag regressed the same way: append
+    // leaves items[0] as the old racket, so even the fallback returned it.
+    const activeRacketId = incoming.category === 'racket' ? incoming.id : prior?.activeRacketId;
 
     return NextResponse.json({ gear: await writeGearDoc(memberId, prior, { items, activeRacketId }) });
   } catch (error) {
