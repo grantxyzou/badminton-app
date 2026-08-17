@@ -177,13 +177,26 @@ no reason to trust. The comparison is computed client-side from the two
 | Dimension | Compare | Renders |
 |---|---|---|
 | Weight | `weight` class (5U < 4U < 3U) | `Lighter than yours` / `Heavier than yours` |
-| Balance | `balance` | `More head-light` / `More head-heavy` |
+| Balance | `balance`, classified light / heavy / even | `More head-light` / `More head-heavy` |
 | Flex | `flex` (Flexible < Medium < Medium-Stiff < Stiff < Extra Stiff) | `More flexible` / `Stiffer` |
 
 The **first** dimension that differs wins, in that order — weight is the most
 felt difference, flex the least. Identical on all three, or the player has no
 racket set, renders the brand alone, as today. One phrase only: a card that lists
 three deltas is a spec diff, not a nudge.
+
+**Balance is classified, never substring-matched, and `Even` falls through.**
+The catalog carries `Head-light`, `Head-heavy`, `Even`, and `Slightly
+head-heavy`. A naive `balance.includes('light')` test gets two of those wrong:
+`Even` has no `light` substring so it reports as head-heavy, and *slightly*
+contains `light` so `Slightly head-heavy` inverts to head-light. So: strip a
+leading `slightly ` qualifier, then match `head-light` / `head-heavy` / `even`.
+
+When either racket classifies as `even` — or as an unrecognized value — no
+balance phrase is emitted and the comparison **falls through to flex**. There is
+no honest one-word phrase for "Even vs Head-heavy", and flex is a real
+difference worth naming instead. The return union gains nothing; there is no
+`even` phrase and no new i18n key.
 
 The existing tap-to-expand `reason` from `/api/recommend` is unchanged, and stays
 the card's engagement affordance (Slice-0 kill-criterion).
