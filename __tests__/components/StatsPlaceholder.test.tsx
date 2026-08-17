@@ -31,7 +31,7 @@ describe('StatsPlaceholder', () => {
     // Cost moved to the Profile identity card — no longer a coming-soon tile here.
     expect(screen.queryByText('Cost related')).toBeNull();
     expect(screen.getByText('Partner and play style')).toBeTruthy();
-    expect(screen.getByText('Your equipment')).toBeTruthy();
+    expect(screen.getByText('Strings & shoes')).toBeTruthy();
   });
 
   it('renders one "Coming soon" pill per card (2 total — cost moved to Profile)', () => {
@@ -54,7 +54,7 @@ describe('StatsPlaceholder', () => {
     renderWithLocale('zh-CN');
     expect(screen.queryByText('费用相关')).toBeNull(); // cost moved to Profile
     expect(screen.getByText('搭档与打法')).toBeTruthy();
-    expect(screen.getByText('你的装备')).toBeTruthy();
+    expect(screen.getByText('拍线和球鞋')).toBeTruthy();
   });
 
   it('renders no tabs in the legacy (no play/gear/assess) case', () => {
