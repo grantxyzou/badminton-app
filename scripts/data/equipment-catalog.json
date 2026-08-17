@@ -1,10 +1,10 @@
 {
   "_meta": {
-    "purpose": "Seed data for the Value-Hub Slice-0 equipment catalog. ~15 rackets only — strings / shoes / shuttles / bags / grips arrive in the Equipment track (Track 2) if Slice-0 survives its 4-week kill criterion.",
+    "purpose": "Seed data for the Value-Hub Slice-0 equipment catalog. 50 rackets only — strings / shoes / shuttles / bags / grips arrive in the Equipment track (Track 2) if Slice-0 survives its 4-week kill criterion.",
     "schema": "Each entry matches CatalogItem in lib/types.ts. `id` is stable and deterministic so re-runs are idempotent. `skillRange` follows the ACE stage scale [1-6] from lib/skills-data.ts.",
     "sources": "Each item carries non-affiliate retailer links (Yumo, RacquetGuys, BadmintonHQ) for now. Per Decision D in the plan, affiliateTag fields ship null in Slice-0; the field exists so flipping monetization on later is schema-free.",
-    "curation": "Top ~5 popular models each from Yonex, Victor, Li-Ning. Hand-picked from public best-sellers + recreational-player community recommendations — not authoritative, will be revised once admin can edit the catalog (Track 2).",
-    "last_updated": "2026-05-14"
+    "curation": "~17 popular models each from Yonex, Victor and Li-Ning. Hand-picked from public best-sellers + recreational-player community recommendations — not authoritative, will be revised once admin can edit the catalog (Track 2).",
+    "last_updated": "2026-08-17"
   },
   "items": [
     {
