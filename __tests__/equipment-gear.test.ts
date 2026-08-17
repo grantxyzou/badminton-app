@@ -60,6 +60,21 @@ describe('/api/equipment/gear', () => {
     expect(body.gear.memberId).toBe('m-lin');
   });
 
+  // Closed in the same fix wave (2026-08), after the PUT append-semantics
+  // change above made an invalid category no longer self-limiting: under
+  // the old replace-by-category behaviour, the next save of that same bogus
+  // category would just overwrite it. Appended, it's a permanent item
+  // BagList can never render and nothing can delete. Mirrors the POST test.
+  it('PUT rejects an item with a category outside the EquipmentCategory union', async () => {
+    const res = await PUT(putAs('m-lin', 'Lin', { name: 'Lin', item: { ...racket, category: 'kitchen-sink' } }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('invalid_category');
+
+    const getRes = await GET(get('/api/equipment/gear?name=Lin'));
+    const body = await getRes.json();
+    expect(body.gear).toBeNull();
+  });
+
   // Fix wave 2026-08: PUT used to wipe every existing item of the same
   // category before writing. bpm-stable still runs the pre-branch client
   // (saves via PUT) while bpm-next saves via POST, and both share one Cosmos

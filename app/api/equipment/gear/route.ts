@@ -247,6 +247,14 @@ export async function PUT(req: NextRequest) {
     if (!body.item || typeof body.item !== 'object') {
       return NextResponse.json({ error: 'item_required' }, { status: 400 });
     }
+    // Same guard as POST, and now equally load-bearing here: FIX 1 made PUT
+    // append instead of replace, so an invalid category is no longer
+    // self-limiting (the old replace-by-category semantics meant the next
+    // save of that bogus category overwrote it). Appended, it lands an item
+    // BagList never renders and nothing can delete.
+    if (!VALID_CATEGORIES.has(body.item.category)) {
+      return NextResponse.json({ error: 'invalid_category' }, { status: 400 });
+    }
     const memberId = await resolveMemberId(name);
     if (!memberId) return NextResponse.json({ error: 'member_not_found' }, { status: 404 });
 
