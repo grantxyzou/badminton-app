@@ -161,19 +161,39 @@ describe('GearSheet (recognition over recall)', () => {
     expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('shows the error pill, not a fake empty catalog, when the load fails', async () => {
-    global.fetch = vi.fn(async () => new Response('{}', { status: 500 })) as unknown as typeof fetch;
+  // Fix round 2: the two error paths (catalog load, gear load) are now
+  // verified in isolation, each with the OTHER endpoint succeeding, so a
+  // regression in one surface's rendering can't be masked by the other's
+  // alert independently satisfying a looser "some alert exists" assertion.
+  // (A prior version of this test used a blanket 500-everything mock and
+  // asserted findAllByRole('alert').length > 0 — that passes even if the
+  // catalog's own error pill at GearSheet.tsx:247 is deleted entirely,
+  // because the unrelated gear-load alert still renders.)
+  it('shows the catalog error pill when only the catalog GET fails, and does not show a bag error', async () => {
+    global.fetch = vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url).includes('/api/equipment/catalog')) {
+        return new Response('{}', { status: 500 });
+      }
+      if (String(url).includes('/api/equipment/gear')) {
+        return new Response(JSON.stringify({ gear: null }), { status: 200 });
+      }
+      return new Response('{}', { status: 404 });
+    }) as unknown as typeof fetch;
+
     renderSheet();
-    // Both the catalog GET and the gear-doc GET fail against this blanket
-    // 500 mock, so each surfaces its own alert pill.
-    const alerts = await screen.findAllByRole('alert');
-    expect(alerts.length).toBeGreaterThan(0);
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    // Isolation check: exactly one alert (the catalog's), not a second one
+    // from a gear failure that isn't happening in this scenario.
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    // No brand tabs / models rendered — the catalog genuinely failed to load,
+    // this isn't the loaded-empty state.
+    expect(screen.queryByRole('tab')).toBeNull();
   });
 
   // Finding 1 (fix round 1): a failed gear read must not render as a
   // truthful "you have no rackets" — it must show its own error pill, even
   // when the catalog load succeeds fine on its own.
-  it('shows an error pill instead of a lying empty bag when the gear GET fails', async () => {
+  it('shows an error pill instead of a lying empty bag when only the gear GET fails, and the catalog still loads', async () => {
     global.fetch = vi.fn(async (url: RequestInfo | URL) => {
       if (String(url).includes('/api/equipment/catalog')) {
         return new Response(JSON.stringify({ items: CATALOG }), { status: 200 });
@@ -185,9 +205,13 @@ describe('GearSheet (recognition over recall)', () => {
     }) as unknown as typeof fetch;
 
     renderSheet();
-    // Catalog loaded fine — this isn't a catalog failure.
+    // Catalog loaded fine and rendered its models — this isn't a catalog failure.
     expect(await screen.findByText('Astrox 88D Pro')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Yonex' })).toBeTruthy();
     expect(await screen.findByRole('alert')).toBeTruthy();
+    // Isolation check: exactly one alert (the gear-doc's), not a second one
+    // from a catalog failure that isn't happening in this scenario.
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
   });
 });
 
