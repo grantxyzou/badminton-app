@@ -159,3 +159,44 @@ describe('GearSheet (recognition over recall)', () => {
     expect(await screen.findByRole('alert')).toBeTruthy();
   });
 });
+
+describe('GearSheet search', () => {
+  it('matches on model across every brand, ignoring the selected tab', async () => {
+    mockFetch();
+    renderSheet();
+    await waitFor(() => screen.getByText('Astrox 88D Pro'));
+    fireEvent.change(screen.getByPlaceholderText('Search rackets'), { target: { value: 'drivex' } });
+    // DriveX is a Victor racket; the sheet opens on Yonex.
+    expect(screen.getByText('DriveX 9X')).toBeTruthy();
+    expect(screen.queryByText('Astrox 88D Pro')).toBeNull();
+  });
+
+  it('matches case-insensitively on brand', async () => {
+    mockFetch();
+    renderSheet();
+    await waitFor(() => screen.getByText('Astrox 88D Pro'));
+    fireEvent.change(screen.getByPlaceholderText('Search rackets'), { target: { value: 'VICTOR' } });
+    expect(screen.getByText('DriveX 9X')).toBeTruthy();
+  });
+
+  // A search miss is not a broken screen.
+  it('shows an empty state, not an error, when nothing matches', async () => {
+    mockFetch();
+    renderSheet();
+    await waitFor(() => screen.getByText('Astrox 88D Pro'));
+    fireEvent.change(screen.getByPlaceholderText('Search rackets'), { target: { value: 'zzzz' } });
+    expect(screen.getByText('No rackets match that.')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('restores brand browsing when the query is cleared', async () => {
+    mockFetch();
+    renderSheet();
+    await waitFor(() => screen.getByText('Astrox 88D Pro'));
+    const input = screen.getByPlaceholderText('Search rackets');
+    fireEvent.change(input, { target: { value: 'drivex' } });
+    fireEvent.change(input, { target: { value: '' } });
+    expect(screen.getByText('Astrox 88D Pro')).toBeTruthy();
+    expect(screen.queryByText('DriveX 9X')).toBeNull();
+  });
+});
