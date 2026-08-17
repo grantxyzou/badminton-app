@@ -55,13 +55,13 @@ function rank(order: string[], raw: string | null): number | null {
 
 /**
  * Classify a balance string to one of three states: 'light', 'heavy', 'even', or unknown.
- * Strips leading "slightly " qualifier before matching.
+ * Strips leading "slightly " qualifier before matching on full tokens.
  */
 function classifyBalance(raw: string | null): 'light' | 'heavy' | 'even' | null {
   if (!raw) return null;
   const normalized = raw.toLowerCase().replace(/^slightly\s+/, '');
-  if (normalized.includes('light')) return 'light';
-  if (normalized.includes('heavy')) return 'heavy';
+  if (normalized.includes('head-light')) return 'light';
+  if (normalized.includes('head-heavy')) return 'heavy';
   if (normalized === 'even') return 'even';
   return null;
 }
