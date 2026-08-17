@@ -298,6 +298,11 @@ export interface PlayerGear {
   /** Partition key — one doc per member. */
   memberId: string;
   items: GearItem[];
+  /** Id of the GearItem the player is currently using. A pointer rather than
+   *  an `active` flag per item: a flag lets two rackets both claim active with
+   *  no tiebreak. Absent on every doc written before the bag shipped —
+   *  readers fall back to the first racket (see lib/activeRacket.ts). */
+  activeRacketId?: string;
   /** String-tension history. Drives the "time to restring" refresh nudge in P7. */
   stringLog?: StringLogEntry[];
   /** Sessions logged since current shoes were acquired — drives shoe-mileage nudge. */
