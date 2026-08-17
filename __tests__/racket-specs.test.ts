@@ -93,9 +93,9 @@ describe('compareRackets', () => {
     expect(compareRackets(mine2, theirs)).toBe('moreHeadHeavy');
   });
   it('correctly handles hyphenated "slightly-head-heavy" vs "Head-light"', () => {
-    const mine2 = racket({ weight: '3U', balance: 'slightly-head-heavy', flex: 'Stiff' });
-    const theirs = racket({ weight: '3U', balance: 'Head-light', flex: 'Stiff' });
-    expect(compareRackets(mine2, theirs)).toBe('moreHeadLight');
+    const mine2 = racket({ weight: '3U', balance: 'Head-light', flex: 'Stiff' });
+    const theirs = racket({ weight: '3U', balance: 'slightly-head-heavy', flex: 'Stiff' });
+    expect(compareRackets(mine2, theirs)).toBe('moreHeadHeavy');
   });
 
   it('correctly ranks combined weight classes: "3U/4U" is heavier than "4U/5U"', () => {
