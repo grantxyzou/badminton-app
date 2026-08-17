@@ -507,6 +507,21 @@
     "yourScore": "你的得分",
     "theirScore": "对方得分",
     "logGameSubmit": "记录",
-    "logGameThanks": "已记录 — 谢谢！"
+    "logGameThanks": "已记录 — 谢谢！",
+    "usingToday": "你今天用的是哪支球拍？",
+    "compareLighter": "比你的更轻",
+    "compareHeavier": "比你的更重",
+    "compareMoreHeadLight": "比你的更头轻",
+    "compareMoreHeadHeavy": "比你的更头重",
+    "compareMoreFlexible": "比你的更软",
+    "compareStiffer": "比你的更硬",
+    "searchPlaceholder": "搜索球拍",
+    "searchNoMatches": "没有匹配的球拍。",
+    "bagTitle": "你的球包",
+    "bagActive": "今天在用",
+    "bagSetActive": "改用这支",
+    "bagRemove": "移除",
+    "bagFull": "球包已满 — 请先移除一支。",
+    "bagDuplicate": "这支球拍已经在你的球包里了。"
   }
 }
