@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
@@ -58,6 +58,20 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [savedLabel, setSavedLabel] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  // Distinct from loadError (the catalog's): a failed gear read must not
+  // render as a truthful empty bag. A player with three rackets who hits a
+  // flaky fetch must see an error pill, not "you have no rackets."
+  const [gearLoadError, setGearLoadError] = useState(false);
+
+  // Monotonic op counter shared by the initial gear GET and all three
+  // mutations. Each async call captures the id it was issued at; when it
+  // resolves, it only applies its result if no NEWER gear op has since
+  // started. Without this, a slow initial GET that's still in flight when
+  // the player taps activate/remove can land after the mutation and silently
+  // revert the bag to the pre-mutation state — the server stays correct, only
+  // the UI lies. (Sibling hazard to the "stale gear response" note in
+  // RacketRow.tsx, one level up: same shape, different pair of racers.)
+  const gearOpRef = useRef(0);
 
   useEffect(() => {
     if (!open) return;
@@ -66,6 +80,7 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
     setSavedLabel(null);
     setSaveError(false);
     setSaveMessage(null);
+    setGearLoadError(false);
     setLoaded(false);
     setQuery('');
     fetch(`${BASE}/api/equipment/catalog?category=racket`, { cache: 'no-store' })
@@ -85,13 +100,18 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
         setBrand(current?.brand ?? items[0]?.brand ?? null);
       })
       .catch(() => { if (live) { setLoadError(true); setLoaded(true); } });
-    // Loaded alongside the catalog, independently: the bag is supplementary
-    // to the picker, so a failed gear read must not block or error the whole
-    // sheet — it just means BagList has nothing to show yet.
+    // Loaded alongside the catalog, independently — but still error-surfaced:
+    // the bag not writing anything doesn't mean a load failure gets to render
+    // as a truthful "no rackets" (see gearLoadError above).
+    const gearOpId = ++gearOpRef.current;
     fetch(`${BASE}/api/equipment/gear?name=${encodeURIComponent(name)}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d) => { if (live) setGear((d.gear as PlayerGear | null) ?? null); })
-      .catch(() => { /* bag is supplementary; leave gear at its prior/null value */ });
+      .then((d) => {
+        if (!live || gearOpId !== gearOpRef.current) return;
+        setGear((d.gear as PlayerGear | null) ?? null);
+        setGearLoadError(false);
+      })
+      .catch(() => { if (live && gearOpId === gearOpRef.current) setGearLoadError(true); });
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, name]);
@@ -124,6 +144,7 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
     setSaving(true);
     setSaveError(false);
     setSaveMessage(null);
+    const opId = ++gearOpRef.current;
     try {
       const label = `${selected.brand} ${selected.model}`;
       const res = await fetch(`${BASE}/api/equipment/gear`, {
@@ -133,12 +154,17 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
       });
       if (res.status === 409) {
         const { error } = await res.json();
-        setSaveMessage(error === 'bag_full' ? t('bagFull') : t('bagDuplicate'));
+        // A 409 code the client doesn't recognise must fall through to the
+        // generic save error, not assert a specific reason the server never
+        // gave (see bag_full / duplicate_racket below).
+        if (error === 'bag_full') setSaveMessage(t('bagFull'));
+        else if (error === 'duplicate_racket') setSaveMessage(t('bagDuplicate'));
+        else setSaveError(true);
         return;
       }
       if (!res.ok) throw new Error(String(res.status));
       const d = await res.json();
-      setGear((d.gear as PlayerGear | null) ?? null);
+      if (opId === gearOpRef.current) setGear((d.gear as PlayerGear | null) ?? null);
       setSavedLabel(label);
       onSaved();
       setTimeout(() => { onClose(); }, 900);
@@ -157,6 +183,7 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
     setSaving(true);
     setSaveError(false);
     setSaveMessage(null);
+    const opId = ++gearOpRef.current;
     try {
       const res = await fetch(`${BASE}/api/equipment/gear`, {
         method: 'PATCH',
@@ -165,7 +192,7 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
       });
       if (!res.ok) throw new Error(String(res.status));
       const d = await res.json();
-      setGear((d.gear as PlayerGear | null) ?? null);
+      if (opId === gearOpRef.current) setGear((d.gear as PlayerGear | null) ?? null);
       onSaved();
     } catch {
       setSaveError(true);
@@ -178,6 +205,7 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
     setSaving(true);
     setSaveError(false);
     setSaveMessage(null);
+    const opId = ++gearOpRef.current;
     try {
       const res = await fetch(
         `${BASE}/api/equipment/gear?name=${encodeURIComponent(name)}&itemId=${encodeURIComponent(itemId)}`,
@@ -185,7 +213,7 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
       );
       if (!res.ok) throw new Error(String(res.status));
       const d = await res.json();
-      setGear((d.gear as PlayerGear | null) ?? null);
+      if (opId === gearOpRef.current) setGear((d.gear as PlayerGear | null) ?? null);
       onSaved();
     } catch {
       setSaveError(true);
@@ -228,13 +256,20 @@ export default function GearSheet({ name, open, onClose, onSaved, currentLabel }
               <EmptyState>{t('racketCatalogEmpty')}</EmptyState>
             )}
 
-            <BagList
-              items={rackets(gear)}
-              activeId={activeRacket(gear)?.id}
-              onActivate={activate}
-              onRemove={remove}
-              busy={saving || !online}
-            />
+            {/* A failed gear read must render as a failure, not a truthful
+                "you have no rackets" — a player with three rackets must never
+                see an empty bag because a fetch hiccuped. Suppress BagList
+                entirely while this is up so the two can't show at once. */}
+            {gearLoadError && <ErrorState message={t('recError')} />}
+            {!gearLoadError && (
+              <BagList
+                items={rackets(gear)}
+                activeId={activeRacket(gear)?.id}
+                onActivate={activate}
+                onRemove={remove}
+                busy={saving || !online}
+              />
+            )}
 
             {catalog.length > 0 && (
               <input

@@ -88,8 +88,10 @@ describe('GearSheet (recognition over recall)', () => {
     fireEvent.click(await screen.findByText('Astrox 88D Pro'));
 
     // The catalog GET and the alongside gear-doc GET (for the bag) have
-    // fired, but selecting a model must not write — no POST to gear.
-    expect(calls.filter((c) => c.url.includes('/gear') && c.init?.method === 'POST')).toHaveLength(0);
+    // fired, but selecting a model must not write — no gear call of any
+    // kind (POST/PATCH/DELETE), only the read. fetch's implicit method
+    // (no `init.method`) is GET, so that's excluded by the fallback below.
+    expect(calls.filter((c) => c.url.includes('/gear') && (c.init?.method ?? 'GET') !== 'GET')).toHaveLength(0);
     // Save button arms and names the selection.
     expect(screen.getByRole('button', { name: 'Save — Astrox 88D Pro' })).toBeTruthy();
   });
@@ -144,6 +146,11 @@ describe('GearSheet (recognition over recall)', () => {
       if (String(url).includes('/api/equipment/catalog')) {
         return new Response(JSON.stringify({ items: [] }), { status: 200 });
       }
+      // Isolate the catalog-empty scenario: the gear-doc GET succeeds with
+      // no bag, so this test exercises exactly one failure mode.
+      if (String(url).includes('/api/equipment/gear')) {
+        return new Response(JSON.stringify({ gear: null }), { status: 200 });
+      }
       return new Response('{}', { status: 404 });
     }) as unknown as typeof fetch;
 
@@ -157,7 +164,170 @@ describe('GearSheet (recognition over recall)', () => {
   it('shows the error pill, not a fake empty catalog, when the load fails', async () => {
     global.fetch = vi.fn(async () => new Response('{}', { status: 500 })) as unknown as typeof fetch;
     renderSheet();
+    // Both the catalog GET and the gear-doc GET fail against this blanket
+    // 500 mock, so each surfaces its own alert pill.
+    const alerts = await screen.findAllByRole('alert');
+    expect(alerts.length).toBeGreaterThan(0);
+  });
+
+  // Finding 1 (fix round 1): a failed gear read must not render as a
+  // truthful "you have no rackets" — it must show its own error pill, even
+  // when the catalog load succeeds fine on its own.
+  it('shows an error pill instead of a lying empty bag when the gear GET fails', async () => {
+    global.fetch = vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url).includes('/api/equipment/catalog')) {
+        return new Response(JSON.stringify({ items: CATALOG }), { status: 200 });
+      }
+      if (String(url).includes('/api/equipment/gear')) {
+        return new Response('{}', { status: 500 });
+      }
+      return new Response('{}', { status: 404 });
+    }) as unknown as typeof fetch;
+
+    renderSheet();
+    // Catalog loaded fine — this isn't a catalog failure.
+    expect(await screen.findByText('Astrox 88D Pro')).toBeTruthy();
     expect(await screen.findByRole('alert')).toBeTruthy();
+  });
+});
+
+describe('GearSheet bag wiring (fix round 1)', () => {
+  const BAG_GEAR = {
+    id: 'gear-m1',
+    memberId: 'm1',
+    items: [
+      { id: 'a', catalogId: 'racket-yonex-astrox-88d-pro', category: 'racket', label: 'Yonex Astrox 88D Pro' },
+      { id: 'b', catalogId: 'racket-victor-drivex-9x', category: 'racket', label: 'Victor DriveX 9X' },
+    ],
+    activeRacketId: 'a',
+  };
+
+  function mockFetchAdvanced(opts: {
+    gear?: unknown;
+    post?: { status: number; body: unknown };
+    patch?: { status: number; body: unknown };
+    del?: { status: number; body: unknown };
+  } = {}) {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    global.fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      const u = String(url);
+      const method = (init?.method ?? 'GET').toUpperCase();
+      if (u.includes('/api/equipment/catalog')) {
+        return new Response(JSON.stringify({ items: CATALOG }), { status: 200 });
+      }
+      if (u.includes('/api/equipment/gear')) {
+        if (method === 'GET') {
+          return new Response(JSON.stringify({ gear: opts.gear ?? null }), { status: 200 });
+        }
+        if (method === 'POST') {
+          const r = opts.post ?? { status: 200, body: { gear: opts.gear ?? null } };
+          return new Response(JSON.stringify(r.body), { status: r.status });
+        }
+        if (method === 'PATCH') {
+          const r = opts.patch ?? { status: 200, body: { gear: opts.gear ?? null } };
+          return new Response(JSON.stringify(r.body), { status: r.status });
+        }
+        if (method === 'DELETE') {
+          const r = opts.del ?? { status: 200, body: { gear: opts.gear ?? null } };
+          return new Response(JSON.stringify(r.body), { status: r.status });
+        }
+      }
+      return new Response('{}', { status: 404 });
+    }) as unknown as typeof fetch;
+    return calls;
+  }
+
+  it('shows the bagFull message on a 409 bag_full refusal, and the sheet stays open', async () => {
+    mockFetchAdvanced({ post: { status: 409, body: { error: 'bag_full' } } });
+    const onClose = vi.fn();
+    renderSheet({ onClose });
+    fireEvent.click(await screen.findByText('Astrox 88D Pro'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save — Astrox 88D Pro' }));
+
+    expect(await screen.findByText("That's all the rackets we can hold — remove one first.")).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Saved!/)).toBeNull();
+  });
+
+  it('shows the bagDuplicate message on a 409 duplicate_racket refusal, and the sheet stays open', async () => {
+    mockFetchAdvanced({ post: { status: 409, body: { error: 'duplicate_racket' } } });
+    const onClose = vi.fn();
+    renderSheet({ onClose });
+    fireEvent.click(await screen.findByText('Astrox 88D Pro'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save — Astrox 88D Pro' }));
+
+    expect(await screen.findByText('That racket is already in your bag.')).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Saved!/)).toBeNull();
+  });
+
+  it('falls back to the generic save error on a 500, not a 409 refusal message', async () => {
+    mockFetchAdvanced({ post: { status: 500, body: {} } });
+    renderSheet();
+    fireEvent.click(await screen.findByText('Astrox 88D Pro'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save — Astrox 88D Pro' }));
+
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.queryByText("That's all the rackets we can hold — remove one first.")).toBeNull();
+    expect(screen.queryByText('That racket is already in your bag.')).toBeNull();
+  });
+
+  // An unrecognized 409 code (neither bag_full nor duplicate_racket) must
+  // also fall back to the generic error, not assert a specific reason the
+  // server never gave (Finding 5).
+  it('falls back to the generic save error on an unrecognized 409 code', async () => {
+    mockFetchAdvanced({ post: { status: 409, body: { error: 'something_new' } } });
+    renderSheet();
+    fireEvent.click(await screen.findByText('Astrox 88D Pro'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save — Astrox 88D Pro' }));
+
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.queryByText("That's all the rackets we can hold — remove one first.")).toBeNull();
+    expect(screen.queryByText('That racket is already in your bag.')).toBeNull();
+  });
+
+  it('activate fires a PATCH with the tapped racket id', async () => {
+    const calls = mockFetchAdvanced({
+      gear: BAG_GEAR,
+      patch: { status: 200, body: { gear: { ...BAG_GEAR, activeRacketId: 'b' } } },
+    });
+    renderSheet();
+    fireEvent.click(await screen.findByLabelText('Use this one — Victor DriveX 9X'));
+
+    await waitFor(() => {
+      const patchCall = calls.find((c) => c.url.includes('/gear') && c.init?.method === 'PATCH');
+      expect(patchCall).toBeTruthy();
+      expect(JSON.parse(String(patchCall!.init!.body))).toEqual({ name: 'Lin', activeRacketId: 'b' });
+    });
+  });
+
+  it('remove fires a DELETE with the tapped racket id', async () => {
+    const calls = mockFetchAdvanced({
+      gear: BAG_GEAR,
+      del: { status: 200, body: { gear: { ...BAG_GEAR, items: [BAG_GEAR.items[0]] } } },
+    });
+    renderSheet();
+    fireEvent.click(await screen.findByLabelText('Remove — Victor DriveX 9X'));
+
+    await waitFor(() => {
+      const delCall = calls.find((c) => c.url.includes('/gear') && c.init?.method === 'DELETE');
+      expect(delCall).toBeTruthy();
+      expect(delCall!.url).toContain('name=Lin');
+      expect(delCall!.url).toContain('itemId=b');
+    });
+  });
+
+  it('clears saving after a failed mutation so the UI is not left permanently disabled', async () => {
+    mockFetchAdvanced({ gear: BAG_GEAR, patch: { status: 500, body: {} } });
+    renderSheet();
+    const useBtn = await screen.findByLabelText('Use this one — Victor DriveX 9X');
+    fireEvent.click(useBtn);
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+    // The failed PATCH must release the shared busy state — every bag
+    // button (and Save) re-enables rather than staying disabled forever.
+    expect((useBtn as HTMLButtonElement).disabled).toBe(false);
   });
 });
 
