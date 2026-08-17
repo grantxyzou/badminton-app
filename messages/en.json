@@ -507,6 +507,21 @@
     "yourScore": "Your score",
     "theirScore": "Their score",
     "logGameSubmit": "Log it",
-    "logGameThanks": "Logged — thanks!"
+    "logGameThanks": "Logged — thanks!",
+    "usingToday": "What is the racket you are using today?",
+    "compareLighter": "Lighter than yours",
+    "compareHeavier": "Heavier than yours",
+    "compareMoreHeadLight": "More head-light than yours",
+    "compareMoreHeadHeavy": "More head-heavy than yours",
+    "compareMoreFlexible": "More flexible than yours",
+    "compareStiffer": "Stiffer than yours",
+    "searchPlaceholder": "Search rackets",
+    "searchNoMatches": "No rackets match that.",
+    "bagTitle": "Your bag",
+    "bagActive": "Using today",
+    "bagSetActive": "Use this one",
+    "bagRemove": "Remove",
+    "bagFull": "That's all the rackets we can hold — remove one first.",
+    "bagDuplicate": "That racket is already in your bag."
   }
 }
