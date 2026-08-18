@@ -85,6 +85,15 @@ describe('feature flags', () => {
     expect(isFlagOn('NEXT_PUBLIC_FLAG_INSIGHT_CARDS')).toBe(false);
     delete process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS;
   });
+
+  it('NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT reads on only for the literal "true"', () => {
+    process.env.NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT = 'true';
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT')).toBe(true);
+    process.env.NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT = '1';
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT')).toBe(false);
+    delete process.env.NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT;
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT')).toBe(false);
+  });
 });
 
 describe('environment detection', () => {

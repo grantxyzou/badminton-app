@@ -67,8 +67,10 @@ function sortedSnapshots(snapshots: StoredAssessment[]): StoredAssessment[] {
     .sort((a, b) => a.takenAt.localeCompare(b.takenAt));
 }
 
-/** The lowest-rated skill keys (bottom `n`) in a snapshot. */
-function bottomKeys(snap: StoredAssessment, n = 3): string[] {
+/** The n lowest-rated skill KEYS in a snapshot. Exported so the equipment
+ *  engine agrees with this one about what "weak" means — if the two diverged,
+ *  the trend card and the equipment card could disagree about the same skill. */
+export function bottomKeys(snap: StoredAssessment, n = 3): string[] {
   const ratings = Array.isArray(snap.ratings) ? snap.ratings : [];
   return workOnNext(ratings, n).map((r) => r.skillKey);
 }
