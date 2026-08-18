@@ -35,6 +35,12 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  * Flag off, no signal, or a failed insight fetch are all indistinguishable
  * from today's card — this is deliberately never an error state, since the
  * card is fully usable without the insight (CLAUDE.md legible-fail rule).
+ *
+ * A `/api/recommend` load failure is a hard gate on interactivity, even when
+ * the insight independently resolves a valid `suggests` + `support`: the
+ * insight narrates the deterministic pick, it does not replace it, so a
+ * failed pick must never render as a clickable button wrapped around its own
+ * `role="alert"` error pill.
  */
 export default function RacketRecCard({ name, mine }: { name: string; mine: CatalogItem | null }) {
   const t = useTranslations('valueHub');
@@ -132,10 +138,12 @@ export default function RacketRecCard({ name, mine }: { name: string; mine: Cata
   // not swallow a present `equipment.support` (and vice versa).
   const revealText = equipment?.support ?? reason;
 
-  // Only interactive once there's a pick AND something to reveal. A button
-  // that expands nothing is worse than a plain card — and it would inflate
-  // the very metric this exists to measure.
-  if (!displayItem || !revealText) {
+  // Only interactive once there's a pick AND something to reveal — AND
+  // /api/recommend itself succeeded. loadError is a hard gate: the insight
+  // is a narration layer on top of the deterministic pick, not a substitute
+  // for it, so a resolved `suggests` + `support` must never turn the load
+  // failure into a clickable button wrapped around its own error pill.
+  if (loadError || !displayItem || !revealText) {
     return (
       <div className="glass-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
         {label}
