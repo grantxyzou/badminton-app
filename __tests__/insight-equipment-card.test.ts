@@ -285,6 +285,34 @@ describe('/api/stats/insight — equipment card (NEXT_PUBLIC_FLAG_EQUIPMENT_INSI
     expect(mockCreate).toHaveBeenCalledTimes(1); // NOT called a second time
   });
 
+  it('legacy branch (cards flag off, equipment flag on): a member with a racket does not re-call Claude on a second same-session request', async () => {
+    // Regression for FIX 1: the shared cache-freshness check (`racketUnchanged`)
+    // reads `existing.racketId` for BOTH the cards branch and the legacy
+    // branch, but only the cards-branch upsert used to persist `racketId`.
+    // On the legacy branch (cards off), `cachedRacketId` was always null and
+    // never matched `currentRacketId` — so a member with a racket regenerated
+    // (and re-called Claude) on EVERY request, forever. Not reachable in
+    // either deployed workflow (both set INSIGHT_CARDS=true) but fully
+    // reachable locally, which is exactly where EQUIPMENT_INSIGHT gets
+    // flipped on first.
+    process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS = 'false';
+    const m = seedMember('Ratchanok');
+    await seedCatalogRacket('racket-legacy');
+    await seedGear(m.id, 'racket-legacy');
+    mockCreate.mockResolvedValue(textResponse({ recap: 'Solid week.', focus: 'Keep working on drops.' }));
+
+    const first = await GET(makeGetRequest(`${BASE}?name=Ratchanok`));
+    const firstJson = await first.json();
+    expect(firstJson.cached).toBe(false);
+    expect(firstJson.recap).toBe('Solid week.');
+
+    const second = await GET(makeGetRequest(`${BASE}?name=Ratchanok`));
+    const secondJson = await second.json();
+    expect(secondJson.cached).toBe(true);
+    expect(secondJson.recap).toBe('Solid week.');
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
+
   it('a gear-read failure is non-fatal: level/trend still generate, equipment comes back null', async () => {
     const m = seedMember('Akane');
     seedAssessment(m.id, '2026-04-01', 3.1, ['net_play']);

@@ -62,6 +62,23 @@ function ensureInsightsContainer(): Promise<void> {
   return insightsReady;
 }
 
+// Same lazy-promise pattern for `playerGear` (PK /memberId) — mirrors
+// app/api/equipment/gear/route.ts and app/api/admin/slice0/route.ts. On a
+// fresh database where the gear route has never been hit, a point-read
+// against a container Cosmos never created throws; without this the
+// equipment card would go silently and permanently inert (caught by the
+// outer try/catch below, logged as a warning, never surfaced).
+let gearReady: Promise<void> | null = null;
+function ensureGearContainer(): Promise<void> {
+  if (!gearReady) {
+    gearReady = ensureContainer('playerGear', '/memberId').catch((err) => {
+      gearReady = null;
+      throw err;
+    });
+  }
+  return gearReady;
+}
+
 /** One distributed-insight slice: a styled chip's content. `kind` is set
  *  server-side from the driving signal (drives the chip icon), never trusted
  *  from the model. */
@@ -199,6 +216,7 @@ export async function GET(req: NextRequest) {
   if (equipmentOn) {
     try {
       await ensureCatalogSeeded();
+      await ensureGearContainer();
       const gearDoc = await getContainer('playerGear').item(`gear-${member.id}`, member.id).read();
       const gearItem = activeRacket((gearDoc.resource as PlayerGear | undefined) ?? null);
       const { resources } = await getContainer('equipmentCatalog').items
@@ -312,7 +330,12 @@ export async function GET(req: NextRequest) {
   if (!recap && !focus) return emptyPayload(true);
 
   const generatedAt = new Date().toISOString();
-  const doc: InsightDoc = { id: member.id, memberId: member.id, name: member.name, sessionId: activeSessionId, recap, focus, generatedAt, lastAssessmentAt: latestAssessmentAt };
+  // racketId must be persisted here too — the shared cache-freshness check at
+  // the top of GET reads it for BOTH branches (cards and legacy). Omitting it
+  // here left `cachedRacketId` permanently null on this path, so a member with
+  // a racket never matched `racketUnchanged` and regenerated (and re-called
+  // Claude) on every single request. See FIX 1 / insight-equipment-card.test.ts.
+  const doc: InsightDoc = { id: member.id, memberId: member.id, name: member.name, sessionId: activeSessionId, recap, focus, racketId: currentRacketId, generatedAt, lastAssessmentAt: latestAssessmentAt };
   try {
     await insightsContainer.items.upsert(doc);
   } catch (err) {
