@@ -5,6 +5,8 @@ import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { recordEngagement } from '@/lib/engagement';
 import { compareRackets } from '@/lib/racketSpecs';
+import { isFlagOn } from '@/lib/flags';
+import { useInsight } from '@/lib/useInsight';
 import type { CatalogItem } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -22,6 +24,17 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  * interact with this card "more than once", and until now it was a plain
  * `<div>` with nothing to interact with — the metric could never have been
  * anything but zero. The tap is recorded via `recordEngagement`.
+ *
+ * Equipment insight (NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT): when the shared
+ * distributed insight (`useInsight`) carries an `equipment` slice, its
+ * `headline` replaces the templated compare line and its `support` replaces
+ * the templated `reason` inside the reveal. When the slice names a `suggests`
+ * catalog id, that racket is shown instead of the deterministic pick — but
+ * ONLY once it resolves against the fetched catalog, so a stale/unknown id
+ * (or a fetch failure) falls back to today's pick rather than a blank card.
+ * Flag off, no signal, or a failed insight fetch are all indistinguishable
+ * from today's card — this is deliberately never an error state, since the
+ * card is fully usable without the insight (CLAUDE.md legible-fail rule).
  */
 export default function RacketRecCard({ name, mine }: { name: string; mine: CatalogItem | null }) {
   const t = useTranslations('valueHub');
@@ -30,6 +43,15 @@ export default function RacketRecCard({ name, mine }: { name: string; mine: Cata
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [expanded, setExpanded] = useState(false);
+
+  const equipmentOn = isFlagOn('NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT');
+  // Only this hook's `data` is consumed — its own `error`/`loading` must never
+  // feed loadError, which stays exclusively /api/recommend's. The insight is
+  // an optional narration layer; a failure in it is not a card failure.
+  const { data: insight } = useInsight(equipmentOn);
+  const equipment = equipmentOn ? insight?.equipment ?? null : null;
+
+  const [suggestedItem, setSuggestedItem] = useState<CatalogItem | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -47,39 +69,73 @@ export default function RacketRecCard({ name, mine }: { name: string; mine: Cata
     return () => { live = false; };
   }, [name]);
 
+  // Resolve the equipment insight's `suggests` catalog id against the same
+  // public catalog endpoint RacketRow already uses to resolve `mine`. A
+  // stale/unknown id, or a failed fetch, leaves suggestedItem null — the
+  // render falls back to the deterministic /api/recommend pick, never a
+  // blank card.
+  useEffect(() => {
+    let live = true;
+    const suggestId = equipment?.suggests;
+    if (!suggestId) { setSuggestedItem(null); return; }
+    fetch(`${BASE}/api/equipment/catalog?category=racket`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => {
+        if (!live) return;
+        const items = (d.items ?? []) as CatalogItem[];
+        setSuggestedItem(items.find((i) => i.id === suggestId) ?? null);
+      })
+      .catch(() => { if (live) setSuggestedItem(null); });
+    return () => { live = false; };
+  }, [equipment?.suggests]);
+
   function toggle() {
     setExpanded((prev) => !prev);
     // Fire-and-forget: an engagement beacon must never gate or degrade the UI.
     void recordEngagement('rec_card_tap');
   }
 
+  // The racket actually shown: the insight's suggestion once it resolves
+  // against the catalog, else today's deterministic pick.
+  const displayItem = suggestedItem ?? item;
+
   const body = loadError ? (
     <ErrorState message={t('recError')} />
   ) : !loaded ? (
     <span className="shimmer-line rounded-lg" style={{ height: 15, width: '70%' }} aria-hidden="true" />
-  ) : !item ? (
+  ) : !displayItem ? (
     <EmptyState>{t('recEmpty')}</EmptyState>
   ) : (
     <p style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 600, margin: 0, lineHeight: 1.25 }}>
-      {item.brand} {item.model}
+      {displayItem.brand} {displayItem.model}
     </p>
   );
 
   const label = <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: 0 }}>{t('weRecommend')}</p>;
 
-  const comparison = item ? compareRackets(mine, item) : null;
-  const compareLine = comparison ? (
+  const comparison = displayItem ? compareRackets(mine, displayItem) : null;
+  // The generated headline takes the compare line's slot when present —
+  // it's the AI's non-obvious read, strictly better than the templated
+  // weight/balance/flex delta it replaces.
+  const compareLine = equipment?.headline ? (
+    <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: 0 }}>{equipment.headline}</p>
+  ) : comparison ? (
     <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: 0 }}>
-      {item?.brand} · {t(`compare${comparison.charAt(0).toUpperCase()}${comparison.slice(1)}`)}
+      {displayItem?.brand} · {t(`compare${comparison.charAt(0).toUpperCase()}${comparison.slice(1)}`)}
     </p>
-  ) : item ? (
-    <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: 0 }}>{item.brand}</p>
+  ) : displayItem ? (
+    <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: 0 }}>{displayItem.brand}</p>
   ) : null;
 
-  // Only interactive once there's a pick AND a reason to reveal. A button that
-  // expands nothing is worse than a plain card — and it would inflate the very
-  // metric this exists to measure.
-  if (!item || !reason) {
+  // The reveal text: the generated support when present, else the templated
+  // reason. Checked as "is there anything to reveal" — a null `reason` must
+  // not swallow a present `equipment.support` (and vice versa).
+  const revealText = equipment?.support ?? reason;
+
+  // Only interactive once there's a pick AND something to reveal. A button
+  // that expands nothing is worse than a plain card — and it would inflate
+  // the very metric this exists to measure.
+  if (!displayItem || !revealText) {
     return (
       <div className="glass-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
         {label}
@@ -110,7 +166,7 @@ export default function RacketRecCard({ name, mine }: { name: string; mine: Cata
       {compareLine}
       {expanded && (
         <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-          {reason}
+          {revealText}
         </p>
       )}
       <span

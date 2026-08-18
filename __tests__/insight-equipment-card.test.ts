@@ -178,6 +178,41 @@ describe('/api/stats/insight — equipment card (NEXT_PUBLIC_FLAG_EQUIPMENT_INSI
     expect(json.equipment.headline).toBe('Your racket is fighting your drops');
   });
 
+  it('the picked signal\'s `suggests` catalog id reaches the response payload (EI Task 4 seam)', async () => {
+    // Regression: computeEquipmentSignals sets `suggests` on the signal, but
+    // it was previously dropped when building the client-facing card — the
+    // client had a catalog id to render but no way to receive it.
+    const m = seedMember('Nozomi');
+    await seedCatalogRacket('racket-conflict-2');
+    // A second catalog racket that does NOT fight drops/net_play (head-light,
+    // medium flex, 4U) — the only candidate suggestFrom() can pick, since the
+    // owned racket is always excluded from its own pool.
+    await cosmos.getContainer('equipmentCatalog').items.upsert({
+      id: 'racket-friendly',
+      category: 'racket',
+      brand: 'Test',
+      model: 'Friendly',
+      skillRange: [1, 6],
+      attributes: { balance: 'Head-light', flex: 'Medium', weight: '4U' },
+    });
+    await seedGear(m.id, 'racket-conflict-2');
+    seedWeakAssessment(m.id, '2026-04-01', 'drops');
+    seedWeakAssessment(m.id, '2026-05-01', 'drops');
+    seedWeakAssessment(m.id, '2026-06-01', 'drops');
+    mockCreate.mockResolvedValue(
+      textResponse({
+        greeting: 'Good stretch.',
+        level: null,
+        trend: null,
+        equipment: { headline: 'Your racket is fighting your drops', support: 'x' },
+      }),
+    );
+
+    const res = await GET(makeGetRequest(`${BASE}?name=Nozomi`));
+    const json = await res.json();
+    expect(json.equipment.suggests).toBe('racket-friendly');
+  });
+
   it('a cached doc whose racketId differs from the current racket regenerates (not served stale)', async () => {
     const m = seedMember('Viktor');
     await seedCatalogRacket('racket-A');

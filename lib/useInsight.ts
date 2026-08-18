@@ -22,6 +22,10 @@ export interface CardSlice {
   support?: string;
   /** Drives the chip icon — set server-side from the driving signal. */
   kind: string;
+  /** Equipment card only: catalog id of the racket to recommend instead of
+   *  the default /api/recommend pick. Server-set from the signal engine,
+   *  never trusted from the model. Absent on level/trend slices. */
+  suggests?: string;
 }
 
 export interface InsightData {
@@ -29,6 +33,9 @@ export interface InsightData {
   greeting: string | null;
   level: CardSlice | null;
   trend: CardSlice | null;
+  /** Equipment card (NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT on). Optional — the
+   *  route omits it when the flag is off or no signal cleared threshold. */
+  equipment?: CardSlice | null;
 }
 
 type Entry = { promise: Promise<InsightData | null> };
