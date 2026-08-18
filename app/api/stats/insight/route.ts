@@ -69,6 +69,11 @@ interface CardInsight {
   headline: string;
   support?: string;
   kind: string;
+  /** Equipment card only: catalog id to recommend instead of the default
+   *  /api/recommend pick. Server-set from the picked signal's own `suggests`
+   *  (lib/equipmentSignals.ts), never trusted from the model — same rule as
+   *  `kind`. Absent when the signal has no clear alternative to name. */
+  suggests?: string;
 }
 
 interface InsightDoc {
@@ -623,8 +628,13 @@ Return ONLY a JSON object, no markdown fences:
     // kind is set server-side from the signal, never trusted from the model —
     // same rule as level/trend above. No signal → forced null regardless of
     // what the model returned (it shouldn't have returned anything for a slot
-    // that wasn't listed, but this doesn't trust that either).
-    equipment: equipmentSignal && parsed.equipment ? { ...parsed.equipment, kind: equipmentSignal.kind } : null,
+    // that wasn't listed, but this doesn't trust that either). `suggests`
+    // rides along the same server-set path — it was previously computed by
+    // the signal engine and dropped here, leaving the client with no way to
+    // know which racket to recommend instead of the default pick.
+    equipment: equipmentSignal && parsed.equipment
+      ? { ...parsed.equipment, kind: equipmentSignal.kind, ...(equipmentSignal.suggests ? { suggests: equipmentSignal.suggests } : {}) }
+      : null,
   };
 }
 
