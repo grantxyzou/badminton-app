@@ -126,7 +126,7 @@ describe('RacketRecCard — equipment insight consumption', () => {
     expect(screen.queryByText('Yonex Nanoflare 800')).toBeNull();
   });
 
-  it('a stale/unknown `suggests` id (absent from the fetched catalog) falls back to the default pick, not a blank card', async () => {
+  it('a stale/unknown `suggests` id (absent from the fetched catalog) falls back to the default pick, not a blank card — but headline/support still render since they do not depend on the catalog resolving', async () => {
     process.env.NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT = 'true';
     mockUseInsight.mockReturnValue({
       data: {
@@ -143,6 +143,41 @@ describe('RacketRecCard — equipment insight consumption', () => {
     renderCard();
 
     expect(await screen.findByText('Yonex Nanoflare 800')).toBeTruthy();
+    // Regression guard: headline/support must NOT be coupled to whether the
+    // suggested catalog item resolves — a bug that accidentally tied them
+    // together would still show the fallback racket name but silently drop
+    // the generated narration, and this is the only assertion that would
+    // catch it.
+    expect(screen.getByText('A better fit exists')).toBeTruthy();
+    const btn = screen.getByRole('button', { name: /Why this\?/ });
+    fireEvent.click(btn);
+    expect(await screen.findByText('Try this one instead.')).toBeTruthy();
+  });
+
+  it('a /api/recommend load failure stays a plain, non-interactive card even when the insight independently resolves a valid `suggests` + `support` — never a button wrapped around its own error pill', async () => {
+    process.env.NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT = 'true';
+    mockUseInsight.mockReturnValue({
+      data: {
+        account: true,
+        greeting: null,
+        level: null,
+        trend: null,
+        equipment: { headline: 'A better fit exists', support: 'Try this one instead.', kind: 'phase-mismatch', suggests: 'racket-suggested' },
+      },
+      loading: false,
+      error: false,
+    });
+    // /api/recommend fails; /api/equipment/catalog (used only to resolve
+    // `suggests`) succeeds independently — displayItem and revealText would
+    // both be truthy from the insight alone if loadError weren't a hard gate.
+    mockFetch({ recommendStatus: 500 });
+    renderCard();
+
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    // No button, no expand affordance — the card must not become interactive
+    // around a failed pick just because the insight resolved independently.
+    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.queryByText(/Why this\?/)).toBeNull();
   });
 
   it('flag on + equipment null: falls back to the templated reason, not an error', async () => {
