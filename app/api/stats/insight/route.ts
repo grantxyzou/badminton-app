@@ -9,6 +9,10 @@ import { getCanonicalLevel } from '@/lib/levelStore';
 import type { CanonicalLevel } from '@/lib/level';
 import { recommendDrills, type DrillPick } from '@/lib/drills';
 import { computeInsightSignals, signalsByCard, type InsightSignal, type SignalCard } from '@/lib/insightSignals';
+import { computeEquipmentSignals, pickEquipmentSignal, type EquipmentSignal } from '@/lib/equipmentSignals';
+import { activeRacket } from '@/lib/activeRacket';
+import { ensureCatalogSeeded } from '@/lib/catalogSeed';
+import type { CatalogItem, PlayerGear } from '@/lib/types';
 import { VOICE_PERSONA } from '@/lib/aiPersona';
 
 /**
@@ -80,6 +84,13 @@ interface InsightDoc {
   greeting?: string | null;
   level?: CardInsight | null;
   trend?: CardInsight | null;
+  /** Equipment card (NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT on). Additive — docs
+   *  written before this shipped simply lack it and regenerate once. */
+  equipment?: CardInsight | null;
+  /** Catalog id of the racket this insight was generated against. A player who
+   *  changes racket must not keep reading advice about the old one, so this
+   *  participates in cache freshness alongside lastAssessmentAt. */
+  racketId?: string | null;
   generatedAt: string;
   /** `takenAt` of the latest self-assessment baked into this insight. Lets a
    *  fresh check-in invalidate the session cache so the read reflects it.
@@ -88,7 +99,7 @@ interface InsightDoc {
 }
 
 function emptyPayload(account: boolean) {
-  return NextResponse.json({ account, recap: null, focus: null, greeting: null, level: null, trend: null, generatedAt: null });
+  return NextResponse.json({ account, recap: null, focus: null, greeting: null, level: null, trend: null, equipment: null, generatedAt: null });
 }
 
 /**
@@ -175,6 +186,28 @@ export async function GET(req: NextRequest) {
       })
     : null;
 
+  // The player's active racket, for the equipment card. Absent is normal —
+  // most members have not set one, and the signal engine returns [] for null.
+  const equipmentOn = isFlagOn('NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT');
+  let playerRacket: CatalogItem | null = null;
+  let catalog: CatalogItem[] = [];
+  if (equipmentOn) {
+    try {
+      await ensureCatalogSeeded();
+      const gearDoc = await getContainer('playerGear').item(`gear-${member.id}`, member.id).read();
+      const gearItem = activeRacket((gearDoc.resource as PlayerGear | undefined) ?? null);
+      const { resources } = await getContainer('equipmentCatalog').items
+        .query({ query: 'SELECT * FROM c WHERE c.category = @c', parameters: [{ name: '@c', value: 'racket' }] })
+        .fetchAll();
+      catalog = (resources as CatalogItem[]).filter((r) => r.category === 'racket');
+      playerRacket = gearItem?.catalogId ? catalog.find((c) => c.id === gearItem.catalogId) ?? null : null;
+    } catch (err) {
+      // Equipment is additive: a failure here must not cost the player their
+      // level and trend cards.
+      console.warn('equipment insight inputs unavailable (non-fatal):', err);
+    }
+  }
+
   // ── Cache: return the stored insight if it's for the current session AND no
   //    newer assessment has landed since it was generated. ──
   let existing: InsightDoc | null = null;
@@ -187,7 +220,12 @@ export async function GET(req: NextRequest) {
   // Nullish-normalize both sides: a pre-assessment cached doc (undefined) with a
   // new assessment present (a string) mismatches → regenerate to fold it in.
   const assessmentMatches = (existing?.lastAssessmentAt ?? null) === latestAssessmentAt;
-  const cacheFresh = !!existing && existing.sessionId === activeSessionId && assessmentMatches;
+  // A cached insight generated against a different racket describes equipment
+  // the player no longer uses — actively wrong, not merely stale.
+  const cachedRacketId = existing?.racketId ?? null;
+  const currentRacketId = playerRacket?.id ?? null;
+  const racketUnchanged = cachedRacketId === currentRacketId;
+  const cacheFresh = !!existing && existing.sessionId === activeSessionId && assessmentMatches && racketUnchanged;
   // The cache is keyed by the shape the current flag wants: a flag flip leaves a
   // doc with the wrong field set, which misses here and regenerates once.
   // A persisted cards-doc always has at least one non-null slice (the generator
@@ -196,7 +234,7 @@ export async function GET(req: NextRequest) {
   // null greeting (with a level/trend chip) miss the cache on every view and
   // re-call Claude — breaking the one-call-per-member-per-session guarantee.
   if (cacheFresh && cardsOn && (existing!.greeting || existing!.level || existing!.trend)) {
-    return NextResponse.json({ account: true, greeting: existing!.greeting ?? null, level: existing!.level ?? null, trend: existing!.trend ?? null, generatedAt: existing!.generatedAt, cached: true });
+    return NextResponse.json({ account: true, greeting: existing!.greeting ?? null, level: existing!.level ?? null, trend: existing!.trend ?? null, equipment: existing!.equipment ?? null, generatedAt: existing!.generatedAt, cached: true });
   }
   if (cacheFresh && !cardsOn && existing!.recap) {
     return NextResponse.json({ account: true, recap: existing!.recap, focus: existing!.focus, generatedAt: existing!.generatedAt, cached: true });
@@ -205,7 +243,7 @@ export async function GET(req: NextRequest) {
   if (!process.env.ANTHROPIC_API_KEY) {
     // No key — serve any stale insight of the right shape rather than nothing.
     if (cardsOn && existing?.greeting) {
-      return NextResponse.json({ account: true, greeting: existing.greeting, level: existing.level ?? null, trend: existing.trend ?? null, generatedAt: existing.generatedAt, stale: true });
+      return NextResponse.json({ account: true, greeting: existing.greeting, level: existing.level ?? null, trend: existing.trend ?? null, equipment: existing.equipment ?? null, generatedAt: existing.generatedAt, stale: true });
     }
     if (!cardsOn && existing?.recap) {
       return NextResponse.json({ account: true, recap: existing.recap, focus: existing.focus, generatedAt: existing.generatedAt, stale: true });
@@ -224,26 +262,29 @@ export async function GET(req: NextRequest) {
   // ── Distributed insights (flag on): structured, signal-grounded slices. ──
   if (cardsOn) {
     const signals = signalsByCard(computeInsightSignals({ snapshots: assessmentDocs, canonicalLevel, now: new Date().toISOString() }));
-    let cards: { greeting: string | null; level: CardInsight | null; trend: CardInsight | null };
+    const equipmentSignal = equipmentOn
+      ? pickEquipmentSignal(computeEquipmentSignals({ snapshots: assessmentDocs, canonicalLevel, racket: playerRacket, catalog }))
+      : null;
+    let cards: { greeting: string | null; level: CardInsight | null; trend: CardInsight | null; equipment: CardInsight | null };
     try {
-      cards = await generateCards(member.name, snapshot, signals, existing);
+      cards = await generateCards(member.name, snapshot, signals, existing, equipmentSignal);
     } catch (err) {
       console.error('insight cards generation failed:', err);
       if (existing?.greeting) {
-        return NextResponse.json({ account: true, greeting: existing.greeting, level: existing.level ?? null, trend: existing.trend ?? null, generatedAt: existing.generatedAt, stale: true });
+        return NextResponse.json({ account: true, greeting: existing.greeting, level: existing.level ?? null, trend: existing.trend ?? null, equipment: existing.equipment ?? null, generatedAt: existing.generatedAt, stale: true });
       }
       return emptyPayload(true);
     }
-    if (!cards.greeting && !cards.level && !cards.trend) return emptyPayload(true);
+    if (!cards.greeting && !cards.level && !cards.trend && !cards.equipment) return emptyPayload(true);
 
     const generatedAt = new Date().toISOString();
-    const doc: InsightDoc = { id: member.id, memberId: member.id, name: member.name, sessionId: activeSessionId, greeting: cards.greeting, level: cards.level, trend: cards.trend, generatedAt, lastAssessmentAt: latestAssessmentAt };
+    const doc: InsightDoc = { id: member.id, memberId: member.id, name: member.name, sessionId: activeSessionId, greeting: cards.greeting, level: cards.level, trend: cards.trend, equipment: cards.equipment, racketId: currentRacketId, generatedAt, lastAssessmentAt: latestAssessmentAt };
     try {
       await insightsContainer.items.upsert(doc);
     } catch (err) {
       console.warn('insight cache write failed (non-fatal):', err);
     }
-    return NextResponse.json({ account: true, greeting: cards.greeting, level: cards.level, trend: cards.trend, generatedAt, cached: false });
+    return NextResponse.json({ account: true, greeting: cards.greeting, level: cards.level, trend: cards.trend, equipment: cards.equipment, generatedAt, cached: false });
   }
 
   // ── Legacy "Your read" (flag off): recap + focus blob. ──
@@ -517,7 +558,8 @@ async function generateCards(
   s: Snapshot,
   signals: Record<SignalCard, InsightSignal | null>,
   prev: InsightDoc | null,
-): Promise<{ greeting: string | null; level: CardInsight | null; trend: CardInsight | null }> {
+  equipmentSignal: EquipmentSignal | null,
+): Promise<{ greeting: string | null; level: CardInsight | null; trend: CardInsight | null; equipment: CardInsight | null }> {
   const lastLine = s.lastSession
     ? `Last completed session (${s.lastSession.date.slice(0, 10)}): ${name} ${s.lastSession.attended ? 'PLAYED' : 'did NOT play'}.`
     : 'No completed sessions on record yet.';
@@ -535,6 +577,12 @@ async function generateCards(
         : `- ${card}: (no non-obvious signal — return null for this slot)`;
     })
     .join('\n');
+  // Equipment is a separate signal engine (lib/equipmentSignals.ts, own `kind`
+  // union) — added to the prompt ONLY when non-null, mirroring the "no signal
+  // → don't ask for a slot" framing above rather than always listing a slot.
+  const equipmentBlock = equipmentSignal
+    ? `\n- equipment: [${equipmentSignal.kind}] ${equipmentSignal.hint} (grounded facts: ${JSON.stringify(equipmentSignal.facts)})`
+    : '';
   const memoryLine = prev?.greeting ? `\n\nYour previous greeting to ${name}: "${prev.greeting}"` : '';
 
   const prompt = `${VOICE_PERSONA}
@@ -547,14 +595,14 @@ Season (last ${s.totalSessions} sessions): attended ${s.attended} (${s.attendanc
 ${partnerLine}${skillLine ? `\n${skillLine}` : ''}
 
 NON-OBVIOUS SIGNALS (pre-computed — narrate the ones present; do not restate plain numbers):
-${signalBlock}${memoryLine}
+${signalBlock}${equipmentBlock}${memoryLine}
 
 The whole point is value BEYOND the obvious: ${name} can already SEE their level number, phase, and skill ratings on the cards. NEVER restate those. Surface the relationship/pattern in the signals instead, in plain words.
 
 Return ONLY a JSON object, no markdown fences:
-{"greeting": "...", "level": {"headline": "...", "support": "..."} | null, "trend": {"headline": "...", "support": "..."} | null}
+{"greeting": "...", "level": {"headline": "...", "support": "..."} | null, "trend": {"headline": "...", "support": "..."} | null, "equipment": {"headline": "...", "support": "..."} | null}
 - "greeting": ONE warm, plain-language sentence (max ~16 words) leading with the most interesting honest thing. Translate jargon (never "3.1 / switch / medium confidence"). If nothing is beyond the obvious, a brief encouraging line is fine.
-- "level" / "trend": ONLY if that signal is present above — "headline" ≤ 8 words (the punch), "support" ≤ 14 words (one grounding clause). If the slot says "return null", return null for it.
+- "level" / "trend" / "equipment": ONLY if that signal is present above — "headline" ≤ 8 words (the punch), "support" ≤ 14 words (one grounding clause). If the slot says "return null" (or, for equipment, isn't listed at all above), return null for it.
 - Plain, encouraging, specific. No emoji, no hashtags, no jargon. Do NOT repeat a raw rating number the card already shows.`;
 
   const message = await anthropic.messages.create({
@@ -569,6 +617,11 @@ Return ONLY a JSON object, no markdown fences:
     greeting: parsed.greeting,
     level: signals.level && parsed.level ? { ...parsed.level, kind: signals.level.kind } : null,
     trend: signals.trend && parsed.trend ? { ...parsed.trend, kind: signals.trend.kind } : null,
+    // kind is set server-side from the signal, never trusted from the model —
+    // same rule as level/trend above. No signal → forced null regardless of
+    // what the model returned (it shouldn't have returned anything for a slot
+    // that wasn't listed, but this doesn't trust that either).
+    equipment: equipmentSignal && parsed.equipment ? { ...parsed.equipment, kind: equipmentSignal.kind } : null,
   };
 }
 
@@ -578,6 +631,7 @@ function parseCards(text: string): {
   greeting: string | null;
   level: { headline: string; support?: string } | null;
   trend: { headline: string; support?: string } | null;
+  equipment: { headline: string; support?: string } | null;
 } {
   const cleaned = text.replace(/```json/gi, '').replace(/```/g, '').trim();
   const start = cleaned.indexOf('{');
@@ -592,14 +646,15 @@ function parseCards(text: string): {
     return support ? { headline, support } : { headline };
   };
   try {
-    const obj = JSON.parse(slice) as { greeting?: unknown; level?: unknown; trend?: unknown };
+    const obj = JSON.parse(slice) as { greeting?: unknown; level?: unknown; trend?: unknown; equipment?: unknown };
     return {
       greeting: typeof obj.greeting === 'string' && obj.greeting.trim() ? obj.greeting.trim() : null,
       level: coerceCard(obj.level),
       trend: coerceCard(obj.trend),
+      equipment: coerceCard(obj.equipment),
     };
   } catch {
-    return { greeting: null, level: null, trend: null };
+    return { greeting: null, level: null, trend: null, equipment: null };
   }
 }
 
