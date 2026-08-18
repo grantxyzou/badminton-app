@@ -28,7 +28,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_SKILL_SMOOTHING'
   | 'NEXT_PUBLIC_FLAG_SKILL_DRILLS'
   | 'NEXT_PUBLIC_FLAG_KUDOS'
-  | 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS';
+  | 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS'
+  | 'NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT';
 
 interface FlagMeta {
   description: string;
@@ -102,6 +103,11 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'after distributed insights are promoted to stable + lived-in for 2 weeks',
   },
+  NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT: {
+    description: 'Racket advice grounded in equipment signals — the rec card explains how the racket you OWN relates to how you are playing, instead of a templated sentence. Off everywhere until enough members have set a racket for it to fire (1 of 53 at design time).',
+    owner: 'grant',
+    plannedRemoval: 'two weeks after the equipment insight ships on and is lived-in',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -132,6 +138,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_KUDOS;
     case 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS':
       return process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS;
+    case 'NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT':
+      return process.env.NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT;
   }
 }
 
