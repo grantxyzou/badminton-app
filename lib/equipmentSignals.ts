@@ -23,9 +23,21 @@ const labelOf = (key: string): string => LABEL_BY_KEY.get(key) ?? key;
  *
  * THIS TABLE IS BADMINTON JUDGEMENT, NOT DERIVED DATA. It is deliberately a
  * plain exported array so a wrong row is a one-line edit, not a logic change.
- * Directions encoded: head-heavy frames favour power and punish touch;
- * head-light frames favour touch and punish rear-court power; heavy (3U)
- * head-heavy frames punish court coverage.
+ *
+ * `fights()` below is an OR across balance/flex/weight: ANY ONE matching
+ * attribute is enough to flag the conflict — the traits do not need to
+ * combine. Read each row that way:
+ *   - Row 1 (drops/net_play): an extra-stiff flex OR a head-heavy balance
+ *     each independently punish touch — a head-heavy racket with a soft
+ *     flex still fights these skills, and so does an even-balance racket
+ *     that's extra stiff.
+ *   - Row 2 (smashes/clears_lifts): a flexible flex OR a head-light balance
+ *     each independently punish rear-court power, same independence.
+ *   - Row 3 (footwork_split_step/speed_stamina/court_coverage): a head-heavy
+ *     balance OR a 3U (heavy) weight class each independently make court
+ *     coverage harder — a light head-heavy frame and a heavy even-balance
+ *     frame BOTH match this row on their own; the racket need not be both
+ *     heavy AND head-heavy.
  *
  * Keys are the real SKILLS keys from lib/assessment.ts:
  *   serves_returns net_play clears_lifts drops drives smashes grip_deception
@@ -86,8 +98,12 @@ function weightOf(item: CatalogItem): string {
   return attr(item, 'weight').split('/')[0].trim();
 }
 
+/** Collapses hyphens/whitespace to a single space so "extra-stiff" and
+ *  "Extra Stiff" both normalize to "extra stiff" and compare equal against
+ *  the space-separated values in SKILL_SPEC_CONFLICTS. The real catalog has
+ *  both forms (six "Extra Stiff", one "extra-stiff"). */
 function flexOf(item: CatalogItem): string {
-  return attr(item, 'flex');
+  return attr(item, 'flex').replace(/[-\s]+/g, ' ');
 }
 
 /** True when this racket carries the attribute the rule says fights the skill. */
