@@ -107,7 +107,7 @@ describe('/api/stats/insight — equipment card (NEXT_PUBLIC_FLAG_EQUIPMENT_INSI
     delete process.env.NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT;
   });
 
-  it('flag off: payload carries no equipment signal, and no gear/catalog containers are ever touched', async () => {
+  it('flag off: the response has no `equipment` key at all (not merely null), and no gear/catalog containers are ever touched', async () => {
     process.env.NEXT_PUBLIC_FLAG_EQUIPMENT_INSIGHT = 'false';
     const m = seedMember('Sindhu');
     seedAssessment(m.id, '2026-05-01', 3.2, ['net_play']);
@@ -124,7 +124,10 @@ describe('/api/stats/insight — equipment card (NEXT_PUBLIC_FLAG_EQUIPMENT_INSI
     const res = await GET(makeGetRequest(`${BASE}?name=Sindhu`));
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.equipment).toBeNull();
+    // The byte-for-byte constraint: flag off must not merely null the field,
+    // the key itself must be absent — a client doing `'equipment' in payload`
+    // or a strict-shape snapshot must see the pre-task response exactly.
+    expect('equipment' in json).toBe(false);
     expect(calls).not.toContain('playerGear');
     expect(calls).not.toContain('equipmentCatalog');
   });
@@ -209,6 +212,42 @@ describe('/api/stats/insight — equipment card (NEXT_PUBLIC_FLAG_EQUIPMENT_INSI
     expect(secondJson.cached).toBe(true);
     expect(secondJson.greeting).toBe('Hi Carolina.');
     expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('a cached doc with ONLY an equipment slice (greeting/level/trend all null) still serves from cache — no repeat Claude call', async () => {
+    // Regression coverage for the persist/serve asymmetry: the generation-bail
+    // (`!cards.greeting && !cards.level && !cards.trend && !cards.equipment`)
+    // correctly persists an equipment-only doc, but the cache SERVE guard must
+    // recognize it too, or an equipment-only member re-calls Claude on every
+    // request forever (cost bug — money, not just a stale read).
+    const m = seedMember('Sania');
+    await seedCatalogRacket('racket-eq-only');
+    await seedGear(m.id, 'racket-eq-only');
+    seedWeakAssessment(m.id, '2026-04-01', 'drops');
+    seedWeakAssessment(m.id, '2026-05-01', 'drops');
+    seedWeakAssessment(m.id, '2026-06-01', 'drops');
+    mockCreate.mockResolvedValue(
+      textResponse({
+        greeting: null,
+        level: null,
+        trend: null,
+        equipment: { headline: 'Your racket is fighting your drops', support: 'x' },
+      }),
+    );
+
+    const first = await GET(makeGetRequest(`${BASE}?name=Sania`));
+    const firstJson = await first.json();
+    expect(firstJson.cached).toBe(false);
+    expect(firstJson.greeting).toBeNull();
+    expect(firstJson.level).toBeNull();
+    expect(firstJson.trend).toBeNull();
+    expect(firstJson.equipment).toBeTruthy();
+
+    const second = await GET(makeGetRequest(`${BASE}?name=Sania`));
+    const secondJson = await second.json();
+    expect(secondJson.cached).toBe(true);
+    expect(secondJson.equipment.headline).toBe('Your racket is fighting your drops');
+    expect(mockCreate).toHaveBeenCalledTimes(1); // NOT called a second time
   });
 
   it('a gear-read failure is non-fatal: level/trend still generate, equipment comes back null', async () => {

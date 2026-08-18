@@ -99,7 +99,7 @@ interface InsightDoc {
 }
 
 function emptyPayload(account: boolean) {
-  return NextResponse.json({ account, recap: null, focus: null, greeting: null, level: null, trend: null, equipment: null, generatedAt: null });
+  return NextResponse.json({ account, recap: null, focus: null, greeting: null, level: null, trend: null, generatedAt: null });
 }
 
 /**
@@ -229,12 +229,15 @@ export async function GET(req: NextRequest) {
   // The cache is keyed by the shape the current flag wants: a flag flip leaves a
   // doc with the wrong field set, which misses here and regenerates once.
   // A persisted cards-doc always has at least one non-null slice (the generator
-  // bails without writing when all three are null), so "any slice present" is
+  // bails without writing when all four are null), so "any slice present" is
   // the correct freshness test. Keying on `greeting` alone made a legitimately
-  // null greeting (with a level/trend chip) miss the cache on every view and
-  // re-call Claude — breaking the one-call-per-member-per-session guarantee.
-  if (cacheFresh && cardsOn && (existing!.greeting || existing!.level || existing!.trend)) {
-    return NextResponse.json({ account: true, greeting: existing!.greeting ?? null, level: existing!.level ?? null, trend: existing!.trend ?? null, equipment: existing!.equipment ?? null, generatedAt: existing!.generatedAt, cached: true });
+  // null greeting (with a level/trend/equipment chip) miss the cache on every
+  // view and re-call Claude — breaking the one-call-per-member-per-session
+  // guarantee. `equipment` must be included here too (mirrors the persist-side
+  // `!cards.equipment` bail) — an equipment-only doc that failed this check
+  // would fall through to `generateCards` on every request forever.
+  if (cacheFresh && cardsOn && (existing!.greeting || existing!.level || existing!.trend || existing!.equipment)) {
+    return NextResponse.json({ account: true, greeting: existing!.greeting ?? null, level: existing!.level ?? null, trend: existing!.trend ?? null, ...(equipmentOn ? { equipment: existing!.equipment ?? null } : {}), generatedAt: existing!.generatedAt, cached: true });
   }
   if (cacheFresh && !cardsOn && existing!.recap) {
     return NextResponse.json({ account: true, recap: existing!.recap, focus: existing!.focus, generatedAt: existing!.generatedAt, cached: true });
@@ -243,7 +246,7 @@ export async function GET(req: NextRequest) {
   if (!process.env.ANTHROPIC_API_KEY) {
     // No key — serve any stale insight of the right shape rather than nothing.
     if (cardsOn && existing?.greeting) {
-      return NextResponse.json({ account: true, greeting: existing.greeting, level: existing.level ?? null, trend: existing.trend ?? null, equipment: existing.equipment ?? null, generatedAt: existing.generatedAt, stale: true });
+      return NextResponse.json({ account: true, greeting: existing.greeting, level: existing.level ?? null, trend: existing.trend ?? null, ...(equipmentOn ? { equipment: existing.equipment ?? null } : {}), generatedAt: existing.generatedAt, stale: true });
     }
     if (!cardsOn && existing?.recap) {
       return NextResponse.json({ account: true, recap: existing.recap, focus: existing.focus, generatedAt: existing.generatedAt, stale: true });
@@ -271,7 +274,7 @@ export async function GET(req: NextRequest) {
     } catch (err) {
       console.error('insight cards generation failed:', err);
       if (existing?.greeting) {
-        return NextResponse.json({ account: true, greeting: existing.greeting, level: existing.level ?? null, trend: existing.trend ?? null, equipment: existing.equipment ?? null, generatedAt: existing.generatedAt, stale: true });
+        return NextResponse.json({ account: true, greeting: existing.greeting, level: existing.level ?? null, trend: existing.trend ?? null, ...(equipmentOn ? { equipment: existing.equipment ?? null } : {}), generatedAt: existing.generatedAt, stale: true });
       }
       return emptyPayload(true);
     }
@@ -284,7 +287,7 @@ export async function GET(req: NextRequest) {
     } catch (err) {
       console.warn('insight cache write failed (non-fatal):', err);
     }
-    return NextResponse.json({ account: true, greeting: cards.greeting, level: cards.level, trend: cards.trend, equipment: cards.equipment, generatedAt, cached: false });
+    return NextResponse.json({ account: true, greeting: cards.greeting, level: cards.level, trend: cards.trend, ...(equipmentOn ? { equipment: cards.equipment } : {}), generatedAt, cached: false });
   }
 
   // ── Legacy "Your read" (flag off): recap + focus blob. ──
