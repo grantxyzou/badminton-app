@@ -5,8 +5,8 @@ import type { CatalogItem } from '../lib/types';
 const items = catalog.items as unknown as CatalogItem[];
 
 describe('equipment catalog data', () => {
-  it('holds the merged 50-racket catalog', () => {
-    expect(items).toHaveLength(50);
+  it('holds the 71-racket catalog after v2 import', () => {
+    expect(items).toHaveLength(71);
   });
 
   // category IS the Cosmos partition key. The source file's `category` means
@@ -49,7 +49,8 @@ describe('equipment catalog data', () => {
   it('imports new rackets with converted pricing and derived skillRange', () => {
     const zz = items.find((i) => i.id === 'racket-yonex-astrox-100zz');
     expect(zz?.brand).toBe('Yonex');
-    expect(zz?.attributes?.weightGrams).toBe('83-88');
+    expect(zz?.attributes?.weightMinG).toBe(83);
+    expect(zz?.attributes?.weightMaxG).toBe(88);
     expect(zz?.attributes?.playStyle).toBe('Power');
     expect(zz?.skillRange).toEqual([4, 6]); // tier: Premium
   });
