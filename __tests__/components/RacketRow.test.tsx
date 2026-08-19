@@ -156,7 +156,7 @@ describe('RacketRow (the Equipment tab is the bag)', () => {
     // pointed the other way (a real racket reported as absent).
     await waitFor(() => expect(screen.getAllByText('Yonex Astrox 100ZZ').length).toBeGreaterThan(0));
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.queryByText('No racket yet — add yours below.')).toBeNull();
+    expect(screen.queryByText("Haven't picked one yet.")).toBeNull();
     expect(container.querySelector('.shimmer-line')).toBeNull();
   });
 
@@ -171,7 +171,7 @@ describe('RacketRow (the Equipment tab is the bag)', () => {
     renderRow();
 
     await waitFor(() => expect(screen.getAllByRole('alert').length).toBeGreaterThan(0));
-    expect(screen.queryByText('No racket yet — add yours below.')).toBeNull();
+    expect(screen.queryByText("Haven't picked one yet.")).toBeNull();
     // A read failure must not render as a truthful "you own no rackets", and
     // Add is disabled because we don't know what's in the bag.
     expect(screen.queryByText('Your rackets')).toBeNull();
@@ -237,7 +237,7 @@ describe('RacketRow (the Equipment tab is the bag)', () => {
     });
 
     expect(screen.getByText('Using today')).toBeTruthy();
-    expect(screen.queryByText('No racket yet — add yours below.')).toBeNull();
+    expect(screen.queryByText("Haven't picked one yet.")).toBeNull();
   });
 
   it('activating another racket moves the badge and updates the hero', async () => {

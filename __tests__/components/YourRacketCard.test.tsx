@@ -49,7 +49,7 @@ describe('YourRacketCard', () => {
 
   it('prompts when no racket is set', () => {
     renderCard();
-    expect(screen.getByText('No racket yet — add yours below.')).toBeTruthy();
+    expect(screen.getByText("Haven't picked one yet.")).toBeTruthy();
   });
 
   // The question is the card's permanent label — it must never move behind a
@@ -66,7 +66,7 @@ describe('YourRacketCard', () => {
     renderCard({ error: true });
     expect(screen.getByText('What is the racket you are using today?')).toBeTruthy();
     expect(screen.getByRole('alert')).toBeTruthy();
-    expect(screen.queryByText('No racket yet — add yours below.')).toBeNull();
+    expect(screen.queryByText("Haven't picked one yet.")).toBeNull();
   });
 
   // The label is stored on the gear doc; the CatalogItem may be missing if the
@@ -74,7 +74,7 @@ describe('YourRacketCard', () => {
   it('falls back to the stored label when the catalog item is missing', () => {
     renderCard({ item: null, label: 'Some Discontinued Racket' });
     expect(screen.getByText('Some Discontinued Racket')).toBeTruthy();
-    expect(screen.queryByText('No racket yet — add yours below.')).toBeNull();
+    expect(screen.queryByText("Haven't picked one yet.")).toBeNull();
   });
   // Display only. It used to open the picker, which made sense when the picker
   // also held the bag; now that the tab lists your rackets directly below,
