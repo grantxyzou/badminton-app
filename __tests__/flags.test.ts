@@ -9,6 +9,7 @@ describe('feature flags', () => {
     delete process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER;
     delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
     delete process.env.NEXT_PUBLIC_FLAG_SKILL_ASSESS;
+    delete process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER;
     delete process.env.NEXT_PUBLIC_ENV;
   });
 
@@ -84,6 +85,17 @@ describe('feature flags', () => {
     process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS = '1';
     expect(isFlagOn('NEXT_PUBLIC_FLAG_INSIGHT_CARDS')).toBe(false);
     delete process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS;
+  });
+
+  describe('NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER', () => {
+    it('is on only for the literal string "true"', () => {
+      process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER = 'true';
+      expect(isFlagOn('NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER')).toBe(true);
+      for (const v of ['1', 'yes', 'TRUE', 'false', '']) {
+        process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER = v;
+        expect(isFlagOn('NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER')).toBe(false);
+      }
+    });
   });
 });
 
