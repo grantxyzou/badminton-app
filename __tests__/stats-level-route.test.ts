@@ -120,6 +120,67 @@ describe('/api/stats/level', () => {
       expect(body.level.level).toBeLessThan(body.level.basis.game);
     });
 
+    // ── Issue #250: calibration seeds are joined by lowercased NAME, but
+    // assessment docs are written under a `name:<lower>` subject when the
+    // person is not a member. Without a guard, a document nobody had to
+    // authenticate to write anchors a real member's calibration.
+    //
+    // #249 closed the write path for names that ARE members. These cases
+    // cover the half it deliberately left open.
+
+    it('a non-member assessment for a member’s name must not seed that member’s calibration', async () => {
+      const m = seedMember('Lin');
+      seedAssessment(m.id, 'Lin', 3.0, '2026-06-01T00:00:00.000Z');
+      // Written under the unguarded name-derived subject, not Lin's memberId.
+      // Same name, so the name-keyed seed join picks it up.
+      seedAssessment('name:lin', 'Lin', 1.0, '2026-06-02T00:00:00.000Z');
+      for (let i = 0; i < 10; i++) {
+        seedGame(['Lin'], ['Bob'], 21, 11, `2026-06-${String(3 + i).padStart(2, '0')}T00:00:00.000Z`);
+      }
+      const body = await (await GET(getAs('Lin'))).json();
+      // Lin won every game against a default-seeded opponent, so the observed
+      // level must sit ABOVE her 3.0 self-rating. A 1.0 seed injected by the
+      // name-derived doc drags it below.
+      expect(body.level.basis.game).toBeGreaterThan(3.0);
+    });
+
+    it('a non-member’s own seed must not shift a member’s observed level through the shared fold', async () => {
+      const m = seedMember('Lin');
+      seedAssessment(m.id, 'Lin', 3.0, '2026-06-01T00:00:00.000Z');
+      for (let i = 0; i < 10; i++) {
+        seedGame(['Lin'], ['Bob'], 21, 11, `2026-06-${String(3 + i).padStart(2, '0')}T00:00:00.000Z`);
+      }
+      const clean = await (await GET(getAs('Lin'))).json();
+
+      // Same world, plus an unauthenticated seed for Bob — who is not a member
+      // but does appear in gameResults. The fold is group-wide, so inflating
+      // Bob's anchor moves what beating him is worth.
+      resetMockStore();
+      setupAdminPin();
+      _resetCalibrationCache();
+      const m2 = seedMember('Lin');
+      seedAssessment(m2.id, 'Lin', 3.0, '2026-06-01T00:00:00.000Z');
+      seedAssessment('name:bob', 'Bob', 5.0, '2026-06-02T00:00:00.000Z');
+      for (let i = 0; i < 10; i++) {
+        seedGame(['Lin'], ['Bob'], 21, 11, `2026-06-${String(3 + i).padStart(2, '0')}T00:00:00.000Z`);
+      }
+      const poisoned = await (await GET(getAs('Lin'))).json();
+
+      expect(poisoned.level.basis.game).toBe(clean.level.basis.game);
+    });
+
+    it('still lets a real member’s own assessment seed the fold', async () => {
+      // The guard must exclude name-derived subjects ONLY — a member's own
+      // seed is the whole point of the anchor and must keep working.
+      const m = seedMember('Lin');
+      seedAssessment(m.id, 'Lin', 5.0, '2026-06-01T00:00:00.000Z');
+      seedGame(['Lin'], ['Bob'], 21, 19, '2026-06-05T00:00:00.000Z');
+      const body = await (await GET(getAs('Lin'))).json();
+      // Seeded at 5.0 and barely beat a default-seeded opponent: the observed
+      // level stays high because the seed anchored it, not at DEFAULT_SEED.
+      expect(body.level.basis.game).toBeGreaterThan(4.0);
+    });
+
     it('leaves basis.game null when the calibration flag is off', async () => {
       process.env.NEXT_PUBLIC_FLAG_SKILL_CALIBRATION = 'false';
       const m = seedMember('Lin');
