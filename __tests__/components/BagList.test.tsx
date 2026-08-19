@@ -51,9 +51,23 @@ describe('BagList', () => {
     expect(onRemove).toHaveBeenCalledWith('b');
   });
 
-  // Single-racket players see no bag — the experience is unchanged from today.
-  it('renders nothing with fewer than two rackets', () => {
-    const { container } = renderBag({ items: [ITEMS[0]] });
+  // THE invariant this component exists to hold. BagList used to hide itself
+  // below two rackets, which was fine inside the picker sheet and wrong the
+  // moment the tab became the bag: it left a one-racket player with no way to
+  // remove or replace the racket they own. If this test ever goes red because
+  // the guard came back, the guard is the bug.
+  it('renders the single racket, removable, when the bag holds exactly one', () => {
+    const onRemove = vi.fn();
+    renderBag({ items: [ITEMS[0]], activeId: 'a', onRemove });
+    expect(screen.getByText('Yonex Astrox 100ZZ')).toBeTruthy();
+    expect(screen.getByText('Using today')).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText('Remove — Yonex Astrox 100ZZ'));
+    expect(onRemove).toHaveBeenCalledWith('a');
+  });
+
+  it('renders nothing only when the bag is genuinely empty', () => {
+    const { container } = renderBag({ items: [] });
     expect(container.textContent).toBe('');
   });
 

@@ -1,14 +1,22 @@
 'use client';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { getIdentity } from '@/lib/identity';
+import ErrorState from '@/components/primitives/ErrorState';
 import GearSheet from './GearSheet';
+import BagList from './BagList';
+import { useGear } from './useGear';
 import RacketRecCard from './cards/RacketRecCard';
 import YourRacketCard from './cards/YourRacketCard';
-import { activeRacket } from '@/lib/activeRacket';
-import type { PlayerGear, CatalogItem } from '@/lib/types';
+import type { CatalogItem } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
+
+/** Mirrors app/api/equipment/gear/route.ts. Kept in sync so the tab can
+ *  PREVENT a full bag (disabled Add button) rather than catch the 409 after
+ *  the player has already gone looking for a racket to add. */
+const MAX_RACKETS = 10;
 
 // Same identity chain as AttendanceCardLive: identity → stats preview-name → null.
 function resolveActiveName(): string | null {
@@ -24,24 +32,32 @@ function resolveActiveName(): string | null {
 }
 
 /**
- * Stats racket row: a vertical stack. Your racket leads (hero treatment,
- * tappable to pick/change); the recommendation follows below it, compared
- * against what you already own. Picking a racket refetches gear so the
- * catalog item resolves fresh and both cards update immediately.
+ * The Equipment tab — which IS the player's bag.
+ *
+ * Reads top-down: the racket you're using today (hero), what we'd suggest
+ * next, then every racket you own, then a way to add one. Adding is the only
+ * thing that opens a sheet, and that sheet does nothing else.
+ *
+ * The hero is deliberately not tappable. With the bag on the tab, switching
+ * and removing both have a home in the list below it, so a tappable hero would
+ * be a second route to the same picker — the trap RacketRecCard already argues
+ * against ("a button that expands nothing is worse than a plain card").
  */
 export default function RacketRow() {
+  const t = useTranslations('valueHub');
   const [activeName, setActiveName] = useState<string | null>(null);
-  const [racketLabel, setRacketLabel] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
-  const [loadError, setLoadError] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [actionError, setActionError] = useState(false);
 
   useEffect(() => {
     setActiveName(resolveActiveName());
   }, []);
 
+  const gear = useGear(activeName);
+  const racketLabel = gear.active?.label ?? null;
+  const catalogId = gear.active?.catalogId ?? null;
+
   const [catalogItem, setCatalogItem] = useState<CatalogItem | null>(null);
-  const [catalogId, setCatalogId] = useState<string | null>(null);
   // True once the catalog lookup for the current catalogId has resolved, one
   // way or another (found / not found / fetch failed). Nothing with no
   // catalogId to resolve counts as settled by definition. Gates what the hero
@@ -49,35 +65,6 @@ export default function RacketRow() {
   // display and then silently "reflow" underneath it — see YourRacketCard's
   // docstring contract.
   const [catalogSettled, setCatalogSettled] = useState(true);
-
-  // Monotonic op counter, same pattern as GearSheet's gearOpRef: loadGear
-  // fires both on mount and every time GearSheet's onSaved calls it after a
-  // mutation (save/activate/remove). A plain per-call `live` closure only
-  // guards a call against ITS OWN unmount — it does nothing to order two
-  // overlapping loadGear() calls against each other. Rapid activate→remove
-  // fires two GETs; without this, the older can resolve after the newer and
-  // clobber the hero card with a stale (possibly just-deleted) racket, with
-  // nothing left to refetch and correct it since onSaved already ran.
-  const gearOpRef = useRef(0);
-
-  const loadGear = useCallback(() => {
-    if (!activeName) return;
-    const opId = ++gearOpRef.current;
-    fetch(`${BASE}/api/equipment/gear?name=${encodeURIComponent(activeName)}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d) => {
-        if (opId !== gearOpRef.current) return;
-        const gear = d.gear as PlayerGear | null;
-        const racket = activeRacket(gear);
-        setRacketLabel(racket?.label ?? null);
-        setCatalogId(racket?.catalogId ?? null);
-        setLoaded(true);
-        setLoadError(false);
-      })
-      .catch(() => { if (opId === gearOpRef.current) { setLoadError(true); setLoaded(true); } });
-  }, [activeName]);
-
-  useEffect(() => { loadGear(); }, [loadGear]);
 
   // Resolve the catalog row so the card can show specs. A dangling catalogId
   // leaves catalogItem null and the card falls back to the stored label.
@@ -99,6 +86,17 @@ export default function RacketRow() {
 
   if (!activeName) return null;
 
+  const bagFull = gear.rackets.length >= MAX_RACKETS;
+  const ownedCatalogIds = gear.rackets
+    .map((r) => r.catalogId)
+    .filter((id): id is string => typeof id === 'string');
+
+  async function runAction(op: Promise<{ ok: boolean }>) {
+    setActionError(false);
+    const res = await op;
+    if (!res.ok) setActionError(true);
+  }
+
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -110,19 +108,47 @@ export default function RacketRow() {
           // still null) — it degrades to the label, not a permanent shimmer.
           item={catalogSettled ? catalogItem : null}
           label={racketLabel}
-          loading={!loaded}
-          error={loadError}
-          onEdit={() => setSheetOpen(true)}
+          loading={!gear.loaded}
+          error={gear.loadError}
         />
         <RacketRecCard name={activeName} mine={catalogItem} />
+
+        {/* A failed gear read must render as a failure, not a truthful "you
+            own no rackets" — a player with three rackets must never see an
+            empty bag because a fetch hiccuped. Suppress the list entirely
+            while this is up so the two can't show at once. */}
+        {gear.loadError && <ErrorState message={t('recError')} />}
+        {!gear.loadError && (
+          <BagList
+            items={gear.rackets}
+            activeId={gear.active?.id}
+            onActivate={(id) => runAction(gear.activate(id))}
+            onRemove={(id) => runAction(gear.remove(id))}
+            busy={gear.busy}
+          />
+        )}
+
+        {actionError && <ErrorState message={t('recError')} />}
+        {bagFull && <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>{t('bagFull')}</p>}
+
+        <button
+          type="button"
+          className="cc-btn cc-btn-secondary"
+          disabled={gear.busy || bagFull || gear.loadError}
+          onClick={() => setSheetOpen(true)}
+          style={{ width: '100%', justifyContent: 'center' }}
+        >
+          {t('addRacket')}
+        </button>
       </div>
 
       <GearSheet
-        name={activeName}
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        onSaved={loadGear}
-        currentLabel={racketLabel}
+        ownedCatalogIds={ownedCatalogIds}
+        onPick={gear.add}
+        busy={gear.busy}
+        online={gear.online}
       />
     </>
   );
