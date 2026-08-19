@@ -128,6 +128,20 @@ describe('/api/assessments', () => {
       expect(res.status).toBe(201);
     });
 
+    // Pins isAdminAuthedWithMember (async, re-reads the Member) over the cheap
+    // sync isAdminAuthed (cookie signature/expiry only). Swapping to the sync
+    // check would leave this green-before/401-after distinction unenforced:
+    // a demoted-but-still-cookied admin would keep writing for anyone until
+    // the 30-day cookie expired, defeating the whole point of WS#3.
+    it('401s an admin whose cookie is valid but who has been demoted', async () => {
+      seedMember('Lin');
+      seedAdminMember({ role: 'member' });
+      const res = await POST(makeAdminRequest('POST', BASE, { name: 'Lin', ratings: validRatings() }));
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.error).toBe('needs_signin');
+    });
+
     it('401s with needs_signin when the caller holds member_session for a DIFFERENT member', async () => {
       seedMember('Lin');
       const other = seedMember('Viktor');
