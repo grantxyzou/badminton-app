@@ -2,6 +2,12 @@
 const nextConfig = {
   basePath: '/bpm',
   output: 'standalone',
+  // Next 16.3 appends a <!-- BEGIN:nextjs-agent-rules --> block to CLAUDE.md on
+  // every `next dev`, and re-adds it if removed — so the file reads as modified
+  // forever unless the block is committed. CLAUDE.md here is hand-authored
+  // project documentation, not a generated artifact, so opt out and keep the
+  // framework out of it. Flip to true (or delete this line) to take the block.
+  agentRules: false,
   async headers() {
     const isDev = process.env.NODE_ENV === 'development';
     return [
