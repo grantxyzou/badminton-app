@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
+import { verifyMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
 import { SKILLS, scoreAssessment, placePhase, type Rating } from '@/lib/assessment';
 
 export const dynamic = 'force-dynamic';
@@ -46,8 +47,12 @@ function validateRatings(raw: unknown): Rating[] | null {
  * canonical per-person store (post memberId migration); fall back to a
  * name-derived key so a player who isn't yet a member still gets a trend.
  * Queries by @name, which the mock store honors (it does NOT honor @memberId).
+ *
+ * `isMember` is returned explicitly (rather than inferred later from a
+ * `memberId.startsWith('name:')` string check) so the write-auth gate below
+ * doesn't depend on the shape of the fallback id.
  */
-async function resolveSubject(name: string): Promise<{ memberId: string; name: string }> {
+async function resolveSubject(name: string): Promise<{ memberId: string; name: string; isMember: boolean }> {
   const trimmed = name.trim();
   try {
     const { resources } = await getContainer('members')
@@ -57,11 +62,11 @@ async function resolveSubject(name: string): Promise<{ memberId: string; name: s
       })
       .fetchAll();
     const member = resources[0] as { id?: string } | undefined;
-    if (member?.id) return { memberId: member.id, name: trimmed };
+    if (member?.id) return { memberId: member.id, name: trimmed, isMember: true };
   } catch {
     /* fall through to name-derived id */
   }
-  return { memberId: `name:${trimmed.toLowerCase()}`, name: trimmed };
+  return { memberId: `name:${trimmed.toLowerCase()}`, name: trimmed, isMember: false };
 }
 
 export async function POST(req: NextRequest) {
@@ -73,7 +78,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
   try {
-    await ensureAssessments();
     const body = await req.json();
     const name = typeof body.name === 'string' ? body.name.trim().slice(0, 50) : '';
     if (!name) return NextResponse.json({ error: 'name_required' }, { status: 400 });
@@ -82,6 +86,28 @@ export async function POST(req: NextRequest) {
     if (!ratings) return NextResponse.json({ error: 'ratings_required' }, { status: 400 });
 
     const subject = await resolveSubject(name);
+
+    // Member-scoped write (Security Rule 12): a name that resolves to a real
+    // member can only be written by that member's own member_session cookie
+    // or an admin — closes the impersonation gap where any visitor could pick
+    // a name (e.g. via the stats preview-name picker) and post ratings
+    // attributed to someone else. A name with NO member record has nothing to
+    // impersonate, so anonymous self-assessment stays open (decision 1).
+    // `needs_signin` is a distinguishable 401 (decision 2): covers both "no
+    // cookie" and "cookie for a different member" — verifyMemberAuth already
+    // collapses missing/invalid/expired cookies to null, so an expired
+    // member_session (30-day TTL vs indefinite localStorage identity) lands
+    // here too, and the client can route the user to sign in again rather
+    // than showing a generic save error.
+    if (subject.isMember) {
+      const caller = verifyMemberAuth(req);
+      const isSelf = !!caller && caller.memberId === subject.memberId;
+      if (!isSelf && !(await isAdminAuthedWithMember(req)).authed) {
+        return NextResponse.json({ error: 'needs_signin' }, { status: 401 });
+      }
+    }
+
+    await ensureAssessments();
     const score = scoreAssessment(ratings);
     const record = {
       id: randomBytes(16).toString('hex'),

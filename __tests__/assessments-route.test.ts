@@ -1,6 +1,16 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { POST, GET } from '../app/api/assessments/route';
-import { resetMockStore, getStore, seedMember, makeRequest, makeGetRequest } from './helpers';
+import {
+  resetMockStore,
+  getStore,
+  seedMember,
+  makeRequest,
+  makeGetRequest,
+  memberCookieValue,
+  setupAdminPin,
+  seedAdminMember,
+  makeAdminRequest,
+} from './helpers';
 
 const BASE = 'http://localhost:3000/api/assessments';
 
@@ -12,9 +22,15 @@ function validRatings() {
   ];
 }
 
+/** Cookie header for a valid member_session bound to the given member. */
+function memberCookieHeader(name: string, memberId: string) {
+  return { Cookie: `member_session=${memberCookieValue(name, memberId)}` };
+}
+
 describe('/api/assessments', () => {
   beforeEach(() => {
     resetMockStore();
+    setupAdminPin();
     process.env.NEXT_PUBLIC_FLAG_SKILL_ASSESS = 'true';
   });
 
@@ -30,8 +46,10 @@ describe('/api/assessments', () => {
     });
 
     it('saves a snapshot with server-computed overall + phase and source:self', async () => {
-      seedMember('Lin');
-      const res = await POST(makeRequest('POST', BASE, { name: 'Lin', ratings: validRatings() }));
+      const member = seedMember('Lin');
+      const res = await POST(
+        makeRequest('POST', BASE, { name: 'Lin', ratings: validRatings() }, memberCookieHeader('Lin', member.id)),
+      );
       expect(res.status).toBe(201);
       const doc = await res.json();
       expect(doc.name).toBe('Lin');
@@ -46,7 +64,9 @@ describe('/api/assessments', () => {
 
     it('resolves memberId from the members container', async () => {
       const member = seedMember('Lin');
-      const res = await POST(makeRequest('POST', BASE, { name: 'Lin', ratings: validRatings() }));
+      const res = await POST(
+        makeRequest('POST', BASE, { name: 'Lin', ratings: validRatings() }, memberCookieHeader('Lin', member.id)),
+      );
       const doc = await res.json();
       expect(doc.memberId).toBe(member.id);
     });
@@ -70,20 +90,81 @@ describe('/api/assessments', () => {
     });
 
     it('ignores out-of-range and unknown ratings but keeps valid ones', async () => {
-      seedMember('Lin');
+      const member = seedMember('Lin');
       const res = await POST(
-        makeRequest('POST', BASE, {
-          name: 'Lin',
-          ratings: [
-            { skillKey: 'serves_returns', value: 4 },
-            { skillKey: 'net_play', value: 99 }, // out of range — dropped
-            { skillKey: 'bogus', value: 3 }, // unknown — dropped
-          ],
-        }),
+        makeRequest(
+          'POST',
+          BASE,
+          {
+            name: 'Lin',
+            ratings: [
+              { skillKey: 'serves_returns', value: 4 },
+              { skillKey: 'net_play', value: 99 }, // out of range — dropped
+              { skillKey: 'bogus', value: 3 }, // unknown — dropped
+            ],
+          },
+          memberCookieHeader('Lin', member.id),
+        ),
       );
       const doc = await res.json();
       expect(doc.ratings).toHaveLength(1);
       expect(doc.overall).toBe(4);
+    });
+  });
+
+  describe('POST auth (member-scoped writes)', () => {
+    it('writes when the caller holds member_session for the target member', async () => {
+      const member = seedMember('Lin');
+      const res = await POST(
+        makeRequest('POST', BASE, { name: 'Lin', ratings: validRatings() }, memberCookieHeader('Lin', member.id)),
+      );
+      expect(res.status).toBe(201);
+    });
+
+    it('writes for any member when the caller is admin', async () => {
+      seedMember('Lin');
+      seedAdminMember();
+      const res = await POST(makeAdminRequest('POST', BASE, { name: 'Lin', ratings: validRatings() }));
+      expect(res.status).toBe(201);
+    });
+
+    it('401s with needs_signin when the caller holds member_session for a DIFFERENT member', async () => {
+      seedMember('Lin');
+      const other = seedMember('Viktor');
+      const res = await POST(
+        makeRequest('POST', BASE, { name: 'Lin', ratings: validRatings() }, memberCookieHeader('Viktor', other.id)),
+      );
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.error).toBe('needs_signin');
+    });
+
+    it('401s with needs_signin when there is no cookie and the target is a member', async () => {
+      seedMember('Lin');
+      const res = await POST(makeRequest('POST', BASE, { name: 'Lin', ratings: validRatings() }));
+      expect(res.status).toBe(401);
+      const body = await res.json();
+      expect(body.error).toBe('needs_signin');
+    });
+
+    it('writes unauthenticated when the target name has no member record (unchanged)', async () => {
+      const res = await POST(makeRequest('POST', BASE, { name: 'Ghost', ratings: validRatings() }));
+      expect(res.status).toBe(201);
+      const doc = await res.json();
+      expect(doc.memberId).toBe('name:ghost');
+    });
+
+    it('rate limits before checking auth', async () => {
+      seedMember('Lin');
+      const headers = { 'X-Client-IP': 'rl-test-ip' };
+      // Exhaust the 20/min limit for this IP with non-member (unauthenticated-ok) writes.
+      for (let i = 0; i < 20; i++) {
+        await POST(makeRequest('POST', BASE, { name: 'Ghost', ratings: validRatings() }, headers));
+      }
+      // A 21st request targeting a real member, still with no cookie, must be
+      // rate-limited (429) rather than falling through to the auth check (401).
+      const res = await POST(makeRequest('POST', BASE, { name: 'Lin', ratings: validRatings() }, headers));
+      expect(res.status).toBe(429);
     });
   });
 
