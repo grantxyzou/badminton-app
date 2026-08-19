@@ -386,6 +386,7 @@
       "save": "Save check-in",
       "saving": "Saving…",
       "saveError": "That didn't save — give it another go.",
+      "saveErrorAuth": "Your sign-in expired — sign in again to save this check-in.",
       "reviewCount": "{rated} of {total} skills rated",
       "reviewPrompt": "Save to update your trend.",
       "signedOutTitle": "Track your game",

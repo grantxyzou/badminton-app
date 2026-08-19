@@ -105,6 +105,17 @@ export default function CheckInSheet({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, ratings: payload }),
       });
+      if (res.status === 401) {
+        // Distinguishable from a generic save failure: the member_session
+        // cookie (30-day TTL) has expired or never existed for this name,
+        // while the localStorage identity persists indefinitely — so this is
+        // a confirmed "needs to sign in again," not an unknown/offline error.
+        const body = await res.json().catch(() => null);
+        if (body?.error === 'needs_signin') {
+          setError(t('assess.saveErrorAuth'));
+          return;
+        }
+      }
       if (!res.ok) throw new Error(String(res.status));
       onSaved();
       onClose();
