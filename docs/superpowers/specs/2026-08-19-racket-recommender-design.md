@@ -41,6 +41,41 @@ nothing when it knows nothing.
 | D5 | **No assessment → no recommendation** | With no ratings the engine runs on fourteen 3s and emits a confident, meaningless pick — the failure mode already visible in production. The card instead points at the check-in. |
 | D6 | Price is **advisory, never a hard filter** | Prices are USD, stamped `lastVerified: 2026-08-19`, and go stale. A stale price must never silently remove a racket from consideration. Diverges from the Python, which hard-filters on budget. |
 | D7 | Budget is expressed in **CAD**, converted at import | The app is Vancouver-based and settles in CAD e-transfers; `CatalogItem.msrp` is already CAD. Asking a Canadian friend for a USD budget is a papercut. |
+| D8 | The engine path **requires a member cookie or admin** | See below. This is a privacy gate, not a preference. |
+
+### D8 — why the route's auth must change
+
+`GET /api/recommend` is currently **unauthenticated**: rate-limited by IP,
+probing by `?name=`. Its own comment records why that is safe today — it reads
+only `canonical.stage` and returns `{ item, reason }`, so "nothing from the
+private `CanonicalLevel` leaks through this public route."
+
+The new engine breaks that guarantee. Its reasons **quote the player's
+individual skill ratings**:
+
+```
+"Head-heavy suits your power game (smash 3/5, clears 3/5)"
+"Extra Stiff shaft is demanding for your current consistency (3/5)"
+```
+
+Member names are enumerable via `GET /api/members`. Shipping those strings on
+an unauthenticated route would expose every player's private per-skill
+assessment to anyone who can guess a name — the same defect shape as #249 and
+#250, arriving through a third door.
+
+So the flag-on branch adopts the gate `/api/stats/level` already uses:
+
+```ts
+const member = verifyMemberAuth(req);
+const ownsName = member?.name?.trim().toLowerCase() === name.toLowerCase();
+if (!ownsName && !isAdminAuthed(req)) {
+  return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+}
+```
+
+The flag-**off** branch keeps today's unauthenticated behaviour unchanged, since
+it still leaks nothing. `RacketRecCard` must therefore handle 403 as a distinct
+state, not as "no recommendation" — unknown ≠ known-false.
 
 ## Data
 
@@ -78,26 +113,27 @@ Two traps, both previously hit:
 - **Drop the source `partitionKey: "Yonex"`.** The app's partition key is
   `category`, which must remain the literal `'racket'`.
 - **Source `category: "Power"` is play style, not the app's `category`.** It
-  maps into `attributes.playCategory`.
+  maps into `attributes.playStyle` — the key the existing importer already uses.
 
 ```
 id            -> `racket-${source.id}`
 category      -> 'racket'                       (partition key — never the source value)
 brand, model  -> as-is
-skillRange    -> derived from tier:
+skillRange    -> TIER_RANGE, reused from the existing importer:
                    Entry-level [1,3] · Mid-range [2,5] · Premium [4,6]
 msrp          -> round(priceMinUSD * USD_TO_CAD)   (CAD, per D7)
 attributes    -> balance, flex, weightClass, weightMinG, weightMaxG,
-                 playCategory, subType, tier, series, gripSize,
+                 playStyle, subType, tier, series, gripSize,
                  tensionMinLbs, tensionMaxLbs, priceMinUSD, priceMaxUSD,
                  lastVerified
 sources       -> []                             (no retailer links in source data)
 seeded        -> true
 ```
 
-`USD_TO_CAD = 1.4` — a single documented constant in the import script, rounded
-deliberately rather than pinned to a live rate. It is approximate by
-construction; D6 keeps that from being load-bearing.
+`USD_TO_CAD = 1.38` — **reused verbatim from `scripts/import-racket-database.mjs`**
+rather than introduced fresh, so the two importers can't drift into pricing the
+same racket differently. It is approximate by construction; D6 keeps that from
+being load-bearing.
 
 ### Storage
 
