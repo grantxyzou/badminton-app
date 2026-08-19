@@ -78,10 +78,23 @@ let merged = 0;
 let added = 0;
 for (const raw of source) {
   const mapped = mapRecord(raw);
-  if (byId.has(mapped.id)) merged += 1;
-  else added += 1;
-  // v2 wins: it is the normalized data the engine scores on.
-  byId.set(mapped.id, mapped);
+  if (byId.has(mapped.id)) {
+    merged += 1;
+    // Field-level merge: v2 attributes win, but preserve curated fields from existing.
+    const existing = byId.get(mapped.id);
+    // v2 wins on normalized attributes and skill tier mapping
+    existing.attributes = mapped.attributes;
+    existing.skillRange = mapped.skillRange;
+    // Preserve curated fields: sources array and hand-set msrp (only set USD-derived msrp if none exists)
+    if (mapped.msrp !== undefined && existing.msrp === undefined) {
+      existing.msrp = mapped.msrp;
+    }
+    // Preserve other top-level fields from existing (sources, retailer links, etc.)
+  } else {
+    added += 1;
+    // New id: insert the mapped record as-is
+    byId.set(mapped.id, mapped);
+  }
 }
 
 target.items = [...byId.values()];
