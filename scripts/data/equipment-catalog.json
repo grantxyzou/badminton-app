@@ -1,10 +1,10 @@
 {
   "_meta": {
-    "purpose": "Seed data for the Value-Hub Slice-0 equipment catalog. 50 rackets only — strings / shoes / shuttles / bags / grips arrive in the Equipment track (Track 2) if Slice-0 survives its 4-week kill criterion.",
+    "purpose": "Seed data for the Value-Hub Slice-0 equipment catalog. ~15 rackets only — strings / shoes / shuttles / bags / grips arrive in the Equipment track (Track 2) if Slice-0 survives its 4-week kill criterion.",
     "schema": "Each entry matches CatalogItem in lib/types.ts. `id` is stable and deterministic so re-runs are idempotent. `skillRange` follows the ACE stage scale [1-6] from lib/skills-data.ts.",
     "sources": "Each item carries non-affiliate retailer links (Yumo, RacquetGuys, BadmintonHQ) for now. Per Decision D in the plan, affiliateTag fields ship null in Slice-0; the field exists so flipping monetization on later is schema-free.",
-    "curation": "~17 popular models each from Yonex, Victor and Li-Ning. Hand-picked from public best-sellers + recreational-player community recommendations — not authoritative, will be revised once admin can edit the catalog (Track 2).",
-    "last_updated": "2026-08-17"
+    "curation": "Top ~5 popular models each from Yonex, Victor, Li-Ning. Hand-picked from public best-sellers + recreational-player community recommendations — not authoritative, will be revised once admin can edit the catalog (Track 2).",
+    "last_updated": "2026-05-14"
   },
   "items": [
     {
@@ -12,6 +12,7 @@
       "category": "racket",
       "brand": "Yonex",
       "model": "Astrox 88D Pro",
+      "msrp": 309,
       "skillRange": [
         4,
         6
@@ -35,8 +36,14 @@
         "lastVerified": "2026-08-19",
         "notes": "Doubles back-court power racket"
       },
-      "seeded": true,
-      "msrp": 276
+      "sources": [
+        {
+          "retailer": "Yumo",
+          "url": "https://yumosports.com/products/astrox-88d-pro",
+          "affiliateTag": null
+        }
+      ],
+      "seeded": true
     },
     {
       "id": "racket-yonex-astrox-88s-pro",
@@ -117,7 +124,8 @@
       "id": "racket-yonex-arcsaber-11-pro",
       "category": "racket",
       "brand": "Yonex",
-      "model": "ArcSaber 11 Pro",
+      "model": "Arcsaber 11 Pro",
+      "msrp": 309,
       "skillRange": [
         4,
         6
@@ -140,8 +148,14 @@
         "lastVerified": "2026-08-19",
         "notes": "Elite control/placement racket"
       },
-      "seeded": true,
-      "msrp": 304
+      "sources": [
+        {
+          "retailer": "RacquetGuys",
+          "url": "https://www.racquetguys.ca/yonex-arcsaber-11-pro.html",
+          "affiliateTag": null
+        }
+      ],
+      "seeded": true
     },
     {
       "id": "racket-victor-thruster-ryuga-ii",
@@ -198,6 +212,7 @@
       "category": "racket",
       "brand": "Victor",
       "model": "Auraspeed 90K",
+      "msrp": 259,
       "skillRange": [
         4,
         6
@@ -220,8 +235,14 @@
         "lastVerified": "2026-08-19",
         "notes": "Reference speed/defense/counter-attack racket"
       },
-      "seeded": true,
-      "msrp": 248
+      "sources": [
+        {
+          "retailer": "RacquetGuys",
+          "url": "https://www.racquetguys.ca/victor-auraspeed-90k.html",
+          "affiliateTag": null
+        }
+      ],
+      "seeded": true
     },
     {
       "id": "racket-victor-jetspeed-12",
@@ -278,6 +299,7 @@
       "category": "racket",
       "brand": "Li-Ning",
       "model": "Aeronaut 9000",
+      "msrp": 249,
       "skillRange": [
         4,
         6
@@ -300,8 +322,14 @@
         "lastVerified": "2026-08-19",
         "notes": "Versatile pro-level all-rounder"
       },
-      "seeded": true,
-      "msrp": 276
+      "sources": [
+        {
+          "retailer": "RacquetGuys",
+          "url": "https://www.racquetguys.ca/li-ning-aeronaut-9000.html",
+          "affiliateTag": null
+        }
+      ],
+      "seeded": true
     },
     {
       "id": "racket-li-ning-axforce-90-dragon",

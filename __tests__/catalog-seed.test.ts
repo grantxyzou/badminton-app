@@ -31,7 +31,7 @@ vi.mock('@/lib/cosmos', () => ({
   })),
 }));
 
-const SEED_COUNT = 50; // scripts/data/equipment-catalog.json
+const SEED_COUNT = 71; // scripts/data/equipment-catalog.json (50 + 21 from v2 import)
 
 async function freshModule() {
   vi.resetModules();
