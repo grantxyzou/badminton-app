@@ -74,18 +74,47 @@ async function fetchAllGames(): Promise<CalGame[]> {
   }
 }
 
-/** Self-seeds for the fold: each player's LATEST self-assessment overall, keyed
- *  by lowercased name. Also returns the newest `takenAt` for cache-signing. */
+/**
+ * Self-seeds for the fold: each player's LATEST self-assessment overall, keyed
+ * by lowercased name. Also returns the newest `takenAt` for cache-signing.
+ *
+ * **Name-derived subjects are excluded** (issue #250). `POST /api/assessments`
+ * deliberately still accepts writes for a name with no member record, storing
+ * them under `memberId = 'name:<lower>'` — and nobody has to authenticate to
+ * make one. Since seeds join to the fold by lowercased NAME, such a document
+ * would otherwise anchor the calibration of the real member who shares that
+ * name. Two demonstrated consequences: writing ratings for a person before
+ * they join moved their game basis 5 → 1.1 once they did, and seeding a
+ * non-member who merely appears in `gameResults` shifted an existing member's
+ * observed level, because the fold is group-wide.
+ *
+ * #249 closed the write path for names that ARE members; this closes the read
+ * path for names that are not. Anonymous self-assessment still works — those
+ * players keep their own level via `fetchSelfSnapshots`, which is keyed by
+ * memberId. They simply no longer anchor anyone else's.
+ *
+ * **The join must stay name-based — do not "improve" `CalSeed` to carry
+ * `memberId`.** `CalGame.teamA`/`teamB` are arrays of names (see
+ * `GameResult`, written by `app/api/games/route.ts`); games carry no member id
+ * at all. Keying seeds by memberId would match nothing and silently disable
+ * every anchor. Closing the name/id split properly means migrating
+ * `gameResults` first.
+ */
 async function fetchSeeds(): Promise<{ seeds: CalSeed[]; maxAt: string }> {
   try {
     await ensureContainer('assessments', '/memberId');
     const { resources } = await getContainer('assessments').items
-      .query({ query: 'SELECT c.name, c.takenAt, c.overall FROM c' })
+      .query({ query: 'SELECT c.memberId, c.name, c.takenAt, c.overall FROM c' })
       .fetchAll();
     const latest = new Map<string, { takenAt: string; overall: number | null }>();
     let maxAt = '';
-    for (const d of resources as { name?: string; takenAt?: string; overall?: number | null }[]) {
+    for (const d of resources as { memberId?: string; name?: string; takenAt?: string; overall?: number | null }[]) {
       if (!d || typeof d.name !== 'string' || typeof d.takenAt !== 'string') continue;
+      // Unauthenticated, name-derived subject — never an anchor. Mirrors the
+      // same `startsWith('name:')` check `fetchLegacyStage` already uses.
+      if (typeof d.memberId !== 'string' || d.memberId.startsWith('name:')) continue;
+      // maxAt covers only documents that can actually change the result, so a
+      // skipped write doesn't needlessly bust the group-calibration cache.
       if (d.takenAt > maxAt) maxAt = d.takenAt;
       const key = d.name.trim().toLowerCase();
       const cur = latest.get(key);
