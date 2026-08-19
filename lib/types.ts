@@ -303,6 +303,12 @@ export interface PlayerGear {
    *  no tiebreak. Absent on every doc written before the bag shipped —
    *  readers fall back to the first racket (see lib/activeRacket.ts). */
   activeRacketId?: string;
+  /** "I mostly play" — drives the recommender's format scorer. Absent = 'both'.
+   *  Additive and optional: bpm-stable and bpm-next share one database. */
+  playFormat?: 'singles' | 'doubles' | 'both';
+  /** Upper spend bound in CAD. Absent = no preference; the budget scorer stays
+   *  neutral rather than penalising. Never a hard filter (spec D6). */
+  budgetMaxCad?: number;
   /** String-tension history. Drives the "time to restring" refresh nudge in P7. */
   stringLog?: StringLogEntry[];
   /** Sessions logged since current shoes were acquired — drives shoe-mileage nudge. */
