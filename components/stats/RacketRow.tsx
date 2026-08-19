@@ -131,13 +131,22 @@ export default function RacketRow() {
         {actionError && <ErrorState message={t('recError')} />}
         {bagFull && <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>{t('bagFull')}</p>}
 
+        {/* The tab's only action, so it takes the primary treatment at the lg
+            size. As a full-width cc-btn-secondary it measured 38px tall with a
+            13px label and an 8px radius — physically smaller and quieter than
+            the 60px/16px/12px bag rows above it, so the one thing to DO on the
+            page read as the runt of the inventory list, and it missed the 44px
+            tap minimum. cc-btn-lg also bakes in the width/justify this was
+            hand-rolling inline. Separation is by hue, not by a few points of
+            white alpha: secondary and cc-mini-card are the same neutral wash
+            4pp apart, which is not a difference a thumb can act on. */}
         <button
           type="button"
-          className="cc-btn cc-btn-secondary"
+          className="cc-btn cc-btn-primary cc-btn-lg"
           disabled={gear.busy || bagFull || gear.loadError}
           onClick={() => setSheetOpen(true)}
-          style={{ width: '100%', justifyContent: 'center' }}
         >
+          <span className="material-icons icon-sm" aria-hidden="true">add</span>
           {t('addRacket')}
         </button>
       </div>
