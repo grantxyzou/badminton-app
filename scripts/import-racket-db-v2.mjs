@@ -12,8 +12,9 @@
  *
  * Separate from import-racket-database.mjs because the source schema differs
  * (priceMinUSD/priceMaxUSD numbers vs a "$220-250" string, weightMinG/MaxG vs
- * weightGrams). Constants are deliberately shared so the two can't price the
- * same racket differently.
+ * weightGrams). Constants TIER_RANGE and USD_TO_CAD are copied from the v1
+ * importer by hand — they are NOT automatically shared. If either file changes
+ * its constants, the other MUST be updated manually to prevent pricing drift.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
