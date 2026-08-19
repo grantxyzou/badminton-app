@@ -386,6 +386,7 @@
       "save": "保存评估",
       "saving": "保存中…",
       "saveError": "没存上 — 再试一次吧。",
+      "saveErrorAuth": "登录已过期 — 重新登录后再保存这次评估。",
       "reviewCount": "已评 {rated} / {total} 项技能",
       "reviewPrompt": "保存以更新你的趋势。",
       "signedOutTitle": "记录你的球技",
