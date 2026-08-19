@@ -79,6 +79,7 @@ jobs:
           # entry closes the sync gap that would otherwise ship it OFF to stable
           # while the flag registry lists it as a live flag.
           NEXT_PUBLIC_FLAG_INSIGHT_CARDS: 'true'
+          NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER: 'false'
 
       - name: Package standalone build
         run: |

@@ -28,7 +28,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_SKILL_SMOOTHING'
   | 'NEXT_PUBLIC_FLAG_SKILL_DRILLS'
   | 'NEXT_PUBLIC_FLAG_KUDOS'
-  | 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS';
+  | 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS'
+  | 'NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER';
 
 interface FlagMeta {
   description: string;
@@ -102,6 +103,11 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'after distributed insights are promoted to stable + lived-in for 2 weeks',
   },
+  NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER: {
+    description: 'Skill-scored racket recommendations. Off everywhere until compared against the #248 AI card on bpm-next.',
+    owner: 'grant',
+    plannedRemoval: '2026-11-19',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -132,6 +138,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_KUDOS;
     case 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS':
       return process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS;
+    case 'NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER':
+      return process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER;
   }
 }
 
