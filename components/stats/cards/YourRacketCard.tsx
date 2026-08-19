@@ -11,7 +11,6 @@ interface Props {
   label: string | null;
   loading: boolean;
   error: boolean;
-  onEdit: () => void;
 }
 
 /**
@@ -21,17 +20,20 @@ interface Props {
  * Content is two tiers, most-human first (plain language, then the spec
  * sheet), because "4U · head-heavy · stiff" alone is precise and opaque to
  * anyone who doesn't already know rackets. See lib/racketSpecs.ts.
+ *
+ * Display only — not a button. It used to open the picker, which made sense
+ * when the picker also held the bag. Now that the tab lists your rackets
+ * directly below, switching and removing live there and adding lives on its
+ * own button, so a tappable hero would just be a second door to the same room.
  */
-export default function YourRacketCard({ item, label, loading, error, onEdit }: Props) {
+export default function YourRacketCard({ item, label, loading, error }: Props) {
   const t = useTranslations('valueHub');
   const { plain, specs } = item ? specTiers(item) : { plain: null, specs: null };
 
   return (
-    <button
-      type="button"
-      onClick={onEdit}
+    <div
       className="glass-card"
-      style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', width: '100%', textAlign: 'left', cursor: 'pointer' }}
+      style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', width: '100%', textAlign: 'left' }}
     >
       <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: 0 }}>{t('usingToday')}</p>
 
@@ -57,6 +59,6 @@ export default function YourRacketCard({ item, label, loading, error, onEdit }: 
       ) : (
         <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)' }}>{t('noRacketYet')}</span>
       )}
-    </button>
+    </div>
   );
 }

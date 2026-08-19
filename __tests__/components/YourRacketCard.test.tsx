@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import YourRacketCard from '../../components/stats/cards/YourRacketCard';
@@ -17,7 +17,7 @@ const ASTROX: CatalogItem = {
 function renderCard(props: Partial<React.ComponentProps<typeof YourRacketCard>> = {}) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <YourRacketCard item={null} label={null} loading={false} error={false} onEdit={vi.fn()} {...props} />
+      <YourRacketCard item={null} label={null} loading={false} error={false} {...props} />
     </NextIntlClientProvider>,
   );
 }
@@ -49,7 +49,7 @@ describe('YourRacketCard', () => {
 
   it('prompts when no racket is set', () => {
     renderCard();
-    expect(screen.getByText('Tap to pick yours')).toBeTruthy();
+    expect(screen.getByText('No racket yet — add yours below.')).toBeTruthy();
   });
 
   // The question is the card's permanent label — it must never move behind a
@@ -66,7 +66,7 @@ describe('YourRacketCard', () => {
     renderCard({ error: true });
     expect(screen.getByText('What is the racket you are using today?')).toBeTruthy();
     expect(screen.getByRole('alert')).toBeTruthy();
-    expect(screen.queryByText('Tap to pick yours')).toBeNull();
+    expect(screen.queryByText('No racket yet — add yours below.')).toBeNull();
   });
 
   // The label is stored on the gear doc; the CatalogItem may be missing if the
@@ -74,6 +74,14 @@ describe('YourRacketCard', () => {
   it('falls back to the stored label when the catalog item is missing', () => {
     renderCard({ item: null, label: 'Some Discontinued Racket' });
     expect(screen.getByText('Some Discontinued Racket')).toBeTruthy();
-    expect(screen.queryByText('Tap to pick yours')).toBeNull();
+    expect(screen.queryByText('No racket yet — add yours below.')).toBeNull();
+  });
+  // Display only. It used to open the picker, which made sense when the picker
+  // also held the bag; now that the tab lists your rackets directly below,
+  // switching and removing live there and adding has its own button, so a
+  // tappable hero would be a second door to the same room.
+  it('is not a button — every action lives on the tab below it', () => {
+    const { container } = renderCard({ item: ASTROX, label: 'Yonex Astrox 100ZZ' });
+    expect(container.querySelector('button')).toBeNull();
   });
 });

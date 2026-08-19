@@ -6,9 +6,10 @@ import GearSheet from '../../components/stats/GearSheet';
 import enMessages from '../../messages/en.json';
 
 /**
- * The recognition-over-recall redesign. The two behaviours worth pinning:
- * tapping a model SELECTS (v1 saved instantly — browsing felt dangerous), and
- * only the explicit Save button writes.
+ * GearSheet is now a catalog picker and nothing else — the bag moved to the
+ * Equipment tab. The behaviours worth pinning here are the ones that changed
+ * with that split: one tap commits and closes (no Save button), rackets
+ * already owned never appear, and every row shows its brand.
  */
 
 const CATALOG = [
@@ -29,27 +30,34 @@ const CATALOG = [
   },
 ];
 
-function mockFetch() {
-  const calls: Array<{ url: string; init?: RequestInit }> = [];
-  global.fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
-    calls.push({ url: String(url), init });
+function mockCatalog(items: unknown = CATALOG, status = 200) {
+  global.fetch = vi.fn(async (url: RequestInfo | URL) => {
     if (String(url).includes('/api/equipment/catalog')) {
-      return new Response(JSON.stringify({ items: CATALOG }), { status: 200 });
-    }
-    if (String(url).includes('/api/equipment/gear')) {
-      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      return new Response(JSON.stringify({ items }), { status });
     }
     return new Response('{}', { status: 404 });
   }) as unknown as typeof fetch;
-  return calls;
 }
 
+type PickFn = React.ComponentProps<typeof GearSheet>['onPick'];
+
 function renderSheet(props: Partial<React.ComponentProps<typeof GearSheet>> = {}) {
-  return render(
+  const onPick = (props.onPick ?? vi.fn(async () => ({ ok: true as const }))) as ReturnType<typeof vi.fn> & PickFn;
+  const onClose = props.onClose ?? vi.fn();
+  const utils = render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <GearSheet name="Lin" open onClose={() => {}} onSaved={() => {}} {...props} />
+      <GearSheet
+        open
+        onClose={onClose}
+        ownedCatalogIds={[]}
+        onPick={onPick}
+        busy={false}
+        online
+        {...props}
+      />
     </NextIntlClientProvider>,
   );
+  return { ...utils, onPick, onClose };
 }
 
 beforeEach(() => {
@@ -61,17 +69,17 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('GearSheet (recognition over recall)', () => {
-  it('renders a brand tab per catalog brand and no search box', async () => {
-    mockFetch();
+describe('GearSheet (catalog picker)', () => {
+  it('renders a brand tab per catalog brand and a search box', async () => {
+    mockCatalog();
     renderSheet();
     expect(await screen.findByRole('tab', { name: 'Yonex' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Victor' })).toBeTruthy();
-    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.getByPlaceholderText('Search rackets')).toBeTruthy();
   });
 
   it('shows only the active brand’s models, with the spec line as the recognition cue', async () => {
-    mockFetch();
+    mockCatalog();
     renderSheet();
     expect(await screen.findByText('Astrox 88D Pro')).toBeTruthy();
     expect(screen.getByText('4U · head-heavy · stiff')).toBeTruthy();
@@ -82,286 +90,109 @@ describe('GearSheet (recognition over recall)', () => {
     expect(screen.queryByText('Astrox 88D Pro')).toBeNull();
   });
 
-  it('tapping a model selects it — it must NOT save', async () => {
-    const calls = mockFetch();
-    renderSheet();
-    fireEvent.click(await screen.findByText('Astrox 88D Pro'));
+  // The whole point of the redesign: picking is one tap, not tap-then-Save.
+  it('tapping a model picks it and closes the sheet — there is no Save button', async () => {
+    mockCatalog();
+    const { onPick, onClose } = renderSheet();
+    fireEvent.click(await screen.findByText('Nanoflare 800'));
 
-    // The catalog GET and the alongside gear-doc GET (for the bag) have
-    // fired, but selecting a model must not write — no gear call of any
-    // kind (POST/PATCH/DELETE), only the read. fetch's implicit method
-    // (no `init.method`) is GET, so that's excluded by the fallback below.
-    expect(calls.filter((c) => c.url.includes('/gear') && (c.init?.method ?? 'GET') !== 'GET')).toHaveLength(0);
-    // Save button arms and names the selection.
-    expect(screen.getByRole('button', { name: 'Save — Astrox 88D Pro' })).toBeTruthy();
+    await waitFor(() => expect(onPick).toHaveBeenCalledTimes(1));
+    expect(onPick.mock.calls[0][0].id).toBe('racket-yonex-nanoflare-800');
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: /^Save/ })).toBeNull();
   });
 
-  it('Save is disabled until something is selected', async () => {
-    mockFetch();
+  // Regression guard for the old two-surface design: the sheet must never
+  // render bag controls again.
+  it('renders no bag controls — those live on the Equipment tab now', async () => {
+    mockCatalog();
     renderSheet();
     await screen.findByText('Astrox 88D Pro');
-    const save = screen.getByRole('button', { name: 'Save' });
-    expect((save as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByText('Your rackets')).toBeNull();
+    expect(screen.queryByText('Use this one')).toBeNull();
+    expect(screen.queryByText('Using today')).toBeNull();
   });
 
-  it('Save POSTs the selected catalogId and shows the saved state', async () => {
-    const calls = mockFetch();
-    renderSheet();
-    fireEvent.click(await screen.findByText('Nanoflare 800'));
-    fireEvent.click(screen.getByRole('button', { name: 'Save — Nanoflare 800' }));
-
-    await waitFor(() => expect(screen.getByText(/Saved!/)).toBeTruthy());
-    const post = calls.find((c) => c.url.includes('/gear') && c.init?.method === 'POST');
-    expect(post).toBeTruthy();
-    const body = JSON.parse(String(post!.init!.body));
-    expect(body.item.catalogId).toBe('racket-yonex-nanoflare-800');
-    expect(body.item.label).toBe('Yonex Nanoflare 800');
-    expect(body.name).toBe('Lin');
+  it('omits rackets already in the bag', async () => {
+    mockCatalog();
+    renderSheet({ ownedCatalogIds: ['racket-yonex-astrox-88d-pro'] });
+    expect(await screen.findByText('Nanoflare 800')).toBeTruthy();
+    expect(screen.queryByText('Astrox 88D Pro')).toBeNull();
   });
 
-  // Fix wave 2026-08: currentLabel is always something already in the bag
-  // (it's the player's active racket), and Save now POSTs an add rather than
-  // an idempotent replace — pre-selecting it made opening the sheet and
-  // tapping Save (the most obvious action) a guaranteed 409 duplicate_racket.
-  it('lands on the current racket’s brand tab without pre-selecting it', async () => {
-    mockFetch();
-    renderSheet({ currentLabel: 'Victor DriveX 9X' });
-    // Victor tab is active for browsing context, but nothing is selected.
+  // If every racket of a brand is already owned, that brand's tab must go too
+  // — an empty tab you can stand on reads as broken.
+  it('drops a brand tab once all of its rackets are owned, and moves off it', async () => {
+    mockCatalog();
+    renderSheet({
+      ownedCatalogIds: ['racket-yonex-astrox-88d-pro', 'racket-yonex-nanoflare-800'],
+    });
     expect(await screen.findByText('DriveX 9X')).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: 'Yonex' })).toBeNull();
     expect(screen.getByRole('tab', { name: 'Victor' }).getAttribute('aria-selected')).toBe('true');
-    expect(screen.queryByRole('button', { name: /DriveX 9X — selected/ })).toBeNull();
-    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('tapping the selected model again deselects it', async () => {
-    mockFetch();
-    renderSheet();
-    const row = await screen.findByText('Astrox 88D Pro');
-    fireEvent.click(row);
-    fireEvent.click(screen.getByRole('button', { name: /Astrox 88D Pro — selected/ }));
-    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true);
+  it('does not fire onPick while busy', async () => {
+    mockCatalog();
+    const { onPick } = renderSheet({ busy: true });
+    fireEvent.click(await screen.findByText('Astrox 88D Pro'));
+    expect(onPick).not.toHaveBeenCalled();
   });
 
   it('says so when the catalog is empty, instead of rendering a blank sheet', async () => {
     // Regression: the production container held zero rackets, and the sheet
-    // drew a title, a hint and a dead Save button — loaded-empty was
+    // drew a title and a hint over nothing — loaded-empty was
     // indistinguishable from broken.
-    global.fetch = vi.fn(async (url: RequestInfo | URL) => {
-      if (String(url).includes('/api/equipment/catalog')) {
-        return new Response(JSON.stringify({ items: [] }), { status: 200 });
-      }
-      // Isolate the catalog-empty scenario: the gear-doc GET succeeds with
-      // no bag, so this test exercises exactly one failure mode.
-      if (String(url).includes('/api/equipment/gear')) {
-        return new Response(JSON.stringify({ gear: null }), { status: 200 });
-      }
-      return new Response('{}', { status: 404 });
-    }) as unknown as typeof fetch;
-
+    mockCatalog([]);
     renderSheet();
     expect(await screen.findByText(/No rackets in the catalog yet/)).toBeTruthy();
-    // No brand tabs, and Save stays inert.
-    expect(screen.queryByRole('tab')).toBeNull();
-    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  // Fix round 2: the two error paths (catalog load, gear load) are now
-  // verified in isolation, each with the OTHER endpoint succeeding, so a
-  // regression in one surface's rendering can't be masked by the other's
-  // alert independently satisfying a looser "some alert exists" assertion.
-  // (A prior version of this test used a blanket 500-everything mock and
-  // asserted findAllByRole('alert').length > 0 — that passes even if the
-  // catalog's own error pill at GearSheet.tsx:247 is deleted entirely,
-  // because the unrelated gear-load alert still renders.)
-  it('shows the catalog error pill when only the catalog GET fails, and does not show a bag error', async () => {
-    global.fetch = vi.fn(async (url: RequestInfo | URL) => {
-      if (String(url).includes('/api/equipment/catalog')) {
-        return new Response('{}', { status: 500 });
-      }
-      if (String(url).includes('/api/equipment/gear')) {
-        return new Response(JSON.stringify({ gear: null }), { status: 200 });
-      }
-      return new Response('{}', { status: 404 });
-    }) as unknown as typeof fetch;
-
-    renderSheet();
-    expect(await screen.findByRole('alert')).toBeTruthy();
-    // Isolation check: exactly one alert (the catalog's), not a second one
-    // from a gear failure that isn't happening in this scenario.
-    expect(screen.getAllByRole('alert')).toHaveLength(1);
-    // No brand tabs / models rendered — the catalog genuinely failed to load,
-    // this isn't the loaded-empty state.
     expect(screen.queryByRole('tab')).toBeNull();
   });
 
-  // Finding 1 (fix round 1): a failed gear read must not render as a
-  // truthful "you have no rackets" — it must show its own error pill, even
-  // when the catalog load succeeds fine on its own.
-  it('shows an error pill instead of a lying empty bag when only the gear GET fails, and the catalog still loads', async () => {
-    global.fetch = vi.fn(async (url: RequestInfo | URL) => {
-      if (String(url).includes('/api/equipment/catalog')) {
-        return new Response(JSON.stringify({ items: CATALOG }), { status: 200 });
-      }
-      if (String(url).includes('/api/equipment/gear')) {
-        return new Response('{}', { status: 500 });
-      }
-      return new Response('{}', { status: 404 });
-    }) as unknown as typeof fetch;
-
+  it('shows an error pill when the catalog GET fails, not an empty state', async () => {
+    mockCatalog(null, 500);
     renderSheet();
-    // Catalog loaded fine and rendered its models — this isn't a catalog failure.
-    expect(await screen.findByText('Astrox 88D Pro')).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Yonex' })).toBeTruthy();
     expect(await screen.findByRole('alert')).toBeTruthy();
-    // Isolation check: exactly one alert (the gear-doc's), not a second one
-    // from a catalog failure that isn't happening in this scenario.
-    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(screen.queryByRole('tab')).toBeNull();
+    // A load failure is not a loaded-empty catalog — the two must not share
+    // a rendering.
+    expect(screen.queryByText(/No rackets in the catalog yet/)).toBeNull();
   });
 });
 
-describe('GearSheet bag wiring (fix round 1)', () => {
-  const BAG_GEAR = {
-    id: 'gear-m1',
-    memberId: 'm1',
-    items: [
-      { id: 'a', catalogId: 'racket-yonex-astrox-88d-pro', category: 'racket', label: 'Yonex Astrox 88D Pro' },
-      { id: 'b', catalogId: 'racket-victor-drivex-9x', category: 'racket', label: 'Victor DriveX 9X' },
-    ],
-    activeRacketId: 'a',
-  };
-
-  function mockFetchAdvanced(opts: {
-    gear?: unknown;
-    post?: { status: number; body: unknown };
-    patch?: { status: number; body: unknown };
-    del?: { status: number; body: unknown };
-  } = {}) {
-    const calls: Array<{ url: string; init?: RequestInit }> = [];
-    global.fetch = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
-      calls.push({ url: String(url), init });
-      const u = String(url);
-      const method = (init?.method ?? 'GET').toUpperCase();
-      if (u.includes('/api/equipment/catalog')) {
-        return new Response(JSON.stringify({ items: CATALOG }), { status: 200 });
-      }
-      if (u.includes('/api/equipment/gear')) {
-        if (method === 'GET') {
-          return new Response(JSON.stringify({ gear: opts.gear ?? null }), { status: 200 });
-        }
-        if (method === 'POST') {
-          const r = opts.post ?? { status: 200, body: { gear: opts.gear ?? null } };
-          return new Response(JSON.stringify(r.body), { status: r.status });
-        }
-        if (method === 'PATCH') {
-          const r = opts.patch ?? { status: 200, body: { gear: opts.gear ?? null } };
-          return new Response(JSON.stringify(r.body), { status: r.status });
-        }
-        if (method === 'DELETE') {
-          const r = opts.del ?? { status: 200, body: { gear: opts.gear ?? null } };
-          return new Response(JSON.stringify(r.body), { status: r.status });
-        }
-      }
-      return new Response('{}', { status: 404 });
-    }) as unknown as typeof fetch;
-    return calls;
-  }
-
-  it('shows the bagFull message on a 409 bag_full refusal, and the sheet stays open', async () => {
-    mockFetchAdvanced({ post: { status: 409, body: { error: 'bag_full' } } });
-    const onClose = vi.fn();
-    renderSheet({ onClose });
+describe('GearSheet refusal messages', () => {
+  // Both 409 reasons are unreachable by design now (owned rackets are filtered
+  // out, and the tab disables Add at MAX_RACKETS). They stay mapped so a bag
+  // that fills some other way says so rather than reading as a crash.
+  it.each([
+    ['bag_full', "That's all the rackets we can hold — remove one first."],
+    ['duplicate_racket', 'That racket is already in your bag.'],
+  ] as const)('surfaces the %s refusal and keeps the sheet open', async (reason, message) => {
+    mockCatalog();
+    const onPick = vi.fn(async () => ({ ok: false as const, reason }));
+    const { onClose } = renderSheet({ onPick });
     fireEvent.click(await screen.findByText('Astrox 88D Pro'));
-    fireEvent.click(screen.getByRole('button', { name: 'Save — Astrox 88D Pro' }));
 
-    expect(await screen.findByText("That's all the rackets we can hold — remove one first.")).toBeTruthy();
+    expect(await screen.findByText(message)).toBeTruthy();
     expect(onClose).not.toHaveBeenCalled();
-    expect(screen.queryByText(/Saved!/)).toBeNull();
   });
 
-  it('shows the bagDuplicate message on a 409 duplicate_racket refusal, and the sheet stays open', async () => {
-    mockFetchAdvanced({ post: { status: 409, body: { error: 'duplicate_racket' } } });
-    const onClose = vi.fn();
-    renderSheet({ onClose });
+  it('falls back to the generic error rather than asserting a reason the server did not give', async () => {
+    mockCatalog();
+    const onPick = vi.fn(async () => ({ ok: false as const, reason: 'error' as const }));
+    const { onClose } = renderSheet({ onPick });
     fireEvent.click(await screen.findByText('Astrox 88D Pro'));
-    fireEvent.click(screen.getByRole('button', { name: 'Save — Astrox 88D Pro' }));
-
-    expect(await screen.findByText('That racket is already in your bag.')).toBeTruthy();
-    expect(onClose).not.toHaveBeenCalled();
-    expect(screen.queryByText(/Saved!/)).toBeNull();
-  });
-
-  it('falls back to the generic save error on a 500, not a 409 refusal message', async () => {
-    mockFetchAdvanced({ post: { status: 500, body: {} } });
-    renderSheet();
-    fireEvent.click(await screen.findByText('Astrox 88D Pro'));
-    fireEvent.click(screen.getByRole('button', { name: 'Save — Astrox 88D Pro' }));
 
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(screen.queryByText("That's all the rackets we can hold — remove one first.")).toBeNull();
     expect(screen.queryByText('That racket is already in your bag.')).toBeNull();
-  });
-
-  // An unrecognized 409 code (neither bag_full nor duplicate_racket) must
-  // also fall back to the generic error, not assert a specific reason the
-  // server never gave (Finding 5).
-  it('falls back to the generic save error on an unrecognized 409 code', async () => {
-    mockFetchAdvanced({ post: { status: 409, body: { error: 'something_new' } } });
-    renderSheet();
-    fireEvent.click(await screen.findByText('Astrox 88D Pro'));
-    fireEvent.click(screen.getByRole('button', { name: 'Save — Astrox 88D Pro' }));
-
-    expect(await screen.findByRole('alert')).toBeTruthy();
-    expect(screen.queryByText("That's all the rackets we can hold — remove one first.")).toBeNull();
-    expect(screen.queryByText('That racket is already in your bag.')).toBeNull();
-  });
-
-  it('activate fires a PATCH with the tapped racket id', async () => {
-    const calls = mockFetchAdvanced({
-      gear: BAG_GEAR,
-      patch: { status: 200, body: { gear: { ...BAG_GEAR, activeRacketId: 'b' } } },
-    });
-    renderSheet();
-    fireEvent.click(await screen.findByLabelText('Use this one — Victor DriveX 9X'));
-
-    await waitFor(() => {
-      const patchCall = calls.find((c) => c.url.includes('/gear') && c.init?.method === 'PATCH');
-      expect(patchCall).toBeTruthy();
-      expect(JSON.parse(String(patchCall!.init!.body))).toEqual({ name: 'Lin', activeRacketId: 'b' });
-    });
-  });
-
-  it('remove fires a DELETE with the tapped racket id', async () => {
-    const calls = mockFetchAdvanced({
-      gear: BAG_GEAR,
-      del: { status: 200, body: { gear: { ...BAG_GEAR, items: [BAG_GEAR.items[0]] } } },
-    });
-    renderSheet();
-    fireEvent.click(await screen.findByLabelText('Remove — Victor DriveX 9X'));
-
-    await waitFor(() => {
-      const delCall = calls.find((c) => c.url.includes('/gear') && c.init?.method === 'DELETE');
-      expect(delCall).toBeTruthy();
-      expect(delCall!.url).toContain('name=Lin');
-      expect(delCall!.url).toContain('itemId=b');
-    });
-  });
-
-  it('clears saving after a failed mutation so the UI is not left permanently disabled', async () => {
-    mockFetchAdvanced({ gear: BAG_GEAR, patch: { status: 500, body: {} } });
-    renderSheet();
-    const useBtn = await screen.findByLabelText('Use this one — Victor DriveX 9X');
-    fireEvent.click(useBtn);
-
-    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
-    // The failed PATCH must release the shared busy state — every bag
-    // button (and Save) re-enables rather than staying disabled forever.
-    expect((useBtn as HTMLButtonElement).disabled).toBe(false);
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
 
 describe('GearSheet search', () => {
   it('matches on model across every brand, ignoring the selected tab', async () => {
-    mockFetch();
+    mockCatalog();
     renderSheet();
     await waitFor(() => screen.getByText('Astrox 88D Pro'));
     fireEvent.change(screen.getByPlaceholderText('Search rackets'), { target: { value: 'drivex' } });
@@ -370,8 +201,22 @@ describe('GearSheet search', () => {
     expect(screen.queryByText('Astrox 88D Pro')).toBeNull();
   });
 
+  // The row's brand used to live only in its aria-label, so a cross-brand
+  // search — the one case where brand is exactly what you're matching on —
+  // rendered as bare model names.
+  it('shows the brand on the row, visibly, in cross-brand results', async () => {
+    mockCatalog();
+    renderSheet();
+    await waitFor(() => screen.getByText('Astrox 88D Pro'));
+    fireEvent.change(screen.getByPlaceholderText('Search rackets'), { target: { value: 'drivex' } });
+    // Brand tabs are hidden while a query is active, so this can only be the
+    // row's own visible brand label.
+    expect(screen.queryByRole('tab')).toBeNull();
+    expect(screen.getByText('Victor')).toBeTruthy();
+  });
+
   it('matches case-insensitively on brand', async () => {
-    mockFetch();
+    mockCatalog();
     renderSheet();
     await waitFor(() => screen.getByText('Astrox 88D Pro'));
     fireEvent.change(screen.getByPlaceholderText('Search rackets'), { target: { value: 'VICTOR' } });
@@ -380,7 +225,7 @@ describe('GearSheet search', () => {
 
   // A search miss is not a broken screen.
   it('shows an empty state, not an error, when nothing matches', async () => {
-    mockFetch();
+    mockCatalog();
     renderSheet();
     await waitFor(() => screen.getByText('Astrox 88D Pro'));
     fireEvent.change(screen.getByPlaceholderText('Search rackets'), { target: { value: 'zzzz' } });
@@ -389,7 +234,7 @@ describe('GearSheet search', () => {
   });
 
   it('restores brand browsing when the query is cleared', async () => {
-    mockFetch();
+    mockCatalog();
     renderSheet();
     await waitFor(() => screen.getByText('Astrox 88D Pro'));
     const input = screen.getByPlaceholderText('Search rackets');

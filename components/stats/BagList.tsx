@@ -12,15 +12,22 @@ interface Props {
 }
 
 /**
- * The player's racket bag, shown above the picker inside GearSheet.
+ * The player's rackets, listed on the Equipment tab itself.
  *
- * Hidden below two rackets: with one racket there is no choice to make, and a
- * "bag" of one is chrome. The single-racket experience is unchanged from
- * before the bag existed.
+ * This used to live inside the picker sheet and hide itself below two rackets
+ * ("a bag of one is chrome"). That was right for a sheet, where one row stole
+ * space from a 50-row catalog — and wrong the moment the tab became the bag:
+ * it left a one-racket player with no way to remove or replace the racket they
+ * own. The list now always renders every racket, the active one included, so
+ * the layout has one shape at one racket and at five.
+ *
+ * The active row shows a badge where the others show "Use this one", but keeps
+ * its remove button. That's the invariant this component exists to hold: a
+ * player with exactly one racket can still change it and still remove it.
  */
 export default function BagList({ items, activeId, onActivate, onRemove, busy }: Props) {
   const t = useTranslations('valueHub');
-  if (items.length < 2) return null;
+  if (items.length === 0) return null;
 
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
