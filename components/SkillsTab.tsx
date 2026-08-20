@@ -11,6 +11,7 @@ import WhereYouSitCard from '@/components/stats/WhereYouSitCard';
 import ClubConsentSheet from '@/components/stats/ClubConsentSheet';
 import YourRecordCard from '@/components/stats/YourRecordCard';
 import WhoYouPlayWithCard from '@/components/stats/WhoYouPlayWithCard';
+import LearnRegister from '@/components/stats/LearnRegister';
 import { useStatsPrivacy, shouldPromptForComparison } from '@/lib/useStatsPrivacy';
 import AttendanceCardLive from '@/components/stats/cards/AttendanceCardLive';
 import StreakSummaryCard from '@/components/stats/StreakSummaryCard';
@@ -275,7 +276,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
               {kudosOn && <GiveKudosCard />}
             </>
           }
-          learnSlot={drillsOn ? <DrillsCard /> : undefined}
+          learnSlot={<LearnRegister activeName={activeName} />}
           gearSlot={gearContent}
         />
       );
