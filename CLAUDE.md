@@ -48,6 +48,70 @@ Bottom-nav "Stats" (formerly "Skills"; `nav.skills` i18n key kept for backcompat
 - **Attendance heatmap** — `AttendanceHeatmap` is a pure-SVG 7×N grid (7 rows = day-of-week, N columns = weeks). Solid accent = attended, outlined = missed session, empty = no session that day. Zoom 3M/6M/1Y swaps the `weeks` query param; API clamps to [1, 260].
 - **Streak hero** — `StatsStreakHero` fetches 52 weeks and shows a personal-best flame state when `streak >= longestStreak && streak >= 3`. Hidden when streak is 0. Renders above the card grid via `heroSlot`.
 
+### Equipment Tab
+
+The Equipment register inside Stats (`RacketRow`, gated on
+`NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE`). **The tab IS the player's bag** — hero
+(today's racket) → recommendation → your rackets → "+ Add a racket". Adding is
+the only thing that opens a sheet, and that sheet does nothing else.
+
+- **`components/stats/useGear.ts` is the single owner of gear state.** It holds
+  `gear/rackets/active/loaded/loadError/busy/online` plus `reload/add/activate/
+  remove/setPrefs`, and ONE monotonic op counter shared by the read and all
+  writes. Before it, `RacketRow` held the read and `GearSheet` held the writes,
+  each with its own counter — that out-of-order-response race has shipped here
+  twice. Never add a gear fetch outside this hook.
+- **`GearSheet` is a catalog picker and nothing else.** Full height (`92dvh` —
+  `vh` ignores collapsible mobile chrome and clips the sheet), search-first,
+  one tap commits and closes. Rows show brand ABOVE model: a query searches all
+  brands at once, and brand used to live only in the `aria-label`, so exactly
+  the cross-brand results where brand matters rendered as bare model names.
+  Rackets already in the bag are omitted, which takes `duplicate_racket` off
+  the happy path.
+- **`BagList` always renders, active racket included.** It used to hide below
+  two rackets ("a bag of one is chrome") — correct inside a sheet, wrong once
+  the tab became the bag, because it left a one-racket player unable to remove
+  or replace what they owned. The active row shows a badge instead of "Use this
+  one" but keeps its remove button. Don't reintroduce the guard.
+- **The hero is display-only.** With the bag on the tab, switching and removing
+  live in the list and adding has its own button, so a tappable hero would be a
+  second door to the same room (same principle as `RacketRecCard`'s
+  conditional interactivity).
+- **`lib/activeRacket.ts`** resolves the active racket read-tolerantly: new docs
+  carry `activeRacketId`, legacy docs fall back to `items[0]`. No migration.
+
+#### Racket recommender (`NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER`)
+
+Scores the **fourteen check-in skill ratings** rather than the old
+`Member.stage` (optional, rarely set — so it showed nearly everyone the same
+racket and never excluded what they owned).
+
+- `lib/racketProfile.ts` — `buildProfile(ratings, gear)`. Owns the 14-key rename
+  table between the app's assessment keys and the engine's field names; a wrong
+  key silently defaults that skill to 3 and no type check catches it, since the
+  map is keyed by `string`. Unrated skills default to 3 (partial ratings are
+  normal — `validateRatings` accepts any subset). Returns **`null` when there
+  are no ratings at all**, which is what drives `needsCheckIn`.
+- `lib/racketRecommend.ts` — pure, no I/O or clock. Seven weighted scorers
+  ported from `docs/superpowers/reference/recommend_racket.py`, which stays the
+  source of truth for thresholds. Two deliberate divergences: **budget never
+  hard-filters** (prices are USD-derived and go stale; a silent exclusion is
+  invisible when the price is wrong), and rows missing normalized
+  `balance`/`flex`/`tier` are **skipped, not scored on invented values**.
+- **No assessment → no recommendation.** With no ratings the engine would score
+  fourteen 3s and emit a confident, meaningless pick. The card says "do the
+  check-in" instead.
+- **The flag-on route requires auth; flag-off stays public.** `GET
+  /api/recommend` was unauthenticated because it returned only a coarse
+  stage-derived pick. Engine reasons quote individual ratings ("smash 4/5"),
+  and member names are enumerable via `GET /api/members`, so the flag-on branch
+  gates on a `member_session` cookie for that name or admin (same gate as
+  `/api/stats/level`). Rate limiting stays first (security rule 4).
+- **Format and budget are asked, not inferred** — the engine's author flagged
+  both as not derivable from skill scores. Stored as optional
+  `playFormat`/`budgetMaxCad` on `PlayerGear`; budget bands are CAD and every
+  band sets an UPPER bound.
+
 ### Design System
 Canonical bundle mirrored at `docs/design-system/` (43 files — tokens, 28 specimen HTMLs, UI-kit JSX refs, self-hosted fonts). `app/globals.css` is the **single source of truth** for tokens in the running app; the docs folder is pristine reference only (never imported).
 
@@ -167,6 +231,35 @@ Canonical bundle mirrored at `docs/design-system/` (43 files — tokens, 28 spec
 - **Cover modes (`Player.coverMode`)**: a covered (`writtenOff:true`) player is `'absorb'` (admin eats their share; they stay in the per-person denominator) or `'resplit'` (excluded from the denominator → spread across the other payers). Legacy `writtenOff` with no `coverMode` reads as `'absorb'`. Settle (`/api/session/settle`) is the single calculator and stamps `SettledSnapshot.coveredTotal` (Σ per-person over absorb-covered). `CoverSheet` re-runs settle (DELETE+POST) when the session was already settled so amounts update immediately. Surfaced in `PaymentsCard`'s per-player menu (gated behind `NEXT_PUBLIC_FLAG_LEDGER`).
 - **`lib/buildReceiptInput.ts` is the single cost-per-person + receipt resolver**: computes `costPerPerson` once and returns a ready `ReceiptInput` — snapshot-first for settled sessions (the cover-aware `SettledSnapshot`), best-effort recompute via `sessionCostTotals` otherwise. Drives `GET /api/sessions/history`, `PastSessionsPage`, and `PaymentsCard`'s summary header + receipts, so a list amount and its receipt can't diverge. Don't hand-roll a fourth cost computation (settle, `members/[id]/history`, and this each grew their own). `PaymentsCard`/`PastSessionsPage` own their OWN `<ReceiptSheet>` because `CommandCenter.openReceipt` fetches the ACTIVE session only and can't render a past session's receipt.
 - **`ReceiptSheet` group preview uses a callback ref**: the canvas is drawn from a `ref` callback (`drawCanvas`) the instant it mounts, then exported to a PNG shown via `<img>` (with a sized placeholder until ready). A passive effect reading `canvasRef.current` raced the ref attach and left the preview a blank void — don't revert to that.
+- **Catalog seeding REFRESHES, it does not only fill.** `ensureCatalogSeeded`
+  originally upserted only ids that were ABSENT — right for a catalog that
+  grows, wrong for one whose rows change SHAPE. When the v2 import added
+  normalized attributes to 39 rows that already existed in Cosmos, the JSON
+  file gained them and the database never did: `isScorable` then silently
+  skipped **50 of 71 rackets in production** while every local test passed,
+  because in dev the JSON file IS the catalog. It now refreshes a row when it
+  is missing OR its seed-owned fields differ, guarded two ways — only rows
+  marked `seeded: true` are touched (a deploy must never revert an
+  admin-authored row), and the comparison **sorts keys** (Cosmos doesn't
+  guarantee key order, and a plain `JSON.stringify` would call every row stale
+  and rewrite the whole catalog on every cold start). Any future data whose
+  shape changes needs the same treatment.
+- **Backticks inside a double-quoted `git commit -m` are command
+  substitution.** `` `seeded: true` `` was executed by the shell and replaced
+  with empty output, silently deleting the phrase it was explaining. Same
+  family as the heredoc `!` hazard. Use `git commit -F -` with a **quoted**
+  heredoc (`<<'MSG'`) — the quotes stop all expansion.
+- **A per-task review scoped to its own diff cannot see cross-file breakage.**
+  Twice in one branch a change invalidated assertions living in files the task
+  never touched (a catalog count, then lint errors), and both got through a
+  clean task review. Run the FULL `npm test` **and** `npm run lint` between
+  tasks, not only at the end — the repo baseline is 0 lint errors, so a
+  regression there is unambiguous.
+- **`next.config.js` sets `agentRules: false`.** Next 16.3 appends a
+  `<!-- BEGIN:nextjs-agent-rules -->` block to `CLAUDE.md` on every `next dev`
+  / `next build`, and re-adds it if removed, so the file reads as modified
+  forever. This file is hand-authored documentation, not a generated artifact.
+  Flip to `true` (or drop the line) to take the block instead.
 - **`.azure/` is gitignored**: Never commit.
 - **Mock store**: Test without DB by omitting `COSMOS_CONNECTION_STRING`. Verify mock query filters match real Cosmos queries.
 - **Mock-store dev seeds**: `SEED_DEV_ADMIN=Name:NNNN` seeds an admin member; `SEED_DEV_SCENARIO=fresh-thursday` seeds a clean signup-open session + 6 famous-player invite-list members (Lin has PIN 2468). Both refuse to fire when real Cosmos is configured. Use for end-to-end signup → settle → cover testing without touching prod data. Implemented in `lib/cosmos.ts` `seedDevAdminIfRequested` / `seedDevScenarioIfRequested`.
@@ -223,4 +316,4 @@ npm test              # run all tests (vitest)
 npm run test:watch    # watch mode
 ```
 
-1111 tests across 135 suites covering API routes (admin auth, player CRUD, player self-pay, account-only signup + hijack guards, members, sessions, session costs, birds, per-session bird-usage, pooled bird usage + auto/manual price resolution, skills, releases CRUD + PATCH, announcements markdown round-trip, stats attendance, recovery PIN + member-fallback), feature flags, i18n parity, component rendering (CreateAccountSheet, ProfileTab, etc.), mini-markdown parser, bird-brand parser, bird-usage helpers, stats placeholder, and the design-preview route. Tests use the in-memory mock store — no DB needed. Helpers in `__tests__/helpers.ts`. Each test gets a unique IP via `X-Client-IP` to avoid rate limiter collisions.
+1303 tests across 152 suites covering API routes (admin auth, player CRUD, player self-pay, account-only signup + hijack guards, members, sessions, session costs, birds, per-session bird-usage, pooled bird usage + auto/manual price resolution, skills, releases CRUD + PATCH, announcements markdown round-trip, stats attendance, recovery PIN + member-fallback), feature flags, i18n parity, component rendering (CreateAccountSheet, ProfileTab, etc.), mini-markdown parser, bird-brand parser, bird-usage helpers, stats placeholder, and the design-preview route. Tests use the in-memory mock store — no DB needed. Helpers in `__tests__/helpers.ts`. Each test gets a unique IP via `X-Client-IP` to avoid rate limiter collisions.
