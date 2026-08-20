@@ -4,20 +4,12 @@ import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { getIdentity } from '@/lib/identity';
 import { useOnline } from '@/lib/useOnline';
-import { KUDOS_TAGS, type KudosTag } from '@/lib/kudos';
+import { KUDOS_TAGS, TAG_ICON, type KudosTag } from '@/lib/kudos';
 import CardHeader from '@/components/primitives/CardHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
 const LOG_WINDOW_MS = 48 * 60 * 60 * 1000;
-
-const TAG_EMOJI: Record<KudosTag, string> = {
-  great_defense: '🛡️',
-  clutch: '🔥',
-  most_improved: '📈',
-  good_sport: '🤝',
-  nice_shot: '🎯',
-};
 
 function resolveActiveName(): string | null {
   const id = getIdentity();
@@ -130,8 +122,25 @@ export default function GiveKudosCard() {
                       color: sent ? 'var(--accent)' : undefined,
                     }}
                   >
-                    <span aria-hidden="true" style={{ marginRight: 4 }}>{TAG_EMOJI[tag]}</span>
-                    {t(`kudos.tag.${tag}`)}{sent ? ' ✓' : ''}
+                    {/* Inherits the button's colour, so the glyph turns accent
+                        along with the pill once sent. */}
+                    <span
+                      className="material-icons"
+                      aria-hidden="true"
+                      style={{ marginRight: 4, fontSize: 'var(--icon-sm)', verticalAlign: 'text-bottom' }}
+                    >
+                      {TAG_ICON[tag]}
+                    </span>
+                    {t(`kudos.tag.${tag}`)}
+                    {sent && (
+                      <span
+                        className="material-icons"
+                        aria-hidden="true"
+                        style={{ marginLeft: 4, fontSize: 'var(--icon-sm)', verticalAlign: 'text-bottom' }}
+                      >
+                        check_circle
+                      </span>
+                    )}
                   </button>
                 );
               })}
