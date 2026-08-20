@@ -6,6 +6,7 @@ import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
 import { getCanonicalLevel, type LevelSubject } from '@/lib/levelStore';
 import { summarizeAssessmentTrend, type StoredAssessment } from '@/lib/assessment';
 import { recommendDrills } from '@/lib/drills';
+import { drillDocId, readDone, type DrillCompletionDoc } from '@/lib/drillsDone';
 
 /**
  * Practice drills for a member's weakest skills — private by design, same gate
@@ -56,6 +57,31 @@ async function fetchWorkOn(memberId: string) {
   }
 }
 
+/**
+ * This week's completions for a member. Best-effort: the drills themselves are
+ * the payload, and a completions read that fails must degrade to an empty
+ * counter rather than 500 the whole card.
+ */
+async function fetchDone(memberId: string, weekKey: string): Promise<string[]> {
+  try {
+    await ensureContainer('drillCompletions', '/memberId');
+    const id = drillDocId(memberId, weekKey);
+    const { resources } = await getContainer('drillCompletions').items
+      .query({
+        query: 'SELECT * FROM c WHERE c.id = @id AND c.memberId = @memberId',
+        parameters: [
+          { name: '@id', value: id },
+          { name: '@memberId', value: memberId },
+        ],
+      })
+      .fetchAll();
+    return readDone(resources[0] as DrillCompletionDoc | undefined);
+  } catch (err) {
+    console.error('stats/drills: completions read failed:', err);
+    return [];
+  }
+}
+
 export async function GET(req: NextRequest) {
   const ip = getClientIp(req);
   if (!checkRateLimit(`stats-drills:${ip}`, 60, 60 * 1000)) {
@@ -84,7 +110,11 @@ export async function GET(req: NextRequest) {
       getActiveSessionId(),
     ]);
     const drills = recommendDrills({ workOn, level, rotationSeed });
-    return NextResponse.json({ drills });
+    // `done` ships with the picks so the "n of 2" counter is right on the
+    // FIRST paint. A second round-trip would render 0 of 2 for a beat and then
+    // correct itself, which reads as the app forgetting what you did.
+    const done = await fetchDone(subject.memberId, rotationSeed);
+    return NextResponse.json({ drills, done });
   } catch (error) {
     console.error('GET stats/drills error:', error);
     return NextResponse.json({ error: 'load_failed' }, { status: 500 });
