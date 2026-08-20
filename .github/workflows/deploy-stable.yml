@@ -80,6 +80,11 @@ jobs:
           # while the flag registry lists it as a live flag.
           NEXT_PUBLIC_FLAG_INSIGHT_CARDS: 'true'
           NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER: 'false'
+          # Stats v2 (You / Play / Learn / Gear + the club-comparison privacy
+          # control). Off until the whole program lands on bpm-next and is
+          # promoted — it removes the streak hero and attendance card, so a
+          # premature flip changes what friends see mid-release.
+          NEXT_PUBLIC_FLAG_STATS_V2: 'false'
 
       - name: Package standalone build
         run: |

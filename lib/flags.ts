@@ -29,7 +29,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_SKILL_DRILLS'
   | 'NEXT_PUBLIC_FLAG_KUDOS'
   | 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS'
-  | 'NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER';
+  | 'NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER'
+  | 'NEXT_PUBLIC_FLAG_STATS_V2';
 
 interface FlagMeta {
   description: string;
@@ -108,6 +109,11 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: '2026-11-19',
   },
+  NEXT_PUBLIC_FLAG_STATS_V2: {
+    description: 'Stats tab v2: the three registers (Summary / Game stats / Equipment) become four (You / Play / Learn / Gear) with a persistent Level/Games/Kudos overview strip; the 14-axis recharts radar is replaced by three dimension bars with club-median ticks; everything that counts sessions you MISSED (streak hero, attendance card, recent-form dots) is removed by product decision; and club comparison becomes a real opt-out-able feature (bands only, one master switch, asked once on first run). Chooses between the old StatsPlaceholder arrangement and the new one — it does NOT re-gate SKILL_ASSESS / SKILL_LEVEL / SKILL_DRILLS / KUDOS / INSIGHT_CARDS / VALUE_HUB_SLICE; treat their content as available. On for bpm-next + dev; off on bpm-stable until promoted.',
+    owner: 'grant',
+    plannedRemoval: 'after Stats v2 is promoted to stable + lived-in for 2 weeks',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -140,6 +146,18 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS;
     case 'NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER':
       return process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER;
+    case 'NEXT_PUBLIC_FLAG_STATS_V2':
+      return process.env.NEXT_PUBLIC_FLAG_STATS_V2;
+    default: {
+      // Exhaustiveness guard. Adding a flag to `FlagName` without adding its
+      // `case` above used to be silently legal — `readFlag` just returned
+      // `undefined`, so `isFlagOn` read `false` and the feature was off
+      // everywhere, forever, with no error at build or test time. The `FLAGS`
+      // record is compiler-enforced via `Record<FlagName, …>`; this makes the
+      // switch enforced too, so the two can no longer drift.
+      const unhandled: never = name;
+      return unhandled;
+    }
   }
 }
 
