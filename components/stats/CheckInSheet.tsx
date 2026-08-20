@@ -7,6 +7,7 @@ import EmptyState from '@/components/primitives/EmptyState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { SKILLS } from '@/lib/assessment';
 import { useOnline } from '@/lib/useOnline';
+import { isFlagOn } from '@/lib/flags';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -38,18 +39,23 @@ export default function CheckInSheet({
   const t = useTranslations('stats');
   const online = useOnline();
   const total = SKILLS.length;
-  // step: -1 = mirror/intro, 0..total-1 = a skill, total = review/save
+  // step: -1 = mirror/intro, 0..total-1 = a skill, total = review/save,
+  // SAVED = the v2 post-save result screen (v1 closes instead).
+  const SAVED = total + 1;
+  const statsV2 = isFlagOn('NEXT_PUBLIC_FLAG_STATS_V2');
   const [step, setStep] = useState(-1);
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [mirror, setMirror] = useState<Mirror | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [savedLevel, setSavedLevel] = useState<{ level: number | null; phase: string | null } | null>(null);
 
   // Reset + seed from previous each time the sheet opens.
   useEffect(() => {
     if (!open) return;
     setStep(-1);
     setError('');
+    setSavedLevel(null);
     setRatings(previous ? Object.fromEntries(previous) : {});
   }, [open, previous]);
 
@@ -117,8 +123,37 @@ export default function CheckInSheet({
         }
       }
       if (!res.ok) throw new Error(String(res.status));
+      // Tell the rest of the tab immediately, so the Level tile, dimension
+      // bars, phase and weekly focus are already correct behind the sheet.
       onSaved();
-      onClose();
+      if (!statsV2) {
+        onClose();
+        return;
+      }
+      // v2 does NOT close on save. Fourteen screens of self-assessment ending
+      // in the sheet vanishing gives the member no idea whether any of it
+      // moved anything — which is the entire reason they did it.
+      //
+      // The canonical level (not this snapshot's raw average) is what the
+      // Level tile shows, so read that: a different number here labelled
+      // "your level now" would contradict the tile two seconds later.
+      setStep(SAVED);
+      try {
+        const r = await fetch(`${BASE}/api/stats/level?name=${encodeURIComponent(name)}`, { cache: 'no-store' });
+        if (r.ok) {
+          const body = await r.json();
+          setSavedLevel({
+            level: typeof body?.level?.level === 'number' ? body.level.level : null,
+            phase: typeof body?.level?.phase === 'string' ? body.level.phase : null,
+          });
+        } else {
+          setSavedLevel({ level: null, phase: null });
+        }
+      } catch {
+        // The save SUCCEEDED; only the read-back failed. Show the confirmation
+        // without a number rather than an error that implies nothing saved.
+        setSavedLevel({ level: null, phase: null });
+      }
     } catch {
       setError(t('assess.saveError'));
     } finally {
@@ -129,6 +164,20 @@ export default function CheckInSheet({
   if (!open) return null;
 
   const skill = step >= 0 && step < total ? SKILLS[step] : null;
+
+  // What this check-in actually moves, against the stored ratings the sheet
+  // was seeded from. A skill rated the SAME still appears (it was reviewed and
+  // confirmed, which is information) — only untouched skills are absent.
+  const changes = SKILLS.filter((s) => ratings[s.key] !== undefined).map((s) => {
+    const value = ratings[s.key];
+    const before = previous?.get(s.key);
+    return {
+      key: s.key,
+      label: s.label,
+      value,
+      delta: typeof before === 'number' && before !== value ? value - before : null,
+    };
+  });
 
   return (
     <BottomSheet open onClose={onClose} ariaLabel={t('assess.checkInTitle')} maxHeight="85vh" className="max-w-lg mx-auto">
@@ -158,10 +207,34 @@ export default function CheckInSheet({
           {/* Progress track — only during the quiz steps. */}
           {skill && (
             <div style={{ marginTop: 12 }}>
+              {statsV2 && (
+                // Counter and dimension move ABOVE the bar and onto one line.
+                // The bar alone answers "how far along", but not "how far is
+                // left" or "what am I even rating now" — both of which are the
+                // questions someone eleven skills deep is actually asking.
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+                    {t('assess.step', { n: step + 1, total })}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 'var(--fs-2xs)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      fontWeight: 700,
+                      color: 'var(--accent)',
+                    }}
+                  >
+                    {t(`assess.dim.${skill.dimension}`)}
+                  </span>
+                </div>
+              )}
               <div className="cc-progress-track" style={{ height: 4, borderRadius: 'var(--radius-pill)', overflow: 'hidden' }}>
                 <div style={{ width: `${((step + 1) / total) * 100}%`, height: '100%', background: 'var(--accent)', transition: 'width 180ms var(--ease-out-quart)' }} />
               </div>
-              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: '6px 0 0' }}>{t('assess.step', { n: step + 1, total })}</p>
+              {!statsV2 && (
+                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: '6px 0 0' }}>{t('assess.step', { n: step + 1, total })}</p>
+              )}
             </div>
           )}
         </BottomSheetHeader>
@@ -192,9 +265,13 @@ export default function CheckInSheet({
           {skill && (
             <div className="space-y-3">
               <div>
-                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  {t(`assess.dim.${skill.dimension}`)}
-                </p>
+                {/* v2 moves the dimension up beside the step counter, so
+                    repeating it here would print it twice on one screen. */}
+                {!statsV2 && (
+                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    {t(`assess.dim.${skill.dimension}`)}
+                  </p>
+                )}
                 <h3 className="bpm-h3 m-0" style={{ marginTop: 2 }}>{skill.label}</h3>
               </div>
               {skill.anchors.map((anchor, i) => {
@@ -222,14 +299,69 @@ export default function CheckInSheet({
                   </button>
                 );
               })}
-              <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
-                <button type="button" onClick={() => setStep((s) => Math.max(s - 1, -1))} className="cc-btn cc-btn-ghost" style={{ flex: 1 }}>
-                  {t('assess.back')}
-                </button>
-                <button type="button" onClick={() => setStep((s) => Math.min(s + 1, total))} className="cc-btn cc-btn-primary" style={{ flex: 1 }}>
-                  {ratings[skill.key] !== undefined ? t('assess.next') : t('assess.skip')}
-                </button>
-              </div>
+              {statsV2 ? (
+                <>
+                  {/* Skip becomes its own control. It used to be the SAME
+                      button as Next with a flipped label, so the only way to
+                      skip was to not answer — and the label changed under your
+                      finger the moment you did. Two controls, one meaning
+                      each. */}
+                  <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
+                    <button
+                      type="button"
+                      onClick={() => setStep((s) => Math.max(s - 1, -1))}
+                      className="cc-btn cc-btn-ghost"
+                      style={{ flex: 1, minHeight: 44 }}
+                    >
+                      {t('assess.back')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Skipping clears any rating, so the control means what
+                        // it says rather than "keep whatever was seeded".
+                        setRatings((r) => {
+                          const next = { ...r };
+                          delete next[skill.key];
+                          return next;
+                        });
+                        setStep((s) => Math.min(s + 1, total));
+                      }}
+                      className="cc-btn cc-btn-ghost"
+                      style={{ flex: 1, minHeight: 44 }}
+                    >
+                      {t('assess.skip')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStep((s) => Math.min(s + 1, total))}
+                      className="cc-btn cc-btn-primary"
+                      style={{ flex: 1.4, minHeight: 44 }}
+                    >
+                      {step === total - 1 ? t('assess.review') : t('assess.next')}
+                    </button>
+                  </div>
+                  {/* An escape hatch for someone re-rating three skills who
+                      does not want to tap through the other eleven. */}
+                  <button
+                    type="button"
+                    onClick={() => setStep(total)}
+                    className="cc-btn cc-btn-ghost"
+                    style={{ alignSelf: 'center', display: 'block', margin: '0 auto', minHeight: 44 }}
+                  >
+                    {t('assess.stopHere')}
+                  </button>
+                </>
+              ) : (
+                <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
+                  <button type="button" onClick={() => setStep((s) => Math.max(s - 1, -1))} className="cc-btn cc-btn-ghost" style={{ flex: 1 }}>
+                    {t('assess.back')}
+                  </button>
+                  <button type="button" onClick={() => setStep((s) => Math.min(s + 1, total))} className="cc-btn cc-btn-primary" style={{ flex: 1 }}>
+                    {ratings[skill.key] !== undefined ? t('assess.next') : t('assess.skip')}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -237,19 +369,127 @@ export default function CheckInSheet({
           {step === total && (
             <div className="space-y-4">
               <p style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-primary)', margin: 0, lineHeight: 1.4 }}>{t('assess.reviewCount', { rated: ratedCount, total })}</p>
-              <EmptyState>{t('assess.reviewPrompt')}</EmptyState>
+
+              {statsV2 && changes.length > 0 ? (
+                // A bare count ("3 of 14 rated") does not tell you WHAT you
+                // changed, so there is nothing to sanity-check before saving.
+                // List the moves with their deltas.
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                  {changes.map((c) => (
+                    <div
+                      key={c.key}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 'var(--space-3)',
+                        padding: 'var(--space-4)',
+                        borderRadius: 'var(--radius-lg)',
+                        background: 'var(--inner-card-bg)',
+                        border: '1px solid var(--inner-card-border)',
+                      }}
+                    >
+                      <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)' }}>{c.label}</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md)', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          {c.value}
+                        </span>
+                        <span
+                          style={{
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: 'var(--fs-xs)',
+                            fontWeight: 600,
+                            color:
+                              c.delta === null
+                                ? 'var(--text-muted)'
+                                : c.delta > 0
+                                  ? 'var(--accent)'
+                                  : 'var(--accent-amber)',
+                          }}
+                        >
+                          {c.delta === null ? t('assess.same') : `${c.delta > 0 ? '▲' : '▼'} ${Math.abs(c.delta)}`}
+                        </span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState>{t('assess.reviewPrompt')}</EmptyState>
+              )}
+
+              {statsV2 && changes.length > 0 && (
+                <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>{t('assess.reviewPrompt')}</p>
+              )}
+
               {error && <ErrorState message={error} />}
               {!online && (
                 <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>{t('offline')}</p>
               )}
               <div style={{ display: 'flex', gap: 10 }}>
-                <button type="button" onClick={() => setStep(total - 1)} className="cc-btn cc-btn-ghost" style={{ flex: 1 }}>
-                  {t('assess.back')}
+                <button
+                  type="button"
+                  onClick={() => (statsV2 ? setStep(-1) : setStep(total - 1))}
+                  className="cc-btn cc-btn-ghost"
+                  style={{ flex: 1, minHeight: 44 }}
+                >
+                  {statsV2 ? t('assess.startOver') : t('assess.back')}
                 </button>
-                <button type="button" onClick={submit} disabled={!online || busy || ratedCount === 0} className="cc-btn cc-btn-primary" style={{ flex: 2 }}>
+                <button type="button" onClick={submit} disabled={!online || busy || ratedCount === 0} className="cc-btn cc-btn-primary" style={{ flex: statsV2 ? 1.6 : 2, minHeight: 44 }}>
                   {busy ? t('assess.saving') : t('assess.save')}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* v2 only — the result. The sheet stays open so the fourteen
+              screens end in something, instead of in the sheet vanishing. */}
+          {statsV2 && step === SAVED && (
+            <div className="space-y-4">
+              <div
+                style={{
+                  position: 'relative',
+                  overflow: 'hidden',
+                  borderRadius: 'var(--radius-xl)',
+                  padding: 'var(--space-6)',
+                  background:
+                    'linear-gradient(140deg, color-mix(in srgb, var(--accent) 82%, black), color-mix(in srgb, var(--accent-dark) 92%, black))',
+                }}
+              >
+                <span
+                  className="material-icons"
+                  aria-hidden="true"
+                  style={{ position: 'absolute', top: -8, right: -6, fontSize: 110, color: 'color-mix(in srgb, white 14%, transparent)', lineHeight: 1 }}
+                >
+                  emoji_events
+                </span>
+                <div style={{ position: 'relative' }}>
+                  <span style={{ fontSize: 'var(--fs-2xs)', color: 'color-mix(in srgb, white 86%, transparent)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>
+                    {t('assess.savedEyebrow')}
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 8 }}>
+                    {/* Same hero-number treatment as StatCard size="hero" —
+                        responsive rather than a fixed 48, so it does not
+                        crowd the sheet on a narrow phone. */}
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'clamp(40px, 13vw, 56px)', fontWeight: 700, color: 'white', lineHeight: 1 }}>
+                      {savedLevel?.level !== null && savedLevel?.level !== undefined ? savedLevel.level.toFixed(1) : '—'}
+                    </span>
+                    <span style={{ fontSize: 'var(--fs-lg)', color: 'color-mix(in srgb, white 86%, transparent)', fontWeight: 600 }}>
+                      {t('level.ofFive')}
+                    </span>
+                  </div>
+                  {savedLevel?.phase && (
+                    <p style={{ margin: '8px 0 0', fontSize: 'var(--fs-sm)', color: 'color-mix(in srgb, white 78%, transparent)' }}>
+                      {t(`assess.phase.${savedLevel.phase}`)}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
+                {t('assess.savedBody')}
+              </p>
+              <button type="button" onClick={onClose} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
+                {t('assess.done')}
+              </button>
             </div>
           )}
         </BottomSheetBody>
