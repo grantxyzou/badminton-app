@@ -3,25 +3,35 @@ import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import { verifyMemberAuth, isAdminAuthedWithMember, setMemberCookie } from '@/lib/auth';
+import {
+  normalizeStatsPrivacy,
+  parseStatsPrivacyPatch,
+  type StatsPrivacy,
+} from '@/lib/statsPrivacy';
 
 const BLOCKLISTED_PINS = new Set(['0000', '1111', '1234', '4321', '1212']);
 
 export async function GET(req: NextRequest) {
   const ip = getClientIp(req);
   if (!checkRateLimit(`members-me:${ip}`, 10, 60 * 1000)) {
-    return NextResponse.json({ role: 'member', hasPin: false });
+    // `statsPrivacy: null` means UNKNOWN, not "never asked". These degraded
+    // paths never read the member doc, so answering with the default
+    // (`promptedAt: null`) would tell the client the member is unprompted and
+    // re-fire the first-run consent sheet at someone who already answered.
+    return NextResponse.json({ role: 'member', hasPin: false, statsPrivacy: null });
   }
 
   try {
     const name = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50);
     if (!name) {
-      return NextResponse.json({ role: 'member', hasPin: false });
+      return NextResponse.json({ role: 'member', hasPin: false, statsPrivacy: null });
     }
 
     const container = getContainer('members');
     const { resources } = await container.items
       .query({
-        query: 'SELECT c.role, c.pinHash, c.createdAt FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
+        query:
+          'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
         parameters: [{ name: '@name', value: name }],
       })
       .fetchAll();
@@ -30,15 +40,16 @@ export async function GET(req: NextRequest) {
     const role = me?.role ?? 'member';
     const hasPin = typeof me?.pinHash === 'string' && me.pinHash.length > 0;
     const createdAt = typeof me?.createdAt === 'string' ? me.createdAt : null;
+    const statsPrivacy = normalizeStatsPrivacy(me?.statsPrivacy);
     // Does this device hold a valid member_session cookie for THIS name? If so,
     // the client can drop the PIN field — the sign-up endpoint accepts the
     // cookie as identity proof (skip the per-session PIN re-entry).
     const memberAuth = verifyMemberAuth(req);
     const authed = !!memberAuth && memberAuth.name.toLowerCase() === name.toLowerCase();
-    return NextResponse.json({ role, hasPin, createdAt, authed });
+    return NextResponse.json({ role, hasPin, createdAt, authed, statsPrivacy });
   } catch (error) {
     console.error('GET members/me error:', error);
-    return NextResponse.json({ role: 'member', hasPin: false, createdAt: null });
+    return NextResponse.json({ role: 'member', hasPin: false, createdAt: null, statsPrivacy: null });
   }
 }
 
@@ -64,6 +75,59 @@ export async function GET(req: NextRequest) {
  *   names via timing.
  * - Rate-limited 5/hr per (name, IP) — same envelope as `/recover`.
  */
+/**
+ * Write the member's club-comparison answer.
+ *
+ * The client sends only `{ clubComparison }` — `promptedAt` is stamped
+ * server-side. A caller must not be able to forge "already asked", which would
+ * suppress the first-run prompt on an account permanently.
+ *
+ * Auth is the member cookie for THIS name, or an admin. There is no name-only
+ * path: member names are enumerable via `GET /api/members`, so a name-keyed
+ * write would let anyone flip a stranger's privacy setting (rule 12).
+ */
+async function handleStatsPrivacyPatch(req: NextRequest, name: string, raw: unknown) {
+  // Rate limit before auth, so the limiter can't be bypassed (rule 4).
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`stats-privacy:${name.toLowerCase()}:${ip}`, 20, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+
+  const patch = parseStatsPrivacyPatch(raw);
+  if (!patch) {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  }
+
+  const caller = verifyMemberAuth(req);
+  const isSelf = !!caller && caller.name.toLowerCase() === name.toLowerCase();
+  if (!isSelf && !(await isAdminAuthedWithMember(req)).authed) {
+    return NextResponse.json({ error: 'auth_required' }, { status: 401 });
+  }
+
+  const membersContainer = getContainer('members');
+  const { resources: members } = await membersContainer.items
+    .query({
+      query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
+      parameters: [{ name: '@name', value: name }],
+    })
+    .fetchAll();
+  const member = members[0];
+  if (!member) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+
+  const existing = normalizeStatsPrivacy(member.statsPrivacy);
+  const statsPrivacy: StatsPrivacy = {
+    clubComparison: patch.clubComparison,
+    // First answer stamps the clock; later toggles from the settings screen
+    // must not reset it, or the consent sheet would fire again.
+    promptedAt: existing.promptedAt ?? new Date().toISOString(),
+  };
+
+  await membersContainer.items.upsert({ ...member, statsPrivacy });
+  return NextResponse.json({ success: true, statsPrivacy });
+}
+
 export async function PATCH(req: NextRequest) {
   try {
     return await handlePatch(req);
@@ -74,7 +138,12 @@ export async function PATCH(req: NextRequest) {
 }
 
 async function handlePatch(req: NextRequest) {
-  let body: { name?: unknown; currentPin?: unknown; newPin?: unknown };
+  let body: {
+    name?: unknown;
+    currentPin?: unknown;
+    newPin?: unknown;
+    statsPrivacy?: unknown;
+  };
   try {
     body = await req.json();
   } catch {
@@ -85,6 +154,15 @@ async function handlePatch(req: NextRequest) {
   const currentPin = typeof body.currentPin === 'string' ? body.currentPin : null;
   if (!name) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  }
+
+  // Club-comparison privacy is its own branch and must be handled BEFORE the
+  // PIN validation below, which rejects any body without a well-formed
+  // `newPin`. This route was PIN-only; the only other member-write path
+  // (`PATCH /api/members`) is admin-gated, so without this a member could not
+  // write their own privacy setting at all.
+  if (body.statsPrivacy !== undefined) {
+    return handleStatsPrivacyPatch(req, name, body.statsPrivacy);
   }
 
   // Validate newPin shape: null = clear, '4-digit' = set/change.
