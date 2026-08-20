@@ -10,6 +10,19 @@ export const dynamic = 'force-dynamic';
  * — no auth required. We only read session-scoped player rows by name, and
  * the response contains no sensitive data (no tokens, no email).
  *
+ * NO IN-APP CALLERS as of Stage 8 (2026-08-20). Stats v2 removed every surface
+ * that showed attendance — AttendanceCardLive and StatsStreakHero were the only
+ * consumers — and /api/stats/insight deliberately no longer reads these numbers
+ * either. The route is RETAINED on purpose: attendance is a real, correct fact
+ * about a session series, and the decision was that Stats should not narrate it
+ * at people, not that it should stop being computable.
+ *
+ * So `__tests__/stats-attendance.test.ts` is contract-only coverage: it is green
+ * and thorough, and it is guarding a shape nothing currently renders. Don't read
+ * those passing tests as evidence that some card depends on this. If you wire a
+ * new consumer, that is a product decision about showing people sessions they
+ * missed — make it deliberately.
+ *
  * Response shape:
  *   {
  *     name: string,
