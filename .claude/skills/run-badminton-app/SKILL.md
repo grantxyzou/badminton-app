@@ -70,7 +70,7 @@ identical. To match bpm-next, use the next-mode launch below instead.
 
 ## Run as bpm-next (all flags on)
 
-bpm-next builds with `NEXT_PUBLIC_ENV=next` and all 13 `NEXT_PUBLIC_FLAG_*` on.
+bpm-next builds with `NEXT_PUBLIC_ENV=next` and all 15 `NEXT_PUBLIC_FLAG_*` on.
 Two npm scripts replicate that locally (flag list kept in sync with
 `.github/workflows/deploy-next.yml`):
 
@@ -87,7 +87,12 @@ PORT=3100 npm run dev:next        # all vnext features against the REAL DB in .e
   when you deliberately want to see/edit live data.
 - Flags read from `process.env` at runtime in `next dev`, so these take effect
   immediately (no rebuild). Keep the `dev:next` flag list aligned with
-  `deploy-next.yml` when flags are added/retired — nothing auto-checks it.
+  `deploy-next.yml` when flags are added/retired —
+  `__tests__/dev-next-flag-parity.test.ts` fails on drift in either direction.
+  It exists because the script had silently fallen two flags behind
+  (`RACKET_RECOMMENDER`, `STATS_V2`), which rendered the Gear register darker
+  locally than it actually is on next — the "looks behind, code is identical"
+  trap this section warns about, landing on the section itself.
 
 ## Drive it with curl (data layer — reliable)
 
