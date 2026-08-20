@@ -1,39 +1,77 @@
-# Equipment tab — components/stats
+# Gear register — components/stats
 
 Moved out of the root `CLAUDE.md` so it loads only when working in this
-directory. Everything below is unchanged.
+directory.
 
-## Equipment Tab
+## Gear register (v2, 2026-08-20)
 
-The Equipment register inside Stats (`RacketRow`, gated on
-`NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE`). **The tab IS the player's bag** — hero
-(today's racket) → recommendation → your rackets → "+ Add a racket". Adding is
-the only thing that opens a sheet, and that sheet does nothing else.
+`GearRegister` is the whole register, gated on `NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE`.
+It composes four surfaces — the pick rail, "Your kit", string tension, and
+"What the club plays" — and is a pure composition component: it holds no
+state of its own except the one thing it exists to own (below).
 
-- **`components/stats/useGear.ts` is the single owner of gear state.** It holds
-  `gear/rackets/active/loaded/loadError/busy/online` plus `reload/add/activate/
-  remove/setPrefs`, and ONE monotonic op counter shared by the read and all
-  writes. Before it, `RacketRow` held the read and `GearSheet` held the writes,
-  each with its own counter — that out-of-order-response race has shipped here
-  twice. Never add a gear fetch outside this hook.
-- **`GearSheet` is a catalog picker and nothing else.** Full height (`92dvh` —
-  `vh` ignores collapsible mobile chrome and clips the sheet), search-first,
-  one tap commits and closes. Rows show brand ABOVE model: a query searches all
-  brands at once, and brand used to live only in the `aria-label`, so exactly
-  the cross-brand results where brand matters rendered as bare model names.
-  Rackets already in the bag are omitted, which takes `duplicate_racket` off
-  the happy path.
-- **`BagList` always renders, active racket included.** It used to hide below
-  two rackets ("a bag of one is chrome") — correct inside a sheet, wrong once
-  the tab became the bag, because it left a one-racket player unable to remove
-  or replace what they owned. The active row shows a badge instead of "Use this
-  one" but keeps its remove button. Don't reintroduce the guard.
-- **The hero is display-only.** With the bag on the tab, switching and removing
-  live in the list and adding has its own button, so a tappable hero would be a
-  second door to the same room (same principle as `RacketRecCard`'s
-  conditional interactivity).
-- **`lib/activeRacket.ts`** resolves the active racket read-tolerantly: new docs
-  carry `activeRacketId`, legacy docs fall back to `items[0]`. No migration.
+- **`GearRegister` calls `useGear` exactly once and passes it down. This is
+  the single-owner invariant the whole redesign exists to establish**, pinned
+  by `__tests__/components/GearRegister.test.tsx` (exactly one gear read per
+  mount). Before it, up to four components read `GET /api/equipment/gear`
+  independently and two of them wrote it, each with its own monotonic op
+  counter — an out-of-order-response race that shipped here twice. **Never
+  add a gear fetch outside `useGear`; every child takes the `UseGear` object
+  as a prop instead.**
+- **`components/stats/useGear.ts`** holds `gear/rackets/active/loaded/
+  loadError/busy/online` plus `reload/add/activate/remove/setPrefs`, and ONE
+  monotonic op counter shared by the read and all writes.
+- **Two sheets, two jobs — "take our pick" vs. "choose your own":**
+  - **`GearPickRail` + `GearPickCard` + `GearPickSheet`** are "take our
+    pick" — one card per category showing what `/api/recommend` would
+    suggest, flipping to an IN YOUR KIT badge the instant the member already
+    owns it (the redesign's headline bug fix: the old surface could
+    recommend back gear the member already had). `GearPickSheet` is the
+    detail behind ONE rail card and ONE action (Add to my kit); it never
+    browses the catalog. Reasons render plain-language first (the engine's
+    own headline reason) and the catalog spec line second — the spec line is
+    a display line here, never a "why this" reason (see `lib/pickReasons.ts`).
+  - **`GearSheet`** is "choose your own" — the full catalog for a category,
+    search-first, one tap commits and closes. Full height (`92dvh` — `vh`
+    ignores collapsible mobile chrome and clips the sheet). Rows show brand
+    ABOVE model: a query searches all brands at once, and brand used to live
+    only in the `aria-label`, so exactly the cross-brand results where brand
+    matters rendered as bare model names. Owned items are omitted from the
+    catalog list (`duplicate_racket` off the happy path) and rendered instead
+    via `BagList` above it — this sheet is the one place a category's owned
+    items AND its catalog both live, deliberately not split across the tab
+    and a sheet any more (see the file's own docstring for why that split
+    used to exist and stopped making sense). It also carries the string-
+    tension capture field (only for `category === 'string'`) — an optional,
+    explicitly-edited value, never a silent echo of the prefilled advice.
+  - Both sheets share `BagList` for rendering owned items, and both take the
+    register's single `UseGear` so adding from either one updates every other
+    surface with no reload.
+- **`YourKitCard`** — one row per equipment category ("Your kit"), showing
+  what the member owns and opening `GearSheet` to change it. Unpickable
+  categories (no catalog rows) render as a plain, non-interactive row rather
+  than a button that does nothing.
+- **`BagList` always renders every owned item, active one included.** It used
+  to hide below two items ("a bag of one is chrome") — wrong once ownership
+  needed to be manageable from more than one place, because it left a
+  one-item player unable to remove or replace what they owned. The active
+  row shows a badge instead of "Use this one" but keeps its remove button.
+  Don't reintroduce the guard.
+- **`lib/activeRacket.ts`** resolves the active racket read-tolerantly: new
+  docs carry `activeRacketId`, legacy docs fall back to `items[0]`. No
+  migration.
+- **`StringTensionCard`** and **`ClubGearCard`** round out the register:
+  tension advice from level + format (never rendered without a resolved
+  level — an unattributed number reads as a spec, not advice), and the
+  aggregated "what the club plays" tally (`lib/clubGear.ts`, cohort-guarded
+  at `CLUB_GEAR_MIN_COHORT` before any label can identify fewer than that
+  many people).
+- **Category scope is data-driven, not flag-driven.** Rackets and strings are
+  selectable because the catalog has rows for them; shoes and shuttles are
+  parked because it doesn't — not because the UI is missing. Both the rail
+  and `YourKitCard`'s rows key off the same sourced-category list
+  (`GearPickRail`'s `SOURCED`, `YourKitCard`'s `PICKABLE`), so un-parking a
+  category is only ever a sourcing step, never a UI change.
 
 ### Racket recommender (`NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER`)
 
@@ -53,9 +91,19 @@ racket and never excluded what they owned).
   hard-filters** (prices are USD-derived and go stale; a silent exclusion is
   invisible when the price is wrong), and rows missing normalized
   `balance`/`flex`/`tier` are **skipped, not scored on invented values**.
+  Takes a `category` parameter (default `'racket'`) so `/api/recommend`'s
+  per-category ask doesn't hardcode the one it was written for.
 - **No assessment → no recommendation.** With no ratings the engine would score
-  fourteen 3s and emit a confident, meaningless pick. The card says "do the
-  check-in" instead.
+  fourteen 3s and emit a confident, meaningless pick. The rail's `racket` card
+  parks with "do the check-in" copy instead (`needsCheckIn`).
+- **`lib/pickReasons.ts`'s `buildPickReasons`** grounds a pick's "why this"
+  list in up to three sources, priority order: the engine's own
+  equipment-derived reasons, the member's current drill picks
+  (`lib/drills.ts`), and the club tally (`lib/clubGear.ts`, re-guarded here
+  even though `tallyClubGear` already filtered — a reason is a NEW disclosure
+  surface for that data). When either cross-domain source has something to
+  say, the engine is capped at one slot so the list doesn't fill with
+  restatements of the spec sheet the member could read for themselves.
 - **The flag-on route requires auth; flag-off stays public.** `GET
   /api/recommend` was unauthenticated because it returned only a coarse
   stage-derived pick. Engine reasons quote individual ratings ("smash 4/5"),
@@ -64,6 +112,6 @@ racket and never excluded what they owned).
   `/api/stats/level`). Rate limiting stays first (security rule 4).
 - **Format and budget are asked, not inferred** — the engine's author flagged
   both as not derivable from skill scores. Stored as optional
-  `playFormat`/`budgetMaxCad` on `PlayerGear`; budget bands are CAD and every
-  band sets an UPPER bound.
-
+  `playFormat`/`budgetMaxCad` on `PlayerGear`, edited from inside
+  `GearPickSheet` (a change there refetches the open pick — see the sheet's
+  own comments); budget bands are CAD and every band sets an UPPER bound.
