@@ -25,7 +25,9 @@ export interface UseGear {
   busy: boolean;
   online: boolean;
   reload: () => void;
-  add: (item: CatalogItem) => Promise<GearResult>;
+  /** The second argument attaches a string's tension at add time — see `add`'s
+   *  own comment for why it needs a follow-up write rather than one call. */
+  add: (item: CatalogItem, extra?: { tensionLbs?: number }) => Promise<GearResult>;
   activate: (itemId: string) => Promise<GearResult>;
   remove: (itemId: string) => Promise<GearResult>;
   setPrefs: (prefs: { playFormat?: 'singles' | 'doubles' | 'both'; budgetMaxCad?: number | null }) => Promise<GearResult>;
@@ -111,19 +113,58 @@ export function useGear(name: string | null): UseGear {
    * literal, which is why nothing but a racket could ever be added even though
    * the API has always validated and stored the field. Falls back to 'racket'
    * so any legacy caller passing a catalog row without one behaves as before.
+   *
+   * `extra.tensionLbs` (string picks only) needs a SECOND write: POST is the
+   * "append to my bag" verb and has never read `tensionLbs` off the wire, but
+   * PUT already does (route.ts:349) — it's the idempotent "set this item"
+   * verb, matching by catalogId, so calling it right after a successful add
+   * updates the SAME item in place rather than appending a duplicate. That
+   * follow-up is fire-and-forget: the add already succeeded once POST
+   * resolves ok, so a flaky network on the PUT loses only the tension, not
+   * the pick — the same trade `setPrefs` makes for preference writes. Both
+   * calls still go through `mutate()`, so the shared op counter protects the
+   * follow-up exactly like every other write; nothing bypasses it.
+   *
+   * Gated to `category === 'string'` even though the type allows any item:
+   * PUT's own pointer rule (route.ts:373) is "the item I PUT becomes active"
+   * for rackets, which is the OPPOSITE of what POST just did two lines above
+   * (preserve the existing pointer when the bag already had one — see the
+   * comment at route.ts:180). A tension follow-up on a racket would silently
+   * re-point `activeRacketId` to whatever was just added, undoing POST's own
+   * guard. Not reachable today (only the string sheet ever passes tension),
+   * but the two verbs disagree by design and this call site must not be the
+   * place that finds out.
    */
-  const add = useCallback((item: CatalogItem) => mutate(() => fetch(`${BASE}/api/equipment/gear`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name,
-      item: {
-        catalogId: item.id,
-        category: item.category ?? 'racket',
-        label: `${item.brand} ${item.model}`,
-      },
-    }),
-  })), [mutate, name]);
+  const add = useCallback(async (item: CatalogItem, extra?: { tensionLbs?: number }): Promise<GearResult> => {
+    const res = await mutate(() => fetch(`${BASE}/api/equipment/gear`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        item: {
+          catalogId: item.id,
+          category: item.category ?? 'racket',
+          label: `${item.brand} ${item.model}`,
+        },
+      }),
+    }));
+    if (res.ok && item.category === 'string' && typeof extra?.tensionLbs === 'number') {
+      void mutate(() => fetch(`${BASE}/api/equipment/gear`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          item: {
+            catalogId: item.id,
+            category: item.category ?? 'racket',
+            label: `${item.brand} ${item.model}`,
+            tensionLbs: extra.tensionLbs,
+          },
+        }),
+      }));
+    }
+    return res;
+  }, [mutate, name]);
 
   // Tapping the already-active racket is a no-op in the UI (BagList renders a
   // badge, not a button, for that row). This guard is defence in depth so the
