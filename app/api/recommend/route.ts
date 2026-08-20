@@ -210,6 +210,18 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // The flag-off branch scores RACKETS and nothing else — its catalog query
+    // below is literally `@category: 'racket'`. Before the rail existed that
+    // was harmless (the only caller never passed a category), but the rail asks
+    // per category, so on a deployment with RACKET_RECOMMENDER off (bpm-stable
+    // today) `?category=string` would have come back a racket and rendered
+    // under the STRINGS card. Same `unavailable: 'no_engine'` contract as the
+    // flag-on branch, so the rail's parked card covers both without knowing
+    // which branch answered.
+    if (category !== 'racket') {
+      return NextResponse.json({ item: null, reason: null, unavailable: 'no_engine' });
+    }
+
     await ensureCatalogSeeded();
 
     // Stage now rides the canonical skill level (folds self check-ins + game
@@ -235,7 +247,10 @@ export async function GET(req: NextRequest) {
     // recommendRacket filters to category='racket' internally, so the mock store
     // ignoring @category is harmless here.
     const item = recommendRacket({ stage, catalog: items as CatalogItem[] });
-    if (!item) return NextResponse.json({ item: null, reason: null });
+    // An empty catalog is a SOURCING gap, not a failure — tag it so the rail
+    // can tell it apart from the one other 200 that carries no item, the
+    // rate-limit refusal above, which must render as an error.
+    if (!item) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
     return NextResponse.json({ item, reason: reasonFor(item, stage) });
   } catch (error) {
     console.error('GET recommend error:', error);
