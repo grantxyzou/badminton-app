@@ -137,17 +137,78 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
     </BottomSheetHeader>
   );
 
+  // Rendered BELOW the action, not above it: these tune the NEXT pick, and
+  // putting them first would make the sheet open on settings instead of on the
+  // answer to its own question.
+  //
+  // Extracted so the error branch below can render them too. They are what
+  // changes the gear doc, so they are also what can make the pick stop
+  // resolving — dropping them exactly then would persist a new budget and
+  // leave no surface anywhere to change it back (the rail card behind this
+  // sheet is a non-interactive div in its error state).
+  const controls = recommenderOn && category === 'racket' ? (
+    <>
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+        <p className="section-label" style={{ margin: 0 }}>{t('formatLabel')}</p>
+        <div className="segment-control flex" role="tablist" aria-label={t('formatLabel')}>
+          {(['doubles', 'singles', 'both'] as const).map((f) => (
+            <button
+              key={f}
+              type="button"
+              role="tab"
+              aria-selected={playFormat === f}
+              disabled={gear.busy}
+              className={`flex-1 flex items-center justify-center fs-sm ${playFormat === f ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+              onClick={() => setPref({ playFormat: f })}
+            >
+              {t(`format_${f}`)}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+        <p className="section-label" style={{ margin: 0 }}>{t('budgetLabel')}</p>
+        <div className="segment-control flex" role="tablist" aria-label={t('budgetLabel')}>
+          {([
+            [100, 'budget_100'],
+            [200, 'budget_200'],
+            [350, 'budget_350'],
+            [null, 'budget_none'],
+          ] as const).map(([band, key]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={budgetMaxCad === band}
+              disabled={gear.busy}
+              className={`flex-1 flex items-center justify-center fs-sm ${budgetMaxCad === band ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+              onClick={() => setPref({ budgetMaxCad: band })}
+            >
+              {t(key)}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {prefError && <ErrorState message={t('pickSheetAddError')} />}
+    </>
+  ) : null;
+
   // The pick this sheet was opened for is no longer resolvable — a refetch
-  // triggered by the controls below came back empty, throttled or failed. The
-  // sheet stays mounted and says so. Unmounting instead would make it vanish
-  // under the member's finger with no explanation, which is the sheet-shaped
-  // version of the lying empty state.
+  // triggered by the controls came back empty, throttled or failed. The sheet
+  // stays mounted and says so. Unmounting instead would make it vanish under
+  // the member's finger with no explanation, which is the sheet-shaped version
+  // of the lying empty state.
   if (!item) {
     return (
       <BottomSheet open={open} onClose={close} ariaLabel={heading} maxHeight="88dvh" className="max-w-lg mx-auto">
         {header}
         <BottomSheetBody className="p-5 pb-8">
-          <ErrorState message={t('pickSheetLoadError')} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <ErrorState message={t('pickSheetLoadError')} />
+            {controls}
+          </div>
         </BottomSheetBody>
       </BottomSheet>
     );
@@ -247,57 +308,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
             <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{tStats('offline')}</p>
           )}
 
-          {/* Below the action, not above it: these tune the NEXT pick, and
-              putting them first would make the sheet open on settings instead
-              of on the answer to its own question. */}
-          {recommenderOn && category === 'racket' && (
-            <>
-              <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                <p className="section-label" style={{ margin: 0 }}>{t('formatLabel')}</p>
-                <div className="segment-control flex" role="tablist" aria-label={t('formatLabel')}>
-                  {(['doubles', 'singles', 'both'] as const).map((f) => (
-                    <button
-                      key={f}
-                      type="button"
-                      role="tab"
-                      aria-selected={playFormat === f}
-                      disabled={gear.busy}
-                      className={`flex-1 flex items-center justify-center fs-sm ${playFormat === f ? 'segment-tab-active' : 'segment-tab-inactive'}`}
-                      onClick={() => setPref({ playFormat: f })}
-                    >
-                      {t(`format_${f}`)}
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                <p className="section-label" style={{ margin: 0 }}>{t('budgetLabel')}</p>
-                <div className="segment-control flex" role="tablist" aria-label={t('budgetLabel')}>
-                  {([
-                    [100, 'budget_100'],
-                    [200, 'budget_200'],
-                    [350, 'budget_350'],
-                    [null, 'budget_none'],
-                  ] as const).map(([band, key]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      role="tab"
-                      aria-selected={budgetMaxCad === band}
-                      disabled={gear.busy}
-                      className={`flex-1 flex items-center justify-center fs-sm ${budgetMaxCad === band ? 'segment-tab-active' : 'segment-tab-inactive'}`}
-                      onClick={() => setPref({ budgetMaxCad: band })}
-                    >
-                      {t(key)}
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              {prefError && <ErrorState message={t('pickSheetAddError')} />}
-            </>
-          )}
+          {controls}
 
           <p style={{ margin: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', lineHeight: 'var(--lh-normal)' }}>
             {t('pickSheetFootnote')}
