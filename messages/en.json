@@ -244,6 +244,28 @@
   "stats": {
     "heading": "Your stats",
     "subhead": "Interesting metrics that you didn't ask for (beta)",
+    "subheadV2": "Where your game is, and what to do about it",
+    "registers": {
+      "you": "You",
+      "play": "Play",
+      "learn": "Learn",
+      "gear": "Gear"
+    },
+    "overview": {
+      "level": "Level",
+      "games": "Games",
+      "kudos": "Kudos",
+      "ofFive": "/5",
+      "noValue": "—",
+      "gamesCaption": "logged",
+      "kudosCaption": "from partners",
+      "takeCheckIn": "Take a check-in",
+      "loadError": "Couldn't load",
+      "baseline": "Your baseline",
+      "levelWith": "level with {month}",
+      "up": "▲ {delta} since {month}",
+      "down": "▼ {delta} since {month}"
+    },
     "level": {
       "title": "Your level",
       "purpose": "One read on where your game is right now — just for you.",

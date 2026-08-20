@@ -31,10 +31,45 @@ export async function GET(req: NextRequest) {
   }
   try {
     await ensureGames();
-    // sessionId override is admin-only (rule 7); non-admins read the active session.
-    const override = new URL(req.url).searchParams.get('sessionId');
-    const sessionId = override && isAdminAuthed(req) ? override : await getActiveSessionId();
+    const params = new URL(req.url).searchParams;
     const container = getContainer('gameResults');
+
+    // All-time read for one player: `?name=X&all=true`. The default stays
+    // active-session-scoped so existing callers are unchanged.
+    //
+    // This exists because a "Games — logged" figure scoped to the current
+    // session is a lying number: it reads as a career total and silently means
+    // "this week". Requiring `name` keeps the widening narrow — an anonymous
+    // caller gets one player's games, not a dump of the whole history.
+    const all = params.get('all') === 'true';
+    const rawName = params.get('name')?.trim().slice(0, 50) ?? '';
+    if (all) {
+      if (!rawName) {
+        return NextResponse.json({ error: 'name_required' }, { status: 400 });
+      }
+      const { resources: every } = await container.items
+        .query({ query: 'SELECT * FROM c' })
+        .fetchAll();
+      const needle = rawName.toLowerCase();
+      // Games store player NAMES, never memberIds (see lib/levelStore.ts) — so
+      // this join is name-based and case-insensitive, matching every other
+      // name join in the app.
+      const mine = (every as { teamA?: string[]; teamB?: string[] }[]).filter((g) =>
+        [...(g.teamA ?? []), ...(g.teamB ?? [])].some(
+          (n) => String(n).trim().toLowerCase() === needle,
+        ),
+      );
+      mine.sort((a, b) =>
+        String((b as { loggedAt?: string }).loggedAt).localeCompare(
+          String((a as { loggedAt?: string }).loggedAt),
+        ),
+      );
+      return NextResponse.json({ games: mine });
+    }
+
+    // sessionId override is admin-only (rule 7); non-admins read the active session.
+    const override = params.get('sessionId');
+    const sessionId = override && isAdminAuthed(req) ? override : await getActiveSessionId();
     const { resources } = await container.items
       .query({
         query: 'SELECT * FROM c WHERE c.sessionId = @sessionId',

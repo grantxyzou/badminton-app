@@ -6,6 +6,7 @@ import type { PlayerSkills as PersistedPlayerSkills } from '@/lib/types';
 import type { PlayerSkills } from '@/components/SkillsRadar';
 import RadarSkeleton from '@/components/stats/skeletons/RadarSkeleton';
 import StatsPlaceholder from '@/components/stats/StatsPlaceholder';
+import StatsV2Shell from '@/components/stats/StatsV2Shell';
 import AttendanceCardLive from '@/components/stats/cards/AttendanceCardLive';
 import StreakSummaryCard from '@/components/stats/StreakSummaryCard';
 import SummaryGreeting from '@/components/stats/SummaryGreeting';
@@ -168,6 +169,9 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   // standalone "Your read" card is retired (its synthesis moves into the greeting
   // + per-card chips; the streak still shows on AttendanceCardLive in Game stats).
   const insightCardsOn = isFlagOn('NEXT_PUBLIC_FLAG_INSIGHT_CARDS');
+  // Stats v2 — the You / Play / Learn / Gear arrangement. Chooses the shell
+  // only; it does NOT re-gate the flags above, whose content it reuses.
+  const statsV2On = isFlagOn('NEXT_PUBLIC_FLAG_STATS_V2');
   const heroSlot = skillAssessOn ? (
     <>
       {insightCardsOn && <SummaryGreeting />}
@@ -213,6 +217,38 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
     if (!identResolved) return null;
     if (!activeName) {
       return <StatsSignedOut onSignIn={onTabChange ? () => onTabChange('profile') : undefined} />;
+    }
+    // Stats v2 — four registers, overview strip, no attendance/streak surfaces.
+    // Stage 1 maps today's content into the new registers so the shell is
+    // usable immediately; later stages replace each register's contents.
+    // `attendanceContent` and `StreakSummaryCard` are deliberately NOT passed:
+    // removing everything that counts sessions you missed is the point of the
+    // redesign, not a later cleanup.
+    if (statsV2On) {
+      return (
+        <StatsV2Shell
+          activeName={activeName}
+          // Not `heroSlot`: v2's You register drops LevelCard, because the
+          // overview strip above now owns the level and showing the same
+          // number twice on one screen reads as two different facts. Drills
+          // move out of You and into their own Learn register.
+          youSlot={
+            <>
+              {insightCardsOn && <SummaryGreeting />}
+              <SkillTrendCard />
+              {kudosOn && <KudosReceivedCard />}
+            </>
+          }
+          playSlot={
+            <>
+              {gameTilesSlot}
+              {gamePlaySlot}
+            </>
+          }
+          learnSlot={drillsOn ? <DrillsCard /> : undefined}
+          gearSlot={gearContent}
+        />
+      );
     }
     return (
       <StatsPlaceholder

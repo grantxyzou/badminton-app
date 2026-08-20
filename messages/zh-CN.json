@@ -244,6 +244,28 @@
   "stats": {
     "heading": "你的数据",
     "subhead": "你没问过但很有趣的数据(beta)",
+    "subheadV2": "你的水平在哪里,以及接下来该做什么",
+    "registers": {
+      "you": "你",
+      "play": "打球",
+      "learn": "练习",
+      "gear": "装备"
+    },
+    "overview": {
+      "level": "水平",
+      "games": "场次",
+      "kudos": "点赞",
+      "ofFive": "/5",
+      "noValue": "—",
+      "gamesCaption": "已记录",
+      "kudosCaption": "来自球友",
+      "takeCheckIn": "做一次自评",
+      "loadError": "加载失败",
+      "baseline": "你的起点",
+      "levelWith": "与{month}持平",
+      "up": "▲ {delta} 自{month}",
+      "down": "▼ {delta} 自{month}"
+    },
     "level": {
       "title": "你的水平",
       "purpose": "一眼看清你现在的水平——只给你自己看。",
