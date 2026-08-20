@@ -307,6 +307,16 @@ function getMockContainer(name: string) {
             if (q.query.includes('c.waitlisted != true')) {
               results = results.filter((r) => r.waitlisted !== true);
             }
+            // Mirrors resolveMemberId (app/api/equipment/gear/route.ts) and
+            // resolveSubject (app/api/recommend/route.ts), both of which
+            // filter members by `AND c.active = true` so a stale inactive
+            // same-name row can't shadow the real one. Without this the mock
+            // silently ignored the clause and both resolvers converged on
+            // "first match" regardless of active — masking exactly the
+            // divergence those two queries exist to prevent.
+            if (q.query.includes('c.active = true')) {
+              results = results.filter((r) => r.active === true);
+            }
             if ('@name' in params) {
               results = results.filter(
                 (r) => typeof r.name === 'string' &&

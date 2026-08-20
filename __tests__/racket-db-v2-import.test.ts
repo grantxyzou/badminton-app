@@ -37,6 +37,20 @@ describe('v2 racket import', () => {
     expect(astrox!.msrp).toBe(Math.round(220 * 1.38));
   });
 
+  // Regression pin: the merge used to do `existing.attributes = mapped.attributes`,
+  // a wholesale replace that silently dropped every pre-existing attribute key
+  // v2 doesn't supply (35 rows lost `weightGrams`, which lib/racketSpecs.ts
+  // reads to render "3U/4U (83-88g)"). The merge must be field-by-field:
+  // v2's keys win on collision, but a curated key v2 never had is kept.
+  it('merges attributes field-by-field: v2 keys win, curated-only keys survive', () => {
+    const astrox = items.find((i) => i.id === 'racket-yonex-astrox-100zz');
+    // Pre-existing, curated-only key (v2 has no `weightGrams` field at all) — preserved.
+    expect(astrox?.attributes?.weightGrams).toBe('83-88');
+    // v2-supplied normalized keys the pre-existing row never had — gained.
+    expect(astrox?.attributes?.tier).toBe('Premium');
+    expect(astrox?.attributes?.balance).toBe('Head-heavy');
+  });
+
   it('leaves the 11 legacy-only rackets in place', () => {
     const sourceIds = new Set((source as RacketDatabaseV2Record[]).map((r) => `racket-${r.id}`));
     const legacy = items.filter((i) => !sourceIds.has(i.id));
