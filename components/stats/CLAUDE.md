@@ -44,9 +44,14 @@ state of its own except the one thing it exists to own (below).
     used to exist and stopped making sense). It also carries the string-
     tension capture field (only for `category === 'string'`) — an optional,
     explicitly-edited value, never a silent echo of the prefilled advice.
-  - Both sheets share `BagList` for rendering owned items, and both take the
-    register's single `UseGear` so adding from either one updates every other
-    surface with no reload.
+  - Both sheets take the register's single `UseGear`, so adding from either
+    one updates every other surface (including the other sheet, which reads
+    ownership off the same object) with no reload. **`BagList` belongs to
+    `GearSheet` only** — `GearPickSheet` never imports it. `GearPickSheet` is
+    behind exactly one card and one action, so ownership there is a single
+    `StatusBadge` ("In your kit"), not a list; a list of owned items is
+    `GearSheet`'s job, since browsing the whole catalog is the only place a
+    member needs to see everything they already have at once.
 - **`YourKitCard`** — one row per equipment category ("Your kit"), showing
   what the member owns and opening `GearSheet` to change it. Unpickable
   categories (no catalog rows) render as a plain, non-interactive row rather
@@ -113,5 +118,6 @@ racket and never excluded what they owned).
 - **Format and budget are asked, not inferred** — the engine's author flagged
   both as not derivable from skill scores. Stored as optional
   `playFormat`/`budgetMaxCad` on `PlayerGear`, edited from inside
-  `GearPickSheet` (a change there refetches the open pick — see the sheet's
-  own comments); budget bands are CAD and every band sets an UPPER bound.
+  `GearPickSheet`'s controls; the refetch-on-change lives in
+  `GearPickRail`'s `recKey` effect, not the sheet itself — see its own
+  comments for why. Budget bands are CAD and every band sets an UPPER bound.
