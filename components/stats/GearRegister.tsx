@@ -7,6 +7,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import RacketRow from './RacketRow';
+import GearRail from './GearRail';
 import StringTensionCard from './StringTensionCard';
 import type { EquipmentCategory, GearItem } from '@/lib/types';
 import type { ClubGearEntry } from '@/lib/clubGear';
@@ -42,6 +43,7 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
   return (
     <>
       <RacketRow />
+      <GearRail activeName={activeName} />
       <YourKitCard activeName={activeName} />
       <StringTensionCard activeName={activeName} />
       <ClubGearCard />

@@ -281,7 +281,16 @@
       "clubFootnote": "登记你的拍线才能让这份清单有用 — 对你，也对负责补货的人。",
       "clubEmpty": "登记的装备还不够。添加你的，这里就会出现。",
       "clubError": "加载失败 — 刷新重试",
-      "catalogGap": "球拍以外的推荐即将上线 — 目前目录里只有球拍。"
+      "catalogGap": "球拍以外的推荐即将上线 — 目前目录里只有球拍。",
+      "railComingSoon": "即将上线",
+      "railStringsSoon": "根据你的打法推荐拍线和磅数。",
+      "railShoesSoon": "根据你的步法和脚型推荐球鞋。",
+      "railShuttlesSoon": "适合你的场馆和水平的羽毛球。",
+      "railYours": "你的 · {label}",
+      "railNone": "你的 · 暂无记录",
+      "railInKit": "已在装备中",
+      "railWhy": "为什么推荐？",
+      "railWhyPicked": "我们为什么选它"
     },
     "learn": {
       "focusEyebrow": "本周 · 重点",
