@@ -74,6 +74,23 @@ describe('GET /api/recommend?category=', () => {
     expect(res.status).not.toBe(400);
   });
 
+  // bpm-stable runs VALUE_HUB_SLICE on and RACKET_RECOMMENDER off, so the
+  // flag-off branch is live in production — and its catalog query is literally
+  // `@category: 'racket'`. Before the pick rail nothing passed a category so
+  // that never showed; the rail asks per category, and a racket returned under
+  // the STRINGS card is exactly the wrong-recommendation class of bug this
+  // redesign exists to kill.
+  it('does not return a racket for a non-racket category with the engine flag off', async () => {
+    process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER = 'false';
+    const res = await GET(
+      makeRequest('GET', 'http://localhost:3000/api/recommend?name=Lin&category=string'),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.item).toBeNull();
+    expect(body.unavailable).toBe('no_engine');
+  });
+
   it('includes drill-grounded reasons when the member has drill picks', async () => {
     // Admin path avoids minting a member cookie in this test.
     const res = await GET(
