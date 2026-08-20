@@ -73,7 +73,7 @@ describe('computeInsightSignals — the non-obvious bar', () => {
     const streak = signals.find((s) => s.kind === 'improving-streak');
     expect(streak).toBeDefined();
     expect(streak!.card).toBe('greeting');
-    expect(streak!.facts.sessions).toBe(3);
+    expect(streak!.facts.checkIns).toBe(3);
     expect(streak!.facts.totalChange).toBeCloseTo(0.9, 5);
   });
 

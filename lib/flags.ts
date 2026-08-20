@@ -110,9 +110,9 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     plannedRemoval: '2026-11-19',
   },
   NEXT_PUBLIC_FLAG_STATS_V2: {
-    description: 'Stats tab v2: the three registers (Summary / Game stats / Equipment) become four (You / Play / Learn / Gear) with a persistent Level/Games/Kudos overview strip; the 14-axis recharts radar is replaced by three dimension bars with club-median ticks; everything that counts sessions you MISSED (streak hero, attendance card, recent-form dots) is removed by product decision; and club comparison becomes a real opt-out-able feature (bands only, one master switch, asked once on first run). Chooses between the old StatsPlaceholder arrangement and the new one — it does NOT re-gate SKILL_ASSESS / SKILL_LEVEL / SKILL_DRILLS / KUDOS / INSIGHT_CARDS / VALUE_HUB_SLICE; treat their content as available. On for bpm-next + dev; off on bpm-stable until promoted.',
+    description: 'Stats tab v2: the three registers (Summary / Game stats / Equipment) became four (You / Play / Learn / Gear) with a persistent Level/Games/Kudos overview strip; the 14-axis recharts radar became three dimension bars with club-median ticks; everything that counts sessions you MISSED (streak hero, attendance card, recent-form dots) was removed by product decision; and club comparison became a real opt-out-able feature (bands only, one master switch, asked once on first run). INERT-ON since Stage 8 (2026-08-20): the v1 path was deleted outright, no UI reads this flag any more, and it is \'true\' in all three build configs (pr-ci, deploy-next, deploy-stable). It now guards only the three v2-only API routes — /api/stats/club/bands, /api/stats/club/gear, /api/stats/drills/done. Turning it OFF no longer falls back to anything; it just 404s those routes and leaves the tab showing load errors. The only remaining move is retirement.',
     owner: 'grant',
-    plannedRemoval: 'after Stats v2 is promoted to stable + lived-in for 2 weeks',
+    plannedRemoval: '2026-09-03 — two weeks after the Stage 8 flip (2026-08-20). Retirement is pure cleanup, not a decision: delete the FlagName entry, this record, the readFlag case, the three route guards, the flags.test.ts case, the flag-off-404 route tests, and the entry in all three workflows.',
   },
 };
 

@@ -200,7 +200,11 @@ export function computeInsightSignals(input: SignalInput): InsightSignal[] {
           kind: lastDir > 0 ? 'improving-streak' : 'declining-streak',
           card: 'greeting',
           score: Math.min(1, run / 4),
-          facts: { sessions: run, totalChange },
+          // `checkIns`, not `sessions`: this run counts self-assessment
+          // check-ins, and the facts object is stringified straight into the
+          // prompt — the old name invited the narrator to read it as sessions
+          // attended, which is exactly the number Stats v2 stopped showing.
+          facts: { checkIns: run, totalChange },
           hint:
             lastDir > 0
               ? `Quietly on a roll — your overall has climbed ${run} check-ins straight, up ${totalChange} in total.`

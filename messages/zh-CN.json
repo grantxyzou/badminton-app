@@ -246,7 +246,6 @@
   },
   "stats": {
     "heading": "你的数据",
-    "subhead": "你没问过但很有趣的数据(beta)",
     "subheadV2": "你的水平在哪里,以及接下来该做什么",
     "registers": {
       "you": "你",
@@ -438,38 +437,7 @@
       "down": "▼ {delta} 自{month}"
     },
     "level": {
-      "title": "你的水平",
-      "purpose": "一眼看清你现在的水平——只给你自己看。",
-      "ofFive": "/ 5",
-      "howTitle": "如何计算",
-      "hideDetails": "收起",
-      "confidence": {
-        "low": "粗略估计",
-        "medium": "逐渐清晰",
-        "high": "已校准"
-      },
-      "empty": "完成一次技能自评即可看到你的水平。",
-      "error": "暂时加载不出来 — 刷新再试一次",
-      "needsAuth": "请重新登录以查看你的水平。",
-      "onTrack": "即将达到{phase}——下次自评确认。",
-      "compare": {
-        "cta": "看看你的比赛表现对比",
-        "hide": "收起",
-        "above": "你最近的比赛表现高于你的自评——不错。下次自评可以适当调高。",
-        "below": "你的自评略高于最近的比赛表现——再打好一两周就能跟上。"
-      }
-    },
-    "drills": {
-      "title": "本周练习",
-      "purpose": "针对你正在提升的技能的具体练习——只给你自己看。",
-      "minutes": "{n} 分钟",
-      "setting": {
-        "solo": "单人",
-        "pair": "双人",
-        "group": "多人"
-      },
-      "error": "暂时加载不出来 — 刷新再试一次",
-      "needsAuth": "请重新登录以查看你的练习。"
+      "ofFive": "/ 5"
     },
     "kudos": {
       "receivedTitle": "你收到的赞",
@@ -486,36 +454,6 @@
       }
     },
     "offline": "你已离线——重新联网后再保存。",
-    "streak": {
-      "personalBestLabel": "{name} — 个人最佳",
-      "streakLabel": "{name}的连续出勤",
-      "streakLine": "你已连续出勤 {count, plural, other {# 周}}",
-      "personalBestSub": "追平或超越了你最长的 {count} 周纪录。",
-      "longestRunSub": "最长连续 {count, plural, other {# 周}}。继续保持。",
-      "ariaStreak": "{count, plural, other {{name}连续出勤 # 周}}",
-      "ariaInsight": "{name}的解读",
-      "readTitle": "为你解读",
-      "beta": "测试版",
-      "reading": "正在解读…",
-      "lastWeek": "上周",
-      "focus": "本周 · 重点",
-      "readError": "解读加载不出来 — 刷新再试一次。"
-    },
-    "attendanceLive": {
-      "title": "你的数据",
-      "prompt": "登录或创建账户，查看你的专属数据。",
-      "loadError": "暂时加载不出来 — 刷新再试一次。",
-      "recentForm": "你的近期状态",
-      "viewingAs": "正在查看",
-      "change": "更改",
-      "ofLast": "／最近 {count} 场"
-    },
-    "sessionStrip": {
-      "empty": "此时间段内还没有场次。",
-      "ariaLabel": "{count, plural, other {最近 # 场的近期状态}}",
-      "played": "已参加",
-      "missed": "缺席"
-    },
     "summaryGreeting": {
       "ariaLabel": "你的 AI 总结",
       "beta": "测试版"
@@ -523,29 +461,6 @@
     "insightChip": {
       "aiGenerated": "AI 生成",
       "aiBadge": "AI"
-    },
-    "comingSoon": "即将推出",
-    "moreComing": "更多指标制作中",
-    "progression": {
-      "title": "技能进展(自我追踪)",
-      "subtitle": "仅为预览 — 数据可能丢失。",
-      "disclaimer": "点击类别查看你的技能等级描述。来源：<link>Ace 羽毛球俱乐部</link>"
-    },
-    "attendance": {
-      "title": "您的出勤记录",
-      "subtitle": "过去一年的参赛场次。"
-    },
-    "cost": {
-      "title": "费用相关",
-      "subtitle": "每场花费、已付与未付、转账记录。"
-    },
-    "partners": {
-      "title": "搭档与打法",
-      "subtitle": "最常一起打的人和惯用打法。"
-    },
-    "equipment": {
-      "title": "拍线和球鞋",
-      "subtitle": "拍线磅数和球鞋里程。"
     },
     "assess": {
       "heroTitle": "你的球技变化",
@@ -676,36 +591,17 @@
     "yourRacket": "你的球拍",
     "weRecommend": "为你推荐",
     "noRacketYet": "还没选呢。",
-    "viewGame": "你的状态",
-    "viewGear": "装备",
-    "viewSummary": "总览",
-    "viewGameStats": "比赛数据",
-    "viewEquipment": "装备",
     "recTitle": "和你水平相近的球友常用",
     "recCta": "查看装备",
     "recWhyShow": "为什么推荐这个？",
     "recWhyHide": "收起",
     "recEmpty": "添加你的球拍以获得推荐。",
     "recError": "暂时加载不出来 — 刷新再试一次",
-    "partnersTitle": "你的常约搭档",
-    "partnersEmpty": "多打几场就能看到你的常约搭档。",
-    "partnersError": "暂时加载不出来 — 刷新再试一次",
-    "partnersCount": "{count} 次",
-    "partnersMostWith": "你最常一起打的是",
-    "partnersTogether": "一起打了 {count} 次",
-    "partnersTileLabel": "最常搭档",
-    "recentFormLabel": "近期出勤",
-    "recentFormCaption": "你出席的场次",
-    "logGameTitle": "记录比赛",
-    "logGameHint": "今天打得怎么样？",
-    "logGameError": "无法加载比赛记录 — 请刷新重试",
     "you": "你",
     "partner": "搭档",
     "opponents": "对手",
     "yourScore": "你的得分",
     "theirScore": "对方得分",
-    "logGameSubmit": "记录",
-    "logGameThanks": "已记录 — 谢谢！",
     "usingToday": "你今天用的是哪支球拍？",
     "compareLighter": "比你的更轻",
     "compareHeavier": "比你的更重",
