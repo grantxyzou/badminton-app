@@ -519,6 +519,16 @@
     "bagSetActive": "Use this one",
     "bagRemove": "Remove",
     "bagFull": "That's all the rackets we can hold — remove one first.",
-    "bagDuplicate": "That racket is already in your bag."
+    "bagDuplicate": "That racket is already in your bag.",
+    "formatLabel": "I mostly play",
+    "format_doubles": "Doubles",
+    "format_singles": "Singles",
+    "format_both": "Both",
+    "budgetLabel": "Budget",
+    "budget_100": "Under $100",
+    "budget_200": "$100–200",
+    "budget_350": "$200–350",
+    "budget_none": "No limit",
+    "needsCheckIn": "Do the check-in and we'll suggest a racket."
   }
 }

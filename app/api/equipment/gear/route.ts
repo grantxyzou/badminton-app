@@ -71,6 +71,8 @@ async function writeGearDoc(memberId: string, prior: PlayerGear | undefined, nex
     memberId,
     items: next.items ?? prior?.items ?? [],
     activeRacketId: 'activeRacketId' in next ? next.activeRacketId : prior?.activeRacketId,
+    playFormat: 'playFormat' in next ? next.playFormat : prior?.playFormat,
+    budgetMaxCad: 'budgetMaxCad' in next ? next.budgetMaxCad : prior?.budgetMaxCad,
     stringLog: prior?.stringLog,
     shoesMileageSessions: prior?.shoesMileageSessions,
     updatedAt: new Date().toISOString(),
@@ -179,16 +181,44 @@ export async function PATCH(req: NextRequest) {
     const name = typeof body.name === 'string' ? body.name.trim().slice(0, 50) : '';
     const activeRacketId = typeof body.activeRacketId === 'string' ? body.activeRacketId : '';
     if (!name) return NextResponse.json({ error: 'name_required' }, { status: 400 });
-    if (!activeRacketId) return NextResponse.json({ error: 'active_racket_required' }, { status: 400 });
+
+    const FORMATS = ['singles', 'doubles', 'both'] as const;
+    const next: Partial<PlayerGear> = {};
+    if ('playFormat' in body) {
+      if (!FORMATS.includes(body.playFormat)) {
+        return NextResponse.json({ error: 'invalid_format' }, { status: 400 });
+      }
+      next.playFormat = body.playFormat;
+    }
+    if ('budgetMaxCad' in body) {
+      const v = body.budgetMaxCad;
+      // Bounded so a typo can't store a value that silently disables the
+      // budget scorer for everything.
+      if (v !== null && (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 5000)) {
+        return NextResponse.json({ error: 'invalid_budget' }, { status: 400 });
+      }
+      next.budgetMaxCad = v ?? undefined;
+    }
+
+    // activeRacketId is required only when this call isn't setting a
+    // preference field — the original PATCH contract ("set my active
+    // racket") vs. the new one ("set my format/budget preference"), sharing
+    // one verb and one auth gate.
+    if (!activeRacketId && !('playFormat' in body) && !('budgetMaxCad' in body)) {
+      return NextResponse.json({ error: 'active_racket_required' }, { status: 400 });
+    }
 
     const auth = await authorizeBagWrite(req, name);
     if (auth.error) return auth.error;
 
     const prior = await readGearDoc(auth.memberId);
-    if (!rackets(prior ?? null).some((i) => i.id === activeRacketId)) {
-      return NextResponse.json({ error: 'racket_not_found' }, { status: 404 });
+    if (activeRacketId) {
+      if (!rackets(prior ?? null).some((i) => i.id === activeRacketId)) {
+        return NextResponse.json({ error: 'racket_not_found' }, { status: 404 });
+      }
+      next.activeRacketId = activeRacketId;
     }
-    return NextResponse.json({ gear: await writeGearDoc(auth.memberId, prior, { activeRacketId }) });
+    return NextResponse.json({ gear: await writeGearDoc(auth.memberId, prior, next) });
   } catch (error) {
     console.error('PATCH equipment/gear error:', error);
     return NextResponse.json({ error: 'save_failed' }, { status: 500 });
