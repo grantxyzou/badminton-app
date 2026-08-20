@@ -13,6 +13,8 @@
  */
 
 import library from '@/scripts/data/drill-library.json';
+import { getContainer, ensureContainer, getActiveSessionId } from './cosmos';
+import { summarizeAssessmentTrend, type StoredAssessment } from './assessment';
 
 export interface Drill {
   id: string;
@@ -133,4 +135,55 @@ export function recommendDrills(input: {
     picks.push(toPick(candidates[idx], skill));
   }
   return picks;
+}
+
+/**
+ * Impure counterpart to the pure picker above — I/O lives here, deliberately,
+ * so the two current callers (`GET /api/stats/drills` and `GET /api/recommend`)
+ * share ONE work-on derivation instead of each growing their own copy that can
+ * drift. Both need the same "member's weakest skills → drill picks" answer;
+ * `/api/recommend` uses it to ground a gear pick's reasons in what the member
+ * is actually practising.
+ *
+ * Failures degrade to `[]` (a member with no readable assessment history just
+ * gets no drill picks) rather than throwing — matching the read-tolerant
+ * posture of `fetchWorkOn` in the drills route this was extracted from.
+ */
+
+/** Latest work-on skills for a member (lowest-rated), or [] when none/unavailable. */
+async function fetchWorkOn(memberId: string): Promise<WorkOnSkill[]> {
+  try {
+    await ensureContainer('assessments', '/memberId');
+    const { resources } = await getContainer('assessments').items
+      .query({
+        query: 'SELECT c.memberId, c.takenAt, c.ratings, c.overall, c.phase FROM c WHERE c.memberId = @memberId',
+        parameters: [{ name: '@memberId', value: memberId }],
+      })
+      .fetchAll();
+    const docs = (resources as (StoredAssessment & { memberId?: string })[]).filter(
+      (d) => d && d.memberId === memberId && typeof d.takenAt === 'string',
+    );
+    return summarizeAssessmentTrend(docs)?.workOn ?? [];
+  } catch (err) {
+    console.error('drills: workOn read failed:', err);
+    return [];
+  }
+}
+
+/**
+ * This week's drill picks for a member, derived from their weakest skills.
+ *
+ * Only takes a `memberId` (not the full `LevelSubject` — no `name` needed):
+ * `recommendDrills` accepts a `level` for future use but does not read it in
+ * today's picker logic, so this does not fetch `getCanonicalLevel` (which
+ * needs a `name` to key the group-calibration fold) and passes `level: null`.
+ * A caller that only has a memberId in hand (like /api/recommend's `subject`)
+ * can still get real drill picks without needing to resolve a name first.
+ */
+export async function drillPicksFor(subject: { memberId: string }): Promise<DrillPick[]> {
+  const [workOn, rotationSeed] = await Promise.all([
+    fetchWorkOn(subject.memberId),
+    getActiveSessionId(),
+  ]);
+  return recommendDrills({ workOn, level: null, rotationSeed });
 }

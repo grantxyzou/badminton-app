@@ -8,6 +8,9 @@ import { recommendRacket } from '@/lib/recommend';
 import { buildProfile } from '@/lib/racketProfile';
 import { recommendRackets } from '@/lib/racketRecommend';
 import { getCanonicalLevel, type LevelSubject } from '@/lib/levelStore';
+import { drillPicksFor, type DrillPick } from '@/lib/drills';
+import { buildPickReasons } from '@/lib/pickReasons';
+import { tallyClubGear, type ClubGearEntry } from '@/lib/clubGear';
 import type { CatalogItem, EquipmentCategory, PlayerGear } from '@/lib/types';
 import type { Rating } from '@/lib/assessment';
 
@@ -170,10 +173,39 @@ export async function GET(req: NextRequest) {
       // catalog problem, not a "player has no viable pick" problem, so it
       // gets the same unavailable code as a literally-empty query.
       if (!top) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
+
+      // Drill picks for cross-domain grounding. A failure here must NOT take the
+      // recommendation down — reasons degrade to equipment-only.
+      let drills: DrillPick[] = [];
+      try {
+        drills = await drillPicksFor(subject);
+      } catch {
+        drills = [];
+      }
+
+      // Club tally, cohort-guarded by tallyClubGear before it ever reaches the
+      // reason builder (which re-checks anyway).
+      let clubEntries: ClubGearEntry[] = [];
+      try {
+        const { resources: gearDocs } = await getContainer('playerGear').items
+          .query({ query: 'SELECT c.items FROM c' })
+          .fetchAll();
+        clubEntries = tallyClubGear(gearDocs as Pick<PlayerGear, 'items'>[]);
+      } catch {
+        clubEntries = [];
+      }
+
+      const reasons = buildPickReasons({
+        item: top.item,
+        engineReasons: top.reasons,
+        drills,
+        clubEntries,
+      });
+
       return NextResponse.json({
         item: top.item,
-        reason: top.reasons[0] ?? null,
-        reasons: top.reasons,
+        reason: reasons[0] ?? null,
+        reasons,
         warnings: top.warnings,
       });
     }
