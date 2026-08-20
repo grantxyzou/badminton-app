@@ -50,67 +50,7 @@ Bottom-nav "Stats" (formerly "Skills"; `nav.skills` i18n key kept for backcompat
 
 ### Equipment Tab
 
-The Equipment register inside Stats (`RacketRow`, gated on
-`NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE`). **The tab IS the player's bag** — hero
-(today's racket) → recommendation → your rackets → "+ Add a racket". Adding is
-the only thing that opens a sheet, and that sheet does nothing else.
-
-- **`components/stats/useGear.ts` is the single owner of gear state.** It holds
-  `gear/rackets/active/loaded/loadError/busy/online` plus `reload/add/activate/
-  remove/setPrefs`, and ONE monotonic op counter shared by the read and all
-  writes. Before it, `RacketRow` held the read and `GearSheet` held the writes,
-  each with its own counter — that out-of-order-response race has shipped here
-  twice. Never add a gear fetch outside this hook.
-- **`GearSheet` is a catalog picker and nothing else.** Full height (`92dvh` —
-  `vh` ignores collapsible mobile chrome and clips the sheet), search-first,
-  one tap commits and closes. Rows show brand ABOVE model: a query searches all
-  brands at once, and brand used to live only in the `aria-label`, so exactly
-  the cross-brand results where brand matters rendered as bare model names.
-  Rackets already in the bag are omitted, which takes `duplicate_racket` off
-  the happy path.
-- **`BagList` always renders, active racket included.** It used to hide below
-  two rackets ("a bag of one is chrome") — correct inside a sheet, wrong once
-  the tab became the bag, because it left a one-racket player unable to remove
-  or replace what they owned. The active row shows a badge instead of "Use this
-  one" but keeps its remove button. Don't reintroduce the guard.
-- **The hero is display-only.** With the bag on the tab, switching and removing
-  live in the list and adding has its own button, so a tappable hero would be a
-  second door to the same room (same principle as `RacketRecCard`'s
-  conditional interactivity).
-- **`lib/activeRacket.ts`** resolves the active racket read-tolerantly: new docs
-  carry `activeRacketId`, legacy docs fall back to `items[0]`. No migration.
-
-#### Racket recommender (`NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER`)
-
-Scores the **fourteen check-in skill ratings** rather than the old
-`Member.stage` (optional, rarely set — so it showed nearly everyone the same
-racket and never excluded what they owned).
-
-- `lib/racketProfile.ts` — `buildProfile(ratings, gear)`. Owns the 14-key rename
-  table between the app's assessment keys and the engine's field names; a wrong
-  key silently defaults that skill to 3 and no type check catches it, since the
-  map is keyed by `string`. Unrated skills default to 3 (partial ratings are
-  normal — `validateRatings` accepts any subset). Returns **`null` when there
-  are no ratings at all**, which is what drives `needsCheckIn`.
-- `lib/racketRecommend.ts` — pure, no I/O or clock. Seven weighted scorers
-  ported from `docs/superpowers/reference/recommend_racket.py`, which stays the
-  source of truth for thresholds. Two deliberate divergences: **budget never
-  hard-filters** (prices are USD-derived and go stale; a silent exclusion is
-  invisible when the price is wrong), and rows missing normalized
-  `balance`/`flex`/`tier` are **skipped, not scored on invented values**.
-- **No assessment → no recommendation.** With no ratings the engine would score
-  fourteen 3s and emit a confident, meaningless pick. The card says "do the
-  check-in" instead.
-- **The flag-on route requires auth; flag-off stays public.** `GET
-  /api/recommend` was unauthenticated because it returned only a coarse
-  stage-derived pick. Engine reasons quote individual ratings ("smash 4/5"),
-  and member names are enumerable via `GET /api/members`, so the flag-on branch
-  gates on a `member_session` cookie for that name or admin (same gate as
-  `/api/stats/level`). Rate limiting stays first (security rule 4).
-- **Format and budget are asked, not inferred** — the engine's author flagged
-  both as not derivable from skill scores. Stored as optional
-  `playFormat`/`budgetMaxCad` on `PlayerGear`; budget bands are CAD and every
-  band sets an UPPER bound.
+See `components/stats/CLAUDE.md` — loads automatically when working in that directory.
 
 ### Design System
 Canonical bundle mirrored at `docs/design-system/` (43 files — tokens, 28 specimen HTMLs, UI-kit JSX refs, self-hosted fonts). `app/globals.css` is the **single source of truth** for tokens in the running app; the docs folder is pristine reference only (never imported).
@@ -144,8 +84,6 @@ Canonical bundle mirrored at `docs/design-system/` (43 files — tokens, 28 spec
 
 ## Coding Conventions
 
-- **Components**: PascalCase files, default export. **Lib**: camelCase files.
-- **API routes**: `export async function GET/POST/PATCH/DELETE(req: NextRequest)`
 - **CSS**: Use named classes from `globals.css` for shared patterns. No hard divider lines between list items. New shared patterns go in `globals.css`.
 - **Segment controls**: Use `.segment-control` / `.segment-tab-active` / `.segment-tab-inactive` classes. The wrapper needs `flex` and each tab `flex-1 flex items-center justify-center` — `.segment-control` sets no `display`, so without `flex` the active pill overlaps its neighbor.
 - **IDs**: Always `randomBytes` from `crypto` — never `Math.random()`.
@@ -294,26 +232,10 @@ The repo runs two Azure deployments from a single `main` branch: **`bpm-stable`*
 
 ## Deployment
 
-Two deployments from one `main` branch (trunk-based + tag promotion):
+Two deployments from one `main` branch (trunk-based + tag promotion): `bpm-next` auto-deploys every push to `main`; `bpm-stable` deploys only on manual tag dispatch. Full promotion / rollback runbook: run the `deploy-promotion` skill.
 
-- **`bpm-next`** — auto-deploys every push to `main` via `.github/workflows/deploy-next.yml`. Runs with `NEXT_PUBLIC_ENV=next` and most flags `on`. Preview banner visible. Friend-group beta testers bookmark this URL.
-- **`bpm-stable`** — friend-facing production. Deploys only when `.github/workflows/deploy-stable.yml` is manually dispatched with a `tag` input (e.g., `bpm-stable-v1.0`). Runs with `NEXT_PUBLIC_ENV=stable` and flags `off` by default.
-
-**Promotion runbook**: update `CHANGELOG.md` → tag `main` as `bpm-stable-vN.0` → push tag → dispatch `deploy-stable` with the tag → smoke test → announce.
-
-**Stable-tag footgun**: the promotion tags a commit, and `main` auto-deploys to `bpm-next` — so `main` routinely contains post-soak work ahead of what's ready for stable. Tag the *specific* intended commit, never blindly `main`, or unsoaked work rides to stable. (2026-05-16: deliberately tagged `ab566e0` for `bpm-stable-v1.4` to keep the just-merged offline work off the stable cut.)
-
-**Rollback**: re-dispatch `deploy-stable` with a previous tag. For data rollback, Cosmos point-in-time restore (7-day retention).
-
-**Schema rule**: the two deployments share one Cosmos DB. All schema changes must be additive and optional — never remove or rename a field while stable and next share the DB. Stage 2's `orgId` migration is the one high-risk event; see `/Users/gz-mac/.claude/plans/this-was-where-we-clever-diffie.md`.
-
-Tests must pass before build proceeds on either workflow. Runtime env vars (including flags) set in Azure App Settings per App Service.
+**Schema rule**: the two deployments share one Cosmos DB. All schema changes must be additive and optional — never remove or rename a field while stable and next share the DB.
 
 ## Testing
 
-```bash
-npm test              # run all tests (vitest)
-npm run test:watch    # watch mode
-```
-
-1303 tests across 152 suites covering API routes (admin auth, player CRUD, player self-pay, account-only signup + hijack guards, members, sessions, session costs, birds, per-session bird-usage, pooled bird usage + auto/manual price resolution, skills, releases CRUD + PATCH, announcements markdown round-trip, stats attendance, recovery PIN + member-fallback), feature flags, i18n parity, component rendering (CreateAccountSheet, ProfileTab, etc.), mini-markdown parser, bird-brand parser, bird-usage helpers, stats placeholder, and the design-preview route. Tests use the in-memory mock store — no DB needed. Helpers in `__tests__/helpers.ts`. Each test gets a unique IP via `X-Client-IP` to avoid rate limiter collisions.
+Tests use the in-memory mock store — no DB needed. Helpers in `__tests__/helpers.ts`. Each test gets a unique IP via `X-Client-IP` to avoid rate limiter collisions.
