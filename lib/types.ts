@@ -1,3 +1,5 @@
+import type { StatsPrivacy } from './statsPrivacy';
+
 export interface PrevSessionSnapshot {
   courtCount: number;
   costPerCourt: number;
@@ -152,6 +154,15 @@ export interface Member {
   eTransferRecipient?: ETransferRecipient;
   /** Admin-only: dates (YYYY-MM-DD) the admin has marked as skipped. Used by the skip_date anomaly. */
   skipDates?: string[];
+  /**
+   * Club-comparison privacy. Absent means NEVER ASKED — read it through
+   * `normalizeStatsPrivacy` (lib/statsPrivacy.ts), which maps absence to
+   * `{ clubComparison: true, promptedAt: null }` so existing members get the
+   * first-run prompt once instead of silently defaulting into a comparison.
+   * Unlike `pinHash` / `recoveryCode` this is NOT a strip-canary — the member
+   * reads their own setting back via `GET /api/members/me`.
+   */
+  statsPrivacy?: StatsPrivacy;
 }
 
 export interface Alias {
