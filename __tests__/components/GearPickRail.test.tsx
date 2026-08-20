@@ -180,7 +180,7 @@ describe('GearPickRail — a preference change must not strand a category', () =
     rerender(ui(fakeGear({ gear: { id: 'g', memberId: 'm', updatedAt: '2026-01-01', items: [], budgetMaxCad: 200 } })));
 
     // Strings settles into its parked card instead of shimmering forever.
-    expect(await screen.findByText('Tension and string picks, matched to how you play.')).toBeTruthy();
+    expect(await screen.findByText(enMessages.stats.gear.railStringsSoon)).toBeTruthy();
     expect(stringAsks).toBe(2);
   });
 
@@ -202,7 +202,7 @@ describe('GearPickRail — a preference change must not strand a category', () =
     );
 
     const { rerender } = render(ui(fakeGear()));
-    await screen.findByText('Tension and string picks, matched to how you play.');
+    await screen.findByText(enMessages.stats.gear.railStringsSoon);
 
     rerender(ui(fakeGear({ gear: { id: 'g', memberId: 'm', updatedAt: '2026-01-01', items: [], budgetMaxCad: 200 } })));
 
