@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { recordEngagement } from '@/lib/engagement';
 import GearPickCard, { type GearPick, type GearPickCardStatus } from './GearPickCard';
 import GearPickSheet from './GearPickSheet';
 import type { UseGear } from './useGear';
@@ -31,6 +32,12 @@ function initialState(): Record<EquipmentCategory, CategoryState> {
   return state;
 }
 
+function initialStatuses(): Record<EquipmentCategory, GearPickCardStatus> {
+  const statuses = {} as Record<EquipmentCategory, GearPickCardStatus>;
+  for (const cat of ORDER) statuses[cat] = SOURCED.includes(cat) ? 'loading' : 'parked';
+  return statuses;
+}
+
 export interface GearPickRailProps {
   activeName: string | null;
   gear: UseGear;
@@ -57,6 +64,16 @@ export default function GearPickRail({ activeName, gear }: GearPickRailProps) {
   // place that holds both the pick and the gear owner needed to add it.
   const [openCategory, setOpenCategory] = useState<EquipmentCategory | null>(null);
 
+  // Mirror of each category's status, kept in step with `setState` so the fetch
+  // effect can consult it without taking `state` as a dependency (which would
+  // make every response retrigger the effect that produced it).
+  const statusRef = useRef<Record<EquipmentCategory, GearPickCardStatus>>(initialStatuses());
+
+  const apply = useCallback((cat: EquipmentCategory, next: CategoryState) => {
+    statusRef.current[cat] = next.status;
+    setState((prev) => ({ ...prev, [cat]: next }));
+  }, []);
+
   // The engine reads `playFormat` and `budgetMaxCad` off the gear doc, and
   // `GearPickSheet` is where they are now edited — so a change there must
   // refetch the pick, or the controls would only take effect after a reload.
@@ -73,11 +90,22 @@ export default function GearPickRail({ activeName, gear }: GearPickRailProps) {
   const recKey = gearLoaded
     ? `${gear.gear?.playFormat ?? ''}|${gear.gear?.budgetMaxCad ?? ''}`
     : null;
+  const prevKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!activeName || recKey === null) return;
+    // First pass vs. a preference change. On a refresh, ask only about the
+    // categories that actually answered last time: a parked category does not
+    // un-park because you changed your budget, and `string` is parked on every
+    // request today, so half of each refetch pass would be pure burn against
+    // /api/recommend's 10/min/IP limit — whose throttled response is precisely
+    // the one that renders as an error card.
+    const isRefresh = prevKeyRef.current !== null && prevKeyRef.current !== recKey;
+    prevKeyRef.current = recKey;
+
     let live = true;
     for (const cat of SOURCED) {
+      if (isRefresh && statusRef.current[cat] !== 'ready' && statusRef.current[cat] !== 'error') continue;
       fetch(`${BASE}/api/recommend?name=${encodeURIComponent(activeName)}&category=${cat}`, { cache: 'no-store' })
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
         .then((d) => {
@@ -99,36 +127,33 @@ export default function GearPickRail({ activeName, gear }: GearPickRailProps) {
           //                    for a live category. A failure must never
           //                    render as a product state.
           if (d.unavailable || d.needsCheckIn) {
-            setState((prev) => ({ ...prev, [cat]: { status: 'parked', pick: null } }));
+            apply(cat, { status: 'parked', pick: null });
             return;
           }
           if (!d.item) {
-            setState((prev) => ({ ...prev, [cat]: { status: 'error', pick: null } }));
+            apply(cat, { status: 'error', pick: null });
             return;
           }
-          setState((prev) => ({
-            ...prev,
-            [cat]: {
-              status: 'ready',
-              pick: {
-                item: d.item as CatalogItem,
-                reasons: Array.isArray(d.reasons) ? d.reasons : [],
-                warnings: Array.isArray(d.warnings) ? d.warnings : [],
-              },
+          apply(cat, {
+            status: 'ready',
+            pick: {
+              item: d.item as CatalogItem,
+              reasons: Array.isArray(d.reasons) ? d.reasons : [],
+              warnings: Array.isArray(d.warnings) ? d.warnings : [],
             },
-          }));
+          });
         })
         // A non-ok response (flag off, forbidden, load failure) is "unknown",
         // not "known parked" — it must render the distinct error card per the
         // legible-fail rule, never a confident coming-soon.
         .catch(() => {
-          if (live) setState((prev) => ({ ...prev, [cat]: { status: 'error', pick: null } }));
+          if (live) apply(cat, { status: 'error', pick: null });
         });
     }
     return () => {
       live = false;
     };
-  }, [activeName, recKey]);
+  }, [activeName, recKey, apply]);
 
   if (!activeName) return null;
 
@@ -166,7 +191,17 @@ export default function GearPickRail({ activeName, gear }: GearPickRailProps) {
             pick={pick}
             owned={isOwned(cat, pick?.item ?? null)}
             status={status}
-            onOpen={() => setOpenCategory(cat)}
+            onOpen={() => {
+              setOpenCategory(cat);
+              // The Value-Hub Slice-0 kill-criterion ("did a member interact
+              // more than once") had exactly one writer: RacketRecCard's
+              // disclosure tap. This tap replaces it, and the `events`
+              // container is append-only — a gap in the series is
+              // indistinguishable afterwards from real disengagement. Same
+              // `rec_card_tap` kind so the series stays continuous.
+              // Fire-and-forget by design; nothing on screen depends on it.
+              void recordEngagement('rec_card_tap');
+            }}
           />
         );
       })}
@@ -175,9 +210,17 @@ export default function GearPickRail({ activeName, gear }: GearPickRailProps) {
     {/* One sheet, driven by which card was tapped — the same "one picker"
         principle as YourKitCard's GearSheet. It takes the rail's `gear`, so
         adding from it flips this card to IN YOUR KIT and fills the kit row in
-        the same pass, with no reload and no second fetch. */}
+        the same pass, with no reload and no second fetch.
+
+        `open` keys off the tapped CATEGORY, never off whether a pick is
+        currently resolved. The pick is live — changing format or budget inside
+        the sheet refetches it — and gating the sheet's existence on that would
+        let it evaporate under the member's finger the moment a refetch came
+        back empty (a throttled response is the easy way to hit that). A sheet
+        that vanishes with no explanation is the sheet-shaped version of the
+        lying empty state; GearPickSheet renders an error instead. */}
     <GearPickSheet
-      open={openCategory !== null && openPick !== null}
+      open={openCategory !== null}
       onClose={() => setOpenCategory(null)}
       category={openCategory ?? 'racket'}
       pick={openPick}

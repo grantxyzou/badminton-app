@@ -14,8 +14,10 @@ export interface GearPickSheetProps {
   open: boolean;
   onClose: () => void;
   category: EquipmentCategory;
-  /** The rail card's resolved recommendation. Null closes the sheet's reason
-   *  to exist, so the sheet renders nothing rather than an empty frame. */
+  /** The rail card's resolved recommendation — LIVE, not frozen at open time,
+   *  because the format/budget controls below are supposed to change it. Null
+   *  means the pick stopped resolving while the sheet was open; the sheet
+   *  renders an error rather than unmounting itself. */
   pick: GearPick | null;
   /** True when the pick is already in the member's kit — the Add action is
    *  replaced by the IN YOUR KIT badge rather than offered and then refused. */
@@ -53,6 +55,17 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   const [addError, setAddError] = useState<string | null>(null);
   const [prefError, setPrefError] = useState(false);
 
+  // The rail keeps this sheet MOUNTED for the whole register's life (it is the
+  // one sheet for every card), so a refusal from one visit would still be on
+  // screen at the next unless it is cleared on the way out. Every exit route —
+  // the close button, Escape via BottomSheet, and a successful add — goes
+  // through here.
+  function close() {
+    setAddError(null);
+    setPrefError(false);
+    onClose();
+  }
+
   const item = pick?.item ?? null;
   const heading = item ? `${item.brand} ${item.model}` : t('pickSheetWeRecommend');
 
@@ -85,7 +98,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
     setAddError(null);
     const res = await gear.add(item);
     if (res.ok) {
-      onClose();
+      close();
       return;
     }
     // `duplicate_racket` is unreachable from here (an owned pick shows the
@@ -96,35 +109,53 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
     else setAddError(t('pickSheetAddError'));
   }
 
-  if (!item) return null;
+  const header = (
+    <BottomSheetHeader className="flex items-center justify-between p-4">
+      <span
+        className="fs-2xs"
+        style={{ color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}
+      >
+        {t('pickSheetWeRecommend')}
+      </span>
+      <button
+        type="button"
+        onClick={close}
+        aria-label={tRecovery('close')}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          minWidth: 44,
+          minHeight: 44,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
+      </button>
+    </BottomSheetHeader>
+  );
+
+  // The pick this sheet was opened for is no longer resolvable — a refetch
+  // triggered by the controls below came back empty, throttled or failed. The
+  // sheet stays mounted and says so. Unmounting instead would make it vanish
+  // under the member's finger with no explanation, which is the sheet-shaped
+  // version of the lying empty state.
+  if (!item) {
+    return (
+      <BottomSheet open={open} onClose={close} ariaLabel={heading} maxHeight="88dvh" className="max-w-lg mx-auto">
+        {header}
+        <BottomSheetBody className="p-5 pb-8">
+          <ErrorState message={t('pickSheetLoadError')} />
+        </BottomSheetBody>
+      </BottomSheet>
+    );
+  }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={heading} maxHeight="88dvh" className="max-w-lg mx-auto">
-      <BottomSheetHeader className="flex items-center justify-between p-4">
-        <span
-          className="fs-2xs"
-          style={{ color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}
-        >
-          {t('pickSheetWeRecommend')}
-        </span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={tRecovery('close')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            minWidth: 44,
-            minHeight: 44,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
-        </button>
-      </BottomSheetHeader>
+    <BottomSheet open={open} onClose={close} ariaLabel={heading} maxHeight="88dvh" className="max-w-lg mx-auto">
+      {header}
 
       <BottomSheetBody className="p-5 pb-8">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
