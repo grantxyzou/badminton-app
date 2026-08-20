@@ -79,7 +79,7 @@ jobs:
           # entry closes the sync gap that would otherwise ship it OFF to stable
           # while the flag registry lists it as a live flag.
           NEXT_PUBLIC_FLAG_INSIGHT_CARDS: 'true'
-          NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER: 'false'
+          NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: 'false'
           # Stats v2 (You / Play / Learn / Gear + the club-comparison privacy
           # control). MUST stay 'true'. Stage 8 (2026-08-20) deleted the v1
           # Stats path outright — StreakSummaryCard, AttendanceCardLive,

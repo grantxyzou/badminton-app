@@ -29,7 +29,7 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_SKILL_DRILLS'
   | 'NEXT_PUBLIC_FLAG_KUDOS'
   | 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS'
-  | 'NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER'
+  | 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER'
   | 'NEXT_PUBLIC_FLAG_STATS_V2';
 
 interface FlagMeta {
@@ -104,8 +104,8 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: 'after distributed insights are promoted to stable + lived-in for 2 weeks',
   },
-  NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER: {
-    description: 'Skill-scored racket recommendations. Off everywhere until compared against the #248 AI card on bpm-next.',
+  NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: {
+    description: 'Skill-scored equipment recommendations: the racket engine (lib/racketRecommend.ts) AND the string pairing engine (lib/stringPair.ts), both reached through GET /api/recommend. On for bpm-next, off on bpm-stable, which falls back to the coarse stage-derived racket pick. Renamed from NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER when string pairing landed and the old name stopped describing what it gates.',
     owner: 'grant',
     plannedRemoval: '2026-11-19',
   },
@@ -144,8 +144,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_KUDOS;
     case 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS':
       return process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS;
-    case 'NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER':
-      return process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER;
+    case 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER':
+      return process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
     case 'NEXT_PUBLIC_FLAG_STATS_V2':
       return process.env.NEXT_PUBLIC_FLAG_STATS_V2;
     default: {

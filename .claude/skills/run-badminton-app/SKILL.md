@@ -90,7 +90,7 @@ PORT=3100 npm run dev:next        # all vnext features against the REAL DB in .e
   `deploy-next.yml` when flags are added/retired —
   `__tests__/dev-next-flag-parity.test.ts` fails on drift in either direction.
   It exists because the script had silently fallen two flags behind
-  (`RACKET_RECOMMENDER`, `STATS_V2`), which rendered the Gear register darker
+  (`GEAR_RECOMMENDER`, `STATS_V2`), which rendered the Gear register darker
   locally than it actually is on next — the "looks behind, code is identical"
   trap this section warns about, landing on the section itself.
 
