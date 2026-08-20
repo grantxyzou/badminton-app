@@ -42,10 +42,27 @@ interface CategoryMeta {
    *  added (racket parks on `needsCheckIn` or the flag being off, not on a
    *  missing engine — see GearPickRail's SOURCED list). */
   soonKey?: string;
+  /** i18n key for the parked BADGE. Defaults to `railComingSoon`, which is
+   *  true for string/shoe/shuttle (no engine exists yet) but FALSE for
+   *  racket — the engine ships today, so a racket card parked on
+   *  `needsCheckIn` (or the rarer empty-catalog case; GearPickRail
+   *  deliberately doesn't distinguish the two — see its own comment) must
+   *  not claim the FEATURE itself is coming soon. `railNoPickYet` is
+   *  deliberately reason-agnostic ("No pick yet", not "check in first") so
+   *  it stays true on whichever of those two causes actually parked the
+   *  card — the `soonKey` body line is where the specific, common-case
+   *  nudge ("do a check-in") lives. Keep this in sync with `soonKey`: a
+   *  category whose badge and body tell two different stories ("Coming
+   *  soon" next to "do a check-in") is worse than the plain duplication
+   *  this pairing exists to avoid. */
+  badgeKey?: string;
 }
 
 const META: Record<EquipmentCategory, CategoryMeta> = {
-  racket: { labelKey: 'catRacket', icon: 'sports_tennis', color: 'var(--accent)', soonKey: 'railRacketSoon' },
+  racket: {
+    labelKey: 'catRacket', icon: 'sports_tennis', color: 'var(--accent)',
+    soonKey: 'railRacketSoon', badgeKey: 'railNoPickYet',
+  },
   string: { labelKey: 'catString', icon: 'science', color: 'var(--sev-low-text)', soonKey: 'railStringsSoon' },
   shoe: { labelKey: 'catShoe', icon: 'fitness_center', color: 'var(--accent-amber)', soonKey: 'railShoesSoon' },
   shuttle: { labelKey: 'catShuttle', icon: 'inventory_2', color: 'var(--text-primary)', soonKey: 'railShuttlesSoon' },
@@ -108,7 +125,7 @@ export default function GearPickCard({ category, pick, owned, status, onOpen }: 
           >
             {t(meta.labelKey)}
           </span>
-          <StatusBadge variant="muted">{t('railComingSoon')}</StatusBadge>
+          <StatusBadge variant="muted">{t(meta.badgeKey ?? 'railComingSoon')}</StatusBadge>
           <span
             className="material-icons"
             aria-hidden="true"
