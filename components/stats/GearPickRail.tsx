@@ -94,18 +94,24 @@ export default function GearPickRail({ activeName, gear }: GearPickRailProps) {
 
   useEffect(() => {
     if (!activeName || recKey === null) return;
-    // First pass vs. a preference change. On a refresh, ask only about the
-    // categories that actually answered last time: a parked category does not
-    // un-park because you changed your budget, and `string` is parked on every
-    // request today, so half of each refetch pass would be pure burn against
-    // /api/recommend's 10/min/IP limit — whose throttled response is precisely
-    // the one that renders as an error card.
+    // First pass vs. a preference change. On a refresh, skip only the PARKED
+    // categories: parked is a property of the catalog and the engine, not of
+    // your budget, so re-asking cannot change the answer — and `string` is
+    // parked on every request today, so that alone is half of each refetch
+    // pass, burnt against /api/recommend's 10/min/IP limit whose throttled
+    // response is precisely the one that renders as an error card.
+    //
+    // Every other status IS re-asked, `loading` included. Skipping a
+    // still-in-flight category would strand it forever: this effect's previous
+    // run has already had its cleanup fire (`live = false`), discarding the
+    // response that was going to settle it, so it would sit on CardSkeleton
+    // permanently — a fifth state, and not one of the four honest ones.
     const isRefresh = prevKeyRef.current !== null && prevKeyRef.current !== recKey;
     prevKeyRef.current = recKey;
 
     let live = true;
     for (const cat of SOURCED) {
-      if (isRefresh && statusRef.current[cat] !== 'ready' && statusRef.current[cat] !== 'error') continue;
+      if (isRefresh && statusRef.current[cat] === 'parked') continue;
       fetch(`${BASE}/api/recommend?name=${encodeURIComponent(activeName)}&category=${cat}`, { cache: 'no-store' })
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
         .then((d) => {
