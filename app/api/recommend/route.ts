@@ -8,10 +8,15 @@ import { recommendRacket } from '@/lib/recommend';
 import { buildProfile } from '@/lib/racketProfile';
 import { recommendRackets } from '@/lib/racketRecommend';
 import { getCanonicalLevel, type LevelSubject } from '@/lib/levelStore';
-import type { CatalogItem, PlayerGear } from '@/lib/types';
+import type { CatalogItem, EquipmentCategory, PlayerGear } from '@/lib/types';
 import type { Rating } from '@/lib/assessment';
 
 export const dynamic = 'force-dynamic';
+
+const VALID_CATEGORIES: EquipmentCategory[] = ['racket', 'string', 'shoe', 'shuttle', 'bag', 'grip'];
+/** Categories with a scoring engine. Everything else is a valid ask we cannot
+ *  answer yet — distinct from an invalid ask, which is a 400. */
+const ENGINE_CATEGORIES: EquipmentCategory[] = ['racket'];
 
 // Shared with /api/equipment/catalog: creates the container AND fills it from
 // the curated seed. Without this the container is empty in real Cosmos and
@@ -79,6 +84,19 @@ export async function GET(req: NextRequest) {
   try {
     const name = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50) ?? '';
 
+    // An UNRECOGNIZED category used to be silently ignored (both queries below
+    // hardcoded 'racket'). That's a trap for a per-category rail: the plural
+    // "shoes" reads naturally but the enum is singular ("shoe"), so a plural
+    // typo would previously have returned a racket pick with a 200 and no way
+    // to notice. Absent still defaults to racket (existing callers rely on
+    // it); wrong is now an error. Checked before the auth gate below so it
+    // can't be used to probe auth behavior.
+    const rawCategory = new URL(req.url).searchParams.get('category');
+    if (rawCategory !== null && !(VALID_CATEGORIES as string[]).includes(rawCategory)) {
+      return NextResponse.json({ error: 'invalid_category' }, { status: 400 });
+    }
+    const category = (rawCategory ?? 'racket') as EquipmentCategory;
+
     if (isFlagOn('NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER')) {
       // D8 privacy gate: engine reasons quote the player's individual skill
       // ratings ("smash 3/5"), and member names are enumerable via
@@ -88,6 +106,14 @@ export async function GET(req: NextRequest) {
       const ownsName = member?.name?.trim().toLowerCase() === name.toLowerCase();
       if (!name || (!ownsName && !isAdminAuthed(req))) {
         return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+      }
+
+      if (!ENGINE_CATEGORIES.includes(category)) {
+        // A valid category we cannot score yet. NOT an error: the rail
+        // renders its parked card from this, and shoes/shuttles are a
+        // data-sourcing problem, not a request-shape problem. Checked before
+        // any profile/catalog work so an unsupported category is cheap.
+        return NextResponse.json({ item: null, reason: null, unavailable: 'no_engine' });
       }
 
       await ensureCatalogSeeded();
@@ -128,12 +154,22 @@ export async function GET(req: NextRequest) {
       const { resources: catalogItems } = await getContainer('equipmentCatalog')
         .items.query({
           query: 'SELECT * FROM c WHERE c.category = @category',
-          parameters: [{ name: '@category', value: 'racket' }],
+          parameters: [{ name: '@category', value: category }],
         })
         .fetchAll();
 
-      const top = recommendRackets(profile, catalogItems as CatalogItem[], 1)[0];
-      if (!top) return NextResponse.json({ item: null, reason: null });
+      if (catalogItems.length === 0) {
+        return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
+      }
+
+      const top = recommendRackets(profile, catalogItems as CatalogItem[], 1, category)[0];
+      // The mock store ignores @category (see lib/cosmos.ts), so catalogItems
+      // above can be non-empty even when nothing of THIS category exists —
+      // recommendRackets' internal filter is the one that actually agrees
+      // with real Cosmos. Rows present but nothing scorable is still a
+      // catalog problem, not a "player has no viable pick" problem, so it
+      // gets the same unavailable code as a literally-empty query.
+      if (!top) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
       return NextResponse.json({
         item: top.item,
         reason: top.reasons[0] ?? null,
