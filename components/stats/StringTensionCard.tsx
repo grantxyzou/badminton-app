@@ -29,9 +29,13 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 export interface StringTensionCardProps {
   activeName: string | null;
   gear: UseGear;
+  /** D2: true once the string pairing has produced a tension for the member's
+   *  actual frame-and-string. This card's number is level-based and frame-
+   *  agnostic, so it is the fallback, not a second opinion. */
+  suppressed?: boolean;
 }
 
-export default function StringTensionCard({ activeName, gear }: StringTensionCardProps) {
+export default function StringTensionCard({ activeName, gear, suppressed }: StringTensionCardProps) {
   const t = useTranslations('stats.gear');
   const [level, setLevel] = useState<number | null>(null);
   const [ready, setReady] = useState(false);
@@ -63,6 +67,11 @@ export default function StringTensionCard({ activeName, gear }: StringTensionCar
 
   // No level, or still resolving — render nothing rather than a placeholder
   // number. There is no honest skeleton for "we have no advice".
+  // D2: the string pairing produced a number for this exact frame-and-string,
+  // which beats round(21 + level). Stand down rather than offer the member a
+  // second, less specific answer to the same question.
+  if (suppressed) return null;
+
   if (!activeName || !ready || !advice) return null;
 
   const selected = formatForToggle(format);

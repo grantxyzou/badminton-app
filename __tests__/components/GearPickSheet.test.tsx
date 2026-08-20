@@ -191,3 +191,49 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
     expect(screen.getByRole('tab', { name: 'No limit' })).toBeTruthy();
   });
 });
+
+describe('GearPickSheet — the paired tension (spec D2)', () => {
+  afterEach(cleanup);
+
+  function TensionHarness({ tensionLbs }: { tensionLbs: number | null }) {
+    const gear: UseGear = useGear('Lin');
+    return (
+      <GearPickSheet
+        open
+        onClose={vi.fn()}
+        category="string"
+        pick={{
+          item: { ...ITEM, id: 's1', category: 'string' as const, model: 'BG65' },
+          reasons: ['Wide usable tension window (22-26 lbs).'],
+          pairedWith: { label: 'Yonex Astrox 99 Pro', source: 'owned' },
+          tensionLbs,
+        }}
+        owned={false}
+        gear={gear}
+      />
+    );
+  }
+
+  function renderTension(tensionLbs: number | null) {
+    mockGear(gearDoc());
+    return render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <TensionHarness tensionLbs={tensionLbs} />
+      </NextIntlClientProvider>,
+    );
+  }
+
+  it('shows the tension this string wants on this frame', async () => {
+    renderTension(25.5);
+    await waitFor(() => expect(screen.getByText(/25\.5/)).toBeTruthy());
+    // Never a bare figure: the advisory is what makes it a conversation with a
+    // stringer rather than an instruction.
+    expect(screen.getByText(/starting point, not a spec/i)).toBeTruthy();
+  });
+
+  it('shows no tension at all rather than inventing one', async () => {
+    renderTension(null);
+    await waitFor(() => expect(screen.getByText(/BG65/)).toBeTruthy());
+    expect(screen.queryByText('Suggested tension')).toBeNull();
+  });
+});

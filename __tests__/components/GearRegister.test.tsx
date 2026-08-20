@@ -52,3 +52,55 @@ describe('GearRegister — single owner of the gear document', () => {
     expect(gearReads().length).toBe(1);
   });
 });
+
+describe('GearRegister — D2, one tension number at a time', () => {
+  function mountWith(tensionLbs: number | null) {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes('/api/recommend') && u.includes('category=string')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            item: { id: 's1', category: 'string', brand: 'Yonex', model: 'BG65', skillRange: [1, 5], attributes: {} },
+            reasons: ['Wide usable tension window'],
+            warnings: [],
+            pairedWith: { label: 'Yonex Astrox 88D Pro', source: 'owned' },
+            tensionLbs,
+          }),
+        });
+      }
+      if (u.includes('/api/stats/level')) {
+        // StringTensionCard reads d.level.level, not d.level — with the wrong
+        // shape it renders nothing and the "is it hidden" test below passes
+        // for the wrong reason.
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ level: { level: 4 } }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ gear: null, items: [], entries: [] }) });
+    }) as unknown as typeof fetch;
+
+    return render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <GearRegister activeName="Lin" />
+      </NextIntlClientProvider>,
+    );
+  }
+
+  it('hides the level-based tension card once a pairing has given a real number', async () => {
+    // The pair number is placed inside the racket-and-string overlap window;
+    // the card's is round(21 + level). Both on screen is two answers to "what
+    // should I tell my stringer".
+    mountWith(25.5);
+    await screen.findByText('Your kit');
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    expect(screen.queryByText('String tension')).toBeNull();
+  });
+
+  it('keeps the level-based card when the pairing could not give one', async () => {
+    // 11 of 71 frames publish no tension ceiling. Falling back is the whole
+    // reason lib/tension.ts is not deleted.
+    mountWith(null);
+    await screen.findByText('Your kit');
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    await waitFor(() => expect(screen.queryByText('String tension')).not.toBeNull());
+  });
+});
