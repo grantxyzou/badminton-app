@@ -8,6 +8,8 @@ import RadarSkeleton from '@/components/stats/skeletons/RadarSkeleton';
 import StatsPlaceholder from '@/components/stats/StatsPlaceholder';
 import StatsV2Shell from '@/components/stats/StatsV2Shell';
 import WhereYouSitCard from '@/components/stats/WhereYouSitCard';
+import ClubConsentSheet from '@/components/stats/ClubConsentSheet';
+import { useStatsPrivacy, shouldPromptForComparison } from '@/lib/useStatsPrivacy';
 import AttendanceCardLive from '@/components/stats/cards/AttendanceCardLive';
 import StreakSummaryCard from '@/components/stats/StreakSummaryCard';
 import SummaryGreeting from '@/components/stats/SummaryGreeting';
@@ -173,6 +175,11 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
   // Stats v2 — the You / Play / Learn / Gear arrangement. Chooses the shell
   // only; it does NOT re-gate the flags above, whose content it reuses.
   const statsV2On = isFlagOn('NEXT_PUBLIC_FLAG_STATS_V2');
+  // Club-comparison consent. Only read under the v2 flag — v1 has no
+  // comparison surface, so there is nothing to ask about.
+  const privacyState = useStatsPrivacy(statsV2On ? activeName : null);
+  const promptOpen = shouldPromptForComparison(privacyState);
+  const comparisonKey = `${privacyState.privacy?.promptedAt ?? 'unasked'}:${privacyState.privacy?.clubComparison ?? 'unknown'}`;
   const heroSlot = skillAssessOn ? (
     <>
       {insightCardsOn && <SummaryGreeting />}
@@ -236,9 +243,23 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
           youSlot={
             <>
               {insightCardsOn && <SummaryGreeting />}
-              <SkillTrendCard />
-              <WhereYouSitCard activeName={activeName} />
+              {/* Both comparison-dependent cards are keyed on the answer, so
+                  saying yes remounts them and they re-read the bands endpoint
+                  — which only returns bands once the prompt is answered.
+                  Without this the member would answer and see nothing change
+                  until a reload. */}
+              <SkillTrendCard key={`trend-${comparisonKey}`} />
+              <WhereYouSitCard
+                key={`sit-${comparisonKey}`}
+                activeName={activeName}
+                promptOpen={promptOpen}
+              />
               {kudosOn && <KudosReceivedCard />}
+              <ClubConsentSheet
+                open={promptOpen}
+                saving={privacyState.saving}
+                onAnswer={(clubComparison) => privacyState.save(clubComparison)}
+              />
             </>
           }
           playSlot={

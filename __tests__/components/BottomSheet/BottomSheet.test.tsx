@@ -56,6 +56,30 @@ describe('BottomSheet — interactions', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('Escape still closes when closeOnEscape is omitted (default for every existing sheet)', () => {
+    const onClose = vi.fn();
+    render(
+      <BottomSheet open={true} onClose={onClose} ariaLabel="x">
+        <BottomSheetBody>content</BottomSheetBody>
+      </BottomSheet>,
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('closeOnEscape={false} makes the sheet un-dismissible by Escape', () => {
+    // Opt-in only, for a sheet that must be ANSWERED rather than dismissed.
+    const onClose = vi.fn();
+    render(
+      <BottomSheet open={true} onClose={onClose} ariaLabel="x" closeOnEscape={false}>
+        <BottomSheetBody>content</BottomSheetBody>
+      </BottomSheet>,
+    );
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(document.body.querySelector('[role="dialog"]')).not.toBeNull();
+  });
+
   it('does NOT render a backdrop element (close icon + Escape only per spec)', () => {
     const onClose = vi.fn();
     render(

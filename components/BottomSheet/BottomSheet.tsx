@@ -13,6 +13,20 @@ export interface BottomSheetProps {
   maxHeight?: string;
   triggerRef?: React.RefObject<HTMLElement>;
   className?: string;
+  /**
+   * Escape-to-dismiss. Defaults to true, which is every existing consumer.
+   *
+   * Set false ONLY for a sheet that must be answered rather than dismissed —
+   * currently just the club-comparison consent sheet, where "asked once" is
+   * the whole design and a dismissal would mean asking again next week.
+   *
+   * There is nothing else to switch off: this component never renders a close
+   * button (call sites supply their own, so one can simply be omitted) and its
+   * backdrop is already non-interactive by spec. The focus trap and scroll
+   * lock keep working, so a non-dismissible sheet MUST give the user a real
+   * way out in its own content — otherwise focus is trapped with no exit.
+   */
+  closeOnEscape?: boolean;
 }
 
 type SheetState = 'closed' | 'opening' | 'open' | 'closing';
@@ -25,6 +39,7 @@ export default function BottomSheet({
   maxHeight = '80vh',
   triggerRef,
   className,
+  closeOnEscape = true,
 }: BottomSheetProps) {
   const [mounted, setMounted] = useState(false);
   const [state, setState] = useState<SheetState>('closed');
@@ -83,9 +98,9 @@ export default function BottomSheet({
   useBodyScrollLock(visible && mounted);
   useFocusTrap(visible && mounted, sheetRef, triggerRef);
 
-  // Escape key dismiss while visible.
+  // Escape key dismiss while visible (unless the sheet must be answered).
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || !closeOnEscape) return;
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         e.preventDefault();
