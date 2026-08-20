@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { GET, POST } from '@/app/api/games/route';
 import { NextRequest, NextResponse } from 'next/server';
 import { setMemberCookie } from '@/lib/auth';
-import { resetMockStore, seedPointer, setupAdminPin, seedAdminMember, makeAdminRequest } from './helpers';
+import { resetMockStore, seedPointer, setupAdminPin, seedAdminMember, makeAdminRequest, getStore } from './helpers';
 
 function get(url: string): NextRequest {
   return new NextRequest(new URL(url, 'http://localhost/bpm'));
@@ -122,5 +122,63 @@ describe('/api/games — sessionId override is admin-only (rule 7)', () => {
     const res = await GET(get('/api/games?sessionId=session-evil'));
     const body = await res.json();
     expect(body.games.every((g: { sessionId: string }) => g.sessionId === 'session-active')).toBe(true);
+  });
+
+  // ── All-time read for one player (`?all=true&name=`) ────────────────────
+  // The Stats overview strip needs a career "Games logged" count. Scoped to
+  // the active session it would read as a total and silently mean "this week".
+  describe('?all=true', () => {
+    async function seedAcrossSessions() {
+      const store = getStore();
+      store['gameResults'] = [
+        { id: 'g1', sessionId: 'session-2026-01-01', teamA: ['Lin', 'Viktor'], teamB: ['Akane', 'Kento'], scoreA: 21, scoreB: 15, loggedBy: 'Lin', loggedAt: '2026-01-01T00:00:00.000Z' },
+        { id: 'g2', sessionId: 'session-2026-02-01', teamA: ['Akane', 'Kento'], teamB: ['lin', 'Sindhu'], scoreA: 18, scoreB: 21, loggedBy: 'Akane', loggedAt: '2026-02-01T00:00:00.000Z' },
+        { id: 'g3', sessionId: 'session-2026-03-01', teamA: ['Viktor', 'Sindhu'], teamB: ['Akane', 'Kento'], scoreA: 21, scoreB: 19, loggedBy: 'Viktor', loggedAt: '2026-03-01T00:00:00.000Z' },
+      ];
+    }
+
+    it('returns a player\'s games from every session, not just the active one', async () => {
+      await seedAcrossSessions();
+      const res = await GET(get('/api/games?all=true&name=Lin'));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.games.map((g: { id: string }) => g.id).sort()).toEqual(['g1', 'g2']);
+    });
+
+    it('matches names case-insensitively on either team', async () => {
+      await seedAcrossSessions();
+      // 'lin' appears lowercased on teamB of g2 — games store names, not ids.
+      const res = await GET(get('/api/games?all=true&name=LIN'));
+      const body = await res.json();
+      expect(body.games.length).toBe(2);
+    });
+
+    it('excludes games the player was not in', async () => {
+      await seedAcrossSessions();
+      const res = await GET(get('/api/games?all=true&name=Lin'));
+      const body = await res.json();
+      expect(body.games.some((g: { id: string }) => g.id === 'g3')).toBe(false);
+    });
+
+    it('sorts newest-first', async () => {
+      await seedAcrossSessions();
+      const res = await GET(get('/api/games?all=true&name=Lin'));
+      const body = await res.json();
+      expect(body.games[0].id).toBe('g2');
+    });
+
+    it('400s without a name rather than dumping the whole history', async () => {
+      await seedAcrossSessions();
+      const res = await GET(get('/api/games?all=true'));
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('name_required');
+    });
+
+    it('returns an empty list for a player with no games (not an error)', async () => {
+      await seedAcrossSessions();
+      const res = await GET(get('/api/games?all=true&name=Nobody'));
+      expect(res.status).toBe(200);
+      expect((await res.json()).games).toEqual([]);
+    });
   });
 });
