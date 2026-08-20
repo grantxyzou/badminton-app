@@ -519,6 +519,16 @@
     "bagSetActive": "改用这支",
     "bagRemove": "移除",
     "bagFull": "球包已满 — 请先移除一支。",
-    "bagDuplicate": "这支球拍已经在你的球包里了。"
+    "bagDuplicate": "这支球拍已经在你的球包里了。",
+    "formatLabel": "我主要打",
+    "format_doubles": "双打",
+    "format_singles": "单打",
+    "format_both": "都打",
+    "budgetLabel": "预算",
+    "budget_100": "$100 以下",
+    "budget_200": "$100–200",
+    "budget_350": "$200–350",
+    "budget_none": "不限",
+    "needsCheckIn": "做个自评，我们就能推荐球拍。"
   }
 }
