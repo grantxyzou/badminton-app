@@ -17,7 +17,16 @@ export async function GET(req: NextRequest) {
     // production container was never seeded, so this read used to return [].
     await ensureCatalogSeeded();
     const raw = new URL(req.url).searchParams.get('category');
-    const category = (VALID as string[]).includes(raw ?? '') ? raw! : 'racket';
+    // An UNRECOGNIZED category used to coerce silently to 'racket' and answer
+    // 200. That is a trap for exactly this feature: the categories read as
+    // "shoes" / "strings" / "shuttles" in the design but the enum is singular,
+    // so a plural typo would have returned a list of RACKETS with a success
+    // status and no way to notice. Absent still defaults to racket (the
+    // existing callers rely on it); wrong is now an error.
+    if (raw !== null && !(VALID as string[]).includes(raw)) {
+      return NextResponse.json({ error: 'invalid_category' }, { status: 400 });
+    }
+    const category = raw ?? 'racket';
     const container = getContainer('equipmentCatalog');
     const { resources } = await container.items
       .query({
