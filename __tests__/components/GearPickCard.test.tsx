@@ -51,4 +51,16 @@ describe('GearPickCard', () => {
     expect(screen.getByText('Coming soon')).toBeTruthy();
     expect(screen.getByText('Court shoes matched to your footwork and fit.')).toBeTruthy();
   });
+
+  // Racket has a LIVE engine (unlike shoe/shuttle), so a parked racket card
+  // (needsCheckIn, or the rarer empty-catalog case) must not claim the
+  // feature itself is "Coming soon" — that reads as false and discourages
+  // the very check-in the body line is asking for. Badge and body must not
+  // tell two different stories.
+  it('parks racket with reason-agnostic badge copy, never "Coming soon"', () => {
+    renderCard({ category: 'racket', pick: null, status: 'parked' });
+    expect(screen.queryByText('Coming soon')).toBeNull();
+    expect(screen.getByText('No pick yet')).toBeTruthy();
+    expect(screen.getByText("We'll suggest a racket once you've done a check-in.")).toBeTruthy();
+  });
 });
