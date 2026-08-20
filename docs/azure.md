@@ -15,7 +15,7 @@
         ┌───────────────────────┐    ┌─────────────────────────┐
         │  Azure Cosmos DB      │    │  Anthropic Claude API   │
         │  cosmos-bd (NoSQL)    │    │  (external, pay-per-use)│
-        │  Database: badminton  │    │ claude-sonnet-4-20250514│
+        │  Database: badminton  │    │ claude-sonnet-5         │
         └───────────────────────┘    └─────────────────────────┘
 ```
 
@@ -184,7 +184,7 @@ Network access restricted to Azure datacenters. Public internet access is not en
 |---------|-------|
 | Provider | Anthropic |
 | SDK | `@anthropic-ai/sdk` |
-| Model | `claude-sonnet-4-20250514` |
+| Model | `claude-sonnet-5` |
 | Max tokens per call | 1024 |
 | Rate limit | 10 requests/min per IP (server-side) |
 
