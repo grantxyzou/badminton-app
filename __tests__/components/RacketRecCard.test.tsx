@@ -54,6 +54,23 @@ describe('RacketRecCard — reasons, warnings, check-in prompt (Task 7)', () => 
     expect(await screen.findByRole('alert')).toBeTruthy();
   });
 
+  // Fix round 1: the engine can legitimately return an empty `reasons` array
+  // alongside a non-empty `warnings` (e.g. scoreWeight's pure safety-flag
+  // branch with none of the other scorers landing on a reason branch). The
+  // card must still be expandable and must still surface the warning — a
+  // warning is the one thing this card must never silently drop.
+  it('is still expandable and surfaces the warning when reasons is empty but warnings is not', async () => {
+    mockFetch({
+      item: { id: 'r3', category: 'racket', brand: 'Yonex', model: 'Nanoflare 800', skillRange: [4, 6], attributes: {} },
+      reason: null,
+      reasons: [],
+      warnings: ['At up to 88g this may tire your arm'],
+    });
+    render(<Wrapper><RacketRecCard name="Lin" mine={null} /></Wrapper>);
+    fireEvent.click(await screen.findByRole('button'));
+    expect(screen.getByText(/may tire your arm/)).toBeTruthy();
+  });
+
   // Flag-off shape (no reasons/warnings array) must keep working unchanged.
   it('still renders the single reason when the engine omits reasons/warnings', async () => {
     mockFetch({

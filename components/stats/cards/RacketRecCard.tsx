@@ -89,10 +89,18 @@ export default function RacketRecCard({ name, mine }: { name: string; mine: Cata
     <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: 0 }}>{item.brand}</p>
   ) : null;
 
-  // Only interactive once there's a pick AND a reason to reveal. A button that
-  // expands nothing is worse than a plain card — and it would inflate the very
-  // metric this exists to measure.
-  if (!item || !reason) {
+  // Only interactive once there's a pick AND something to reveal. "Something"
+  // is reasons OR warnings OR the flag-off single `reason` — NOT `reason`
+  // alone: the engine can legitimately return `reasons: []` with a non-empty
+  // `warnings` (e.g. a pure weight-safety flag with no positive reason to
+  // report), and a warning is the one thing this card must never swallow. A
+  // button that expands nothing is worse than a plain card, but a plain card
+  // that hides a real warning is worse still.
+  const hasReasons = !!reasons && reasons.length > 0;
+  const hasWarnings = !!warnings && warnings.length > 0;
+  const expandable = hasReasons || hasWarnings || !!reason;
+
+  if (!item || !expandable) {
     return (
       <div className="glass-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
         {label}
@@ -122,9 +130,9 @@ export default function RacketRecCard({ name, mine }: { name: string; mine: Cata
       {body}
       {compareLine}
       {expanded && (
-        reasons && reasons.length > 0 ? (
+        hasReasons || hasWarnings ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {reasons.map((r, i) => (
+            {reasons?.map((r, i) => (
               <p key={`reason-${i}`} style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
                 + {r}
               </p>
