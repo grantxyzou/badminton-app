@@ -77,7 +77,7 @@ describe('GearPickCard — the frame a string pick assumed', () => {
         pairedWith: { label: 'Yonex Astrox 88D Pro', source: 'owned' },
       },
     });
-    expect(screen.getByText(/Astrox 88D Pro · yours/i)).toBeTruthy();
+    expect(screen.getByText(/For your Yonex Astrox 88D Pro/i)).toBeTruthy();
   });
 
   it('says the frame was our suggestion when the member owns none', () => {
@@ -92,7 +92,7 @@ describe('GearPickCard — the frame a string pick assumed', () => {
         pairedWith: { label: 'Yonex Astrox 88D Pro', source: 'recommended' },
       },
     });
-    expect(screen.getByText(/our pick for you/i)).toBeTruthy();
+    expect(screen.getByText(/For the Yonex Astrox 88D Pro we suggest/i)).toBeTruthy();
   });
 });
 
@@ -155,5 +155,40 @@ describe('GearPickCard — the spec line has to mean something', () => {
       },
     });
     expect(screen.getByText(/3U · Head-heavy/)).toBeTruthy();
+  });
+});
+
+describe('GearPickCard — two objects, one card', () => {
+  afterEach(cleanup);
+
+  /**
+   * A paired string card makes TWO ownership statements about two different
+   * things: the frame line ("...the racket you own") and the IN YOUR KIT badge
+   * (the string). When both said "yours" they read as one claim about one
+   * object, and a member checking whether they already have this string got
+   * the answer about their racket instead.
+   *
+   * The frame line must therefore scope itself to the frame — a preposition
+   * does it — leaving "yours"/"in your kit" to mean the item the card is about.
+   */
+  it('does not use the same ownership word for the frame and the item', () => {
+    renderCard({
+      category: 'string',
+      owned: true,
+      pick: {
+        item: { ...ITEM, id: 's1', category: 'string', model: 'BG65' },
+        reasons: ['x'],
+        pairedWith: { label: 'Yonex Astrox 88D Pro', source: 'owned' },
+      },
+    });
+
+    // The badge still speaks for the string.
+    expect(screen.getByText(/in your kit/i)).toBeTruthy();
+
+    // The frame line is scoped to the frame, so it cannot be read as a claim
+    // about the string.
+    const frameLine = screen.getByText(/Astrox 88D Pro/);
+    expect(frameLine.textContent).toMatch(/^For your /);
+    expect(frameLine.textContent).not.toMatch(/·\s*yours/i);
   });
 });
