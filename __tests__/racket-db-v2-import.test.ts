@@ -7,7 +7,13 @@ interface RacketDatabaseV2Record {
   id: string;
 }
 
-const items = (catalog as unknown as { items: CatalogItem[] }).items;
+// Scoped to rackets: this file is about the RACKET import, and the catalog is
+// now shared with strings. Asserting over every row would make this suite fail
+// whenever an unrelated category is imported, which is noise rather than
+// signal — the string import has its own coverage.
+const items = (catalog as unknown as { items: CatalogItem[] }).items.filter(
+  (i) => i.category === 'racket',
+);
 
 describe('v2 racket import', () => {
   it('merges by prefixed id rather than duplicating', () => {

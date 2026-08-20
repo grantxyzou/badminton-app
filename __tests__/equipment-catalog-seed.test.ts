@@ -52,9 +52,16 @@ describe('equipment-catalog seed data', () => {
     }
   });
 
-  it('Slice-0 only ships rackets — strings/shoes/etc arrive in Track 2 if survives', () => {
+  // Was "Slice-0 only ships rackets — strings/shoes/etc arrive in Track 2 if
+  // survives". Strings have now arrived, so that assertion described a state
+  // the catalog is no longer in. The part still worth guarding is that only
+  // SOURCED categories ship: the Gear register parks a category until the
+  // catalog can answer for it, and a stray empty-ish shoe row would un-park
+  // shoes and show a recommendation with nothing behind it.
+  it('only ships categories that are actually sourced', () => {
+    const SOURCED = ['racket', 'string'];
     for (const item of parsed.items) {
-      expect(item.category).toBe('racket');
+      expect(SOURCED).toContain(item.category);
     }
   });
 

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { GET as CATALOG } from '../app/api/equipment/catalog/route';
 import { GET as CLUB_GEAR } from '../app/api/stats/club/gear/route';
 import { resetMockStore, setupAdminPin, makeRequest, getStore } from './helpers';
+import { __resetCatalogSeedForTests } from '../lib/catalogSeed';
 import { recommendTension, formatForToggle, MIN_LB, MAX_LB } from '../lib/tension';
 import { tallyClubGear, CLUB_GEAR_MIN_COHORT } from '../lib/clubGear';
 
@@ -147,6 +148,12 @@ describe('GET /api/equipment/catalog — category validation', () => {
   beforeEach(() => {
     resetMockStore();
     setupAdminPin();
+    // ensureCatalogSeeded caches its promise, so wiping the mock store without
+    // clearing that cache leaves the container permanently EMPTY for the rest
+    // of the file. Every `items.every(...)` assertion then passes vacuously
+    // on [] — which is exactly how the "defaults to rackets" case below was
+    // passing while serving nothing at all.
+    __resetCatalogSeedForTests();
     process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
   });
   afterAll(() => {
@@ -178,6 +185,28 @@ describe('GET /api/equipment/catalog — category validation', () => {
         makeRequest('GET', `http://localhost:3000/api/equipment/catalog?category=${good}`),
       );
       expect(res.status).toBe(200);
+    }
+  });
+
+  // End-to-end proof that the Gear rail un-parks Strings: the rail probes this
+  // exact call and goes live when it returns rows. Asserting on the catalog
+  // JSON alone would not show that seeding and the category filter agree.
+  it('serves the imported strings, which is what un-parks the rail', async () => {
+    const res = await CATALOG(
+      makeRequest('GET', 'http://localhost:3000/api/equipment/catalog?category=string'),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.items).toHaveLength(46);
+    expect(body.items.every((i: { category: string }) => i.category === 'string')).toBe(true);
+  });
+
+  it('still serves no shoes or shuttles, so those stay parked', async () => {
+    for (const unsourced of ['shoe', 'shuttle']) {
+      const res = await CATALOG(
+        makeRequest('GET', `http://localhost:3000/api/equipment/catalog?category=${unsourced}`),
+      );
+      expect((await res.json()).items).toHaveLength(0);
     }
   });
 });
