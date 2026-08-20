@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, waitFor, fireEvent, act, within } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import RacketRow from '../../components/stats/RacketRow';
@@ -56,10 +56,19 @@ function renderRow() {
 }
 
 describe('RacketRow (the Equipment tab is the bag)', () => {
+  beforeEach(() => {
+    // Every existing test below exercises the format/budget preference
+    // controls, which are gated on NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER (a
+    // separate flag from the VALUE_HUB_SLICE flag that gates the row itself)
+    // — on by default here so that coverage is unaffected; the dedicated
+    // gating describe block below overrides this per-test.
+    process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER = 'true';
+  });
   afterEach(() => {
     cleanup();
     localStorage.clear();
     vi.unstubAllGlobals();
+    delete process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER;
   });
 
   it('resolves gear and catalog together — hero shows model, brand and specs', async () => {
@@ -340,5 +349,53 @@ describe('RacketRow (the Equipment tab is the bag)', () => {
     });
 
     await waitFor(() => expect(screen.getByRole('tab', { name: 'Singles' }).getAttribute('aria-selected')).toBe('true'));
+  });
+
+  // Critical fix (final review): NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER is
+  // 'false' in both deploy workflows. Only the two new preference controls
+  // gate on it — the hero, the bag list and the Add button are existing
+  // VALUE_HUB_SLICE behaviour and must render unconditionally either way.
+  describe('preference-control gating (NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER)', () => {
+    it('hides the format and budget controls when the flag is off, but keeps the rest of the row', async () => {
+      process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER = 'false';
+      setIdentity('Lin');
+      mockFetchByUrl([
+        ['/api/equipment/gear', () => jsonResponse({
+          gear: gearDoc([{ id: 'i1', catalogId: ASTROX.id, category: 'racket', label: 'Yonex Astrox 100ZZ' }], 'i1'),
+        })],
+        ['/api/equipment/catalog', () => jsonResponse({ items: [ASTROX] })],
+        NO_REC,
+      ]);
+
+      renderRow();
+
+      // Hero + bag + Add still render — unrelated to this flag.
+      await waitFor(() => expect(screen.getByText('Using today')).toBeTruthy());
+      expect(screen.getByRole('button', { name: 'Add a racket' })).toBeTruthy();
+
+      // The two new preference controls are gone.
+      expect(screen.queryByRole('tab', { name: 'Both' })).toBeNull();
+      expect(screen.queryByRole('tab', { name: 'Singles' })).toBeNull();
+      expect(screen.queryByRole('tab', { name: 'Doubles' })).toBeNull();
+      expect(screen.queryByRole('tab', { name: 'No limit' })).toBeNull();
+      expect(screen.queryByRole('tab', { name: '$100–200' })).toBeNull();
+    });
+
+    it('shows the format and budget controls when the flag is on', async () => {
+      process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER = 'true';
+      setIdentity('Lin');
+      mockFetchByUrl([
+        ['/api/equipment/gear', () => jsonResponse({ gear: gearDoc([]) })],
+        ['/api/equipment/catalog', () => jsonResponse({ items: [] })],
+        NO_REC,
+      ]);
+
+      renderRow();
+
+      expect((await screen.findByRole('tab', { name: 'Both' }))).toBeTruthy();
+      expect(screen.getByRole('tab', { name: 'Singles' })).toBeTruthy();
+      expect(screen.getByRole('tab', { name: 'Doubles' })).toBeTruthy();
+      expect(screen.getByRole('tab', { name: 'No limit' })).toBeTruthy();
+    });
   });
 });

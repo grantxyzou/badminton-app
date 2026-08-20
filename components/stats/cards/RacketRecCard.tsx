@@ -22,8 +22,15 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  * interact with this card "more than once", and until now it was a plain
  * `<div>` with nothing to interact with — the metric could never have been
  * anything but zero. The tap is recorded via `recordEngagement`.
+ *
+ * `refreshKey` is an opaque value RacketRow derives from the gear state
+ * (active racket id, bag length, playFormat, budgetMaxCad) — everything the
+ * engine's pick actually depends on. It's folded into the fetch effect's
+ * deps alongside `name` so switching format/budget, or adding/removing/
+ * activating a racket, refetches immediately instead of only taking effect
+ * after a reload.
  */
-export default function RacketRecCard({ name, mine }: { name: string; mine: CatalogItem | null }) {
+export default function RacketRecCard({ name, mine, refreshKey }: { name: string; mine: CatalogItem | null; refreshKey?: string | number }) {
   const t = useTranslations('valueHub');
   const [item, setItem] = useState<CatalogItem | null>(null);
   const [reason, setReason] = useState<string | null>(null);
@@ -54,7 +61,7 @@ export default function RacketRecCard({ name, mine }: { name: string; mine: Cata
       // must render the distinct error pill, never the empty-pick state.
       .catch(() => { if (live) { setLoadError(true); setLoaded(true); } });
     return () => { live = false; };
-  }, [name]);
+  }, [name, refreshKey]);
 
   function toggle() {
     setExpanded((prev) => !prev);

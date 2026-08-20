@@ -203,6 +203,42 @@ describe('/api/recommend with the engine flag on', () => {
     expect(body.error).toBe('load_failed');
   });
 
+  // resolveSubject (this route) must resolve to the exact same memberId as
+  // resolveMemberId (app/api/equipment/gear/route.ts), or gear WRITTEN at
+  // gear-<resolveMemberId> silently fails to be READ at gear-<resolveSubject>
+  // whenever an admin rename leaves a stale same-name row behind (no
+  // uniqueness constraint on Member.name). The inactive row is inserted
+  // FIRST so an unfiltered "first match" query would wrongly pick it.
+  it('resolves the same member id as resolveMemberId when a same-name inactive row exists', async () => {
+    const inactive = seedMember('Dup', { active: false });
+    const active = seedMember('Dup', { active: true });
+    seedRatedAssessment(active.id, 'Dup', [
+      { skillKey: 'smashes', value: 5 }, { skillKey: 'clears_lifts', value: 5 },
+    ]);
+
+    const realGetContainer = cosmos.getContainer;
+    const gearReadIds: string[] = [];
+    vi.spyOn(cosmos, 'getContainer').mockImplementation((name: string) => {
+      const real = realGetContainer(name);
+      if (name === 'playerGear') {
+        return {
+          ...real,
+          item: (id: string, pk: string) => {
+            gearReadIds.push(id);
+            return real.item(id, pk);
+          },
+        } as unknown as ReturnType<typeof cosmos.getContainer>;
+      }
+      return real;
+    });
+
+    const res = await GET(getAs('Dup'));
+    expect(res.status).toBe(200);
+    // Same id resolveMemberId would compute for this name: gear-<active member id>.
+    expect(gearReadIds).toEqual([`gear-${active.id}`]);
+    expect(gearReadIds).not.toContain(`gear-${inactive.id}`);
+  });
+
   it('treats a 404 gear read as "no gear yet" and still returns a pick', async () => {
     const m = seedMember('Lin');
     seedRatedAssessment(m.id, 'Lin', [

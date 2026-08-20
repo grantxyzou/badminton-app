@@ -28,7 +28,13 @@ async function resolveSubject(name: string): Promise<LevelSubject> {
   try {
     const { resources } = await getContainer('members')
       .items.query({
-        query: 'SELECT * FROM c WHERE LOWER(c.name) = @name',
+        // Must match resolveMemberId in app/api/equipment/gear/route.ts exactly
+        // (same active=true filter) — gear is WRITTEN at gear-<resolveMemberId>
+        // and READ here at gear-<subject.memberId>. A rename that leaves a
+        // stale inactive row with the same name would otherwise let this
+        // query pick a different id than the write path, 404 the gear read,
+        // and silently drop the player's format/budget/currentRacketId.
+        query: 'SELECT * FROM c WHERE LOWER(c.name) = @name AND c.active = true',
         parameters: [{ name: '@name', value: trimmed.toLowerCase() }],
       })
       .fetchAll();
