@@ -14,6 +14,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 const upserts: unknown[] = [];
 let existingIds: string[] = [];
+/** Rows the fake Cosmos returns. Defaults to id-only rows built from
+ *  `existingIds`; a test can set this directly to simulate rows whose SHAPE
+ *  has drifted from the seed file. */
+let existingRows: Array<Record<string, unknown>> | null = null;
 let queryCalls = 0;
 
 vi.mock('@/lib/cosmos', () => ({
@@ -23,7 +27,7 @@ vi.mock('@/lib/cosmos', () => ({
       query: () => ({
         fetchAll: async () => {
           queryCalls++;
-          return { resources: existingIds.map((id) => ({ id })) };
+          return { resources: existingRows ?? existingIds.map((id) => ({ id })) };
         },
       }),
       upsert: async (doc: unknown) => { upserts.push(doc); return { resource: doc }; },
@@ -41,6 +45,7 @@ async function freshModule() {
 beforeEach(() => {
   upserts.length = 0;
   existingIds = [];
+  existingRows = null;
   queryCalls = 0;
   process.env.COSMOS_CONNECTION_STRING = 'fake-connection-string';
 });
@@ -71,11 +76,14 @@ describe('ensureCatalogSeeded', () => {
     expect(new Set(ids).size).toBe(SEED_COUNT);
   });
 
-  it('writes nothing when the catalog is already fully seeded', async () => {
+  it('writes nothing when every row already matches the seed file', async () => {
+    // Must supply FULL rows, not just ids: an id-only row has no `seeded: true`
+    // and would be skipped by the ownership guard, so this test would pass
+    // even with the signature comparison completely broken.
+    const seedItems = (await import('../scripts/data/equipment-catalog.json')).default.items as Array<Record<string, unknown>>;
+    existingRows = seedItems.map((i) => ({ ...i }));
+
     const { ensureCatalogSeeded } = await freshModule();
-    // Pre-populate with every seed id.
-    const first = await import('../scripts/data/equipment-catalog.json');
-    existingIds = (first.default ?? first).items.map((i: { id: string }) => i.id);
     await ensureCatalogSeeded();
     expect(upserts).toHaveLength(0);
   });
@@ -87,6 +95,56 @@ describe('ensureCatalogSeeded', () => {
     expect(upserts).toHaveLength(SEED_COUNT - 1);
     expect(upserts.map((d) => (d as { id: string }).id))
       .not.toContain('racket-yonex-astrox-88d-pro');
+  });
+
+  // The v2 import changed the SHAPE of rows that already existed in Cosmos.
+  // The old seeder only inserted MISSING ids, so those rows never gained
+  // `balance`/`flex`/`tier` in production and `isScorable` silently skipped
+  // them — 50 of 71 rackets unrecommendable, while every local test passed
+  // because in dev the JSON file IS the catalog.
+  it('refreshes a row whose shape drifted from the seed file', async () => {
+    const seedItems = (await import('../scripts/data/equipment-catalog.json')).default.items as Array<Record<string, unknown>>;
+    const first = seedItems[0];
+    // Present, seeded, but carrying the pre-v2 attribute shape.
+    existingRows = seedItems.map((i) => ({ ...i }));
+    existingRows[0] = { ...first, seeded: true, attributes: { weight: '4U' } };
+
+    const { ensureCatalogSeeded } = await freshModule();
+    await ensureCatalogSeeded();
+
+    expect(upserts).toHaveLength(1);
+    expect((upserts[0] as { id: string }).id).toBe(first.id);
+    expect((upserts[0] as { attributes: Record<string, unknown> }).attributes).toEqual(first.attributes);
+  });
+
+  // Key order is not guaranteed by Cosmos. A naive JSON.stringify comparison
+  // would call every row stale and rewrite the whole catalog on every cold
+  // start — expensive and invisible.
+  it('treats a row with the same data in a different key order as unchanged', async () => {
+    const seedItems = (await import('../scripts/data/equipment-catalog.json')).default.items as Array<Record<string, unknown>>;
+    existingRows = seedItems.map((i) => {
+      const attrs = i.attributes as Record<string, unknown> | undefined;
+      const reversed = attrs ? Object.fromEntries(Object.entries(attrs).reverse()) : attrs;
+      return { ...i, attributes: reversed };
+    });
+
+    const { ensureCatalogSeeded } = await freshModule();
+    await ensureCatalogSeeded();
+
+    expect(upserts).toHaveLength(0);
+  });
+
+  // Nothing but this seeder writes catalog rows today (the route is GET-only),
+  // but a deploy must never revert an admin-authored row if that changes.
+  it('never overwrites a row it does not own', async () => {
+    const seedItems = (await import('../scripts/data/equipment-catalog.json')).default.items as Array<Record<string, unknown>>;
+    existingRows = seedItems.map((i) => ({ ...i }));
+    existingRows[0] = { ...seedItems[0], seeded: false, msrp: 999, attributes: { hand: 'curated' } };
+
+    const { ensureCatalogSeeded } = await freshModule();
+    await ensureCatalogSeeded();
+
+    expect(upserts).toHaveLength(0);
   });
 
   it('caches the promise — a second call does no extra work', async () => {
