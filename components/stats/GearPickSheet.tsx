@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import StatusBadge from '@/components/primitives/StatusBadge';
@@ -28,9 +28,49 @@ export interface GearPickSheetProps {
   gear: UseGear;
 }
 
-/** The full spec sheet — every attribute the catalog carries, not the two the
- *  rail card had room for. Plain language comes first in this sheet; this is
- *  the spec-sheet half, and it is deliberately second. */
+/**
+ * The spec sheet: the attributes a member checks before buying, each with a
+ * label.
+ *
+ * This used to be `Object.values(attrs).join(' · ')` — every field the catalog
+ * carries, unlabelled, in key order. On a racket that was merely dense. On a
+ * string it printed twenty-eight values including bare sub-ratings
+ * ("· 8 · 8 · 7 · 7 ·"), the reel length, the colour list, and the maintenance
+ * fields `ratingSource` and `lastVerified`. A spec sheet nobody can read is
+ * not a spec sheet, and the stated job of this half of the sheet is to be
+ * "what they check afterwards".
+ *
+ * Curated per category rather than blocklisted, so a new catalog field is
+ * invisible here until someone decides it belongs — the safe direction. A
+ * category with no list falls back to the old dump.
+ */
+const SPEC_ROWS: Partial<Record<EquipmentCategory, Array<{ labelKey: string; render: (a: Record<string, string | number>) => string | null }>>> = {
+  racket: [
+    { labelKey: 'specWeight', render: (a) => (a.weight ? String(a.weight) : null) },
+    { labelKey: 'specBalance', render: (a) => (a.balance ? String(a.balance) : null) },
+    { labelKey: 'specFlex', render: (a) => (a.flex ? String(a.flex) : null) },
+    { labelKey: 'specStyle', render: (a) => (a.playStyle ? String(a.playStyle) : null) },
+    { labelKey: 'specTension', render: (a) => tensionRange(a) },
+  ],
+  string: [
+    { labelKey: 'specGauge', render: (a) => (typeof a.gaugeMm === 'number' ? `${a.gaugeMm.toFixed(2)}mm` : null) },
+    { labelKey: 'specType', render: (a) => (a.stringType ? String(a.stringType) : null) },
+    { labelKey: 'specFeel', render: (a) => (a.feel ? String(a.feel) : null) },
+    { labelKey: 'specTension', render: (a) => tensionRange(a) },
+    { labelKey: 'specRepulsion', render: (a) => (typeof a.repulsion === 'number' ? `${a.repulsion}/10` : null) },
+    { labelKey: 'specDurability', render: (a) => (typeof a.durability === 'number' ? `${a.durability}/10` : null) },
+    { labelKey: 'specLevel', render: (a) => (a.skillLevel ? String(a.skillLevel) : null) },
+  ],
+};
+
+function tensionRange(a: Record<string, string | number>): string | null {
+  const lo = a.tensionMinLbs;
+  const hi = a.tensionMaxLbs;
+  if (typeof lo !== 'number' || typeof hi !== 'number') return null;
+  return `${lo}–${hi} lb`;
+}
+
+/** Fallback for a category with no curated list — the old behaviour. */
 function specLine(item: CatalogItem): string {
   const attrs = item.attributes ?? {};
   return Object.values(attrs).map(String).filter(Boolean).join(' · ');
@@ -254,9 +294,38 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
           )}
 
           {/* Spec sheet second. */}
-          {specLine(item) && (
-            <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{specLine(item)}</p>
-          )}
+          {(() => {
+            const rows = (SPEC_ROWS[item.category] ?? [])
+              .map((r) => ({ labelKey: r.labelKey, value: r.render(item.attributes ?? {}) }))
+              .filter((r): r is { labelKey: string; value: string } => Boolean(r.value));
+
+            if (rows.length === 0) {
+              return specLine(item) ? (
+                <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{specLine(item)}</p>
+              ) : null;
+            }
+
+            return (
+              <dl
+                style={{
+                  margin: 0,
+                  display: 'grid',
+                  gridTemplateColumns: 'auto 1fr',
+                  columnGap: 'var(--space-4)',
+                  rowGap: 'var(--space-1)',
+                }}
+              >
+                {rows.map((r) => (
+                  <Fragment key={r.labelKey}>
+                    <dt style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{t(r.labelKey)}</dt>
+                    <dd style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                      {r.value}
+                    </dd>
+                  </Fragment>
+                ))}
+              </dl>
+            );
+          })()}
 
           {/* D2: the pair-specific tension. Shown here and not in
               StringTensionCard because it is the more specific answer — placed

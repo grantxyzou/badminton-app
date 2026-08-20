@@ -237,3 +237,52 @@ describe('GearPickSheet — the paired tension (spec D2)', () => {
     expect(screen.queryByText('Suggested tension')).toBeNull();
   });
 });
+
+describe('GearPickSheet — the spec sheet has to be readable', () => {
+  afterEach(cleanup);
+
+  const N69 = {
+    id: 's-n69', category: 'string' as const, brand: 'Li-Ning', model: 'N69',
+    skillRange: [1, 5] as [number, number],
+    attributes: {
+      series: 'N', stringType: 'Durability', technology: 'High Elasticity', gaugeMm: 0.69,
+      gaugeClass: 'Standard', construction: 'Solid', feel: 'Medium', feelScale: 3,
+      repulsion: 8, durability: 8, control: 7, hittingSound: 7,
+      ratingSource: 'Consensus estimate', tensionMinLbs: 22, tensionMaxLbs: 29,
+      skillLevel: 'Intermediate', setLengthM: 10, reelLengthM: 200,
+      colors: 'White; Yellow', priceSetUsdMin: 13, priceSetUsdMax: 18,
+      releaseYear: 2022, lastVerified: '2026-08-20',
+    },
+  };
+
+  function renderSpec() {
+    mockGear(gearDoc());
+    function H() {
+      const gear: UseGear = useGear('Lin');
+      return (
+        <GearPickSheet open onClose={vi.fn()} category="string"
+          pick={{ item: N69, reasons: ['x'], tensionLbs: 25.5 }} owned={false} gear={gear} />
+      );
+    }
+    return render(
+      <NextIntlClientProvider locale="en" messages={enMessages}><H /></NextIntlClientProvider>,
+    );
+  }
+
+  it('labels the specs it shows', async () => {
+    renderSpec();
+    await waitFor(() => expect(screen.getByText('N69')).toBeTruthy());
+    expect(screen.getByText('Gauge')).toBeTruthy();
+    expect(screen.getByText('0.69mm')).toBeTruthy();
+  });
+
+  it('does not dump bookkeeping fields at the member', async () => {
+    // lastVerified, ratingSource, reelLengthM and the raw sub-ratings are how
+    // the catalog is maintained, not what a player checks before buying. The
+    // old line printed all of them, unlabelled, as "· 8 · 8 · 7 · 7 ·".
+    renderSpec();
+    await waitFor(() => expect(screen.getByText('N69')).toBeTruthy());
+    expect(screen.queryByText(/2026-08-20/)).toBeNull();
+    expect(screen.queryByText(/Consensus estimate/)).toBeNull();
+  });
+});
