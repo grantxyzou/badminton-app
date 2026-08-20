@@ -292,7 +292,22 @@
       "railNone": "Yours · none on file",
       "railInKit": "In your kit",
       "railWhy": "Why this?",
-      "railWhyPicked": "Why we picked it"
+      "railWhyPicked": "Why we picked it",
+      "pickSheetWeRecommend": "We recommend",
+      "pickSheetWhyThis": "Why this",
+      "pickSheetAdd": "Add to my kit",
+      "pickSheetFootnote": "A suggestion from your check-in and what the club plays — not a verdict. Borrow one for a game before you buy.",
+      "pickSheetAddError": "Couldn't save that — try again",
+      "pickSheetBagFull": "That's all the rackets we can hold — remove one first.",
+      "formatLabel": "I mostly play",
+      "format_doubles": "Doubles",
+      "format_singles": "Singles",
+      "format_both": "Both",
+      "budgetLabel": "Budget",
+      "budget_100": "Under $100",
+      "budget_200": "$100–200",
+      "budget_350": "$200–350",
+      "budget_none": "No limit"
     },
     "learn": {
       "focusEyebrow": "This week · focus",

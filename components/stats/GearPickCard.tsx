@@ -11,6 +11,11 @@ import type { CatalogItem, EquipmentCategory } from '@/lib/types';
 export interface GearPick {
   item: CatalogItem;
   reasons: string[];
+  /** Safety flags the engine raised about this pick (e.g. a weight warning).
+   *  Optional so existing `GearPick` literals still type-check, but never
+   *  optional to DISPLAY: `GearPickSheet` renders warnings uncollapsed. A card
+   *  that hides a real warning is worse than a card that expands nothing. */
+  warnings?: string[];
 }
 
 export type GearPickCardStatus = 'loading' | 'ready' | 'error' | 'parked';
