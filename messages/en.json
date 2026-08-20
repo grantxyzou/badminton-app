@@ -281,7 +281,16 @@
       "clubFootnote": "Logging your strings is what makes this list useful — for you and for whoever stocks up.",
       "clubEmpty": "Not enough kit logged yet. Add yours and this fills in.",
       "clubError": "Couldn't load — refresh to try again",
-      "catalogGap": "Recommendations beyond rackets are coming — the catalog only has rackets so far."
+      "catalogGap": "Recommendations beyond rackets are coming — the catalog only has rackets so far.",
+      "railComingSoon": "Coming soon",
+      "railStringsSoon": "Tension and string picks, matched to how you play.",
+      "railShoesSoon": "Court shoes matched to your footwork and fit.",
+      "railShuttlesSoon": "Which shuttle suits your hall and your level.",
+      "railYours": "Yours · {label}",
+      "railNone": "Yours · none on file",
+      "railInKit": "In your kit",
+      "railWhy": "Why this?",
+      "railWhyPicked": "Why we picked it"
     },
     "learn": {
       "focusEyebrow": "This week · focus",
