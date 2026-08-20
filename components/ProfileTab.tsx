@@ -13,6 +13,9 @@ import InstallSheet from './InstallSheet';
 import SignInForm from './SignInForm';
 import { isStandalone } from '@/lib/standalone';
 import PageHeader from './primitives/PageHeader';
+import ProfileEyebrow from './primitives/ProfileEyebrow';
+import StatsPrivacyScreen from './StatsPrivacyScreen';
+import { useStatsPrivacy } from '@/lib/useStatsPrivacy';
 import AdminConsoleHero from './admin/CommandCenter/AdminConsoleHero';
 import { isFlagOn } from '@/lib/flags';
 import { avatarColors as profileAvaColors } from '@/lib/avatar';
@@ -50,6 +53,14 @@ export default function ProfileTab({
   // open RecoveryPinSheet (set / change / remove + forgot-it handoff).
   const [recoveryPinOpen, setRecoveryPinOpen] = useState(false);
   const [releaseSheetOpen, setReleaseSheetOpen] = useState(false);
+  // Stats & privacy is a full-screen SUB-VIEW, not a sheet — every other row
+  // here opens a BottomSheet, so this is new structure for ProfileTab. The
+  // pattern (view state + early return + slideInRight + TopBar) is borrowed
+  // from AdminDashboard, which is the only place in the app that already does
+  // sub-screens.
+  const [view, setView] = useState<'root' | 'stats-privacy'>('root');
+  const statsV2On = isFlagOn('NEXT_PUBLIC_FLAG_STATS_V2');
+  const privacyState = useStatsPrivacy(statsV2On ? (identity?.name ?? null) : null);
   const [reportOpen, setReportOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
   // Only offer "Add to Home Screen" when NOT already installed. Resolved
@@ -323,6 +334,13 @@ export default function ProfileTab({
     );
   }
 
+  // Sub-screen. Early return so the root Profile tree unmounts entirely and
+  // TopBar's `position: sticky` resolves against the tall scroll root rather
+  // than a short wrapper (see AdminBackHeader's note).
+  if (view === 'stats-privacy') {
+    return <StatsPrivacyScreen onBack={() => setView('root')} state={privacyState} />;
+  }
+
   // Player (and possibly admin) state
   const showAdminHero = isAdmin && isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER');
   return (
@@ -377,6 +395,20 @@ export default function ProfileTab({
               label: tSettings('recoveryCode'),
               onClick: () => setEnterCodeOpen(true),
             },
+            // Between "Have a recovery code?" and "What's new", per the design.
+            // `meta` shows the state so nobody has to open the row to check it.
+            ...(statsV2On
+              ? [{
+                  icon: 'visibility',
+                  label: tSettings('statsPrivacy'),
+                  meta: privacyState.privacy
+                    ? privacyState.privacy.clubComparison
+                      ? tSettings('statsPrivacyOn')
+                      : tSettings('statsPrivacyOff')
+                    : undefined,
+                  onClick: () => setView('stats-privacy'),
+                }]
+              : []),
             { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
             { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setReportOpen(true) },
             ...(!installed
@@ -735,20 +767,6 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameL
 /* Section eyebrow — uppercase label that sits OUTSIDE a card,
    above the content it labels. Matches the design's 'ADMIN' /
    'ACCOUNT' pattern. */
-function ProfileEyebrow({ children }: { children: React.ReactNode }) {
-  return (
-    <p
-      style={{
-        fontFamily: 'var(--font-display, "Space Grotesk")',
-        fontSize: 'var(--fs-xs)',
-        fontWeight: 700,
-        letterSpacing: '0.16em',
-        textTransform: 'uppercase',
-        color: 'var(--ink-faint, rgba(255,255,255,0.42))',
-        margin: '8px 4px -2px',
-      }}
-    >
-      {children}
-    </p>
-  );
-}
+// ProfileEyebrow now lives in components/primitives/ProfileEyebrow.tsx — the
+// Stats & privacy sub-screen needs it, and importing it back from here would
+// be a circular import since this file renders that screen.
