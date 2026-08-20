@@ -17,6 +17,17 @@ import type { CatalogItem } from './types';
  * the only check — but a reason is a NEW disclosure surface for that data, and
  * "the caller filtered it" is not a property the type system enforces. One
  * unfiltered caller and a tally becomes an identification.
+ *
+ * R6 — cross-source representation is guaranteed, not merely possible. The
+ * scoring engine alone routinely produces 3+ equipment reasons (flex, balance,
+ * category, ...), which would otherwise fill every slot up to `limit` before
+ * the drill or club line is ever appended — three restatements of the spec
+ * sheet the member could read for themselves. The design intent is that this
+ * list surfaces grounding the member could NOT read off the spec sheet (the
+ * plain equipment line lives separately, above this list). So: when a drill
+ * or club line is available, the engine gets AT MOST ONE slot. Only when
+ * neither has anything to say does the engine fill every slot — an
+ * equipment-only list beats an empty one.
  */
 export interface PickReasonInput {
   item: CatalogItem;
@@ -32,26 +43,33 @@ export interface PickReasonInput {
 
 export function buildPickReasons(input: PickReasonInput): string[] {
   const { item, engineReasons, drills, clubEntries, limit = 3 } = input;
-  const out: string[] = [];
-
-  for (const r of engineReasons) {
-    if (typeof r === 'string' && r.trim()) out.push(r.trim());
-  }
 
   // Cross-domain: name what they are actually practising. Uses the drill's own
   // skill label, never a rating number — the sheet is not a report card.
   const drill = drills.find((d) => d && typeof d.title === 'string');
-  if (drill) {
-    out.push(`You are working on ${drill.skillLabel.toLowerCase()} — ${drill.title.toLowerCase()} is in this week's focus`);
-  }
+  const drillLine = drill
+    ? `You are working on ${drill.skillLabel.toLowerCase()} — ${drill.title.toLowerCase()} is in this week's focus`
+    : null;
 
   const safeClub = clubEntries.filter(
     (e) => e && e.category === item.category && typeof e.count === 'number' && e.count >= CLUB_GEAR_MIN_COHORT,
   );
   const match = safeClub.find((e) => e.label === `${item.brand} ${item.model}` || e.label === item.model);
-  if (match) {
-    out.push(`${match.count} people in the club already play it`);
+  const clubLine = match ? `${match.count} people in the club already play it` : null;
+
+  // R6: cap the engine at one slot whenever there is real cross-domain
+  // grounding to show; only fall back to filling every slot from the engine
+  // when neither drill nor club produced a line.
+  const hasCrossDomain = drillLine !== null || clubLine !== null;
+  const engineCap = hasCrossDomain ? 1 : Infinity;
+
+  const out: string[] = [];
+  for (const r of engineReasons) {
+    if (out.length >= engineCap) break;
+    if (typeof r === 'string' && r.trim()) out.push(r.trim());
   }
+  if (drillLine) out.push(drillLine);
+  if (clubLine) out.push(clubLine);
 
   return out.slice(0, limit);
 }
