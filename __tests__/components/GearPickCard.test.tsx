@@ -118,3 +118,42 @@ describe('GearPickCard — a parked string must not disown a shipped feature', (
     expect(screen.getByText(/coming soon/i)).toBeTruthy();
   });
 });
+
+describe('GearPickCard — the spec line has to mean something', () => {
+  afterEach(cleanup);
+
+  /**
+   * formatSpec used to take the first two attribute VALUES in key order. For a
+   * racket that is weight and balance by luck of how the catalog rows were
+   * written; for a string it is `series` and `stringType`, so the Li-Ning N69
+   * rendered as "Li-Ning · N · Durability". "N" is the series letter. The line
+   * is positional, and nothing about a catalog row guarantees key order —
+   * Cosmos explicitly does not.
+   */
+  it('describes a string by gauge and type, not by whatever key came first', () => {
+    renderCard({
+      category: 'string',
+      pick: {
+        item: {
+          id: 's1', category: 'string', brand: 'Li-Ning', model: 'N69',
+          skillRange: [1, 5],
+          attributes: { series: 'N', stringType: 'Durability', gaugeMm: 0.65 },
+        },
+        reasons: ['x'],
+      },
+    });
+    expect(screen.getByText(/0\.65mm · Durability/)).toBeTruthy();
+    expect(screen.queryByText(/· N ·/)).toBeNull();
+  });
+
+  it('still describes a racket by weight and balance', () => {
+    renderCard({
+      category: 'racket',
+      pick: {
+        item: { ...ITEM, attributes: { series: 'Astrox', weight: '3U', balance: 'Head-heavy' } },
+        reasons: ['x'],
+      },
+    });
+    expect(screen.getByText(/3U · Head-heavy/)).toBeTruthy();
+  });
+});
