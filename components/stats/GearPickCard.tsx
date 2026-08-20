@@ -35,14 +35,17 @@ interface CategoryMeta {
   labelKey: string;
   icon: string;
   color: string;
-  /** i18n key for the parked body line. Categories with a live engine today
-   *  (racket) don't have a dedicated one — see GearPickRail's SOURCED list —
-   *  so this falls back to `railComingSoon` for both the badge and the body. */
+  /** i18n key for the parked body line. Every category has a dedicated one;
+   *  a category with no `soonKey` would fall back to `railComingSoon` for
+   *  both the badge AND the body, reading as a duplicated "Coming soon /
+   *  Coming soon" card — that was `racket`'s bug before `railRacketSoon` was
+   *  added (racket parks on `needsCheckIn` or the flag being off, not on a
+   *  missing engine — see GearPickRail's SOURCED list). */
   soonKey?: string;
 }
 
 const META: Record<EquipmentCategory, CategoryMeta> = {
-  racket: { labelKey: 'catRacket', icon: 'sports_tennis', color: 'var(--accent)' },
+  racket: { labelKey: 'catRacket', icon: 'sports_tennis', color: 'var(--accent)', soonKey: 'railRacketSoon' },
   string: { labelKey: 'catString', icon: 'science', color: 'var(--sev-low-text)', soonKey: 'railStringsSoon' },
   shoe: { labelKey: 'catShoe', icon: 'fitness_center', color: 'var(--accent-amber)', soonKey: 'railShoesSoon' },
   shuttle: { labelKey: 'catShuttle', icon: 'inventory_2', color: 'var(--text-primary)', soonKey: 'railShuttlesSoon' },

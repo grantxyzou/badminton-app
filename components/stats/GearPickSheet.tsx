@@ -105,7 +105,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
     // badge, not the button) but is still mapped rather than flattened, so a
     // bag that fills some other way says so instead of reading as a crash.
     if (res.reason === 'bag_full') setAddError(t('pickSheetBagFull'));
-    else if (res.reason === 'duplicate_racket') setAddError(t('railInKit'));
+    else if (res.reason === 'duplicate_racket') setAddError(t('pickSheetDuplicate'));
     else setAddError(t('pickSheetAddError'));
   }
 

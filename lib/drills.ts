@@ -2,8 +2,13 @@
  * Drill recommendations — pure, deterministic engine over a static library.
  *
  * Same posture as `lib/recommend.ts` (Decision B2): a deterministic picker here,
- * with Claude narrating separately in the insight prompt. No I/O, no container —
- * the library is read-only reference JSON imported at build time.
+ * with Claude narrating separately in the insight prompt. The library itself is
+ * read-only reference JSON imported at build time, and `recommendDrills` below
+ * is pure — no I/O, no container. That is no longer true of the whole module:
+ * `fetchWorkOn` / `drillPicksFor` (bottom of the file) DO read a container, to
+ * give `/api/stats/drills` and `/api/recommend` one shared work-on derivation
+ * instead of each growing its own — see their own doc comments for the I/O
+ * contract.
  *
  * Input is the member's `workOn` list (the lowest-rated skills, already computed
  * by `workOnNext` / `AssessmentTrend.workOn` — same `{ key, label, value }`

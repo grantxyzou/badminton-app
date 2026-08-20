@@ -36,7 +36,7 @@ describe('GET /api/recommend?category=', () => {
     // file to actually reach the catalog) could see an empty catalog if this
     // module runs after another suite already populated + cached it.
     __resetCatalogSeedForTests();
-    await setupAdminPin();
+    setupAdminPin();
     process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
     process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER = 'true';
   });
@@ -69,9 +69,21 @@ describe('GET /api/recommend?category=', () => {
     expect(body.item).toBeNull();
   });
 
-  it('absent category still behaves as racket', async () => {
-    const res = await GET(makeRequest('GET', 'http://localhost:3000/api/recommend?name=Lin'));
-    expect(res.status).not.toBe(400);
+  // Proving "absent category defaults to racket" needs more than "not a 400" —
+  // with no member cookie and the recommender flag on, an unauthenticated
+  // request 403s at the auth gate before category-default logic ever runs, so
+  // that alone can't distinguish "defaulted to racket" from "defaulted to
+  // anything". Use the admin path (bypasses the ownership gate) and check the
+  // one thing that actually depends on which category was chosen: `racket` is
+  // the sole ENGINE_CATEGORIES member, so only it reaches the profile check
+  // and returns `needsCheckIn` (Lin has no assessment seeded here) — every
+  // other category short-circuits to `unavailable: 'no_engine'` first.
+  it('absent category defaults to racket, not a bare non-400', async () => {
+    const res = await GET(makeGetRequest('http://localhost:3000/api/recommend?name=Lin', true));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.unavailable).not.toBe('no_engine');
+    expect(body.needsCheckIn).toBe(true);
   });
 
   // bpm-stable runs VALUE_HUB_SLICE on and RACKET_RECOMMENDER off, so the

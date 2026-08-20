@@ -8,9 +8,11 @@ import type { CatalogItem } from './types';
  * Pure: no fetch, no DB, no clock, no randomness — every input is passed in, so
  * the privacy behaviour below is directly unit-testable.
  *
- * Four permitted sources, in priority order: the engine's own equipment-derived
- * reasons, the member's current drill picks, the catalog spec line, and the club
- * tally. Nothing else may appear in a reason.
+ * Three permitted sources, in priority order: the engine's own equipment-derived
+ * reasons, the member's current drill picks, and the club tally. Nothing else
+ * may appear in a reason. (The catalog spec line is NOT a source here — per the
+ * design artboard it is a separate display line on the sheet, rendered above
+ * this list, not a why-this reason.)
  *
  * THE CLUB GUARD IS RE-APPLIED HERE ON PURPOSE. `tallyClubGear` already drops
  * entries below CLUB_GEAR_MIN_COHORT, so this is defence in depth rather than
