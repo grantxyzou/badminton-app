@@ -97,9 +97,55 @@ export default function RacketRow() {
     if (!res.ok) setActionError(true);
   }
 
+  const playFormat = gear.gear?.playFormat ?? 'both';
+  const budgetMaxCad = gear.gear?.budgetMaxCad ?? null;
+
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          <p className="section-label" style={{ margin: 0 }}>{t('formatLabel')}</p>
+          <div className="segment-control flex" role="tablist" aria-label={t('formatLabel')}>
+            {(['doubles', 'singles', 'both'] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                role="tab"
+                aria-selected={playFormat === f}
+                disabled={gear.busy}
+                className={`flex-1 flex items-center justify-center fs-sm ${playFormat === f ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+                onClick={() => runAction(gear.setPrefs({ playFormat: f }))}
+              >
+                {t(`format_${f}`)}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          <p className="section-label" style={{ margin: 0 }}>{t('budgetLabel')}</p>
+          <div className="segment-control flex" role="tablist" aria-label={t('budgetLabel')}>
+            {([
+              [100, 'budget_100'],
+              [200, 'budget_200'],
+              [350, 'budget_350'],
+              [null, 'budget_none'],
+            ] as const).map(([band, key]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={budgetMaxCad === band}
+                disabled={gear.busy}
+                className={`flex-1 flex items-center justify-center fs-sm ${budgetMaxCad === band ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+                onClick={() => runAction(gear.setPrefs({ budgetMaxCad: band }))}
+              >
+                {t(key)}
+              </button>
+            ))}
+          </div>
+        </section>
+
         <YourRacketCard
           // Hold the stored label until the catalog lookup settles, so the
           // hero renders once in its final shape instead of the plain label

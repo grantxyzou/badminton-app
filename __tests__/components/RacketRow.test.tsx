@@ -276,4 +276,69 @@ describe('RacketRow (the Equipment tab is the bag)', () => {
     await waitFor(() => expect(within(hero).getByText('DriveX 9X')).toBeTruthy());
     expect(screen.getByLabelText('Use this one — Yonex Astrox 100ZZ')).toBeTruthy();
   });
+
+  it('shows the saved format and budget as the active segment', async () => {
+    setIdentity('Lin');
+    mockFetchByUrl([
+      ['/api/equipment/gear', () => jsonResponse({
+        gear: { ...gearDoc([]), playFormat: 'doubles', budgetMaxCad: 200 },
+      })],
+      ['/api/equipment/catalog', () => jsonResponse({ items: [] })],
+      NO_REC,
+    ]);
+
+    renderRow();
+
+    const doublesTab = await screen.findByRole('tab', { name: 'Doubles' });
+    expect(doublesTab.getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: 'Singles' }).getAttribute('aria-selected')).toBe('false');
+    expect(screen.getByRole('tab', { name: '$100–200' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: 'No limit' }).getAttribute('aria-selected')).toBe('false');
+  });
+
+  // No saved preference yet: format defaults to 'both' and budget to no
+  // limit — matches useGear's `?? 'both'` / `?? null` fallback, not a blank
+  // or unselected control.
+  it('defaults to Both and No limit when no preference is saved yet', async () => {
+    setIdentity('Lin');
+    mockFetchByUrl([
+      ['/api/equipment/gear', () => jsonResponse({ gear: gearDoc([]) })],
+      ['/api/equipment/catalog', () => jsonResponse({ items: [] })],
+      NO_REC,
+    ]);
+
+    renderRow();
+
+    expect((await screen.findByRole('tab', { name: 'Both' })).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: 'No limit' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('tapping a format or budget tab PATCHes the preference via setPrefs', async () => {
+    setIdentity('Lin');
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      calls.push({ url, init });
+      const method = (init?.method ?? 'GET').toUpperCase();
+      if (url.includes('/api/recommend')) return jsonResponse({ item: null, reason: null });
+      if (url.includes('/api/equipment/catalog')) return jsonResponse({ items: [] });
+      if (url.includes('/api/equipment/gear')) {
+        if (method === 'PATCH') return jsonResponse({ gear: { ...gearDoc([]), playFormat: 'singles' } });
+        return jsonResponse({ gear: gearDoc([]) });
+      }
+      return Promise.reject(new Error(`Unmocked fetch: ${url}`));
+    }) as unknown as typeof fetch);
+
+    renderRow();
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Singles' }));
+
+    await waitFor(() => {
+      const patch = calls.find((c) => c.url.includes('/gear') && c.init?.method === 'PATCH');
+      expect(patch).toBeTruthy();
+      expect(JSON.parse(String(patch!.init!.body))).toEqual({ name: 'Lin', playFormat: 'singles' });
+    });
+
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Singles' }).getAttribute('aria-selected')).toBe('true'));
+  });
 });

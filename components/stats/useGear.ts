@@ -28,6 +28,7 @@ export interface UseGear {
   add: (item: CatalogItem) => Promise<GearResult>;
   activate: (itemId: string) => Promise<GearResult>;
   remove: (itemId: string) => Promise<GearResult>;
+  setPrefs: (prefs: { playFormat?: 'singles' | 'doubles' | 'both'; budgetMaxCad?: number | null }) => Promise<GearResult>;
 }
 
 /**
@@ -129,6 +130,13 @@ export function useGear(name: string | null): UseGear {
     { method: 'DELETE' },
   )), [mutate, name]);
 
+  const setPrefs = useCallback((prefs: { playFormat?: 'singles' | 'doubles' | 'both'; budgetMaxCad?: number | null }) =>
+    mutate(() => fetch(`${BASE}/api/equipment/gear`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, ...prefs }),
+    })), [mutate, name]);
+
   return {
     gear,
     rackets: racketsOf(gear),
@@ -141,6 +149,7 @@ export function useGear(name: string | null): UseGear {
     add,
     activate,
     remove,
+    setPrefs,
   };
 }
 
