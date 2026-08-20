@@ -140,6 +140,77 @@ describe('GearPickRail — the card opens the detail sheet', () => {
   });
 });
 
+describe('GearPickRail — a preference change must not strand a category', () => {
+  /**
+   * The refresh skip-list is a burn-rate saving against /api/recommend's
+   * 10/min/IP limit, and it must skip PARKED only. Skipping `loading` too
+   * strands the category permanently: the previous effect run's cleanup has
+   * already set `live = false`, discarding the response that was going to
+   * settle it, so it sits on CardSkeleton forever — a fifth state, and not one
+   * of the four honest ones. Reachable in one gesture: racket resolves fast,
+   * the member opens the sheet and taps a budget band while `string` is still
+   * in flight.
+   */
+  it('re-asks a still-in-flight category on a preference change', async () => {
+    let stringAsks = 0;
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('category=string')) {
+        stringAsks += 1;
+        // The first ask is held open forever — it is the one the refresh's
+        // cleanup discards.
+        if (stringAsks === 1) return new Promise<Response>(() => {});
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ item: null, unavailable: 'no_engine' }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ item: ITEM, reasons: [] }) });
+    }) as unknown as typeof fetch;
+
+    const ui = (gear: UseGear) => (
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <GearPickRail activeName="Lin" gear={gear} />
+      </NextIntlClientProvider>
+    );
+
+    const { rerender } = render(ui(fakeGear()));
+    await screen.findByLabelText('Racket — Why this?');
+    expect(stringAsks).toBe(1);
+
+    // The member changes their budget: same shape as tapping a band in the
+    // sheet — the gear doc changes, so the rail's recKey changes.
+    rerender(ui(fakeGear({ gear: { id: 'g', memberId: 'm', updatedAt: '2026-01-01', items: [], budgetMaxCad: 200 } })));
+
+    // Strings settles into its parked card instead of shimmering forever.
+    expect(await screen.findByText('Tension and string picks, matched to how you play.')).toBeTruthy();
+    expect(stringAsks).toBe(2);
+  });
+
+  it('does NOT re-ask a category that already answered parked', async () => {
+    const asks: string[] = [];
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      asks.push(url);
+      if (url.includes('category=string')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ item: null, unavailable: 'no_engine' }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ item: ITEM, reasons: [] }) });
+    }) as unknown as typeof fetch;
+
+    const ui = (gear: UseGear) => (
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <GearPickRail activeName="Lin" gear={gear} />
+      </NextIntlClientProvider>
+    );
+
+    const { rerender } = render(ui(fakeGear()));
+    await screen.findByText('Tension and string picks, matched to how you play.');
+
+    rerender(ui(fakeGear({ gear: { id: 'g', memberId: 'm', updatedAt: '2026-01-01', items: [], budgetMaxCad: 200 } })));
+
+    await waitFor(() => expect(asks.filter((u) => u.includes('category=racket')).length).toBe(2));
+    expect(asks.filter((u) => u.includes('category=string')).length).toBe(1);
+  });
+});
+
 describe('GearPickSheet — a pick that went away is an error, not a vanishing sheet', () => {
   // The controls inside the sheet change the gear doc, which refetches the
   // pick. If that comes back empty (a throttled response is the easy way in),
