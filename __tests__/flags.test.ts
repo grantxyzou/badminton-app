@@ -9,7 +9,7 @@ describe('feature flags', () => {
     delete process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER;
     delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
     delete process.env.NEXT_PUBLIC_FLAG_SKILL_ASSESS;
-    delete process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER;
+    delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
     delete process.env.NEXT_PUBLIC_ENV;
   });
 
@@ -102,13 +102,13 @@ describe('feature flags', () => {
     delete process.env.NEXT_PUBLIC_FLAG_STATS_V2;
   });
 
-  describe('NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER', () => {
+  describe('NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER', () => {
     it('is on only for the literal string "true"', () => {
-      process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER = 'true';
-      expect(isFlagOn('NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER')).toBe(true);
+      process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
+      expect(isFlagOn('NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER')).toBe(true);
       for (const v of ['1', 'yes', 'TRUE', 'false', '']) {
-        process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER = v;
-        expect(isFlagOn('NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER')).toBe(false);
+        process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = v;
+        expect(isFlagOn('NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER')).toBe(false);
       }
     });
   });
