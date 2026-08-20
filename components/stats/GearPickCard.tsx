@@ -92,9 +92,32 @@ const META: Record<EquipmentCategory, CategoryMeta> = {
  *  this width so the rail never reflows as cards settle from loading to ready. */
 const CARD_WIDTH = 236;
 
+/** The two attributes worth two lines of card, per category. Named rather
+ *  than positional: this used to take the first two values in key order, which
+ *  gave rackets "3U/4U · Head-heavy" only because that is how the seed rows
+ *  happen to be written, and gave the Li-Ning N69 "N · Durability" — "N" being
+ *  the series letter. Cosmos does not guarantee key order, so the racket line
+ *  was one row-rewrite away from breaking the same way. */
+const SPEC_FIELDS: Partial<Record<EquipmentCategory, [string, string]>> = {
+  racket: ['weight', 'balance'],
+  string: ['gaugeMm', 'stringType'],
+};
+
 function formatSpec(item: CatalogItem): string | null {
   if (!item.attributes) return null;
-  const values = Object.values(item.attributes).slice(0, 2).map(String);
+  const fields = SPEC_FIELDS[item.category];
+
+  const values = fields
+    ? fields
+        .map((f) => item.attributes?.[f])
+        .filter((v) => v !== undefined && v !== null && v !== '')
+        // Gauge is the one numeric spec, and a bare "0.65" next to a word
+        // reads as a rating rather than a thickness.
+        .map((v, i) => (fields[i] === 'gaugeMm' ? `${Number(v).toFixed(2)}mm` : String(v)))
+    // A category with no named pair (shoe, shuttle — neither has catalog rows
+    // yet) keeps the old positional behaviour rather than rendering nothing.
+    : Object.values(item.attributes).slice(0, 2).map(String);
+
   return values.length > 0 ? values.join(' · ') : null;
 }
 
