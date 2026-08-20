@@ -49,11 +49,16 @@ function mental(p: PlayerProfile): number {
   return (p.game_reading + p.consistency + p.rules + p.mindset) / 4;
 }
 
-function overall(p: PlayerProfile): number {
+/** Exported for `lib/stringPair.ts` (spec V2): the string engine reuses this
+ *  fourteen-skill average rather than deriving a six-dimension one, so the two
+ *  engines cannot disagree about how good a player is. */
+export function overall(p: PlayerProfile): number {
   return (technical(p) + physical(p) + mental(p)) / 3;
 }
 
-function skillLevel(p: PlayerProfile): 'Beginner' | 'Intermediate' | 'Advanced' {
+/** Exported for `lib/stringPair.ts` (spec V2) — one definition of who counts
+ *  as Advanced, shared by the racket tier gate and the string skill gate. */
+export function skillLevel(p: PlayerProfile): 'Beginner' | 'Intermediate' | 'Advanced' {
   const o = overall(p);
   if (o < 2.5) return 'Beginner';
   if (o < 3.75) return 'Intermediate';
