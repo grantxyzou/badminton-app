@@ -95,6 +95,27 @@ describe('GearRegister — D2, one tension number at a time', () => {
     expect(screen.queryByText('String tension')).toBeNull();
   });
 
+  /**
+   * The rail's refresh path skips PARKED categories, and `string` was parked on
+   * every request until now — so it was half of each refetch pass and free.
+   * Now it costs a call, against /api/recommend's 10/min/IP limit whose
+   * throttled response is a bare {item: null} with a 200, which the rail's
+   * ladder renders as an ERROR card. Two per pass is the budget; a feedback
+   * loop through onPairTension -> setState -> re-render would blow it silently
+   * and the only symptom would be a card that intermittently reads
+   * "couldn't load".
+   */
+  it('costs exactly two recommend calls per mount, not a loop', async () => {
+    mountWith(25.5);
+    await screen.findByText('Your kit');
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+
+    const recommendCalls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls
+      .map((c) => String(c[0]))
+      .filter((u) => u.includes('/api/recommend'));
+    expect(recommendCalls.length).toBe(2);
+  });
+
   it('keeps the level-based card when the pairing could not give one', async () => {
     // 11 of 71 frames publish no tension ceiling. Falling back is the whole
     // reason lib/tension.ts is not deleted.
