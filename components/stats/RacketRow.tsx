@@ -116,6 +116,23 @@ export default function RacketRow() {
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <YourRacketCard
+          // Hold the stored label until the catalog lookup settles, so the
+          // hero renders once in its final shape instead of the plain label
+          // popping in first and the model/brand/specs reflowing in under it
+          // a beat later. A catalog failure also lands here (settled, item
+          // still null) — it degrades to the label, not a permanent shimmer.
+          item={catalogSettled ? catalogItem : null}
+          label={racketLabel}
+          loading={!gear.loaded}
+          error={gear.loadError}
+        />
+        <RacketRecCard name={activeName} mine={catalogItem} refreshKey={recRefreshKey} />
+
+        {/* Below the recommendation, not above the hero. These tune the pick,
+            so they belong next to it — and putting configuration first made
+            the tab open on settings instead of on the answer to its own
+            question ("What is the racket you are using today?"). */}
         {racketRecommenderOn && (
           <>
             <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
@@ -163,18 +180,6 @@ export default function RacketRow() {
           </>
         )}
 
-        <YourRacketCard
-          // Hold the stored label until the catalog lookup settles, so the
-          // hero renders once in its final shape instead of the plain label
-          // popping in first and the model/brand/specs reflowing in under it
-          // a beat later. A catalog failure also lands here (settled, item
-          // still null) — it degrades to the label, not a permanent shimmer.
-          item={catalogSettled ? catalogItem : null}
-          label={racketLabel}
-          loading={!gear.loaded}
-          error={gear.loadError}
-        />
-        <RacketRecCard name={activeName} mine={catalogItem} refreshKey={recRefreshKey} />
 
         {/* A failed gear read must render as a failure, not a truthful "you
             own no rackets" — a player with three rackets must never see an
