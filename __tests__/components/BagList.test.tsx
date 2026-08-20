@@ -77,4 +77,31 @@ describe('BagList', () => {
       expect((button as HTMLButtonElement).disabled).toBe(true);
     }
   });
+
+  // Strings have no active-racket pointer, so the activate affordance is
+  // gated per-row on category — and this is the list where a member would
+  // look to confirm a tension they just entered actually landed.
+  describe('a string row', () => {
+    const STRING: GearItem = { id: 's1', catalogId: 'string-a', category: 'string', label: 'Yonex BG65', tensionLbs: 24 };
+
+    it('shows the logged tension and no activate control', () => {
+      renderBag({ items: [STRING], activeId: undefined });
+      expect(screen.getByText('Yonex BG65 · 24 lb')).toBeTruthy();
+      expect(screen.queryByText('Use this one')).toBeNull();
+      expect(screen.queryByText('Using today')).toBeNull();
+    });
+
+    it('shows the bare label when no tension is on record yet', () => {
+      renderBag({ items: [{ ...STRING, tensionLbs: undefined }], activeId: undefined });
+      expect(screen.getByText('Yonex BG65')).toBeTruthy();
+      expect(screen.queryByText(/lb$/)).toBeNull();
+    });
+
+    it('still removes on tap', () => {
+      const onRemove = vi.fn();
+      renderBag({ items: [STRING], activeId: undefined, onRemove });
+      fireEvent.click(screen.getByLabelText('Remove — Yonex BG65'));
+      expect(onRemove).toHaveBeenCalledWith('s1');
+    });
+  });
 });

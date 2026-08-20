@@ -308,7 +308,12 @@
       "budget_100": "Under $100",
       "budget_200": "$100–200",
       "budget_350": "$200–350",
-      "budget_none": "No limit"
+      "budget_none": "No limit",
+      "ownedTitle": "Already in your kit",
+      "ownedActive": "Using today",
+      "ownedSetActive": "Use this one",
+      "ownedRemove": "Remove",
+      "tensionCaptureLabel": "Tension you strung at"
     },
     "learn": {
       "focusEyebrow": "This week · focus",

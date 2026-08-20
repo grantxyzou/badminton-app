@@ -8,6 +8,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import GearSheet from './GearSheet';
 import type { UseGear } from './useGear';
 import type { EquipmentCategory, GearItem } from '@/lib/types';
+import { gearItemLabel } from '@/lib/tension';
 
 const CATEGORIES: { key: EquipmentCategory; labelKey: string; icon: string }[] = [
   { key: 'racket', labelKey: 'catRacket', icon: 'sports_tennis' },
@@ -34,6 +35,13 @@ export interface YourKitCardProps {
   gear: UseGear;
 }
 
+/** `notSet` for an empty row, `gearItemLabel` (shared with `BagList`) for a
+ *  filled one — see `lib/tension.ts` for why the formatting lives there. */
+function kitValue(item: GearItem | undefined, t: (key: string) => string): string {
+  if (!item) return t('notSet');
+  return gearItemLabel(item, t('lb'));
+}
+
 /**
  * "Your kit" — one row per equipment category, showing what the member owns
  * and offering the door to change it.
@@ -44,7 +52,7 @@ export interface YourKitCardProps {
  */
 export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
   const t = useTranslations('stats.gear');
-  const { gear: doc, loaded, loadError, busy, online, add } = gear;
+  const { gear: doc, loaded, loadError, busy, online, add, activate, remove, active } = gear;
   const [picking, setPicking] = useState<EquipmentCategory | null>(null);
 
   const items = (doc?.items ?? []) as GearItem[];
@@ -61,6 +69,10 @@ export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
     const cat = (item.category ?? 'racket') as EquipmentCategory;
     if (!byCategory.has(cat)) byCategory.set(cat, item);
   }
+
+  const ownedItemsForPicking = picking
+    ? items.filter((i) => !i.retiredAt && ((i.category ?? 'racket') as EquipmentCategory) === picking)
+    : [];
 
   return (
     <div className="glass-card p-5 space-y-3">
@@ -132,7 +144,7 @@ export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {item?.label ?? t('notSet')}
+                    {kitValue(item, t)}
                   </span>
                 </span>
                 {pickable && (
@@ -146,8 +158,9 @@ export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
         </div>
       )}
 
-      {/* One picker, driven by which row was tapped. GearSheet is "a catalog
-          picker and nothing else" and is category-agnostic, so strings reuse it
+      {/* One picker, driven by which row was tapped. GearSheet is the single
+          place a category's items live — owned items plus the catalog to add
+          or change them — and is category-agnostic, so strings reuse it
           rather than getting a near-copy that drifts. */}
       <GearSheet
         open={picking !== null}
@@ -155,13 +168,18 @@ export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
         category={picking ?? 'racket'}
         title={picking === 'string' ? t('pickString') : t('pickRacket')}
         hint={picking === 'string' ? t('pickStringHint') : undefined}
-        ownedCatalogIds={items
-          .filter((i) => ((i.category ?? 'racket') as EquipmentCategory) === picking)
+        ownedCatalogIds={ownedItemsForPicking
           .map((i) => i.catalogId)
           .filter((id): id is string => typeof id === 'string')}
-        onPick={add}
+        ownedItems={ownedItemsForPicking}
+        activeItemId={active?.id}
+        onActivate={(id) => { void activate(id); }}
+        onRemove={(id) => { void remove(id); }}
+        onPick={(item, tensionLbs) => add(item, typeof tensionLbs === 'number' ? { tensionLbs } : undefined)}
         busy={busy}
         online={online}
+        activeName={activeName}
+        format={doc?.playFormat}
       />
     </div>
   );
