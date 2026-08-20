@@ -95,3 +95,26 @@ describe('GearPickCard — the frame a string pick assumed', () => {
     expect(screen.getByText(/our pick for you/i)).toBeTruthy();
   });
 });
+
+describe('GearPickCard — a parked string must not disown a shipped feature', () => {
+  afterEach(cleanup);
+
+  /**
+   * The twin of commit 6f7ea48, which fixed this for rackets. `badgeKey`
+   * defaults to `railComingSoon`, and that was TRUE for string while it had no
+   * engine. Now it has one, so a parked string card means "no check-in yet" or
+   * "empty catalog" — never "this feature doesn't exist". Claiming coming-soon
+   * for something that ships is the same lie in the other direction as a
+   * lying empty state.
+   */
+  it('says there is no pick yet, not that string picks are coming soon', () => {
+    renderCard({ category: 'string', pick: null, status: 'parked' });
+    expect(screen.queryByText(/coming soon/i)).toBeNull();
+    expect(screen.getByText(/no pick yet/i)).toBeTruthy();
+  });
+
+  it('still tells shoes and shuttles they are coming, because they are', () => {
+    renderCard({ category: 'shoe', pick: null, status: 'parked' });
+    expect(screen.getByText(/coming soon/i)).toBeTruthy();
+  });
+});
