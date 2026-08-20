@@ -3,9 +3,8 @@ import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos'
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
-import { getCanonicalLevel, type LevelSubject } from '@/lib/levelStore';
-import { summarizeAssessmentTrend, type StoredAssessment } from '@/lib/assessment';
-import { recommendDrills } from '@/lib/drills';
+import type { LevelSubject } from '@/lib/levelStore';
+import { drillPicksFor } from '@/lib/drills';
 import { drillDocId, readDone, type DrillCompletionDoc } from '@/lib/drillsDone';
 
 /**
@@ -35,26 +34,6 @@ async function resolveSubject(name: string): Promise<LevelSubject> {
     /* fall through to name-derived id */
   }
   return { memberId: `name:${trimmed.toLowerCase()}`, name: trimmed };
-}
-
-/** Latest work-on skills for a member (lowest-rated), or [] when none/unavailable. */
-async function fetchWorkOn(memberId: string) {
-  try {
-    await ensureContainer('assessments', '/memberId');
-    const { resources } = await getContainer('assessments').items
-      .query({
-        query: 'SELECT c.memberId, c.takenAt, c.ratings, c.overall, c.phase FROM c WHERE c.memberId = @memberId',
-        parameters: [{ name: '@memberId', value: memberId }],
-      })
-      .fetchAll();
-    const docs = (resources as (StoredAssessment & { memberId?: string })[]).filter(
-      (d) => d && d.memberId === memberId && typeof d.takenAt === 'string',
-    );
-    return summarizeAssessmentTrend(docs)?.workOn ?? [];
-  } catch (err) {
-    console.error('stats/drills: workOn read failed:', err);
-    return [];
-  }
 }
 
 /**
@@ -104,12 +83,10 @@ export async function GET(req: NextRequest) {
 
   try {
     const subject = await resolveSubject(name);
-    const [workOn, level, rotationSeed] = await Promise.all([
-      fetchWorkOn(subject.memberId),
-      getCanonicalLevel(subject).then((l) => l.level),
+    const [drills, rotationSeed] = await Promise.all([
+      drillPicksFor(subject),
       getActiveSessionId(),
     ]);
-    const drills = recommendDrills({ workOn, level, rotationSeed });
     // `done` ships with the picks so the "n of 2" counter is right on the
     // FIRST paint. A second round-trip would render 0 of 2 for a beat and then
     // correct itself, which reads as the app forgetting what you did.
