@@ -54,7 +54,13 @@ export default function ClubConsentSheet({ open, saving = false, onAnswer }: Clu
             gap: 'var(--space-5)',
           }}
         >
-          <span className="material-icons" aria-hidden="true" style={{ fontSize: 28, color: 'var(--accent)' }}>
+          {/* --icon-lg (24), the nearest rung on the icon ladder. The
+              prototype's 28 is off-scale; snapping is the house rule. */}
+          <span
+            className="material-icons"
+            aria-hidden="true"
+            style={{ fontSize: 'var(--icon-lg)', color: 'var(--accent)' }}
+          >
             groups
           </span>
 
