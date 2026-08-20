@@ -35,7 +35,9 @@ vi.mock('@/lib/cosmos', () => ({
   })),
 }));
 
-const SEED_COUNT = 71; // scripts/data/equipment-catalog.json (50 + 21 from v2 import)
+// scripts/data/equipment-catalog.json — 71 rackets (50 + 21 from the v2
+// import) + 46 strings from import-string-db.mjs.
+const SEED_COUNT = 117;
 
 async function freshModule() {
   vi.resetModules();
