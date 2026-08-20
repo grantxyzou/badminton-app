@@ -6,7 +6,7 @@ import EmptyState from '@/components/primitives/EmptyState';
 import ListRow from '@/components/primitives/ListRow';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
 import type { GearResult } from './useGear';
-import type { CatalogItem } from '@/lib/types';
+import type { CatalogItem, EquipmentCategory } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -23,6 +23,20 @@ interface Props {
   onPick: (item: CatalogItem) => Promise<GearResult>;
   busy: boolean;
   online: boolean;
+  /**
+   * Which catalog category to pick from. Defaults to 'racket' so every
+   * existing call site is unchanged.
+   *
+   * Parameterised rather than forked: this sheet is "a catalog picker and
+   * nothing else" (components/stats/CLAUDE.md), and that description is
+   * category-agnostic. A StringSheet would have been a copy of 200 lines whose
+   * only difference was a query string, and the two would have drifted.
+   */
+  category?: EquipmentCategory;
+  /** Sheet heading. Defaults to the racket copy. */
+  title?: string;
+  /** One-line hint under the heading. Defaults to the racket copy. */
+  hint?: string;
 }
 
 /** "4U · head-heavy · stiff" — the spec line that makes a model recognisable
@@ -30,6 +44,13 @@ interface Props {
  *  out (too wordy for a one-line subtitle). */
 function specLine(item: CatalogItem): string {
   const a = item.attributes ?? {};
+  // Strings carry none of weight/balance/flex, so the racket spec line renders
+  // empty for them and every row looks identical. Gauge is the one objective
+  // cross-brand spec (see scripts/import-string-db.mjs), so it leads.
+  if (item.category === 'string') {
+    const gauge = typeof a.gaugeMm === 'number' ? `${a.gaugeMm}mm` : undefined;
+    return [gauge, a.stringType, a.feel].filter(Boolean).join(' · ');
+  }
   return [a.weight, a.balance, a.flex].filter(Boolean).join(' · ');
 }
 
@@ -46,7 +67,17 @@ function specLine(item: CatalogItem): string {
  * Spec filters would be answering a question nobody asked here (you don't know
  * your own racket's balance; that's what the hero card tells you afterwards).
  */
-export default function GearSheet({ open, onClose, ownedCatalogIds, onPick, busy, online }: Props) {
+export default function GearSheet({
+  open,
+  onClose,
+  ownedCatalogIds,
+  onPick,
+  busy,
+  online,
+  category = 'racket',
+  title,
+  hint,
+}: Props) {
   const t = useTranslations('valueHub');
   const tRecovery = useTranslations('recovery');
   const tStats = useTranslations('stats');
@@ -56,6 +87,7 @@ export default function GearSheet({ open, onClose, ownedCatalogIds, onPick, busy
   const [loadError, setLoadError] = useState(false);
   const [pickError, setPickError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const heading = title ?? t('racketSheetTitle');
 
   useEffect(() => {
     if (!open) return;
@@ -63,7 +95,8 @@ export default function GearSheet({ open, onClose, ownedCatalogIds, onPick, busy
     setLoaded(false);
     setQuery('');
     setPickError(null);
-    fetch(`${BASE}/api/equipment/catalog?category=racket`, { cache: 'no-store' })
+    setBrand(null); // brands differ per category — don't carry one across
+    fetch(`${BASE}/api/equipment/catalog?category=${category}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
         if (!live) return;
@@ -75,7 +108,9 @@ export default function GearSheet({ open, onClose, ownedCatalogIds, onPick, busy
       })
       .catch(() => { if (live) { setLoadError(true); setLoaded(true); } });
     return () => { live = false; };
-  }, [open]);
+    // `category` belongs here: without it, opening the sheet for strings after
+    // opening it for rackets would show the racket list.
+  }, [open, category]);
 
   // Rackets already in the bag never appear. Done before brand/query so the
   // tab counts and the "no matches" state both describe what's really here.
@@ -126,9 +161,9 @@ export default function GearSheet({ open, onClose, ownedCatalogIds, onPick, busy
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('racketSheetTitle')} maxHeight="92dvh" className="max-w-lg mx-auto">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={heading} maxHeight="92dvh" className="max-w-lg mx-auto">
       <BottomSheetHeader className="flex items-center justify-between p-4">
-        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('racketSheetTitle')}</span>
+        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{heading}</span>
         <button
           type="button"
           onClick={onClose}
@@ -140,7 +175,7 @@ export default function GearSheet({ open, onClose, ownedCatalogIds, onPick, busy
       </BottomSheetHeader>
       <BottomSheetBody className="p-5 pb-8">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0 }}>{t('racketSheetHint')}</p>
+          <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0 }}>{hint ?? t('racketSheetHint')}</p>
 
           {loadError && <ErrorState message={t('recError')} />}
 
@@ -173,7 +208,7 @@ export default function GearSheet({ open, onClose, ownedCatalogIds, onPick, busy
               Hidden while a query is active — search bypasses the brand filter
               entirely, so showing tabs that aren't in play reads as broken. */}
           {!query.trim() && brands.length > 0 && (
-            <div className="segment-control flex" role="tablist" aria-label={t('racketSheetTitle')}>
+            <div className="segment-control flex" role="tablist" aria-label={heading}>
               {brands.map((b) => (
                 <button
                   key={b}

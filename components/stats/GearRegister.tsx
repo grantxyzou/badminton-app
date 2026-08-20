@@ -8,6 +8,8 @@ import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import RacketRow from './RacketRow';
 import GearRail from './GearRail';
+import GearSheet from './GearSheet';
+import { useGear } from './useGear';
 import StringTensionCard from './StringTensionCard';
 import type { EquipmentCategory, GearItem } from '@/lib/types';
 import type { ClubGearEntry } from '@/lib/clubGear';
@@ -18,14 +20,15 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  * The Gear register: your racket (existing bag surface), your kit at a glance,
  * string tension advice, and what the club plays.
  *
- * SCOPE NOTE — the four-category recommendation rail from the design is NOT
- * here, and its absence is deliberate rather than forgotten. The
- * `equipmentCatalog` seed contains 71 rackets and zero shoes, strings or
- * shuttles, so a four-card rail would render three cards that either say
- * nothing or invent product data. Sourcing real shoe/string/shuttle rows with
- * honest prices is a data task, not a UI one. The racket recommendation keeps
- * working through RacketRow, and the kit rows below already accept every
- * category so the write surface is ready when the catalog is.
+ * SCOPE — rackets and strings are SELECTABLE; shoes and shuttles are parked
+ * because the catalog has no rows for them, not because the UI is missing.
+ * Both the rail and the kit rows key off `PICKABLE`/a catalog probe rather
+ * than a flag, so sourcing rows is the only step to un-park a category.
+ *
+ * Two surfaces, two jobs, deliberately not two doors to the same room:
+ *   - the rail INFORMS (what the category is for, what you own)
+ *   - the kit rows MANAGE (tap to pick or change)
+ * RacketRow stays the racket-specific deep-dive it already was.
  */
 
 const CATEGORIES: { key: EquipmentCategory; labelKey: string; icon: string }[] = [
@@ -51,26 +54,24 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
   );
 }
 
+/**
+ * Categories a player can actually pick from. Driven by whether the catalog
+ * has rows, not by a flag — same rule as the rail, so the two can never
+ * disagree about whether a category is ready.
+ */
+const PICKABLE: EquipmentCategory[] = ['racket', 'string'];
+
 function YourKitCard({ activeName }: { activeName: string | null }) {
   const t = useTranslations('stats.gear');
-  const [items, setItems] = useState<GearItem[]>([]);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  // useGear is the SINGLE owner of gear state (components/stats/CLAUDE.md:
+  // "Never add a gear fetch outside this hook"). This card used to run its own
+  // fetch; now it reads and writes through the hook so the kit, the bag and
+  // the rail cannot drift out of sync after an add.
+  const { gear, loaded, loadError, busy, online, add } = useGear(activeName);
+  const [picking, setPicking] = useState<EquipmentCategory | null>(null);
 
-  useEffect(() => {
-    if (!activeName) return;
-    let live = true;
-    fetch(`${BASE}/api/equipment/gear?name=${encodeURIComponent(activeName)}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d) => {
-        if (!live) return;
-        setItems((d?.gear?.items ?? []) as GearItem[]);
-        setStatus('ready');
-      })
-      .catch(() => live && setStatus('error'));
-    return () => {
-      live = false;
-    };
-  }, [activeName]);
+  const items = (gear?.items ?? []) as GearItem[];
+  const status: 'loading' | 'ready' | 'error' = loadError ? 'error' : loaded ? 'ready' : 'loading';
 
   if (!activeName) return null;
   if (status === 'loading') return <CardSkeleton height={220} />;
@@ -93,9 +94,22 @@ function YourKitCard({ activeName }: { activeName: string | null }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           {CATEGORIES.map(({ key, labelKey, icon }) => {
             const item = byCategory.get(key);
+            const pickable = PICKABLE.includes(key);
+            // A row that says "Add" and does nothing is worse than a row that
+            // says nothing. Unsourced categories render as a plain div with no
+            // action word at all, matching the rail's parked cards.
+            const Row = pickable ? 'button' : 'div';
             return (
-              <div
+              <Row
                 key={key}
+                {...(pickable
+                  ? {
+                      type: 'button' as const,
+                      onClick: () => setPicking(key),
+                      disabled: busy,
+                      'aria-label': `${t(labelKey)} — ${item ? t('change') : t('add')}`,
+                    }
+                  : {})}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -104,6 +118,10 @@ function YourKitCard({ activeName }: { activeName: string | null }) {
                   borderRadius: 'var(--radius-lg)',
                   background: 'var(--inner-card-bg)',
                   border: '1px solid var(--inner-card-border)',
+                  width: '100%',
+                  textAlign: 'left',
+                  cursor: pickable ? 'pointer' : 'default',
+                  opacity: pickable ? 1 : 0.6,
                 }}
               >
                 <span
@@ -140,14 +158,34 @@ function YourKitCard({ activeName }: { activeName: string | null }) {
                     {item?.label ?? t('notSet')}
                   </span>
                 </span>
-                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
-                  {item ? t('change') : t('add')}
-                </span>
-              </div>
+                {pickable && (
+                  <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
+                    {item ? t('change') : t('add')}
+                  </span>
+                )}
+              </Row>
             );
           })}
         </div>
       )}
+
+      {/* One picker, driven by which row was tapped. GearSheet is "a catalog
+          picker and nothing else" and is category-agnostic, so strings reuse it
+          rather than getting a near-copy that drifts. */}
+      <GearSheet
+        open={picking !== null}
+        onClose={() => setPicking(null)}
+        category={picking ?? 'racket'}
+        title={picking === 'string' ? t('pickString') : t('pickRacket')}
+        hint={picking === 'string' ? t('pickStringHint') : undefined}
+        ownedCatalogIds={items
+          .filter((i) => ((i.category ?? 'racket') as EquipmentCategory) === picking)
+          .map((i) => i.catalogId)
+          .filter((id): id is string => typeof id === 'string')}
+        onPick={add}
+        busy={busy}
+        online={online}
+      />
     </div>
   );
 }
