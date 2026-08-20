@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import RacketRecCard from '../../components/stats/cards/RacketRecCard';
 import enMessages from '../../messages/en.json';
@@ -80,5 +80,33 @@ describe('RacketRecCard — reasons, warnings, check-in prompt (Task 7)', () => 
     render(<Wrapper><RacketRecCard name="Lin" mine={null} /></Wrapper>);
     fireEvent.click(await screen.findByRole('button'));
     expect(screen.getByText('A solid all-rounder lots of players start with.')).toBeTruthy();
+  });
+
+  // Important fix (final review): the card must refetch when its inputs
+  // change (format, budget, or the owned-racket set) rather than only after a
+  // reload — otherwise "stops recommending a racket you already own" only
+  // takes effect once. RacketRow derives a `refreshKey` from the gear state
+  // and folds it into the fetch effect's deps alongside `name`.
+  it('refetches when refreshKey changes, even though name stays the same', async () => {
+    let callCount = 0;
+    global.fetch = vi.fn(async () => {
+      callCount += 1;
+      return new Response(JSON.stringify({
+        item: { id: `r${callCount}`, category: 'racket', brand: 'Yonex', model: `Pick ${callCount}`, skillRange: [1, 6], attributes: {} },
+        reason: null,
+      }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const { rerender } = render(
+      <Wrapper><RacketRecCard name="Lin" mine={null} refreshKey="a" /></Wrapper>,
+    );
+    await waitFor(() => expect(screen.getByText('Yonex Pick 1')).toBeTruthy());
+    expect(callCount).toBe(1);
+
+    // Same name, different refreshKey (e.g. the player just changed format) —
+    // must trigger a second fetch, not silently keep the stale pick.
+    rerender(<Wrapper><RacketRecCard name="Lin" mine={null} refreshKey="b" /></Wrapper>);
+    await waitFor(() => expect(screen.getByText('Yonex Pick 2')).toBeTruthy());
+    expect(callCount).toBe(2);
   });
 });

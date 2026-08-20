@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { getIdentity } from '@/lib/identity';
+import { isFlagOn } from '@/lib/flags';
 import ErrorState from '@/components/primitives/ErrorState';
 import GearSheet from './GearSheet';
 import BagList from './BagList';
@@ -99,52 +100,68 @@ export default function RacketRow() {
 
   const playFormat = gear.gear?.playFormat ?? 'both';
   const budgetMaxCad = gear.gear?.budgetMaxCad ?? null;
+  // Everything the engine's pick can actually depend on, folded into one
+  // opaque key so RacketRecCard's fetch effect refetches on any of it —
+  // otherwise changing format/budget or adding/removing/activating a racket
+  // only takes effect after a reload (RacketRow already re-renders on every
+  // gear change since it holds the useGear hook).
+  const recRefreshKey = `${gear.active?.id ?? ''}|${gear.rackets.length}|${playFormat}|${budgetMaxCad ?? ''}`;
+  // The skill-scored engine is the only consumer of these two preferences
+  // (/api/recommend's flag-off branch ignores them entirely) — gate the
+  // controls themselves, not the whole row, so the hero/bag/Add button (all
+  // existing NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE behaviour) keep rendering
+  // exactly as they do today while the flag is off.
+  const racketRecommenderOn = isFlagOn('NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER');
 
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-          <p className="section-label" style={{ margin: 0 }}>{t('formatLabel')}</p>
-          <div className="segment-control flex" role="tablist" aria-label={t('formatLabel')}>
-            {(['doubles', 'singles', 'both'] as const).map((f) => (
-              <button
-                key={f}
-                type="button"
-                role="tab"
-                aria-selected={playFormat === f}
-                disabled={gear.busy}
-                className={`flex-1 flex items-center justify-center fs-sm ${playFormat === f ? 'segment-tab-active' : 'segment-tab-inactive'}`}
-                onClick={() => runAction(gear.setPrefs({ playFormat: f }))}
-              >
-                {t(`format_${f}`)}
-              </button>
-            ))}
-          </div>
-        </section>
+        {racketRecommenderOn && (
+          <>
+            <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              <p className="section-label" style={{ margin: 0 }}>{t('formatLabel')}</p>
+              <div className="segment-control flex" role="tablist" aria-label={t('formatLabel')}>
+                {(['doubles', 'singles', 'both'] as const).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    role="tab"
+                    aria-selected={playFormat === f}
+                    disabled={gear.busy}
+                    className={`flex-1 flex items-center justify-center fs-sm ${playFormat === f ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+                    onClick={() => runAction(gear.setPrefs({ playFormat: f }))}
+                  >
+                    {t(`format_${f}`)}
+                  </button>
+                ))}
+              </div>
+            </section>
 
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-          <p className="section-label" style={{ margin: 0 }}>{t('budgetLabel')}</p>
-          <div className="segment-control flex" role="tablist" aria-label={t('budgetLabel')}>
-            {([
-              [100, 'budget_100'],
-              [200, 'budget_200'],
-              [350, 'budget_350'],
-              [null, 'budget_none'],
-            ] as const).map(([band, key]) => (
-              <button
-                key={key}
-                type="button"
-                role="tab"
-                aria-selected={budgetMaxCad === band}
-                disabled={gear.busy}
-                className={`flex-1 flex items-center justify-center fs-sm ${budgetMaxCad === band ? 'segment-tab-active' : 'segment-tab-inactive'}`}
-                onClick={() => runAction(gear.setPrefs({ budgetMaxCad: band }))}
-              >
-                {t(key)}
-              </button>
-            ))}
-          </div>
-        </section>
+            <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              <p className="section-label" style={{ margin: 0 }}>{t('budgetLabel')}</p>
+              <div className="segment-control flex" role="tablist" aria-label={t('budgetLabel')}>
+                {([
+                  [100, 'budget_100'],
+                  [200, 'budget_200'],
+                  [350, 'budget_350'],
+                  [null, 'budget_none'],
+                ] as const).map(([band, key]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={budgetMaxCad === band}
+                    disabled={gear.busy}
+                    className={`flex-1 flex items-center justify-center fs-sm ${budgetMaxCad === band ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+                    onClick={() => runAction(gear.setPrefs({ budgetMaxCad: band }))}
+                  >
+                    {t(key)}
+                  </button>
+                ))}
+              </div>
+            </section>
+          </>
+        )}
 
         <YourRacketCard
           // Hold the stored label until the catalog lookup settles, so the
@@ -157,7 +174,7 @@ export default function RacketRow() {
           loading={!gear.loaded}
           error={gear.loadError}
         />
-        <RacketRecCard name={activeName} mine={catalogItem} />
+        <RacketRecCard name={activeName} mine={catalogItem} refreshKey={recRefreshKey} />
 
         {/* A failed gear read must render as a failure, not a truthful "you
             own no rackets" — a player with three rackets must never see an

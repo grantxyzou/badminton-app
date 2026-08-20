@@ -82,8 +82,10 @@ for (const raw of source) {
     merged += 1;
     // Field-level merge: v2 attributes win, but preserve curated fields from existing.
     const existing = byId.get(mapped.id);
-    // v2 wins on normalized attributes and skill tier mapping
-    existing.attributes = mapped.attributes;
+    // Merge attribute-by-attribute: v2's keys win on collision, but any
+    // existing attribute key v2 does not supply (e.g. the curated
+    // `weightGrams` string) is preserved rather than dropped wholesale.
+    existing.attributes = { ...existing.attributes, ...mapped.attributes };
     existing.skillRange = mapped.skillRange;
     // Preserve curated fields: sources array and hand-set msrp (only set USD-derived msrp if none exists)
     if (mapped.msrp !== undefined && existing.msrp === undefined) {
