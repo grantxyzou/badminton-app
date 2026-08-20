@@ -35,13 +35,21 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_BASE_PATH: /bpm
-          # Canonical URL for SEO + social-share metadata. Swap when a custom
-          # domain is wired up; everything else (basePath, env, flags)
-          # stays the same.
-          NEXT_PUBLIC_BASE_URL: https://vnext-badminton-app-enhcave5djcvafe9.canadacentral-01.azurewebsites.net/bpm
+          # Canonical URL for SEO + social-share metadata. The custom domain is
+          # wired up and is how everyone reaches the app, so this is it — the
+          # azurewebsites.net host made every shared link preview the wrong
+          # domain. basePath, env and flags are unaffected.
+          NEXT_PUBLIC_BASE_URL: https://bpm.grantzou.com/bpm
           NEXT_PUBLIC_MAX_PLAYERS: '12'
           NEXT_PUBLIC_ETRANSFER_EMAIL: grantxyzou@gmail.com
-          NEXT_PUBLIC_ENV: next
+          # Yes, "stable" in the workflow named bpm-next. This deployment IS
+          # production now — everyone reaches it via bpm.grantzou.com and nobody
+          # uses bpm-stable. Building it as `next` made it advertise itself as a
+          # preview to the people relying on it: PreviewBanner rendered ("not the
+          # stable site", plus a personal email), and the releases filter in
+          # app/api/releases/route.ts served 12 entries with duplicates instead
+          # of 8. This one value drives both. Revert to `next` to undo.
+          NEXT_PUBLIC_ENV: stable
           NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
           NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: 'true'
           NEXT_PUBLIC_FLAG_COMMAND_CENTER: 'true'
