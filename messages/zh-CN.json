@@ -298,6 +298,7 @@
       "pickSheetAdd": "加入我的装备",
       "pickSheetFootnote": "这是根据你的自评和球友们的选择给出的建议，不是定论。买之前先借一支打一场。",
       "pickSheetAddError": "暂时保存不了 — 请再试一次",
+      "pickSheetLoadError": "暂时加载不出这条推荐 — 关掉再试一次",
       "pickSheetBagFull": "球包已满 — 请先移除一支。",
       "formatLabel": "我主要打",
       "format_doubles": "双打",
