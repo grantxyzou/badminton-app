@@ -118,12 +118,18 @@ export function useGear(name: string | null): UseGear {
    * "append to my bag" verb and has never read `tensionLbs` off the wire, but
    * PUT already does (route.ts:349) — it's the idempotent "set this item"
    * verb, matching by catalogId, so calling it right after a successful add
-   * updates the SAME item in place rather than appending a duplicate. That
-   * follow-up is fire-and-forget: the add already succeeded once POST
-   * resolves ok, so a flaky network on the PUT loses only the tension, not
-   * the pick — the same trade `setPrefs` makes for preference writes. Both
-   * calls still go through `mutate()`, so the shared op counter protects the
-   * follow-up exactly like every other write; nothing bypasses it.
+   * updates the SAME item in place rather than appending a duplicate.
+   *
+   * The follow-up is AWAITED, not fire-and-forget (review fix, round 1): this
+   * is member-typed data — the exact thing the tension field exists to
+   * capture — and by the time it resolves the item is already visible in
+   * `BagList` (POST's own `mutate()` call already applied it to `gear`
+   * above), which is the caller's natural retry surface if the PUT fails.
+   * `recordEngagement()` is this codebase's one sanctioned fire-and-forget,
+   * precisely because nothing the user sees depends on it; a member-entered
+   * tension value is the opposite of that. Both calls still go through
+   * `mutate()`, so the shared op counter protects the follow-up exactly like
+   * every other write; nothing bypasses it.
    *
    * Gated to `category === 'string'` even though the type allows any item:
    * PUT's own pointer rule (route.ts:373) is "the item I PUT becomes active"
@@ -149,7 +155,7 @@ export function useGear(name: string | null): UseGear {
       }),
     }));
     if (res.ok && item.category === 'string' && typeof extra?.tensionLbs === 'number') {
-      void mutate(() => fetch(`${BASE}/api/equipment/gear`, {
+      return mutate(() => fetch(`${BASE}/api/equipment/gear`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -299,7 +299,7 @@ export default function GearSheet({
                   style={{
                     width: 88, minHeight: 44, padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)',
                     background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-                    color: 'var(--text-primary)',
+                    color: 'var(--text-primary)', fontFamily: 'var(--font-mono)',
                   }}
                 />
                 <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{tGear('lb')}</span>
