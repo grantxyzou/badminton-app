@@ -32,14 +32,24 @@ function gearDoc(items: PlayerGear['items'], activeRacketId?: string): PlayerGea
   return { id: 'gear-1', memberId: 'm1', items, ...(activeRacketId ? { activeRacketId } : null) } as PlayerGear;
 }
 
+const BG65: CatalogItem = {
+  id: 'string-yonex-bg65',
+  category: 'string',
+  brand: 'Yonex',
+  model: 'BG65',
+  skillRange: [1, 6],
+};
+
 /** Minimal surface: the bag as text, plus a button that fires `add`. */
 function Probe() {
   const gear = useGear('Lin');
   return (
     <div>
       <button type="button" onClick={() => void gear.add(ASTROX)}>add</button>
+      <button type="button" onClick={() => void gear.add(BG65, { tensionLbs: 24 })}>add-string</button>
       <p data-testid="bag">{gear.rackets.map((r) => r.label).join(',') || 'empty'}</p>
       <p data-testid="loaded">{String(gear.loaded)}</p>
+      <p data-testid="tension">{String(gear.gear?.items.find((i) => i.category === 'string')?.tensionLbs ?? 'none')}</p>
     </div>
   );
 }
@@ -86,5 +96,101 @@ describe('useGear — the shared op counter', () => {
     });
 
     expect(screen.getByTestId('bag').textContent).toBe('Yonex Astrox 100ZZ');
+  });
+});
+
+describe('useGear — add() with a tension follow-up', () => {
+  // POST (the add-to-bag verb) has never read tensionLbs off the wire; PUT
+  // already does. `add`'s extra.tensionLbs argument fires a follow-up PUT
+  // after a successful POST — this pins that the follow-up actually lands and
+  // that a plain add() (no extra) makes no second call at all.
+  it('attaches tensionLbs via a follow-up PUT after a successful add', async () => {
+    const calls: string[] = [];
+    let putBody: Record<string, unknown> | null = null;
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = (init?.method ?? 'GET').toUpperCase();
+      if (!url.includes('/api/equipment/gear')) throw new Error(`Unmocked fetch: ${url}`);
+      calls.push(method);
+      if (method === 'GET') return { ok: true, status: 200, json: async () => ({ gear: null }) } as Response;
+      if (method === 'POST') {
+        const added = { id: 's1', catalogId: BG65.id, category: 'string' as const, label: 'Yonex BG65' };
+        return { ok: true, status: 200, json: async () => ({ gear: gearDoc([added]) }) } as Response;
+      }
+      if (method === 'PUT') {
+        putBody = JSON.parse(String(init?.body));
+        const withTension = { id: 's1', catalogId: BG65.id, category: 'string' as const, label: 'Yonex BG65', tensionLbs: 24 };
+        return { ok: true, status: 200, json: async () => ({ gear: gearDoc([withTension]) }) } as Response;
+      }
+      throw new Error(`Unexpected method: ${method}`);
+    }) as unknown as typeof fetch);
+
+    render(<Probe />);
+    await waitFor(() => expect(screen.getByTestId('loaded').textContent).toBe('true'));
+
+    fireEvent.click(screen.getByText('add-string'));
+
+    await waitFor(() => expect(screen.getByTestId('tension').textContent).toBe('24'));
+    expect(calls.filter((m) => m === 'POST')).toHaveLength(1);
+    expect(calls.filter((m) => m === 'PUT')).toHaveLength(1);
+    expect((putBody as unknown as { item: { catalogId: string; tensionLbs: number } }).item.catalogId).toBe(BG65.id);
+    expect((putBody as unknown as { item: { catalogId: string; tensionLbs: number } }).item.tensionLbs).toBe(24);
+  });
+
+  // PUT's own pointer rule always claims activeRacketId for a racket
+  // (route.ts:373), which POST deliberately does NOT do when the bag already
+  // has a pointer (route.ts:180-186). A tension follow-up firing for a
+  // racket would silently override POST's pointer decision, so `add` must
+  // never send one for anything but a string, regardless of what a caller
+  // passes.
+  it('fires no PUT for a racket even if a caller passes tensionLbs', async () => {
+    const calls: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = (init?.method ?? 'GET').toUpperCase();
+      if (!url.includes('/api/equipment/gear')) throw new Error(`Unmocked fetch: ${url}`);
+      calls.push(method);
+      if (method === 'GET') return { ok: true, status: 200, json: async () => ({ gear: null }) } as Response;
+      const added = { id: 'r1', catalogId: ASTROX.id, category: 'racket' as const, label: 'Yonex Astrox 100ZZ' };
+      return { ok: true, status: 200, json: async () => ({ gear: gearDoc([added], 'r1') }) } as Response;
+    }) as unknown as typeof fetch);
+
+    function RacketWithTensionProbe() {
+      const gear = useGear('Lin');
+      return (
+        <button type="button" onClick={() => void gear.add(ASTROX, { tensionLbs: 24 })}>add-racket-with-tension</button>
+      );
+    }
+
+    render(<RacketWithTensionProbe />);
+    await waitFor(() => expect(calls).toContain('GET'));
+
+    fireEvent.click(screen.getByText('add-racket-with-tension'));
+    await waitFor(() => expect(calls.filter((m) => m === 'POST')).toHaveLength(1));
+
+    // Give a wrongly-fired PUT a tick to show up before asserting its absence.
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    expect(calls.filter((m) => m === 'PUT')).toHaveLength(0);
+  });
+
+  it('fires no PUT when add() is called with no tension', async () => {
+    const calls: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = (init?.method ?? 'GET').toUpperCase();
+      if (!url.includes('/api/equipment/gear')) throw new Error(`Unmocked fetch: ${url}`);
+      calls.push(method);
+      if (method === 'GET') return { ok: true, status: 200, json: async () => ({ gear: null }) } as Response;
+      const added = { id: 'r1', catalogId: ASTROX.id, category: 'racket' as const, label: 'Yonex Astrox 100ZZ' };
+      return { ok: true, status: 200, json: async () => ({ gear: gearDoc([added], 'r1') }) } as Response;
+    }) as unknown as typeof fetch);
+
+    render(<Probe />);
+    await waitFor(() => expect(screen.getByTestId('loaded').textContent).toBe('true'));
+
+    fireEvent.click(screen.getByText('add'));
+    await waitFor(() => expect(screen.getByTestId('bag').textContent).toBe('Yonex Astrox 100ZZ'));
+
+    expect(calls.filter((m) => m === 'PUT')).toHaveLength(0);
   });
 });

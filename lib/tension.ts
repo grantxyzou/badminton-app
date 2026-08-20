@@ -54,3 +54,20 @@ export function recommendTension(level: number | null, format: PlayFormat): Tens
 export function formatForToggle(format: PlayFormat | undefined): 'singles' | 'doubles' {
   return format === 'singles' ? 'singles' : 'doubles';
 }
+
+/**
+ * `${label} · NN lb` once a strung item's tension is on record, the bare
+ * label otherwise — never a placeholder number for a string nobody has
+ * logged the tension of yet. Shared by `YourKitCard` (the row) and `BagList`
+ * (the same item, inside the sheet where a member would look to confirm the
+ * tension actually landed) so the two surfaces can't drift into disagreeing
+ * about the one item they're both describing. `lbSuffix` is the translated
+ * unit string ("lb" / "磅") so this stays presentation-agnostic — callers
+ * pass their own `t('lb')`.
+ */
+export function gearItemLabel(item: { category: string; label: string; tensionLbs?: number }, lbSuffix: string): string {
+  if (item.category === 'string' && typeof item.tensionLbs === 'number') {
+    return `${item.label} · ${item.tensionLbs} ${lbSuffix}`;
+  }
+  return item.label;
+}

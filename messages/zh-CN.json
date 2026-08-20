@@ -308,7 +308,12 @@
       "budget_100": "$100 以下",
       "budget_200": "$100–200",
       "budget_350": "$200–350",
-      "budget_none": "不限"
+      "budget_none": "不限",
+      "ownedTitle": "已在你的装备中",
+      "ownedActive": "今天在用",
+      "ownedSetActive": "改用这支",
+      "ownedRemove": "移除",
+      "tensionCaptureLabel": "你实际拉线的磅数"
     },
     "learn": {
       "focusEyebrow": "本周 · 重点",

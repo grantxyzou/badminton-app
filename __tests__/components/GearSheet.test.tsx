@@ -6,10 +6,12 @@ import GearSheet from '../../components/stats/GearSheet';
 import enMessages from '../../messages/en.json';
 
 /**
- * GearSheet is now a catalog picker and nothing else — the bag moved to the
- * Equipment tab. The behaviours worth pinning here are the ones that changed
- * with that split: one tap commits and closes (no Save button), rackets
- * already owned never appear, and every row shows its brand.
+ * GearSheet is the one place a category's items live: what you already own
+ * (via `BagList`) plus the catalog to add or change it. The behaviours worth
+ * pinning here are the ones that changed with that shape: one tap commits and
+ * closes (no Save button), rackets already owned never appear in the catalog
+ * list, every row shows its brand, owned items surface above the catalog, and
+ * (strings only) an edited tension value rides along on the pick.
  */
 
 const CATALOG = [
@@ -30,10 +32,34 @@ const CATALOG = [
   },
 ];
 
+const STRING_CATALOG = [
+  {
+    id: 'string-yonex-bg65', category: 'string', brand: 'Yonex', model: 'BG65',
+    msrp: 12, skillRange: [1, 6],
+    attributes: { gaugeMm: 0.7, stringType: 'nylon', feel: 'durable' },
+  },
+];
+
 function mockCatalog(items: unknown = CATALOG, status = 200) {
   global.fetch = vi.fn(async (url: RequestInfo | URL) => {
     if (String(url).includes('/api/equipment/catalog')) {
       return new Response(JSON.stringify({ items }), { status });
+    }
+    return new Response('{}', { status: 404 });
+  }) as unknown as typeof fetch;
+}
+
+/** Also answers `/api/stats/level`, for the string-tension prefill. `level:
+ *  null` mimics a member with no check-in yet — `recommendTension` returns
+ *  `null` for that, same as `StringTensionCard`. */
+function mockCatalogAndLevel(items: unknown = STRING_CATALOG, level: number | null = 3) {
+  global.fetch = vi.fn(async (url: RequestInfo | URL) => {
+    const u = String(url);
+    if (u.includes('/api/equipment/catalog')) {
+      return new Response(JSON.stringify({ items }), { status: 200 });
+    }
+    if (u.includes('/api/stats/level')) {
+      return new Response(JSON.stringify({ level: level === null ? null : { level } }), { status: 200 });
     }
     return new Response('{}', { status: 404 });
   }) as unknown as typeof fetch;
@@ -102,14 +128,13 @@ describe('GearSheet (catalog picker)', () => {
     expect(screen.queryByRole('button', { name: /^Save/ })).toBeNull();
   });
 
-  // Regression guard for the old two-surface design: the sheet must never
-  // render bag controls again.
-  it('renders no bag controls — those live on the Equipment tab now', async () => {
+  // A category with nothing owned yet shows no owned-items section — BagList
+  // itself renders null on an empty list, and the sheet must not draw an
+  // empty "Your rackets" shell above the catalog.
+  it('renders no owned-items section when the player owns nothing in this category yet', async () => {
     mockCatalog();
     renderSheet();
     await screen.findByText('Astrox 88D Pro');
-    expect(screen.queryByText('Your rackets')).toBeNull();
-    expect(screen.queryByText('Use this one')).toBeNull();
     expect(screen.queryByText('Using today')).toBeNull();
   });
 
@@ -242,5 +267,116 @@ describe('GearSheet search', () => {
     fireEvent.change(input, { target: { value: '' } });
     expect(screen.getByText('Astrox 88D Pro')).toBeTruthy();
     expect(screen.queryByText('DriveX 9X')).toBeNull();
+  });
+});
+
+describe('GearSheet — owned items', () => {
+  // The whole point of Task 6: BagList moved back into the sheet, so a
+  // category's owned items and the catalog to add more of them live in one
+  // place again.
+  it('lists items you already own above the catalog', async () => {
+    mockCatalog();
+    renderSheet({ ownedItems: [{ id: 'g1', catalogId: 'c1', category: 'racket', label: 'Astrox 88D' }] });
+    expect(await screen.findByText('Astrox 88D')).toBeTruthy();
+  });
+
+  it('wires the owned list through to onActivate and onRemove', async () => {
+    mockCatalog();
+    const onActivate = vi.fn();
+    const onRemove = vi.fn();
+    renderSheet({
+      ownedItems: [
+        { id: 'g1', catalogId: 'racket-yonex-astrox-88d-pro', category: 'racket', label: 'Astrox 88D Pro' },
+        { id: 'g2', catalogId: 'racket-yonex-nanoflare-800', category: 'racket', label: 'Nanoflare 800' },
+      ],
+      activeItemId: 'g1',
+      onActivate,
+      onRemove,
+      ownedCatalogIds: ['racket-yonex-astrox-88d-pro', 'racket-yonex-nanoflare-800'],
+    });
+    expect(await screen.findByText('Using today')).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText('Use this one — Nanoflare 800'));
+    expect(onActivate).toHaveBeenCalledWith('g2');
+
+    fireEvent.click(screen.getByLabelText('Remove — Astrox 88D Pro'));
+    expect(onRemove).toHaveBeenCalledWith('g1');
+  });
+
+  // Strings have no "active" pointer — BagList itself gates the affordance on
+  // item.category, so an owned string never grows a nonsense "Use this one".
+  it('shows an owned string with no activate control, remove only', async () => {
+    mockCatalogAndLevel(STRING_CATALOG, null);
+    renderSheet({
+      category: 'string',
+      ownedItems: [{ id: 's1', catalogId: 'string-yonex-bg65', category: 'string', label: 'Yonex BG65' }],
+      onRemove: vi.fn(),
+    });
+    expect(await screen.findByText('Yonex BG65')).toBeTruthy();
+    expect(screen.queryByLabelText(/Use this one/)).toBeNull();
+    expect(screen.getByLabelText('Remove — Yonex BG65')).toBeTruthy();
+  });
+});
+
+describe('GearSheet — string tension capture', () => {
+  it('shows no tension field for the racket category', async () => {
+    mockCatalog();
+    renderSheet();
+    await screen.findByText('Astrox 88D Pro');
+    expect(screen.queryByLabelText('Tension you strung at')).toBeNull();
+  });
+
+  it('shows the tension field, prefilled from the recommended tension, for the string category', async () => {
+    mockCatalogAndLevel(STRING_CATALOG, 3);
+    renderSheet({ category: 'string', activeName: 'Lin', format: 'doubles' });
+    const input = await screen.findByLabelText('Tension you strung at') as HTMLInputElement;
+    // recommendTension(3, 'doubles') = round(21 + 3) = 24.
+    await waitFor(() => expect(input.value).toBe('24'));
+  });
+
+  it('opens with an empty tension field when there is no level to advise from', async () => {
+    mockCatalogAndLevel(STRING_CATALOG, null);
+    renderSheet({ category: 'string', activeName: 'Lin', format: 'doubles' });
+    const input = await screen.findByLabelText('Tension you strung at') as HTMLInputElement;
+    expect(input.value).toBe('');
+  });
+
+  // The advice is a prefill, not a fact — an untouched field must not be
+  // silently persisted as if the member reported it.
+  it('sends no tensionLbs when the member never touches the prefilled field', async () => {
+    mockCatalogAndLevel(STRING_CATALOG, 3);
+    const { onPick } = renderSheet({ category: 'string', activeName: 'Lin', format: 'doubles' });
+    await screen.findByLabelText('Tension you strung at');
+    fireEvent.click(await screen.findByText('BG65'));
+
+    await waitFor(() => expect(onPick).toHaveBeenCalledTimes(1));
+    expect(onPick.mock.calls[0][1]).toBeUndefined();
+  });
+
+  it('sends the edited tensionLbs, clamped to [20, 30], on pick', async () => {
+    mockCatalogAndLevel(STRING_CATALOG, 3);
+    const { onPick } = renderSheet({ category: 'string', activeName: 'Lin', format: 'doubles' });
+    const input = await screen.findByLabelText('Tension you strung at');
+    fireEvent.change(input, { target: { value: '35' } });
+    fireEvent.click(await screen.findByText('BG65'));
+
+    await waitFor(() => expect(onPick).toHaveBeenCalledTimes(1));
+    expect(onPick.mock.calls[0][1]).toBe(30);
+  });
+
+  // `Number('')` is 0 — finite — so a naive clamp reads a cleared field as
+  // "20 lb", a number the member never typed, the moment after they
+  // deliberately deleted it. Touching-then-clearing must still mean "nothing
+  // entered", the same as never touching it at all.
+  it('sends no tensionLbs when the member touches the field and then clears it', async () => {
+    mockCatalogAndLevel(STRING_CATALOG, 3);
+    const { onPick } = renderSheet({ category: 'string', activeName: 'Lin', format: 'doubles' });
+    const input = await screen.findByLabelText('Tension you strung at');
+    fireEvent.change(input, { target: { value: '26' } });
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.click(await screen.findByText('BG65'));
+
+    await waitFor(() => expect(onPick).toHaveBeenCalledTimes(1));
+    expect(onPick.mock.calls[0][1]).toBeUndefined();
   });
 });
