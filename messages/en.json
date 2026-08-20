@@ -289,6 +289,7 @@
       "railShoesSoon": "Court shoes matched to your footwork and fit.",
       "railShuttlesSoon": "Which shuttle suits your hall and your level.",
       "railRacketSoon": "We'll suggest a racket once you've done a check-in.",
+      "railNoPickYet": "No pick yet",
       "railYours": "Yours · {label}",
       "railNone": "Yours · none on file",
       "railInKit": "In your kit",
