@@ -322,21 +322,26 @@ function scoreItem(item: CatalogItem, p: PlayerProfile): Recommendation {
 }
 
 /**
- * Return the topN rackets for this player, best first.
- * Pure: no fetch/DB/clock/randomness. Excludes non-'racket' categories,
+ * Return the topN items of `category` for this player, best first.
+ * Pure: no fetch/DB/clock/randomness. Excludes non-matching categories,
  * rows missing normalized fields (spec D4), and the player's current racket.
  * Never hard-filters on budget (spec D6) — an over-budget racket sinks via
  * scoreBudget's -20 penalty but stays in the results.
+ *
+ * `category` defaults to 'racket' so every existing call site is unchanged.
+ * The scorers themselves remain racket-shaped — this parameter exists so the
+ * filter is not a lie, not because other categories are scorable yet.
  */
 export function recommendRackets(
   profile: PlayerProfile,
   catalog: CatalogItem[],
-  topN: number = 5
+  topN: number = 5,
+  category: CatalogItem['category'] = 'racket'
 ): Recommendation[] {
   const results: Recommendation[] = [];
 
   for (const item of catalog) {
-    if (item.category !== 'racket') continue;
+    if (item.category !== category) continue;
     if (!isScorable(item)) continue;
     if (profile.currentRacketId && item.id === profile.currentRacketId) continue;
 
