@@ -1,7 +1,7 @@
 import { CosmosClient, Container } from '@azure/cosmos';
 import { randomBytes, scryptSync } from 'node:crypto';
 import equipmentCatalogSeed from '../scripts/data/equipment-catalog.json';
-import { scoreAssessment, placePhase } from './assessment';
+import { scoreAssessment, placePhase, SKILLS } from './assessment';
 
 // ---------------------------------------------------------------------------
 // In-memory mock — used when COSMOS_CONNECTION_STRING is not set (local dev)
@@ -204,7 +204,15 @@ function seedDevScenarioIfRequested(containerName: string) {
   // hero has a then-vs-now overlay to render (Switch → Commitment).
   mockStore.assessments ??= [];
   if (mockStore.assessments.length === 0) {
-    const mkSnapshot = (id: string, daysAgo: number, ratingMap: Record<string, number>) => {
+    // `who` is parameterised because this used to hardcode Lin — seeding a
+    // cohort through it silently filed every other member's check-in under
+    // Lin, so the comparison saw a cohort of zero and hid itself.
+    const mkSnapshot = (
+      id: string,
+      daysAgo: number,
+      ratingMap: Record<string, number>,
+      who: { memberId: string; name: string } = { memberId: 'dev-member-lin', name: 'Lin' },
+    ) => {
       const ratings = Object.entries(ratingMap).map(([skillKey, value]) => ({
         skillKey,
         value,
@@ -213,8 +221,8 @@ function seedDevScenarioIfRequested(containerName: string) {
       const score = scoreAssessment(ratings);
       return {
         id,
-        memberId: 'dev-member-lin',
-        name: 'Lin',
+        memberId: who.memberId,
+        name: who.name,
         takenAt: new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000).toISOString(),
         ratings,
         overall: score.overall,
@@ -234,6 +242,76 @@ function seedDevScenarioIfRequested(containerName: string) {
         game_reading: 3, consistency: 4, rules_strategy: 4, training_mindset: 4,
       }),
     );
+
+    // A rated COHORT, so the club-comparison surfaces are reachable offline.
+    // Without this the bands endpoint correctly returns nothing and "Where you
+    // sit" correctly does not render — which looks identical to a bug.
+    //
+    // Exactly five others, because that IS the minimum (lib/clubBands.ts
+    // MIN_COHORT), enforced per skill. Four would silently hide everything, so
+    // this doubles as a live check that the guard is set where we think.
+    //
+    // Ratings vary BY DIMENSION rather than being flat, so the three median
+    // ticks land in different places and the bars are worth looking at.
+    const cohort: [string, number][] = [
+      ['viktor', 5],
+      ['carolina', 4],
+      ['akane', 3],
+      ['kento', 2],
+      ['sindhu', 2],
+    ];
+    const clamp15 = (n: number) => Math.max(1, Math.min(5, n));
+    for (const [who, base] of cohort) {
+      const byDimension: Record<string, number> = {};
+      for (const s of SKILLS) {
+        const offset = s.dimension === 'physical' ? -1 : s.dimension === 'mental' ? 1 : 0;
+        byDimension[s.key] = clamp15(base + offset);
+      }
+      mockStore.assessments.push(
+        mkSnapshot(`dev-assess-${who}`, 6, byDimension, {
+          memberId: `dev-member-${who}`,
+          name: who.charAt(0).toUpperCase() + who.slice(1),
+        }),
+      );
+    }
+  }
+
+  // Kit for the club tally. Four members on the same string so the entry
+  // clears CLUB_GEAR_MIN_COHORT (3) and "What the club plays" has something to
+  // say; Sindhu is on a different one so the list is a ranking rather than a
+  // single row. Below the threshold the endpoint drops entries entirely, which
+  // again looks exactly like a broken read if there is no data at all.
+  mockStore.playerGear ??= [];
+  if (mockStore.playerGear.length === 0) {
+    // Two members keep a spare string in the bag, which is both realistic and
+    // what makes the tally a RANKING (BG65 4, Aerobite 3) rather than a single
+    // row. It also exercises the one-vote-per-member-per-label rule.
+    const kit: [string, string, string[]][] = [
+      ['lin', 'Astrox 88D Pro', ['Yonex BG65']],
+      ['viktor', 'Astrox 100ZZ', ['Yonex BG65', 'Yonex Aerobite']],
+      ['carolina', 'Arcsaber 11 Pro', ['Yonex BG65']],
+      ['akane', 'Nanoflare 800', ['Yonex BG65', 'Yonex Aerobite']],
+      ['kento', 'Astrox 88S Pro', ['Yonex Aerobite']],
+      ['sindhu', 'Nanoflare 700', ['Yonex Nanogy 95']],
+    ];
+    for (const [who, racket, strings] of kit) {
+      mockStore.playerGear.push({
+        id: `gear-dev-member-${who}`,
+        memberId: `dev-member-${who}`,
+        items: [
+          { id: `${who}-racket`, catalogId: null, category: 'racket', label: racket },
+          ...strings.map((label, i) => ({
+            id: `${who}-string-${i}`,
+            catalogId: null,
+            category: 'string',
+            label,
+          })),
+        ],
+        activeRacketId: `${who}-racket`,
+        playFormat: 'doubles',
+        updatedAt: now.toISOString(),
+      });
+    }
   }
 
   // played-thursday extras: a roster (so the post-session logger sees Lin as
