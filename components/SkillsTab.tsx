@@ -12,6 +12,7 @@ import ClubConsentSheet from '@/components/stats/ClubConsentSheet';
 import YourRecordCard from '@/components/stats/YourRecordCard';
 import WhoYouPlayWithCard from '@/components/stats/WhoYouPlayWithCard';
 import LearnRegister from '@/components/stats/LearnRegister';
+import GearRegister from '@/components/stats/GearRegister';
 import { useStatsPrivacy, shouldPromptForComparison } from '@/lib/useStatsPrivacy';
 import AttendanceCardLive from '@/components/stats/cards/AttendanceCardLive';
 import StreakSummaryCard from '@/components/stats/StreakSummaryCard';
@@ -277,7 +278,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
             </>
           }
           learnSlot={<LearnRegister activeName={activeName} />}
-          gearSlot={gearContent}
+          gearSlot={valueHubOn ? <GearRegister activeName={activeName} /> : undefined}
         />
       );
     }
