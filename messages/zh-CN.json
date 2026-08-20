@@ -292,7 +292,22 @@
       "railNone": "你的 · 暂无记录",
       "railInKit": "已在装备中",
       "railWhy": "为什么推荐？",
-      "railWhyPicked": "我们为什么选它"
+      "railWhyPicked": "我们为什么选它",
+      "pickSheetWeRecommend": "为你推荐",
+      "pickSheetWhyThis": "为什么推荐",
+      "pickSheetAdd": "加入我的装备",
+      "pickSheetFootnote": "这是根据你的自评和球友们的选择给出的建议，不是定论。买之前先借一支打一场。",
+      "pickSheetAddError": "暂时保存不了 — 请再试一次",
+      "pickSheetBagFull": "球包已满 — 请先移除一支。",
+      "formatLabel": "我主要打",
+      "format_doubles": "双打",
+      "format_singles": "单打",
+      "format_both": "都打",
+      "budgetLabel": "预算",
+      "budget_100": "$100 以下",
+      "budget_200": "$100–200",
+      "budget_350": "$200–350",
+      "budget_none": "不限"
     },
     "learn": {
       "focusEyebrow": "本周 · 重点",

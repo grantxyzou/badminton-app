@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import GearPickCard, { type GearPick, type GearPickCardStatus } from './GearPickCard';
+import GearPickSheet from './GearPickSheet';
 import type { UseGear } from './useGear';
 import type { CatalogItem, EquipmentCategory } from '@/lib/types';
 
@@ -51,29 +52,69 @@ export interface GearPickRailProps {
  */
 export default function GearPickRail({ activeName, gear }: GearPickRailProps) {
   const [state, setState] = useState<Record<EquipmentCategory, CategoryState>>(initialState);
+  // Which category's detail sheet is open. The rail owns this, not the card:
+  // the sheet is opened FROM a card but belongs to the rail, which is the only
+  // place that holds both the pick and the gear owner needed to add it.
+  const [openCategory, setOpenCategory] = useState<EquipmentCategory | null>(null);
+
+  // The engine reads `playFormat` and `budgetMaxCad` off the gear doc, and
+  // `GearPickSheet` is where they are now edited — so a change there must
+  // refetch the pick, or the controls would only take effect after a reload.
+  //
+  // Deliberately NOT keyed on the bag: adding the recommended item is supposed
+  // to flip the card to IN YOUR KIT, and re-scoring on bag change would swap
+  // the pick out from under the flip this redesign exists to deliver.
+  //
+  // Null until the gear read settles, which also gates the fetch below. Firing
+  // once on `null` and again on `loaded` would double every pass against a
+  // 10/min rate limit whose throttled response has no `unavailable` field —
+  // i.e. it would render as an error card (see the ladder below).
+  const gearLoaded = gear.loaded;
+  const recKey = gearLoaded
+    ? `${gear.gear?.playFormat ?? ''}|${gear.gear?.budgetMaxCad ?? ''}`
+    : null;
 
   useEffect(() => {
-    if (!activeName) return;
+    if (!activeName || recKey === null) return;
     let live = true;
     for (const cat of SOURCED) {
       fetch(`${BASE}/api/recommend?name=${encodeURIComponent(activeName)}&category=${cat}`, { cache: 'no-store' })
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
         .then((d) => {
           if (!live) return;
-          // `unavailable` is the parked state regardless of which of the two
-          // reasons the route gave — the rail deliberately does not
-          // distinguish 'no_engine' from 'no_catalog'. A ready response with
-          // no item (e.g. `needsCheckIn`) renders through the same parked
-          // card in GearPickCard (`status === 'parked' || !pick`).
-          if (d.unavailable || !d.item) {
+          // The ladder, in order:
+          //
+          //   `unavailable`  → parked, regardless of which of the two reasons
+          //                    the route gave. The rail deliberately does not
+          //                    distinguish 'no_engine' from 'no_catalog'.
+          //   `needsCheckIn` → parked. A ready response with no item because
+          //                    the member hasn't self-assessed yet is an
+          //                    honest "nothing to recommend", not a failure.
+          //   an `item`      → ready.
+          //   none of those  → ERROR, never parked. `/api/recommend`'s
+          //                    rate-limit branch returns a bare
+          //                    `{item: null, reason: null}` with a 200 and no
+          //                    `unavailable` field, so a throttled member
+          //                    would otherwise see a confident "Coming soon"
+          //                    for a live category. A failure must never
+          //                    render as a product state.
+          if (d.unavailable || d.needsCheckIn) {
             setState((prev) => ({ ...prev, [cat]: { status: 'parked', pick: null } }));
+            return;
+          }
+          if (!d.item) {
+            setState((prev) => ({ ...prev, [cat]: { status: 'error', pick: null } }));
             return;
           }
           setState((prev) => ({
             ...prev,
             [cat]: {
               status: 'ready',
-              pick: { item: d.item as CatalogItem, reasons: Array.isArray(d.reasons) ? d.reasons : [] },
+              pick: {
+                item: d.item as CatalogItem,
+                reasons: Array.isArray(d.reasons) ? d.reasons : [],
+                warnings: Array.isArray(d.warnings) ? d.warnings : [],
+              },
             },
           }));
         })
@@ -87,7 +128,7 @@ export default function GearPickRail({ activeName, gear }: GearPickRailProps) {
     return () => {
       live = false;
     };
-  }, [activeName]);
+  }, [activeName, recKey]);
 
   if (!activeName) return null;
 
@@ -99,7 +140,10 @@ export default function GearPickRail({ activeName, gear }: GearPickRailProps) {
     );
   }
 
+  const openPick = openCategory ? state[openCategory].pick : null;
+
   return (
+    <>
     <div
       style={{
         display: 'flex',
@@ -122,13 +166,24 @@ export default function GearPickRail({ activeName, gear }: GearPickRailProps) {
             pick={pick}
             owned={isOwned(cat, pick?.item ?? null)}
             status={status}
-            // Task 5 wires this to the detail sheet (GearPickSheet); this
-            // task only builds the rail and card, which is unmounted until
-            // GearRegister adopts it.
-            onOpen={() => {}}
+            onOpen={() => setOpenCategory(cat)}
           />
         );
       })}
     </div>
+
+    {/* One sheet, driven by which card was tapped — the same "one picker"
+        principle as YourKitCard's GearSheet. It takes the rail's `gear`, so
+        adding from it flips this card to IN YOUR KIT and fills the kit row in
+        the same pass, with no reload and no second fetch. */}
+    <GearPickSheet
+      open={openCategory !== null && openPick !== null}
+      onClose={() => setOpenCategory(null)}
+      category={openCategory ?? 'racket'}
+      pick={openPick}
+      owned={isOwned(openCategory ?? 'racket', openPick?.item ?? null)}
+      gear={gear}
+    />
+    </>
   );
 }

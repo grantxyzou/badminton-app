@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import { recommendTension, formatForToggle, MIN_LB, MAX_LB, type PlayFormat } from '@/lib/tension';
+import type { UseGear } from './useGear';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -17,45 +18,47 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  * The number is framed as advice throughout — an advisory line under the
  * scale, and a reason that names why. Handing over a bare figure would invite
  * it being read as a spec.
+ *
+ * The format comes from — and is written back through — the register's single
+ * `UseGear` object. This card used to run its own `GET /api/equipment/gear`
+ * and its own bare PATCH, which made it the fourth independent reader and the
+ * second independent writer of one document: toggling here left "Your kit" and
+ * the rail scoring against the OLD format until reload. There is deliberately
+ * no local copy of `format` — a second source of truth IS the bug.
  */
 export interface StringTensionCardProps {
   activeName: string | null;
+  gear: UseGear;
 }
 
-export default function StringTensionCard({ activeName }: StringTensionCardProps) {
+export default function StringTensionCard({ activeName, gear }: StringTensionCardProps) {
   const t = useTranslations('stats.gear');
   const [level, setLevel] = useState<number | null>(null);
-  const [format, setFormat] = useState<PlayFormat>('doubles');
   const [ready, setReady] = useState(false);
 
+  // `ready` gates on the LEVEL read alone. The gear doc only decides which
+  // toggle is lit; this card's render/no-render rule has always been "do we
+  // have a level", and widening it would hide the card on an unrelated failure.
   useEffect(() => {
     if (!activeName) return;
-    const n = encodeURIComponent(activeName);
     let live = true;
-    const get = (url: string) =>
-      fetch(`${BASE}${url}`, { cache: 'no-store' }).then((r) =>
-        r.ok ? r.json() : Promise.reject(new Error(String(r.status))),
-      );
-
-    Promise.allSettled([get(`/api/stats/level?name=${n}`), get(`/api/equipment/gear?name=${n}`)]).then(
-      ([lvl, gear]) => {
+    fetch(`${BASE}/api/stats/level?name=${encodeURIComponent(activeName)}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => {
         if (!live) return;
-        if (lvl.status === 'fulfilled') {
-          const raw = lvl.value?.level?.level;
-          setLevel(typeof raw === 'number' ? raw : null);
-        }
-        if (gear.status === 'fulfilled') {
-          const stored = gear.value?.gear?.playFormat as PlayFormat | undefined;
-          if (stored) setFormat(stored);
-        }
+        const raw = d?.level?.level;
+        setLevel(typeof raw === 'number' ? raw : null);
         setReady(true);
-      },
-    );
+      })
+      .catch(() => {
+        if (live) setReady(true);
+      });
     return () => {
       live = false;
     };
   }, [activeName]);
 
+  const format = (gear.gear?.playFormat ?? 'doubles') as PlayFormat;
   const advice = recommendTension(level, format);
 
   // No level, or still resolving — render nothing rather than a placeholder
@@ -64,16 +67,12 @@ export default function StringTensionCard({ activeName }: StringTensionCardProps
 
   const selected = formatForToggle(format);
 
+  // Writes through the single owner so the recommender, the rail and this card
+  // all agree immediately. Failure is silent by design: the preference is not
+  // something the member is waiting on, and `useGear` leaves the previous value
+  // in place rather than showing one the server never took.
   const pick = (next: 'singles' | 'doubles') => {
-    setFormat(next);
-    // Write through so the recommender and this card agree next time. Failure
-    // is silent by design: the number on screen already updated, and the
-    // preference is not something the member is waiting on.
-    fetch(`${BASE}/api/equipment/gear`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: activeName, playFormat: next }),
-    }).catch(() => {});
+    void gear.setPrefs({ playFormat: next });
   };
 
   return (
@@ -86,6 +85,7 @@ export default function StringTensionCard({ activeName }: StringTensionCardProps
             key={f}
             type="button"
             onClick={() => pick(f)}
+            disabled={gear.busy}
             aria-current={selected === f ? 'true' : undefined}
             className={`flex-1 flex items-center justify-center fs-sm transition-all ${
               selected === f ? 'segment-tab-active' : 'segment-tab-inactive'
