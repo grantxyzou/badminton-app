@@ -27,6 +27,9 @@ export default function RacketRecCard({ name, mine }: { name: string; mine: Cata
   const t = useTranslations('valueHub');
   const [item, setItem] = useState<CatalogItem | null>(null);
   const [reason, setReason] = useState<string | null>(null);
+  const [reasons, setReasons] = useState<string[] | null>(null);
+  const [warnings, setWarnings] = useState<string[] | null>(null);
+  const [needsCheckIn, setNeedsCheckIn] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -40,9 +43,15 @@ export default function RacketRecCard({ name, mine }: { name: string; mine: Cata
         if (!live) return;
         setItem(d.item ?? null);
         setReason(typeof d.reason === 'string' ? d.reason : null);
+        setReasons(Array.isArray(d.reasons) ? d.reasons : null);
+        setWarnings(Array.isArray(d.warnings) ? d.warnings : null);
+        setNeedsCheckIn(d.needsCheckIn === true);
         setLoaded(true);
         setLoadError(false);
       })
+      // A non-ok response (including a 403 — session expired / not this
+      // caller's own name) lands here same as a network failure: "unknown"
+      // must render the distinct error pill, never the empty-pick state.
       .catch(() => { if (live) { setLoadError(true); setLoaded(true); } });
     return () => { live = false; };
   }, [name]);
@@ -57,6 +66,10 @@ export default function RacketRecCard({ name, mine }: { name: string; mine: Cata
     <ErrorState message={t('recError')} />
   ) : !loaded ? (
     <span className="shimmer-line rounded-lg" style={{ height: 15, width: '70%' }} aria-hidden="true" />
+  ) : needsCheckIn ? (
+    <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+      {t('needsCheckIn')}
+    </p>
   ) : !item ? (
     <EmptyState>{t('recEmpty')}</EmptyState>
   ) : (
@@ -109,9 +122,24 @@ export default function RacketRecCard({ name, mine }: { name: string; mine: Cata
       {body}
       {compareLine}
       {expanded && (
-        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-          {reason}
-        </p>
+        reasons && reasons.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {reasons.map((r, i) => (
+              <p key={`reason-${i}`} style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                + {r}
+              </p>
+            ))}
+            {warnings?.map((w, i) => (
+              <p key={`warning-${i}`} style={{ fontSize: 'var(--fs-sm)', color: 'var(--sev-warn)', margin: 0, lineHeight: 1.4 }}>
+                ! {w}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+            {reason}
+          </p>
+        )
       )}
       <span
         style={{
