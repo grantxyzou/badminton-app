@@ -104,12 +104,24 @@ export function useGear(name: string | null): UseGear {
     }
   }, [name]);
 
+  /**
+   * Add a catalog item to the bag.
+   *
+   * The category comes from the ITEM, not a hardcoded 'racket'. It used to be
+   * literal, which is why nothing but a racket could ever be added even though
+   * the API has always validated and stored the field. Falls back to 'racket'
+   * so any legacy caller passing a catalog row without one behaves as before.
+   */
   const add = useCallback((item: CatalogItem) => mutate(() => fetch(`${BASE}/api/equipment/gear`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       name,
-      item: { catalogId: item.id, category: 'racket', label: `${item.brand} ${item.model}` },
+      item: {
+        catalogId: item.id,
+        category: item.category ?? 'racket',
+        label: `${item.brand} ${item.model}`,
+      },
     }),
   })), [mutate, name]);
 
