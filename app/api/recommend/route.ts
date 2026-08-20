@@ -7,6 +7,7 @@ import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
 import { recommendRacket } from '@/lib/recommend';
 import { buildProfile } from '@/lib/racketProfile';
 import { recommendRackets } from '@/lib/racketRecommend';
+import { pairString, pairTension } from '@/lib/stringPair';
 import { getCanonicalLevel, type LevelSubject } from '@/lib/levelStore';
 import { drillPicksFor, type DrillPick } from '@/lib/drills';
 import { buildPickReasons } from '@/lib/pickReasons';
@@ -19,7 +20,7 @@ export const dynamic = 'force-dynamic';
 const VALID_CATEGORIES: EquipmentCategory[] = ['racket', 'string', 'shoe', 'shuttle', 'bag', 'grip'];
 /** Categories with a scoring engine. Everything else is a valid ask we cannot
  *  answer yet — distinct from an invalid ask, which is a 400. */
-const ENGINE_CATEGORIES: EquipmentCategory[] = ['racket'];
+const ENGINE_CATEGORIES: EquipmentCategory[] = ['racket', 'string'];
 
 // Shared with /api/equipment/catalog: creates the container AND fills it from
 // the curated seed. Without this the container is empty in real Cosmos and
@@ -31,6 +32,25 @@ const ENGINE_CATEGORIES: EquipmentCategory[] = ['racket'];
  * key so they still get a level. Queries by @name (the mock store honors @name,
  * not @memberId).
  */
+/**
+ * Club tally for reason-grounding, cohort-guarded by `tallyClubGear` before it
+ * ever reaches the reason builder (which re-checks anyway).
+ *
+ * A failure here must NOT take the recommendation down — reasons degrade to
+ * equipment-only. That is deliberate and different from the gear read above,
+ * which throws: this is grounding, that is the answer.
+ */
+async function clubEntriesOrEmpty(): Promise<ClubGearEntry[]> {
+  try {
+    const { resources: gearDocs } = await getContainer('playerGear').items
+      .query({ query: 'SELECT c.items FROM c' })
+      .fetchAll();
+    return tallyClubGear(gearDocs as Pick<PlayerGear, 'items'>[]);
+  } catch {
+    return [];
+  }
+}
+
 async function resolveSubject(name: string): Promise<LevelSubject> {
   const trimmed = name.trim();
   try {
@@ -165,6 +185,63 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
       }
 
+      // Pairing needs frames as well as strings, and `category` only fetched
+      // one of the two. Queried only when it is actually needed.
+      const catalogRackets = category === 'string'
+        ? (await getContainer('equipmentCatalog').items.query({
+            query: 'SELECT * FROM c WHERE c.category = @category',
+            parameters: [{ name: '@category', value: 'racket' }],
+          }).fetchAll()).resources.filter((r) => (r as CatalogItem).category === 'racket')
+        : [];
+
+      if (category === 'string') {
+        // D1 ladder. The frame is resolved HERE rather than taken from the
+        // client: a racketId in the query string would let any caller pair
+        // against any frame, and the gear doc that answers rung one is already
+        // in hand server-side.
+        //
+        // Rung 1 is `profile.currentRacketId`, which buildProfile sets from
+        // activeRacket(gear).catalogId and ONLY when a catalogId exists — a
+        // free-text "Other" item is a label with no attributes behind it, so
+        // it correctly falls through to rung 2 rather than pairing against
+        // nothing.
+        let frame: CatalogItem | null = null;
+        let source: 'owned' | 'recommended' = 'owned';
+
+        if (profile.currentRacketId) {
+          frame = (catalogRackets as CatalogItem[])
+            .find((r) => r.id === profile.currentRacketId) ?? null;
+        }
+        if (!frame) {
+          source = 'recommended';
+          frame = recommendRackets(profile, catalogRackets as CatalogItem[], 1, 'racket')[0]?.item ?? null;
+        }
+        // No frame from either rung means the racket catalog is empty or
+        // unscorable — a catalog problem, the same one the racket card reports.
+        if (!frame) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
+
+        const pairing = pairString(frame, catalogItems as CatalogItem[], profile);
+        // Every candidate rejected by the tension gate. Not a failure and not
+        // a catalog gap: this frame genuinely has no compatible string here.
+        if (!pairing) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
+
+        const reasons = buildPickReasons({
+          item: pairing.item,
+          engineReasons: pairing.reasons,
+          drills: [],
+          clubEntries: await clubEntriesOrEmpty(),
+        });
+
+        return NextResponse.json({
+          item: pairing.item,
+          reason: reasons[0] ?? null,
+          reasons,
+          warnings: pairing.warnings,
+          pairedWith: { label: `${frame.brand} ${frame.model}`, source },
+          tensionLbs: pairTension(frame, pairing.item, profile),
+        });
+      }
+
       const top = recommendRackets(profile, catalogItems as CatalogItem[], 1, category)[0];
       // The mock store ignores @category (see lib/cosmos.ts), so catalogItems
       // above can be non-empty even when nothing of THIS category exists —
@@ -183,17 +260,7 @@ export async function GET(req: NextRequest) {
         drills = [];
       }
 
-      // Club tally, cohort-guarded by tallyClubGear before it ever reaches the
-      // reason builder (which re-checks anyway).
-      let clubEntries: ClubGearEntry[] = [];
-      try {
-        const { resources: gearDocs } = await getContainer('playerGear').items
-          .query({ query: 'SELECT c.items FROM c' })
-          .fetchAll();
-        clubEntries = tallyClubGear(gearDocs as Pick<PlayerGear, 'items'>[]);
-      } catch {
-        clubEntries = [];
-      }
+      const clubEntries: ClubGearEntry[] = await clubEntriesOrEmpty();
 
       const reasons = buildPickReasons({
         item: top.item,
