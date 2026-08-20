@@ -228,6 +228,14 @@ export async function GET(req: NextRequest) {
         const reasons = buildPickReasons({
           item: pairing.item,
           engineReasons: pairing.reasons,
+          // Deliberately no drill grounding. A drill line next to a racket
+          // asserts something the racket engine scored; nothing here computes
+          // a relationship between a drill and a string, so the line would be
+          // an invented connection. The pairing's own reasons are already
+          // player-grounded through the skill gate and the durability demand
+          // that attacking intent feeds. The club tally, by contrast, IS real
+          // evidence about a string and is the stronger of the two here —
+          // strings are what the club actually logs.
           drills: [],
           clubEntries: await clubEntriesOrEmpty(),
         });
