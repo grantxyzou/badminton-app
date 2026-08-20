@@ -298,6 +298,7 @@
       "pickSheetAdd": "Add to my kit",
       "pickSheetFootnote": "A suggestion from your check-in and what the club plays — not a verdict. Borrow one for a game before you buy.",
       "pickSheetAddError": "Couldn't save that — try again",
+      "pickSheetLoadError": "Couldn't load that pick — close and try again",
       "pickSheetBagFull": "That's all the rackets we can hold — remove one first.",
       "formatLabel": "I mostly play",
       "format_doubles": "Doubles",

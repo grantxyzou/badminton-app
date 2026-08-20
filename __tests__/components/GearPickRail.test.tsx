@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import GearPickRail from '../../components/stats/GearPickRail';
+import GearPickSheet from '../../components/stats/GearPickSheet';
 import type { UseGear } from '../../components/stats/useGear';
 import enMessages from '../../messages/en.json';
 
@@ -107,5 +108,50 @@ describe('GearPickRail — the card opens the detail sheet', () => {
     fireEvent.click(await screen.findByText('Add to my kit'));
 
     expect(gear.add).toHaveBeenCalledWith(expect.objectContaining({ id: 'r1' }));
+  });
+
+  // RacketRecCard's disclosure tap was the ONLY writer of the Value-Hub
+  // Slice-0 kill-criterion, and deleting it without replacing the beacon would
+  // flatline the metric — which the append-only `events` container cannot
+  // distinguish afterwards from real disengagement.
+  it('records the Slice-0 engagement beacon when a card opens', async () => {
+    mockRecommend({ item: ITEM, reason: null, reasons: [] });
+    renderRail();
+
+    fireEvent.click(await screen.findByLabelText('Racket — Why this?'));
+
+    await waitFor(() => {
+      const posted = (global.fetch as ReturnType<typeof vi.fn>).mock.calls
+        .map((c) => String(c[0]))
+        .filter((u) => u.includes('/api/events'));
+      expect(posted.length).toBe(1);
+    });
+  });
+
+  it('asks /api/recommend once per sourced category, not once per rail slot', async () => {
+    mockRecommend({ item: ITEM, reason: null, reasons: [] });
+    renderRail();
+
+    await screen.findByLabelText('Racket — Why this?');
+    const asked = (global.fetch as ReturnType<typeof vi.fn>).mock.calls
+      .map((c) => String(c[0]))
+      .filter((u) => u.includes('/api/recommend'));
+    expect(asked.length).toBe(2);
+  });
+});
+
+describe('GearPickSheet — a pick that went away is an error, not a vanishing sheet', () => {
+  // The controls inside the sheet change the gear doc, which refetches the
+  // pick. If that comes back empty (a throttled response is the easy way in),
+  // unmounting the sheet would drop the member mid-interaction with no
+  // explanation. It stays and says so instead.
+  it('renders an error state when open with no resolved pick', () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <GearPickSheet open onClose={vi.fn()} category="racket" pick={null} owned={false} gear={fakeGear()} />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByRole('alert')).toBeTruthy();
+    expect(screen.queryByText('Add to my kit')).toBeNull();
   });
 });
