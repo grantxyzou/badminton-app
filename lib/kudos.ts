@@ -51,6 +51,30 @@ export function aggregateKudos(docs: { tag: string }[]): KudosCount[] {
   return KUDOS_TAGS.filter((t) => (counts.get(t) ?? 0) > 0).map((tag) => ({ tag, count: counts.get(tag) as number }));
 }
 
+/**
+ * Tag → Material Symbols glyph.
+ *
+ * Replaces the `TAG_EMOJI` map that was duplicated byte-identically in
+ * `KudosReceivedCard` and `GiveKudosCard`. The design system scopes emoji to
+ * the Welcome card only; everywhere else icons are Material Symbols Rounded
+ * with semantic colour, which also gives these a consistent optical weight
+ * that 🛡️/🔥/📈/🤝/🎯 never had across platforms.
+ *
+ * ⚠️ Every glyph here MUST also be in the `icon_names=` allowlist in
+ * `app/layout.tsx` — a missing one renders as its literal name ("shield") with
+ * no error. `__tests__/icon-subset.test.ts` will NOT catch a regression here:
+ * it only matches `<span className="material-icons">glyph</span>` literals and
+ * `icon: 'glyph'` props, and a map lookup is neither. All five below were
+ * verified present; check by hand when adding a tag.
+ */
+export const TAG_ICON: Record<KudosTag, string> = {
+  great_defense: 'shield',
+  clutch: 'bolt',
+  most_improved: 'trending_up',
+  good_sport: 'groups',
+  nice_shot: 'star',
+};
+
 /** Reserved seam — kudos does NOT feed the canonical level in v1 (see header). */
 export function kudosLevelNudge(_total: number): number {
   return 0;

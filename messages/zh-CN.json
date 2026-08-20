@@ -251,6 +251,18 @@
       "learn": "练习",
       "gear": "装备"
     },
+    "club": {
+      "title": "你的位置",
+      "ledeOne": "在{skill}上，你处于俱乐部的<hi>{band}</hi>。",
+      "ledeTwo": "在{skill1}上，你处于俱乐部的<hi>{band1}</hi>；在{skill2}上处于{band2}。",
+      "bandTop": "前三分之一",
+      "bandMiddle": "中间三分之一",
+      "bandBottom": "后三分之一",
+      "footnote": "只显示区间。没有姓名，没有排行榜 — 可以在“我的”里关闭。",
+      "private": "私密",
+      "footnotePrivate": "你的位置是私密的。你的技能从未展示给其他球友。",
+      "error": "加载失败 — 刷新重试"
+    },
     "overview": {
       "level": "水平",
       "games": "场次",
@@ -392,6 +404,7 @@
       "notRated": "尚未评分",
       "empty": "还没有评估 — 完成第一次评估开始记录你的球技。",
       "baseline": "已记录基线 — 打几场后再来评估，看看变化。",
+      "medianLegend": "刻度线是俱乐部中位数",
       "error": "暂时加载不出来 — 刷新再试一次",
       "checkInTitle": "技能评估",
       "close": "关闭",
