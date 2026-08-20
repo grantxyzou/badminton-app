@@ -6,16 +6,27 @@ const items = catalog.items as unknown as CatalogItem[];
 
 describe('equipment catalog data', () => {
   it('holds the 71-racket catalog after v2 import', () => {
-    expect(items).toHaveLength(71);
+    // Counted by category rather than by total length: strings now share this
+    // file, and a bare length check would silently stop guarding the rackets
+    // the moment another category arrived.
+    expect(items.filter((i) => i.category === 'racket')).toHaveLength(71);
   });
 
-  // category IS the Cosmos partition key. The source file's `category` means
-  // play-style ("Power"); writing it here scatters rows across bogus
+  it('holds the 46-string catalog after the string import', () => {
+    expect(items.filter((i) => i.category === 'string')).toHaveLength(46);
+  });
+
+  // category IS the Cosmos partition key. Each source file's `category` means
+  // something else — play-style ("Power") for rackets, string type
+  // ("Durability") for strings; writing either here scatters rows across bogus
   // partitions and GET ?category=racket returns nothing — the empty-catalog
   // outage fixed in de2505e.
-  it('uses racket as the partition key on every row, never a play-style', () => {
+  it('uses a real equipment category as the partition key, never a source play-style', () => {
+    const VALID = ['racket', 'string', 'shoe', 'shuttle', 'bag', 'grip'];
+    const SOURCE_PLAY_STYLES = ['Power', 'Speed', 'Control', 'All-round', 'Durability', 'Repulsion', 'Hybrid'];
     for (const item of items) {
-      expect(item.category).toBe('racket');
+      expect(VALID).toContain(item.category);
+      expect(SOURCE_PLAY_STYLES).not.toContain(item.category);
     }
   });
 
@@ -32,10 +43,14 @@ describe('equipment catalog data', () => {
     }
   });
 
-  it('keeps ids unique and racket-prefixed', () => {
+  it('keeps ids unique and prefixed by their own category', () => {
+    // The prefix is what stops two source files colliding on a bare model id
+    // once the catalog holds more than one category.
     const ids = items.map((i) => i.id);
     expect(new Set(ids).size).toBe(ids.length);
-    for (const id of ids) expect(id.startsWith('racket-')).toBe(true);
+    for (const item of items) {
+      expect(item.id.startsWith(`${item.category}-`)).toBe(true);
+    }
   });
 
   // The 4 overlaps keep their curated CAD msrp + retailer links rather than
