@@ -87,6 +87,21 @@ describe('feature flags', () => {
     delete process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS;
   });
 
+  // Sets and deletes explicitly rather than relying on the `beforeEach` reset,
+  // which only clears 5 of the registered flags — env otherwise leaks between
+  // cases in this file.
+  it('recognizes NEXT_PUBLIC_FLAG_STATS_V2', () => {
+    delete process.env.NEXT_PUBLIC_FLAG_STATS_V2;
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_STATS_V2')).toBe(false);
+    process.env.NEXT_PUBLIC_FLAG_STATS_V2 = 'true';
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_STATS_V2')).toBe(true);
+    for (const v of ['1', 'yes', 'TRUE', 'false', '']) {
+      process.env.NEXT_PUBLIC_FLAG_STATS_V2 = v;
+      expect(isFlagOn('NEXT_PUBLIC_FLAG_STATS_V2')).toBe(false);
+    }
+    delete process.env.NEXT_PUBLIC_FLAG_STATS_V2;
+  });
+
   describe('NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER', () => {
     it('is on only for the literal string "true"', () => {
       process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER = 'true';
