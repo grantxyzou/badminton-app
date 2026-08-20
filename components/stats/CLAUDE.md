@@ -78,7 +78,7 @@ state of its own except the one thing it exists to own (below).
   (`GearPickRail`'s `SOURCED`, `YourKitCard`'s `PICKABLE`), so un-parking a
   category is only ever a sourcing step, never a UI change.
 
-### Racket recommender (`NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER`)
+### Racket recommender (`NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER`)
 
 Scores the **fourteen check-in skill ratings** rather than the old
 `Member.stage` (optional, rarely set — so it showed nearly everyone the same

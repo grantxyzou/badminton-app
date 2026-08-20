@@ -120,7 +120,7 @@ export async function GET(req: NextRequest) {
     }
     const category = (rawCategory ?? 'racket') as EquipmentCategory;
 
-    if (isFlagOn('NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER')) {
+    if (isFlagOn('NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER')) {
       // D8 privacy gate: engine reasons quote the player's individual skill
       // ratings ("smash 3/5"), and member names are enumerable via
       // GET /api/members. The flag-off branch below stays public because it
@@ -288,7 +288,7 @@ export async function GET(req: NextRequest) {
     // The flag-off branch scores RACKETS and nothing else — its catalog query
     // below is literally `@category: 'racket'`. Before the rail existed that
     // was harmless (the only caller never passed a category), but the rail asks
-    // per category, so on a deployment with RACKET_RECOMMENDER off (bpm-stable
+    // per category, so on a deployment with GEAR_RECOMMENDER off (bpm-stable
     // today) `?category=string` would have come back a racket and rendered
     // under the STRINGS card. Same `unavailable: 'no_engine'` contract as the
     // flag-on branch, so the rail's parked card covers both without knowing

@@ -79,14 +79,14 @@ function renderSheet(props: { pick?: boolean } = {}) {
 
 describe('GearPickSheet — the relocated format and budget controls', () => {
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER = 'true';
+    process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
   });
 
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
-    delete process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER;
+    delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
   });
 
   it('shows the saved format and budget as the active segment', async () => {
@@ -144,9 +144,9 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
   // Only the two preference controls gate on this flag. The recommendation
   // itself and the Add action are VALUE_HUB_SLICE behaviour and must render
   // either way — bpm-stable runs this flag OFF (deploy-stable.yml:82).
-  describe('preference-control gating (NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER)', () => {
+  describe('preference-control gating (NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER)', () => {
     it('hides the controls when the flag is off, but keeps the pick and the Add action', async () => {
-      process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER = 'false';
+      process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'false';
       mockGear(gearDoc());
       renderSheet();
 

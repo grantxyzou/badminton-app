@@ -123,7 +123,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   // made the old surface open on settings instead of on its own question.
   // Only the skill-scored engine consumes them, so the controls follow its flag
   // rather than the sheet's.
-  const recommenderOn = isFlagOn('NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER');
+  const recommenderOn = isFlagOn('NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER');
   const playFormat = gear.gear?.playFormat ?? 'both';
   const budgetMaxCad = gear.gear?.budgetMaxCad ?? null;
 

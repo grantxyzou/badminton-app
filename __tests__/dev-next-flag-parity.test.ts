@@ -6,7 +6,7 @@ import { join } from 'path';
  * `npm run dev:next` exists to reproduce the bpm-next build locally, and the
  * only thing that makes it a faithful reproduction is that its flag list
  * matches `deploy-next.yml`. Nothing enforced that, and it drifted: the script
- * was missing RACKET_RECOMMENDER and STATS_V2 while both were on in next, so
+ * was missing GEAR_RECOMMENDER and STATS_V2 while both were on in next, so
  * the Gear register rendered darker locally than it does on the deployment —
  * exactly the "looks behind, code is identical" trap the run skill warns about.
  *

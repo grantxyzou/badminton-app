@@ -36,7 +36,7 @@ describe('GET /api/recommend (flag-off / legacy stage-derived pick)', () => {
     // fixture rackets below) stays uncontaminated by the full curated catalog.
     _resetCalibrationCache();
     process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
-    delete process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER;
+    delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
     delete process.env.NEXT_PUBLIC_FLAG_SKILL_CALIBRATION;
     delete process.env.NEXT_PUBLIC_FLAG_SKILL_SMOOTHING;
     const catalog = getContainer('equipmentCatalog');
@@ -129,11 +129,11 @@ describe('/api/recommend with the engine flag on', () => {
     __resetCatalogSeedForTests();
     setupAdminPin();
     process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
-    process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER = 'true';
+    process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
   });
   afterAll(() => {
     delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
-    delete process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER;
+    delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -173,7 +173,7 @@ describe('/api/recommend with the engine flag on', () => {
   });
 
   it('keeps the old public behaviour when the engine flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER = 'false';
+    process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'false';
     seedMember('Lin');
     const res = await GET(makeRequest('GET', `${BASE}?name=Lin`));
     expect(res.status).toBe(200);

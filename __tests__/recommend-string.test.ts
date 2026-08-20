@@ -76,12 +76,12 @@ describe('GET /api/recommend?category=string', () => {
     __resetCatalogSeedForTests();
     setupAdminPin();
     process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
-    process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER = 'true';
+    process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
   });
 
   afterEach(() => {
     delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
-    delete process.env.NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER;
+    delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
   });
 
   it('pairs against the racket the member actually owns', async () => {
