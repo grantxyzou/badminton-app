@@ -69,9 +69,10 @@ export async function POST(req: NextRequest) {
   // Identity-bound (security rule 12): the member_session cookie, minted at
   // sign-up without a PIN. No admin-on-behalf branch on purpose — an admin
   // tapping while browsing someone else's stats is not that member's
-  // engagement. Anonymous and preview-name viewers (RacketRow falls back to
-  // `badminton_stats_preview_name`) hold no cookie, so their taps are correctly
-  // uncounted; the client treats the 401 as a no-op.
+  // engagement. Anonymous and preview-name viewers (the Stats tab falls back
+  // to `badminton_stats_preview_name` — see SkillsTab's `resolveActiveName`)
+  // hold no cookie, so their taps are correctly uncounted; the client treats
+  // the 401 as a no-op.
   const caller = verifyMemberAuth(req);
   if (!caller) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
