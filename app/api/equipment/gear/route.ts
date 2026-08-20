@@ -10,6 +10,20 @@ import type { PlayerGear, GearItem, EquipmentCategory } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 const MAX_RACKETS = 10;
+/**
+ * Per-category cap. `MAX_RACKETS` only ever counted rackets, so every other
+ * category was effectively UNCAPPED — the route's own comment below flags that
+ * a non-racket value "would bypass MAX_RACKETS". Harmless while nothing could
+ * add one; now that strings are selectable it is a real hole.
+ *
+ * Five for consumables: a player keeps a couple of string types, not ten.
+ */
+const MAX_PER_CATEGORY: Partial<Record<EquipmentCategory, number>> = { racket: MAX_RACKETS };
+const DEFAULT_CATEGORY_CAP = 5;
+
+function capFor(category: EquipmentCategory): number {
+  return MAX_PER_CATEGORY[category] ?? DEFAULT_CATEGORY_CAP;
+}
 const BAG_WRITES_PER_HOUR = 20;
 const HOUR_MS = 60 * 60 * 1000;
 const VALID_CATEGORIES = new Set<EquipmentCategory>(['racket', 'string', 'shoe', 'shuttle', 'bag', 'grip']);
@@ -142,7 +156,14 @@ export async function POST(req: NextRequest) {
     if (isDuplicate) {
       return NextResponse.json({ error: 'duplicate_racket' }, { status: 409 });
     }
-    if (rackets(prior ?? null).length >= MAX_RACKETS) {
+    // Counted within the incoming item's OWN category. Rackets keep their
+    // existing limit and their existing 'bag_full' error code, so nothing that
+    // handles that response has to change.
+    const incomingCategory = body.item.category as EquipmentCategory;
+    const sameCategory = existing.filter(
+      (i) => ((i.category ?? 'racket') as EquipmentCategory) === incomingCategory,
+    );
+    if (sameCategory.length >= capFor(incomingCategory)) {
       return NextResponse.json({ error: 'bag_full' }, { status: 409 });
     }
 
