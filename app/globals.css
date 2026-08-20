@@ -462,6 +462,11 @@ body {
      tokens so those hand-typed 20/22px values stop being magic numbers. */
   --fs-stat: 20px;
   --fs-stat-lg: 22px;
+  /* Single-focus numeric input — a number that IS the screen's whole task, not
+     a stat among others. Currently just the game logger's score steppers,
+     where the value is what the member is actively changing. Deliberately a
+     big jump from --fs-stat-lg: anything closer would read as a stat tile. */
+  --fs-stat-xl: 38px;
   /* Icon glyph-size ladder — token mirror of the .icon-xs..xl utility classes
      (below), so inline `.material-icons` styles use a token instead of a raw px.
      Same values as the classes; these exist for the inline-style call sites the

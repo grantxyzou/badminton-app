@@ -9,6 +9,8 @@ import StatsPlaceholder from '@/components/stats/StatsPlaceholder';
 import StatsV2Shell from '@/components/stats/StatsV2Shell';
 import WhereYouSitCard from '@/components/stats/WhereYouSitCard';
 import ClubConsentSheet from '@/components/stats/ClubConsentSheet';
+import YourRecordCard from '@/components/stats/YourRecordCard';
+import WhoYouPlayWithCard from '@/components/stats/WhoYouPlayWithCard';
 import { useStatsPrivacy, shouldPromptForComparison } from '@/lib/useStatsPrivacy';
 import AttendanceCardLive from '@/components/stats/cards/AttendanceCardLive';
 import StreakSummaryCard from '@/components/stats/StreakSummaryCard';
@@ -262,10 +264,15 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
               />
             </>
           }
+          // GameStatTiles is deliberately NOT here: its "Recent form" tile is
+          // attendance-derived ({attended} of your last 8), which is exactly
+          // what this redesign removes. Your record counts logged games — a
+          // different number from a different source.
           playSlot={
             <>
-              {gameTilesSlot}
-              {gamePlaySlot}
+              <YourRecordCard activeName={activeName} />
+              <WhoYouPlayWithCard activeName={activeName} />
+              {kudosOn && <GiveKudosCard />}
             </>
           }
           learnSlot={drillsOn ? <DrillsCard /> : undefined}
