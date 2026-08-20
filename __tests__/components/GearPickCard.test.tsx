@@ -64,3 +64,34 @@ describe('GearPickCard', () => {
     expect(screen.getByText("We'll suggest a racket once you've done a check-in.")).toBeTruthy();
   });
 });
+
+describe('GearPickCard — the frame a string pick assumed', () => {
+  afterEach(cleanup);
+
+  it('names the member\'s own racket when the pair used it', () => {
+    renderCard({
+      category: 'string',
+      pick: {
+        item: { ...ITEM, id: 's1', category: 'string', model: 'BG65' },
+        reasons: ['Wide usable tension window'],
+        pairedWith: { label: 'Yonex Astrox 88D Pro', source: 'owned' },
+      },
+    });
+    expect(screen.getByText(/Astrox 88D Pro · yours/i)).toBeTruthy();
+  });
+
+  it('says the frame was our suggestion when the member owns none', () => {
+    // The assumption must be visible. A string pick shown against a frame the
+    // member does not own, with no label saying so, is advice for someone
+    // else's racket.
+    renderCard({
+      category: 'string',
+      pick: {
+        item: { ...ITEM, id: 's1', category: 'string', model: 'BG65' },
+        reasons: ['Wide usable tension window'],
+        pairedWith: { label: 'Yonex Astrox 88D Pro', source: 'recommended' },
+      },
+    });
+    expect(screen.getByText(/our pick for you/i)).toBeTruthy();
+  });
+});

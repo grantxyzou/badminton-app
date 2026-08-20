@@ -41,6 +41,18 @@ function initialStatuses(): Record<EquipmentCategory, GearPickCardStatus> {
 export interface GearPickRailProps {
   activeName: string | null;
   gear: UseGear;
+  /**
+   * D2: reports the tension the STRING pairing arrived at, or null when it
+   * could not give one (parked, errored, or a frame with no published
+   * ceiling). `GearRegister` uses it to stand `StringTensionCard` down, so the
+   * register never shows the pair-specific number and the level-based one at
+   * the same time.
+   *
+   * A callback rather than a second fetch in the card: this rail already owns
+   * the string pick, and a card that re-asked would recreate the multi-reader
+   * drift the register was restructured to remove.
+   */
+  onPairTension?: (lbs: number | null) => void;
 }
 
 /**
@@ -57,7 +69,7 @@ export interface GearPickRailProps {
  * per-card gear read here would recreate the exact drift bug the register is
  * being restructured to eliminate.
  */
-export default function GearPickRail({ activeName, gear }: GearPickRailProps) {
+export default function GearPickRail({ activeName, gear, onPairTension }: GearPickRailProps) {
   const [state, setState] = useState<Record<EquipmentCategory, CategoryState>>(initialState);
   // Which category's detail sheet is open. The rail owns this, not the card:
   // the sheet is opened FROM a card but belongs to the rail, which is the only
@@ -69,9 +81,21 @@ export default function GearPickRail({ activeName, gear }: GearPickRailProps) {
   // make every response retrigger the effect that produced it).
   const statusRef = useRef<Record<EquipmentCategory, GearPickCardStatus>>(initialStatuses());
 
+  // Held in a ref so a caller passing an inline arrow doesn't re-run the fetch
+  // effect on every render. Written in an effect rather than during render:
+  // a ref mutated mid-render is a React correctness bug (the render may be
+  // discarded), and `useRef`'s initial value already covers the first pass.
+  const onPairTensionRef = useRef(onPairTension);
+  useEffect(() => {
+    onPairTensionRef.current = onPairTension;
+  }, [onPairTension]);
+
   const apply = useCallback((cat: EquipmentCategory, next: CategoryState) => {
     statusRef.current[cat] = next.status;
     setState((prev) => ({ ...prev, [cat]: next }));
+    if (cat === 'string') {
+      onPairTensionRef.current?.(next.status === 'ready' ? next.pick?.tensionLbs ?? null : null);
+    }
   }, []);
 
   // The engine reads `playFormat` and `budgetMaxCad` off the gear doc, and
@@ -146,6 +170,8 @@ export default function GearPickRail({ activeName, gear }: GearPickRailProps) {
               item: d.item as CatalogItem,
               reasons: Array.isArray(d.reasons) ? d.reasons : [],
               warnings: Array.isArray(d.warnings) ? d.warnings : [],
+              pairedWith: d.pairedWith ?? undefined,
+              tensionLbs: typeof d.tensionLbs === 'number' ? d.tensionLbs : null,
             },
           });
         })

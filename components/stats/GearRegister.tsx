@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 import GearPickRail from './GearPickRail';
 import YourKitCard from './YourKitCard';
 import StringTensionCard from './StringTensionCard';
@@ -39,11 +41,25 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
   // and a doc comment cannot fail a build.
   const gear = useGear(activeName);
 
+  // D2: which tension number the register is showing. Null means the pairing
+  // could not give one (no frame on file, or one of the 11 catalog rackets
+  // with no published ceiling) and the level-based card stands in.
+  //
+  // Held HERE because the two cards are siblings — the rail resolves the pick,
+  // the tension card renders the fallback, and neither can see the other. The
+  // alternative, letting the card ask /api/recommend itself, is the second
+  // reader this register exists to prevent.
+  const [pairTension, setPairTension] = useState<number | null>(null);
+
   return (
     <>
-      <GearPickRail activeName={activeName} gear={gear} />
+      <GearPickRail activeName={activeName} gear={gear} onPairTension={setPairTension} />
       <YourKitCard activeName={activeName} gear={gear} />
-      <StringTensionCard activeName={activeName} gear={gear} />
+      <StringTensionCard
+        activeName={activeName}
+        gear={gear}
+        suppressed={pairTension !== null}
+      />
       <ClubGearCard />
     </>
   );

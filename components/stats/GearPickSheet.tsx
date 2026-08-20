@@ -258,6 +258,41 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
             <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{specLine(item)}</p>
           )}
 
+          {/* D2: the pair-specific tension. Shown here and not in
+              StringTensionCard because it is the more specific answer — placed
+              inside THIS string's overlap with THAT frame, rather than derived
+              from level alone. Absent, not zero, when the frame publishes no
+              ceiling: there is no honest placeholder for a number we do not
+              have. */}
+          {typeof pick?.tensionLbs === 'number' && (
+            <section
+              style={{
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--inner-card-border)',
+                background: 'var(--inner-card-bg)',
+                padding: 'var(--space-4)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 'var(--space-2)',
+              }}
+            >
+              <p className="section-label" style={{ margin: 0 }}>{t('pickSheetTension')}</p>
+              <p style={{ margin: 0, color: 'var(--text-primary)' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-stat)', fontWeight: 600 }}>
+                  {pick.tensionLbs}
+                </span>
+                <span style={{ marginLeft: 'var(--space-1)', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
+                  {t('lb')}
+                </span>
+              </p>
+              {/* Never a bare figure — the advisory is what keeps this a
+                  conversation with a stringer instead of an instruction. */}
+              <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', lineHeight: 'var(--lh-normal)' }}>
+                {t('tensionAdvisory')}
+              </p>
+            </section>
+          )}
+
           {hasWhy && (
             <section
               style={{
