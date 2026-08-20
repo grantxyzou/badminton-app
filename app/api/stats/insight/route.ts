@@ -274,12 +274,13 @@ export async function GET(req: NextRequest) {
 }
 
 interface Snapshot {
-  totalSessions: number;
-  attended: number;
-  attendanceRate: number;
-  currentStreak: number;
-  longestStreak: number;
-  lastSession: { date: string; attended: boolean; partners: string[] } | null;
+  /** The most recent session the member actually PLAYED, for partner context.
+   *  Stage 8 (2026-08-20) removed every attendance count, rate and streak from
+   *  this snapshot: Stats v2 deleted the surfaces that showed them, and leaving
+   *  them here meant the greeting kept delivering the same "you missed N" guilt
+   *  through the AI copy instead. A session the member skipped is not recorded
+   *  at all now — there is nothing to narrate about it. */
+  lastPlayed: { date: string; partners: string[] } | null;
   regularPartners: { name: string; count: number }[];
   /** Self-assessment trend (1–5). The preferred skill source — when present the
    *  legacy `skills` read is skipped and `skills` is null. */
@@ -340,30 +341,16 @@ async function buildSnapshot({
     (playerHits.resources as { sessionId?: string }[]).map((p) => p.sessionId).filter((id): id is string => typeof id === 'string'),
   );
 
-  // Exclude not-yet-played (future-dated) sessions so the streak/attendance
-  // snapshot matches the attendance route — an upcoming session must not break
-  // or inflate the current streak. (See app/api/stats/attendance/route.ts.)
+  // Exclude not-yet-played (future-dated) sessions — an upcoming session is not
+  // something the member has played yet. (Same rule as the attendance route.)
   const nowMs = Date.now();
   const recentSessions = (sessionHits.resources as { id: string; datetime: string | null }[])
     .filter((s) => s.datetime && new Date(s.datetime).getTime() <= nowMs)
     .sort((a, b) => (a.datetime ?? '').localeCompare(b.datetime ?? ''));
 
   const history = recentSessions.map((s) => ({ id: s.id, datetime: s.datetime as string, attended: attendedSessionIds.has(s.id) }));
-  const totalSessions = history.length;
-  const attended = history.filter((h) => h.attended).length;
-  const attendanceRate = totalSessions > 0 ? Math.round((attended / totalSessions) * 100) : 0;
 
-  let longestStreak = 0;
-  let run = 0;
-  for (const h of history) {
-    if (h.attended) { run += 1; if (run > longestStreak) longestStreak = run; } else { run = 0; }
-  }
-  let currentStreak = 0;
-  for (let i = history.length - 1; i >= 0; i--) {
-    if (history[i].attended) currentStreak += 1; else break;
-  }
-
-  // Co-attendance map for partners + the last-session partner list.
+  // Co-attendance map for partners + the last-played partner list.
   const bySession = new Map<string, string[]>();
   for (const row of partnerHits.resources as { sessionId?: string; name?: string; removed?: boolean }[]) {
     if (typeof row.sessionId !== 'string' || typeof row.name !== 'string' || row.removed === true) continue;
@@ -374,13 +361,14 @@ async function buildSnapshot({
   const sessions = [...bySession.entries()].map(([sessionId, names]) => ({ sessionId, names }));
   const regularPartners = topPartners({ me: name, sessions, limit: 3 });
 
-  // Last COMPLETED session (most recent with datetime in the past).
-  const completed = history.filter((h) => h.datetime < nowIso);
-  const last = completed[completed.length - 1] ?? null;
-  const lastSession = last
+  // Last session the member PLAYED — not merely the last session that happened.
+  // Anchoring on a session they skipped would let the narrator reach for "you
+  // weren't there", and the partner list would be other people's game.
+  const played = history.filter((h) => h.attended && h.datetime < nowIso);
+  const last = played[played.length - 1] ?? null;
+  const lastPlayed = last
     ? {
         date: last.datetime,
-        attended: last.attended,
         partners: (bySession.get(last.id) ?? []).filter((n) => n.toLowerCase() !== name.toLowerCase()),
       }
     : null;
@@ -403,15 +391,15 @@ async function buildSnapshot({
     }
   }
 
-  return { totalSessions, attended, attendanceRate, currentStreak, longestStreak, lastSession, regularPartners, assessment: trend, canonicalLevel, skills, drills };
+  return { lastPlayed, regularPartners, assessment: trend, canonicalLevel, skills, drills };
 }
 
 async function generate(name: string, s: Snapshot, prev: InsightDoc | null): Promise<{ recap: string; focus: string }> {
-  const lastLine = s.lastSession
-    ? `Last completed session (${s.lastSession.date.slice(0, 10)}): ${name} ${s.lastSession.attended ? 'PLAYED' : 'did NOT play'}${
-        s.lastSession.attended && s.lastSession.partners.length ? `, alongside ${s.lastSession.partners.join(', ')}` : ''
+  const lastLine = s.lastPlayed
+    ? `Last session ${name} played (${s.lastPlayed.date.slice(0, 10)})${
+        s.lastPlayed.partners.length ? `, alongside ${s.lastPlayed.partners.join(', ')}` : ''
       }.`
-    : 'No completed sessions on record yet.';
+    : 'No sessions played on record yet.';
   const partnerLine = s.regularPartners.length
     ? `Regular partners: ${s.regularPartners.map((p) => `${p.name} (${p.count})`).join(', ')}.`
     : 'No regular partners yet.';
@@ -427,12 +415,11 @@ async function generate(name: string, s: Snapshot, prev: InsightDoc | null): Pro
 You're writing for ${name}, a casual weekly player. Use ONLY the facts below — never invent numbers, names, or events.
 
 ${lastLine}
-Season (last ${s.totalSessions} sessions): attended ${s.attended} (${s.attendanceRate}%), current streak ${s.currentStreak}, longest streak ${s.longestStreak}.
 ${partnerLine}${skillLine ? `\n${skillLine}` : ''}${memoryLine}
 
 Return ONLY a JSON object, no markdown fences:
 {"recap": "...", "focus": "..."}
-- "recap": 1-2 sentences on how the last session / recent stretch went. Weave in attendance AND, if a self-assessment is present, how their skill rating moved (up, down, or holding). If a previous note exists, acknowledge progress against it.
+- "recap": 1-2 sentences on how the last session / recent stretch went. If a self-assessment is present, weave in how their skill rating moved (up, down, or holding). If a previous note exists, acknowledge progress against it. NEVER mention attendance, how many sessions they made, or any kind of streak — you are not given those facts and must not infer them.
 - "focus": 1-2 sentences naming ONE concrete thing to work on for the upcoming session. If a self-assessment lists "working on" skills, anchor the focus on one of them. If "Suggested drills" are listed, name ONE of them verbatim as the concrete action (don't invent a different drill). Build on the previous focus if there was one (did they act on it?). Specific, encouraging, no jargon, no emoji.
 - If the notes mention a gap between recent games and the self-rating, you MAY reference it gently and only as encouragement — never as criticism, and never with a number.`;
 
@@ -518,9 +505,9 @@ async function generateCards(
   signals: Record<SignalCard, InsightSignal | null>,
   prev: InsightDoc | null,
 ): Promise<{ greeting: string | null; level: CardInsight | null; trend: CardInsight | null }> {
-  const lastLine = s.lastSession
-    ? `Last completed session (${s.lastSession.date.slice(0, 10)}): ${name} ${s.lastSession.attended ? 'PLAYED' : 'did NOT play'}.`
-    : 'No completed sessions on record yet.';
+  const lastLine = s.lastPlayed
+    ? `Last session ${name} played (${s.lastPlayed.date.slice(0, 10)}).`
+    : 'No sessions played on record yet.';
   const partnerLine = s.regularPartners.length
     ? `Regular partners: ${s.regularPartners.map((p) => `${p.name} (${p.count})`).join(', ')}.`
     : 'No regular partners yet.';
@@ -543,7 +530,6 @@ You're writing short, scannable insights for ${name}, a casual weekly player. Us
 
 DATA
 ${lastLine}
-Season (last ${s.totalSessions} sessions): attended ${s.attended} (${s.attendanceRate}%), current streak ${s.currentStreak}, longest ${s.longestStreak}.
 ${partnerLine}${skillLine ? `\n${skillLine}` : ''}
 
 NON-OBVIOUS SIGNALS (pre-computed — narrate the ones present; do not restate plain numbers):
@@ -555,7 +541,8 @@ Return ONLY a JSON object, no markdown fences:
 {"greeting": "...", "level": {"headline": "...", "support": "..."} | null, "trend": {"headline": "...", "support": "..."} | null}
 - "greeting": ONE warm, plain-language sentence (max ~16 words) leading with the most interesting honest thing. Translate jargon (never "3.1 / switch / medium confidence"). If nothing is beyond the obvious, a brief encouraging line is fine.
 - "level" / "trend": ONLY if that signal is present above — "headline" ≤ 8 words (the punch), "support" ≤ 14 words (one grounding clause). If the slot says "return null", return null for it.
-- Plain, encouraging, specific. No emoji, no hashtags, no jargon. Do NOT repeat a raw rating number the card already shows.`;
+- Plain, encouraging, specific. No emoji, no hashtags, no jargon. Do NOT repeat a raw rating number the card already shows.
+- NEVER mention attendance, how many sessions they made or missed, or any kind of attendance streak. Those facts are deliberately not given to you; do not infer or imply them. A "streak" signal below counts CHECK-INS, never sessions.`;
 
   const message = await anthropic.messages.create({
     model: MODEL,

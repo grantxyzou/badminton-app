@@ -30,20 +30,12 @@ describe('PageHeaders', () => {
     expect(heading.textContent).toBe('Sign-Up');
   });
 
-  it('SkillsTab (non-admin) renders "Your stats" as an h1', () => {
+  // One case, not two: Stage 8 removed the admin-only radar arrangement, so
+  // `SkillsTab` no longer takes `isAdmin` and there is nothing to vary.
+  it('SkillsTab renders "Your stats" as an h1', () => {
     render(
       <NextIntlClientProvider locale="en" messages={enMessages}>
-        <SkillsTab isAdmin={false} />
-      </NextIntlClientProvider>
-    );
-    const heading = screen.getByRole('heading', { level: 1 });
-    expect(heading.textContent).toBe('Your stats');
-  });
-
-  it('SkillsTab (admin) renders "Your stats" as an h1', () => {
-    render(
-      <NextIntlClientProvider locale="en" messages={enMessages}>
-        <SkillsTab isAdmin={true} />
+        <SkillsTab />
       </NextIntlClientProvider>
     );
     const heading = screen.getByRole('heading', { level: 1 });

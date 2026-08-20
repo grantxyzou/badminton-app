@@ -261,7 +261,7 @@ export default function HomeShell({ initialAnnouncement }: Props) {
           )}
           {activeTab === 'home' && <div key={`home-${refreshNonce}`} className="animate-fadeIn"><HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} /></div>}
           {activeTab === 'players' && <div key={`players-${refreshNonce}`} className="animate-fadeIn"><PlayersTab /></div>}
-          {activeTab === 'skills' && <div key={`skills-${refreshNonce}`} className="animate-fadeIn"><SkillsTab isAdmin={showAdmin} onTabChange={setActiveTab} /></div>}
+          {activeTab === 'skills' && <div key={`skills-${refreshNonce}`} className="animate-fadeIn"><SkillsTab onTabChange={setActiveTab} /></div>}
           {activeTab === 'admin' && showAdmin && <div key={`admin-${refreshNonce}`} className="animate-fadeIn"><AdminErrorBoundary><AdminTab onExit={() => setActiveTab('profile')} /></AdminErrorBoundary></div>}
           {activeTab === 'profile' && (
             <div key={`profile-${refreshNonce}`} className="animate-fadeIn">

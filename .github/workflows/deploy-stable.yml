@@ -81,10 +81,14 @@ jobs:
           NEXT_PUBLIC_FLAG_INSIGHT_CARDS: 'true'
           NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER: 'false'
           # Stats v2 (You / Play / Learn / Gear + the club-comparison privacy
-          # control). Off until the whole program lands on bpm-next and is
-          # promoted — it removes the streak hero and attendance card, so a
-          # premature flip changes what friends see mid-release.
-          NEXT_PUBLIC_FLAG_STATS_V2: 'false'
+          # control). MUST stay 'true'. Stage 8 (2026-08-20) deleted the v1
+          # Stats path outright — StreakSummaryCard, AttendanceCardLive,
+          # AttendanceSessionStrip, GameStatTiles, StatsPlaceholder and the
+          # admin recharts radar are gone, and `SkillsTab` no longer reads this
+          # flag. Flipping it back to 'false' does NOT restore v1; it only
+          # 404s the three v2-only API routes and leaves the tab's cards
+          # showing load errors. Retire the flag rather than turning it off.
+          NEXT_PUBLIC_FLAG_STATS_V2: 'true'
 
       - name: Package standalone build
         run: |

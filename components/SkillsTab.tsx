@@ -1,11 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import type { PlayerSkills as PersistedPlayerSkills } from '@/lib/types';
-import type { PlayerSkills } from '@/components/SkillsRadar';
-import RadarSkeleton from '@/components/stats/skeletons/RadarSkeleton';
-import StatsPlaceholder from '@/components/stats/StatsPlaceholder';
 import StatsV2Shell from '@/components/stats/StatsV2Shell';
 import WhereYouSitCard from '@/components/stats/WhereYouSitCard';
 import ClubConsentSheet from '@/components/stats/ClubConsentSheet';
@@ -13,34 +9,19 @@ import YourRecordCard from '@/components/stats/YourRecordCard';
 import WhoYouPlayWithCard from '@/components/stats/WhoYouPlayWithCard';
 import LearnRegister from '@/components/stats/LearnRegister';
 import GearRegister from '@/components/stats/GearRegister';
-import { useStatsPrivacy, shouldPromptForComparison } from '@/lib/useStatsPrivacy';
-import AttendanceCardLive from '@/components/stats/cards/AttendanceCardLive';
-import StreakSummaryCard from '@/components/stats/StreakSummaryCard';
 import SummaryGreeting from '@/components/stats/SummaryGreeting';
-import GameLoggerCard from '@/components/stats/GameLoggerCard';
-import GameStatTiles from '@/components/stats/GameStatTiles';
-import RacketRow from '@/components/stats/RacketRow';
+import StatsSignedOut from '@/components/stats/StatsSignedOut';
+import { useStatsPrivacy, shouldPromptForComparison } from '@/lib/useStatsPrivacy';
 import { isFlagOn } from '@/lib/flags';
 import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
-import StatsSignedOut from '@/components/stats/StatsSignedOut';
 
-const SkillsRadar = dynamic(() => import('@/components/SkillsRadar'), { ssr: false });
-// Recharts needs window → ssr:false, same as SkillsRadar.
+// Client-only (reads localStorage identity) — these three resolve an active
+// name at mount, so server-rendering them just produces markup the client
+// immediately replaces.
 const SkillTrendCard = dynamic(() => import('@/components/stats/SkillTrendCard'), { ssr: false });
-// Client-only (reads localStorage identity), same posture as SkillTrendCard.
-const LevelCard = dynamic(() => import('@/components/stats/LevelCard'), { ssr: false });
-const DrillsCard = dynamic(() => import('@/components/stats/DrillsCard'), { ssr: false });
 const KudosReceivedCard = dynamic(() => import('@/components/stats/KudosReceivedCard'), { ssr: false });
 const GiveKudosCard = dynamic(() => import('@/components/stats/GiveKudosCard'), { ssr: false });
 
-// Hidden for now — admin Add Player + SkillsRadar overlay/compare mode are
-// scoped out of the user-facing Stats tab while we figure out whether self-
-// tracking is the right product direction. Flip these back to true to bring
-// them back; the underlying components still support both features.
-const SHOW_ADD_PLAYER_FORM = false;
-const SHOW_SKILLS_OVERLAY = false;
-
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
 
 // Same identity chain as the stats cards: real identity → stats preview-name.
@@ -56,69 +37,25 @@ function resolveActiveName(): string | null {
   return null;
 }
 
-function toRadarShape(records: PersistedPlayerSkills[]): PlayerSkills[] {
-  return records.map((s) => ({ id: s.id, name: s.name, scores: s.scores }));
-}
-
-// Sample profile so the radar always has a shape to draw. Shown ONLY when
-// there's no real skill data, and always behind a visible "Sample" badge —
-// skill scores have no real source yet (player self-rating is deferred), so
-// this is honest demo content, never presented as someone's actual stats.
-const SAMPLE_SKILLS: PlayerSkills[] = [
-  {
-    id: '__sample__',
-    name: 'Sample',
-    scores: {
-      'grip-stroke': 4,
-      'movement': 3,
-      'serve-return': 4,
-      'offense': 3,
-      'defense': 2,
-      'strategy': 3,
-      'knowledge': 4,
-    },
-  },
-];
-
-export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean; onTabChange?: (tab: 'home' | 'players' | 'skills' | 'admin' | 'profile') => void }) {
-  const [loading, setLoading] = useState(true);
-  const [players, setPlayers] = useState<PlayerSkills[]>([]);
-
-  // Add-player inline form state
-  const [name, setName] = useState('');
-  const [adding, setAdding] = useState(false);
-  const [addError, setAddError] = useState('');
-
-  // Identity for the assessment spine's signed-out empty state. Subscribes to
-  // IDENTITY_EVENT so signing in/out updates the tab without a reload.
+/**
+ * The Stats tab: the You / Play / Learn / Gear registers.
+ *
+ * Stage 8 (2026-08-20) deleted the v1 arrangement wholesale. Until then this
+ * file carried five mutually-exclusive layouts selected by
+ * `NEXT_PUBLIC_FLAG_STATS_V2` / `_SKILL_ASSESS` / `isAdmin`, including an
+ * admin-only recharts radar and every surface that counted sessions you
+ * MISSED (streak hero, live attendance card, recent-form dots). Those are
+ * gone by product decision, not deferred: see the flag entry in `lib/flags.ts`.
+ *
+ * `NEXT_PUBLIC_FLAG_STATS_V2` is no longer read here — it is `'true'` in all
+ * three build configs and now only guards the v2-only API routes until it
+ * retires. There is no v1 to fall back to.
+ */
+export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: 'home' | 'players' | 'skills' | 'admin' | 'profile') => void }) {
+  // Identity for the signed-out empty state. Subscribes to IDENTITY_EVENT so
+  // signing in/out updates the tab without a reload.
   const [activeName, setActiveName] = useState<string | null>(null);
   const [identResolved, setIdentResolved] = useState(false);
-
-  const refresh = useCallback(async () => {
-    try {
-      const res = await fetch(`${BASE}/api/skills`, { cache: 'no-store' });
-      if (!res.ok) return;
-      const data: { skills: PersistedPlayerSkills[] } = await res.json();
-      setPlayers(toRadarShape(data.skills ?? []));
-    } catch {
-      /* swallow — empty state will show */
-    }
-  }, []);
-
-  useEffect(() => {
-    // The legacy admin radar is parked under the assessment spine — skip its fetch.
-    if (!isAdmin || isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS')) {
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    refresh().finally(() => {
-      if (!cancelled) setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [isAdmin, refresh]);
 
   useEffect(() => {
     const update = () => setActiveName(resolveActiveName());
@@ -132,257 +69,59 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
     };
   }, []);
 
-  async function handleAddPlayer(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) {
-      setAddError('Enter a player name');
-      return;
-    }
-    setAdding(true);
-    setAddError('');
-    try {
-      const res = await fetch(`${BASE}/api/skills`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: trimmed, scores: {} }),
-      });
-      if (res.ok) {
-        setName('');
-        await refresh();
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setAddError(data.error ?? `Failed to add player (${res.status})`);
-      }
-    } catch {
-      setAddError('Network error. Please try again.');
-    } finally {
-      setAdding(false);
-    }
-  }
-
-  // Live attendance + streak hero are now always-on (flag retired post-v1.3).
-  const attendanceContent = <AttendanceCardLive />;
-  // Hero slot. When the skill-assessment spine is on, the self-assessment
-  // trend hero is the headline; otherwise the legacy streak + AI summary.
-  const skillAssessOn = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS');
-  // Phase 1 canonical level — the private headline read, above the trend radar.
-  const levelOn = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_LEVEL');
-  // Drills — concrete practice for the lowest-rated skills, below the trend.
-  const drillsOn = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_DRILLS');
-  // Kudos — positive-only peer recognition (received read here; give in the play slot).
-  const kudosOn = isFlagOn('NEXT_PUBLIC_FLAG_KUDOS');
-  // Distributed AI insights: a plain-language greeting leads the Summary and the
-  // standalone "Your read" card is retired (its synthesis moves into the greeting
-  // + per-card chips; the streak still shows on AttendanceCardLive in Game stats).
+  // Distributed AI insights: a plain-language greeting leads the You register.
   const insightCardsOn = isFlagOn('NEXT_PUBLIC_FLAG_INSIGHT_CARDS');
-  // Stats v2 — the You / Play / Learn / Gear arrangement. Chooses the shell
-  // only; it does NOT re-gate the flags above, whose content it reuses.
-  const statsV2On = isFlagOn('NEXT_PUBLIC_FLAG_STATS_V2');
-  // Club-comparison consent. Only read under the v2 flag — v1 has no
-  // comparison surface, so there is nothing to ask about.
-  const privacyState = useStatsPrivacy(statsV2On ? activeName : null);
+  // Kudos — positive-only peer recognition (received in You; give in Play).
+  const kudosOn = isFlagOn('NEXT_PUBLIC_FLAG_KUDOS');
+  // Equipment register follows the Value-Hub flag; its kill-criterion gate is
+  // still open, so Gear can still be withdrawn without touching the shell.
+  const valueHubOn = isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE');
+
+  const privacyState = useStatsPrivacy(activeName);
   const promptOpen = shouldPromptForComparison(privacyState);
   const comparisonKey = `${privacyState.privacy?.promptedAt ?? 'unasked'}:${privacyState.privacy?.clubComparison ?? 'unknown'}`;
-  const heroSlot = skillAssessOn ? (
-    <>
-      {insightCardsOn && <SummaryGreeting />}
-      {levelOn && <LevelCard />}
-      <SkillTrendCard />
-      {drillsOn && <DrillsCard />}
-      {kudosOn && <KudosReceivedCard />}
-    </>
-  ) : (
-    <StreakSummaryCard />
-  );
 
-  // Value-Hub Slice-0 splits across the Stats tab's two registers:
-  //   • Gear view → RacketRow (your racket + recommendation)
-  //   • Game view → game logger (usable any day; decoupled from the session
-  //     window/roster) + partner-frequency card
-  // All self-contained; flag-gated. Passing gearContent is what turns on the
-  // Game/Gear segmented control in StatsPlaceholder.
-  const valueHubOn = isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE');
-  const showPlay = skillAssessOn || valueHubOn;
-  // Gear follows its OWN flag. It used to be suppressed whenever the assessment
-  // spine was on (`!skillAssessOn && valueHubOn`) — but v1.7 turned that spine
-  // on for everyone, so RacketRow / RacketRecCard / GearSheet never rendered on
-  // either deployment, while the Value-Hub Slice-0 kill-criterion was written
-  // against rec-card engagement. The criterion was measuring an invisible
-  // surface. Equipment is now its own register under both spines.
-  const gearContent = valueHubOn ? <RacketRow /> : undefined;
-  const gamePlaySlot = showPlay ? (
-    <>
-      <GameLoggerCard />
-      {kudosOn && <GiveKudosCard />}
-    </>
-  ) : undefined;
-  // Game-stats summary tiles (Recent form + Top partner) — replaces the standalone
-  // partner card; renders at the top of the Game stats view.
-  const gameTilesSlot = showPlay ? <GameStatTiles /> : undefined;
-
-  // Skill-assessment spine: Summary = skill trend; Game stats = AI read
-  // (StreakSummaryCard) + attendance + logger + partner; Equipment = the racket
-  // row, when the value-hub flag is on. The AI read now folds in the
-  // self-assessment trend (see /api/stats/insight).
-  if (skillAssessOn) {
-    if (!identResolved) return null;
-    if (!activeName) {
-      return <StatsSignedOut onSignIn={onTabChange ? () => onTabChange('profile') : undefined} />;
-    }
-    // Stats v2 — four registers, overview strip, no attendance/streak surfaces.
-    // Stage 1 maps today's content into the new registers so the shell is
-    // usable immediately; later stages replace each register's contents.
-    // `attendanceContent` and `StreakSummaryCard` are deliberately NOT passed:
-    // removing everything that counts sessions you missed is the point of the
-    // redesign, not a later cleanup.
-    if (statsV2On) {
-      return (
-        <StatsV2Shell
-          activeName={activeName}
-          // Not `heroSlot`: v2's You register drops LevelCard, because the
-          // overview strip above now owns the level and showing the same
-          // number twice on one screen reads as two different facts. Drills
-          // move out of You and into their own Learn register.
-          youSlot={
-            <>
-              {insightCardsOn && <SummaryGreeting />}
-              {/* Both comparison-dependent cards are keyed on the answer, so
-                  saying yes remounts them and they re-read the bands endpoint
-                  — which only returns bands once the prompt is answered.
-                  Without this the member would answer and see nothing change
-                  until a reload. */}
-              <SkillTrendCard key={`trend-${comparisonKey}`} />
-              <WhereYouSitCard
-                key={`sit-${comparisonKey}`}
-                activeName={activeName}
-                promptOpen={promptOpen}
-              />
-              {kudosOn && <KudosReceivedCard />}
-              <ClubConsentSheet
-                open={promptOpen}
-                saving={privacyState.saving}
-                onAnswer={(clubComparison) => privacyState.save(clubComparison)}
-              />
-            </>
-          }
-          // GameStatTiles is deliberately NOT here: its "Recent form" tile is
-          // attendance-derived ({attended} of your last 8), which is exactly
-          // what this redesign removes. Your record counts logged games — a
-          // different number from a different source.
-          playSlot={
-            <>
-              <YourRecordCard activeName={activeName} />
-              <WhoYouPlayWithCard activeName={activeName} />
-              {kudosOn && <GiveKudosCard />}
-            </>
-          }
-          learnSlot={<LearnRegister activeName={activeName} />}
-          gearSlot={valueHubOn ? <GearRegister activeName={activeName} /> : undefined}
-        />
-      );
-    }
-    return (
-      <StatsPlaceholder
-        assessMode
-        heroSlot={heroSlot}
-        gamePlaySlot={gamePlaySlot}
-        gameTilesSlot={gameTilesSlot}
-        gearContent={gearContent}
-        attendanceContent={attendanceContent}
-        insightSlot={insightCardsOn ? undefined : <StreakSummaryCard />}
-      />
-    );
+  if (!identResolved) return null;
+  if (!activeName) {
+    return <StatsSignedOut onSignIn={onTabChange ? () => onTabChange('profile') : undefined} />;
   }
-
-  if (!isAdmin) {
-    return <StatsPlaceholder attendanceContent={attendanceContent} heroSlot={heroSlot} gamePlaySlot={gamePlaySlot} gameTilesSlot={gameTilesSlot} gearContent={gearContent} />;
-  }
-
-  if (loading) {
-    return (
-      <StatsPlaceholder
-        skillProgressionContent={<RadarSkeleton />}
-        attendanceContent={attendanceContent}
-        heroSlot={heroSlot}
-        gamePlaySlot={gamePlaySlot} gameTilesSlot={gameTilesSlot} gearContent={gearContent}
-      />
-    );
-  }
-
-  // Real skill data when present; otherwise a clearly-badged sample so the
-  // radar isn't a blank "no graph" hole. (Disclaimer/source line removed.)
-  const usingSampleSkills = players.length === 0;
-  const radarPlayers = usingSampleSkills ? SAMPLE_SKILLS : players;
-
-  const skillProgressionContent = (
-    <div className="space-y-4">
-      {usingSampleSkills && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span
-            style={{
-              fontSize: 'var(--fs-2xs)',
-              padding: '2px 8px',
-              borderRadius: 'var(--radius-pill)',
-              fontWeight: 600,
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              border: '1px solid var(--inner-card-border)',
-              color: 'var(--text-muted)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Sample
-          </span>
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 0 }}>
-            Example profile — self-rating coming soon.
-          </p>
-        </div>
-      )}
-      <SkillsRadar players={radarPlayers} onScoresChanged={refresh} showOverlay={SHOW_SKILLS_OVERLAY} />
-
-      {SHOW_ADD_PLAYER_FORM && (
-        <form onSubmit={handleAddPlayer} className="glass-card-soft p-3 space-y-2">
-          <p className="section-label">ADD PLAYER</p>
-          <div className="flex gap-2">
-            <input
-              id="skills-player-name"
-              name="playerName"
-              type="text"
-              placeholder="Player name"
-              aria-label="Player name"
-              aria-describedby={addError ? 'skills-add-error' : undefined}
-              value={name}
-              onChange={(e) => { setName(e.target.value); setAddError(''); }}
-              maxLength={50}
-              autoComplete="off"
-              className="flex-1"
-            />
-            <button
-              type="submit"
-              disabled={adding || !name.trim()}
-              className="cc-btn cc-btn-primary"
-              style={{ whiteSpace: 'nowrap', minHeight: 44 }}
-            >
-              {adding ? '…' : 'Add'}
-            </button>
-          </div>
-          {addError && (
-            <p id="skills-add-error" role="alert" className="field-error">
-              {addError}
-            </p>
-          )}
-        </form>
-      )}
-    </div>
-  );
 
   return (
-    <StatsPlaceholder
-      skillProgressionContent={skillProgressionContent}
-      attendanceContent={attendanceContent}
-      heroSlot={heroSlot}
-      gamePlaySlot={gamePlaySlot} gameTilesSlot={gameTilesSlot} gearContent={gearContent}
+    <StatsV2Shell
+      activeName={activeName}
+      // No LevelCard: the overview strip above owns the level, and showing the
+      // same number twice on one screen reads as two different facts.
+      youSlot={
+        <>
+          {insightCardsOn && <SummaryGreeting />}
+          {/* Both comparison-dependent cards are keyed on the answer, so
+              saying yes remounts them and they re-read the bands endpoint
+              — which only returns bands once the prompt is answered.
+              Without this the member would answer and see nothing change
+              until a reload. */}
+          <SkillTrendCard key={`trend-${comparisonKey}`} />
+          <WhereYouSitCard
+            key={`sit-${comparisonKey}`}
+            activeName={activeName}
+            promptOpen={promptOpen}
+          />
+          {kudosOn && <KudosReceivedCard />}
+          <ClubConsentSheet
+            open={promptOpen}
+            saving={privacyState.saving}
+            onAnswer={(clubComparison) => privacyState.save(clubComparison)}
+          />
+        </>
+      }
+      playSlot={
+        <>
+          <YourRecordCard activeName={activeName} />
+          <WhoYouPlayWithCard activeName={activeName} />
+          {kudosOn && <GiveKudosCard />}
+        </>
+      }
+      learnSlot={<LearnRegister activeName={activeName} />}
+      gearSlot={valueHubOn ? <GearRegister activeName={activeName} /> : undefined}
     />
   );
 }
