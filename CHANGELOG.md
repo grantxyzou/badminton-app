@@ -54,6 +54,27 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
      Format: `- **Short title** — one-sentence what + why.` See v1.3 below for examples.
      Empty subheadings are fine; delete a section if you don't end up using it. -->
 
+### Changed
+
+- **Your rackets live on the Equipment tab now** — the tab shows the racket you're using today, then every racket you own, with "Add a racket" underneath. Picking one used to mean opening a sheet that tried to be both your bag and a 50-racket catalogue at once; adding is now the only thing that opens a sheet, and one tap adds a racket instead of tap-then-save.
+- **Finding your racket got easier** — the picker is full-height, searches every brand at once, and shows the brand above each model, so a search that crosses brands no longer gives you a list of bare model names. Rackets already in your bag don't show up in the list.
+
+### Fixed
+
+- **You can remove your racket when it's the only one you have** — the bag hid itself entirely if you owned just one racket, so there was no way to remove or replace it.
+- **"Add a racket" reads like a button now** — it was smaller and quieter than the rows above it, and below the minimum tap size.
+- **The empty state answers the question it's under** — "What is the racket you are using today?" now gets "Haven't picked one yet." instead of a label telling you to look below at a button you can't miss.
+
+### Security
+
+- **Skill check-ins can only be written by you** — assessments were accepted for any name, and member names are guessable, so someone could have written ratings against another player's account. Writing now requires being signed in as that member (or being an admin).
+- **Someone else's ratings can't move your level** — check-ins written for a name with no account were being folded into the calibration of the real member who shared that name, which could shift their level without touching their account.
+
+### Notes
+
+- The **racket recommendation based on your check-in** is on `bpm-next` only (`NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER`) and is deliberately **not** part of this cut — it stays off on stable until it has been lived in. The Equipment tab changes above *are* included, since they aren't gated by that flag.
+- Dependency updates: Next.js 16.2.9 → 16.3.1 (closes nine advisories, none of which were reachable in this app) and seven production packages. `npm audit` went 34 → 5, with every survivor confined to build and test tooling.
+
 ---
 
 ## v1.8 — Pooled shuttle costs, settle correctness, and a working Equipment tab (2026-08-16)
