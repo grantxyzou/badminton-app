@@ -251,6 +251,18 @@
       "learn": "Learn",
       "gear": "Gear"
     },
+    "club": {
+      "title": "Where you sit",
+      "ledeOne": "You're in the <hi>{band}</hi> of the club at {skill}.",
+      "ledeTwo": "You're in the <hi>{band1}</hi> of the club at {skill1}, and the {band2} at {skill2}.",
+      "bandTop": "top third",
+      "bandMiddle": "middle third",
+      "bandBottom": "bottom third",
+      "footnote": "Bands only. No names, no leaderboard — and you can turn this off in Profile.",
+      "private": "Private",
+      "footnotePrivate": "Your place is private. Nothing about your skills was ever shown to other players.",
+      "error": "Couldn't load — refresh to try again"
+    },
     "overview": {
       "level": "Level",
       "games": "Games",
@@ -392,6 +404,7 @@
       "notRated": "Not rated yet",
       "empty": "No check-in yet — take your first to start tracking your game.",
       "baseline": "Baseline saved — check in again after a few sessions to watch it move.",
+      "medianLegend": "tick marks are the club median",
       "error": "Couldn't load that — refresh to try again",
       "checkInTitle": "Skill check-in",
       "close": "Close",

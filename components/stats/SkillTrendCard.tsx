@@ -1,11 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import {
-  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
-} from 'recharts';
 import { getIdentity } from '@/lib/identity';
+import DimensionBars from './DimensionBars';
 import { SKILLS, topStrengths, workOnNext, type Rating, type Dimension, type Phase } from '@/lib/assessment';
 import { isFlagOn } from '@/lib/flags';
 import { useInsight } from '@/lib/useInsight';
@@ -36,6 +34,14 @@ function resolveActiveName(): string | null {
   return null;
 }
 
+/** Response shape of GET /api/stats/club/bands. */
+interface ClubBands {
+  cohort: number;
+  minCohort: number;
+  dimensionMedians: Partial<Record<Dimension, number | null>>;
+  skills: { skillKey: string; band: 'top' | 'middle' | 'bottom' }[];
+}
+
 /** A persisted assessment snapshot (mirrors the /api/assessments doc). */
 interface Snapshot {
   id: string;
@@ -46,36 +52,10 @@ interface Snapshot {
   phase: Phase | null;
 }
 
-/** Short axis labels for the 14-skill radar (full labels live on the cards). */
-const SHORT: Record<string, string> = {
-  serves_returns: 'Serve',
-  net_play: 'Net',
-  clears_lifts: 'Clear',
-  drops: 'Drop',
-  drives: 'Drive',
-  smashes: 'Smash',
-  grip_deception: 'Grip',
-  footwork_split_step: 'Footwork',
-  court_coverage: 'Court',
-  speed_stamina: 'Stamina',
-  game_reading: 'Reading',
-  consistency: 'Consist.',
-  rules_strategy: 'Rules',
-  training_mindset: 'Mindset',
-};
-
 const SKILL_BY_KEY = new Map(SKILLS.map((s) => [s.key, s]));
 const DIMENSIONS: Dimension[] = ['technical', 'physical', 'mental'];
 // Dimension → gradient tone for the Technical / Physical / Mental tiles.
 const DIM_TONE: Record<Dimension, StatTone> = { technical: 'blue', physical: 'accent', mental: 'amber' };
-
-// recharts stroke/fill are SVG attributes that can't read CSS var(), so these
-// stay as hex. They're only the initial fallback — the live chart resolves
-// --accent / --text-muted at runtime (see radarColors effect below).
-// eslint-disable-next-line no-restricted-syntax
-const NOW_COLOR = '#4ade80';
-// eslint-disable-next-line no-restricted-syntax
-const THEN_COLOR = '#94a3b8';
 
 function ratingMap(snap: Snapshot | undefined): Map<string, number> {
   return new Map((snap?.ratings ?? []).map((r) => [r.skillKey, r.value]));
@@ -99,37 +79,6 @@ function Delta({ value }: { value: number }) {
     >
       {up ? '▲' : '▼'} {Math.abs(value).toFixed(value % 1 === 0 ? 0 : 1)}
     </span>
-  );
-}
-
-function RadarBlock({
-  data, hasThen, nowColor, thenColor, height = 300, fontSize = 10, thenLabel, nowLabel,
-}: {
-  data: { category: string; now: number; then: number }[];
-  hasThen: boolean;
-  // Resolved at runtime from --accent / --text-muted so the chart honors the
-  // theme (recharts sets stroke/fill as SVG attributes, where var() can't resolve).
-  nowColor: string;
-  thenColor: string;
-  height?: number;
-  fontSize?: number;
-  thenLabel: string;
-  nowLabel: string;
-}) {
-  return (
-    <div style={{ margin: '0 -8px' }} aria-hidden="true">
-      <ResponsiveContainer width="100%" height={height}>
-        <RadarChart data={data} cx="50%" cy="50%" outerRadius="72%">
-          <PolarGrid stroke="var(--glass-border)" strokeDasharray="3 3" />
-          <PolarAngleAxis dataKey="category" tick={{ fill: 'var(--text-secondary)', fontSize, fontWeight: 500 }} />
-          <PolarRadiusAxis angle={90} domain={[0, 5]} tickCount={6} tick={{ fill: 'var(--text-muted)', fontSize: 9 }} axisLine={false} />
-          {hasThen && (
-            <Radar name={thenLabel} dataKey="then" stroke={thenColor} fill={thenColor} fillOpacity={0.06} strokeWidth={1.5} strokeDasharray="4 3" />
-          )}
-          <Radar name={nowLabel} dataKey="now" stroke={nowColor} fill={nowColor} fillOpacity={0.18} strokeWidth={2} dot={{ r: 3, fill: nowColor, strokeWidth: 0 }} />
-        </RadarChart>
-      </ResponsiveContainer>
-    </div>
   );
 }
 
@@ -166,35 +115,28 @@ export default function SkillTrendCard() {
   const latest = snapshots[snapshots.length - 1];
   const prev = snapshots.length > 1 ? snapshots[snapshots.length - 2] : undefined;
 
-  const chartData = useMemo(() => {
-    const now = ratingMap(latest);
-    const then = ratingMap(prev);
-    return SKILLS.map((s) => ({
-      category: SHORT[s.key] ?? s.label,
-      now: now.get(s.key) ?? 0,
-      then: then.get(s.key) ?? 0,
-    }));
-  }, [latest, prev]);
-
   const [showAll, setShowAll] = useState(false);
 
-  // Resolve radar stroke/fill from the theme tokens (recharts can't read
-  // var() in SVG attributes). Re-read when the theme flips so the chart
-  // stays on-system in both light and dark.
-  const [radarColors, setRadarColors] = useState({ now: NOW_COLOR, then: THEN_COLOR });
+  // Club medians for the bar ticks. This read is deliberately allowed to fail
+  // quietly: the comparison is an enhancement, and a member's own dimension
+  // scores must render whether or not the club context is available. `null`
+  // means "no ticks", which looks like plain bars — not like a broken card.
+  const [bands, setBands] = useState<ClubBands | null>(null);
   useEffect(() => {
-    const read = () => {
-      const cs = getComputedStyle(document.documentElement);
-      setRadarColors({
-        now: cs.getPropertyValue('--accent').trim() || NOW_COLOR,
-        then: cs.getPropertyValue('--text-muted').trim() || THEN_COLOR,
-      });
-    };
-    read();
-    const obs = new MutationObserver(read);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    return () => obs.disconnect();
-  }, []);
+    if (!activeName) return;
+    let live = true;
+    fetch(`${BASE}/api/stats/club/bands?name=${encodeURIComponent(activeName)}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => live && setBands(d as ClubBands))
+      .catch(() => live && setBands(null));
+    return () => { live = false; };
+  }, [activeName]);
+
+  // The radar's `radarColors` MutationObserver lived here. It existed only
+  // because recharts writes stroke/fill as SVG attributes, where `var()`
+  // cannot resolve — so the colours had to be read out of the computed style
+  // and re-read on every `data-theme` flip. DimensionBars are CSS gradients on
+  // divs, so the tokens just work and none of that machinery is needed.
 
   if (!activeName) return null;
 
@@ -268,26 +210,30 @@ export default function SkillTrendCard() {
         ))}
       </div>
 
-      {/* Radar (left) + strengths / work-on legends (right, narrow). */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 104px', gap: 'var(--space-3)', alignItems: 'center' }}>
-        <RadarBlock data={chartData} hasThen={!!prev} nowColor={radarColors.now} thenColor={radarColors.then} thenLabel={t('assess.then')} nowLabel={t('assess.now')} height={240} fontSize={9} />
-        <div className="space-y-3">
-          <Legend title={t('assess.strengths')} items={strengths} nowMap={nowMap} accent />
-          <Legend title={t('assess.workOn')} items={workOn} nowMap={nowMap} />
-        </div>
+      {/* Dimension bars, full width — replaces the 14-axis radar. */}
+      <DimensionBars
+        scores={latest.dimensionScores ?? {}}
+        prevScores={prev?.dimensionScores ?? undefined}
+        medians={bands?.dimensionMedians ?? null}
+        // Ticks require BOTH a revealed comparison and a big enough cohort.
+        // The server already withholds `skills` unless the prompt was answered
+        // and the preference is on, so a non-empty `skills` array is the
+        // client-side proof that a comparison is legitimately visible — the
+        // medians alone are not, since the club spread is returned even to
+        // members who opted out.
+        showTicks={!!bands && bands.cohort >= bands.minCohort && bands.skills.length > 0}
+      />
+
+      {/* Strengths / work-on legends, side by side below the bars. */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+        <Legend title={t('assess.strengths')} items={strengths} nowMap={nowMap} accent />
+        <Legend title={t('assess.workOn')} items={workOn} nowMap={nowMap} />
       </div>
 
-      {/* now / then key, or the first-rating baseline hint. */}
-      {prev ? (
-        <div style={{ display: 'flex', gap: 16, justifyContent: 'center', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 14, height: 0, borderTop: `2px dashed ${radarColors.then}` }} /> {t('assess.then')}
-          </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 14, height: 0, borderTop: `2px solid ${radarColors.now}` }} /> {t('assess.now')}
-          </span>
-        </div>
-      ) : (
+      {/* The then/now key is gone with the radar — each bar now carries its own
+          delta arrow, so a separate colour key would explain nothing. The
+          first-rating hint stays. */}
+      {!prev && (
         <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0, textAlign: 'center' }}>{t('assess.baseline')}</p>
       )}
 
@@ -355,7 +301,7 @@ function Legend({
         const v = nowMap.get(r.skillKey) ?? r.value;
         return (
           <div key={r.skillKey} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.3, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{SHORT[skill.key] ?? skill.label}</span>
+            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.3, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{skill.label}</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-sm)', fontWeight: 700, color: accent ? 'var(--accent)' : 'var(--text-muted)' }}>{v}</span>
           </div>
         );

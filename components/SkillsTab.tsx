@@ -7,6 +7,7 @@ import type { PlayerSkills } from '@/components/SkillsRadar';
 import RadarSkeleton from '@/components/stats/skeletons/RadarSkeleton';
 import StatsPlaceholder from '@/components/stats/StatsPlaceholder';
 import StatsV2Shell from '@/components/stats/StatsV2Shell';
+import WhereYouSitCard from '@/components/stats/WhereYouSitCard';
 import AttendanceCardLive from '@/components/stats/cards/AttendanceCardLive';
 import StreakSummaryCard from '@/components/stats/StreakSummaryCard';
 import SummaryGreeting from '@/components/stats/SummaryGreeting';
@@ -236,6 +237,7 @@ export default function SkillsTab({ isAdmin, onTabChange }: { isAdmin?: boolean;
             <>
               {insightCardsOn && <SummaryGreeting />}
               <SkillTrendCard />
+              <WhereYouSitCard activeName={activeName} />
               {kudosOn && <KudosReceivedCard />}
             </>
           }

@@ -4,19 +4,11 @@ import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import { getIdentity } from '@/lib/identity';
-import { KUDOS_TAGS, type KudosCount, type KudosTag } from '@/lib/kudos';
+import { KUDOS_TAGS, TAG_ICON, type KudosCount } from '@/lib/kudos';
 import CardHeader from '@/components/primitives/CardHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const STATS_NAME_KEY = 'badminton_stats_preview_name';
-
-const TAG_EMOJI: Record<KudosTag, string> = {
-  great_defense: '🛡️',
-  clutch: '🔥',
-  most_improved: '📈',
-  good_sport: '🤝',
-  nice_shot: '🎯',
-};
 
 function resolveActiveName(): string | null {
   const id = getIdentity();
@@ -95,7 +87,14 @@ export default function KudosReceivedCard() {
               display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 'var(--radius-pill)',
               border: '1px solid var(--border))', fontSize: 'var(--fs-base)', color: 'var(--text-secondary)',
             }}>
-              <span aria-hidden="true">{TAG_EMOJI[tag]}</span>
+              {/* Accent on received chips — these are success semantics. */}
+              <span
+                className="material-icons"
+                aria-hidden="true"
+                style={{ fontSize: 'var(--icon-sm)', color: 'var(--accent)' }}
+              >
+                {TAG_ICON[tag]}
+              </span>
               <span>{t(`kudos.tag.${tag}`)}</span>
               <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', fontWeight: 600 }}>×{count}</span>
             </li>
