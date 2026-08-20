@@ -52,23 +52,54 @@ export function ensureCatalogSeeded(): Promise<void> {
   return ready;
 }
 
+/** Order-independent signature of the fields the seed owns. Cosmos does not
+ *  guarantee key order matches the source JSON, so a plain JSON.stringify
+ *  would report every row as drifted and rewrite the whole catalog on every
+ *  cold start. Sorting keys makes the steady state a genuine no-op. */
+function seedSignature(item: Partial<CatalogItem>): string {
+  return JSON.stringify(
+    { brand: item.brand, model: item.model, msrp: item.msrp, skillRange: item.skillRange, attributes: item.attributes, sources: item.sources },
+    (_key, value) =>
+      value && typeof value === 'object' && !Array.isArray(value)
+        ? Object.fromEntries(Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)))
+        : value,
+  );
+}
+
 async function seed(): Promise<void> {
   // No-op in mock mode; creates the container in real Cosmos.
   await ensureContainer('equipmentCatalog', '/category');
 
   const container = getContainer('equipmentCatalog');
   const { resources } = await container.items
-    .query({ query: 'SELECT c.id FROM c' })
+    .query({ query: 'SELECT c.id, c.seeded, c.brand, c.model, c.msrp, c.skillRange, c.attributes, c.sources FROM c' })
     .fetchAll();
-  const existing = new Set((resources as Array<{ id?: string }>).map((r) => r.id));
+  const existing = new Map(
+    (resources as Array<Partial<CatalogItem> & { id?: string }>).map((r) => [r.id, r]),
+  );
 
-  const missing = SEED_ITEMS.filter((item) => !existing.has(item.id));
-  if (missing.length === 0) return;
+  // Refresh, don't just fill. This used to upsert only ids that were absent,
+  // which is right for a growing catalog and wrong for one whose rows change
+  // SHAPE. The v2 import added normalized `balance`/`flex`/`tier` to 39 rows
+  // that already existed in Cosmos — the file gained them, the database never
+  // did, and `isScorable` silently skipped 50 of 71 rackets in production
+  // while every local test passed (in dev the JSON file IS the catalog).
+  //
+  // Only rows this seeder owns (`seeded: true`) are refreshed. The catalog
+  // route is GET-only today so nothing else writes here, but an admin-authored
+  // row must never be reverted by a deploy if that ever changes.
+  const stale = SEED_ITEMS.filter((item) => {
+    const current = existing.get(item.id);
+    if (!current) return true;
+    if (current.seeded !== true) return false;
+    return seedSignature(current) !== seedSignature(item);
+  });
+  if (stale.length === 0) return;
 
   // Upsert (not create) so a half-written row from an interrupted seed is
   // repaired rather than throwing a conflict.
-  await Promise.all(missing.map((item) => container.items.upsert(item)));
-  console.info(`[catalog-seed] seeded ${missing.length} catalog item(s)`);
+  await Promise.all(stale.map((item) => container.items.upsert(item)));
+  console.info(`[catalog-seed] seeded/refreshed ${stale.length} catalog item(s)`);
 }
 
 /** Test seam — resets the cached promise between cases. */
