@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import GearSheet from '../../components/stats/GearSheet';
+import { useGear } from '../../components/stats/useGear';
 import enMessages from '../../messages/en.json';
 
 /**
@@ -378,5 +379,119 @@ describe('GearSheet — string tension capture', () => {
 
     await waitFor(() => expect(onPick).toHaveBeenCalledTimes(1));
     expect(onPick.mock.calls[0][1]).toBeUndefined();
+  });
+});
+
+describe('GearSheet — the tension follow-up failure path (real useGear)', () => {
+  /**
+   * Review fix, round 1: `GearSheet.pick()` only ever sees whatever `onPick`
+   * resolves to — it has no visibility into `useGear.add()`'s internal
+   * POST-then-PUT sequence. Every other test in this file mocks `onPick`
+   * away, which is exactly why the original defect (the PUT was
+   * `void mutate(...)`, fire-and-forget) shipped invisibly past all of them.
+   * This mounts the REAL `useGear` hook, wired the same way `YourKitCard`
+   * wires it, so a regression back to fire-and-forget shows up here.
+   */
+  function Harness({ onClose }: { onClose: () => void }) {
+    const gear = useGear('Lin');
+    const items = gear.gear?.items ?? [];
+    const ownedStrings = items.filter((i) => i.category === 'string');
+    return (
+      <GearSheet
+        open
+        onClose={onClose}
+        category="string"
+        activeName="Lin"
+        format="doubles"
+        ownedCatalogIds={ownedStrings.map((i) => i.catalogId).filter((id): id is string => typeof id === 'string')}
+        ownedItems={ownedStrings}
+        onPick={(item, tensionLbs) => gear.add(item, typeof tensionLbs === 'number' ? { tensionLbs } : undefined)}
+        busy={gear.busy}
+        online={gear.online}
+      />
+    );
+  }
+
+  function renderHarness() {
+    const onClose = vi.fn();
+    const utils = render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <Harness onClose={onClose} />
+      </NextIntlClientProvider>,
+    );
+    return { ...utils, onClose };
+  }
+
+  it('keeps the sheet open with an error — item already visible as the retry anchor — when the tension PUT fails', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = (init?.method ?? 'GET').toUpperCase();
+      if (url.includes('/api/equipment/catalog')) {
+        return new Response(JSON.stringify({ items: STRING_CATALOG }), { status: 200 });
+      }
+      if (url.includes('/api/stats/level')) {
+        return new Response(JSON.stringify({ level: { level: 3 } }), { status: 200 });
+      }
+      if (url.includes('/api/equipment/gear')) {
+        if (method === 'GET') return new Response(JSON.stringify({ gear: null }), { status: 200 });
+        if (method === 'POST') {
+          const added = { id: 's1', catalogId: 'string-yonex-bg65', category: 'string', label: 'Yonex BG65' };
+          return new Response(JSON.stringify({ gear: { id: 'gear-1', memberId: 'm1', items: [added] } }), { status: 200 });
+        }
+        if (method === 'PUT') return new Response(JSON.stringify({ error: 'save_failed' }), { status: 500 });
+      }
+      return new Response('{}', { status: 404 });
+    }) as unknown as typeof fetch);
+
+    const { onClose } = renderHarness();
+    const input = await screen.findByLabelText('Tension you strung at');
+    // A distinct value from the "24" prefill — RTL's fireEvent.change on an
+    // unchanged value can fail to register with React's controlled input.
+    fireEvent.change(input, { target: { value: '26' } });
+    fireEvent.click(await screen.findByText('BG65'));
+
+    // The failed PUT must surface an error and keep the sheet open — not
+    // close on the POST alone and lose the tension silently.
+    await screen.findByRole('alert');
+    expect(onClose).not.toHaveBeenCalled();
+
+    // The item is already saved (POST succeeded, applied via the real
+    // useGear state) and visible in the owned list as the retry anchor — no
+    // new UI needed for "try the tension again".
+    expect(screen.getAllByText('Yonex BG65').length).toBeGreaterThan(0);
+  });
+
+  it('closes normally when the tension PUT succeeds', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = (init?.method ?? 'GET').toUpperCase();
+      if (url.includes('/api/equipment/catalog')) {
+        return new Response(JSON.stringify({ items: STRING_CATALOG }), { status: 200 });
+      }
+      if (url.includes('/api/stats/level')) {
+        return new Response(JSON.stringify({ level: { level: 3 } }), { status: 200 });
+      }
+      if (url.includes('/api/equipment/gear')) {
+        if (method === 'GET') return new Response(JSON.stringify({ gear: null }), { status: 200 });
+        if (method === 'POST') {
+          const added = { id: 's1', catalogId: 'string-yonex-bg65', category: 'string', label: 'Yonex BG65' };
+          return new Response(JSON.stringify({ gear: { id: 'gear-1', memberId: 'm1', items: [added] } }), { status: 200 });
+        }
+        if (method === 'PUT') {
+          const withTension = { id: 's1', catalogId: 'string-yonex-bg65', category: 'string', label: 'Yonex BG65', tensionLbs: 24 };
+          return new Response(JSON.stringify({ gear: { id: 'gear-1', memberId: 'm1', items: [withTension] } }), { status: 200 });
+        }
+      }
+      return new Response('{}', { status: 404 });
+    }) as unknown as typeof fetch);
+
+    const { onClose } = renderHarness();
+    const input = await screen.findByLabelText('Tension you strung at');
+    // A distinct value from the "24" prefill — RTL's fireEvent.change on an
+    // unchanged value can fail to register with React's controlled input.
+    fireEvent.change(input, { target: { value: '26' } });
+    fireEvent.click(await screen.findByText('BG65'));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 });
