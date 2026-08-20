@@ -73,7 +73,15 @@ const META: Record<EquipmentCategory, CategoryMeta> = {
     labelKey: 'catRacket', icon: 'sports_tennis', color: 'var(--accent)',
     soonKey: 'railRacketSoon', badgeKey: 'railNoPickYet',
   },
-  string: { labelKey: 'catString', icon: 'science', color: 'var(--sev-low-text)', soonKey: 'railStringsSoon' },
+  // String parks like racket, not like shoe: it HAS an engine now, so a parked
+  // card means "no check-in yet" or an empty catalog — never "the feature is
+  // coming". Without the badgeKey override this defaults to `railComingSoon`
+  // and disowns something that ships, which is exactly what 6f7ea48 fixed for
+  // racket.
+  string: {
+    labelKey: 'catString', icon: 'science', color: 'var(--sev-low-text)',
+    soonKey: 'railStringsSoon', badgeKey: 'railNoPickYet',
+  },
   shoe: { labelKey: 'catShoe', icon: 'fitness_center', color: 'var(--accent-amber)', soonKey: 'railShoesSoon' },
   shuttle: { labelKey: 'catShuttle', icon: 'inventory_2', color: 'var(--text-primary)', soonKey: 'railShuttlesSoon' },
   bag: { labelKey: 'catShuttle', icon: 'inventory_2', color: 'var(--text-primary)' },
