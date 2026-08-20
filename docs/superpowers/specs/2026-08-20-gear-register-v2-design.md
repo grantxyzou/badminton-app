@@ -268,6 +268,21 @@ None blocking. Two noted for the follow-up:
 - Whether the string recommender should reuse `racketRecommend`'s weighted-scorer
   shape or follow `pair_racket_string.py`'s pairing model, which is a different
   algorithm (it pairs a string *to a racket*, not to a player).
-- Whether `Your kit` should show the string's tension inline (`BG65 · 24 lb`, as
-  drawn) from `StringTensionCard`'s advice or from a stored value. The artboard
-  shows a number; the data model has no per-item tension field today.
+- ~~Whether `Your kit` should show the string's tension inline from advice or from
+  a stored value. The data model has no per-item tension field.~~ **Corrected
+  2026-08-20:** the field exists. `GearItem.tensionLbs` (`lib/types.ts:295`, "tension
+  in lbs at last restring") is already accepted by the gear PUT at
+  `app/api/equipment/gear/route.ts:349`. It has **no writer in the UI and no
+  reader** — so the storage is there and nothing fills it.
+
+  Resolved: `Your kit` renders `· NN lb` only when `tensionLbs` is present, and
+  the string picker gains a small tension capture prefilled from
+  `recommendTension` (`lib/tension.ts`). No schema or API work — without a writer
+  the artboard's `BG65 · 24 lb` row is simply unreachable. This is a deliberate
+  addition beyond the original scope, justified by it being the drawn state and
+  costing one field on an existing sheet.
+
+  **Do not conflate the two numbers.** `StringTensionCard` shows *advice* (what we
+  suggest you string at, derived from level and format); `tensionLbs` is *fact*
+  (what you actually strung at). They will often disagree, and that disagreement
+  is meaningful — never backfill the fact from the advice.
