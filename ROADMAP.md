@@ -111,7 +111,7 @@ As of **v1.7, stable and `bpm-next` are at full flag parity** — every feature 
 
 - ✅ **Full branch sweep 2026-06-18:** retired `feat/value-hub-slice-0` (worktree + local + remote — fully superseded by the v1.7 PRs; PR #118 closed unmerged) and pruned every merged branch: `chore/ci-node24-actions`, `claude/app-review-upcoming-HtKgE` (#162), `feat/in-app-problem-report` (#151, squash-merged; remote already gone).
 - **2026-08-16:** local is `main` + `claude/project-status-85q1oq` (the converge work). Stale remotes still carrying open PRs: `claude/app-overview-s6xb2h` (#241), `chore/ci-tsc-typecheck-gate` (#215), `fix/tsc-test-typing` (#208 — delete when #208 is closed), plus three dependabot branches.
-- Run `git fetch --prune` + audit `git branch -vv` for `[gone]` markers periodically. `git branch -D` is `bpm confirm`-gated.
+- Run `git fetch --prune` + audit `git branch -vv` for `[gone]` markers periodically. `git branch -D` is no longer gated (the `bpm confirm` rule was retired 2026-08-21).
 
 ## 7. Doc map
 
