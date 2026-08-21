@@ -82,7 +82,7 @@ Value-Hub Slice-0 build kickoff.
 | Need | Command |
 |---|---|
 | See repo topology | `git log --graph --oneline --decorate --all -20` |
-| Roll back stable v1.4 | `gh workflow run deploy-stable.yml -f tag=bpm-stable-v1.3.1` (`bpm confirm`) |
+| Roll back stable v1.4 | `gh workflow run deploy-stable.yml -f tag=bpm-stable-v1.3.1` |
 | Promote to stable | tag the *specific* commit → `gh workflow run deploy-stable.yml -f tag=...` (never blind-tag `main`) |
 | Local dev | `npm run dev` → localhost:3000/bpm |
 | Tests | `npm test -- --run` |
