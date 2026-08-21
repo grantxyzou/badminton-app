@@ -1620,11 +1620,6 @@ textarea {
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
 @keyframes slideInRight {
   from { opacity: 0; transform: translateX(40px); }
   to { opacity: 1; transform: translateX(0); }
@@ -1653,9 +1648,10 @@ textarea {
   animation: fadeIn var(--duration-normal) var(--ease-glass) backwards;
 }
 
-.animate-slideUp {
-  animation: slideUp var(--duration-slow) var(--ease-spring) backwards;
-}
+/* `.animate-slideUp` was removed 2026-08-21 along with its `slideUp` keyframe. It
+   was the only broad surface applying the `--ease-spring` overshoot, and it had
+   zero consumers repo-wide (siblings above/below have 14 and 12). Overshoot easing
+   is now rare-surface-only — see PRODUCT.md → Design Principles #2. */
 
 .animate-slideInRight {
   animation: slideInRight var(--duration-normal) var(--ease-glass) backwards;
@@ -1706,17 +1702,28 @@ textarea {
 
 
 /* ── Reduced motion ──
-   The blanket rule below collapses every transition/animation to 0.01ms,
-   but GPU-accelerated elements (aurora blobs, ring-spinner, shimmer) still
-   pay for their `will-change` compositor layers. On mobile this keeps
-   the GPU warm even when the animation is effectively frozen. Pause the
-   animations outright and drop the compositor hints so the GPU can
-   release the layers. See perf audit: rank 1 + 5 heating hot paths. */
+   Movement dies; comprehension survives. Reduced motion means fewer and gentler
+   animations, not zero — a state change must still read AS a change, so opacity
+   and color transitions are preserved at a short duration while transform and
+   position transitions are dropped entirely (they are simply absent from the
+   `transition-property` allowlist below, so they snap).
+
+   DO NOT "simplify" this back to a blanket `transition-duration: 0.01ms` on every
+   property. That kills crossfades too, which is a legibility regression, and it is
+   NOT what fixed the thermal problem. The thermal fix is the SECOND block: the GPU
+   heat came from `will-change` compositor layers retained by the *infinitely*
+   animating elements (aurora blobs, ring-spinner, shimmer), which stayed warm even
+   when their animation was frozen. Those are hard-stopped with their compositor
+   hints released. One-shot 150ms opacity fades retain no such layers, so preserving
+   them costs nothing. See perf audit: rank 1 + 5 heating hot paths.
+
+   Contract pinned by __tests__/design-canary.test.ts. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-property: opacity, color, background-color, border-color, fill, stroke !important;
+    transition-duration: 150ms !important;
   }
   .aurora-blob-1,
   .aurora-blob-2,
@@ -1727,6 +1734,18 @@ textarea {
   .splash {
     animation: none !important;
     will-change: auto !important;
+  }
+  /* The sheet must snap, not fade: its position animation IS the transition, and a
+     fading-but-not-moving sheet reads as broken. But it must NOT be given
+     `transition-property: none` — BottomSheet.tsx drives 'closing' → 'closed' off a
+     `transitionend` listener filtered to `propertyName === 'transform'`. With no
+     transition there is no event, and the close falls through to its 220ms safety
+     timeout: the sheet visibly lingers, and only for the users who asked for less
+     motion. Keep transform transitioning at an imperceptible duration so the event
+     still fires. */
+  .bottom-sheet {
+    transition-property: transform, opacity !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

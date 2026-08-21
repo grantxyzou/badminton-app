@@ -61,4 +61,36 @@ describe('design-system canary: globals.css token/class contract', () => {
     expect(css).toContain('--radius-xl: 16px');
     expect(css).toContain('--radius-pill: 100px');
   });
+
+  /* Reduced motion means fewer and gentler, not zero (PRODUCT.md → Accessibility).
+     The wildcard must keep opacity in its transition-property allowlist so state
+     changes stay legible as changes; collapsing it back to a blanket
+     `transition-duration: 0.01ms` on all properties is the regression this pins. */
+  it('preserves opacity crossfades under prefers-reduced-motion', () => {
+    const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
+    const wildcard = block.slice(block.indexOf('*, *::before, *::after'));
+    expect(wildcard).toContain('transition-property: opacity');
+    // Movement must NOT be in the allowlist — transform transitions have to snap.
+    expect(wildcard.slice(0, wildcard.indexOf('}'))).not.toContain('transform');
+  });
+
+  /* The thermal fix (perf audit rank 1 + 5): the infinitely-animating, GPU-backed
+     elements are hard-stopped and their compositor hints released. Preserving
+     crossfades above must never come at the cost of this. */
+  it('still hard-stops the GPU-backed infinite animations under reduced motion', () => {
+    const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
+    for (const sel of ['.aurora-blob-1', '.ring-spinner', '.shimmer-line', '.splash']) {
+      expect(block).toContain(sel);
+    }
+    expect(block).toContain('will-change: auto !important');
+  });
+
+  /* Overshoot easing is rare-surface-only (PRODUCT.md → Design Principles #2).
+     `.animate-slideUp` was the one broad surface applying it and is deliberately
+     gone; re-adding a general-purpose bounce utility should fail here. */
+  it('ships no general-purpose overshoot-easing utility class', () => {
+    // Match the *definition* (`selector {`), not any mention: the removal is
+    // documented by name in a comment at the old site, which should stay.
+    expect(css).not.toMatch(/\.animate-slideUp\s*\{/);
+  });
 });
