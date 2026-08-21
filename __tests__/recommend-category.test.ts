@@ -103,7 +103,7 @@ describe('GET /api/recommend?category=', () => {
     expect(body.unavailable).toBe('no_engine');
   });
 
-  it('includes drill-grounded reasons when the member has drill picks', async () => {
+  it('returns a reason list', async () => {
     // Admin path avoids minting a member cookie in this test.
     const res = await GET(
       makeGetRequest('http://localhost:3000/api/recommend?name=Lin&category=racket', true),
@@ -113,14 +113,32 @@ describe('GET /api/recommend?category=', () => {
     expect(Array.isArray(body.reasons ?? [])).toBe(true);
   });
 
+  /**
+   * Gear reasons are grounded in how the member PLAYS, never in what they are
+   * working on. The drill line ("You are working on drops — slow-drop target
+   * zones is in this week's focus") used to be the whole visible why-this list:
+   * it capped the engine at one slot, and the sheet spends slot zero on its
+   * headline, so everything a member could actually read under WHY THIS was the
+   * drill. Nothing computes a relationship between a drill and a frame, so the
+   * line asserted a connection that was never scored.
+   */
+  it('never grounds a gear reason in the member\'s drills', async () => {
+    seedRatedLin();
+    const res = await GET(
+      makeGetRequest('http://localhost:3000/api/recommend?name=Lin&category=racket', true),
+    );
+    const body = await res.json();
+    expect(body.reasons.length).toBeGreaterThan(0);
+    expect(body.reasons.join(' ')).not.toMatch(/working on|this week's focus/i);
+  });
+
   // The real scoring engine (lib/racketRecommend.ts) routinely fills all 3 of
   // buildPickReasons' default `limit` slots with equipment-derived reasons on
-  // its own (flex + balance + category, etc.), so an end-to-end request with a
-  // real profile can't observe the drill/club lines — they're priority-ordered
-  // LAST and get sliced off. To actually exercise the wiring (not just the
-  // engine crowding it out), stub `recommendRackets` to return a single
-  // equipment reason, leaving room, and confirm both new sources land.
-  it('surfaces drill and club grounding when the engine reasons leave room', async () => {
+  // its own (balance + category + format, etc.), so an end-to-end request with
+  // a real profile can't observe the club line — it is ordered last and gets
+  // sliced off. To exercise the wiring rather than the engine crowding it out,
+  // stub `recommendRackets` to return a single equipment reason.
+  it('surfaces club grounding when the engine reasons leave room', async () => {
     seedRatedLin();
     const item = {
       id: 'mock-racket', category: 'racket' as const, brand: 'Acme', model: 'Zeta',
@@ -146,9 +164,6 @@ describe('GET /api/recommend?category=', () => {
     const body = await res.json();
     expect(body.item.id).toBe('mock-racket');
     expect(body.reasons).toContain('A solid engine reason');
-    // Lin's weakest rated skills (drives, net_play) both have drills in the
-    // library, so drillPicksFor should surface the cross-domain line.
-    expect(body.reasons.some((r: string) => r.startsWith('You are working on'))).toBe(true);
     expect(
       body.reasons.some((r: string) => r.includes('people in the club already play it')),
     ).toBe(true);
@@ -156,11 +171,9 @@ describe('GET /api/recommend?category=', () => {
     spy.mockRestore();
   });
 
-  // The two catches around the drills/club reads in the route are deliberate
-  // and narrow: a read failure there must degrade *reasons*, never take the
-  // recommendation itself down. Exercise the club-tally catch specifically —
-  // the drills catch is defense-in-depth only, since drillPicksFor's own
-  // internal reads already degrade to [] and never throw (see lib/drills.ts).
+  // The catch around the club read in the route is deliberate and narrow: a
+  // read failure there must degrade *reasons*, never take the recommendation
+  // itself down.
   it('still returns the pick when the club-tally read fails', async () => {
     seedRatedLin();
     const realGetContainer = cosmos.getContainer;

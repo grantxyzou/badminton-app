@@ -32,7 +32,15 @@ state of its own except the one thing it exists to own (below).
     own headline reason) and the catalog spec line second — the spec line is
     a display line here, never a "why this" reason (see `lib/pickReasons.ts`).
   - **`GearSheet`** is "choose your own" — the full catalog for a category,
-    search-first, one tap commits and closes. Full height (`92dvh` — `vh`
+    search-first, one tap commits and closes. It opens on an **All** brand tab,
+    not on the first brand: defaulting to a brand hid 46 of the 71 rackets
+    behind tabs nobody suspected, and reached us as "the racket database isn't
+    showing some rackets". Search runs through **`lib/gearSearch.ts`** (pure,
+    unit-tested), which is token-based and order-independent, with a typo pass
+    that only fires when the strict pass found nothing — a member typed
+    "helbatec" for Halbertec and got an empty list indistinguishable from an
+    absent row. Digits never get typo tolerance: one edit turns 5000 into 9000
+    and N65 into N68. Full height (`92dvh` — `vh`
     ignores collapsible mobile chrome and clips the sheet). Rows show brand
     ABOVE model: a query searches all brands at once, and brand used to live
     only in the `aria-label`, so exactly the cross-brand results where brand
@@ -71,6 +79,18 @@ state of its own except the one thing it exists to own (below).
   aggregated "what the club plays" tally (`lib/clubGear.ts`, cohort-guarded
   at `CLUB_GEAR_MIN_COHORT` before any label can identify fewer than that
   many people).
+- **The catalog's vocabulary is pinned by a test.** Every racket row must pass
+  `isScorable` and carry `balance`/`flex`/`playStyle`/`tier` values from the
+  controlled vocabulary (`__tests__/equipment-catalog-data.test.ts`). The
+  failure mode is invisible — `recommendRackets` silently skips a row it cannot
+  score, and a skipped row looks exactly like one that scored badly. It has cost
+  this catalog twice: 50 of 71 rows in production, and 11 rows in the seed file
+  itself (lowercase `"head-heavy"`, a sentence where `playStyle` takes a word)
+  until they were normalized on 2026-08-21. `racketRecommend`'s comparisons are
+  case-tolerant as a backstop, but the data is the fix. Tension ceilings are the
+  one field deliberately left absent on those 11 frames — `scoreTension` has an
+  honest branch for it, and a range invented from series convention would be a
+  fabricated spec driving a real stringing decision.
 - **Category scope is data-driven, not flag-driven.** Rackets and strings are
   selectable because the catalog has rows for them; shoes and shuttles are
   parked because it doesn't — not because the UI is missing. Both the rail
@@ -102,13 +122,37 @@ racket and never excluded what they owned).
   fourteen 3s and emit a confident, meaningless pick. The rail's `racket` card
   parks with "do the check-in" copy instead (`needsCheckIn`).
 - **`lib/pickReasons.ts`'s `buildPickReasons`** grounds a pick's "why this"
-  list in up to three sources, priority order: the engine's own
-  equipment-derived reasons, the member's current drill picks
-  (`lib/drills.ts`), and the club tally (`lib/clubGear.ts`, re-guarded here
-  even though `tallyClubGear` already filtered — a reason is a NEW disclosure
-  surface for that data). When either cross-domain source has something to
-  say, the engine is capped at one slot so the list doesn't fill with
-  restatements of the spec sheet the member could read for themselves.
+  list in two sources, priority order: the engine's own equipment-derived
+  reasons, then the club tally (`lib/clubGear.ts`, re-guarded here even though
+  `tallyClubGear` already filtered — a reason is a NEW disclosure surface for
+  that data). The engine leads and fills; the club line takes at most one slot,
+  always the last.
+- **Drills are NOT a reason source** (2026-08-21). They were, under a rule that
+  capped the engine at one slot whenever a drill line existed — and since
+  `GearPickSheet` renders `reasons[0]` as its headline and only
+  `reasons.slice(1)` under WHY THIS, that cap made "You are working on drops —
+  slow-drop target zones is in this week's focus" the *entire* visible list. A
+  gear pick answers "does this suit how you play"; a drill answers "what are
+  you trying to fix", and nothing computes a relationship between the two.
+  Don't re-add it. The string branch of `/api/recommend` had already reached
+  this conclusion independently and passed `drills: []`.
+- **Reason ORDER is play-style first.** `lib/racketRecommend.ts`'s
+  `REASON_PRIORITY` presents balance → style → format → flex → tier → weight →
+  budget, which is deliberately NOT the order the scorers run in: execution
+  order put `flex` first, making "Medium-Stiff shaft matches your technique
+  level" the near-universal headline. It is a separate list rather than a
+  reordering of `scorers` because `total` is a float sum and reassociating it
+  can flip a tie. Scores are untouched by it.
+- **String reasons speak in play, not in spec math.** `lib/stringPair.ts`'s
+  reason copy branches on format and attacking intent ("Quick off the strings
+  for flat doubles exchanges…") instead of reporting indices. The numbers live
+  in `GearPickSheet`'s spec `<dl>`, and the system-power figure moved onto
+  `StringPairing.systemPower` as DATA — it is the observable proving tension
+  reaches `scoreSystemPower`, a branch that was dead until 2026-08-21. The
+  tension-WINDOW line was dropped from the reason list entirely (the sheet
+  prints the same range a couple of inches above it); the ceiling-unpublished
+  CAVEAT stays and keeps its front slot. Warnings are safety copy — left
+  factual and numeric throughout.
 - **The flag-on route requires auth; flag-off stays public.** `GET
   /api/recommend` was unauthenticated because it returned only a coarse
   stage-derived pick. Engine reasons quote individual ratings ("smash 4/5"),

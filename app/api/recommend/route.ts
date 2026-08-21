@@ -9,7 +9,6 @@ import { buildProfile } from '@/lib/racketProfile';
 import { recommendRackets } from '@/lib/racketRecommend';
 import { pairString, pairTension } from '@/lib/stringPair';
 import { getCanonicalLevel, type LevelSubject } from '@/lib/levelStore';
-import { drillPicksFor, type DrillPick } from '@/lib/drills';
 import { buildPickReasons } from '@/lib/pickReasons';
 import { tallyClubGear, type ClubGearEntry } from '@/lib/clubGear';
 import type { CatalogItem, EquipmentCategory, PlayerGear } from '@/lib/types';
@@ -225,18 +224,11 @@ export async function GET(req: NextRequest) {
         // a catalog gap: this frame genuinely has no compatible string here.
         if (!pairing) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
 
+        // This branch's "deliberately no drill grounding" note is now the
+        // general rule for every category — see lib/pickReasons.ts.
         const reasons = buildPickReasons({
           item: pairing.item,
           engineReasons: pairing.reasons,
-          // Deliberately no drill grounding. A drill line next to a racket
-          // asserts something the racket engine scored; nothing here computes
-          // a relationship between a drill and a string, so the line would be
-          // an invented connection. The pairing's own reasons are already
-          // player-grounded through the skill gate and the durability demand
-          // that attacking intent feeds. The club tally, by contrast, IS real
-          // evidence about a string and is the stronger of the two here —
-          // strings are what the club actually logs.
-          drills: [],
           clubEntries: await clubEntriesOrEmpty(),
         });
 
@@ -259,21 +251,11 @@ export async function GET(req: NextRequest) {
       // gets the same unavailable code as a literally-empty query.
       if (!top) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
 
-      // Drill picks for cross-domain grounding. A failure here must NOT take the
-      // recommendation down — reasons degrade to equipment-only.
-      let drills: DrillPick[] = [];
-      try {
-        drills = await drillPicksFor(subject);
-      } catch {
-        drills = [];
-      }
-
       const clubEntries: ClubGearEntry[] = await clubEntriesOrEmpty();
 
       const reasons = buildPickReasons({
         item: top.item,
         engineReasons: top.reasons,
-        drills,
         clubEntries,
       });
 

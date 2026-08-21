@@ -105,16 +105,26 @@ describe('GearSheet (catalog picker)', () => {
     expect(screen.getByPlaceholderText('Search rackets')).toBeTruthy();
   });
 
-  it('shows only the active brand’s models, with the spec line as the recognition cue', async () => {
+  /**
+   * Opens on All, not on whichever brand happens to be first in the catalog.
+   * Defaulting to a brand put 46 of the 71 rackets behind a tab the member had
+   * no reason to suspect was hiding anything — reported to us as "the racket
+   * database isn't showing some rackets".
+   */
+  it('opens showing every brand, and a brand tab narrows to it', async () => {
     mockCatalog();
     renderSheet();
     expect(await screen.findByText('Astrox 88D Pro')).toBeTruthy();
     expect(screen.getByText('4U · head-heavy · stiff')).toBeTruthy();
-    expect(screen.queryByText('DriveX 9X')).toBeNull();
+    expect(screen.getByText('DriveX 9X')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'All' }).getAttribute('aria-selected')).toBe('true');
 
     fireEvent.click(screen.getByRole('tab', { name: 'Victor' }));
     expect(screen.getByText('DriveX 9X')).toBeTruthy();
     expect(screen.queryByText('Astrox 88D Pro')).toBeNull();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'All' }));
+    expect(screen.getByText('Astrox 88D Pro')).toBeTruthy();
   });
 
   // The whole point of the redesign: picking is one tap, not tap-then-Save.
@@ -155,7 +165,34 @@ describe('GearSheet (catalog picker)', () => {
     });
     expect(await screen.findByText('DriveX 9X')).toBeTruthy();
     expect(screen.queryByRole('tab', { name: 'Yonex' })).toBeNull();
+    // Falls back to All rather than to some other brand: All is a superset, so
+    // it cannot itself be the tab that just emptied.
+    expect(screen.getByRole('tab', { name: 'All' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('moves off a brand tab that empties while you are standing on it', async () => {
+    mockCatalog();
+    const sheet = (ownedCatalogIds: string[]) => (
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <GearSheet
+          open
+          onClose={vi.fn()}
+          ownedCatalogIds={ownedCatalogIds}
+          onPick={vi.fn(async () => ({ ok: true as const }))}
+          busy={false}
+          online
+        />
+      </NextIntlClientProvider>
+    );
+    const { rerender } = render(sheet([]));
+    await screen.findByText('DriveX 9X');
+    fireEvent.click(screen.getByRole('tab', { name: 'Victor' }));
     expect(screen.getByRole('tab', { name: 'Victor' }).getAttribute('aria-selected')).toBe('true');
+
+    rerender(sheet(['racket-victor-drivex-9x']));
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: 'All' }).getAttribute('aria-selected')).toBe('true'),
+    );
   });
 
   it('does not fire onPick while busy', async () => {
@@ -265,9 +302,21 @@ describe('GearSheet search', () => {
     await waitFor(() => screen.getByText('Astrox 88D Pro'));
     const input = screen.getByPlaceholderText('Search rackets');
     fireEvent.change(input, { target: { value: 'drivex' } });
+    expect(screen.queryByText('Astrox 88D Pro')).toBeNull();
+
     fireEvent.change(input, { target: { value: '' } });
+    // Back to the tab that was selected before the query — All, here.
     expect(screen.getByText('Astrox 88D Pro')).toBeTruthy();
-    expect(screen.queryByText('DriveX 9X')).toBeNull();
+    expect(screen.getByText('DriveX 9X')).toBeTruthy();
+  });
+
+  /** The reported bug, end to end through the sheet. */
+  it('finds a racket through a misspelling', async () => {
+    mockCatalog();
+    renderSheet();
+    await waitFor(() => screen.getByText('Astrox 88D Pro'));
+    fireEvent.change(screen.getByPlaceholderText('Search rackets'), { target: { value: 'drivx' } });
+    expect(screen.getByText('DriveX 9X')).toBeTruthy();
   });
 });
 

@@ -13,6 +13,33 @@ const FLEX_DEMAND: Record<string, number> = {
   Flexible: 1, Medium: 2, 'Medium-Stiff': 3, Stiff: 4, 'Extra Stiff': 5,
 };
 
+/**
+ * Vocabulary lookups are a case- and separator-tolerant BACKSTOP ONLY. The
+ * catalog is the fix: 11 pre-v2 rows carried `"head-heavy"` / `"extra-stiff"`
+ * where the vocabulary is `Head-heavy` / `Extra Stiff`, so every comparison
+ * below silently missed and those frames scored as though they were something
+ * else (see the 2026-08-21 normalization of scripts/data/equipment-catalog.json).
+ * Normalizing here as well means the next hand-authored row degrades to a
+ * SCORE rather than to a wrong one — but it does not make a malformed row
+ * correct, and `isScorable` still rejects a row that omits a field outright.
+ */
+function canon(v: unknown): string {
+  return String(v ?? '').trim().toLowerCase().replace(/[\s_]+/g, '-');
+}
+
+function flexDemand(raw: unknown): number | undefined {
+  const key = canon(raw);
+  for (const k of Object.keys(FLEX_DEMAND)) {
+    if (canon(k) === key) return FLEX_DEMAND[k];
+  }
+  return undefined;
+}
+
+/** True when `raw` names `expected` in the controlled vocabulary. */
+function isVocab(raw: unknown, expected: string): boolean {
+  return canon(raw) === canon(expected);
+}
+
 /** Flex is weighted highest because the wrong flex causes injury and
  *  frustration, not merely a mediocre match. Weights are the Python's. */
 const WEIGHTS = {
@@ -21,8 +48,14 @@ const WEIGHTS = {
 };
 
 /** Fields the scorers read. A row missing any of them cannot be scored
- *  honestly, so it is skipped rather than defaulted (spec D4). */
-function isScorable(item: CatalogItem): boolean {
+ *  honestly, so it is skipped rather than defaulted (spec D4).
+ *
+ *  Exported so the catalog data test can assert that no seeded racket is
+ *  silently unscorable — the failure mode here is invisible at runtime (a
+ *  skipped row looks exactly like a row that scored badly), and it has now
+ *  cost the catalog twice: 50 of 71 rows in production once, and 11 rows in
+ *  the seed file itself until 2026-08-21. */
+export function isScorable(item: CatalogItem): boolean {
   const a = item.attributes ?? {};
   return typeof a.balance === 'string' && typeof a.flex === 'string' && typeof a.tier === 'string';
 }
@@ -86,7 +119,7 @@ function maxFlexDemand(p: PlayerProfile): number {
 
 function scoreFlex(item: CatalogItem, p: PlayerProfile): ScoreResult {
   const flex = String(item.attributes!.flex);
-  const demand = FLEX_DEMAND[flex] ?? 3;
+  const demand = flexDemand(flex) ?? 3;
   const ceiling = maxFlexDemand(p);
   const reasons: string[] = [];
   const warnings: string[] = [];
@@ -121,26 +154,26 @@ function scoreBalance(item: CatalogItem, p: PlayerProfile): ScoreResult {
 
   if (bias >= 0.5) {
     // power-oriented player
-    if (bal === 'Head-heavy') {
+    if (isVocab(bal, 'Head-heavy')) {
       reasons.push(`Head-heavy suits your power game (smash ${p.smashes}/5, clears ${p.clears}/5)`);
       return { score: 10.0, reasons, warnings };
     }
-    if (bal === 'Even') return { score: 5.0, reasons, warnings };
+    if (isVocab(bal, 'Even')) return { score: 5.0, reasons, warnings };
     return { score: 1.0, reasons, warnings };
   }
 
   if (bias <= -0.5) {
     // speed-oriented player
-    if (bal === 'Head-light') {
+    if (isVocab(bal, 'Head-light')) {
       reasons.push(`Head-light suits your fast game (drives ${p.drives}/5, net ${p.net_play}/5)`);
       return { score: 10.0, reasons, warnings };
     }
-    if (bal === 'Even') return { score: 5.0, reasons, warnings };
+    if (isVocab(bal, 'Even')) return { score: 5.0, reasons, warnings };
     return { score: 1.0, reasons, warnings };
   }
 
   // balanced player
-  if (bal === 'Even') {
+  if (isVocab(bal, 'Even')) {
     reasons.push('Even balance suits your all-round game');
     return { score: 10.0, reasons, warnings };
   }
@@ -192,18 +225,20 @@ function scoreCategory(item: CatalogItem, p: PlayerProfile): ScoreResult {
 
   if (spread < 0.6) {
     // No clear strength — all-round is the safe call
-    if (cat === 'All-round') {
+    if (isVocab(cat, 'All-round')) {
       reasons.push('All-round frame fits your balanced skill profile');
       return { score: 10.0, reasons, warnings };
     }
     return { score: 6.0, reasons, warnings };
   }
 
-  if (cat === best) {
-    reasons.push(`${cat} frame amplifies your strongest area (${scores[best].toFixed(1)}/5)`);
+  if (isVocab(cat, best)) {
+    // `best` rather than `cat`: the vocabulary spelling reads as a category
+    // name, while the row's own text may be any casing that matched.
+    reasons.push(`${best} frame amplifies your strongest area (${scores[best].toFixed(1)}/5)`);
     return { score: 10.0, reasons, warnings };
   }
-  if (cat === 'All-round') return { score: 6.0, reasons, warnings };
+  if (isVocab(cat, 'All-round')) return { score: 6.0, reasons, warnings };
   return { score: 3.0, reasons, warnings };
 }
 
@@ -214,24 +249,24 @@ function scoreFormat(item: CatalogItem, p: PlayerProfile): ScoreResult {
   const warnings: string[] = [];
 
   if (p.format === 'doubles') {
-    if (sub === 'doubles') {
+    if (isVocab(sub, 'doubles')) {
       reasons.push('Purpose-built for doubles');
       return { score: 10.0, reasons, warnings };
     }
-    if (bal === 'Head-light') {
+    if (isVocab(bal, 'Head-light')) {
       reasons.push("Head-light frames excel in doubles' fast exchanges");
       return { score: 8.0, reasons, warnings };
     }
-    if (bal === 'Even') return { score: 5.0, reasons, warnings };
+    if (isVocab(bal, 'Even')) return { score: 5.0, reasons, warnings };
     return { score: 2.0, reasons, warnings };
   }
 
   if (p.format === 'singles') {
-    if (bal === 'Head-heavy') {
+    if (isVocab(bal, 'Head-heavy')) {
       reasons.push("Head-heavy suits singles' rear-court rallies");
       return { score: 9.0, reasons, warnings };
     }
-    if (bal === 'Even') {
+    if (isVocab(bal, 'Even')) {
       reasons.push("Even balance handles singles' varied court positions");
       return { score: 7.0, reasons, warnings };
     }
@@ -239,7 +274,7 @@ function scoreFormat(item: CatalogItem, p: PlayerProfile): ScoreResult {
   }
 
   // "both" — reward versatility
-  if (bal === 'Even' || sub === 'all-round' || item.attributes!.playStyle === 'All-round') {
+  if (isVocab(bal, 'Even') || isVocab(sub, 'all-round') || isVocab(item.attributes!.playStyle, 'All-round')) {
     reasons.push('Versatile enough for both singles and doubles');
     return { score: 9.0, reasons, warnings };
   }
@@ -298,9 +333,28 @@ function scoreBudget(item: CatalogItem, p: PlayerProfile): ScoreResult {
 // Aggregation
 // ---------------------------------------------------------------------------
 
+/**
+ * The order reasons are PRESENTED in, which is not the order they are computed
+ * in. `GearPickSheet` renders `reasons[0]` as the headline and the rest under
+ * WHY THIS, so whichever scorer happens to run first writes the sentence the
+ * member actually reads. Execution order put `flex` there, making "Medium-Stiff
+ * shaft matches your technique level" the near-universal headline — a statement
+ * about their technique, when the question the card answers is "does this suit
+ * how I play". Balance, style and format are the three scorers that speak to
+ * play style, so they lead; technique, tier, weight and budget follow.
+ *
+ * Deliberately a separate list rather than a reordering of `scorers` below:
+ * `total` is a float sum, and reassociating it can move a rounded score by a
+ * ULP and flip a tie between two frames. Execution order stays exactly as it
+ * was; only what the member reads first changes.
+ */
+const REASON_PRIORITY: Array<keyof typeof WEIGHTS> = [
+  'balance', 'category', 'format', 'flex', 'skillTier', 'weight', 'budget',
+];
+
 function scoreItem(item: CatalogItem, p: PlayerProfile): Recommendation {
   let total = 0;
-  const allReasons: string[] = [];
+  const reasonsByScorer = new Map<keyof typeof WEIGHTS, string[]>();
   const allWarnings: string[] = [];
 
   const scorers: Array<[keyof typeof WEIGHTS, (i: CatalogItem, p: PlayerProfile) => ScoreResult]> = [
@@ -316,9 +370,14 @@ function scoreItem(item: CatalogItem, p: PlayerProfile): Recommendation {
   for (const [name, fn] of scorers) {
     const { score, reasons, warnings } = fn(item, p);
     total += score * WEIGHTS[name];
-    allReasons.push(...reasons);
+    reasonsByScorer.set(name, reasons);
+    // Warnings keep computation order: they are safety copy rendered as their
+    // own uncollapsed block, not a ranked list, and flex/weight — the two that
+    // can warn about injury — already come first there.
     allWarnings.push(...warnings);
   }
+
+  const allReasons = REASON_PRIORITY.flatMap((name) => reasonsByScorer.get(name) ?? []);
 
   const maxPossible = Object.values(WEIGHTS).reduce((sum, w) => sum + 10.0 * w, 0);
   const normalised = Math.round((Math.max(0, total) / maxPossible) * 100 * 10) / 10;

@@ -201,6 +201,34 @@ describe('GearPickCard — the spec line has to mean something', () => {
   });
 });
 
+describe('GearPickCard — the sub-line makes one honest claim', () => {
+  afterEach(cleanup);
+
+  /**
+   * `owned` means "you own THIS pick", never "you own a racket". The card used
+   * to render "Yours · none on file" on the not-owned branch, so a member
+   * holding a Li-Ning Aeronaut 9000 was told their kit was empty — directly
+   * above "Your kit", which listed it. Both surfaces read the same gear
+   * document through the single useGear owner, so this was never a data
+   * problem: the card simply has no basis for an ownership claim, and now
+   * doesn't make one.
+   */
+  it('does not claim an empty kit just because the pick is not what you own', () => {
+    renderCard({ category: 'racket', owned: false, pick: { item: ITEM, reasons: ['x'] } });
+
+    expect(screen.queryByText(/none on file/i)).toBeNull();
+    expect(screen.getByText(/recommended based on your playing style/i)).toBeTruthy();
+  });
+
+  it('says the pick is saved when the pick IS what you own', () => {
+    renderCard({ category: 'racket', owned: true, pick: { item: ITEM, reasons: ['x'] } });
+
+    expect(screen.getByText(/saved to your kit/i)).toBeTruthy();
+    expect(screen.queryByText(/none on file/i)).toBeNull();
+    expect(screen.getByText(/in your kit/i)).toBeTruthy();
+  });
+});
+
 describe('GearPickCard — two objects, one card', () => {
   afterEach(cleanup);
 
