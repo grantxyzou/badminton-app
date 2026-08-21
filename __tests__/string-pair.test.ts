@@ -156,3 +156,121 @@ describe('pairTension — placement inside the overlap window', () => {
     expect(pairTension(noCeiling, s, profile())).toBeNull();
   });
 });
+
+/* ── Regressions from the 2026-08-21 code review ──────────────────────────
+   Six divergences from docs/superpowers/reference/pair_racket_string.py that
+   the original port introduced and the spec's V1-V6 list did not document. */
+
+describe('pairString — tension reaches the power scorer (review #1)', () => {
+  // The scorer's whole tension branch was dead: it always ran at the 24.0 lb
+  // default. The observable consequence is that two players who would string
+  // the SAME string on the SAME frame at different tensions used to get an
+  // identical system-power figure.
+  const systemPowerOf = (reasons: string[]) => {
+    const line = reasons.find((r) => r.startsWith('System power'));
+    return line ? Number(line.match(/System power ([\d.]+)/)?.[1]) : null;
+  };
+
+  const frame = racket('wide', { tensionMinLbs: 20, tensionMaxLbs: 28 });
+  const s = str('one', { tensionMinLbs: 20, tensionMaxLbs: 26 });
+
+  it('places a high-consistency and a low-consistency player at different tensions', () => {
+    const high = pairTension(frame, s, profile({ grip: 5, footwork: 5, court_coverage: 5 }));
+    const low = pairTension(frame, s, profile({ grip: 1, footwork: 1, court_coverage: 1 }));
+    expect(high).not.toBe(low);
+  });
+
+  it('reports a different system power for those two players', () => {
+    const high = pairString(frame, [s], profile({ grip: 5, footwork: 5, court_coverage: 5 }));
+    const low = pairString(frame, [s], profile({ grip: 1, footwork: 1, court_coverage: 1 }));
+    const hp = systemPowerOf(high!.reasons);
+    const lp = systemPowerOf(low!.reasons);
+    // Both must actually be reported, else this asserts nothing.
+    expect(typeof hp).toBe('number');
+    expect(typeof lp).toBe('number');
+    expect(hp).not.toBe(lp);
+  });
+
+  it('still pairs a frame with no published ceiling, where tension is unknowable', () => {
+    const noCeiling = racket('no-ceiling', { tensionMinLbs: 20 });
+    delete noCeiling.attributes!.tensionMaxLbs;
+    expect(pairTension(noCeiling, s, profile())).toBeNull();
+    expect(pairString(noCeiling, [s], profile())).not.toBeNull();
+  });
+});
+
+describe('pairString — the headline reason is the specific one (review #2)', () => {
+  it('does not lead with the tension-window line', () => {
+    const frame = racket('wide', { tensionMinLbs: 20, tensionMaxLbs: 28 });
+    const s = str('one', { tensionMinLbs: 20, tensionMaxLbs: 26 });
+    const pairing = pairString(frame, [s], profile())!;
+
+    // reasons[0] is what the card renders as "why this one", and pickReasons
+    // caps the engine at one slot when a drill or club line exists.
+    expect(pairing.reasons.length).toBeGreaterThan(1);
+    expect(pairing.reasons[0]).not.toMatch(/tension window/i);
+    expect(pairing.reasons.some((r) => /tension window/i.test(r))).toBe(true);
+    expect(pairing.reasons[pairing.reasons.length - 1]).toMatch(/tension window/i);
+  });
+
+  /* Demoting the tension reason unconditionally deleted a different one.
+     Callers truncate the reason list, so last position means never rendered —
+     and "ceiling unpublished" is the only signal that this frame has no
+     tension advice at all. Descriptions get demoted; caveats do not. */
+  it('keeps the unpublished-ceiling caveat where it will still be rendered', () => {
+    const noCeiling = racket('no-ceiling', { tensionMinLbs: 20 });
+    delete noCeiling.attributes!.tensionMaxLbs;
+    const pairing = pairString(noCeiling, [str('one')], profile())!;
+
+    expect(pairing.reasons[0]).toMatch(/ceiling unpublished/i);
+    // Still present after the truncation every caller applies.
+    expect(pairing.reasons.slice(0, 3).join(' ')).toMatch(/ceiling unpublished/i);
+  });
+});
+
+describe('pairString — provenance and unknowns are not fabricated (reviews #4, #5)', () => {
+  it('flags community-estimated ratings as not manufacturer-published', () => {
+    const frame = racket('wide');
+    const s = str('consensus', { ratingSource: 'Consensus estimate' });
+    const pairing = pairString(frame, [s], profile())!;
+    expect(pairing.warnings.some((w) => /community consensus/i.test(w))).toBe(true);
+  });
+
+  it('stays silent about provenance when the brand published the ratings', () => {
+    const frame = racket('wide');
+    const pairing = pairString(frame, [str('published')], profile())!;
+    expect(pairing.warnings.some((w) => /community consensus/i.test(w))).toBe(false);
+  });
+
+  it('never claims a skill rating it does not have', () => {
+    const frame = racket('wide');
+    const unrated = str('unrated');
+    delete unrated.attributes!.skillLevel;
+    // Beginner: the assumed intermediate rank sits one step above them, so the
+    // step-up warning fires and used to interpolate the absent label.
+    const beginner = profile({
+      serves: 1, net_play: 1, clears: 1, drops: 1, drives: 1, smashes: 1, grip: 1,
+      footwork: 1, court_coverage: 1, stamina: 1,
+      game_reading: 1, consistency: 1, rules: 1, mindset: 1,
+    });
+    const pairing = pairString(frame, [unrated], beginner)!;
+    expect(pairing.warnings.join(' ')).not.toMatch(/undefined/);
+    expect(pairing.warnings.some((w) => /no published skill rating/i.test(w))).toBe(true);
+  });
+});
+
+describe('pairString — the same inputs give the same pick (review #6)', () => {
+  it('breaks an exact score tie by model, not by catalog order', () => {
+    const frame = racket('wide');
+    // Identical in every scored attribute; only identity differs.
+    const alpha = { ...str('a'), model: 'Alpha' };
+    const omega = { ...str('o'), model: 'Omega' };
+
+    const forward = pairString(frame, [alpha, omega], profile());
+    const reversed = pairString(frame, [omega, alpha], profile());
+
+    expect(forward!.score).toBe(reversed!.score);
+    expect(forward!.item.model).toBe('Alpha');
+    expect(reversed!.item.model).toBe('Alpha');
+  });
+});
