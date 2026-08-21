@@ -109,11 +109,24 @@ function formatSpec(item: CatalogItem): string | null {
 
   const values = fields
     ? fields
-        .map((f) => item.attributes?.[f])
-        .filter((v) => v !== undefined && v !== null && v !== '')
+        // Keep each value BOUND to its field name. Mapping to bare values and
+        // then filtering reindexes the array, so a later `fields[i]` lookup
+        // read the wrong name: a string row missing `gaugeMm` but carrying
+        // `stringType` collapsed to index 0, matched 'gaugeMm', and rendered
+        // `Number('Durability').toFixed(2)` — "NaNmm" on the card. The seed
+        // has gaugeMm on all 46 rows, but Cosmos holds admin-authored rows
+        // that seeding never refreshes, so the seed passing proves nothing.
+        .map((f) => ({ field: f, value: item.attributes?.[f] }))
+        .filter(({ value }) => value !== undefined && value !== null && value !== '')
         // Gauge is the one numeric spec, and a bare "0.65" next to a word
         // reads as a rating rather than a thickness.
-        .map((v, i) => (fields[i] === 'gaugeMm' ? `${Number(v).toFixed(2)}mm` : String(v)))
+        .map(({ field, value }) => {
+          if (field !== 'gaugeMm') return String(value);
+          const n = Number(value);
+          // Still guard the value itself: a non-numeric gaugeMm must not
+          // become "NaNmm" either. Fall back to showing what is actually there.
+          return Number.isFinite(n) ? `${n.toFixed(2)}mm` : String(value);
+        })
     // A category with no named pair (shoe, shuttle — neither has catalog rows
     // yet) keeps the old positional behaviour rather than rendering nothing.
     : Object.values(item.attributes).slice(0, 2).map(String);

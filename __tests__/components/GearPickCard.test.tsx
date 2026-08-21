@@ -156,6 +156,49 @@ describe('GearPickCard — the spec line has to mean something', () => {
     });
     expect(screen.getByText(/3U · Head-heavy/)).toBeTruthy();
   });
+
+  /**
+   * The positional fix above reintroduced a positional bug one layer down:
+   * mapping to bare values and THEN filtering reindexes the array, so the
+   * later `fields[i]` lookup read the wrong field name. A string missing
+   * `gaugeMm` but carrying `stringType` collapsed to index 0, matched
+   * 'gaugeMm', and rendered `Number('Durability').toFixed(2)` — "NaNmm".
+   *
+   * The seed has gaugeMm on all 46 rows, so the shape test cannot catch this.
+   * Cosmos holds admin-authored rows that seeding never refreshes (CLAUDE.md,
+   * "Catalog seeding REFRESHES") — the same seed-vs-database gap behind the
+   * 50-of-71 unrecommendable-rackets incident.
+   */
+  it('does not render NaNmm when a string row is missing its gauge', () => {
+    renderCard({
+      category: 'string',
+      pick: {
+        item: {
+          id: 's2', category: 'string', brand: 'Yonex', model: 'BG65',
+          skillRange: [1, 5],
+          attributes: { stringType: 'Durability' },
+        },
+        reasons: ['x'],
+      },
+    });
+    expect(screen.queryByText(/NaN/)).toBeNull();
+    expect(screen.getByText(/Durability/)).toBeTruthy();
+  });
+
+  it('does not render NaNmm when the gauge itself is not a number', () => {
+    renderCard({
+      category: 'string',
+      pick: {
+        item: {
+          id: 's3', category: 'string', brand: 'Yonex', model: 'BG66',
+          skillRange: [1, 5],
+          attributes: { gaugeMm: 'thin' as unknown as number, stringType: 'Control' },
+        },
+        reasons: ['x'],
+      },
+    });
+    expect(screen.queryByText(/NaN/)).toBeNull();
+  });
 });
 
 describe('GearPickCard — two objects, one card', () => {
