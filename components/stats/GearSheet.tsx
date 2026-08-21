@@ -9,6 +9,7 @@ import BagList from './BagList';
 import type { GearResult } from './useGear';
 import type { CatalogItem, EquipmentCategory, GearItem } from '@/lib/types';
 import { recommendTension, MIN_LB, MAX_LB, type PlayFormat } from '@/lib/tension';
+import { searchCatalog } from '@/lib/gearSearch';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -160,7 +161,10 @@ export default function GearSheet({
         setCatalog(items);
         setLoaded(true);
         setLoadError(false);
-        setBrand((b) => b ?? items[0]?.brand ?? null);
+        // Deliberately NOT defaulting to the first brand. It made the picker
+        // open on Yonex showing 25 of the 71 rackets, with the other 46 behind
+        // a tab the member had no reason to think was hiding anything — half
+        // of "the database isn't showing some rackets". `null` is the All tab.
       })
       .catch(() => { if (live) { setLoadError(true); setLoaded(true); } });
     return () => { live = false; };
@@ -214,20 +218,27 @@ export default function GearSheet({
 
   // A query searches the WHOLE catalog and bypasses the brand tabs —
   // filtering within the selected brand would hide matches and read as broken.
+  //
+  // `searchCatalog` rather than a substring test: the substring test could not
+  // find the Halbertec 5000 for a member who typed "helbatec", and an empty
+  // list is indistinguishable from a row that isn't in the catalog. See
+  // lib/gearSearch.ts.
   const models = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return addable.filter((c) => c.brand === brand);
-    return addable.filter((c) => {
+    if (!query.trim()) return brand === null ? addable : addable.filter((c) => c.brand === brand);
+    return searchCatalog(addable, query, (c) => {
       const series = typeof c.attributes?.series === 'string' ? c.attributes.series : '';
-      return `${c.brand} ${c.model} ${series}`.toLowerCase().includes(q);
+      return `${c.brand} ${c.model} ${series}`;
     });
   }, [addable, brand, query]);
 
-  // The brand tab can go stale two ways: the catalog's first brand may not be
-  // in `brands` once owned rows are filtered out, and removing the last
-  // addable racket of a brand empties the tab you're standing on.
+  // The brand tab can still go stale one way: removing the last addable racket
+  // of a brand empties the tab you're standing on. Falling back to All rather
+  // than to another brand — All is a superset, so it can never be empty while
+  // anything is addable, and it is the state the sheet opens in anyway.
+  //
+  // `brand === null` is NOT stale any more; it is the All tab.
   useEffect(() => {
-    if (brands.length > 0 && (brand === null || !brands.includes(brand))) setBrand(brands[0]);
+    if (brand !== null && !brands.includes(brand)) setBrand(null);
   }, [brands, brand]);
 
   // Both 409 reasons are unreachable by design — owned rackets are filtered
@@ -332,23 +343,23 @@ export default function GearSheet({
             />
           )}
 
-          {/* Brand tabs. 3 brands today, so a segment control reads whole-
+          {/* Brand tabs: All plus 3 brands today, so a segment control still
               catalog-at-a-glance; revisit as chips if curation grows past ~4.
               Canonical pattern: wrapper needs `flex`, tabs need flex-1.
               Hidden while a query is active — search bypasses the brand filter
               entirely, so showing tabs that aren't in play reads as broken. */}
           {!query.trim() && brands.length > 0 && (
             <div className="segment-control flex" role="tablist" aria-label={heading}>
-              {brands.map((b) => (
+              {[null, ...brands].map((b) => (
                 <button
-                  key={b}
+                  key={b ?? 'all'}
                   type="button"
                   role="tab"
                   aria-selected={brand === b}
                   className={`flex-1 flex items-center justify-center fs-sm ${brand === b ? 'segment-tab-active' : 'segment-tab-inactive'}`}
                   onClick={() => setBrand(b)}
                 >
-                  {b}
+                  {b ?? tGear('brandAll')}
                 </button>
               ))}
             </div>

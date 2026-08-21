@@ -399,7 +399,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
 
           {owned ? (
             <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-              {t('railYours', { label: `${item.brand} ${item.model}` })}
+              {t('railInKitLine')}
             </p>
           ) : (
             <button type="button" className="cc-btn cc-btn-primary cc-btn-lg" disabled={!gear.online || gear.busy} onClick={add}>

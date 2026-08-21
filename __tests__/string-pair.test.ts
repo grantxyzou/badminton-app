@@ -166,10 +166,11 @@ describe('pairString — tension reaches the power scorer (review #1)', () => {
   // default. The observable consequence is that two players who would string
   // the SAME string on the SAME frame at different tensions used to get an
   // identical system-power figure.
-  const systemPowerOf = (reasons: string[]) => {
-    const line = reasons.find((r) => r.startsWith('System power'));
-    return line ? Number(line.match(/System power ([\d.]+)/)?.[1]) : null;
-  };
+  // Read off `systemPower`, not off the reason copy. The figure used to be
+  // interpolated into a "System power 6.2/10 sits on target 6.4" reason; that
+  // line was retired for reading as the engine narrating itself, and the
+  // number moved onto the pairing as data so this regression stays observable.
+  const systemPowerOf = (pairing: { systemPower: { value: number } }) => pairing.systemPower.value;
 
   const frame = racket('wide', { tensionMinLbs: 20, tensionMaxLbs: 28 });
   const s = str('one', { tensionMinLbs: 20, tensionMaxLbs: 26 });
@@ -183,8 +184,8 @@ describe('pairString — tension reaches the power scorer (review #1)', () => {
   it('reports a different system power for those two players', () => {
     const high = pairString(frame, [s], profile({ grip: 5, footwork: 5, court_coverage: 5 }));
     const low = pairString(frame, [s], profile({ grip: 1, footwork: 1, court_coverage: 1 }));
-    const hp = systemPowerOf(high!.reasons);
-    const lp = systemPowerOf(low!.reasons);
+    const hp = systemPowerOf(high!);
+    const lp = systemPowerOf(low!);
     // Both must actually be reported, else this asserts nothing.
     expect(typeof hp).toBe('number');
     expect(typeof lp).toBe('number');
@@ -200,17 +201,28 @@ describe('pairString — tension reaches the power scorer (review #1)', () => {
 });
 
 describe('pairString — the headline reason is the specific one (review #2)', () => {
-  it('does not lead with the tension-window line', () => {
+  it('does not report the tension window as a reason at all', () => {
     const frame = racket('wide', { tensionMinLbs: 20, tensionMaxLbs: 28 });
     const s = str('one', { tensionMinLbs: 20, tensionMaxLbs: 26 });
     const pairing = pairString(frame, [s], profile())!;
 
-    // reasons[0] is what the card renders as "why this one", and pickReasons
-    // caps the engine at one slot when a drill or club line exists.
-    expect(pairing.reasons.length).toBeGreaterThan(1);
-    expect(pairing.reasons[0]).not.toMatch(/tension window/i);
-    expect(pairing.reasons.some((r) => /tension window/i.test(r))).toBe(true);
-    expect(pairing.reasons[pairing.reasons.length - 1]).toMatch(/tension window/i);
+    // The window line was demoted twice: first off the front (it was the
+    // headline in 213 of 213 pairings), then out of the list entirely — the
+    // sheet prints the same range as a spec row, so as a why-this reason it
+    // spent a slot restating what was visible right above it.
+    expect(pairing.reasons.length).toBeGreaterThan(0);
+    expect(pairing.reasons.some((r) => /tension window/i.test(r))).toBe(false);
+  });
+
+  it('grounds its reasons in play rather than in the engine\'s arithmetic', () => {
+    const frame = racket('wide', { tensionMinLbs: 20, tensionMaxLbs: 28 });
+    const s = str('one', { tensionMinLbs: 20, tensionMaxLbs: 26 });
+    const pairing = pairString(frame, [s], profile({ format: 'doubles' }))!;
+
+    const joined = pairing.reasons.join(' ');
+    expect(joined).not.toMatch(/system power|\/10 sits on target/i);
+    expect(joined).not.toMatch(/hours (of play )?per restring/i);
+    expect(joined).toMatch(/doubles|off-centre|hit|shuttle|frame/i);
   });
 
   /* Demoting the tension reason unconditionally deleted a different one.
