@@ -51,6 +51,9 @@ favicon.png
 # Playwright MCP screenshot cache
 .playwright-mcp/
 
+# Editor preferences (per-machine, not a project requirement)
+.vscode/
+
 # Agent memory (per-machine scratch — agents regenerate on next run)
 .claude/agent-memory/
 
