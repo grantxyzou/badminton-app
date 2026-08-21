@@ -288,6 +288,14 @@ interface ScoreResult {
   score: number | null;
   reason: string | null;
   warning: string | null;
+  /**
+   * True when `reason` is a CAVEAT the member has to act on rather than a
+   * description of the pairing. Callers truncate the reason list, so ordering
+   * is deletion: a caveat pushed to the end is a caveat that never renders.
+   * Caveats keep a front slot; descriptions get demoted below the specific
+   * scorers. Only `scoreTension` sets this today.
+   */
+  caveat?: boolean;
 }
 
 /**
@@ -308,6 +316,9 @@ function scoreTension(racket: CatalogItem, s: CatalogItem): ScoreResult {
       score: 0.6,
       reason: 'Racket tension ceiling unpublished — verify before stringing.',
       warning: null,
+      // Actionable, and the only signal that this frame's tension advice is
+      // unavailable. Must not be demoted into the truncated tail.
+      caveat: true,
     };
   }
 
@@ -419,20 +430,38 @@ function scoreValue(racket: CatalogItem, s: CatalogItem): ScoreResult {
  *  the player cannot win on the other four scorers. */
 function skillMultiplier(s: CatalogItem, rank: number): ScoreResult {
   const label = text(s, 'skillLevel');
-  const stringRank = { beginner: 1, intermediate: 2, advanced: 3 }[label?.toLowerCase() ?? ''] ?? 2;
-  const diff = stringRank - rank;
+  const normalized = label ? label.toLowerCase() : null;
+  const known = normalized
+    ? ({ beginner: 1, intermediate: 2, advanced: 3 } as Record<string, number>)[normalized]
+    : undefined;
+  const diff = (known ?? 2) - rank;
   if (diff <= 0) return { score: 1.0, reason: null, warning: null };
+
+  const score = diff === 1 ? 0.6 : SKILL_MULTIPLIER_FLOOR;
+
+  /* The `?? 2` fallback is a SCORING assumption, not a fact about the string.
+     Interpolating the absent label rendered "Rated for undefined players" to
+     the member — a fabricated claim, and the legible-fail rule in reverse: an
+     unknown presented as a known. Say only what we actually have. */
+  if (known === undefined || normalized === null) {
+    return {
+      score,
+      reason: null,
+      warning: 'This string has no published skill rating — scored as intermediate, which is above your current level.',
+    };
+  }
+
   if (diff === 1) {
     return {
-      score: 0.6,
+      score,
       reason: null,
-      warning: `Rated for ${label?.toLowerCase()} players — a step up from your current level.`,
+      warning: `Rated for ${normalized} players — a step up from your current level.`,
     };
   }
   return {
-    score: SKILL_MULTIPLIER_FLOOR,
+    score,
     reason: null,
-    warning: `Rated for ${label?.toLowerCase()} players — likely to break fast and give little back at your current level.`,
+    warning: `Rated for ${normalized} players — likely to break fast and give little back at your current level.`,
   };
 }
 
@@ -491,10 +520,27 @@ export function pairString(
 
     const tension = scoreTension(racket, s);
     if (tension.score === null) continue; // hard gate
-    if (tension.reason) reasons.push(tension.reason);
-    if (tension.warning) warnings.push(tension.warning);
 
-    const power = scoreSystemPower(racket, s, dims, null);
+    /* Tension is resolved BEFORE the power scorer, because a string's power
+       contribution depends on the tension it will actually be strung at
+       (reference: pair_racket_string.py:474). Passing `null` here — as this
+       did until 2026-08-21 — pinned every candidate to the 24.0 lb default,
+       so `stringPowerIndex`'s whole tension branch was dead code and the app
+       scored a string at one tension while telling the member to string it at
+       another. It changed the winning string for up to 36 of 71 frames.
+
+       `pairTension` returns null for the 11 ceiling-less frames, which is the
+       old behaviour exactly — so this degrades to the previous result
+       precisely where it has no better answer. */
+    const recommendedTension = pairTension(racket, s, profile);
+
+    // A tension CAVEAT keeps its front slot; only the generic window-width
+    // description is demoted (below). Demoting both pushed "ceiling
+    // unpublished — verify before stringing" past the caller's reason limit,
+    // deleting the one line that tells the member the advice is unavailable.
+    if (tension.reason && tension.caveat) reasons.push(tension.reason);
+
+    const power = scoreSystemPower(racket, s, dims, recommendedTension);
     if (power.reason) reasons.push(power.reason);
     if (power.warning) warnings.push(power.warning);
 
@@ -510,8 +556,25 @@ export function pairString(
     if (value.reason) reasons.push(value.reason);
     if (value.warning) warnings.push(value.warning);
 
+    /* Tension's reason goes LAST, matching the reference's ordering.
+       `reasons[0]` is what the card and sheet render as the headline "why this
+       one", and the tension-window line is the least specific of the five — it
+       described the window rather than the pairing. Pushed first, it was the
+       headline in 213 of 213 pairings, and `lib/pickReasons.ts` caps engine
+       reasons at one when a drill or club line exists, so it was frequently
+       the ONLY engine reasoning shown. */
+    if (tension.reason && !tension.caveat) reasons.push(tension.reason);
+    if (tension.warning) warnings.push(tension.warning);
+
     const skill = skillMultiplier(s, rank);
     if (skill.warning) warnings.push(skill.warning);
+
+    /* Provenance. 13 of the 46 seeded strings carry community-estimated
+       ratings; without this the numbers above read as manufacturer-published.
+       Dropped in the original port, not a documented deviation. */
+    if (text(s, 'ratingSource') === 'Consensus estimate') {
+      warnings.push('Performance ratings are community consensus, not manufacturer-published.');
+    }
 
     const weighted = tension.score * 20
       + (power.score ?? 0) * 30
@@ -519,7 +582,15 @@ export function pairString(
       + (durability.score ?? 0) * 20
       + (value.score ?? 0) * 10;
     const score = weighted * (skill.score ?? 1);
-    if (!best || score > best.score) best = { item: s, score, reasons, warnings };
+
+    /* Deterministic tie-break by model, as the reference's
+       `sort(key=(-score, model))` does. Cosmos does not guarantee row order,
+       so first-encountered-wins let two equally-scored strings swap places
+       between requests — the member saw a different "our pick" on refresh
+       having changed nothing. */
+    if (!best || score > best.score || (score === best.score && s.model < best.item.model)) {
+      best = { item: s, score, reasons, warnings };
+    }
   }
 
   return best;
