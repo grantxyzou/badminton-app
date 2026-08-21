@@ -215,8 +215,8 @@ function scoreFeelBalance(racket: CatalogItem, s: CatalogItem, rank: number): Sc
     return {
       score,
       reason: feelLabel
-        ? `Feel is well matched (${text(racket, 'flex') ?? 'medium'} shaft + ${feelLabel} string).`
-        : `Feel is well matched to a ${text(racket, 'flex')?.toLowerCase() ?? 'medium'} shaft.`,
+        ? `${feelLabel.charAt(0).toUpperCase()}${feelLabel.slice(1)} feel on this shaft — comfortable on off-centre hits, with feedback you can read.`
+        : 'Comfortable on this shaft — forgiving on off-centre hits without going vague.',
       warning: null,
     };
   }
@@ -243,7 +243,8 @@ function scoreSystemPower(
   s: CatalogItem,
   a: AceDims,
   tension: number | null,
-): ScoreResult {
+  p: PlayerProfile,
+): ScoreResult & { system: number; target: number } {
   const system = racketPowerIndex(racket) * SYSTEM_FRAME_WEIGHT
     + stringPowerIndex(s, tension) * SYSTEM_STRING_WEIGHT;
   const target = targetSystemPower(racket, a);
@@ -253,15 +254,47 @@ function scoreSystemPower(
   const sys = system.toFixed(1);
   const tgt = target.toFixed(1);
   if (gap <= 1.0) {
+    /* The numbers stay in the WARNINGS below, where a member has to act on
+       them, and in the sheet's spec rows. As a REASON they were the wrong
+       register: "system power 6.2/10 sits on target 6.4" is the engine
+       narrating itself, and a member reading WHY THIS wants to know what the
+       pairing will feel like in the rallies they actually play. Branching on
+       format and attacking intent — both already inputs to `target` — says the
+       same thing in the language of their game. */
+    const attacking = a.offense >= 3.5;
+    if (p.format === 'doubles') {
+      return {
+        score,
+        system,
+        target,
+        reason: attacking
+          ? 'Quick off the strings for flat doubles exchanges, without running your clears long.'
+          : 'Repulsion suits doubles pace — the shuttle leaves fast without you having to force it.',
+        warning: null,
+      };
+    }
+    if (p.format === 'singles') {
+      return {
+        score,
+        system,
+        target,
+        reason: 'Enough power to hold length from the rear court without overhitting.',
+        warning: null,
+      };
+    }
     return {
       score,
-      reason: `System power ${sys}/10 sits on target ${tgt} — the string balances this frame rather than over-driving it.`,
+      system,
+      target,
+      reason: 'Balances this frame rather than over-driving it — steady length in both singles and doubles.',
       warning: null,
     };
   }
   if (system > target + 2.0) {
     return {
       score,
+      system,
+      target,
       reason: null,
       warning: `Over-powered pairing (system ${sys} vs target ${tgt}): expect shuttles running long on clears.`,
     };
@@ -269,11 +302,13 @@ function scoreSystemPower(
   if (system < target - 2.0) {
     return {
       score,
+      system,
+      target,
       reason: null,
       warning: `Under-powered pairing (system ${sys} vs target ${tgt}): you'll be working hard for depth.`,
     };
   }
-  return { score, reason: null, warning: null };
+  return { score, system, target, reason: null, warning: null };
 }
 
 export interface StringPairing {
@@ -281,6 +316,19 @@ export interface StringPairing {
   score: number;
   reasons: string[];
   warnings: string[];
+  /**
+   * The combined frame-plus-string power index this pairing was scored on,
+   * 0-10, and the target it was scored against.
+   *
+   * Reported as DATA because it stopped being reportable as copy: the reason
+   * line used to read "System power 6.2/10 sits on target 6.4", which is the
+   * engine narrating its own arithmetic at a member who asked why this string.
+   * The figure is still the observable that proves tension actually reaches
+   * `scoreSystemPower` (a branch that was dead until 2026-08-21 and whose
+   * failure is invisible from the outside), so it moves here rather than
+   * disappearing. Nothing renders it; `/api/recommend` does not forward it.
+   */
+  systemPower: { value: number; target: number };
 }
 
 interface ScoreResult {
@@ -332,12 +380,19 @@ function scoreTension(racket: CatalogItem, s: CatalogItem): ScoreResult {
     };
   }
 
+  /* The window WIDTH scores, but it is no longer a reason. "Wide usable
+     tension window (20-28 lbs)" describes the overlap arithmetic, and the
+     sheet already prints that range as a spec row — so as a why-this line it
+     spent a slot restating something visible two inches above it. The
+     ceiling-unpublished CAVEAT above is different and stays: nothing else
+     tells the member the tension advice is unavailable. The narrow-window
+     WARNING below also stays; it is actionable for a stringer. */
   const width = hi - lo;
   if (width >= 5) {
-    return { score: 1.0, reason: `Wide usable tension window (${lo}-${hi} lbs).`, warning: null };
+    return { score: 1.0, reason: null, warning: null };
   }
   if (width >= 2) {
-    return { score: 0.75, reason: `Workable tension window (${lo}-${hi} lbs).`, warning: null };
+    return { score: 0.75, reason: null, warning: null };
   }
   return {
     score: 0.4,
@@ -372,11 +427,16 @@ function scoreDurability(racket: CatalogItem, s: CatalogItem, a: AceDims): Score
   const score = Math.max(0.0, Math.min(1.0, 1.0 - (demand - supply) / 6.0));
   const hours = estimateRestringHours(s, demand).toFixed(0);
 
+  /* The hours figure stays on the WARNING below — there it is the actionable
+     part — and the `durability` spec row carries the rating itself. As a
+     reason it stated a property of the string where the member was asking
+     whether it suits THEM, so the two positive branches now name the demand
+     the engine actually scored: frame power plus attacking intent. */
   if (score >= 0.75) {
-    return { score, reason: `Durability holds up: roughly ${hours} hours of play per restring.`, warning: null };
+    return { score, reason: 'Stands up to how hard you hit — this pairing is not one you will be restringing often.', warning: null };
   }
   if (score >= 0.45) {
-    return { score, reason: `Moderate lifespan — roughly ${hours} hours per restring.`, warning: null };
+    return { score, reason: 'Fair lifespan for your hitting — expect a restring on a normal club schedule.', warning: null };
   }
   // V4: the reference appends "(about X weeks at your play rate)". With no
   // source for play rate that clause states a fabricated fact about the
@@ -421,7 +481,7 @@ function scoreValue(racket: CatalogItem, s: CatalogItem): ScoreResult {
     };
   }
   if (score >= 0.65) {
-    return { score, reason: `Spend fits a ${tier.toLowerCase()} frame ($${shown}/set).`, warning: null };
+    return { score, reason: `Priced for what this frame is built to do — no need to spend up or down from here.`, warning: null };
   }
   return { score, reason: null, warning: null };
 }
@@ -540,7 +600,7 @@ export function pairString(
     // deleting the one line that tells the member the advice is unavailable.
     if (tension.reason && tension.caveat) reasons.push(tension.reason);
 
-    const power = scoreSystemPower(racket, s, dims, recommendedTension);
+    const power = scoreSystemPower(racket, s, dims, recommendedTension, profile);
     if (power.reason) reasons.push(power.reason);
     if (power.warning) warnings.push(power.warning);
 
@@ -556,14 +616,9 @@ export function pairString(
     if (value.reason) reasons.push(value.reason);
     if (value.warning) warnings.push(value.warning);
 
-    /* Tension's reason goes LAST, matching the reference's ordering.
-       `reasons[0]` is what the card and sheet render as the headline "why this
-       one", and the tension-window line is the least specific of the five — it
-       described the window rather than the pairing. Pushed first, it was the
-       headline in 213 of 213 pairings, and `lib/pickReasons.ts` caps engine
-       reasons at one when a drill or club line exists, so it was frequently
-       the ONLY engine reasoning shown. */
-    if (tension.reason && !tension.caveat) reasons.push(tension.reason);
+    /* Only the caveat form of tension carries a reason now (pushed first,
+       above); the window-width description was demoted out of the reason list
+       entirely — see scoreTension. Its warning still lands here. */
     if (tension.warning) warnings.push(tension.warning);
 
     const skill = skillMultiplier(s, rank);
@@ -589,7 +644,10 @@ export function pairString(
        between requests — the member saw a different "our pick" on refresh
        having changed nothing. */
     if (!best || score > best.score || (score === best.score && s.model < best.item.model)) {
-      best = { item: s, score, reasons, warnings };
+      best = {
+        item: s, score, reasons, warnings,
+        systemPower: { value: power.system, target: power.target },
+      };
     }
   }
 

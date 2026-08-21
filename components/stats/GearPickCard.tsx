@@ -199,7 +199,6 @@ export default function GearPickCard({ category, pick, owned, status, onOpen }: 
   // full detail sheet (reasons + Add to my kit) rather than expanding inline,
   // so a 44px+ touch target is trivially satisfied.
   const { item } = pick;
-  const label = `${item.brand} ${item.model}`;
   const spec = formatSpec(item);
 
   return (
@@ -236,12 +235,20 @@ export default function GearPickCard({ category, pick, owned, status, onOpen }: 
         </span>
       </span>
 
+      {/* Three different claims, and only the first two are about ownership.
+          `owned` means "you own THIS pick", never "you own a racket" — the
+          member's own kit lives in `YourKitCard`, which reads the same gear
+          document. Saying "Yours · none on file" on the not-owned branch
+          therefore told a member holding an Aeronaut 9000 that their kit was
+          empty. The not-owned branch now states what the card is actually
+          doing (matching the pick to how they play) instead of making an
+          ownership claim it has no basis for. */}
       <span className="fs-xs" style={{ color: 'var(--text-muted)' }}>
         {pick.pairedWith
           ? t(pick.pairedWith.source === 'owned' ? 'railPairedYours' : 'railPairedOurs', {
               label: pick.pairedWith.label,
             })
-          : owned ? t('railYours', { label }) : t('railNone')}
+          : owned ? t('railInKitLine') : t('railStyleMatched')}
       </span>
 
       <span style={{ marginTop: 6, fontSize: 'var(--fs-md)', fontWeight: 600, lineHeight: 'var(--lh-snug)', color: 'var(--text-primary)' }}>
