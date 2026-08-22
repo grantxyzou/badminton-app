@@ -180,7 +180,7 @@ export default function SteppedGameLoggerSheet({
       maxHeight="85vh"
       className="max-w-lg mx-auto"
     >
-      <BottomSheetHeader className="flex items-center justify-between" >
+      <BottomSheetHeader className="flex items-center justify-between px-5 pt-4 pb-3">
         <h2 className="bpm-h3" style={{ margin: 0 }}>{t('title')}</h2>
         <button
           type="button"

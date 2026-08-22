@@ -266,7 +266,7 @@ export default function GearSheet({
 
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={heading} maxHeight="92dvh" className="max-w-lg mx-auto">
-      <BottomSheetHeader className="flex items-center justify-between p-4">
+      <BottomSheetHeader className="flex items-center justify-between px-5 pt-4 pb-3">
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{heading}</span>
         <button
           type="button"
