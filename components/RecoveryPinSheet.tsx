@@ -107,8 +107,8 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
     (!hasPin || currentPin.length === 4);
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={title} maxHeight="75vh" className="max-w-lg mx-auto">
-      <BottomSheetHeader className="flex items-center justify-between p-4">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={title} maxHeight="75vh">
+      <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{title}</span>
         <button
           type="button"
@@ -119,7 +119,7 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
           <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
         </button>
       </BottomSheetHeader>
-      <BottomSheetBody className="p-5 pb-8">
+      <BottomSheetBody>
         {firstSetBlocked ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <p role="alert" style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>

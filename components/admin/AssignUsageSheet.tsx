@@ -148,8 +148,8 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel="Assign tubes to sessions" className="max-w-lg mx-auto">
-      <BottomSheetHeader className="flex items-center justify-between p-4">
+    <BottomSheet open={open} onClose={onClose} ariaLabel="Assign tubes to sessions">
+      <BottomSheetHeader>
         <div className="min-w-0">
           <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
             Assign to session
@@ -170,7 +170,7 @@ export default function AssignUsageSheet({ open, onClose, purchase, onSaved }: P
         </button>
       </BottomSheetHeader>
 
-      <BottomSheetBody className="p-5 pb-8">
+      <BottomSheetBody>
         {loading && <p className="fs-md text-gray-400">Loading sessions…</p>}
 
         {!loading && rows.length === 0 && (

@@ -490,9 +490,9 @@ export default function AdvanceSessionForm({ onBack }: Props) {
         onClose={() => setShowSkipBlock(false)}
         ariaLabel="Skip date warning"
         maxHeight="50vh"
-        className="max-w-sm mx-auto"
+        width="narrow"
       >
-        <BottomSheetHeader>
+        <BottomSheetHeader bare>
           <div className="flex items-center justify-between px-4 py-3">
             <h2 className="bpm-h3" style={{ color: '#fca5a5' }}>Date is on your skip list</h2>
             <button
@@ -505,7 +505,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
             </button>
           </div>
         </BottomSheetHeader>
-        <BottomSheetBody>
+        <BottomSheetBody bare>
           <div className="space-y-4 pb-6">
             <p className="fs-md text-gray-200">
               <strong>{date}</strong> is on your skip list — typically a holiday, travel date, or

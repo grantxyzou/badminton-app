@@ -188,8 +188,8 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel="Player profile" maxHeight="85vh" className="max-w-sm mx-auto">
-      <BottomSheetHeader className="flex items-center justify-between p-4">
+    <BottomSheet open={open} onClose={onClose} ariaLabel="Player profile" maxHeight="85vh" width="narrow">
+      <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>
           {history?.member.name ?? initialName ?? 'Player'}
         </span>
@@ -212,7 +212,7 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
         </button>
       </BottomSheetHeader>
 
-      <BottomSheetBody className="p-5 pb-8">
+      <BottomSheetBody>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {loading && <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-muted)', margin: 0 }}>Loading…</p>}
           {error && (

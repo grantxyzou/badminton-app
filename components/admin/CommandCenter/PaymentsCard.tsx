@@ -766,9 +766,9 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
         onClose={() => { setActionTarget(null); setActionError(''); }}
         ariaLabel="Player actions"
         maxHeight="50vh"
-        className="max-w-sm mx-auto"
+        width="narrow"
       >
-        <BottomSheetHeader className="flex items-center justify-between p-4">
+        <BottomSheetHeader>
           <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{actionTarget?.name ?? 'Player'}</span>
           <button
             type="button"
@@ -779,7 +779,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
             <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
           </button>
         </BottomSheetHeader>
-        <BottomSheetBody className="p-5 pb-8">
+        <BottomSheetBody>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {actionError && (
               <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: 0 }}>

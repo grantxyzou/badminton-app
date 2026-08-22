@@ -415,9 +415,9 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
           onClose={() => setConfirmingAdvance(false)}
           ariaLabel="Advance to next week"
           maxHeight="50vh"
-          className="max-w-sm mx-auto"
+          width="narrow"
         >
-          <BottomSheetHeader className="flex items-center justify-between p-4">
+          <BottomSheetHeader>
             <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>Advance to next week</span>
             <button
               type="button"
@@ -428,7 +428,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
               <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
             </button>
           </BottomSheetHeader>
-          <BottomSheetBody className="p-5 pb-8">
+          <BottomSheetBody>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
                 Can&apos;t go back to the previous week once you advance.

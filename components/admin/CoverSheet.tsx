@@ -140,13 +140,13 @@ export default function CoverSheet({
       onClose={onClose}
       ariaLabel="Cover confirmation"
       maxHeight="60vh"
-      className="max-w-sm mx-auto"
+      width="narrow"
     >
-      <BottomSheetHeader className="p-4">
+      <BottomSheetHeader bare className="p-4">
         <h2 className="bpm-h3" style={{ margin: 0 }}>{title}</h2>
         <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '4px 0 0' }}>{subtitle}</p>
       </BottomSheetHeader>
-      <BottomSheetBody className="p-4 pb-8" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <BottomSheetBody bare className="p-4 pb-8" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {error && (
           <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: 0 }}>
             {error}

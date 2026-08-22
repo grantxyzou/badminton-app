@@ -407,8 +407,8 @@ function DrillSheet({
 }) {
   const t = useTranslations('stats.learn');
   return (
-    <BottomSheet open={!!drill} onClose={onClose} ariaLabel={drill?.title ?? ''} maxHeight="75vh" className="max-w-lg mx-auto">
-      <BottomSheetHeader className="flex items-center justify-between px-5 pt-4 pb-3">
+    <BottomSheet open={!!drill} onClose={onClose} ariaLabel={drill?.title ?? ''} maxHeight="75vh">
+      <BottomSheetHeader>
         <h2 className="bpm-h3" style={{ margin: 0 }}>
           {drill?.title}
         </h2>
@@ -416,7 +416,7 @@ function DrillSheet({
           <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)' }}>close</span>
         </button>
       </BottomSheetHeader>
-      <BottomSheetBody>
+      <BottomSheetBody bare>
         {drill && (
           <div style={{ padding: '0 20px 34px', display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
