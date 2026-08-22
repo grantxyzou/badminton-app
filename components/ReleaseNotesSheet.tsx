@@ -29,9 +29,10 @@ export default function ReleaseNotesSheet({ open, releases, onClose }: ReleaseNo
       open={open}
       onClose={handleClose}
       ariaLabel={t('sheetLabel')}
+      width="full"
       className="terminal-sheet"
     >
-      <BottomSheetHeader className="terminal-titlebar flex items-center justify-between">
+      <BottomSheetHeader bare className="terminal-titlebar flex items-center justify-between">
         <span className="terminal-prompt">bpm-changelog</span>
         <button
           type="button"
@@ -42,7 +43,7 @@ export default function ReleaseNotesSheet({ open, releases, onClose }: ReleaseNo
           <span className="material-icons" style={{ fontSize: '16px' }}>close</span>
         </button>
       </BottomSheetHeader>
-      <BottomSheetBody className="p-5 pb-20">
+      <BottomSheetBody bare className="p-5 pb-20">
         <p className="terminal-prompt mb-4">$ bpm --changelog</p>
         {releases === null ? (
           <p className="terminal-body" role="alert">

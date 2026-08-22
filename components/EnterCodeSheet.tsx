@@ -70,8 +70,8 @@ export default function EnterCodeSheet({ open, onClose, sessionId, onRecovered }
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('codePathTitle')} className="max-w-lg mx-auto">
-      <BottomSheetHeader className="flex items-center justify-between p-4">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={t('codePathTitle')}>
+      <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('codePathTitle')}</span>
         <button
           type="button"
@@ -82,7 +82,7 @@ export default function EnterCodeSheet({ open, onClose, sessionId, onRecovered }
           <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
         </button>
       </BottomSheetHeader>
-      <BottomSheetBody className="p-5 pb-8">
+      <BottomSheetBody>
         {success ? (
           <p style={{ textAlign: 'center', fontSize: 18, color: 'var(--text-primary)' }}>
             {t('welcomeBack', { name: success })}

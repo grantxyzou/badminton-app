@@ -180,7 +180,7 @@ export default function CheckInSheet({
   });
 
   return (
-    <BottomSheet open onClose={onClose} ariaLabel={t('assess.checkInTitle')} maxHeight="85vh" className="max-w-lg mx-auto">
+    <BottomSheet open onClose={onClose} ariaLabel={t('assess.checkInTitle')} maxHeight="85vh">
       <div
         style={{
           background: 'var(--glass-bg)',
@@ -192,7 +192,7 @@ export default function CheckInSheet({
           display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0,
         }}
       >
-        <BottomSheetHeader className="px-5 pt-4 pb-3">
+        <BottomSheetHeader bare className="px-5 pt-4 pb-3">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <h2 className="text-lg font-bold m-0" style={{ color: 'var(--text-primary)' }}>{t('assess.checkInTitle')}</h2>
             <button
@@ -239,7 +239,7 @@ export default function CheckInSheet({
           )}
         </BottomSheetHeader>
 
-        <BottomSheetBody className="px-5 pb-8" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
+        <BottomSheetBody bare className="px-5 pb-8" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
           {/* Intro + reconciliation mirror */}
           {step === -1 && (
             <div className="space-y-4">

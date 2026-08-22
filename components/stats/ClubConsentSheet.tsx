@@ -43,9 +43,8 @@ export default function ClubConsentSheet({ open, saving = false, onAnswer }: Clu
       closeOnEscape={false}
       ariaLabel={t('title')}
       maxHeight="75vh"
-      className="max-w-lg mx-auto"
     >
-      <BottomSheetBody>
+      <BottomSheetBody bare>
         <div
           style={{
             padding: '18px 20px 28px',

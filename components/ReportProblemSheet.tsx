@@ -63,8 +63,8 @@ export default function ReportProblemSheet({ open, onClose, name }: Props) {
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')} className="max-w-lg mx-auto">
-      <BottomSheetHeader className="flex items-center justify-between p-4">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')}>
+      <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('title')}</span>
         <button
           type="button"
@@ -75,7 +75,7 @@ export default function ReportProblemSheet({ open, onClose, name }: Props) {
           <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
         </button>
       </BottomSheetHeader>
-      <BottomSheetBody className="p-5 pb-8">
+      <BottomSheetBody>
         {success ? (
           <p style={{ textAlign: 'center', fontSize: 18, color: 'var(--text-primary)' }}>
             {t('success')}

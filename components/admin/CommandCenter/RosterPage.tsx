@@ -648,9 +648,9 @@ export default function RosterPage({ onBack }: RosterPageProps) {
         onClose={() => setSheetOpen(false)}
         ariaLabel={editingId ? 'Edit member' : 'Add member'}
         maxHeight="80vh"
-        className="max-w-sm mx-auto"
+        width="narrow"
       >
-        <BottomSheetHeader className="flex items-center justify-between p-4">
+        <BottomSheetHeader>
           <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{editingId ? 'Edit member' : 'Add member'}</span>
           <button
             type="button"
@@ -671,7 +671,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
           </button>
         </BottomSheetHeader>
 
-        <BottomSheetBody className="p-5 pb-8">
+        <BottomSheetBody>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <Field label="Name">
               <input

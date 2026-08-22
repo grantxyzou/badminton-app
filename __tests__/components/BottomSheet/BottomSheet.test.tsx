@@ -2,7 +2,7 @@
 // @vitest-environment-options { "url": "http://localhost:3000/bpm" }
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
-import { BottomSheet, BottomSheetBody } from '../../../components/BottomSheet';
+import { BottomSheet, BottomSheetBody, BottomSheetHeader } from '../../../components/BottomSheet';
 
 describe('BottomSheet — skeleton', () => {
   afterEach(cleanup);
@@ -120,5 +120,87 @@ describe('BottomSheet — interactions', () => {
       },
       { timeout: 500 },
     );
+  });
+});
+
+describe('BottomSheet — baked-in defaults (issue #87)', () => {
+  afterEach(cleanup);
+
+  // These defaults used to be the consumer's job. 23 sheets each re-deciding
+  // them meant two shipped with no header padding at all, and nothing caught
+  // it — there was nothing to catch it against. That is what these pin.
+
+  it('header carries the default layout + padding with no className', () => {
+    render(
+      <BottomSheet open onClose={vi.fn()} ariaLabel="Test sheet">
+        <BottomSheetHeader>title</BottomSheetHeader>
+      </BottomSheet>,
+    );
+    const header = document.body.querySelector('[role="dialog"] > div')!;
+    expect(header.className).toContain('px-5');
+    expect(header.className).toContain('pt-4');
+    expect(header.className).toContain('pb-3');
+    expect(header.className).toContain('justify-between');
+  });
+
+  it('body carries the default padding with no className', () => {
+    render(
+      <BottomSheet open onClose={vi.fn()} ariaLabel="Test sheet">
+        <BottomSheetBody>content</BottomSheetBody>
+      </BottomSheet>,
+    );
+    const body = document.body.querySelector('[role="dialog"] > div')!;
+    expect(body.className).toContain('p-5');
+    expect(body.className).toContain('pb-8');
+    // The scroll contract must survive alongside the padding.
+    expect(body.className).toContain('overflow-y-auto');
+    expect(body.className).toContain('min-h-0');
+  });
+
+  it('bare drops the defaults so a real variant is not fighting them', () => {
+    render(
+      <BottomSheet open onClose={vi.fn()} ariaLabel="Test sheet">
+        <BottomSheetHeader bare className="terminal-titlebar">title</BottomSheetHeader>
+      </BottomSheet>,
+    );
+    const header = document.body.querySelector('[role="dialog"] > div')!;
+    expect(header.className).toBe('terminal-titlebar');
+    expect(header.className).not.toContain('px-5');
+  });
+
+  it('bare body keeps the scroll contract but drops padding', () => {
+    render(
+      <BottomSheet open onClose={vi.fn()} ariaLabel="Test sheet">
+        <BottomSheetBody bare>content</BottomSheetBody>
+      </BottomSheet>,
+    );
+    const body = document.body.querySelector('[role="dialog"] > div')!;
+    expect(body.className).toContain('overflow-y-auto');
+    expect(body.className).not.toContain('p-5');
+  });
+
+  it('width maps to a max-width class, default being the reading width', () => {
+    const { rerender } = render(
+      <BottomSheet open onClose={vi.fn()} ariaLabel="Test sheet">
+        <BottomSheetBody>content</BottomSheetBody>
+      </BottomSheet>,
+    );
+    expect(document.body.querySelector('[role="dialog"]')!.className).toContain('max-w-lg');
+
+    rerender(
+      <BottomSheet open onClose={vi.fn()} ariaLabel="Test sheet" width="narrow">
+        <BottomSheetBody>content</BottomSheetBody>
+      </BottomSheet>,
+    );
+    expect(document.body.querySelector('[role="dialog"]')!.className).toContain('max-w-sm');
+
+    rerender(
+      <BottomSheet open onClose={vi.fn()} ariaLabel="Test sheet" width="full">
+        <BottomSheetBody>content</BottomSheetBody>
+      </BottomSheet>,
+    );
+    const cls = document.body.querySelector('[role="dialog"]')!.className;
+    expect(cls).not.toContain('max-w-lg');
+    expect(cls).not.toContain('max-w-sm');
   });
 });

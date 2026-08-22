@@ -34,8 +34,8 @@ export default function ResetAccessSheet({ open, onClose, playerName, code, expi
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={titleText} className="max-w-lg mx-auto">
-      <BottomSheetHeader className="flex items-center justify-between p-4">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={titleText}>
+      <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{titleText}</span>
         <button
           type="button"
@@ -46,7 +46,7 @@ export default function ResetAccessSheet({ open, onClose, playerName, code, expi
           <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
         </button>
       </BottomSheetHeader>
-      <BottomSheetBody className="p-5 pb-8">
+      <BottomSheetBody>
         <div style={{ textAlign: 'center' }}>
           <p
             role="img"

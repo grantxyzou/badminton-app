@@ -350,7 +350,7 @@ function SkillAnchorSheet({ skillKey, value, onClose }: { skillKey: string; valu
   const skill = SKILL_BY_KEY.get(skillKey);
   if (!skill) return null;
   return (
-    <BottomSheet open onClose={onClose} ariaLabel={skill.label} maxHeight="75vh" className="max-w-lg mx-auto">
+    <BottomSheet open onClose={onClose} ariaLabel={skill.label} maxHeight="75vh">
       <div
         style={{
           background: 'var(--glass-bg)',
@@ -362,7 +362,7 @@ function SkillAnchorSheet({ skillKey, value, onClose }: { skillKey: string; valu
           display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0,
         }}
       >
-        <BottomSheetHeader className="flex items-center justify-between px-5 pt-4 pb-3">
+        <BottomSheetHeader>
           <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{skill.label}</h2>
           <button
             onClick={onClose}
@@ -372,7 +372,7 @@ function SkillAnchorSheet({ skillKey, value, onClose }: { skillKey: string; valu
             <span className="material-icons" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>close</span>
           </button>
         </BottomSheetHeader>
-        <BottomSheetBody className="px-5 pb-8" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
+        <BottomSheetBody bare className="px-5 pb-8" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
           <div className="space-y-2">
             {skill.anchors.map((anchor, i) => {
               const level = i + 1;

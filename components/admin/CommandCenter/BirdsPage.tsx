@@ -721,9 +721,9 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         onClose={() => setSheetOpen(false)}
         ariaLabel={editingId ? 'Edit purchase' : 'Log purchase'}
         maxHeight="80vh"
-        className="max-w-sm mx-auto"
+        width="narrow"
       >
-        <BottomSheetHeader className="flex items-center justify-between p-4">
+        <BottomSheetHeader>
           <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{editingId ? 'Edit purchase' : 'Log purchase'}</span>
           <button
             type="button"
@@ -743,7 +743,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
           </button>
         </BottomSheetHeader>
-        <BottomSheetBody className="p-5 pb-8">
+        <BottomSheetBody>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <Field label="Brand / model">
               <input
@@ -925,9 +925,9 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         onClose={() => setReconcileOpen(false)}
         ariaLabel="Reconcile count"
         maxHeight="70vh"
-        className="max-w-sm mx-auto"
+        width="narrow"
       >
-        <BottomSheetHeader className="flex items-center justify-between p-4">
+        <BottomSheetHeader>
           <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>Reconcile count</span>
           <button
             type="button"
@@ -938,7 +938,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
           </button>
         </BottomSheetHeader>
-        <BottomSheetBody className="p-5 pb-8">
+        <BottomSheetBody>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
               The app counts <strong style={{ color: 'var(--text-primary)' }}>{currentStock} tubes</strong> on hand

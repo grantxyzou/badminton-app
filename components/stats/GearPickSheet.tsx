@@ -150,7 +150,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   }
 
   const header = (
-    <BottomSheetHeader className="flex items-center justify-between px-5 pt-4 pb-3">
+    <BottomSheetHeader>
       <span
         className="fs-2xs"
         style={{ color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}
@@ -242,9 +242,9 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   // of the lying empty state.
   if (!item) {
     return (
-      <BottomSheet open={open} onClose={close} ariaLabel={heading} maxHeight="88dvh" className="max-w-lg mx-auto">
+      <BottomSheet open={open} onClose={close} ariaLabel={heading} maxHeight="88dvh">
         {header}
-        <BottomSheetBody className="p-5 pb-8">
+        <BottomSheetBody>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <ErrorState message={t('pickSheetLoadError')} />
             {controls}
@@ -255,10 +255,10 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   }
 
   return (
-    <BottomSheet open={open} onClose={close} ariaLabel={heading} maxHeight="88dvh" className="max-w-lg mx-auto">
+    <BottomSheet open={open} onClose={close} ariaLabel={heading} maxHeight="88dvh">
       {header}
 
-      <BottomSheetBody className="p-5 pb-8">
+      <BottomSheetBody>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>

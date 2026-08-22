@@ -14,6 +14,18 @@ export interface BottomSheetProps {
   triggerRef?: React.RefObject<HTMLElement>;
   className?: string;
   /**
+   * How wide the sheet is allowed to get on a large screen. Every consumer used
+   * to hand-write this as `className="max-w-lg mx-auto"` or `max-w-sm mx-auto`;
+   * it is a real variant, so it gets a prop rather than a string.
+   *
+   * `default` (max-w-lg) is the reading/form width. `narrow` (max-w-sm) is for
+   * confirmations and receipts. `full` is unconstrained — one consumer,
+   * `ReleaseNotesSheet`, whose terminal styling spans the viewport.
+   *
+   * No effect on a phone: both caps are wider than the viewport there.
+   */
+  width?: 'default' | 'narrow' | 'full';
+  /**
    * Escape-to-dismiss. Defaults to true, which is every existing consumer.
    *
    * Set false ONLY for a sheet that must be answered rather than dismissed —
@@ -39,8 +51,11 @@ export default function BottomSheet({
   maxHeight = '80vh',
   triggerRef,
   className,
+  width = 'default',
   closeOnEscape = true,
 }: BottomSheetProps) {
+  const widthClass =
+    width === 'full' ? '' : width === 'narrow' ? 'max-w-sm mx-auto' : 'max-w-lg mx-auto';
   const [mounted, setMounted] = useState(false);
   const [state, setState] = useState<SheetState>('closed');
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -127,7 +142,9 @@ export default function BottomSheet({
       <div
         ref={sheetRef}
         data-state={state}
-        className={`bottom-sheet fixed bottom-0 left-0 right-0 rounded-t-2xl overflow-hidden flex flex-col ${className ?? ''}`}
+        className={['bottom-sheet fixed bottom-0 left-0 right-0 rounded-t-2xl overflow-hidden flex flex-col', widthClass, className]
+          .filter(Boolean)
+          .join(' ')}
         style={{ zIndex: 60, maxHeight }}
         role="dialog"
         aria-label={ariaLabel}

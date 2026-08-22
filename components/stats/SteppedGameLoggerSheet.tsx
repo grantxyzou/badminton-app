@@ -178,9 +178,8 @@ export default function SteppedGameLoggerSheet({
       onClose={onClose}
       ariaLabel={t('title')}
       maxHeight="85vh"
-      className="max-w-lg mx-auto"
     >
-      <BottomSheetHeader className="flex items-center justify-between px-5 pt-4 pb-3">
+      <BottomSheetHeader>
         <h2 className="bpm-h3" style={{ margin: 0 }}>{t('title')}</h2>
         <button
           type="button"
@@ -193,7 +192,7 @@ export default function SteppedGameLoggerSheet({
         </button>
       </BottomSheetHeader>
 
-      <BottomSheetBody>
+      <BottomSheetBody bare>
         <div style={{ padding: '0 20px 34px', display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
           {(step === 'partner' || step === 'opponents') && (
             <>

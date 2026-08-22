@@ -36,8 +36,8 @@ export default function InstallSheet({ open, onClose }: Props) {
       ];
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')} className="max-w-sm mx-auto">
-      <BottomSheetHeader className="flex items-center justify-between px-5 pt-4 pb-2">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')} width="narrow">
+      <BottomSheetHeader>
         <span className="bpm-h3" style={{ margin: 0 }}>{t('title')}</span>
         <button
           type="button"
@@ -48,7 +48,7 @@ export default function InstallSheet({ open, onClose }: Props) {
           <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-stat)', color: 'var(--text-muted)' }}>close</span>
         </button>
       </BottomSheetHeader>
-      <BottomSheetBody className="px-5 pb-6" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <BottomSheetBody bare className="px-5 pb-6" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)' }}>
           {t('intro')}
         </p>
