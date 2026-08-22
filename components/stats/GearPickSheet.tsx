@@ -150,7 +150,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   }
 
   const header = (
-    <BottomSheetHeader className="flex items-center justify-between p-4">
+    <BottomSheetHeader className="flex items-center justify-between px-5 pt-4 pb-3">
       <span
         className="fs-2xs"
         style={{ color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}
