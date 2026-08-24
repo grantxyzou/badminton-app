@@ -192,7 +192,9 @@ export default function HomeShell({ initialAnnouncement }: Props) {
   // unlocked admin, but admin now flows through Profile sign-in for actual
   // admins; the easter egg's role is curiosity/preview, not privilege.)
   const tapCount = useRef(0);
-  const tapTimer = useRef<ReturnType<typeof setTimeout>>();
+  // React 19's types dropped the argless `useRef<T>()` overload — an initial
+  // value is now required, so the type has to admit `undefined` explicitly.
+  const tapTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const handleTitleTap = useCallback(() => {
     tapCount.current += 1;
