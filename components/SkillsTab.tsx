@@ -25,15 +25,15 @@ const GiveKudosCard = dynamic(() => import('@/components/stats/GiveKudosCard'), 
  * The Stats tab: the You / Play / Learn / Gear registers.
  *
  * Stage 8 (2026-08-20) deleted the v1 arrangement wholesale. Until then this
- * file carried five mutually-exclusive layouts selected by
- * `NEXT_PUBLIC_FLAG_STATS_V2` / `_SKILL_ASSESS` / `isAdmin`, including an
- * admin-only recharts radar and every surface that counted sessions you
- * MISSED (streak hero, live attendance card, recent-form dots). Those are
- * gone by product decision, not deferred: see the flag entry in `lib/flags.ts`.
+ * file carried five mutually-exclusive layouts selected by a stats-v2 flag,
+ * `_SKILL_ASSESS` and `isAdmin`, including an admin-only recharts radar and
+ * every surface that counted sessions you MISSED (streak hero, live attendance
+ * card, recent-form dots). Those are gone by product decision, not deferred.
  *
- * `NEXT_PUBLIC_FLAG_STATS_V2` is no longer read here — it is `'true'` in all
- * three build configs and now only guards the v2-only API routes until it
- * retires. There is no v1 to fall back to.
+ * The stats-v2 flag was RETIRED on 2026-08-25: it had been inert-on since
+ * Stage 8 (no UI read it, `'true'` in every build config, and turning it off
+ * restored nothing — it only 404'd three API routes and left the tab showing
+ * load errors). This layout is now simply the layout.
  */
 export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: 'home' | 'players' | 'skills' | 'admin' | 'profile') => void }) {
   // Identity for the signed-out empty state, from the module that owns the

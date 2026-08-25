@@ -65,7 +65,6 @@ jobs:
           NEXT_PUBLIC_FLAG_KUDOS: 'true'
           NEXT_PUBLIC_FLAG_INSIGHT_CARDS: 'true'
           NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: 'true'
-          NEXT_PUBLIC_FLAG_STATS_V2: 'true'
 
       - name: Package standalone build
         run: |

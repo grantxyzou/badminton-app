@@ -9,6 +9,13 @@ export const dynamic = 'force-dynamic';
 const REC_THRESHOLD = 0.4;
 const GAME_THRESHOLD = 0.3;
 
+/**
+ * The date the 4-week kill-criterion clock restarted. See the note on `since`
+ * in GET below — this is the default measurement window, and reading the
+ * criterion against anything earlier is measuring a surface that wasn't there.
+ */
+const CLOCK_RESTART = '2026-08-16';
+
 const norm = (s: string) => s.trim().toLowerCase();
 
 /** `session-YYYY-MM-DD` sorts lexically, so a date cutoff is a string compare. */
@@ -34,9 +41,22 @@ export async function GET(req: NextRequest) {
   }
   if (!isAdminAuthed(req)) return unauthorized();
 
-  // Default cutoff is the v1.7 promotion, when Slice-0 nominally went live.
+  // Default cutoff is 2026-08-16, when the 4-week clock RESTARTED — not the
+  // v1.7 promotion (2026-06-13) when Slice-0 nominally went live.
+  //
+  // The Equipment register had been parked under the assessment spine since
+  // v1.7, so the rec card rendered on NEITHER deployment for that whole period
+  // and the criterion was measuring an invisible surface. Defaulting to the
+  // earlier date sweeps ~2 months in which the feature could not be used,
+  // which mechanically drags `recRate` toward zero and manufactures a `kill`
+  // verdict — retiring work on evidence that was never capable of being
+  // positive. A metric with a misleading default is worse than no metric: it
+  // is confidently wrong in one predictable direction.
+  //
+  // `?since=` still accepts any date, so the older window remains queryable as
+  // a historical baseline; it just isn't what you get by accident.
   const sinceParam = new URL(req.url).searchParams.get('since')?.slice(0, 10) ?? '';
-  const since = /^\d{4}-\d{2}-\d{2}$/.test(sinceParam) ? sinceParam : '2026-06-13';
+  const since = /^\d{4}-\d{2}-\d{2}$/.test(sinceParam) ? sinceParam : CLOCK_RESTART;
 
   try {
     // --- Denominator: who actually turned up. -------------------------------

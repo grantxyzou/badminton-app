@@ -146,17 +146,8 @@ describe('GET /api/stats/club/bands', () => {
   beforeEach(() => {
     resetMockStore();
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_STATS_V2 = 'true';
   });
   afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_STATS_V2;
-  });
-
-  it('404s when the flag is off', async () => {
-    delete process.env.NEXT_PUBLIC_FLAG_STATS_V2;
-    const res = await GET(getAs('Lin'));
-    expect(res.status).toBe(404);
-    process.env.NEXT_PUBLIC_FLAG_STATS_V2 = 'true';
   });
 
   it('400s without a name', async () => {

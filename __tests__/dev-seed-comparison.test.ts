@@ -30,7 +30,6 @@ describe('SEED_DEV_SCENARIO — comparison + tally are reachable', () => {
   beforeAll(async () => {
     delete process.env.COSMOS_CONNECTION_STRING;
     process.env.SEED_DEV_SCENARIO = 'fresh-thursday';
-    process.env.NEXT_PUBLIC_FLAG_STATS_V2 = 'true';
     // Must be the SAME secret memberCookieValue signs with, or every request
     // 403s and the failure looks like missing seed data rather than auth.
     const { setupAdminPin } = await import('./helpers');
@@ -65,7 +64,6 @@ describe('SEED_DEV_SCENARIO — comparison + tally are reachable', () => {
 
   afterAll(() => {
     delete process.env.SEED_DEV_SCENARIO;
-    delete process.env.NEXT_PUBLIC_FLAG_STATS_V2;
     g._devScenarioSeeded = false;
     g._mockStore = {};
   });

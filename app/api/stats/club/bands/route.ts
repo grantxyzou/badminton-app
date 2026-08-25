@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
-import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ownsNameOrAdmin } from '@/lib/auth';
 import { computeClubBands, MIN_COHORT } from '@/lib/clubBands';
@@ -82,10 +81,6 @@ export async function GET(req: NextRequest) {
   const ip = getClientIp(req);
   if (!checkRateLimit(`stats-club-bands:${ip}`, 60, 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-  }
-
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_STATS_V2')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   const name = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50) ?? '';
