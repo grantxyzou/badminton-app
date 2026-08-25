@@ -8,6 +8,8 @@ import {
   seedMember,
   seedAlias,
   makeRequest,
+  memberCookieValue,
+  setupAdminPin,
 } from './helpers';
 
 const ACTIVE = 'session-2026-06-08';
@@ -28,15 +30,41 @@ function settled() {
 
 beforeEach(() => {
   resetMockStore();
+  // The member cookie is HMAC-signed, so the signing secret must exist before
+  // memberCookieValue() can mint one the route will accept.
+  setupAdminPin();
   seedPointer(ACTIVE);
   // Two settled sessions with distinct datetimes (newer = ACTIVE).
   seedSession(OLDER, { settled: settled(), datetime: '2026-06-01T19:00:00-04:00' });
   seedSession(ACTIVE, { settled: settled(), datetime: '2026-06-08T19:00:00-04:00' });
 });
 
+/**
+ * The route is owner-or-admin gated (2026-08-25) — it returns what a NAMED
+ * person owes, and names are enumerable via GET /api/members, so a name is not
+ * a credential. Every request therefore carries a `member_session` cookie bound
+ * to the name it asks about; `asOther`/`anon` below cover the refusal paths.
+ */
 function get(name?: string) {
   const url = name ? `${URL}?name=${encodeURIComponent(name)}` : URL;
-  return GET(makeRequest('GET', url));
+  // Headers must be passed at CONSTRUCTION — a NextRequest's headers are
+  // immutable once built, so a later .set() is silently dropped.
+  const headers = name
+    ? { Cookie: `member_session=${memberCookieValue(name)}` }
+    : undefined;
+  return GET(makeRequest('GET', url, undefined, headers));
+}
+
+/** Same URL, but the cookie belongs to someone else. */
+function asOther(name: string, cookieName: string) {
+  return GET(makeRequest('GET', `${URL}?name=${encodeURIComponent(name)}`, undefined, {
+    Cookie: `member_session=${memberCookieValue(cookieName)}`,
+  }));
+}
+
+/** No cookie at all. */
+function anon(name: string) {
+  return GET(makeRequest('GET', `${URL}?name=${encodeURIComponent(name)}`));
 }
 
 describe('GET /api/players/unpaid', () => {
@@ -132,12 +160,35 @@ describe('GET /api/players/unpaid', () => {
     expect(data.sessions.find((x: { sessionId: string }) => x.sessionId === S)?.owedAmount).toBe(7);
   });
 
-  it('returns an empty payload when no name is given', async () => {
+  it('400s when no name is given — a missing name is not a person who owes nothing', async () => {
+    // Was a 200 with an empty payload, which made "you asked wrong" and "you
+    // owe nothing" indistinguishable to the caller. Same lying-empty-state
+    // /api/stats/partners was fixed for.
     const res = await get();
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.totalOwed).toBe(0);
-    expect(data.mostRecent).toBeNull();
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('name_required');
+  });
+
+  describe('owner-or-admin gate', () => {
+    // This route reports what a NAMED person OWES, and member names are
+    // enumerable via GET /api/members — so a name is not a credential. It was
+    // public-by-name until 2026-08-25, justified by a comment citing
+    // /api/stats/attendance's posture, which had itself been gated that morning.
+    it('403s an anonymous caller', async () => {
+      const res = await anon('Lin');
+      expect(res.status).toBe(403);
+      expect((await res.json()).error).toBe('forbidden');
+    });
+
+    it("403s a caller holding another member's cookie", async () => {
+      const res = await asOther('Lin', 'Viktor');
+      expect(res.status).toBe(403);
+    });
+
+    it('allows the owner', async () => {
+      const res = await get('Lin');
+      expect(res.status).toBe(200);
+    });
   });
 
   it('counts a week signed up under an alias-linked name', async () => {

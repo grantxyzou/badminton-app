@@ -24,16 +24,22 @@ function mockFetch(overrides: Record<string, () => Promise<Response>> = {}) {
         if (url.includes(needle)) return handler();
       }
       if (url.includes('/api/players')) {
-        return jsonResponse({
-          players: [
-            { name: 'Lin' },
-            { name: 'Viktor' },
-            { name: 'Akane' },
-            { name: 'Kento' },
-            { name: 'Waity', waitlisted: true },
-            { name: 'Gone', removed: true },
-          ],
-        });
+        // A BARE ARRAY — that is what the route actually returns
+        // (app/api/players/route.ts GET: `NextResponse.json(resources.map(...))`).
+        // This mock used to wrap it in `{ players: [...] }`, matching the
+        // component's `d?.players ?? []` rather than the server. Both were
+        // wrong in the same direction, so the suite could never catch it, and
+        // in production the roster was empty forever — the actual cause of the
+        // Slice-0 readout's `games.loggers: 0`. A mock that copies the code's
+        // assumption instead of the server's contract tests nothing.
+        return jsonResponse([
+          { name: 'Lin' },
+          { name: 'Viktor' },
+          { name: 'Akane' },
+          { name: 'Kento' },
+          { name: 'Waity', waitlisted: true },
+          { name: 'Gone', removed: true },
+        ]);
       }
       if (url.includes('/api/games')) return jsonResponse({ id: 'g-new' }, true, 201);
       if (url.includes('/api/kudos')) return jsonResponse({ ok: true }, true, 201);

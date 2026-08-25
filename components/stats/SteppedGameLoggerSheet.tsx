@@ -92,7 +92,14 @@ export default function SteppedGameLoggerSheet({
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
         if (!live) return;
-        const names = ((d?.players ?? []) as Player[])
+        // GET /api/players returns a BARE ARRAY. This read `d?.players`,
+        // which is always undefined, so the roster was permanently empty and
+        // the partner/opponent pickers had no names in them. That is the whole
+        // explanation for the Slice-0 readout's `games.loggers: 0` over six
+        // weeks — not disinterest, an unusable picker. Every other consumer of
+        // this endpoint (ProfileTab, PlayersTab, NextSessionCard) already
+        // treats it as an array; this was the one that didn't.
+        const names = ((Array.isArray(d) ? d : []) as Player[])
           .filter((p) => p?.name && !p.waitlisted && !p.removed)
           .map((p) => p.name as string)
           .filter((n) => n.trim().toLowerCase() !== you.trim().toLowerCase());

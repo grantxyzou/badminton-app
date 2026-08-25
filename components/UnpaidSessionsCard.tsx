@@ -51,6 +51,11 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
   const [data, setData] = useState<UnpaidData | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  // A refusal is not an unknown failure: /api/players/unpaid is owner-or-admin
+  // gated, so a device whose 30-day member_session expired while
+  // badminton_identity persists gets a 403. "Couldn't load — refresh to retry"
+  // would be a false instruction; refreshing never fixes it.
+  const [forbidden, setForbidden] = useState(false);
   const isHome = variant === 'home';
 
   const etransferEmail = process.env.NEXT_PUBLIC_ETRANSFER_EMAIL || null;
@@ -61,19 +66,28 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
     let cancelled = false;
     fetch(`${BASE}/api/players/unpaid?name=${encodeURIComponent(name)}`, { cache: 'no-store' })
       .then(async (r) => {
+        if (r.status === 403) return { forbidden: true as const };
         if (!r.ok) throw new Error(`unpaid fetch ${r.status}`);
-        return r.json() as Promise<UnpaidData>;
+        return { forbidden: false as const, data: (await r.json()) as UnpaidData };
       })
-      .then((d) => {
+      .then((res) => {
         if (cancelled) return;
-        setData(d);
+        if (res.forbidden) {
+          setData(null);
+          setForbidden(true);
+          setLoadError(false);
+        } else {
+          setData(res.data);
+          setForbidden(false);
+          setLoadError(false);
+        }
         setLoaded(true);
-        setLoadError(false);
       })
       .catch((err) => {
         if (cancelled) return;
         console.warn('unpaid fetch failed:', err);
         setData(null);
+        setForbidden(false);
         setLoaded(true);
         setLoadError(true);
       });
@@ -82,12 +96,12 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
     };
   }, [name]);
 
-  const owesNothing = !loadError && (!data || data.totalOwed <= 0);
+  const owesNothing = !loadError && !forbidden && (!data || data.totalOwed <= 0);
 
   // Profile: render nothing while loading or when nothing is owed (no clutter).
   if (!isHome && owesNothing) return null;
   // Home: avoid a "paid up" flash before the first response lands.
-  if (isHome && !loaded && !loadError) return null;
+  if (isHome && !loaded && !loadError && !forbidden) return null;
 
   const showPaidUp = isHome && owesNothing;
   const title = isHome ? tBal('title') : t('title');
@@ -103,7 +117,9 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
         {title}
       </p>
 
-      {loadError ? (
+      {forbidden ? (
+        <ErrorState message={t('signInAgain')} />
+      ) : loadError ? (
         <ErrorState message={t('loadError')} />
       ) : showPaidUp ? (
         <p style={{ margin: 0, fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)' }}>
