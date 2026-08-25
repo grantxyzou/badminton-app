@@ -168,7 +168,16 @@ export default function GearPickRail({ activeName, gear, onPairTension }: GearPi
             status: 'ready',
             pick: {
               item: d.item as CatalogItem,
-              reasons: Array.isArray(d.reasons) ? d.reasons : [],
+              // Two response shapes, not one. Only the engine paths return a
+              // `reasons` array; the non-recommender path (route.ts:311, the
+              // one bpm-stable always takes because deploy-stable.yml sets
+              // NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER 'false') returns a singular
+              // `reason` string. Reading only the array threw that away and
+              // left the pick sheet — whose entire job is explaining one
+              // recommendation — with a heading and an Add button and no why.
+              reasons: Array.isArray(d.reasons)
+                ? d.reasons
+                : (typeof d.reason === 'string' && d.reason ? [d.reason] : []),
               warnings: Array.isArray(d.warnings) ? d.warnings : [],
               pairedWith: d.pairedWith ?? undefined,
               tensionLbs: typeof d.tensionLbs === 'number' ? d.tensionLbs : null,
@@ -189,12 +198,38 @@ export default function GearPickRail({ activeName, gear, onPairTension }: GearPi
 
   if (!activeName) return null;
 
+  /**
+   * Ownership, but only ever asked when the answer is KNOWN.
+   *
+   * `useGear` sets `loadError: true` AND `loaded: true` on a failed read, so a
+   * bag that could not be read is indistinguishable here from an empty one:
+   * every category would answer "not owned", the IN YOUR KIT badge would drop,
+   * and the rail would recommend back the racket already in the member's bag —
+   * the prototype bug this redesign exists to fix. So the caller must gate on
+   * `gear.loadError` first (see `railStatus`) and never render a `false` from
+   * this function as a fact.
+   */
   function isOwned(category: EquipmentCategory, item: CatalogItem | null): boolean {
     if (!item) return false;
     const items = gear.gear?.items ?? [];
     return items.some(
       (i) => i && !i.retiredAt && (i.category ?? 'racket') === category && i.catalogId === item.id,
     );
+  }
+
+  /**
+   * A card that HAS a pick cannot be drawn while ownership is unknown — the
+   * badge is half of what the card says. It degrades to the card's existing
+   * error state ("Couldn't load your kit"), which is exactly the failure.
+   *
+   * Parked categories (shoe, shuttle) are deliberately untouched: their state
+   * is a statement about the recommendation engine, not about the member's
+   * bag, and is still perfectly true when the gear read fails. Turning a
+   * genuinely-known state into a failure is the same defect in the other
+   * direction.
+   */
+  function railStatus(status: GearPickCardStatus, pick: GearPick | null): GearPickCardStatus {
+    return gear.loadError && pick ? 'error' : status;
   }
 
   const openPick = openCategory ? state[openCategory].pick : null;
@@ -222,7 +257,7 @@ export default function GearPickRail({ activeName, gear, onPairTension }: GearPi
             category={cat}
             pick={pick}
             owned={isOwned(cat, pick?.item ?? null)}
-            status={status}
+            status={railStatus(status, pick)}
             onOpen={() => {
               setOpenCategory(cat);
               // The Value-Hub Slice-0 kill-criterion ("did a member interact

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import BottomNav from '@/components/BottomNav';
 import HomeTab from '@/components/HomeTab';
 import PlayersTab from '@/components/PlayersTab';
@@ -59,12 +60,21 @@ export default function HomeShell({ initialAnnouncement }: Props) {
   const [devOverrides, setDevOverrides] = useState<DevOverrides>({});
   const [profileSession, setProfileSession] = useState<{ id: string; label: string }>({ id: '', label: '' });
   const [demoMode, setDemoMode] = useState(false);
+  // KNOWN-refused, never merely unknown: set only by an actual 403 from an
+  // owner-gated read (see the insight prewarm below), cleared by any other
+  // outcome. A network failure must not raise it — that is the offline
+  // banner's job, and telling someone to sign in again over a dropped wifi
+  // packet is the same class of lie as a lying empty state.
+  const [signInExpired, setSignInExpired] = useState(false);
   // Connectivity is one app-wide signal now (lib/useOnline). `online` is
   // "server believed reachable" — NEVER conflated with "user is not an
   // admin": a failed probe must not masquerade as a confirmed negative
   // (the auth twin of the forbidden `catch { setX([]) }` lying-empty).
   const online = useOnline();
   const reportFetchFailure = useReportFetchFailure();
+  // Only the sign-in-expired banner is translated here; the adjacent offline
+  // banner predates this and stays as it is (not this task's file to churn).
+  const t = useTranslations('stats');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -175,13 +185,28 @@ export default function HomeShell({ initialAnnouncement }: Props) {
   // generated/cached server-side BEFORE the user reaches the Stats tab. The
   // endpoint dedupes by (member, active session), so this is at most one Claude
   // call per member per session-cycle no matter how often it's pinged. No CTA.
+  //
+  // Fire-and-forget for network failures ONLY. A 403 is not a failed prewarm,
+  // it is the server saying this device does not own the identity in
+  // localStorage — the `member_session` cookie (30-day TTL) expired or was
+  // never minted, while `badminton_identity` persists indefinitely. Every
+  // owner-gated Stats read will refuse for the same reason, and swallowing it
+  // here left the member with no signal anywhere: cards that used to have
+  // content simply stopped having any. Unknown ≠ known-false, so only the
+  // KNOWN refusal raises the banner; a network error leaves it alone.
   useEffect(() => {
     function prewarmInsight() {
       const name = getIdentity()?.name;
-      if (!name) return;
-      fetch(`${BASE}/api/stats/insight?name=${encodeURIComponent(name)}`, { cache: 'no-store' }).catch(() => {
-        /* fire-and-forget — the Stats card will retry on view */
-      });
+      if (!name) {
+        setSignInExpired(false);
+        return;
+      }
+      fetch(`${BASE}/api/stats/insight?name=${encodeURIComponent(name)}`, { cache: 'no-store' })
+        .then((r) => setSignInExpired(r.status === 403))
+        .catch(() => {
+          /* network failure — unknown, not a refusal. The offline banner owns
+             this case and the Stats cards retry on view. */
+        });
     }
     prewarmInsight();
     window.addEventListener(IDENTITY_EVENT, prewarmInsight);
@@ -258,6 +283,16 @@ export default function HomeShell({ initialAnnouncement }: Props) {
                 icon="warning"
                 title="You're offline"
                 body="Showing your last-known view. Some data may be stale until you reconnect."
+              />
+            </div>
+          )}
+          {signInExpired && online && (
+            <div className="mb-3">
+              <StatusBanner
+                tone="warn"
+                icon="lock_clock"
+                title={t('signInAgainTitle')}
+                body={t('signInAgainBody')}
               />
             </div>
           )}

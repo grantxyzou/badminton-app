@@ -3,24 +3,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
-import { getIdentity } from '@/lib/identity';
+import { useActiveName } from '@/lib/useActiveName';
 import { KUDOS_TAGS, TAG_ICON, type KudosCount } from '@/lib/kudos';
 import CardHeader from '@/components/primitives/CardHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-const STATS_NAME_KEY = 'badminton_stats_preview_name';
-
-function resolveActiveName(): string | null {
-  const id = getIdentity();
-  if (id?.name) return id.name;
-  try {
-    const stored = localStorage.getItem(STATS_NAME_KEY);
-    if (stored && stored.trim()) return stored.trim();
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
 
 type LoadState =
   | { kind: 'idle' }
@@ -35,11 +22,10 @@ type LoadState =
  */
 export default function KudosReceivedCard() {
   const t = useTranslations('stats');
-  const [activeName, setActiveName] = useState<string | null>(null);
+  // Subscribed, not resolved-once — see the note in SkillTrendCard.
+  const { name: activeName } = useActiveName();
   const [state, setState] = useState<LoadState>({ kind: 'idle' });
   const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => { setActiveName(resolveActiveName()); }, []);
 
   const load = useCallback(() => {
     if (!activeName) return;

@@ -229,6 +229,43 @@ export function isAdminAuthed(req: NextRequest): boolean {
 }
 
 /**
+ * The privacy gate for every name-keyed, read-only Stats route: true when the
+ * calling device owns `name` (a `member_session` cookie bound to it) or the
+ * caller is an admin browsing on someone's behalf.
+ *
+ * WHY THIS IS A FUNCTION AND NOT A SNIPPET
+ * ----------------------------------------
+ * These three lines used to be copy-pasted into each route:
+ *
+ *     const member = verifyMemberAuth(req);
+ *     const ownsName = member?.name?.trim().toLowerCase() === name.toLowerCase();
+ *     if (!ownsName && !isAdminAuthed(req)) return 403;
+ *
+ * A snippet can be silently *forgotten*, and it was — three times. `/stats/
+ * insight`, `/stats/partners` and `/stats/attendance` all shipped with no auth
+ * at all, serving one member's AI coaching prose, social graph and attendance
+ * history to any caller (member names are enumerable via the public
+ * `GET /api/members`). Nothing failed; the routes just quietly answered.
+ *
+ * Omission is invisible in review; a missing *call* is at least greppable.
+ * `grep -L ownsNameOrAdmin app/api/stats/**\/route.ts` now names every route
+ * that does not gate, which is the check a copy-pasted snippet can never give
+ * you. Any new name-keyed Stats route must call this — do not re-inline it.
+ *
+ * Read-only by contract: uses the cheap sync `isAdminAuthed` (no Cosmos
+ * round-trip). Mutating routes must use `isAdminAuthedWithMember` instead.
+ *
+ * Name comparison is trim + lowercase on BOTH sides. Every current call site
+ * already parses `name` with `.trim()`, so this is a no-op for them; it exists
+ * so a future caller passing a raw query value can't be silently denied.
+ */
+export function ownsNameOrAdmin(req: NextRequest, name: string): boolean {
+  const member = verifyMemberAuth(req);
+  const ownsName = member?.name?.trim().toLowerCase() === name.trim().toLowerCase();
+  return ownsName || isAdminAuthed(req);
+}
+
+/**
  * Async admin check — verifies the cookie AND re-fetches the Member to
  * confirm `role === 'admin' && active === true`. Use in routes that mutate
  * data; protects against role demotion taking effect immediately on the next

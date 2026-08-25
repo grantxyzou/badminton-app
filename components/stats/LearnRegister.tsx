@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
@@ -68,6 +68,8 @@ export default function LearnRegister({ activeName, onCheckedIn }: LearnRegister
   const [openDrill, setOpenDrill] = useState<DrillPick | null>(null);
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  /** Set by the sheet's onSaved, consumed by its onClose — see the sheet. */
+  const savedRef = useRef(false);
 
   const load = useCallback(() => {
     if (!activeName) return;
@@ -147,11 +149,20 @@ export default function LearnRegister({ activeName, onCheckedIn }: LearnRegister
         <CheckInSheet
           name={activeName}
           open={checkInOpen}
-          onClose={() => setCheckInOpen(false)}
-          onSaved={() => {
-            load();
-            onCheckedIn?.();
+          onClose={() => {
+            setCheckInOpen(false);
+            // Refresh only once the sheet is gone. Reloading on save flips
+            // needsCheckIn false, which unmounts this whole branch — and the
+            // sheet with it — destroying the SAVED step that exists precisely
+            // so fourteen screens of self-assessment don't end in the sheet
+            // vanishing with nothing to show for it.
+            if (savedRef.current) {
+              savedRef.current = false;
+              load();
+              onCheckedIn?.();
+            }
           }}
+          onSaved={() => { savedRef.current = true; }}
         />
       </>
     );

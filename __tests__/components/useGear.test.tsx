@@ -97,6 +97,69 @@ describe('useGear — the shared op counter', () => {
 
     expect(screen.getByTestId('bag').textContent).toBe('Yonex Astrox 100ZZ');
   });
+
+  // The other half of the same cancellation. `setLoaded(true)` used to live
+  // ONLY inside the mount GET's two guarded branches, so a write that claimed
+  // the op id first discarded that GET's response and left `loaded` false
+  // forever — YourKitCard renders CardSkeleton and GearPickRail's fetch
+  // effect early-returns, so the whole register sits on skeletons with no
+  // error and no retry until the tab remounts.
+  it('a write that cancels the mount read still marks the hook loaded', async () => {
+    let resolveMountGet: ((r: Response) => void) | null = null;
+    let getCount = 0;
+    const added = { id: 'new', catalogId: ASTROX.id, category: 'racket' as const, label: 'Yonex Astrox 100ZZ' };
+
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = (init?.method ?? 'GET').toUpperCase();
+      if (!url.includes('/api/equipment/gear')) return Promise.reject(new Error(`Unmocked fetch: ${url}`));
+      if (method === 'POST') {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ gear: gearDoc([added], 'new') }) } as Response);
+      }
+      getCount += 1;
+      if (getCount === 1) return new Promise<Response>((resolve) => { resolveMountGet = resolve; });
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ gear: gearDoc([added], 'new') }) } as Response);
+    }) as unknown as typeof fetch);
+
+    render(<Probe />);
+    expect(screen.getByTestId('loaded').textContent).toBe('false');
+
+    fireEvent.click(screen.getByText('add'));
+
+    // The mount GET is still pending and will be discarded when it lands, so
+    // the write itself has to be what flips `loaded`.
+    await waitFor(() => expect(screen.getByTestId('loaded').textContent).toBe('true'));
+    expect(resolveMountGet).not.toBeNull();
+  });
+
+  // A failed write produces no document, so if the read it cancelled was the
+  // only one, the hook must re-read rather than stay on skeletons.
+  it('re-reads when a failed write cancelled the only read', async () => {
+    let getCount = 0;
+    const existing = { id: 'r1', catalogId: ASTROX.id, category: 'racket' as const, label: 'Yonex Astrox 100ZZ' };
+
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = (init?.method ?? 'GET').toUpperCase();
+      if (!url.includes('/api/equipment/gear')) return Promise.reject(new Error(`Unmocked fetch: ${url}`));
+      if (method === 'POST') {
+        return Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'save_failed' }) } as Response);
+      }
+      getCount += 1;
+      // Hold the mount read open forever; only the recovery read resolves.
+      if (getCount === 1) return new Promise<Response>(() => {});
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ gear: gearDoc([existing], 'r1') }) } as Response);
+    }) as unknown as typeof fetch);
+
+    render(<Probe />);
+    expect(screen.getByTestId('loaded').textContent).toBe('false');
+
+    fireEvent.click(screen.getByText('add'));
+
+    await waitFor(() => expect(screen.getByTestId('loaded').textContent).toBe('true'));
+    expect(getCount).toBe(2);
+    expect(screen.getByTestId('bag').textContent).toBe('Yonex Astrox 100ZZ');
+  });
 });
 
 describe('useGear — add() with a tension follow-up', () => {

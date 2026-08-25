@@ -102,6 +102,39 @@ describe('StatsPrivacyScreen', () => {
     expect(screen.getByRole('alert')).toBeTruthy();
   });
 
+  // ── Unknown ≠ a confirmed setting ───────────────────────────────────────
+  // `useStatsPrivacy` documents `privacy === null` as UNKNOWN and reports it
+  // with `loaded: true, error: false`. The screen used to apply `?? true` to
+  // it and print a lit switch plus "you'll see your band on every compared
+  // skill" — a privacy control stating a position nobody confirmed.
+  it('draws NO switch when the read reported no preference', () => {
+    renderScreen(state({ privacy: null, loaded: true, error: false }));
+    expect(screen.queryByRole('switch')).toBeNull();
+    expect(screen.getByRole('alert').textContent).toBe(enMessages.stats.privacy.unknown);
+    expect(screen.queryByText(/you'll see your band on every compared skill/)).toBeNull();
+    expect(screen.queryByText(/you'll still see the club spread/)).toBeNull();
+  });
+
+  it('offers a re-read rather than a refresh for the unknown state', () => {
+    const s = state({ privacy: null, loaded: true, error: false });
+    renderScreen(s);
+    fireEvent.click(screen.getByRole('button', { name: enMessages.stats.privacy.retry }));
+    expect(s.reload).toHaveBeenCalled();
+  });
+
+  it('keeps a FAILED read distinct from an unknown one', () => {
+    renderScreen(state({ privacy: null, loaded: true, error: true }));
+    expect(screen.getByRole('alert').textContent).toBe(enMessages.stats.privacy.saveError);
+    expect(screen.queryByText(enMessages.stats.privacy.unknown)).toBeNull();
+    expect(screen.queryByRole('switch')).toBeNull();
+  });
+
+  it('still draws the switch for a KNOWN stored preference', () => {
+    renderScreen();
+    expect(screen.getByRole('switch')).toBeTruthy();
+    expect(screen.queryByText(enMessages.stats.privacy.unknown)).toBeNull();
+  });
+
   it('goes back', () => {
     const { onBack } = renderScreen();
     fireEvent.click(screen.getByRole('button', { name: /profile/i }));

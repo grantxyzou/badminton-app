@@ -275,6 +275,7 @@
       "tensionMidLevel": "Around here you start trading a little free power for control — this is a sensible middle to try.",
       "tensionHighLevel": "At your level the bed is about control and feel, so a tighter string makes placement more repeatable.",
       "tensionAdvisory": "A starting point, not a spec — talk to whoever strings your racket.",
+      "tensionError": "Couldn't work out your tension — refresh to try again.",
       "clubTitle": "What the club plays",
       "clubSubtitle": "Aggregated from everyone's kit.",
       "clubFootnote": "Logging your strings is what makes this list useful — for you and for whoever stocks up.",
@@ -446,6 +447,8 @@
       "verdictCounted": "Counted",
       "closing": "Turning comparison off doesn't hide anything from other players — nothing about your skills was ever shown to them. It only changes what <you>you</you> see. The club spread stays visible either way.",
       "saveError": "Couldn't save that — try again.",
+      "unknown": "We couldn't confirm this setting, so we're not showing one either way.",
+      "retry": "Try again",
       "offline": "You're offline — this needs a connection."
     },
     "club": {
@@ -484,6 +487,7 @@
       "giveHint": "Give a shout-out to who you played with tonight.",
       "offline": "You're offline — reconnect to send kudos.",
       "error": "Couldn't load that — refresh to try again",
+      "sendError": "That didn't send — tap the tag to try again.",
       "tag": {
         "great_defense": "Great defense",
         "clutch": "Clutch",
@@ -493,6 +497,9 @@
       }
     },
     "offline": "You're offline — reconnect to save.",
+    "signInAgain": "Sign in on Profile to see this.",
+    "signInAgainTitle": "Sign in to see your stats",
+    "signInAgainBody": "This device isn't signed in to your account, so your stats and insights can't load. Sign in from Profile.",
     "summaryGreeting": {
       "ariaLabel": "Your AI summary",
       "beta": "Beta"

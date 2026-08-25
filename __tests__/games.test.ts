@@ -78,6 +78,29 @@ describe('/api/games', () => {
     expect(res.status).toBe(400);
   });
 
+  // Games join on NAME, so the same person on both teams is counted as both a
+  // win and a loss for themselves. Reachable from the stepped logger by going
+  // Back and picking an already-tapped opponent as the partner — the opponents
+  // step hides the partner, so the overlap could never be untoggled.
+  it('rejects the same player on both teams', async () => {
+    const res = await POST(postAs('m-lin', 'Lin', {
+      ...validGame,
+      teamA: ['Lin', 'Sindhu'],
+      teamB: ['Sindhu', 'Akane'],
+    }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('overlapping_teams');
+  });
+
+  it('matches the overlap case-insensitively', async () => {
+    const res = await POST(postAs('m-lin', 'Lin', {
+      ...validGame,
+      teamA: ['Lin', 'Sindhu'],
+      teamB: ['sindhu', 'Akane'],
+    }));
+    expect(res.status).toBe(400);
+  });
+
   it('rejects non-numeric scores', async () => {
     const res = await POST(postAs('m-lin', 'Lin', { ...validGame, scoreA: 'lots' }));
     expect(res.status).toBe(400);
