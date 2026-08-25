@@ -59,8 +59,7 @@ export default function ProfileTab({
   // from AdminDashboard, which is the only place in the app that already does
   // sub-screens.
   const [view, setView] = useState<'root' | 'stats-privacy'>('root');
-  const statsV2On = isFlagOn('NEXT_PUBLIC_FLAG_STATS_V2');
-  const privacyState = useStatsPrivacy(statsV2On ? (identity?.name ?? null) : null);
+  const privacyState = useStatsPrivacy(identity?.name ?? null);
   const [reportOpen, setReportOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
   // Only offer "Add to Home Screen" when NOT already installed. Resolved
@@ -397,18 +396,16 @@ export default function ProfileTab({
             },
             // Between "Have a recovery code?" and "What's new", per the design.
             // `meta` shows the state so nobody has to open the row to check it.
-            ...(statsV2On
-              ? [{
-                  icon: 'visibility',
-                  label: tSettings('statsPrivacy'),
-                  meta: privacyState.privacy
-                    ? privacyState.privacy.clubComparison
-                      ? tSettings('statsPrivacyOn')
-                      : tSettings('statsPrivacyOff')
-                    : undefined,
-                  onClick: () => setView('stats-privacy'),
-                }]
-              : []),
+            {
+              icon: 'visibility',
+              label: tSettings('statsPrivacy'),
+              meta: privacyState.privacy
+                ? privacyState.privacy.clubComparison
+                  ? tSettings('statsPrivacyOn')
+                  : tSettings('statsPrivacyOff')
+                : undefined,
+              onClick: () => setView('stats-privacy'),
+            },
             { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
             { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setReportOpen(true) },
             ...(!installed

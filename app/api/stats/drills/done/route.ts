@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos';
-import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { verifyMemberAuth } from '@/lib/auth';
 import { drillDocId, readDone, type DrillCompletionDoc } from '@/lib/drillsDone';
@@ -46,10 +45,6 @@ export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
   if (!checkRateLimit(`drills-done:${ip}`, 60, 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-  }
-
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_STATS_V2')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   const caller = verifyMemberAuth(req);

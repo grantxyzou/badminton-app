@@ -29,8 +29,7 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_SKILL_DRILLS'
   | 'NEXT_PUBLIC_FLAG_KUDOS'
   | 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS'
-  | 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER'
-  | 'NEXT_PUBLIC_FLAG_STATS_V2';
+  | 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER';
 
 interface FlagMeta {
   description: string;
@@ -109,11 +108,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: '2026-11-19',
   },
-  NEXT_PUBLIC_FLAG_STATS_V2: {
-    description: 'Stats tab v2: the three registers (Summary / Game stats / Equipment) became four (You / Play / Learn / Gear) with a persistent Level/Games/Kudos overview strip; the 14-axis recharts radar became three dimension bars with club-median ticks; everything that counts sessions you MISSED (streak hero, attendance card, recent-form dots) was removed by product decision; and club comparison became a real opt-out-able feature (bands only, one master switch, asked once on first run). INERT-ON since Stage 8 (2026-08-20): the v1 path was deleted outright, no UI reads this flag any more, and it is \'true\' in both remaining build configs (pr-ci, deploy-next — deploy-stable was deleted 2026-08-25). It now guards only the three v2-only API routes — /api/stats/club/bands, /api/stats/club/gear, /api/stats/drills/done. Turning it OFF no longer falls back to anything; it just 404s those routes and leaves the tab showing load errors. The only remaining move is retirement.',
-    owner: 'grant',
-    plannedRemoval: '2026-09-03 — two weeks after the Stage 8 flip (2026-08-20). Retirement is pure cleanup, not a decision: delete the FlagName entry, this record, the readFlag case, the three route guards, the flags.test.ts case, the flag-off-404 route tests, and the entry in all three workflows.',
-  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -146,8 +140,6 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS;
     case 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER':
       return process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
-    case 'NEXT_PUBLIC_FLAG_STATS_V2':
-      return process.env.NEXT_PUBLIC_FLAG_STATS_V2;
     default: {
       // Exhaustiveness guard. Adding a flag to `FlagName` without adding its
       // `case` above used to be silently legal — `readFlag` just returned
