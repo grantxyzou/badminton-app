@@ -286,3 +286,70 @@ Other smaller things noticed: there's **no in-app feedback channel** other than 
 Each track ships behind feature flags per the CLAUDE.md retirement rule (every flag carries `plannedRemoval` two weeks after stable promotion). Tests required for both `on` and `off` branches of any meaningful flag, per existing pattern.
 
 End-to-end smoke per track: `SEED_DEV_SCENARIO=fresh-thursday` → advance 6 sessions, log games, rate shuttles, add gear, hit "For you" — all on the mock store, then repeat against real Cosmos in `bpm-next` before any stable tag. Tag cut when a track's story is friend-tellable, not when the track is "done."
+
+---
+
+## Gate readout — 2026-08-25 (retrospective)
+
+The kill criterion above was **read for the first time on 2026-08-25**, against
+`since=2026-08-16` (the restarted clock — the Equipment register had been parked
+under the assessment spine since v1.7, so the rec card rendered on neither
+deployment and the criterion was measuring an invisible surface until then).
+
+```json
+{ "since": "2026-08-16", "cohortSize": 12,
+  "recCard": { "anyTappers": 4, "repeatTappers": 3, "rate": 0.25, "threshold": 0.4, "passes": false },
+  "games":   { "loggers": 0, "rate": 0.0, "threshold": 0.3, "passes": false },
+  "racketSavers": 3, "verdict": "kill" }
+```
+
+**The verdict is `kill`. It was not executed, and should not be.** By the time the
+gate was read, three of the four tracks it existed to authorise had already
+shipped:
+
+| Track | Planned | Actual |
+|---|---|---|
+| 1 — Insight | partner card, game results, skill drift | **shipped** |
+| 2 — Equipment | expand past racket-only | **shipped** (strings; 71 rackets vs the planned ~15) |
+| 3 — Learning | drill library, AI coach | **shipped** |
+| 4 — Reach | public pages, affiliate | not built |
+
+Track 2 had its own criterion — *"if <40% of active members log any gear within 4
+weeks, freeze the track at racket-only and don't expand to strings/shoes/grip"* —
+and strings shipped without it being read either. So two written criteria were
+passed, not one.
+
+**The lesson is not "someone forgot".** This plan specifically defended against
+the decision-day temptation to reinterpret a threshold in favour of work already
+done, by writing the numbers down first. What it did not defend against was the
+gate never being *reached*: the surface sat parked, the criterion sat undecidable,
+and shipping simply continued past it. `GET /api/admin/slice0` was built *after*
+the fact, in response to the gate being unanswerable — which is itself the tell.
+**A written criterion with no scheduled read date is a note, not a gate.**
+
+### What the numbers actually say
+
+The single boolean hides the most useful signal, because the criterion conflates
+*discovery* with *value*:
+
+- **Rec card — a reach problem, not a value problem.** Only 4 of 12 ever tapped
+  it, but **3 of those 4 tapped more than once**. Among people who found it,
+  three quarters came back. It is buried on the Gear register inside the Stats tab.
+- **Game logger — the genuinely weak one.** 0 of 12. Not explainable by broken
+  auth: `POST /api/games` and the gear writes require the same `member_session`
+  cookie, and `racketSavers: 3` proves at least three members held valid cookies
+  and made successful authenticated writes in the window. They could have logged
+  and did not. Caveat: it was three navigations deep and carried two
+  data-corrupting bugs (same player on both teams; invisible guests) for the
+  entire window, fixed 2026-08-25 in #274.
+
+### Disposition
+
+The flag is retired rather than kept pending — it gated 12 sites for a feature set
+that is now de facto permanent, which is exactly the "long-lived flags become
+permanent tech debt" case the retirement rule warns about. `GET /api/admin/slice0`
+is kept as a **health readout**, not a gate.
+
+Track 4 (Reach) remains genuinely unbuilt and is the one track with outside-world
+consequences. If it is picked up, it needs a **fresh criterion with a date in the
+calendar**, not just in a document.
