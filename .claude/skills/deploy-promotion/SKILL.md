@@ -1,23 +1,71 @@
 ---
 name: deploy-promotion
-description: Promote a tagged commit from bpm-next to bpm-stable, or roll stable back to a previous tag. Use when cutting a release, tagging bpm-stable-vN.N, dispatching deploy-stable.yml, or rolling back a bad stable deploy.
+description: Deploy or roll back the BPM badminton app. Use when shipping to production, cutting a release, checking what is live, or rolling back a bad deploy. There is ONE deployment — the bpm-stable app service was deleted 2026-08-25.
 ---
 
 # Deploying BPM
 
+**There is one deployment.** `main` auto-deploys to production on every push via
+`.github/workflows/deploy-next.yml`, which targets the `vnext-badminton-app` Azure
+app service, reachable at **https://bpm.grantzou.com/bpm**.
 
-Two deployments from one `main` branch (trunk-based + tag promotion):
+## The naming trap — read this first
 
-- **`bpm-next`** — auto-deploys every push to `main` via `.github/workflows/deploy-next.yml`. Runs with `NEXT_PUBLIC_ENV=next` and most flags `on`. Preview banner visible. Friend-group beta testers bookmark this URL.
-- **`bpm-stable`** — friend-facing production. Deploys only when `.github/workflows/deploy-stable.yml` is manually dispatched with a `tag` input (e.g., `bpm-stable-v1.0`). Runs with `NEXT_PUBLIC_ENV=stable` and flags `off` by default.
+The names are inverted relative to reality, and this has caused repeated confusion:
 
-**Promotion runbook**: update `CHANGELOG.md` → tag `main` as `bpm-stable-vN.0` → push tag → dispatch `deploy-stable` with the tag → smoke test → announce.
+- The app service called **`vnext-badminton-app`** *is* production. Everyone uses it.
+- The app service called **`badminton-app`** sounded like production and was not. It was
+  120+ commits behind, had no custom domain, and pointed at a database that doesn't exist.
+  **It and its B1 plan were deleted on 2026-08-25.**
+- **`staging-badminton-app` is still there and is deliberately kept.** It runs on an F1
+  **Free** plan (`ASP-grantzou-b0c9`), so it costs nothing; it holds no deployment, has no
+  custom domain, and nothing in `.github/` targets it. Don't mistake it for production and
+  don't delete it — it's kept on purpose. (It has `httpsOnly: false`, which is harmless
+  while it serves nothing but is worth flipping if it is ever used for anything.)
+- `deploy-next.yml` sets `NEXT_PUBLIC_ENV: stable` **on purpose**, with a comment saying
+  so. Building production as `next` made it advertise itself as a preview — the
+  PreviewBanner rendered and the releases filter served duplicates. It is an environment
+  identifier, not a feature flag.
 
-**Stable-tag footgun**: the promotion tags a commit, and `main` auto-deploys to `bpm-next` — so `main` routinely contains post-soak work ahead of what's ready for stable. Tag the *specific* intended commit, never blindly `main`, or unsoaked work rides to stable. (2026-05-16: deliberately tagged `ab566e0` for `bpm-stable-v1.4` to keep the just-merged offline work off the stable cut.)
+Never verify which app is live by its name. Verify by DNS: `bpm.grantzou.com` and
+`next.grantzou.com` are both bound to `vnext-badminton-app`.
 
-**Rollback**: re-dispatch `deploy-stable` with a previous tag. For data rollback, Cosmos point-in-time restore (7-day retention).
+## Shipping
 
-**Schema rule**: the two deployments share one Cosmos DB. All schema changes must be additive and optional — never remove or rename a field while stable and next share the DB. Stage 2's `orgId` migration is the one high-risk event; see `/Users/gz-mac/.claude/plans/this-was-where-we-clever-diffie.md`.
+Merge to `main`. That's it — the push triggers `deploy-next.yml`, which runs typecheck,
+the full test suite and the build before deploying. A failing test cannot reach production.
 
-Tests must pass before build proceeds on either workflow. Runtime env vars (including flags) set in Azure App Settings per App Service.
+There is no promotion step and no tag to cut. `bpm-stable-v*` tags exist in history and
+are a **historical record only**; the last one (`bpm-stable-v1.8`, `0daf4ff`) points at a
+build that is many commits behind and at an app service that no longer exists. Do not
+dispatch anything against them.
 
+## Rolling back
+
+Re-dispatch `deploy-next.yml` at an older commit:
+
+```
+gh workflow run deploy-next.yml --ref <good-sha>
+```
+
+It has `workflow_dispatch`, so production can be redeployed at any commit. This does not
+depend on the deleted stable service in any way.
+
+For data rollback: Cosmos point-in-time restore, 7-day retention.
+
+## Verifying a deploy landed
+
+```
+gh run list --workflow=deploy-next.yml --limit 3
+curl -s -o /dev/null -w "%{http_code}\n" https://bpm.grantzou.com/bpm
+```
+
+Probe a route that only exists in the new build to prove *which* build is live — a 200 on
+the home page only proves something is serving. Keep production smoke tests **read-only**:
+signing in writes engagement events that feed the Value-Hub Slice-0 kill-criterion metric.
+
+## Schema rule
+
+Still applies, for a different reason. Schema changes must be additive and optional —
+a rollback redeploys older code against the same live database, so a removed or renamed
+field breaks the build you roll back *to*.
