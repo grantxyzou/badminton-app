@@ -2,26 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { getIdentity } from '@/lib/identity';
+import { useActiveName } from '@/lib/useActiveName';
 import { useOnline } from '@/lib/useOnline';
 import { KUDOS_TAGS, TAG_ICON, type KudosTag } from '@/lib/kudos';
 import CardHeader from '@/components/primitives/CardHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-const STATS_NAME_KEY = 'badminton_stats_preview_name';
 const LOG_WINDOW_MS = 48 * 60 * 60 * 1000;
-
-function resolveActiveName(): string | null {
-  const id = getIdentity();
-  if (id?.name) return id.name;
-  try {
-    const stored = localStorage.getItem(STATS_NAME_KEY);
-    if (stored && stored.trim()) return stored.trim();
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
 
 interface Game { teamA?: string[]; teamB?: string[] }
 
@@ -34,13 +21,12 @@ interface Game { teamA?: string[]; teamB?: string[] }
 export default function GiveKudosCard() {
   const t = useTranslations('stats');
   const online = useOnline();
-  const [you, setYou] = useState<string | null>(null);
+  // Subscribed, not resolved-once — see the note in SkillTrendCard.
+  const { name: you } = useActiveName();
   const [coPlayers, setCoPlayers] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   // Key `${name}:${tag}` → 'sending' | 'sent'.
   const [status, setStatus] = useState<Record<string, 'sending' | 'sent'>>({});
-
-  useEffect(() => { setYou(resolveActiveName()); }, []);
 
   useEffect(() => {
     let live = true;

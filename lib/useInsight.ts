@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
+import { useEffect, useRef, useState } from 'react';
+import { useActiveName } from '@/lib/useActiveName';
 
 /**
  * Shared client hook for the distributed AI insight (greeting + per-card chips).
@@ -15,7 +15,6 @@ import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
  */
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-const STATS_NAME_KEY = 'badminton_stats_preview_name';
 
 export interface CardSlice {
   headline: string;
@@ -34,18 +33,6 @@ export interface InsightData {
 type Entry = { promise: Promise<InsightData | null> };
 const cache = new Map<string, Entry>();
 
-function resolveActiveName(): string | null {
-  const id = getIdentity();
-  if (id?.name) return id.name;
-  try {
-    const stored = localStorage.getItem(STATS_NAME_KEY);
-    if (stored && stored.trim()) return stored.trim();
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
-
 function load(name: string): Promise<InsightData | null> {
   const key = name.toLowerCase();
   const hit = cache.get(key);
@@ -59,26 +46,36 @@ function load(name: string): Promise<InsightData | null> {
 
 /**
  * @param enabled gate the fetch (e.g. the insight-cards flag). When false the
- *   hook stays inert — no request, no state — so the legacy build pays nothing.
+ *   hook issues no request and holds no data, so the legacy build pays nothing
+ *   but the identity subscription every Stats surface carries anyway.
  */
 export function useInsight(enabled = true): { data: InsightData | null; loading: boolean; error: boolean } {
-  const [activeName, setActiveName] = useState<string | null>(null);
+  // The name comes from the module that owns the identity chain. That module
+  // subscribes to `storage` as well as IDENTITY_EVENT; this hook previously
+  // listened for IDENTITY_EVENT only, so signing in from ANOTHER tab left the
+  // insight keyed to the departed member while the prop-driven cards moved on.
+  const { name: activeName } = useActiveName();
   const [state, setState] = useState<{ data: InsightData | null; loading: boolean; error: boolean }>({
     data: null,
     loading: false,
     error: false,
   });
 
+  // Force a refresh when the member actually CHANGES. The cache is keyed by
+  // name, so a different member can never be *served* stale data — this only
+  // makes a re-sign-in re-read rather than replay the memo.
+  //
+  // The `prev != null` guard is load-bearing: `useActiveName` resolves in an
+  // effect, so EVERY consumer transitions null → name on its own mount.
+  // treating that as a change made all three consumers clear the cache as they
+  // mounted, turning the one shared request this module exists to provide back
+  // into three. Only a name → different-name transition is a real switch.
+  const seen = useRef<string | null>(null);
   useEffect(() => {
-    if (!enabled) return;
-    const update = () => {
-      cache.clear();
-      setActiveName(resolveActiveName());
-    };
-    setActiveName(resolveActiveName());
-    window.addEventListener(IDENTITY_EVENT, update);
-    return () => window.removeEventListener(IDENTITY_EVENT, update);
-  }, [enabled]);
+    const prev = seen.current;
+    seen.current = activeName;
+    if (prev != null && prev !== activeName) cache.clear();
+  }, [activeName]);
 
   useEffect(() => {
     if (!enabled || !activeName) {

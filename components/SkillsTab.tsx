@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import StatsV2Shell from '@/components/stats/StatsV2Shell';
 import WhereYouSitCard from '@/components/stats/WhereYouSitCard';
@@ -13,7 +12,7 @@ import SummaryGreeting from '@/components/stats/SummaryGreeting';
 import StatsSignedOut from '@/components/stats/StatsSignedOut';
 import { useStatsPrivacy, shouldPromptForComparison } from '@/lib/useStatsPrivacy';
 import { isFlagOn } from '@/lib/flags';
-import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
+import { useActiveName } from '@/lib/useActiveName';
 
 // Client-only (reads localStorage identity) — these three resolve an active
 // name at mount, so server-rendering them just produces markup the client
@@ -21,21 +20,6 @@ import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
 const SkillTrendCard = dynamic(() => import('@/components/stats/SkillTrendCard'), { ssr: false });
 const KudosReceivedCard = dynamic(() => import('@/components/stats/KudosReceivedCard'), { ssr: false });
 const GiveKudosCard = dynamic(() => import('@/components/stats/GiveKudosCard'), { ssr: false });
-
-const STATS_NAME_KEY = 'badminton_stats_preview_name';
-
-// Same identity chain as the stats cards: real identity → stats preview-name.
-function resolveActiveName(): string | null {
-  const id = getIdentity();
-  if (id?.name) return id.name;
-  try {
-    const stored = localStorage.getItem(STATS_NAME_KEY);
-    if (stored && stored.trim()) return stored.trim();
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
 
 /**
  * The Stats tab: the You / Play / Learn / Gear registers.
@@ -52,22 +36,10 @@ function resolveActiveName(): string | null {
  * retires. There is no v1 to fall back to.
  */
 export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: 'home' | 'players' | 'skills' | 'admin' | 'profile') => void }) {
-  // Identity for the signed-out empty state. Subscribes to IDENTITY_EVENT so
-  // signing in/out updates the tab without a reload.
-  const [activeName, setActiveName] = useState<string | null>(null);
-  const [identResolved, setIdentResolved] = useState(false);
-
-  useEffect(() => {
-    const update = () => setActiveName(resolveActiveName());
-    update();
-    setIdentResolved(true);
-    window.addEventListener(IDENTITY_EVENT, update);
-    window.addEventListener('storage', update);
-    return () => {
-      window.removeEventListener(IDENTITY_EVENT, update);
-      window.removeEventListener('storage', update);
-    };
-  }, []);
+  // Identity for the signed-out empty state, from the module that owns the
+  // chain. `resolved` carries "not known yet" so the first paint doesn't flash
+  // the signed-out state at a signed-in member — unknown is not known-absent.
+  const { name: activeName, resolved: identResolved } = useActiveName();
 
   // Distributed AI insights: a plain-language greeting leads the You register.
   const insightCardsOn = isFlagOn('NEXT_PUBLIC_FLAG_INSIGHT_CARDS');
