@@ -64,3 +64,39 @@ describe('member resolution is active-only and agrees across routes', () => {
     expect(s.isMember).toBe(false);
   });
 });
+
+/**
+ * The two vectors that could re-create duplicate rows.
+ *
+ * The production audit came back with 0 duplicate name groups, which is what
+ * made the active-only flip a provable no-op. Both of these would have decayed
+ * that result silently — no error, just a second row with the same name, after
+ * which a cross-partition `LOWER(c.name)` query with no ORDER BY picks between
+ * them for an id that keys drills, assessments, kudos and gear.
+ */
+describe('duplicate-member vectors are closed', () => {
+  beforeEach(() => {
+    resetMockStore();
+  });
+
+  it('A: signing up a soft-deleted name REACTIVATES rather than creating a second row', async () => {
+    // The sign-up lookup filters `active = true`, so the soft-deleted row is
+    // invisible to it and the admin-bypass branch used to create a duplicate.
+    const gone = seedMember('Gone', { active: false });
+    const { POST } = await import('@/app/api/players/route');
+    const { makeRequest, seedPointer, seedSession, setupAdminPin, adminCookieValue, getStore } = await import('./helpers');
+    setupAdminPin();
+    seedPointer('session-2026-08-27');
+    seedSession('session-2026-08-27', { signupOpen: true, maxPlayers: 12 });
+
+    await POST(makeRequest('POST', 'http://t/api/players', { name: 'Gone' }, {
+      Cookie: `admin_session=${adminCookieValue()}`,
+    }));
+
+    const rows = ((getStore()['members'] ?? []) as Array<{ id: string; name?: string; active?: boolean }>)
+      .filter((m) => String(m.name).toLowerCase() === 'gone');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].id).toBe(gone.id);
+    expect(rows[0].active).toBe(true);
+  });
+});
