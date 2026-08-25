@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { getIdentity } from '@/lib/identity';
+import { useActiveName } from '@/lib/useActiveName';
 import DimensionBars from './DimensionBars';
 import { SKILLS, topStrengths, workOnNext, type Rating, type Dimension, type Phase } from '@/lib/assessment';
 import { isFlagOn } from '@/lib/flags';
@@ -18,21 +18,6 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ListRow from '@/components/primitives/ListRow';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-const STATS_NAME_KEY = 'badminton_stats_preview_name';
-
-/** Same identity chain as the other stats cards: real identity → stats
- *  preview-name → null. Real identity wins so trends key to the real player. */
-function resolveActiveName(): string | null {
-  const id = getIdentity();
-  if (id?.name) return id.name;
-  try {
-    const stored = localStorage.getItem(STATS_NAME_KEY);
-    if (stored && stored.trim()) return stored.trim();
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
 
 /** Response shape of GET /api/stats/club/bands. */
 interface ClubBands {
@@ -84,7 +69,11 @@ function Delta({ value }: { value: number }) {
 
 export default function SkillTrendCard() {
   const t = useTranslations('stats');
-  const [activeName, setActiveName] = useState<string | null>(null);
+  // Shared owner of the identity → preview-name chain. Subscribing (rather
+  // than resolving once at mount) is what keeps this card from rendering the
+  // PREVIOUS member's trend beside the new member's other cards after a
+  // name-to-name sign-in — nothing remounts this island on an identity change.
+  const { name: activeName } = useActiveName();
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
@@ -93,10 +82,6 @@ export default function SkillTrendCard() {
   // Distributed AI insight — a short, non-obvious chip about the skill trend.
   const insightsOn = isFlagOn('NEXT_PUBLIC_FLAG_INSIGHT_CARDS');
   const { data: insight } = useInsight(insightsOn);
-
-  useEffect(() => {
-    setActiveName(resolveActiveName());
-  }, []);
 
   const load = useCallback(() => {
     if (!activeName) return;

@@ -33,9 +33,20 @@ export interface StatsPrivacyScreenProps {
 export default function StatsPrivacyScreen({ onBack, state }: StatsPrivacyScreenProps) {
   const t = useTranslations('stats.privacy');
   const online = useOnline();
-  const { privacy, loaded, error, saving, saveError, save } = state;
+  const { privacy, loaded, error, saving, saveError, save, reload } = state;
 
-  const on = privacy?.clubComparison ?? true;
+  // Only meaningful in the branch below where `privacy` is known non-null.
+  //
+  // This used to be `privacy?.clubComparison ?? true`, which printed a
+  // confident ON — and the matching "you'll see your band on every compared
+  // skill" line — for a preference the server never reported. `useStatsPrivacy`
+  // documents `privacy === null` as UNKNOWN (the read completed on a degraded
+  // path that never touched the member doc) and sets `loaded: true` with
+  // `error: false` there, so the default was being applied to a live,
+  // successful-looking read. A privacy control is the last place to state a
+  // setting nobody confirmed.
+  const on = privacy?.clubComparison ?? false;
+  const unknown = loaded && !error && !privacy;
 
   return (
     // NOT wrapped in an element containing only the header — TopBar is
@@ -49,6 +60,20 @@ export default function StatsPrivacyScreen({ onBack, state }: StatsPrivacyScreen
       ) : error ? (
         <div className="glass-card p-5">
           <ErrorState message={t('saveError')} />
+        </div>
+      ) : unknown ? (
+        // Read succeeded but reported no preference. Distinct from the failure
+        // above (different copy, and a retry that re-reads rather than a
+        // refresh) and distinct from a stored answer — no switch is drawn at
+        // all, because drawing one means claiming a position.
+        <div className="glass-card p-5 space-y-3">
+          <h3 className="bpm-h3" style={{ margin: 0 }}>
+            {t('comparisonTitle')}
+          </h3>
+          <ErrorState message={t('unknown')} />
+          <button type="button" className="cc-btn cc-btn-ghost" onClick={reload} disabled={!online}>
+            {t('retry')}
+          </button>
         </div>
       ) : (
         <div className="glass-card p-5 space-y-3">

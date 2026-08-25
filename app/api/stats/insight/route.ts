@@ -4,6 +4,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer, getActiveSessionId, ensureContainer } from '@/lib/cosmos';
 import { topPartners } from '@/lib/recommend';
 import { isFlagOn } from '@/lib/flags';
+import { ownsNameOrAdmin } from '@/lib/auth';
 import { summarizeAssessmentTrend, type AssessmentTrend, type StoredAssessment } from '@/lib/assessment';
 import { getCanonicalLevel } from '@/lib/levelStore';
 import type { CanonicalLevel } from '@/lib/level';
@@ -126,6 +127,20 @@ export async function GET(req: NextRequest) {
   const name = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50) ?? '';
   if (!name) return emptyPayload(false);
 
+  // ── Privacy gate (rule 3: auth before DB). Same posture as /stats/level.
+  //    Note the "Account gate" further down is a DIFFERENT thing: it decides
+  //    WHOSE name resolves to a member, not WHO may ask. This is the one that
+  //    answers "may you". Two harms it closes:
+  //      1. The payload is AI prose grounded in this member's canonical level,
+  //         trend and self-rated WEAKEST skills. Names are enumerable via the
+  //         public GET /api/members, so ungated this was readable for anyone.
+  //      2. A cache miss GENERATES — an unauthenticated caller could spend
+  //         Anthropic budget at will. The gate therefore sits above every DB
+  //         read and every generation path, not merely above the model call.
+  if (!ownsNameOrAdmin(req, name)) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+
   let membersContainer, playersContainer, sessionsContainer, insightsContainer;
   try {
     await ensureInsightsContainer();
@@ -165,16 +180,6 @@ export async function GET(req: NextRequest) {
   const trend = summarizeAssessmentTrend(assessmentDocs);
   const latestAssessmentAt = trend?.latestAt ?? null;
 
-  // Canonical level (flag-gated). Same memberId-resolve as the trend; folds the
-  // self-assessments into one private headline number. Non-fatal — the insight
-  // still generates without it. Cheap on the cached path (only runs on miss).
-  const canonicalLevel = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_LEVEL')
-    ? await getCanonicalLevel({ memberId: member.id, name: member.name }).catch((err) => {
-        console.error('insight level read failed:', err);
-        return null;
-      })
-    : null;
-
   // ── Cache: return the stored insight if it's for the current session AND no
   //    newer assessment has landed since it was generated. ──
   let existing: InsightDoc | null = null;
@@ -212,6 +217,23 @@ export async function GET(req: NextRequest) {
     }
     return emptyPayload(true);
   }
+
+  // Canonical level (flag-gated). Same memberId-resolve as the trend; folds the
+  // self-assessments into one private headline number. Non-fatal — the insight
+  // still generates without it.
+  //
+  // MUST stay below the cache early-returns. `getCanonicalLevel` does two
+  // unbounded `FROM c` container scans (lib/levelStore.ts), and its first USE
+  // is the drills call immediately below — i.e. miss-path only. It used to sit
+  // above the cache read, under a comment claiming it "only runs on miss",
+  // which was simply false: every cached load paid for both scans and threw
+  // the result away. Moving a read above the cache is not free here.
+  const canonicalLevel = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_LEVEL')
+    ? await getCanonicalLevel({ memberId: member.id, name: member.name }).catch((err) => {
+        console.error('insight level read failed:', err);
+        return null;
+      })
+    : null;
 
   // Drills for the work-on skills (flag-gated). Deterministic; rotates by session.
   const drills = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_DRILLS') && trend

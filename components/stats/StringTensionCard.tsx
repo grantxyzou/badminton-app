@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
+import ErrorState from '@/components/primitives/ErrorState';
 import { recommendTension, formatForToggle, MIN_LB, MAX_LB, type PlayFormat } from '@/lib/tension';
 import type { UseGear } from './useGear';
 
@@ -11,9 +12,12 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 /**
  * String tension advice, derived from the member's level and format.
  *
- * The card DOES NOT RENDER without a level. A tension number with nothing
- * behind it looks exactly as authoritative as one with a check-in behind it,
- * and someone would go and get their racket strung to it.
+ * The card DOES NOT RENDER a number without a level AND a known play format. A
+ * tension figure with nothing behind it looks exactly as authoritative as one
+ * with a check-in behind it, and someone would go and get their racket strung
+ * to it. "Nothing behind it" includes a FAILED read, not just a missing one —
+ * so a member who has never checked in still gets silence, while a read that
+ * broke gets a visible failure. Those two used to render identically.
  *
  * The number is framed as advice throughout — an advisory line under the
  * scale, and a reason that names why. Handing over a bare figure would invite
@@ -37,25 +41,37 @@ export interface StringTensionCardProps {
 
 export default function StringTensionCard({ activeName, gear, suppressed }: StringTensionCardProps) {
   const t = useTranslations('stats.gear');
+  const tStats = useTranslations('stats');
   const [level, setLevel] = useState<number | null>(null);
-  const [ready, setReady] = useState(false);
+  // Was a bare `ready` boolean, which merged three different worlds: read
+  // succeeded with a level, read succeeded with no level, and read FAILED.
+  // The last two both left `level` null, so a failed read vanished the card
+  // exactly like a member who has never checked in.
+  const [levelStatus, setLevelStatus] = useState<'loading' | 'ready' | 'error' | 'forbidden'>('loading');
 
-  // `ready` gates on the LEVEL read alone. The gear doc only decides which
-  // toggle is lit; this card's render/no-render rule has always been "do we
-  // have a level", and widening it would hide the card on an unrelated failure.
+  // `levelStatus` gates on the LEVEL read alone. The gear doc only decides
+  // which toggle is lit; this card's render/no-render rule has always been "do
+  // we have a level", and widening it would hide the card on an unrelated
+  // failure.
   useEffect(() => {
     if (!activeName) return;
     let live = true;
     fetch(`${BASE}/api/stats/level?name=${encodeURIComponent(activeName)}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((r) => {
+        // The route is owner-or-admin gated. 403 means this device does not
+        // own the name — refreshing cannot fix it, signing in can.
+        if (r.status === 403) return Promise.reject(new Error('forbidden'));
+        return r.ok ? r.json() : Promise.reject(new Error(String(r.status)));
+      })
       .then((d) => {
         if (!live) return;
         const raw = d?.level?.level;
         setLevel(typeof raw === 'number' ? raw : null);
-        setReady(true);
+        setLevelStatus('ready');
       })
-      .catch(() => {
-        if (live) setReady(true);
+      .catch((e: Error) => {
+        if (!live) return;
+        setLevelStatus(e?.message === 'forbidden' ? 'forbidden' : 'error');
       });
     return () => {
       live = false;
@@ -65,14 +81,36 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
   const format = (gear.gear?.playFormat ?? 'doubles') as PlayFormat;
   const advice = recommendTension(level, format);
 
-  // No level, or still resolving — render nothing rather than a placeholder
-  // number. There is no honest skeleton for "we have no advice".
+  /** Card shell carrying one legible-fail line instead of a number. */
+  const failed = (message: string) => (
+    <div className="glass-card p-5 space-y-3">
+      <CardHeader icon="science" title={t('tensionTitle')} subtitle={t('tensionSubtitle')} />
+      <ErrorState message={message} />
+    </div>
+  );
+
   // D2: the string pairing produced a number for this exact frame-and-string,
   // which beats round(21 + level). Stand down rather than offer the member a
-  // second, less specific answer to the same question.
+  // second, less specific answer to the same question. MUST stay the first
+  // return — a suppressed card renders nothing, errors included.
   if (suppressed) return null;
+  if (!activeName) return null;
 
-  if (!activeName || !ready || !advice) return null;
+  // Order is deliberate, and each branch answers a different question.
+  if (levelStatus === 'loading') return null;
+  if (levelStatus === 'forbidden') return failed(tStats('signInAgain'));
+  if (levelStatus === 'error') return failed(t('tensionError'));
+
+  // Read succeeded and the member genuinely has no level yet: render nothing,
+  // as before. This is the one honest silence and must not become an error.
+  if (level === null || !advice) return null;
+
+  // We HAVE a level but the gear read failed, so `playFormat` is unknown.
+  // Falling back to 'doubles' lit the Doubles segment as though it were the
+  // member's stored preference and printed a doubles number at a singles
+  // player — a recommendation with nothing behind it, which this card's
+  // docstring forbids. `useGear` sets `loadError` for exactly this.
+  if (gear.loadError) return failed(t('tensionError'));
 
   const selected = formatForToggle(format);
 

@@ -4,8 +4,20 @@ import {
   resetMockStore,
   seedSession,
   seedPlayer,
+  setupAdminPin,
   makeRequest,
+  memberCookieValue,
 } from './helpers';
+
+// The route is owner-or-admin gated (`ownsNameOrAdmin`), so every data-shape
+// case below has to carry a `member_session` cookie for the name it queries.
+// `setupAdminPin()` in beforeEach installs the SESSION_SECRET those cookies are
+// signed with — without it the signature check fails and everything 403s.
+function getAs(url: string, cookieName = 'Grant') {
+  return makeRequest('GET', url, undefined, {
+    Cookie: `member_session=${memberCookieValue(cookieName)}`,
+  });
+}
 
 function isoForDaysAgo(days: number): string {
   const d = new Date();
@@ -25,6 +37,7 @@ function makeSessionIds(count: number): string[] {
 describe('GET /api/stats/attendance', () => {
   beforeEach(() => {
     resetMockStore();
+    setupAdminPin();
   });
 
   it('returns 400 when name is missing', async () => {
@@ -34,7 +47,7 @@ describe('GET /api/stats/attendance', () => {
 
   it('returns zero counts when no sessions exist', async () => {
     const res = await GET(
-      makeRequest('GET', 'http://localhost:3000/api/stats/attendance?name=Grant'),
+      getAs('http://localhost:3000/api/stats/attendance?name=Grant'),
     );
     expect(res.status).toBe(200);
     const data = await res.json();
@@ -54,7 +67,7 @@ describe('GET /api/stats/attendance', () => {
     // ids[4] — no player row
 
     const res = await GET(
-      makeRequest('GET', 'http://localhost:3000/api/stats/attendance?name=Grant&weeks=5'),
+      getAs('http://localhost:3000/api/stats/attendance?name=Grant&weeks=5'),
     );
     const data = await res.json();
     expect(data.attended).toBe(2);
@@ -73,7 +86,7 @@ describe('GET /api/stats/attendance', () => {
     seedPlayer(ids[1], 'grant');
 
     const res = await GET(
-      makeRequest('GET', 'http://localhost:3000/api/stats/attendance?name=Grant&weeks=2'),
+      getAs('http://localhost:3000/api/stats/attendance?name=Grant&weeks=2'),
     );
     const data = await res.json();
     expect(data.attended).toBe(2);
@@ -89,7 +102,7 @@ describe('GET /api/stats/attendance', () => {
     seedPlayer(ids[4], 'Grant');
 
     const res = await GET(
-      makeRequest('GET', 'http://localhost:3000/api/stats/attendance?name=Grant&weeks=5'),
+      getAs('http://localhost:3000/api/stats/attendance?name=Grant&weeks=5'),
     );
     const data = await res.json();
     expect(data.streak).toBe(3); // most-recent 3 in a row
@@ -107,7 +120,7 @@ describe('GET /api/stats/attendance', () => {
     seedPlayer(ids[5], 'Grant');
 
     const res = await GET(
-      makeRequest('GET', 'http://localhost:3000/api/stats/attendance?name=Grant&weeks=7'),
+      getAs('http://localhost:3000/api/stats/attendance?name=Grant&weeks=7'),
     );
     const data = await res.json();
     expect(data.streak).toBe(1); // only the latest, then a miss
@@ -120,7 +133,7 @@ describe('GET /api/stats/attendance', () => {
     ids.forEach((id) => seedPlayer(id, 'Grant'));
 
     const res = await GET(
-      makeRequest('GET', 'http://localhost:3000/api/stats/attendance?name=Grant&weeks=8'),
+      getAs('http://localhost:3000/api/stats/attendance?name=Grant&weeks=8'),
     );
     const data = await res.json();
     expect(data.history).toHaveLength(8);
@@ -132,7 +145,7 @@ describe('GET /api/stats/attendance', () => {
     ids.forEach((id, i) => seedSession(id, { datetime: isoForDaysAgo(i * 7) }));
 
     const res = await GET(
-      makeRequest('GET', 'http://localhost:3000/api/stats/attendance?name=Grant&weeks=99999'),
+      getAs('http://localhost:3000/api/stats/attendance?name=Grant&weeks=99999'),
     );
     const data = await res.json();
     expect(data.weeks).toBeLessThanOrEqual(52);
@@ -150,7 +163,7 @@ describe('GET /api/stats/attendance', () => {
     seedSession(futureId, { datetime: future.toISOString() });
 
     const res = await GET(
-      makeRequest('GET', 'http://localhost:3000/api/stats/attendance?name=Grant&weeks=12'),
+      getAs('http://localhost:3000/api/stats/attendance?name=Grant&weeks=12'),
     );
     const data = await res.json();
     // The future session must neither appear in history nor reset the streak to 0.

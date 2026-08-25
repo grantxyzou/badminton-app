@@ -34,8 +34,11 @@ interface Partner {
 
 export default function WhoYouPlayWithCard({ activeName }: WhoYouPlayWithCardProps) {
   const t = useTranslations('stats.partners');
+  // Shared copy for the refusal, so the three surfaces that can hit a 403 all
+  // say the same thing.
+  const tStats = useTranslations('stats');
   const [partners, setPartners] = useState<Partner[]>([]);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'forbidden'>('loading');
 
   useEffect(() => {
     if (!activeName) return;
@@ -44,13 +47,24 @@ export default function WhoYouPlayWithCard({ activeName }: WhoYouPlayWithCardPro
       `${BASE}/api/stats/partners?name=${encodeURIComponent(activeName)}&weeks=${WEEKS}`,
       { cache: 'no-store' },
     )
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((r) => {
+        // 403 is the route's owner-or-admin gate refusing, not a load failure:
+        // this device holds no `member_session` cookie for the name (expired
+        // 30-day cookie, or the stats preview-name path). "Couldn't load —
+        // refresh to retry" would send the member round a loop that can never
+        // succeed, so it gets its own branch.
+        if (r.status === 403) return Promise.reject(new Error('forbidden'));
+        return r.ok ? r.json() : Promise.reject(new Error(String(r.status)));
+      })
       .then((d) => {
         if (!live) return;
         setPartners((d?.partners ?? []) as Partner[]);
         setStatus('ready');
       })
-      .catch(() => live && setStatus('error'));
+      .catch((e: Error) => {
+        if (!live) return;
+        setStatus(e?.message === 'forbidden' ? 'forbidden' : 'error');
+      });
     return () => {
       live = false;
     };
@@ -65,7 +79,9 @@ export default function WhoYouPlayWithCard({ activeName }: WhoYouPlayWithCardPro
   return (
     <div className="glass-card p-5 space-y-3">
       <CardHeader icon="group" title={t('title')} subtitle={t('subtitle')} />
-      {status === 'error' ? (
+      {status === 'forbidden' ? (
+        <ErrorState message={tStats('signInAgain')} />
+      ) : status === 'error' ? (
         <ErrorState message={t('error')} />
       ) : top.length === 0 ? (
         <EmptyState>{t('empty')}</EmptyState>

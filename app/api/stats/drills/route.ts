@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
+import { ownsNameOrAdmin } from '@/lib/auth';
 import type { LevelSubject } from '@/lib/levelStore';
 import { drillPicksFor } from '@/lib/drills';
 import { drillDocId, readDone, type DrillCompletionDoc } from '@/lib/drillsDone';
@@ -75,9 +75,7 @@ export async function GET(req: NextRequest) {
   if (!name) return NextResponse.json({ error: 'name_required' }, { status: 400 });
 
   // Privacy gate: own this name (member cookie) or admin. Same posture as /level.
-  const member = verifyMemberAuth(req);
-  const ownsName = member?.name?.trim().toLowerCase() === name.toLowerCase();
-  if (!ownsName && !isAdminAuthed(req)) {
+  if (!ownsNameOrAdmin(req, name)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
