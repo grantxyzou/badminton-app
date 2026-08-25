@@ -154,6 +154,11 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Account gate: resolve the member. Anonymous names get nothing. ──
+  // Deliberately NOT lib/memberResolve: this needs the member's CANONICAL
+  // stored name (`m.name`), which flows into buildSnapshot and the generated
+  // prose, whereas MemberSubject.name is the trimmed QUERY string. Same
+  // active-only filter, different return shape — folding it in would silently
+  // change the casing the AI narrates. Allowlisted in the resolver canary.
   let member: { id: string; name: string } | null = null;
   try {
     const { resources } = await membersContainer.items

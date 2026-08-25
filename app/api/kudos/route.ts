@@ -5,6 +5,7 @@ import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { aggregateKudos, isKudosTag, type KudosDoc } from '@/lib/kudos';
+import { resolveActiveSubject } from '@/lib/memberResolve';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,28 +20,8 @@ function ensureKudos(): Promise<void> {
   return ready;
 }
 
-interface SubjectRef {
-  memberId: string;
-  name: string;
-}
 
 /** Name → subject id (members directory canonical, name-fallback otherwise). */
-async function resolveSubject(name: string): Promise<SubjectRef> {
-  const trimmed = name.trim();
-  try {
-    const { resources } = await getContainer('members')
-      .items.query({
-        query: 'SELECT * FROM c WHERE LOWER(c.name) = @name',
-        parameters: [{ name: '@name', value: trimmed.toLowerCase() }],
-      })
-      .fetchAll();
-    const member = resources[0] as { id?: string } | undefined;
-    if (member?.id) return { memberId: member.id, name: trimmed };
-  } catch {
-    /* fall through */
-  }
-  return { memberId: `name:${trimmed.toLowerCase()}`, name: trimmed };
-}
 
 /**
  * Did `a` and `b` (case-insensitive names) play the same session? True if both
@@ -123,7 +104,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'not_co_player' }, { status: 403 });
     }
 
-    const recipient = await resolveSubject(recipientName);
+    const recipient = await resolveActiveSubject(recipientName);
     const container = getContainer('kudos');
 
     // One of each tag per (rater, recipient, session). The mock store ignores
@@ -184,7 +165,7 @@ export async function GET(req: NextRequest) {
 
   try {
     await ensureKudos();
-    const subject = await resolveSubject(name);
+    const subject = await resolveActiveSubject(name);
     const { resources } = await getContainer('kudos').items
       .query({
         query: 'SELECT c.tag, c.recipientMemberId FROM c WHERE c.recipientMemberId = @rid',

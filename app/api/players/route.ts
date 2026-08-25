@@ -223,17 +223,38 @@ export async function POST(req: NextRequest) {
     // Admin-bypass auto-create: when admin signs up a name we've never seen,
     // create the members doc now so the player record can link via memberId.
     // Keeps the "every player has a member" invariant the command center relies on.
+    //
+    // REACTIVATE BEFORE CREATING. The lookup that produced `matchedMember`
+    // filters `active = true`, so a SOFT-DELETED member with this name is
+    // invisible to it — and creating here would leave two `members` rows
+    // sharing one name. Since every name-keyed route resolves the active row
+    // (lib/memberResolve), a duplicate pair means a cross-partition
+    // `LOWER(c.name)` query with no ORDER BY picks between them, and that id is
+    // the storage key for drills, assessments, kudos and gear. Mirrors the
+    // reactivate branch in POST /api/members.
     if (!matchedMember && isAdminAuthed(req)) {
-      const newMember = {
-        id: randomBytes(12).toString('hex'),
-        name: trimmedName,
-        role: 'member' as const,
-        sessionCount: 0,
-        active: true,
-        createdAt: new Date().toISOString(),
-      };
-      const { resource } = await membersContainer.items.create(newMember);
-      matchedMember = (resource ?? null) as typeof matchedMember;
+      const { resources: anyNamed } = await membersContainer.items
+        .query({
+          query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name)',
+          parameters: [{ name: '@name', value: trimmedName }],
+        })
+        .fetchAll();
+      const inactive = (anyNamed as Array<{ active?: boolean }>).find((m) => m?.active === false);
+      if (inactive) {
+        const { resource } = await membersContainer.items.upsert({ ...inactive, active: true });
+        matchedMember = (resource ?? null) as typeof matchedMember;
+      } else {
+        const newMember = {
+          id: randomBytes(12).toString('hex'),
+          name: trimmedName,
+          role: 'member' as const,
+          sessionCount: 0,
+          active: true,
+          createdAt: new Date().toISOString(),
+        };
+        const { resource } = await membersContainer.items.create(newMember);
+        matchedMember = (resource ?? null) as typeof matchedMember;
+      }
     }
 
     // PIN-protected member: the caller must prove ownership before we
