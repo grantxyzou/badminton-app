@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
+import { ownsNameOrAdmin } from '@/lib/auth';
 import { getCanonicalLevel, type LevelSubject } from '@/lib/levelStore';
 
 /**
  * Canonical level for a member — private by design (CLAUDE.md privacy stance):
  * served only to the member themselves (a matching `member_session` cookie) or
- * an admin. Never ranked, never listed. Read-only ⇒ the cheap sync
- * `isAdminAuthed` is fine (rule 3).
+ * an admin. Never ranked, never listed. The gate is `ownsNameOrAdmin`
+ * (lib/auth.ts) — read-only ⇒ its cheap sync `isAdminAuthed` is fine (rule 3).
  *
  * Order follows the security rules: rate limit (rule 4) → flag (404 when off) →
  * privacy gate (rule 12 posture) → resolve subject → derive.
@@ -56,9 +56,7 @@ export async function GET(req: NextRequest) {
   // Privacy gate: the calling device must own this name (member cookie) or be
   // an admin. A known-not-authed caller gets 403 (the client renders an
   // actionable "sign in again" state — unknown ≠ known-false).
-  const member = verifyMemberAuth(req);
-  const ownsName = member?.name?.trim().toLowerCase() === name.toLowerCase();
-  if (!ownsName && !isAdminAuthed(req)) {
+  if (!ownsNameOrAdmin(req, name)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, POINTER_ID } from '@/lib/cosmos';
+import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
+import { ownsNameOrAdmin } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/stats/attendance?name=<player-name>[&weeks=12]
  *
- * Returns the player's attendance over the last N weeks. Open to any visitor
- * — no auth required. We only read session-scoped player rows by name, and
- * the response contains no sensitive data (no tokens, no email).
+ * Returns the player's attendance over the last N weeks. Private, like every
+ * other name-keyed Stats route: served only to the member themselves (a
+ * matching `member_session` cookie) or an admin, via `ownsNameOrAdmin`.
+ *
+ * It used to carry NEITHER a rate limiter nor auth — the only route under
+ * app/api/stats with neither, on the reasoning that "attendance isn't
+ * sensitive". It is: who showed up on which weeks is a behavioural record of a
+ * named real person, member names are enumerable via the public
+ * GET /api/members, and the handler runs two container queries per call for
+ * anyone who asks. Both guards are now present, in canonical order.
  *
  * NO IN-APP CALLERS as of Stage 8 (2026-08-20). Stats v2 removed every surface
  * that showed attendance — AttendanceCardLive and StatsStreakHero were the only
@@ -39,6 +48,13 @@ export const dynamic = 'force-dynamic';
  * waitlisted !== true. Promoted-from-waitlist counts as attendance.
  */
 export async function GET(req: NextRequest) {
+  // Rate limit first (rule 4), then the privacy gate before any DB read (rule 3).
+  // 60/min matches its /stats siblings.
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`stats-attendance:${ip}`, 60, 60 * 1000)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+
   const url = new URL(req.url);
   const name = url.searchParams.get('name')?.trim();
   const weeksParam = Number(url.searchParams.get('weeks') ?? '12');
@@ -49,13 +65,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'name required' }, { status: 400 });
   }
 
+  if (!ownsNameOrAdmin(req, name)) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+
   try {
     const sessionsContainer = getContainer('sessions');
     const playersContainer = getContainer('players');
 
+    // Projected to the two fields actually used (`id`, `datetime`). `SELECT *`
+    // pulled every full session doc — birdUsages, approvedNames,
+    // prevCostPerPerson — across the whole history to read two of them. This is
+    // a projection only; the WHERE clause and therefore the result set are
+    // unchanged.
     const { resources: allSessions } = await sessionsContainer.items
       .query({
-        query: 'SELECT * FROM c WHERE c.id != @pointerId AND c.id != @legacyId',
+        query: 'SELECT c.id, c.datetime FROM c WHERE c.id != @pointerId AND c.id != @legacyId',
         parameters: [
           { name: '@pointerId', value: POINTER_ID },
           { name: '@legacyId', value: 'current-session' },

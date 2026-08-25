@@ -3,16 +3,24 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { GET } from '@/app/api/stats/partners/route';
 import { NextRequest } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
+import { setupAdminPin, memberCookieValue } from './helpers';
 
-// Unique IP per request — partners is rate-limited 10/min; convention per helpers.ts.
-function get(url: string): NextRequest {
+// Unique IP per request — partners is rate-limited 10/min; convention per
+// helpers.ts. The route is owner-or-admin gated, so requests carry a
+// `member_session` cookie for the name they query (signed with the
+// SESSION_SECRET that `setupAdminPin()` installs).
+function get(url: string, cookieName = 'Lin'): NextRequest {
   return new NextRequest(new URL(url, 'http://localhost/bpm'), {
-    headers: { 'x-client-ip': `partners-${Math.random()}` },
+    headers: {
+      'x-client-ip': `partners-${Math.random()}`,
+      cookie: `member_session=${memberCookieValue(cookieName)}`,
+    },
   });
 }
 
 describe('GET /api/stats/partners', () => {
   beforeEach(async () => {
+    setupAdminPin();
     process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
     const players = getContainer('players');
     // Two sessions; Lin co-attends with Viktor twice, Carolina once.

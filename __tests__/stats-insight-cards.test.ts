@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
-import { resetMockStore, getStore, seedMember, seedPointer, makeGetRequest } from './helpers';
+import { resetMockStore, getStore, seedMember, seedPointer, setupAdminPin, makeRequest, memberCookieValue } from './helpers';
 
 // Mock the Anthropic SDK so the route's single generate() call is deterministic.
 // `vi.hoisted` makes the spy available inside the hoisted vi.mock factory.
@@ -13,6 +13,15 @@ vi.mock('@anthropic-ai/sdk', () => ({
 import { GET } from '../app/api/stats/insight/route';
 
 const BASE = 'http://localhost:3000/api/stats/insight';
+
+// The route is owner-or-admin gated (`ownsNameOrAdmin`), so every case carries a
+// `member_session` cookie for the name it asks about. `setupAdminPin()` in
+// beforeEach installs the SESSION_SECRET the cookie is signed with.
+function getAs(name: string) {
+  return makeRequest('GET', `${BASE}?name=${encodeURIComponent(name)}`, undefined, {
+    Cookie: `member_session=${memberCookieValue(name)}`,
+  });
+}
 
 function textResponse(obj: unknown) {
   return { content: [{ type: 'text', text: JSON.stringify(obj) }] };
@@ -34,6 +43,7 @@ function seedAssessment(memberId: string, takenAt: string, overall: number, lows
 describe('/api/stats/insight — distributed insight cards', () => {
   beforeEach(() => {
     resetMockStore();
+    setupAdminPin();
     mockCreate.mockReset();
     process.env.ANTHROPIC_API_KEY = 'test-key';
     process.env.NEXT_PUBLIC_FLAG_SKILL_ASSESS = 'true';
@@ -59,7 +69,7 @@ describe('/api/stats/insight — distributed insight cards', () => {
       }),
     );
 
-    const res = await GET(makeGetRequest(`${BASE}?name=Lin`));
+    const res = await GET(getAs('Lin'));
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.account).toBe(true);
@@ -84,7 +94,7 @@ describe('/api/stats/insight — distributed insight cards', () => {
       }),
     );
 
-    const res = await GET(makeGetRequest(`${BASE}?name=Akane`));
+    const res = await GET(getAs('Akane'));
     const json = await res.json();
     expect(json.greeting).toBe('Good to see you back.');
     expect(json.level).toBeNull();
@@ -96,9 +106,9 @@ describe('/api/stats/insight — distributed insight cards', () => {
     seedAssessment(m.id, '2026-05-01', 3.2, ['net_play']);
     mockCreate.mockResolvedValue(textResponse({ greeting: 'Hi Viktor.', level: null, trend: null }));
 
-    const first = await GET(makeGetRequest(`${BASE}?name=Viktor`));
+    const first = await GET(getAs('Viktor'));
     expect((await first.json()).cached).toBe(false);
-    const second = await GET(makeGetRequest(`${BASE}?name=Viktor`));
+    const second = await GET(getAs('Viktor'));
     const secondJson = await second.json();
     expect(secondJson.cached).toBe(true);
     expect(secondJson.greeting).toBe('Hi Viktor.');
@@ -109,11 +119,11 @@ describe('/api/stats/insight — distributed insight cards', () => {
     const m = seedMember('Kento');
     seedAssessment(m.id, '2026-05-01', 3.2, ['net_play']);
     mockCreate.mockResolvedValue(textResponse({ greeting: 'Hi Kento.', level: null, trend: null }));
-    await GET(makeGetRequest(`${BASE}?name=Kento`)); // caches a cards-shaped doc
+    await GET(getAs('Kento')); // caches a cards-shaped doc
 
     process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS = 'false';
     mockCreate.mockResolvedValue(textResponse({ recap: 'Last week was solid.', focus: 'Work on net play.' }));
-    const res = await GET(makeGetRequest(`${BASE}?name=Kento`));
+    const res = await GET(getAs('Kento'));
     const json = await res.json();
     expect(json.recap).toBe('Last week was solid.');
     expect(json.focus).toBe('Work on net play.');
@@ -122,7 +132,7 @@ describe('/api/stats/insight — distributed insight cards', () => {
   });
 
   it('gates on account: an unknown name gets no insight and never calls the model', async () => {
-    const res = await GET(makeGetRequest(`${BASE}?name=Stranger`));
+    const res = await GET(getAs('Stranger'));
     const json = await res.json();
     expect(json.account).toBe(false);
     expect(json.greeting).toBeNull();

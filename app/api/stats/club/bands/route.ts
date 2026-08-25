@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
+import { ownsNameOrAdmin } from '@/lib/auth';
 import { computeClubBands, MIN_COHORT } from '@/lib/clubBands';
 import { normalizeStatsPrivacy, isComparisonRevealed } from '@/lib/statsPrivacy';
 import type { Rating, StoredAssessment } from '@/lib/assessment';
@@ -106,9 +106,7 @@ export async function GET(req: NextRequest) {
   const name = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50) ?? '';
   if (!name) return NextResponse.json({ error: 'name_required' }, { status: 400 });
 
-  const member = verifyMemberAuth(req);
-  const ownsName = member?.name?.trim().toLowerCase() === name.toLowerCase();
-  if (!ownsName && !isAdminAuthed(req)) {
+  if (!ownsNameOrAdmin(req, name)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
