@@ -360,6 +360,9 @@ function seedDevScenarioIfRequested(containerName: string) {
   );
 }
 
+/** Monotonic across the whole mock store — an etag only has to be unique. */
+let etagSeq = 0;
+
 function getMockContainer(name: string) {
   if (!mockStore[name]) mockStore[name] = [];
   seedDevAdminIfRequested(name);
@@ -418,13 +421,41 @@ function getMockContainer(name: string) {
         };
       },
       async create(item: Record<string, unknown>) {
-        store.push(item);
-        return { resource: item };
+        // Cosmos rejects a duplicate id with 409, and the gear route depends on
+        // that to make the first-ever write safe against a concurrent one.
+        if (item.id !== undefined && store.some((r) => r.id === item.id)) {
+          const error = new Error('Conflict') as Error & { code: number };
+          error.code = 409;
+          throw error;
+        }
+        const stored = { ...item, _etag: `mock-etag-${++etagSeq}` };
+        store.push(stored);
+        return { resource: stored };
       },
-      async upsert(item: Record<string, unknown>) {
+      async upsert(
+        item: Record<string, unknown>,
+        options?: { accessCondition?: { type: string; condition: string } },
+      ) {
         const idx = store.findIndex((r) => r.id === item.id);
-        if (idx >= 0) store[idx] = item; else store.push(item);
-        return { resource: item };
+        // Optimistic concurrency, mirroring Cosmos: an `IfMatch` whose etag no
+        // longer matches the stored doc is a 412, which is what makes the
+        // lost-update retry in app/api/equipment/gear testable at all. Without
+        // it the mock silently accepts every write and the interleaving the
+        // guard exists to prevent cannot be reproduced.
+        const condition = options?.accessCondition;
+        if (condition?.type === 'IfMatch') {
+          const current = idx >= 0 ? store[idx] : undefined;
+          if (!current || current._etag !== condition.condition) {
+            const error = new Error('Precondition Failed') as Error & { code: number };
+            error.code = 412;
+            throw error;
+          }
+        }
+        // Every write mints a new etag, so a reader holding the previous one
+        // is stale by definition — same contract as the real service.
+        const stored = { ...item, _etag: `mock-etag-${++etagSeq}` };
+        if (idx >= 0) store[idx] = stored; else store.push(stored);
+        return { resource: stored };
       },
     },
     item(id: string, _pk?: string) {
