@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer } from '@/lib/cosmos';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ownsNameOrAdmin } from '@/lib/auth';
-import { getCanonicalLevel, type LevelSubject } from '@/lib/levelStore';
+import { getCanonicalLevel } from '@/lib/levelStore';
+import { resolveAnyMemberSubject } from '@/lib/memberResolve';
 
 /**
  * Canonical level for a member — private by design (CLAUDE.md privacy stance):
@@ -18,27 +18,11 @@ import { getCanonicalLevel, type LevelSubject } from '@/lib/levelStore';
 export const dynamic = 'force-dynamic';
 
 /**
- * Name → subject id. Mirrors `resolveSubject` in app/api/assessments/route.ts:
+ * Name → subject id. Mirrors `resolveAnyMemberSubject` in app/api/assessments/route.ts:
  * the members directory is canonical; non-members fall back to a name-derived
  * key so they still get a (self-only) level. Queries by @name, which the mock
  * store honors (it does NOT honor @memberId).
  */
-async function resolveSubject(name: string): Promise<LevelSubject> {
-  const trimmed = name.trim();
-  try {
-    const { resources } = await getContainer('members')
-      .items.query({
-        query: 'SELECT * FROM c WHERE LOWER(c.name) = @name',
-        parameters: [{ name: '@name', value: trimmed.toLowerCase() }],
-      })
-      .fetchAll();
-    const member = resources[0] as { id?: string } | undefined;
-    if (member?.id) return { memberId: member.id, name: trimmed };
-  } catch {
-    /* fall through to name-derived id */
-  }
-  return { memberId: `name:${trimmed.toLowerCase()}`, name: trimmed };
-}
 
 export async function GET(req: NextRequest) {
   const ip = getClientIp(req);
@@ -61,7 +45,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const subject = await resolveSubject(name);
+    const subject = await resolveAnyMemberSubject(name);
     const level = await getCanonicalLevel(subject);
     return NextResponse.json({ level });
   } catch (error) {

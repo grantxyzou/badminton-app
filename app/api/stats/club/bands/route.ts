@@ -6,6 +6,7 @@ import { ownsNameOrAdmin } from '@/lib/auth';
 import { computeClubBands, MIN_COHORT } from '@/lib/clubBands';
 import { normalizeStatsPrivacy, isComparisonRevealed } from '@/lib/statsPrivacy';
 import type { Rating, StoredAssessment } from '@/lib/assessment';
+import { resolveAnyMemberSubject } from '@/lib/memberResolve';
 
 /**
  * Club comparison bands for one member — private by design, same gate as
@@ -61,22 +62,6 @@ async function latestRatingsByMember(): Promise<Map<string, Rating[]>> {
 }
 
 /** Name → member id. Mirrors `resolveSubject` in app/api/stats/level/route.ts. */
-async function resolveMemberId(name: string): Promise<string> {
-  const trimmed = name.trim();
-  try {
-    const { resources } = await getContainer('members')
-      .items.query({
-        query: 'SELECT * FROM c WHERE LOWER(c.name) = @name',
-        parameters: [{ name: '@name', value: trimmed.toLowerCase() }],
-      })
-      .fetchAll();
-    const member = resources[0] as { id?: string } | undefined;
-    if (member?.id) return member.id;
-  } catch {
-    /* fall through to name-derived id */
-  }
-  return `name:${trimmed.toLowerCase()}`;
-}
 
 async function readPrivacy(name: string) {
   try {
@@ -112,7 +97,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const [memberId, privacy, byMember] = await Promise.all([
-      resolveMemberId(name),
+      (await resolveAnyMemberSubject(name)).memberId,
       readPrivacy(name),
       latestRatingsByMember(),
     ]);

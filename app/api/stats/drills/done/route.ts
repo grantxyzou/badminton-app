@@ -4,6 +4,7 @@ import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { verifyMemberAuth } from '@/lib/auth';
 import { drillDocId, readDone, type DrillCompletionDoc } from '@/lib/drillsDone';
+import { resolveAnyMemberSubject } from '@/lib/memberResolve';
 
 /**
  * Mark a drill done (or not) for the current week.
@@ -40,22 +41,6 @@ function ensureDrillsDone(): Promise<void> {
   return ready;
 }
 
-async function resolveMemberId(name: string): Promise<string> {
-  const trimmed = name.trim();
-  try {
-    const { resources } = await getContainer('members')
-      .items.query({
-        query: 'SELECT * FROM c WHERE LOWER(c.name) = @name',
-        parameters: [{ name: '@name', value: trimmed.toLowerCase() }],
-      })
-      .fetchAll();
-    const member = resources[0] as { id?: string } | undefined;
-    if (member?.id) return member.id;
-  } catch {
-    /* fall through to name-derived id */
-  }
-  return `name:${trimmed.toLowerCase()}`;
-}
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
@@ -87,7 +72,7 @@ export async function POST(req: NextRequest) {
   try {
     await ensureDrillsDone();
     const [memberId, weekKey] = await Promise.all([
-      resolveMemberId(caller.name),
+      (await resolveAnyMemberSubject(caller.name)).memberId,
       getActiveSessionId(),
     ]);
 

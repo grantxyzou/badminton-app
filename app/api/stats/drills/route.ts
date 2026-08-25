@@ -3,9 +3,9 @@ import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos'
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ownsNameOrAdmin } from '@/lib/auth';
-import type { LevelSubject } from '@/lib/levelStore';
 import { drillPicksFor } from '@/lib/drills';
 import { drillDocId, readDone, type DrillCompletionDoc } from '@/lib/drillsDone';
+import { resolveAnyMemberSubject } from '@/lib/memberResolve';
 
 /**
  * Practice drills for a member's weakest skills — private by design, same gate
@@ -18,23 +18,7 @@ import { drillDocId, readDone, type DrillCompletionDoc } from '@/lib/drillsDone'
 
 export const dynamic = 'force-dynamic';
 
-/** Name → subject id. Mirrors `resolveSubject` in app/api/stats/level/route.ts. */
-async function resolveSubject(name: string): Promise<LevelSubject> {
-  const trimmed = name.trim();
-  try {
-    const { resources } = await getContainer('members')
-      .items.query({
-        query: 'SELECT * FROM c WHERE LOWER(c.name) = @name',
-        parameters: [{ name: '@name', value: trimmed.toLowerCase() }],
-      })
-      .fetchAll();
-    const member = resources[0] as { id?: string } | undefined;
-    if (member?.id) return { memberId: member.id, name: trimmed };
-  } catch {
-    /* fall through to name-derived id */
-  }
-  return { memberId: `name:${trimmed.toLowerCase()}`, name: trimmed };
-}
+/** Name → subject id. Mirrors `resolveAnyMemberSubject` in app/api/stats/level/route.ts. */
 
 /**
  * This week's completions for a member. Best-effort: the drills themselves are
@@ -80,7 +64,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const subject = await resolveSubject(name);
+    const subject = await resolveAnyMemberSubject(name);
     const [drills, rotationSeed] = await Promise.all([
       drillPicksFor(subject),
       getActiveSessionId(),
