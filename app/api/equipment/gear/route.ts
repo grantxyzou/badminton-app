@@ -73,13 +73,16 @@ async function authorizeBagWrite(req: NextRequest, name: string) {
   return { memberId };
 }
 
-async function readGearDoc(memberId: string): Promise<PlayerGear | undefined> {
+/** Cosmos returns `_etag` on every read; it is the concurrency token. */
+type StoredGear = PlayerGear & { _etag?: string };
+
+async function readGearDoc(memberId: string): Promise<StoredGear | undefined> {
   const container = getContainer('playerGear');
   const { resource } = await container.item(`gear-${memberId}`, memberId).read();
-  return resource as PlayerGear | undefined;
+  return resource as StoredGear | undefined;
 }
 
-async function writeGearDoc(memberId: string, prior: PlayerGear | undefined, next: Partial<PlayerGear>) {
+async function writeGearDoc(memberId: string, prior: StoredGear | undefined, next: Partial<PlayerGear>) {
   const doc: PlayerGear = {
     id: `gear-${memberId}`,
     memberId,
@@ -91,8 +94,68 @@ async function writeGearDoc(memberId: string, prior: PlayerGear | undefined, nex
     shoesMileageSessions: prior?.shoesMileageSessions,
     updatedAt: new Date().toISOString(),
   };
-  const { resource } = await getContainer('playerGear').items.upsert(doc);
+  // Guarded against the etag we read. Every verb here is a read-modify-write
+  // of the WHOLE document, so two overlapping writers each computed their
+  // `items` from the same snapshot and the slower one clobbered the faster:
+  // DELETE reads [X, Y] and commits [Y]; an overlapping PUT reads [X, Y],
+  // commits [X, Y'] a moment later and wins — X is back in the database while
+  // the client shows it gone until the next mount. Not hypothetical across
+  // devices: bpm-stable and bpm-next share one Cosmos account, and the two
+  // clients favour different verbs (see PUT's comment).
+  //
+  // The no-prior case uses `create`, not an unconditional upsert, because the
+  // race is just as real there: two adds to a member's first-ever bag both
+  // read "no document", both build a one-item bag, and one racket vanishes
+  // with an HTTP 200. `create` is the verb with certain semantics here — it
+  // rejects a duplicate id with 409, which `commitGearDoc` retries into the
+  // IfMatch path. (`IfNoneMatch: '*'` would express the same intent but its
+  // behaviour can't be verified here before shipping; `create` can.)
+  const container = getContainer('playerGear');
+  const { resource } = prior?._etag
+    ? await container.items.upsert(doc, { accessCondition: { type: 'IfMatch', condition: prior._etag } })
+    : await container.items.create(doc);
   return resource;
+}
+
+/** A stale-etag or duplicate-create rejection — a retry signal, not a failure. */
+function isWriteConflict(error: unknown): boolean {
+  const e = error as { code?: number | string; statusCode?: number } | null;
+  return e?.code === 412 || e?.statusCode === 412 || e?.code === 409 || e?.statusCode === 409;
+}
+
+/** Bounded — enough to absorb a genuine race, not enough to hide a live-lock. */
+const MAX_GEAR_WRITE_ATTEMPTS = 3;
+
+type GearComputation =
+  | { ok: true; next: Partial<PlayerGear> }
+  | { ok: false; response: NextResponse };
+
+/**
+ * Read → compute → write as one optimistically-concurrent unit.
+ *
+ * `compute` re-runs on every attempt ON PURPOSE. It carries each verb's
+ * validation (duplicate, bag_full, racket_not_found), and after a losing race
+ * those answers may legitimately change — the racket you were about to add
+ * may now already be there. Retrying only the write would commit a decision
+ * made against a document that no longer exists.
+ */
+async function commitGearDoc(
+  memberId: string,
+  compute: (prior: StoredGear | undefined) => GearComputation,
+): Promise<NextResponse> {
+  for (let attempt = 0; attempt < MAX_GEAR_WRITE_ATTEMPTS; attempt++) {
+    const prior = await readGearDoc(memberId);
+    const computed = compute(prior);
+    if (!computed.ok) return computed.response;
+    try {
+      return NextResponse.json({ gear: await writeGearDoc(memberId, prior, computed.next) });
+    } catch (error) {
+      if (!isWriteConflict(error)) throw error;
+    }
+  }
+  // Sustained contention on one member's bag. Honest 409 rather than a 500:
+  // nothing is broken and the caller's own retry is reasonable.
+  return NextResponse.json({ error: 'save_conflict' }, { status: 409 });
 }
 
 export async function GET(req: NextRequest) {
@@ -141,51 +204,52 @@ export async function POST(req: NextRequest) {
     const auth = await authorizeBagWrite(req, name);
     if (auth.error) return auth.error;
 
-    const prior = await readGearDoc(auth.memberId);
-    const existing = prior?.items ?? [];
-    const catalogId = typeof body.item.catalogId === 'string' ? body.item.catalogId : null;
-    const label = String(body.item.label ?? '').slice(0, 80);
+    return commitGearDoc(auth.memberId, (prior) => {
+      const existing = prior?.items ?? [];
+      const catalogId = typeof body.item.catalogId === 'string' ? body.item.catalogId : null;
+      const label = String(body.item.label ?? '').slice(0, 80);
 
-    // Primary dedupe key is catalogId. Free-text ("Other") entries have no
-    // catalogId, so without a fallback a caller could add the same racket
-    // repeatedly by omitting it — dedupe those on the normalized label
-    // against other catalogId-less entries.
-    const isDuplicate = catalogId
-      ? existing.some((i) => i.catalogId === catalogId)
-      : existing.some((i) => !i.catalogId && i.label.trim().toLowerCase() === label.trim().toLowerCase());
-    if (isDuplicate) {
-      return NextResponse.json({ error: 'duplicate_racket' }, { status: 409 });
-    }
-    // Counted within the incoming item's OWN category. Rackets keep their
-    // existing limit and their existing 'bag_full' error code, so nothing that
-    // handles that response has to change.
-    const incomingCategory = body.item.category as EquipmentCategory;
-    const sameCategory = existing.filter(
-      (i) => ((i.category ?? 'racket') as EquipmentCategory) === incomingCategory,
-    );
-    if (sameCategory.length >= capFor(incomingCategory)) {
-      return NextResponse.json({ error: 'bag_full' }, { status: 409 });
-    }
+      // Primary dedupe key is catalogId. Free-text ("Other") entries have no
+      // catalogId, so without a fallback a caller could add the same racket
+      // repeatedly by omitting it — dedupe those on the normalized label
+      // against other catalogId-less entries.
+      const isDuplicate = catalogId
+        ? existing.some((i) => i.catalogId === catalogId)
+        : existing.some((i) => !i.catalogId && i.label.trim().toLowerCase() === label.trim().toLowerCase());
+      if (isDuplicate) {
+        return { ok: false, response: NextResponse.json({ error: 'duplicate_racket' }, { status: 409 }) };
+      }
+      // Counted within the incoming item's OWN category. Rackets keep their
+      // existing limit and their existing 'bag_full' error code, so nothing that
+      // handles that response has to change.
+      const incomingCategory = body.item.category as EquipmentCategory;
+      const sameCategory = existing.filter(
+        (i) => ((i.category ?? 'racket') as EquipmentCategory) === incomingCategory,
+      );
+      if (sameCategory.length >= capFor(incomingCategory)) {
+        return { ok: false, response: NextResponse.json({ error: 'bag_full' }, { status: 409 }) };
+      }
 
-    const incoming: GearItem = {
-      id: randomBytes(12).toString('hex'),
-      catalogId,
-      category: body.item.category,
-      label,
-      acquiredAt: body.item.acquiredAt,
-      notes: typeof body.item.notes === 'string' ? body.item.notes.slice(0, 200) : undefined,
-    };
+      const incoming: GearItem = {
+        id: randomBytes(12).toString('hex'),
+        catalogId,
+        category: body.item.category,
+        label,
+        acquiredAt: body.item.acquiredAt,
+        notes: typeof body.item.notes === 'string' ? body.item.notes.slice(0, 200) : undefined,
+      };
 
-    const items = [...existing, incoming];
-    // Only claim the pointer when the bag had NO rackets before this add —
-    // a legacy bag (rackets present, pointer absent) already has an
-    // effective active racket via activeRacket()'s items[0] fallback, and
-    // appending must never silently move it onto the new racket.
-    const priorRackets = rackets(prior ?? null);
-    const activeRacketId = prior?.activeRacketId
-      ?? (priorRackets.length === 0 && incoming.category === 'racket' ? incoming.id : undefined);
+      const items = [...existing, incoming];
+      // Only claim the pointer when the bag had NO rackets before this add —
+      // a legacy bag (rackets present, pointer absent) already has an
+      // effective active racket via activeRacket()'s items[0] fallback, and
+      // appending must never silently move it onto the new racket.
+      const priorRackets = rackets(prior ?? null);
+      const activeRacketId = prior?.activeRacketId
+        ?? (priorRackets.length === 0 && incoming.category === 'racket' ? incoming.id : undefined);
 
-    return NextResponse.json({ gear: await writeGearDoc(auth.memberId, prior, { items, activeRacketId }) });
+      return { ok: true, next: { items, activeRacketId } };
+    });
   } catch (error) {
     console.error('POST equipment/gear error:', error);
     return NextResponse.json({ error: 'save_failed' }, { status: 500 });
@@ -232,14 +296,15 @@ export async function PATCH(req: NextRequest) {
     const auth = await authorizeBagWrite(req, name);
     if (auth.error) return auth.error;
 
-    const prior = await readGearDoc(auth.memberId);
-    if (activeRacketId) {
-      if (!rackets(prior ?? null).some((i) => i.id === activeRacketId)) {
-        return NextResponse.json({ error: 'racket_not_found' }, { status: 404 });
+    return commitGearDoc(auth.memberId, (prior) => {
+      if (activeRacketId) {
+        if (!rackets(prior ?? null).some((i) => i.id === activeRacketId)) {
+          return { ok: false, response: NextResponse.json({ error: 'racket_not_found' }, { status: 404 }) };
+        }
+        next.activeRacketId = activeRacketId;
       }
-      next.activeRacketId = activeRacketId;
-    }
-    return NextResponse.json({ gear: await writeGearDoc(auth.memberId, prior, next) });
+      return { ok: true, next };
+    });
   } catch (error) {
     console.error('PATCH equipment/gear error:', error);
     return NextResponse.json({ error: 'save_failed' }, { status: 500 });
@@ -261,22 +326,23 @@ export async function DELETE(req: NextRequest) {
     const auth = await authorizeBagWrite(req, name);
     if (auth.error) return auth.error;
 
-    const prior = await readGearDoc(auth.memberId);
-    const existing = prior?.items ?? [];
-    if (!existing.some((i) => i.id === itemId)) {
-      return NextResponse.json({ error: 'racket_not_found' }, { status: 404 });
-    }
+    return commitGearDoc(auth.memberId, (prior) => {
+      const existing = prior?.items ?? [];
+      if (!existing.some((i) => i.id === itemId)) {
+        return { ok: false, response: NextResponse.json({ error: 'racket_not_found' }, { status: 404 }) };
+      }
 
-    const items = existing.filter((i) => i.id !== itemId);
-    // Removing the active racket must leave a coherent pointer, never one
-    // aimed at a deleted item. Uses the shared helper so a legacy item with
-    // no `category` is still a candidate to inherit the pointer.
-    const remainingRackets = rackets({ ...(prior as PlayerGear), items });
-    const activeRacketId = prior?.activeRacketId === itemId
-      ? remainingRackets[0]?.id
-      : prior?.activeRacketId;
+      const items = existing.filter((i) => i.id !== itemId);
+      // Removing the active racket must leave a coherent pointer, never one
+      // aimed at a deleted item. Uses the shared helper so a legacy item with
+      // no `category` is still a candidate to inherit the pointer.
+      const remainingRackets = rackets({ ...(prior as PlayerGear), items });
+      const activeRacketId = prior?.activeRacketId === itemId
+        ? remainingRackets[0]?.id
+        : prior?.activeRacketId;
 
-    return NextResponse.json({ gear: await writeGearDoc(auth.memberId, prior, { items, activeRacketId }) });
+      return { ok: true, next: { items, activeRacketId } };
+    });
   } catch (error) {
     console.error('DELETE equipment/gear error:', error);
     return NextResponse.json({ error: 'delete_failed' }, { status: 500 });
@@ -320,60 +386,61 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
 
-    const prior = await readGearDoc(memberId);
-    const existing = prior?.items ?? [];
-    const catalogId = typeof body.item.catalogId === 'string' ? body.item.catalogId : null;
-    const label = String(body.item.label ?? '').slice(0, 80);
+    return commitGearDoc(memberId, (prior) => {
+      const existing = prior?.items ?? [];
+      const catalogId = typeof body.item.catalogId === 'string' ? body.item.catalogId : null;
+      const label = String(body.item.label ?? '').slice(0, 80);
 
-    // Bag-aware since the final-review fix wave (2026-08): bpm-stable still
-    // runs the pre-branch client, which saves via PUT, while bpm-next saves
-    // via POST — and both deployments share one Cosmos DB. The old PUT wiped
-    // every existing item of the same category before writing, so a
-    // stable-side player saving one racket would silently delete every other
-    // racket (and the activeRacketId pointer) a next-side player had built in
-    // the same bag. Mirrors POST's append/dedupe semantics so either client
-    // is safe against the other. Unlike POST, PUT is idempotent by contract:
-    // a match (by catalogId, or by normalized label when catalogId is
-    // absent) UPDATES that item in place instead of appending a duplicate or
-    // 409ing, so re-saving the same racket twice is a no-op on bag shape.
-    const matchIndex = catalogId
-      ? existing.findIndex((i) => i.catalogId === catalogId)
-      : existing.findIndex((i) => !i.catalogId && i.label.trim().toLowerCase() === label.trim().toLowerCase());
+      // Bag-aware since the final-review fix wave (2026-08): bpm-stable still
+      // runs the pre-branch client, which saves via PUT, while bpm-next saves
+      // via POST — and both deployments share one Cosmos DB. The old PUT wiped
+      // every existing item of the same category before writing, so a
+      // stable-side player saving one racket would silently delete every other
+      // racket (and the activeRacketId pointer) a next-side player had built in
+      // the same bag. Mirrors POST's append/dedupe semantics so either client
+      // is safe against the other. Unlike POST, PUT is idempotent by contract:
+      // a match (by catalogId, or by normalized label when catalogId is
+      // absent) UPDATES that item in place instead of appending a duplicate or
+      // 409ing, so re-saving the same racket twice is a no-op on bag shape.
+      const matchIndex = catalogId
+        ? existing.findIndex((i) => i.catalogId === catalogId)
+        : existing.findIndex((i) => !i.catalogId && i.label.trim().toLowerCase() === label.trim().toLowerCase());
 
-    const incoming: GearItem = {
-      id: matchIndex >= 0 ? existing[matchIndex].id
-        : (typeof body.item.id === 'string' ? body.item.id : randomBytes(12).toString('hex')),
-      catalogId,
-      category: body.item.category,
-      label,
-      acquiredAt: body.item.acquiredAt,
-      tensionLbs: typeof body.item.tensionLbs === 'number' ? body.item.tensionLbs : undefined,
-      notes: typeof body.item.notes === 'string' ? body.item.notes.slice(0, 200) : undefined,
-    };
+      const incoming: GearItem = {
+        id: matchIndex >= 0 ? existing[matchIndex].id
+          : (typeof body.item.id === 'string' ? body.item.id : randomBytes(12).toString('hex')),
+        catalogId,
+        category: body.item.category,
+        label,
+        acquiredAt: body.item.acquiredAt,
+        tensionLbs: typeof body.item.tensionLbs === 'number' ? body.item.tensionLbs : undefined,
+        notes: typeof body.item.notes === 'string' ? body.item.notes.slice(0, 200) : undefined,
+      };
 
-    let items: GearItem[];
-    if (matchIndex >= 0) {
-      items = existing.map((i, idx) => (idx === matchIndex ? incoming : i));
-    } else {
-      if (rackets(prior ?? null).length >= MAX_RACKETS) {
-        return NextResponse.json({ error: 'bag_full' }, { status: 409 });
+      let items: GearItem[];
+      if (matchIndex >= 0) {
+        items = existing.map((i, idx) => (idx === matchIndex ? incoming : i));
+      } else {
+        if (rackets(prior ?? null).length >= MAX_RACKETS) {
+          return { ok: false, response: NextResponse.json({ error: 'bag_full' }, { status: 409 }) };
+        }
+        items = [...existing, incoming];
       }
-      items = [...existing, incoming];
-    }
 
-    // NOT the same pointer rule as POST. POST's contract is "add to my bag",
-    // so preserving the existing pointer is correct there. PUT's contract is
-    // "set my racket" — a caller PUTting a racket means "this is the one I'm
-    // using now," so the incoming racket must always become the active one.
-    // Preserving the prior pointer here (as an earlier pass of this fix
-    // wrongly did, mirroring POST) meant PUT A then PUT B left `items` as
-    // [A, B] but activeRacket() still resolved to A — the hero card kept
-    // showing the old racket after a successful "Saved!", while the bag
-    // silently grew. A legacy pointerless bag regressed the same way: append
-    // leaves items[0] as the old racket, so even the fallback returned it.
-    const activeRacketId = incoming.category === 'racket' ? incoming.id : prior?.activeRacketId;
+      // NOT the same pointer rule as POST. POST's contract is "add to my bag",
+      // so preserving the existing pointer is correct there. PUT's contract is
+      // "set my racket" — a caller PUTting a racket means "this is the one I'm
+      // using now," so the incoming racket must always become the active one.
+      // Preserving the prior pointer here (as an earlier pass of this fix
+      // wrongly did, mirroring POST) meant PUT A then PUT B left `items` as
+      // [A, B] but activeRacket() still resolved to A — the hero card kept
+      // showing the old racket after a successful "Saved!", while the bag
+      // silently grew. A legacy pointerless bag regressed the same way: append
+      // leaves items[0] as the old racket, so even the fallback returned it.
+      const activeRacketId = incoming.category === 'racket' ? incoming.id : prior?.activeRacketId;
 
-    return NextResponse.json({ gear: await writeGearDoc(memberId, prior, { items, activeRacketId }) });
+      return { ok: true, next: { items, activeRacketId } };
+    });
   } catch (error) {
     console.error('PUT equipment/gear error:', error);
     return NextResponse.json({ error: 'save_failed' }, { status: 500 });
