@@ -3,21 +3,32 @@
 import { useTranslations } from 'next-intl';
 import { useInsight } from '@/lib/useInsight';
 import StatusBadge from '@/components/primitives/StatusBadge';
+import ErrorState from '@/components/primitives/ErrorState';
 
 /**
  * The single plain-language AI takeaway at the top of the Stats Summary — the
  * one-glance "where you're at + the one interesting thing" line. Leads the
  * distributed-insight surface (the per-card chips carry the non-obvious detail).
  *
- * Additive + legible-fail: renders nothing while loading, on error, or when
- * there's no greeting (anonymous viewer / no API key). The card below it always
- * stands on its own. Carries the conic AI rim (`.insight-rim`) + a Beta marker
- * so the AI provenance is honest.
+ * Additive + legible-fail: renders nothing while loading, on an unknown load
+ * failure, or when there's no greeting (anonymous viewer / no API key). The
+ * card below it always stands on its own. Carries the conic AI rim
+ * (`.insight-rim`) + a Beta marker so the AI provenance is honest.
+ *
+ * A 403 is the ONE failure that does render. `/api/stats/insight` is
+ * owner-or-admin gated, so a device with no `member_session` cookie for this
+ * name gets refused — and staying silent there tells a member with a live
+ * `badminton_identity` that they simply have no insight. Refreshing will never
+ * fix that; signing in will, so the state has to say so. Unknown failures keep
+ * rendering nothing (this component is additive, and "couldn't load" over a
+ * card that is optional by design is noise).
  */
 export default function SummaryGreeting() {
   const t = useTranslations('stats');
-  const { data } = useInsight(true);
+  const { data, forbidden } = useInsight(true);
   const greeting = data?.greeting ?? null;
+
+  if (forbidden) return <ErrorState message={t('signInAgain')} />;
   if (!greeting) return null;
 
   return (

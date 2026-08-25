@@ -58,7 +58,13 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
       <StringTensionCard
         activeName={activeName}
         gear={gear}
-        suppressed={pairTension !== null}
+        // `gear.loadError` un-suppresses. The stand-down only makes sense while
+        // the pairing's number is actually ON SCREEN — and when the gear read
+        // fails, the rail degrades the string card to its error state, so it
+        // isn't. Left suppressed, the tension card would vanish silently and
+        // read exactly like "no check-in yet"; it instead renders its own
+        // failure, which is what the failed gear read actually is.
+        suppressed={pairTension !== null && !gear.loadError}
       />
       <ClubGearCard />
     </>

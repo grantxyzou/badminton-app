@@ -275,6 +275,7 @@
       "tensionMidLevel": "到这个阶段可以用一点力量换控制 — 这是个合理的起点。",
       "tensionHighLevel": "以你的水平，线床更看重控制和手感，拉紧一点落点会更稳定。",
       "tensionAdvisory": "这只是起点，不是规格 — 和帮你拉线的人聊聊。",
+      "tensionError": "算不出你的磅数 — 刷新重试。",
       "clubTitle": "大家都在用什么",
       "clubSubtitle": "汇总自所有人的装备。",
       "clubFootnote": "登记你的拍线才能让这份清单有用 — 对你，也对负责补货的人。",
@@ -446,6 +447,8 @@
       "verdictCounted": "仅计数",
       "closing": "关闭对比不会对其他球友隐藏任何东西 — 你的技能本来就从未展示给他们。它只改变<you>你自己</you>看到的内容。俱乐部的分布始终可见。",
       "saveError": "保存失败 — 请重试。",
+      "unknown": "我们无法确认这项设置，所以暂不显示任何状态。",
+      "retry": "重试",
       "offline": "你处于离线状态 — 此操作需要联网。"
     },
     "club": {
@@ -484,6 +487,7 @@
       "giveHint": "为今晚和你一起打球的人点个赞。",
       "offline": "你已离线——重新联网后再送赞。",
       "error": "暂时加载不出来 — 刷新再试一次",
+      "sendError": "没能送出 — 再点一次标签重试。",
       "tag": {
         "great_defense": "防守出色",
         "clutch": "关键先生",
@@ -493,6 +497,9 @@
       }
     },
     "offline": "你已离线——重新联网后再保存。",
+    "signInAgain": "请在“我的”里登录后查看。",
+    "signInAgainTitle": "登录后查看你的数据",
+    "signInAgainBody": "此设备未登录你的账号，因此无法加载你的数据和洞察。请在“我的”里登录。",
     "summaryGreeting": {
       "ariaLabel": "你的 AI 总结",
       "beta": "测试版"
