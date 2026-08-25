@@ -103,7 +103,30 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updates: Record<string, unknown> = {};
-    if (typeof body.name === 'string') updates.name = body.name.trim().slice(0, 50);
+    if (typeof body.name === 'string') {
+      const nextName = body.name.trim().slice(0, 50);
+      // A rename must not collide with another member. POST already refuses a
+      // duplicate name (409 above); PATCH did not, so renaming A onto B's name
+      // left two `members` rows sharing one — and since every name-keyed route
+      // resolves by name (lib/memberResolve), a cross-partition `LOWER(c.name)`
+      // query with no ORDER BY then picks arbitrarily between them for an id
+      // that keys drills, assessments, kudos and gear.
+      if (nextName.toLowerCase() !== String(existing.name ?? '').trim().toLowerCase()) {
+        const { resources: clash } = await container.items
+          .query({
+            query: 'SELECT c.id FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.id != @id',
+            parameters: [
+              { name: '@name', value: nextName },
+              { name: '@id', value: id },
+            ],
+          })
+          .fetchAll();
+        if (clash.length > 0) {
+          return NextResponse.json({ error: 'name_taken' }, { status: 409 });
+        }
+      }
+      updates.name = nextName;
+    }
     if (typeof body.stage === 'number') updates.stage = Math.max(1, Math.min(4, body.stage));
     if (body.stage === null) updates.stage = undefined;
     if (typeof body.active === 'boolean') updates.active = body.active;

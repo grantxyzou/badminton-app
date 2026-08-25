@@ -5,6 +5,7 @@ import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { verifyMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
 import { SKILLS, scoreAssessment, placePhase, type Rating } from '@/lib/assessment';
+import { resolveActiveSubject } from '@/lib/memberResolve';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,22 +53,6 @@ function validateRatings(raw: unknown): Rating[] | null {
  * `memberId.startsWith('name:')` string check) so the write-auth gate below
  * doesn't depend on the shape of the fallback id.
  */
-async function resolveSubject(name: string): Promise<{ memberId: string; name: string; isMember: boolean }> {
-  const trimmed = name.trim();
-  try {
-    const { resources } = await getContainer('members')
-      .items.query({
-        query: 'SELECT * FROM c WHERE LOWER(c.name) = @name',
-        parameters: [{ name: '@name', value: trimmed.toLowerCase() }],
-      })
-      .fetchAll();
-    const member = resources[0] as { id?: string } | undefined;
-    if (member?.id) return { memberId: member.id, name: trimmed, isMember: true };
-  } catch {
-    /* fall through to name-derived id */
-  }
-  return { memberId: `name:${trimmed.toLowerCase()}`, name: trimmed, isMember: false };
-}
 
 export async function POST(req: NextRequest) {
   if (!isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS')) {
@@ -85,7 +70,7 @@ export async function POST(req: NextRequest) {
     const ratings = validateRatings(body.ratings);
     if (!ratings) return NextResponse.json({ error: 'ratings_required' }, { status: 400 });
 
-    const subject = await resolveSubject(name);
+    const subject = await resolveActiveSubject(name);
 
     // Member-scoped write (Security Rule 12): a name that resolves to a real
     // member can only be written by that member's own member_session cookie
@@ -135,7 +120,7 @@ export async function GET(req: NextRequest) {
   if (!name || !name.trim()) return NextResponse.json({ assessments: [] });
   try {
     await ensureAssessments();
-    const subject = await resolveSubject(name);
+    const subject = await resolveActiveSubject(name);
     const { resources } = await getContainer('assessments')
       .items.query({
         query: 'SELECT * FROM c WHERE c.memberId = @memberId',

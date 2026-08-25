@@ -6,6 +6,7 @@ import { isFlagOn } from '@/lib/flags';
 import { rackets } from '@/lib/activeRacket';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import type { PlayerGear, GearItem, EquipmentCategory } from '@/lib/types';
+import { resolveActiveMemberId } from '@/lib/memberResolve';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,16 +40,6 @@ function ensureGear(): Promise<void> {
   return ready;
 }
 
-async function resolveMemberId(name: string): Promise<string | null> {
-  const members = getContainer('members');
-  const { resources } = await members.items
-    .query({
-      query: 'SELECT c.id FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
-      parameters: [{ name: '@name', value: name }],
-    })
-    .fetchAll();
-  return resources[0]?.id ?? null;
-}
 
 /**
  * Shared gate for the three bag verbs: rate limit, then member resolution,
@@ -64,7 +55,7 @@ async function authorizeBagWrite(req: NextRequest, name: string) {
   if (!checkRateLimit(key, BAG_WRITES_PER_HOUR, HOUR_MS)) {
     return { error: NextResponse.json({ error: 'rate_limited' }, { status: 429 }) };
   }
-  const memberId = await resolveMemberId(name);
+  const memberId = await resolveActiveMemberId(name);
   if (!memberId) return { error: NextResponse.json({ error: 'member_not_found' }, { status: 404 }) };
   const caller = verifyMemberAuth(req);
   if (caller?.memberId !== memberId && !(await isAdminAuthedWithMember(req)).authed) {
@@ -166,7 +157,7 @@ export async function GET(req: NextRequest) {
     await ensureGear();
     const name = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50) ?? '';
     if (!name) return NextResponse.json({ gear: null });
-    const memberId = await resolveMemberId(name);
+    const memberId = await resolveActiveMemberId(name);
     if (!memberId) return NextResponse.json({ gear: null });
 
     const container = getContainer('playerGear');
@@ -373,7 +364,7 @@ export async function PUT(req: NextRequest) {
     if (!VALID_CATEGORIES.has(body.item.category)) {
       return NextResponse.json({ error: 'invalid_category' }, { status: 400 });
     }
-    const memberId = await resolveMemberId(name);
+    const memberId = await resolveActiveMemberId(name);
     if (!memberId) return NextResponse.json({ error: 'member_not_found' }, { status: 404 });
 
     // Gear is member-scoped: only the member themselves (proven by the

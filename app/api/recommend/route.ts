@@ -8,11 +8,12 @@ import { recommendRacket } from '@/lib/recommend';
 import { buildProfile } from '@/lib/racketProfile';
 import { recommendRackets } from '@/lib/racketRecommend';
 import { pairString, pairTension } from '@/lib/stringPair';
-import { getCanonicalLevel, type LevelSubject } from '@/lib/levelStore';
+import { getCanonicalLevel } from '@/lib/levelStore';
 import { buildPickReasons } from '@/lib/pickReasons';
 import { tallyClubGear, type ClubGearEntry } from '@/lib/clubGear';
 import type { CatalogItem, EquipmentCategory, PlayerGear } from '@/lib/types';
 import type { Rating } from '@/lib/assessment';
+import { resolveActiveSubject } from '@/lib/memberResolve';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +27,7 @@ const ENGINE_CATEGORIES: EquipmentCategory[] = ['racket', 'string'];
 // there is simply nothing to recommend.
 
 /**
- * Name → subject id, mirroring `resolveSubject` in app/api/stats/level/route.ts:
+ * Name → subject id, mirroring `resolveActiveSubject` in app/api/stats/level/route.ts:
  * the members directory is canonical; non-members fall back to a name-derived
  * key so they still get a level. Queries by @name (the mock store honors @name,
  * not @memberId).
@@ -50,28 +51,6 @@ async function clubEntriesOrEmpty(): Promise<ClubGearEntry[]> {
   }
 }
 
-async function resolveSubject(name: string): Promise<LevelSubject> {
-  const trimmed = name.trim();
-  try {
-    const { resources } = await getContainer('members')
-      .items.query({
-        // Must match resolveMemberId in app/api/equipment/gear/route.ts exactly
-        // (same active=true filter) — gear is WRITTEN at gear-<resolveMemberId>
-        // and READ here at gear-<subject.memberId>. A rename that leaves a
-        // stale inactive row with the same name would otherwise let this
-        // query pick a different id than the write path, 404 the gear read,
-        // and silently drop the player's format/budget/currentRacketId.
-        query: 'SELECT * FROM c WHERE LOWER(c.name) = @name AND c.active = true',
-        parameters: [{ name: '@name', value: trimmed.toLowerCase() }],
-      })
-      .fetchAll();
-    const member = resources[0] as { id?: string } | undefined;
-    if (member?.id) return { memberId: member.id, name: trimmed };
-  } catch {
-    /* fall through to name-derived id */
-  }
-  return { memberId: `name:${trimmed.toLowerCase()}`, name: trimmed };
-}
 
 function reasonFor(item: CatalogItem, stage?: number): string {
   if (typeof stage === 'number') {
@@ -139,7 +118,7 @@ export async function GET(req: NextRequest) {
       }
 
       await ensureCatalogSeeded();
-      const subject = await resolveSubject(name);
+      const subject = await resolveActiveSubject(name);
       const { resources: assessments } = await getContainer('assessments')
         .items.query({
           query: 'SELECT c.memberId, c.takenAt, c.ratings FROM c WHERE c.memberId = @memberId',
@@ -288,7 +267,7 @@ export async function GET(req: NextRequest) {
     // nothing from the private CanonicalLevel leaks through this public route.
     let stage: number | undefined;
     if (name) {
-      const subject = await resolveSubject(name);
+      const subject = await resolveActiveSubject(name);
       const canonical = await getCanonicalLevel(subject);
       stage = typeof canonical.stage === 'number' ? canonical.stage : undefined;
     }
