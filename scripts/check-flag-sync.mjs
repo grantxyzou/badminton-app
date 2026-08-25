@@ -8,8 +8,10 @@
  * bpm-next forever. This bit us with NEXT_PUBLIC_FLAG_SETTLE (registered
  * during v1.4, never enabled on next for ~2 weeks).
  *
- * Stable workflow is NOT checked — flags absent from deploy-stable.yml are
- * intentionally "off in stable" by virtue of `undefined` reading as off.
+ * There used to be a second workflow (deploy-stable.yml) which this script
+ * deliberately did NOT check, since a flag absent from it read as off there.
+ * That workflow and its app service were deleted 2026-08-25 — deploy-next.yml
+ * is now the only deploy target, so this check covers everything that ships.
  *
  * Wired as a PostToolUse hook on Edit|Write — see .claude/settings.json.
  * The script is intentionally cheap (two file reads, two regex passes) so
