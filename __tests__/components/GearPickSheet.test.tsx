@@ -144,8 +144,7 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
   // Only the two preference controls gate on this flag. The recommendation
   // itself and the Add action are VALUE_HUB_SLICE behaviour and must render
   // either way — bpm-stable runs this flag OFF (deploy-stable.yml:82).
-  describe('preference-control gating (NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER)', () => {
-    it('hides the controls when the flag is off, but keeps the pick and the Add action', async () => {
+  describe('preference-control gating (NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER)', () => {    it('hides the controls when the flag is off, but keeps the pick and the Add action', async () => {
       process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'false';
       mockGear(gearDoc());
       renderSheet();
@@ -284,5 +283,62 @@ describe('GearPickSheet — the spec sheet has to be readable', () => {
     await waitFor(() => expect(screen.getByText('N69')).toBeTruthy());
     expect(screen.queryByText(/2026-08-20/)).toBeNull();
     expect(screen.queryByText(/Consensus estimate/)).toBeNull();
+  });
+});
+
+/**
+ * A failed gear read makes the stored preferences UNKNOWN, and unknown must
+ * not render as a confirmed setting.
+ *
+ * `useGear` sets `loadError: true` AND `loaded: true` on a failed read with
+ * `gear` still null, so `gear.gear?.playFormat ?? 'both'` lit the Both and
+ * No-limit segments as though the member had chosen them. Same
+ * unknown-as-confirmed bug `GearPickRail.isOwned()` had, reachable the same
+ * way — a 500, or a 403 from a member_session past its 30-day TTL.
+ */
+describe('GearPickSheet — preferences are unknown when the gear read fails', () => {
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
+  });
+
+  function mockGearFailure() {
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/api/equipment/gear')) {
+        return Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'load_failed' }) } as Response);
+      }
+      return Promise.reject(new Error(`Unmocked fetch: ${url}`));
+    }) as unknown as typeof fetch);
+  }
+
+  it('lights no segment and says the read failed', async () => {
+    mockGearFailure();
+    renderSheet();
+
+    const both = await screen.findByRole('tab', { name: 'Both' });
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+
+    // Nothing may claim to be the saved choice.
+    expect(both.getAttribute('aria-selected')).toBe('false');
+    expect(screen.getByRole('tab', { name: 'Singles' }).getAttribute('aria-selected')).toBe('false');
+    expect(screen.getByRole('tab', { name: 'Doubles' }).getAttribute('aria-selected')).toBe('false');
+    expect(screen.getByRole('tab', { name: 'No limit' }).getAttribute('aria-selected')).toBe('false');
+    expect(screen.getByRole('tab', { name: '$100–200' }).getAttribute('aria-selected')).toBe('false');
+  });
+
+  it('still lights "No limit" when the doc genuinely has no budget', async () => {
+    mockGear(gearDoc({ playFormat: 'both' }));
+    renderSheet();
+
+    const none = await screen.findByRole('tab', { name: 'No limit' });
+    await waitFor(() => expect(none.getAttribute('aria-selected')).toBe('true'));
+    expect(screen.getByRole('tab', { name: 'Both' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });
