@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
@@ -50,14 +50,24 @@ export default function CheckInSheet({
   const [error, setError] = useState('');
   const [savedLevel, setSavedLevel] = useState<{ level: number | null; phase: string | null } | null>(null);
 
+  // Read through a ref so the seed value can't drive the reset below.
+  // `previous` is a Map built fresh in the parent's render body
+  // (SkillTrendCard's `ratingMap(latest)`), so it has a new identity on every
+  // parent render. In the effect's dependency array that turned "reset when
+  // the sheet opens" into "reset whenever the parent happens to re-render" —
+  // discarding answers mid-quiz, and snapping the just-earned result screen
+  // back to the intro the moment `onSaved` refreshed the card behind it.
+  const previousRef = useRef(previous);
+  previousRef.current = previous;
+
   // Reset + seed from previous each time the sheet opens.
   useEffect(() => {
     if (!open) return;
     setStep(-1);
     setError('');
     setSavedLevel(null);
-    setRatings(previous ? Object.fromEntries(previous) : {});
-  }, [open, previous]);
+    setRatings(previousRef.current ? Object.fromEntries(previousRef.current) : {});
+  }, [open]);
 
   // Pull recent games for the reconciliation mirror.
   useEffect(() => {

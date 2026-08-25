@@ -100,6 +100,13 @@ export async function POST(req: NextRequest) {
     const teamA = names(body.teamA);
     const teamB = names(body.teamB);
     if (!teamA || !teamB) return NextResponse.json({ error: 'both_teams_required' }, { status: 400 });
+    // Games join on NAME, so one person on both teams is counted as both a win
+    // and a loss for themselves — it corrupts every downstream record and
+    // partner tally, and nothing else in the pipeline can detect it later.
+    const inA = new Set(teamA.map((n) => n.toLowerCase()));
+    if (teamB.some((n) => inA.has(n.toLowerCase()))) {
+      return NextResponse.json({ error: 'overlapping_teams' }, { status: 400 });
+    }
     if (typeof body.scoreA !== 'number' || typeof body.scoreB !== 'number'
       || !Number.isFinite(body.scoreA) || !Number.isFinite(body.scoreB)) {
       return NextResponse.json({ error: 'numeric_scores_required' }, { status: 400 });

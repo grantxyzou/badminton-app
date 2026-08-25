@@ -215,6 +215,12 @@ export default function SteppedGameLoggerSheet({
                           // Tapping a name advances immediately — there is no
                           // Next on this step, because picking IS the answer.
                           setPartner(name);
+                          // Going Back and picking someone already tapped as
+                          // an opponent has to drop them from that list: the
+                          // opponents step hides the partner, so an overlap
+                          // left here can never be untoggled, and both teams
+                          // submit with the same person on them.
+                          setOpponents((prev) => prev.filter((n) => n !== name));
                           setStep('opponents');
                         } else {
                           toggleOpponent(name);
