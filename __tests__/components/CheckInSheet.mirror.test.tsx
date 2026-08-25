@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import CheckInSheet from '../../components/stats/CheckInSheet';
@@ -47,11 +47,9 @@ function renderSheet() {
 }
 
 describe('CheckInSheet — the mirror distinguishes failed from empty', () => {
-  beforeEach(() => { process.env.NEXT_PUBLIC_FLAG_STATS_V2 = 'true'; });
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
-    delete process.env.NEXT_PUBLIC_FLAG_STATS_V2;
   });
 
   it('shows an error, NOT "no games", when the games read fails', async () => {

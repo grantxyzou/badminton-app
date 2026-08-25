@@ -215,17 +215,8 @@ describe('GET /api/stats/club/gear', () => {
   beforeEach(() => {
     resetMockStore();
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_STATS_V2 = 'true';
   });
   afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_STATS_V2;
-  });
-
-  it('404s when the flag is off', async () => {
-    delete process.env.NEXT_PUBLIC_FLAG_STATS_V2;
-    const res = await CLUB_GEAR(makeRequest('GET', 'http://localhost:3000/api/stats/club/gear'));
-    expect(res.status).toBe(404);
-    process.env.NEXT_PUBLIC_FLAG_STATS_V2 = 'true';
   });
 
   it('returns counts only — the response has no seam for a name', async () => {

@@ -59,13 +59,11 @@ function anchor(level: 1 | 2 | 3 | 4 | 5): HTMLElement {
 
 describe('CheckInSheet — v2 behaviour', () => {
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_FLAG_STATS_V2 = 'true';
     posted.length = 0;
   });
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
-    delete process.env.NEXT_PUBLIC_FLAG_STATS_V2;
   });
 
   it('shows the step counter and the dimension eyebrow', async () => {
@@ -214,37 +212,5 @@ describe('CheckInSheet — v2 behaviour', () => {
     await waitFor(() =>
       expect((screen.getByRole('button', { name: 'Save check-in' }) as HTMLButtonElement).disabled).toBe(true),
     );
-  });
-});
-
-describe('CheckInSheet — v1 is untouched', () => {
-  beforeEach(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_STATS_V2;
-    posted.length = 0;
-  });
-  afterEach(() => {
-    cleanup();
-    vi.unstubAllGlobals();
-  });
-
-  it('keeps the two-button footer with the flipping label', async () => {
-    mockFetch();
-    renderSheet();
-    await start();
-    // bpm-stable still renders this path.
-    expect(screen.queryByRole('button', { name: 'Skip' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Next' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Stop here and review' })).toBeNull();
-  });
-
-  it('still closes immediately on save', async () => {
-    mockFetch();
-    const { onClose } = renderSheet(new Map([[SKILLS[0].key, 3]]));
-    await start();
-    // No escape link in v1 — walk back to review the long way is unnecessary;
-    // the sheet's review step is reachable from the last skill only, so assert
-    // the close behaviour through the flag instead.
-    expect(onClose).not.toHaveBeenCalled();
-    expect(screen.queryByText('Your level now')).toBeNull();
   });
 });

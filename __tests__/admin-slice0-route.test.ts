@@ -19,6 +19,15 @@ import {
 
 const URL_BASE = 'http://localhost/bpm/api/admin/slice0';
 
+/**
+ * Fixtures live in `session-2026-07-02`, which is deliberately BEFORE the
+ * route's production default (CLOCK_RESTART, 2026-08-16). Cases about cohort
+ * math pass this explicitly rather than leaning on the default — a test of the
+ * arithmetic should not fail the day the default window moves, and the two
+ * cases that DO assert the default say so in their names.
+ */
+const URL_FIXTURES = `${URL_BASE}?since=2026-06-13`;
+
 function seedEvent(memberId: string, at: string, kind = 'rec_card_tap') {
   const store = getStore();
   if (!store['events']) store['events'] = [];
@@ -65,7 +74,7 @@ describe('GET /api/admin/slice0', () => {
     // An inactive/removed player must not inflate the denominator.
     seedPlayer('session-2026-07-02', 'Ghost', { removed: true });
 
-    const body = await (await GET(makeGetRequest(URL_BASE, true))).json();
+    const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
     expect(body.cohortSize).toBe(6);
   });
 
@@ -75,7 +84,7 @@ describe('GET /api/admin/slice0', () => {
     seedEvent('member-lin', '2026-07-03T10:00:00.000Z'); // Lin: repeat
     seedEvent('member-viktor', '2026-07-02T10:00:00.000Z'); // Viktor: single tap only
 
-    const body = await (await GET(makeGetRequest(URL_BASE, true))).json();
+    const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
     expect(body.recCard.anyTappers).toBe(2);
     expect(body.recCard.repeatTappers).toBe(1);
     expect(body.recCard.rate).toBeCloseTo(1 / 6, 3);
@@ -89,7 +98,7 @@ describe('GET /api/admin/slice0', () => {
     seedEvent('member-viktor', '2026-07-02T10:00:00.000Z', 'some_other_kind');
     seedEvent('member-viktor', '2026-07-03T10:00:00.000Z', 'some_other_kind');
 
-    const body = await (await GET(makeGetRequest(URL_BASE, true))).json();
+    const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
     expect(body.recCard.repeatTappers).toBe(0);
   });
 
@@ -99,7 +108,7 @@ describe('GET /api/admin/slice0', () => {
     seedGame('lin', '2026-07-03T10:00:00.000Z'); // same human
     seedGame('Viktor', '2026-07-03T10:00:00.000Z');
 
-    const body = await (await GET(makeGetRequest(URL_BASE, true))).json();
+    const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
     expect(body.games.loggers).toBe(2);
     expect(body.games.rate).toBeCloseTo(2 / 6, 3);
   });
@@ -109,7 +118,7 @@ describe('GET /api/admin/slice0', () => {
     seedGame('Lin', '2026-07-02T10:00:00.000Z');
     seedGame('Viktor', '2026-07-02T10:00:00.000Z');
 
-    const body = await (await GET(makeGetRequest(URL_BASE, true))).json();
+    const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
     expect(body.games.passes).toBe(true);
     // Criterion kills only when BOTH halves miss.
     expect(body.verdict).toBe('keep');
@@ -117,14 +126,14 @@ describe('GET /api/admin/slice0', () => {
 
   it('returns kill only when both halves miss', async () => {
     seedCohort();
-    const body = await (await GET(makeGetRequest(URL_BASE, true))).json();
+    const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
     expect(body.recCard.passes).toBe(false);
     expect(body.games.passes).toBe(false);
     expect(body.verdict).toBe('kill');
   });
 
   it('refuses a verdict on an empty cohort instead of reporting a confident kill', async () => {
-    const body = await (await GET(makeGetRequest(URL_BASE, true))).json();
+    const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
     expect(body.cohortSize).toBe(0);
     expect(body.verdict).toBeNull();
   });
@@ -138,9 +147,18 @@ describe('GET /api/admin/slice0', () => {
     expect(late.games.loggers).toBe(0);
   });
 
-  it('falls back to the v1.7 date when ?since is garbage', async () => {
+  it('falls back to the CLOCK RESTART when ?since is garbage', async () => {
+    // Not the v1.7 date (2026-06-13). The Equipment register was parked under
+    // the assessment spine until 2026-08-16, so the rec card rendered on
+    // neither deployment before then — defaulting to the earlier window
+    // measures a surface that wasn't there and manufactures a `kill`.
     const body = await (await GET(makeGetRequest(`${URL_BASE}?since=not-a-date`, true))).json();
-    expect(body.since).toBe('2026-06-13');
+    expect(body.since).toBe('2026-08-16');
+  });
+
+  it('defaults to the clock restart when ?since is absent entirely', async () => {
+    const body = await (await GET(makeGetRequest(URL_BASE, true))).json();
+    expect(body.since).toBe('2026-08-16');
   });
 
   it('reports racket saves as a secondary signal', async () => {
@@ -151,7 +169,7 @@ describe('GET /api/admin/slice0', () => {
       { id: 'gear-2', memberId: 'member-viktor', items: [{ id: 'i2', category: 'shoes', label: 'Comfort Z3' }] },
     ];
 
-    const body = await (await GET(makeGetRequest(URL_BASE, true))).json();
+    const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
     expect(body.racketSavers).toBe(1);
   });
 });

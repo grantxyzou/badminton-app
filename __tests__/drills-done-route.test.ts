@@ -47,19 +47,10 @@ describe('POST /api/stats/drills/done', () => {
     resetMockStore();
     setupAdminPin();
     seedPointer('session-2026-08-20');
-    process.env.NEXT_PUBLIC_FLAG_STATS_V2 = 'true';
     process.env.NEXT_PUBLIC_FLAG_SKILL_DRILLS = 'true';
   });
   afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_STATS_V2;
     delete process.env.NEXT_PUBLIC_FLAG_SKILL_DRILLS;
-  });
-
-  it('404s when the flag is off', async () => {
-    delete process.env.NEXT_PUBLIC_FLAG_STATS_V2;
-    const res = await POST(postAs('Lin', { drillId: 'd1', done: true }));
-    expect(res.status).toBe(404);
-    process.env.NEXT_PUBLIC_FLAG_STATS_V2 = 'true';
   });
 
   // ── The writer is the cookie, never a name in the body ──────────────────
@@ -139,11 +130,9 @@ describe('GET /api/stats/drills — done field', () => {
     resetMockStore();
     setupAdminPin();
     seedPointer('session-2026-08-20');
-    process.env.NEXT_PUBLIC_FLAG_STATS_V2 = 'true';
     process.env.NEXT_PUBLIC_FLAG_SKILL_DRILLS = 'true';
   });
   afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_STATS_V2;
     delete process.env.NEXT_PUBLIC_FLAG_SKILL_DRILLS;
   });
 

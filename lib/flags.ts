@@ -29,8 +29,7 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_SKILL_DRILLS'
   | 'NEXT_PUBLIC_FLAG_KUDOS'
   | 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS'
-  | 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER'
-  | 'NEXT_PUBLIC_FLAG_STATS_V2';
+  | 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER';
 
 interface FlagMeta {
   description: string;
@@ -62,7 +61,7 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
   NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE: {
     description: 'Slice-0 of the Value-Hub plan (`docs/plans/value-hub-slice-0.md`): a thin end-to-end vertical of equipment catalog (rackets only, seeded ~15 models), one-tap "What\'s your racket?" on Profile, a 30s post-session game-result logger, a single deterministic recommendation card, and the partner-frequency Stats card. Gates the player-facing UI surfaces; the backend containers (`equipmentCatalog`, `playerGear`, `gameResults`) are bootstrapped lazily via `ensureContainer` regardless, so they exist before the flag flips on. On for bpm-next + dev once landed; off on bpm-stable until the 4-week kill-criterion gate clears.',
     owner: 'grant',
-    plannedRemoval: 'RETIRE. The gate was READ on 2026-08-25 (since=2026-08-16, the restarted clock) and it returned verdict: kill — recCard 3/12 repeat-tappers (0.25 vs 0.40), games 0/12 loggers (0.00 vs 0.30), racketSavers 3, cohort 12. BUT the criterion is no longer executable and must not be run as written: it says "revert everything else", and three of the four tracks it was meant to gate had ALREADY shipped (Insight: partner card, game logger, skill trend; Equipment: expanded past racket-only to strings, 71 rackets vs the planned ~15; Learning: drill library + AI coach). Only Track 4 (Reach) was never built. The fan-out decision was therefore made by SHIPPING, not by this gate — a written criterion with no scheduled read date is a note, not a gate. Reverting now would tear out months of merged, tested, live work on the strength of a tap rate. Read the numbers as product feedback instead: the rec card fails on REACH, not value (only 4 of 12 ever tapped it, but 3 of those 4 tapped more than once) — it is buried on the Gear register inside the Stats tab. CORRECTION (same day): the games 0/12 was NOT non-use. SteppedGameLoggerSheet read the roster as `d?.players`, but GET /api/players returns a BARE ARRAY, so the partner/opponent picker was EMPTY for every member, permanently — nobody could log a game even if they wanted to. Its own test mocked the same wrong shape, so the suite could never catch it. Fixed 2026-08-25. Treat games 0/12 as NO DATA, not as evidence, and re-read the criterion after the fix has been live for a few sessions. The rec-card 0.25 stands (that surface worked; anyTappers:4 with 3 repeating).',
+    plannedRemoval: 'RETIRE. The gate was READ on 2026-08-25 (since=2026-08-16, the restarted clock) and it returned verdict: kill — recCard 3/12 repeat-tappers (0.25 vs 0.40), games 0/12 loggers (0.00 vs 0.30), racketSavers 3, cohort 12. BUT the criterion is no longer executable and must not be run as written: it says "revert everything else", and three of the four tracks it was meant to gate had ALREADY shipped (Insight: partner card, game logger, skill trend; Equipment: expanded past racket-only to strings, 71 rackets vs the planned ~15; Learning: drill library + AI coach). Only Track 4 (Reach) was never built. The fan-out decision was therefore made by SHIPPING, not by this gate — a written criterion with no scheduled read date is a note, not a gate. Reverting now would tear out months of merged, tested, live work on the strength of a tap rate. Read the numbers as product feedback instead: the rec card fails on REACH, not value (only 4 of 12 ever tapped it, but 3 of those 4 tapped more than once) — it is buried on the Gear register inside the Stats tab. CORRECTION (same day): the games 0/12 was NOT non-use. SteppedGameLoggerSheet read the roster as `d?.players`, but GET /api/players returns a BARE ARRAY, so the partner/opponent picker was EMPTY for every member, permanently — nobody could log a game even if they wanted to. Its own test mocked the same wrong shape, so the suite could never catch it. Fixed 2026-08-25. Treat games 0/12 as NO DATA, not as evidence, and re-read the criterion after the fix has been live for a few sessions — GET /api/admin/slice0 with NO ?since is now correct, since its default is the 2026-08-16 clock restart rather than the v1.7 date. The rec-card 0.25 stands (that surface worked; anyTappers:4 with 3 repeating).',
   },
   NEXT_PUBLIC_FLAG_NAV_RAIL: {
     description: 'Replaces the floating glass-pill bottom nav with the full-width "Labeled Rail" (spec May 2026): edge-attached, capped to the max-w-lg content column, triple-signal active state, theme-aware. Purely presentational — same Tab ids / routing / i18n / aria. On for bpm-next + dev; off on bpm-stable (legacy .nav-glass) until promoted.',
@@ -109,11 +108,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: '2026-11-19',
   },
-  NEXT_PUBLIC_FLAG_STATS_V2: {
-    description: 'Stats tab v2: the three registers (Summary / Game stats / Equipment) became four (You / Play / Learn / Gear) with a persistent Level/Games/Kudos overview strip; the 14-axis recharts radar became three dimension bars with club-median ticks; everything that counts sessions you MISSED (streak hero, attendance card, recent-form dots) was removed by product decision; and club comparison became a real opt-out-able feature (bands only, one master switch, asked once on first run). INERT-ON since Stage 8 (2026-08-20): the v1 path was deleted outright, no UI reads this flag any more, and it is \'true\' in both remaining build configs (pr-ci, deploy-next — deploy-stable was deleted 2026-08-25). It now guards only the three v2-only API routes — /api/stats/club/bands, /api/stats/club/gear, /api/stats/drills/done. Turning it OFF no longer falls back to anything; it just 404s those routes and leaves the tab showing load errors. The only remaining move is retirement.',
-    owner: 'grant',
-    plannedRemoval: '2026-09-03 — two weeks after the Stage 8 flip (2026-08-20). Retirement is pure cleanup, not a decision: delete the FlagName entry, this record, the readFlag case, the three route guards, the flags.test.ts case, the flag-off-404 route tests, and the entry in all three workflows.',
-  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -146,8 +140,6 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS;
     case 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER':
       return process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
-    case 'NEXT_PUBLIC_FLAG_STATS_V2':
-      return process.env.NEXT_PUBLIC_FLAG_STATS_V2;
     default: {
       // Exhaustiveness guard. Adding a flag to `FlagName` without adding its
       // `case` above used to be silently legal — `readFlag` just returned
