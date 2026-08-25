@@ -124,8 +124,16 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   // Only the skill-scored engine consumes them, so the controls follow its flag
   // rather than the sheet's.
   const recommenderOn = isFlagOn('NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER');
-  const playFormat = gear.gear?.playFormat ?? 'both';
-  const budgetMaxCad = gear.gear?.budgetMaxCad ?? null;
+  // A failed or still-pending gear read means the stored preferences are
+  // UNKNOWN. Lighting `both` / `no cap` out of the `??` fallbacks would assert
+  // a setting the server never reported — the same unknown-as-confirmed bug
+  // the rail's isOwned() had, and reachable the same way (a 500, or a 403 from
+  // a member_session that hit its 30-day TTL while badminton_identity lived
+  // on). `undefined` is the unknown sentinel because `null` is a real budget
+  // value meaning "no cap", so it cannot double as "we don't know".
+  const prefsKnown = gear.loaded && !gear.loadError;
+  const playFormat = prefsKnown ? (gear.gear?.playFormat ?? 'both') : null;
+  const budgetMaxCad = prefsKnown ? (gear.gear?.budgetMaxCad ?? null) : undefined;
 
   async function setPref(prefs: { playFormat?: 'singles' | 'doubles' | 'both'; budgetMaxCad?: number | null }) {
     setPrefError(false);
@@ -231,6 +239,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
         </div>
       </section>
 
+      {gear.loadError && <ErrorState message={t('kitError')} />}
       {prefError && <ErrorState message={t('pickSheetAddError')} />}
     </>
   ) : null;
