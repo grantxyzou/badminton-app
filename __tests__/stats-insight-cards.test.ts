@@ -10,6 +10,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
   },
 }));
 
+import { NextRequest } from 'next/server';
 import { GET } from '../app/api/stats/insight/route';
 
 const BASE = 'http://localhost:3000/api/stats/insight';
@@ -137,5 +138,35 @@ describe('/api/stats/insight — distributed insight cards', () => {
     expect(json.account).toBe(false);
     expect(json.greeting).toBeNull();
     expect(mockCreate).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The throttle used to answer `emptyPayload(true)` — HTTP 200 with every field
+ * null — which is exactly what "this member has no insight yet" looks like. A
+ * rate-limited read was therefore indistinguishable from a legitimate absence
+ * and the greeting simply vanished, with nothing to explain it or to retry.
+ *
+ * Reachable in ordinary use, not just under attack: the limit is 30/hr per IP,
+ * a whole club shares one NAT address at the venue, and a page load that hits
+ * the 403 path issues FOUR of these (refusals are deliberately not memoized).
+ */
+describe('GET /api/stats/insight — a throttled read is not an empty one', () => {
+  it('returns a real 429, not 200 with a null payload', async () => {
+    const ip = `insight-throttle-${Math.random()}`;
+    const req = () =>
+      new NextRequest(new URL(`${BASE}?name=Lin`), {
+        headers: { 'x-client-ip': ip, cookie: `member_session=${memberCookieValue('Lin')}` },
+      });
+
+    // Limit is 30/hr on one IP; burn past it.
+    let res = await GET(req());
+    for (let i = 0; i < 32; i++) res = await GET(req());
+
+    expect(res.status).toBe(429);
+    const body = await res.json();
+    expect(body.error).toBe('rate_limited');
+    // The tell: no `account` field, so no consumer can mistake it for a payload.
+    expect(body.account).toBeUndefined();
   });
 });

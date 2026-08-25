@@ -88,6 +88,21 @@ interface InsightDoc {
   lastAssessmentAt?: string | null;
 }
 
+/**
+ * HTTP 200 with every field null — "there is genuinely nothing to say".
+ *
+ * This is a LEGITIMATE EMPTY, and the distinction matters because it used to be
+ * returned for failures too. Remaining callers, classified:
+ *   - not a member / no name        → correct: the account gate, nothing to say
+ *   - model returned all-null cards → correct: silence beat an obvious remark
+ *   - no recap and no focus         → correct: same
+ *   - container setup failed (~:153), no API key (~:223), generation threw
+ *     (~:262, ~:288) → these are FAILURES still wearing an empty payload. They
+ *     degrade to "no insight" rather than saying the read broke. Lower priority
+ *     than the throttle was — they are not reachable in ordinary use — but they
+ *     are the same defect and should become 503s.
+ * The rate-limit trip was the reachable one and now returns a real 429.
+ */
 function emptyPayload(account: boolean) {
   return NextResponse.json({ account, recap: null, focus: null, greeting: null, level: null, trend: null, generatedAt: null });
 }
@@ -121,7 +136,18 @@ async function fetchAssessmentDocs(memberId: string): Promise<StoredAssessment[]
 export async function GET(req: NextRequest) {
   const ip = getClientIp(req);
   if (!checkRateLimit(`stats-insight:${ip}`, 30, 60 * 60 * 1000)) {
-    return emptyPayload(true);
+    // A real 429, not `emptyPayload(true)`. The empty payload is HTTP 200 with
+    // every field null, which is exactly what "this member has no insight yet"
+    // looks like — so a throttled read was indistinguishable from a legitimate
+    // absence and the greeting just silently disappeared. Same lying-empty
+    // state /api/stats/partners and /api/players/unpaid were fixed for.
+    //
+    // `useInsight` already routes any non-403 non-ok to its `error` state (see
+    // the note beside its 403 check), so this needs no client change: it goes
+    // from "no insight" to a legible load failure the moment the status is
+    // honest. And 403 stays separate on purpose — telling a rate-limited
+    // member to sign in again would be its own lie.
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
   const name = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50) ?? '';
