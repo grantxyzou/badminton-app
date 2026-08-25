@@ -6,7 +6,7 @@ import { ownsNameOrAdmin } from '@/lib/auth';
 import { computeClubBands, MIN_COHORT } from '@/lib/clubBands';
 import { normalizeStatsPrivacy, isComparisonRevealed } from '@/lib/statsPrivacy';
 import type { Rating, StoredAssessment } from '@/lib/assessment';
-import { resolveAnyMemberSubject } from '@/lib/memberResolve';
+import { resolveActiveSubject } from '@/lib/memberResolve';
 
 /**
  * Club comparison bands for one member — private by design, same gate as
@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const [memberId, privacy, byMember] = await Promise.all([
-      (await resolveAnyMemberSubject(name)).memberId,
+      (await resolveActiveSubject(name)).memberId,
       readPrivacy(name),
       latestRatingsByMember(),
     ]);

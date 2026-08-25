@@ -4,7 +4,7 @@ import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { verifyMemberAuth } from '@/lib/auth';
 import { drillDocId, readDone, type DrillCompletionDoc } from '@/lib/drillsDone';
-import { resolveAnyMemberSubject } from '@/lib/memberResolve';
+import { resolveActiveSubject } from '@/lib/memberResolve';
 
 /**
  * Mark a drill done (or not) for the current week.
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
   try {
     await ensureDrillsDone();
     const [memberId, weekKey] = await Promise.all([
-      (await resolveAnyMemberSubject(caller.name)).memberId,
+      (await resolveActiveSubject(caller.name)).memberId,
       getActiveSessionId(),
     ]);
 

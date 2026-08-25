@@ -69,12 +69,15 @@ describe('member-resolve canary', () => {
     ).toEqual([]);
   });
 
-  it('keeps the active-filter split explicit in the owner', () => {
+  it('resolves the ACTIVE row only — there is no unfiltered path left', () => {
     const src = readFileSync(join(process.cwd(), OWNER), 'utf8');
-    // Both variants must exist: collapsing them is the drift this prevents.
     expect(src).toContain('AND c.active = true');
-    expect(src).toMatch(/resolveActiveMemberId|resolveActiveSubject/);
-    expect(src).toContain('resolveAnyMemberSubject');
+    expect(src).toMatch(/resolveActiveMemberId/);
+    expect(src).toMatch(/resolveActiveSubject/);
+    // The unfiltered variant existed only to make the consolidation
+    // behaviour-neutral; it was removed once the six stats routes were flipped.
+    // Re-adding one means re-running the production duplicate/inactive audit.
+    expect(src).not.toMatch(/export .*resolveAnyMemberSubject/);
   });
 
   it('does not export a boolean-flag entry point', () => {

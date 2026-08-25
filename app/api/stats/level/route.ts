@@ -3,7 +3,7 @@ import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ownsNameOrAdmin } from '@/lib/auth';
 import { getCanonicalLevel } from '@/lib/levelStore';
-import { resolveAnyMemberSubject } from '@/lib/memberResolve';
+import { resolveActiveSubject } from '@/lib/memberResolve';
 
 /**
  * Canonical level for a member — private by design (CLAUDE.md privacy stance):
@@ -18,7 +18,7 @@ import { resolveAnyMemberSubject } from '@/lib/memberResolve';
 export const dynamic = 'force-dynamic';
 
 /**
- * Name → subject id. Mirrors `resolveAnyMemberSubject` in app/api/assessments/route.ts:
+ * Name → subject id. Mirrors `resolveActiveSubject` in app/api/assessments/route.ts:
  * the members directory is canonical; non-members fall back to a name-derived
  * key so they still get a (self-only) level. Queries by @name, which the mock
  * store honors (it does NOT honor @memberId).
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const subject = await resolveAnyMemberSubject(name);
+    const subject = await resolveActiveSubject(name);
     const level = await getCanonicalLevel(subject);
     return NextResponse.json({ level });
   } catch (error) {

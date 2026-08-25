@@ -1,7 +1,8 @@
 import { getContainer } from './cosmos';
 
 /**
- * Name → member id. THE single owner of that lookup.
+ * Name → member id. THE single owner of that lookup, and it resolves the
+ * ACTIVE row only.
  *
  * This existed as ten hand-copied variants across the API (stats/level,
  * stats/drills, stats/drills/done, stats/club/bands, assessments, kudos,
@@ -17,22 +18,21 @@ import { getContainer } from './cosmos';
  * (`drillDocId(memberId, weekKey)`, PK `/memberId`), assessments (PK
  * `/memberId`), kudos and gear (`gear-<memberId>`).
  *
- * WHY THREE NAMED ENTRY POINTS AND NOT ONE WITH A FLAG
- * ----------------------------------------------------
+ * WHY TWO NAMED ENTRY POINTS AND NOT ONE WITH A FLAG
+ * --------------------------------------------------
  * A `resolveMember(name, { activeOnly })` would make the CALL greppable while
  * moving the drift into the ARGUMENT — a reviewer scanning ten sites for a
  * boolean is the failure mode being fixed, not a fix for it. The differences
  * are encoded in the signatures instead, so picking the wrong one is a type
  * error or an obviously different return shape.
  *
- * Three real differences these signatures protect, all present in the copies:
+ * Two real differences these signatures protect, both present in the copies:
  *   1. FALLBACK. Eight callers want a synthetic `name:<lower>` id for a
  *      non-member; `equipment/gear` wants `null` and must NOT get one, or it
  *      starts writing bag documents at `gear-name:foo`.
  *   2. ERRORS. The `name:`-fallback callers swallow a failed read and continue;
  *      `resolveActiveMemberId` propagates, so the caller can 500 rather than
  *      silently address a different partition.
- *   3. THE ACTIVE FILTER. See `resolveAnyMemberSubject` below.
  *
  * Projection is `SELECT c.id` everywhere: seven of the copies did `SELECT *`,
  * pulling `pinHash` and `recoveryCode` into scope to read one field.
@@ -54,13 +54,20 @@ const synthetic = (trimmed: string): MemberSubject => ({
   isMember: false,
 });
 
-/** Shared core. `activeOnly` is deliberately not exported — see the header. */
-async function lookupId(name: string, activeOnly: boolean): Promise<string | null> {
+/**
+ * Shared core. ACTIVE-ONLY, with no way to ask for anything else.
+ *
+ * There was briefly a `resolveAnyMemberSubject` here preserving the six stats
+ * routes' historical unfiltered behaviour, so the consolidation could land
+ * without changing anything. Those routes were flipped once the production
+ * audit came back clean, which left it with zero consumers — so it is gone
+ * rather than sitting here as unreachable code that reads like an option.
+ * Re-adding an unfiltered path means re-running that audit first.
+ */
+async function lookupId(name: string): Promise<string | null> {
   const { resources } = await getContainer('members')
     .items.query({
-      query: activeOnly
-        ? 'SELECT c.id FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true'
-        : 'SELECT c.id FROM c WHERE LOWER(c.name) = LOWER(@name)',
+      query: 'SELECT c.id FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
       parameters: [{ name: '@name', value: name }],
     })
     .fetchAll();
@@ -74,7 +81,7 @@ async function lookupId(name: string, activeOnly: boolean): Promise<string | nul
  * a non-member rather than narrating one).
  */
 export async function resolveActiveMemberId(name: string): Promise<string | null> {
-  return lookupId(name.trim(), true);
+  return lookupId(name.trim());
 }
 
 /**
@@ -85,7 +92,7 @@ export async function resolveActiveMemberId(name: string): Promise<string | null
 export async function resolveActiveSubject(name: string): Promise<MemberSubject> {
   const trimmed = name.trim();
   try {
-    const id = await lookupId(trimmed, true);
+    const id = await lookupId(trimmed);
     if (id) return { memberId: id, name: trimmed, isMember: true };
   } catch {
     /* a failed read must not 500 a read-only surface — fall through */
@@ -93,28 +100,3 @@ export async function resolveActiveSubject(name: string): Promise<MemberSubject>
   return synthetic(trimmed);
 }
 
-/**
- * UNFILTERED — first row matching the name, active or not.
- *
- * This is the historical behaviour of the six stats/assessment/kudos routes and
- * is preserved EXACTLY here so the consolidation is provably behaviour-neutral.
- * It is not the desired end state: a name whose only row is soft-deleted
- * resolves here to that row's real id while the active-only variants fall
- * through to `name:<lower>`, so the two disagree for exactly that set.
- *
- * Unifying is gated on a production audit (2026-08-25: 68 rows, 0 duplicate
- * names, 0 rows with `active` undefined, 15 inactive of which 9 are test
- * fixtures and the remaining 6 hold no assessments and no level). Do not flip
- * these callers to the active-only variant without re-running that audit — the
- * risk is silent orphaning, not an error.
- */
-export async function resolveAnyMemberSubject(name: string): Promise<MemberSubject> {
-  const trimmed = name.trim();
-  try {
-    const id = await lookupId(trimmed, false);
-    if (id) return { memberId: id, name: trimmed, isMember: true };
-  } catch {
-    /* fall through to the name-derived id */
-  }
-  return synthetic(trimmed);
-}

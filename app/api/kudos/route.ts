@@ -5,7 +5,7 @@ import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { aggregateKudos, isKudosTag, type KudosDoc } from '@/lib/kudos';
-import { resolveAnyMemberSubject } from '@/lib/memberResolve';
+import { resolveActiveSubject } from '@/lib/memberResolve';
 
 export const dynamic = 'force-dynamic';
 
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'not_co_player' }, { status: 403 });
     }
 
-    const recipient = await resolveAnyMemberSubject(recipientName);
+    const recipient = await resolveActiveSubject(recipientName);
     const container = getContainer('kudos');
 
     // One of each tag per (rater, recipient, session). The mock store ignores
@@ -165,7 +165,7 @@ export async function GET(req: NextRequest) {
 
   try {
     await ensureKudos();
-    const subject = await resolveAnyMemberSubject(name);
+    const subject = await resolveActiveSubject(name);
     const { resources } = await getContainer('kudos').items
       .query({
         query: 'SELECT c.tag, c.recipientMemberId FROM c WHERE c.recipientMemberId = @rid',

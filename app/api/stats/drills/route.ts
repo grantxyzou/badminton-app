@@ -5,7 +5,7 @@ import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ownsNameOrAdmin } from '@/lib/auth';
 import { drillPicksFor } from '@/lib/drills';
 import { drillDocId, readDone, type DrillCompletionDoc } from '@/lib/drillsDone';
-import { resolveAnyMemberSubject } from '@/lib/memberResolve';
+import { resolveActiveSubject } from '@/lib/memberResolve';
 
 /**
  * Practice drills for a member's weakest skills — private by design, same gate
@@ -18,7 +18,7 @@ import { resolveAnyMemberSubject } from '@/lib/memberResolve';
 
 export const dynamic = 'force-dynamic';
 
-/** Name → subject id. Mirrors `resolveAnyMemberSubject` in app/api/stats/level/route.ts. */
+/** Name → subject id. Mirrors `resolveActiveSubject` in app/api/stats/level/route.ts. */
 
 /**
  * This week's completions for a member. Best-effort: the drills themselves are
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const subject = await resolveAnyMemberSubject(name);
+    const subject = await resolveActiveSubject(name);
     const [drills, rotationSeed] = await Promise.all([
       drillPicksFor(subject),
       getActiveSessionId(),
