@@ -46,6 +46,11 @@ export default function CheckInSheet({
   const [step, setStep] = useState(-1);
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [mirror, setMirror] = useState<Mirror | null>(null);
+  // Tri-state, not `mirror === null`. A failed read and a true zero are
+  // different facts, and this is the screen whose whole job is reconciling
+  // self-rating against actual results — so telling a member with twelve
+  // games that they logged none directly biases the ratings they then enter.
+  const [mirrorStatus, setMirrorStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [savedLevel, setSavedLevel] = useState<{ level: number | null; phase: string | null } | null>(null);
@@ -73,6 +78,7 @@ export default function CheckInSheet({
   useEffect(() => {
     if (!open || !name) return;
     let cancelled = false;
+    setMirrorStatus('loading'); // reopening must not inherit the last result
     fetch(`${BASE}/api/games`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
@@ -97,8 +103,9 @@ export default function CheckInSheet({
         }
         const topPartner = [...partnerCounts.entries()].sort((x, y) => y[1] - x[1])[0]?.[0] ?? null;
         setMirror({ played, won, topPartner });
+        setMirrorStatus('ready');
       })
-      .catch(() => { if (!cancelled) setMirror(null); });
+      .catch(() => { if (!cancelled) { setMirror(null); setMirrorStatus('error'); } });
     return () => { cancelled = true; };
   }, [open, name]);
 
@@ -253,7 +260,9 @@ export default function CheckInSheet({
           {/* Intro + reconciliation mirror */}
           {step === -1 && (
             <div className="space-y-4">
-              {mirror && mirror.played > 0 ? (
+              {mirrorStatus === 'error' ? (
+                <ErrorState message={t('assess.error')} />
+              ) : mirror && mirror.played > 0 ? (
                 <div className="p-4 rounded-xl" style={{ background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)' }}>
                   <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('assess.mirrorTitle')}</p>
                   <p style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-primary)', margin: '6px 0 0', lineHeight: 1.4 }}>
@@ -261,9 +270,9 @@ export default function CheckInSheet({
                     {mirror.topPartner ? ` ${t('assess.mirrorPartner', { name: mirror.topPartner })}` : ''}
                   </p>
                 </div>
-              ) : (
+              ) : mirrorStatus === 'ready' ? (
                 <EmptyState>{t('assess.noGames')}</EmptyState>
-              )}
+              ) : null}
               <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>{t('assess.ratePrompt')}</p>
               <button type="button" onClick={() => setStep(0)} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
                 {t('assess.start')}
