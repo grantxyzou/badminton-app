@@ -147,6 +147,13 @@ export default function GearSheet({
     if (!open) return;
     let live = true;
     setLoaded(false);
+    // The sheet is rendered once with no `key` and a changing `category`, so
+    // it is never remounted and every field below survives into the next
+    // open. `catalog` and `loadError` have to be cleared for the same reason
+    // as the rest: otherwise the previous category's items stay on screen
+    // while the new fetch is in flight, and a stale error pill outlives it.
+    setCatalog([]);
+    setLoadError(false);
     setQuery('');
     setPickError(null);
     setBrand(null); // brands differ per category — don't carry one across
@@ -327,7 +334,7 @@ export default function GearSheet({
             <EmptyState>{t('racketCatalogEmpty')}</EmptyState>
           )}
 
-          {catalog.length > 0 && (
+          {loaded && !loadError && catalog.length > 0 && (
             <input
               type="search"
               value={query}

@@ -269,8 +269,9 @@ export async function DELETE(req: NextRequest) {
 
     const items = existing.filter((i) => i.id !== itemId);
     // Removing the active racket must leave a coherent pointer, never one
-    // aimed at a deleted item.
-    const remainingRackets = items.filter((i) => i.category === 'racket');
+    // aimed at a deleted item. Uses the shared helper so a legacy item with
+    // no `category` is still a candidate to inherit the pointer.
+    const remainingRackets = rackets({ ...(prior as PlayerGear), items });
     const activeRacketId = prior?.activeRacketId === itemId
       ? remainingRackets[0]?.id
       : prior?.activeRacketId;

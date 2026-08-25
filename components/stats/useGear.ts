@@ -54,6 +54,10 @@ export function useGear(name: string | null): UseGear {
   const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const opRef = useRef(0);
+  // Mirrors `loaded` for the recovery check in `mutate`, which runs inside a
+  // closure that would otherwise read a stale value.
+  const loadedRef = useRef(false);
+  const markLoaded = useCallback(() => { loadedRef.current = true; setLoaded(true); }, []);
 
   const reload = useCallback(() => {
     if (!name) return;
@@ -63,15 +67,15 @@ export function useGear(name: string | null): UseGear {
       .then((d) => {
         if (opId !== opRef.current) return;
         setGear((d.gear as PlayerGear | null) ?? null);
-        setLoaded(true);
+        markLoaded();
         setLoadError(false);
       })
       .catch(() => {
         if (opId !== opRef.current) return;
         setLoadError(true);
-        setLoaded(true);
+        markLoaded();
       });
-  }, [name]);
+  }, [name, markLoaded]);
 
   useEffect(() => { reload(); }, [reload]);
 
@@ -94,6 +98,13 @@ export function useGear(name: string | null): UseGear {
       const d = await res.json();
       if (opId === opRef.current) {
         setGear((d.gear as PlayerGear | null) ?? null);
+        // The response body IS the doc, so a write is also a definitive read —
+        // it must set `loaded`, not only clear the error. Claiming the op id
+        // above cancelled any in-flight initial GET, and `setLoaded(true)`
+        // lives only inside that GET's two guarded branches, so without this
+        // a mutation racing the first load strands the register on skeletons
+        // permanently: nothing else ever flips `loaded`.
+        markLoaded();
         // A successful write proves the doc is readable, so it also clears a
         // stale read error — otherwise the error pill outlives its cause.
         setLoadError(false);
@@ -103,8 +114,16 @@ export function useGear(name: string | null): UseGear {
       return { ok: false, reason: 'error' };
     } finally {
       setSaving(false);
+      // Same cancellation, unhappy path: a 409 or a failed write produced no
+      // doc, so if that cancelled GET was the only one we ever had, re-read —
+      // otherwise `loaded` never flips and the register sits on skeletons.
+      // Conditioned on having NO doc, not merely on the write failing: once a
+      // doc is applied it is authoritative, and re-reading after (say) a
+      // failed tension follow-up would discard the item the preceding write
+      // just added. Guarded on the op id so a newer operation owns recovery.
+      if (!loadedRef.current && opId === opRef.current) reload();
     }
-  }, [name]);
+  }, [name, reload, markLoaded]);
 
   /**
    * Add a catalog item to the bag.

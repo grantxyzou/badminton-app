@@ -40,4 +40,19 @@ describe('rackets', () => {
   it('returns an empty array for absent gear', () => {
     expect(rackets(null)).toEqual([]);
   });
+
+  // Rackets predate the `category` field. Every other call site reads
+  // `(category ?? 'racket')`; a strict check here made a legacy item
+  // unactivatable in total silence — it listed fine, but this returned no
+  // racket, so the PATCH guard (which calls this same helper) 404'd and
+  // `onActivate` discarded the result. The button did nothing, forever.
+  it('treats an item with no category as a racket', () => {
+    const legacy = { id: 'old', catalogId: 'racket-old', label: 'Legacy' } as GearItem;
+    expect(rackets(gear([legacy])).map((r) => r.id)).toEqual(['old']);
+    expect(activeRacket(gear([legacy]))?.id).toBe('old');
+  });
+
+  it('still excludes an explicitly non-racket category', () => {
+    expect(rackets(gear([item('s', 'string')]))).toEqual([]);
+  });
 });

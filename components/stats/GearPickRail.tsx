@@ -168,7 +168,16 @@ export default function GearPickRail({ activeName, gear, onPairTension }: GearPi
             status: 'ready',
             pick: {
               item: d.item as CatalogItem,
-              reasons: Array.isArray(d.reasons) ? d.reasons : [],
+              // Two response shapes, not one. Only the engine paths return a
+              // `reasons` array; the non-recommender path (route.ts:311, the
+              // one bpm-stable always takes because deploy-stable.yml sets
+              // NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER 'false') returns a singular
+              // `reason` string. Reading only the array threw that away and
+              // left the pick sheet — whose entire job is explaining one
+              // recommendation — with a heading and an Add button and no why.
+              reasons: Array.isArray(d.reasons)
+                ? d.reasons
+                : (typeof d.reason === 'string' && d.reason ? [d.reason] : []),
               warnings: Array.isArray(d.warnings) ? d.warnings : [],
               pairedWith: d.pairedWith ?? undefined,
               tensionLbs: typeof d.tensionLbs === 'number' ? d.tensionLbs : null,
