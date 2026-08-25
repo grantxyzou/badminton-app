@@ -353,3 +353,40 @@ is kept as a **health readout**, not a gate.
 Track 4 (Reach) remains genuinely unbuilt and is the one track with outside-world
 consequences. If it is picked up, it needs a **fresh criterion with a date in the
 calendar**, not just in a document.
+
+### Correction — same day, before any of the above was acted on
+
+**The `games: 0` was not non-use. It was a bug.**
+
+`SteppedGameLoggerSheet` read the roster as `d?.players`, but
+`GET /api/players` returns a **bare array** (`app/api/players/route.ts` GET:
+`NextResponse.json(resources.map(...))`). So `d.players` was always `undefined`,
+the partner and opponent pickers were **empty for every member, permanently**,
+and nobody could log a game whether they wanted to or not. Every other consumer
+of that endpoint — `ProfileTab`, `PlayersTab`, `NextSessionCard` — already read
+it as an array. This was the one that didn't.
+
+Its own test mocked `{ players: [...] }` too, so the suite encoded the same false
+assumption as the code and could never catch it. With the mock corrected to the
+real shape, 9 of its 10 cases fail against the old read.
+
+**The reasoning that produced the wrong conclusion is worth keeping.** From
+`racketSavers: 3` it followed that at least three members held valid
+`member_session` cookies and could make authenticated writes, so auth was not
+blocking game logging. That was correct — and insufficient. Ruling out one
+mechanism is not ruling out all of them; the UI could not collect the inputs in
+the first place. "Not blocked by auth" was reported as "not blocked".
+
+**Consequences for the readout:**
+
+- `games: 0/12` is **no data**, not evidence. It cannot be read as disinterest.
+  Re-read the criterion after the fix has been live for a few sessions.
+- `recCard: 0.25` **stands** — that surface worked (`anyTappers: 4`, 3 of them
+  repeating), so the reach finding there is real.
+- The kudos card was dark for a second, independent reason: it derived its
+  co-player list from `/api/games` while the server's `playedTogether` is
+  roster-first. Zero logged games therefore meant zero co-players and the card
+  returned `null` for everyone. Now roster-based, matching the server.
+
+So two live features were invisible to the whole club for six weeks, and the
+metric built to judge them reported their silence as a verdict.
