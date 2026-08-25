@@ -200,7 +200,8 @@
     "unpaid": {
       "title": "待付款",
       "total": "合计",
-      "loadError": "加载失败——请刷新重试。"
+      "loadError": "加载失败——请刷新重试。",
+      "signInAgain": "请在“我的”页面登录以查看欠款。"
     }
   },
   "report": {

@@ -200,7 +200,8 @@
     "unpaid": {
       "title": "Outstanding payments",
       "total": "Total",
-      "loadError": "Couldn't load — refresh to retry."
+      "loadError": "Couldn't load — refresh to retry.",
+      "signInAgain": "Sign in on Profile to see what you owe."
     }
   },
   "report": {
