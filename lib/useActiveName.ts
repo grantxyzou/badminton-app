@@ -18,6 +18,12 @@ import { getIdentity, IDENTITY_EVENT } from './identity';
  *  1. `badminton_identity` — a real signed-in player.
  *  2. `badminton_stats_preview_name` — a name picked purely to VIEW someone's
  *     stats (an admin browsing, or an anonymous visitor using the picker).
+ *     DORMANT as of Stage 8: the picker that wrote this key was deleted, and
+ *     NOTHING in the app writes it now, so this branch is currently
+ *     unreachable and the chain is identity-or-nothing in practice. Kept
+ *     deliberately — it is what an admin-views-another-member feature would
+ *     need, it is already tested, and it costs one localStorage read. Do not
+ *     treat a preview name as something that can occur today.
  *
  * The preview key is deliberately separate from the real identity and is never
  * written into it: `badminton_identity` carries a `deleteToken` that authorises

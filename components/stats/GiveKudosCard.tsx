@@ -11,7 +11,11 @@ import ErrorState from '@/components/primitives/ErrorState';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const LOG_WINDOW_MS = 48 * 60 * 60 * 1000;
 
-interface Game { teamA?: string[]; teamB?: string[] }
+/**
+ * One row of GET /api/players. That route returns a BARE ARRAY (no wrapper),
+ * and strips `deleteToken`/`pinHash` before it does.
+ */
+interface RosterEntry { name?: string; removed?: boolean; waitlisted?: boolean }
 
 /** A read that either produced a body or did not. `{ ok: false }` is UNKNOWN —
  *  never a stand-in value, which is how the old `r.ok ? r.json() : { games: [] }`
@@ -30,10 +34,21 @@ async function readJson<T>(url: string): Promise<Read<T>> {
 }
 
 /**
- * Post-session "send kudos" card. Like GameLoggerCard it only appears within
- * 48h of a session you logged games in. Co-players are derived from those games
- * (you can only kudos people you actually played with — the server re-checks).
+ * Post-session "send kudos" card. Appears only within 48h of the session.
  * Positive-only: a fixed set of tags, one tap each, no scores.
+ *
+ * CO-PLAYERS COME FROM THE SESSION ROSTER, NOT THE GAME LOG.
+ * `playedTogether` in app/api/kudos/route.ts is roster-first: if both names are
+ * on the session's `players` roster (removed !== true) it accepts, and only
+ * falls back to a games check if that lookup throws. This card used to build its
+ * list from `/api/games` alone — strictly narrower than what the server allows.
+ * With `games.loggers: 0` in the Slice-0 readout (2026-08-25, cohort of 12 over
+ * six weeks) that meant `coPlayers` was always empty and the card returned null
+ * for every member: a live, flag-on feature nobody could reach, dark because of
+ * a DIFFERENT feature's breakage rather than any failure of its own.
+ *
+ * Offer exactly what the server accepts — a stricter client re-creates the same
+ * class of mismatch in the other direction.
  */
 export default function GiveKudosCard() {
   const t = useTranslations('stats');
@@ -53,9 +68,11 @@ export default function GiveKudosCard() {
     if (!you) return;
     Promise.all([
       readJson<{ datetime?: string }>(`${BASE}/api/session`),
-      readJson<{ games?: Game[] }>(`${BASE}/api/games`),
+      // The ROSTER, not the game log — see the note above `coPlayers`.
+      // NB: this endpoint returns a bare array, not `{ players: [...] }`.
+      readJson<RosterEntry[]>(`${BASE}/api/players`),
     ])
-      .then(([sessionRead, gamesRead]) => {
+      .then(([sessionRead, rosterRead]) => {
         if (!live) return;
         // The session read decides whether the 48h window is even open. If it
         // failed, the window is UNKNOWN — and "unknown" must not render as the
@@ -73,20 +90,16 @@ export default function GiveKudosCard() {
         // legitimate emptiness the error state must stay distinct from.
         if (!withinWindow) { setCoPlayers([]); setLoad('ready'); return; }
 
-        // In the window, so the games list IS the card's content. A failed read
-        // used to arrive as `{ games: [] }`, emptying `coPlayers` and unmounting
-        // the card — a player who logged games silently lost the ability to
-        // send kudos.
-        if (!gamesRead.ok) { setLoad('error'); return; }
+        // In the window, so the roster IS the card's content. An unknown roster
+        // is not an empty one — the same rule as the session read above.
+        if (!rosterRead.ok) { setLoad('error'); return; }
 
         const youLower = you.toLowerCase();
-        const others = new Set<string>();
-        for (const g of (gamesRead.value?.games ?? []) as Game[]) {
-          const all = [...(g.teamA ?? []), ...(g.teamB ?? [])];
-          if (!all.some((n) => n.toLowerCase() === youLower)) continue;
-          for (const n of all) if (n.toLowerCase() !== youLower) others.add(n);
-        }
-        setCoPlayers([...others].sort());
+        const others = (rosterRead.value ?? [])
+          .filter((p) => typeof p?.name === 'string' && p.removed !== true)
+          .map((p) => p.name as string)
+          .filter((n) => n.trim().toLowerCase() !== youLower);
+        setCoPlayers([...new Set(others)].sort());
         setLoad('ready');
       });
     return () => { live = false; };

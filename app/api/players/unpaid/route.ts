@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, POINTER_ID, getActiveSessionId } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { ownsNameOrAdmin } from '@/lib/auth';
 import { resolveIdentity, matchesIdentity, classifyOwed, finiteSessionDate } from '@/lib/playerIdentity';
 import type { Player, Session } from '@/lib/types';
 
@@ -10,9 +11,14 @@ export const dynamic = 'force-dynamic';
  * GET /api/players/unpaid?name=<name>
  *
  * A player's own "what do I still owe" view, used by the Profile
- * outstanding-payments card and the Home balance card. Public-by-name (same
- * posture as `/api/stats/attendance`) — no auth, rate-limited by IP so it can't
- * be scraped wholesale.
+ * outstanding-payments card and the Home balance card.
+ *
+ * OWNER-OR-ADMIN. This used to be public-by-name, justified in this comment as
+ * "same posture as /api/stats/attendance" — but that posture was removed on
+ * 2026-08-25 when attendance, insight and partners were all gated, so the
+ * precedent it leaned on no longer exists. It is also the most sensitive of the
+ * set: attendance is who turned up, this is what a named person OWES. Member
+ * names are enumerable via GET /api/members, so a name is not a credential.
  *
  * Identity is resolved via `resolveIdentity` (memberId + name + aliases), NOT a
  * raw name match — so weeks signed up under a renamed member or an alias-linked
@@ -50,8 +56,16 @@ export async function GET(req: NextRequest) {
   }
 
   const name = req.nextUrl.searchParams.get('name')?.trim();
+  // A missing name is a bad request, not a person who owes nothing. Returning
+  // EMPTY at HTTP 200 made the two indistinguishable to the caller — the same
+  // lying-empty-state that /api/stats/partners was fixed for.
   if (!name) {
-    return NextResponse.json(EMPTY);
+    return NextResponse.json({ error: 'name_required' }, { status: 400 });
+  }
+
+  // Auth before DB (rule 3).
+  if (!ownsNameOrAdmin(req, name)) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
   try {

@@ -44,9 +44,10 @@ function mockFetchByUrl(handlers: ReadonlyArray<Handler>) {
 
 const IN_WINDOW = ['/api/session', () => json({ id: 's1', datetime: isoHoursAgo(2) })] as const;
 const OUTSIDE_WINDOW = ['/api/session', () => json({ id: 's1', datetime: isoHoursAgo(100) })] as const;
-const GAMES_OK = [
-  '/api/games',
-  () => json({ games: [{ teamA: ['Lin', 'Viktor'], teamB: ['Akane', 'Kento'] }] }),
+// The card's content source. GET /api/players returns a BARE ARRAY.
+const ROSTER = [
+  '/api/players',
+  () => json([{ name: 'Lin' }, { name: 'Viktor' }, { name: 'Akane' }]),
 ] as const;
 
 function renderCard() {
@@ -75,7 +76,7 @@ describe('GiveKudosCard — a failed read is not an empty roster', () => {
   });
 
   it('lists co-players when both reads succeed inside the window', async () => {
-    mockFetchByUrl([IN_WINDOW, GAMES_OK]);
+    mockFetchByUrl([IN_WINDOW, ROSTER]);
     renderCard();
     await waitFor(() => expect(screen.getByText('Viktor')).toBeTruthy());
     expect(screen.getByText('Akane')).toBeTruthy();
@@ -83,22 +84,22 @@ describe('GiveKudosCard — a failed read is not an empty roster', () => {
   });
 
   it('renders NOTHING outside the 48h window — the card is designed to be absent', async () => {
-    mockFetchByUrl([OUTSIDE_WINDOW, GAMES_OK]);
+    mockFetchByUrl([OUTSIDE_WINDOW, ROSTER]);
     const { container } = renderCard();
     await waitFor(() => expect(fetch).toHaveBeenCalled());
     expect(container.textContent).toBe('');
   });
 
-  it('renders NOTHING when the window is open but no games involve you', async () => {
-    mockFetchByUrl([IN_WINDOW, ['/api/games', () => json({ games: [] })]]);
+  it('renders NOTHING when the window is open but the roster is only you', async () => {
+    mockFetchByUrl([IN_WINDOW, ['/api/players', () => json([{ name: 'Lin' }])]]);
     const { container } = renderCard();
     await waitFor(() => expect(fetch).toHaveBeenCalled());
     expect(container.textContent).toBe('');
   });
 
   // ── C2 ──────────────────────────────────────────────────────────────────
-  it('renders the error card when the games read fails inside the window', async () => {
-    mockFetchByUrl([IN_WINDOW, ['/api/games', () => json({ error: 'load_failed' }, 500)]]);
+  it('renders the error card when the ROSTER read fails inside the window', async () => {
+    mockFetchByUrl([IN_WINDOW, ['/api/players', () => json({ error: 'load_failed' }, 500)]]);
     renderCard();
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
     expect(screen.getByRole('alert').textContent).toBe(LOAD_ERROR);
@@ -106,14 +107,14 @@ describe('GiveKudosCard — a failed read is not an empty roster', () => {
   });
 
   it('renders the error card when the SESSION read fails — the window is unknown', async () => {
-    mockFetchByUrl([['/api/session', () => json({ error: 'load_failed' }, 500)], GAMES_OK]);
+    mockFetchByUrl([['/api/session', () => json({ error: 'load_failed' }, 500)], ROSTER]);
     renderCard();
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
     expect(screen.getByRole('alert').textContent).toBe(LOAD_ERROR);
   });
 
-  it('does NOT raise an error card for a games failure OUTSIDE the window', async () => {
-    mockFetchByUrl([OUTSIDE_WINDOW, ['/api/games', () => json({ error: 'load_failed' }, 500)]]);
+  it('does NOT raise an error card for a roster failure OUTSIDE the window', async () => {
+    mockFetchByUrl([OUTSIDE_WINDOW, ['/api/players', () => json({ error: 'load_failed' }, 500)]]);
     const { container } = renderCard();
     await waitFor(() => expect(fetch).toHaveBeenCalled());
     expect(container.textContent).toBe('');
@@ -121,7 +122,7 @@ describe('GiveKudosCard — a failed read is not an empty roster', () => {
 
   // ── C3 ──────────────────────────────────────────────────────────────────
   it('marks a kudos SENT on success, with no error line', async () => {
-    mockFetchByUrl([IN_WINDOW, GAMES_OK, ['/api/kudos', () => json({ ok: true }, 201)]]);
+    mockFetchByUrl([IN_WINDOW, ROSTER, ['/api/kudos', () => json({ ok: true }, 201)]]);
     renderCard();
     await waitFor(() => expect(screen.getByText('Viktor')).toBeTruthy());
     fireEvent.click(screen.getAllByText(enMessages.stats.kudos.tag.clutch)[0]);
@@ -134,7 +135,7 @@ describe('GiveKudosCard — a failed read is not an empty roster', () => {
   });
 
   it('says so when the send FAILS, instead of quietly re-enabling the button', async () => {
-    mockFetchByUrl([IN_WINDOW, GAMES_OK, ['/api/kudos', () => json({ error: 'nope' }, 500)]]);
+    mockFetchByUrl([IN_WINDOW, ROSTER, ['/api/kudos', () => json({ error: 'nope' }, 500)]]);
     renderCard();
     await waitFor(() => expect(screen.getByText('Viktor')).toBeTruthy());
     fireEvent.click(screen.getAllByText(enMessages.stats.kudos.tag.clutch)[0]);
@@ -142,5 +143,92 @@ describe('GiveKudosCard — a failed read is not an empty roster', () => {
     expect(screen.getByRole('alert').textContent).toBe(SEND_ERROR);
     // And it stays retryable — nothing is marked sent.
     expect(screen.getAllByRole('button').every((b) => b.getAttribute('aria-pressed') !== 'true')).toBe(true);
+  });
+});
+
+/**
+ * The client/server co-play mismatch.
+ *
+ * `playedTogether` in app/api/kudos/route.ts is ROSTER-FIRST: if both names are
+ * on the session's `players` roster (removed !== true) it returns true, and only
+ * falls through to a games check if that lookup throws. So the server accepts a
+ * kudos between any two people who turned up.
+ *
+ * The card derived its co-player list from `/api/games` alone — strictly
+ * narrower than what the server allows. The Slice-0 readout on 2026-08-25
+ * measured `games.loggers: 0` over six weeks with a cohort of 12, which means
+ * this card rendered `null` for every member for the whole window: a live,
+ * flag-on feature that nobody could reach, dark because of a DIFFERENT feature's
+ * non-use rather than any failure of its own.
+ */
+describe('GiveKudosCard — co-players come from the roster, like the server', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    signIn('Lin');
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+    localStorage.clear();
+  });
+
+  const ROSTER_OK = [
+    '/api/players',
+    // NOTE: GET /api/players returns a BARE ARRAY, not { players: [...] }.
+    // SteppedGameLoggerSheet read `d?.players` and so saw an empty roster
+    // forever — the root cause of the Slice-0 `loggers: 0`.
+    () => json([
+      { name: 'Lin' },
+      { name: 'Viktor' },
+      { name: 'Akane' },
+      { name: 'Gone', removed: true },
+    ]),
+  ] as const;
+
+  it('offers co-players from the roster even when NO games were logged', async () => {
+    mockFetchByUrl([IN_WINDOW, ROSTER_OK, ['/api/games', () => json({ games: [] })]]);
+    renderCard();
+    // The exact production state: zero logged games, a full roster.
+    await waitFor(() => expect(screen.getByText(GIVE_TITLE)).toBeTruthy());
+    expect(screen.getByText('Viktor')).toBeTruthy();
+    expect(screen.getByText('Akane')).toBeTruthy();
+  });
+
+  it('never offers you yourself', async () => {
+    mockFetchByUrl([IN_WINDOW, ROSTER_OK, ['/api/games', () => json({ games: [] })]]);
+    renderCard();
+    await waitFor(() => expect(screen.getByText(GIVE_TITLE)).toBeTruthy());
+    expect(screen.queryByText('Lin')).toBeNull();
+  });
+
+  it('excludes removed players — the server filters them too', async () => {
+    mockFetchByUrl([IN_WINDOW, ROSTER_OK, ['/api/games', () => json({ games: [] })]]);
+    renderCard();
+    await waitFor(() => expect(screen.getByText(GIVE_TITLE)).toBeTruthy());
+    expect(screen.queryByText('Gone')).toBeNull();
+  });
+
+  it('still renders nothing outside the 48h window, roster or not', async () => {
+    mockFetchByUrl([OUTSIDE_WINDOW, ROSTER_OK, ['/api/games', () => json({ games: [] })]]);
+    const { container } = renderCard();
+    await waitFor(() => expect(container.textContent).toBe(''));
+  });
+
+  it('shows the error card when the ROSTER read fails inside the window', async () => {
+    // Unknown roster is not an empty roster — same rule as the session read.
+    mockFetchByUrl([IN_WINDOW, ['/api/players', () => json({}, 500)], ['/api/games', () => json({ games: [] })]]);
+    renderCard();
+    await waitFor(() => expect(screen.getByText(LOAD_ERROR)).toBeTruthy());
+  });
+
+  it('renders nothing when the roster is genuinely just you', async () => {
+    // Loaded-empty, not load-failed: no error card, no give-kudos card.
+    mockFetchByUrl([
+      IN_WINDOW,
+      ['/api/players', () => json([{ name: 'Lin' }])],
+      ['/api/games', () => json({ games: [] })],
+    ]);
+    const { container } = renderCard();
+    await waitFor(() => expect(container.textContent).toBe(''));
   });
 });
