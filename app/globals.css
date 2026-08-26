@@ -1497,6 +1497,60 @@ html[data-visual="field"] .glass-card {
   }
 }
 
+/* ── Admin's parallel card system: radius only ──
+   The cc-* family (.admin-hero, .cc-dcard, .cc-tile, .cc-mini-card) is a
+   separate design language for dense admin tables, and migrating its MATERIAL
+   is deliberately out of scope -- see the note in Stage 7 of
+   docs/plans/visual-fields-direction.md.
+
+   Its RADIUS is a different question, and leaving it alone was wrong. Admin
+   mixes both systems in one column: a .glass-card at 30px, then two .cc-dcard
+   at 16px, then another .glass-card at 30px. Measured on the live page. That
+   does not read as two systems, it reads as one system with a mistake in it.
+
+   So page-level cc-* surfaces take the card radius and nothing else changes --
+   no background, no blur, no shadow. The in-card rule above is more specific
+   (0,3,1 vs 0,2,1) so tiles nested inside a card still get the concentric
+   value, which is the correct answer for them. */
+html[data-visual="field"] .admin-hero,
+html[data-visual="field"] .cc-dcard,
+html[data-visual="field"] .cc-tile,
+html[data-visual="field"] .cc-mini-card {
+  border-radius: var(--fcard-radius);
+}
+
+/* ── Sheets are field surfaces too ──        [NEXT_PUBLIC_FLAG_VISUAL_FIELDS]
+   Two things the field rules missed, both found by opening a sheet and
+   measuring it rather than trusting that inheriting the background was the
+   whole job.
+
+   1. The sheet sat at the old 16px top radius while the cards behind it were
+      at 30. The sheet is the DOMINANT surface when it is open, so being less
+      rounded than the small cards it covers reads backwards.
+
+   2. Its interior had the same split the cards did -- inputs at 12px, buttons
+      at 16px, stacked in one column. The earlier fix was scoped to
+      `.glass-card` descendants and a sheet is not a card, so it never reached
+      here. Fixing it in only one of the two containers is how this kind of
+      thing comes back.
+
+   Note the interior value is the CARD's concentric radius, not the sheet's own.
+   Sheets pad at 20px, so strictly concentric would be 30 - 20 = 10px. The 2px
+   difference is not perceptible and one shared token is worth more than two
+   near-identical ones -- if sheet padding ever moves materially, revisit. */
+html[data-visual="field"] .bottom-sheet {
+  border-top-left-radius: var(--fcard-radius);
+  border-top-right-radius: var(--fcard-radius);
+}
+html[data-visual="field"] .bottom-sheet .btn-primary,
+html[data-visual="field"] .bottom-sheet .btn-ghost,
+html[data-visual="field"] .bottom-sheet .cc-btn,
+html[data-visual="field"] .bottom-sheet input,
+html[data-visual="field"] .bottom-sheet select,
+html[data-visual="field"] .bottom-sheet textarea {
+  border-radius: var(--fcard-inner-radius);
+}
+
 /* ── Motifs follow their tab's hue ──         [NEXT_PUBLIC_FLAG_VISUAL_FIELDS]
    The Sign-Ups court etching and the Stats dot grid were both drawn in court
    green, which was right when every tab shared a green ground. One hue per tab
@@ -1572,6 +1626,7 @@ html[data-visual="field"] .glass-card .inner-card,
 html[data-visual="field"] .glass-card .inner-card-green,
 html[data-visual="field"] .glass-card .cc-mini-card,
 html[data-visual="field"] .glass-card .cc-tile,
+html[data-visual="field"] .glass-card .cc-dcard,
 /* Full-width controls are flush to the padding too, so they are governed by the
    same rule. Inputs already resolved to 12px via --radius-lg and happened to
    agree; the button family did not. An earlier commit here snapped
