@@ -13,6 +13,7 @@ APPLE_CLIENT_ID=          # the Services ID, e.g. com.grantzou.bpm.web
 APPLE_TEAM_ID=            # 10 characters
 APPLE_KEY_ID=             # 10 characters
 APPLE_PRIVATE_KEY=        # the contents of the .p8 file
+APPLE_DOMAIN_ASSOCIATION= # the contents of Apple's domain-association .txt
 APP_ORIGIN=               # REQUIRED in production. http://localhost:3000 locally
 ```
 
@@ -118,42 +119,37 @@ Apple gives you `apple-developer-domain-association.txt` and requires it at:
 https://bpm.grantzou.com/.well-known/apple-developer-domain-association.txt
 ```
 
-**This does not work out of the box on this app, and is currently UNSOLVED.**
-`next.config.js` sets `basePath: '/bpm'`, so anything in `public/` is served
-under `/bpm/...`. Apple checks the **domain root**, which Next 404s.
+**This needed a two-part fix, which is now in place** — you do not host a file,
+you set an env var.
 
-A `rewrites()` entry with `basePath: false` looks like the fix and is not:
-Next rejects it at boot with
+`basePath: '/bpm'` puts everything in `public/` under `/bpm/...`, so Apple's
+fetch of the domain root would 404. Two mechanisms were needed, and neither
+works alone (both established by testing against a running server):
+
+1. **`proxy.ts` cannot see the domain root.** Next auto-prefixes the middleware
+   matcher with the basePath, so `/.well-known/...` never reaches it — verified
+   by the locale cookie not being set at `/` either. It can only answer the
+   path once the request is already inside `/bpm`.
+2. **A `rewrites()` entry with `basePath: false` gets it there** — but only with
+   an ABSOLUTE destination. A relative one is rejected at boot ("use a
+   destination that starts with `http://` or `https://`"), because escaping the
+   basePath makes the destination external too.
+
+So the request flows: Apple hits the domain root → the rewrite proxies it to
+`${APP_ORIGIN}/bpm/.well-known/...` → `proxy.ts` answers from the env var.
+
+**What you do:** open the file Apple gives you, copy its contents, and set
 
 ```
-The route /.well-known/apple-developer-domain-association.txt rewrites urls
-outside of the basePath. Please use a destination that starts with http:// or
-https://
-Error: Invalid rewrite found
+APPLE_DOMAIN_ASSOCIATION=<the entire contents of the .txt file>
 ```
 
-Once the source escapes the basePath, the destination is treated as external
-too, so only an absolute URL is accepted — which would mean the app proxying to
-itself by hardcoded hostname.
+in Azure App Settings (and `.env.local` if you want to check locally). It is
+server-only, so it needs no rebuild — but it does need `APP_ORIGIN` set too, or
+the rewrite is skipped entirely.
 
-The remaining options, none yet implemented:
-
-1. **Serve it from `proxy.ts`** (the renamed middleware, already present for
-   i18n). It sees the full pathname including outside the basePath, so it can
-   match `/.well-known/apple-developer-domain-association.txt` and return the
-   token from an env var — no filesystem access, and changeable without a
-   deploy. Most promising.
-2. An absolute-URL rewrite to the app's own public hostname. Works, but adds a
-   self-proxy hop and hardcodes the domain.
-3. Drop `basePath` — far too invasive; it is load-bearing everywhere.
-
-**This blocks Apple, and only Apple.** Google needs none of it. Do Google first.
-
-Verify it is actually reachable before clicking Verify in Apple's console:
-
-```bash
-curl -sS https://bpm.grantzou.com/.well-known/apple-developer-domain-association.txt | head -3
-```
+Then **deploy**, confirm it is actually reachable, and only then click Verify in
+Apple's console — the console fetches it live:
 
 ### 4. Key — this is the one you cannot re-download
 
