@@ -41,6 +41,10 @@ interface Props {
    *  button. Both now report through the one error slot below. */
   onActivate?: (id: string) => Promise<GearResult>;
   onRemove?: (id: string) => Promise<GearResult>;
+  /** Apply the tension field to a string ALREADY in the bag. Without this the
+   *  field can only ever describe a string the member does not yet own — see
+   *  `BagList`'s docstring. */
+  onSetTension?: (item: GearItem, tensionLbs: number) => Promise<GearResult>;
   /** Adds the racket and makes it active, then the sheet closes. Owned by
    *  useGear one level up; this sheet holds no gear state. The second
    *  argument is the string-tension capture (see the tension field below) —
@@ -127,6 +131,7 @@ export default function GearSheet({
   activeItemId,
   onActivate,
   onRemove,
+  onSetTension,
   onPick,
   busy,
   online,
@@ -300,6 +305,19 @@ export default function GearSheet({
     if (res && !res.ok) setPickError(messageFor(res.reason));
   }
 
+  /** Apply whatever is in the tension field to a string already in the bag.
+   *  Shares the one error slot and the one message mapping with every other
+   *  write this sheet makes, and stays OPEN on success — the member is
+   *  looking straight at the row, whose label reflects the new value. */
+  async function applyTension(item: GearItem) {
+    if (!onSetTension || busy) return;
+    const lbs = clampTension(tensionInput);
+    if (lbs === undefined) return;
+    setPickError(null);
+    const res = await onSetTension(item, lbs);
+    if (!res.ok) setPickError(messageFor(res.reason));
+  }
+
   async function pick(item: CatalogItem) {
     if (busy) return;
     setPickError(null);
@@ -340,6 +358,8 @@ export default function GearSheet({
               activeId={activeItemId}
               onActivate={(id) => { void runBagOp(onActivate, id); }}
               onRemove={(id) => { void runBagOp(onRemove, id); }}
+              onSetTension={onSetTension ? (item) => { void applyTension(item); } : undefined}
+              tensionReady={clampTension(tensionInput) !== undefined}
               busy={busy}
             />
           )}

@@ -332,6 +332,7 @@
       "ownedTitle": "已在你的装备中",
       "ownedActive": "今天在用",
       "ownedSetActive": "改用这支",
+      "ownedSetTension": "记录磅数",
       "ownedRemove": "移除",
       "tensionCaptureLabel": "你实际拉线的磅数"
     },

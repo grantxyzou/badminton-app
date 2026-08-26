@@ -20,6 +20,7 @@ function fakeGear(overrides: Partial<UseGear> = {}): UseGear {
     activate: vi.fn(async () => ({ ok: true as const })),
     remove: vi.fn(async () => ({ ok: true as const })),
     setPrefs: vi.fn(async () => ({ ok: true as const })),
+    setTension: vi.fn(async () => ({ ok: true as const })),
     ...overrides,
   };
 }

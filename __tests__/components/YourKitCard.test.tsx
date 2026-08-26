@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import YourKitCard from '../../components/stats/YourKitCard';
 import type { UseGear } from '../../components/stats/useGear';
 import type { PlayerGear } from '../../lib/types';
+import { activeRacket, rackets as racketsOf } from '../../lib/activeRacket';
 import enMessages from '../../messages/en.json';
 
 /**
@@ -22,11 +23,14 @@ const OLD = { id: 'r-old', catalogId: 'c-old', category: 'racket' as const, labe
 const NEW = { id: 'r-new', catalogId: 'c-new', category: 'racket' as const, label: 'New Racket' };
 
 function fakeGear(doc: PlayerGear, overrides: Partial<UseGear> = {}): UseGear {
-  const active = doc.items.find((i) => i.id === doc.activeRacketId) ?? null;
+  // Resolve through the REAL helper the hook uses, not a hand-rolled lookup.
+  // A local `find(id === activeRacketId) ?? null` looks equivalent but drops
+  // the legacy fallback (a pointerless bag resolves to items[0]), so the
+  // fixture would have asserted against behaviour the app does not have.
   return {
     gear: doc,
-    rackets: doc.items.filter((i) => (i.category ?? 'racket') === 'racket'),
-    active,
+    rackets: racketsOf(doc),
+    active: activeRacket(doc),
     loaded: true,
     loadError: false,
     busy: false,
@@ -36,6 +40,7 @@ function fakeGear(doc: PlayerGear, overrides: Partial<UseGear> = {}): UseGear {
     activate: vi.fn(async () => ({ ok: true as const })),
     remove: vi.fn(async () => ({ ok: true as const })),
     setPrefs: vi.fn(async () => ({ ok: true as const })),
+    setTension: vi.fn(async () => ({ ok: true as const })),
     ...overrides,
   };
 }
@@ -60,9 +65,30 @@ describe('YourKitCard — the racket row names the ACTIVE racket', () => {
 
   it('falls back to the first racket for a legacy bag with no pointer', () => {
     const doc = { id: 'g1', memberId: 'm1', items: [OLD, NEW] } as PlayerGear;
-    // `active` is null here, mirroring a doc whose pointer never existed; the
-    // row must still name something rather than going blank.
+    // No pointer ever existed. `activeRacket()` falls back to items[0], which
+    // is what every other gear surface resolves to, so this row must agree.
     renderCard(fakeGear(doc));
     expect(screen.getByLabelText(/^Racket —/).textContent).toContain('Old Racket');
+  });
+
+  /**
+   * Strings have no active pointer, so the row falls back to array order —
+   * and array order is APPEND order, which made "first" the stalest thing the
+   * member ever logged. A member who recorded a tension tonight saw a
+   * year-old string named as their kit and no tension anywhere, which reads
+   * exactly like the tension never saved.
+   */
+  it('names the freshest string, not the first one ever added', () => {
+    const OLD_STRING = { id: 's-old', catalogId: 'c1', category: 'string' as const, label: 'Old String' };
+    const NEW_STRING = { id: 's-new', catalogId: 'c2', category: 'string' as const, label: 'New String', tensionLbs: 27 };
+    const doc = {
+      id: 'g1', memberId: 'm1', items: [OLD, OLD_STRING, NEW_STRING], activeRacketId: 'r-old',
+    } as PlayerGear;
+    renderCard(fakeGear(doc));
+
+    const row = screen.getByLabelText(/^Strings —/).textContent ?? '';
+    expect(row).toContain('New String');
+    expect(row).toContain('27');
+    expect(row).not.toContain('Old String');
   });
 });
