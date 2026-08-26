@@ -541,8 +541,22 @@ body {
      design's own scrim ended at rgba(0,0,0,.62), which is the right shape for
      a PHOTOGRAPHIC ground with content at both ends; against a top-lit
      gradient the bottom stop fights nothing and crushes the page to #060606,
-     which is what made the bottom nav disappear into it. */
-  --field-scrim:     linear-gradient(180deg, rgba(0, 0, 0, 0.40) 0%, rgba(0, 0, 0, 0.10) 42%, rgba(0, 0, 0, 0.12) 100%);
+     which is what made the bottom nav disappear into it.
+
+     The top stop is also far lighter than the design's .40, for a reason that
+     is easy to miss: CARDS backdrop-filter the ground, so anything the scrim
+     takes out of the page it also takes out of every card sitting on it. At
+     .40 the 17% frost landed on #3f5e4a instead of #4d805f and the whole
+     design read flat and near-black -- the frosted panel stopped looking
+     frosted. .18 still lifts bare text off the bright corner without taxing
+     every card to do it.
+
+     Worth knowing why the tax was small in the first place: the field is
+     `120% 70% at 78% 4%` and fades to transparent by 70%, so only the
+     top-right corner is ever at full alpha. Most cards sit over ground that
+     is already close to --page-bg. A full-bleed scrim was always the wrong
+     instrument for a problem confined to one corner. */
+  --field-scrim:     linear-gradient(180deg, rgba(0, 0, 0, 0.18) 0%, rgba(0, 0, 0, 0.06) 42%, rgba(0, 0, 0, 0.12) 100%);
 
 
   /* ── Card materials ──
