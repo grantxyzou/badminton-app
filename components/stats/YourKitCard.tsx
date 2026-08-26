@@ -69,6 +69,14 @@ export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
     const cat = (item.category ?? 'racket') as EquipmentCategory;
     if (!byCategory.has(cat)) byCategory.set(cat, item);
   }
+  // Rackets have an active POINTER; array order is not it. This row showed
+  // `items[0]`, so a member whose active racket was not the first one added
+  // saw the wrong racket named as the one they play with — and every gear
+  // surface that reads `activeRacket()` disagreed with this card. `active`
+  // comes from the same resolver those surfaces use, legacy pointerless bags
+  // included (it falls back to items[0], which is what this row wanted all
+  // along).
+  if (active) byCategory.set('racket', active);
 
   const ownedItemsForPicking = picking
     ? items.filter((i) => !i.retiredAt && ((i.category ?? 'racket') as EquipmentCategory) === picking)
@@ -178,7 +186,15 @@ export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
         // docs on `GearSheet`. The sheet renders the failure.
         onActivate={activate}
         onRemove={remove}
-        onPick={(item, tensionLbs) => add(item, typeof tensionLbs === 'number' ? { tensionLbs } : undefined)}
+        // `makeActive` for rackets: this row's action word is "Change", and the
+        // sheet closes on pick, so picking here means "this is the one I'm
+        // using now" — not "add a spare to my bag". Without it the write
+        // succeeded, the pointer stayed put, and the row still named the old
+        // racket, which read as the picker being broken.
+        onPick={(item, tensionLbs) => add(item, {
+          ...(typeof tensionLbs === 'number' ? { tensionLbs } : null),
+          ...(item.category === 'racket' ? { makeActive: true } : null),
+        })}
         busy={busy}
         online={online}
         activeName={activeName}

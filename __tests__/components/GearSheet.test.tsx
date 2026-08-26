@@ -376,12 +376,54 @@ describe('GearSheet — string tension capture', () => {
     expect(screen.queryByLabelText('Tension you strung at')).toBeNull();
   });
 
-  it('shows the tension field, prefilled from the recommended tension, for the string category', async () => {
+  /**
+   * This test used to assert `input.value === '24'` — it PINNED the bug.
+   *
+   * Rendering the advice as the field's VALUE made the field unusable. There
+   * is no select-on-focus, so tapping it put a caret beside the
+   * recommendation and the first keystroke appended: a member on 26 lb tapped
+   * a field reading "24", typed 26, got "2426", and `clampTension` folded
+   * that to MAX_LB and stored 30. Silently, and plausibly. Reproduced in a
+   * browser: every tension anyone entered was saved as 30.
+   *
+   * The advice belongs in the placeholder, which costs nothing because the
+   * prefill was never sent anyway (see the untouched-field test below). It
+   * looked like a value while functioning as a hint.
+   */
+  it('offers the recommended tension as a placeholder, never as the value', async () => {
     mockCatalogAndLevel(STRING_CATALOG, 3);
     renderSheet({ category: 'string', activeName: 'Lin', format: 'doubles' });
     const input = await screen.findByLabelText('Tension you strung at') as HTMLInputElement;
     // recommendTension(3, 'doubles') = round(21 + 3) = 24.
-    await waitFor(() => expect(input.value).toBe('24'));
+    await waitFor(() => expect(input.placeholder).toBe('24'));
+    // The value must stay empty, or the next keystroke appends to it.
+    expect(input.value).toBe('');
+  });
+
+  it('stores the number the member typed, not the advice plus the number', async () => {
+    mockCatalogAndLevel(STRING_CATALOG, 3);
+    const { onPick } = renderSheet({ category: 'string', activeName: 'Lin', format: 'doubles' });
+    const input = await screen.findByLabelText('Tension you strung at') as HTMLInputElement;
+    await waitFor(() => expect(input.placeholder).toBe('24'));
+
+    fireEvent.change(input, { target: { value: '26' } });
+    fireEvent.click(await screen.findByText('BG65'));
+
+    await waitFor(() => expect(onPick).toHaveBeenCalled());
+    expect(onPick.mock.calls[0][1]).toBe(26);
+  });
+
+  it('shows the clamped value back on blur, so a typo is not stored invisibly', async () => {
+    mockCatalogAndLevel(STRING_CATALOG, 3);
+    renderSheet({ category: 'string', activeName: 'Lin', format: 'doubles' });
+    const input = await screen.findByLabelText('Tension you strung at') as HTMLInputElement;
+    await waitFor(() => expect(input.placeholder).toBe('24'));
+
+    // MAX_LB is 30. Clamping is deliberate — doing it invisibly at save time
+    // is not: it turns a typo into a plausible tension the member never gave.
+    fireEvent.change(input, { target: { value: '45' } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(input.value).toBe('30'));
   });
 
   it('opens with an empty tension field when there is no level to advise from', async () => {

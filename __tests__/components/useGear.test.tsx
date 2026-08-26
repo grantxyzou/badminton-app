@@ -367,3 +367,64 @@ describe('useGear — a failed tension follow-up is not a failed add', () => {
     expect(screen.getByTestId('bag').textContent).toBe('Yonex BG65');
   });
 });
+
+/**
+ * "Pick this racket" means two different things depending on who is asking.
+ *
+ * POST's contract is "append to my bag" and it deliberately will not move
+ * `activeRacketId` — appending a spare must never silently change the racket
+ * you play with. But the kit row that opens the picker is labelled "Change"
+ * and the sheet closes the instant you pick, so the member never reaches
+ * `BagList`'s "Use this one" to finish the job. Tap Change, choose a
+ * different racket, and the row still named the old one while the write
+ * returned 200: a control that demonstrably did nothing.
+ *
+ * The caller now states its intent, so appending a spare from anywhere else
+ * still leaves the pointer exactly where the route intends.
+ */
+describe('useGear — makeActive states the caller intent POST cannot infer', () => {
+  afterEach(cleanup);
+
+  const ADDED = { id: 'r-new', catalogId: ASTROX.id, category: 'racket' as const, label: 'Yonex Astrox 100ZZ' };
+  const EXISTING = { id: 'r-old', catalogId: 'other', category: 'racket' as const, label: 'Old Racket' };
+
+  function Probe({ makeActive }: { makeActive: boolean }) {
+    const gear = useGear('Lin');
+    return <button onClick={() => { void gear.add(ASTROX, makeActive ? { makeActive: true } : undefined); }}>add</button>;
+  }
+
+  function stubFetch(calls: { method: string; body: unknown }[]) {
+    vi.stubGlobal('fetch', vi.fn(async (_u: string, init?: RequestInit) => {
+      const method = init?.method ?? 'GET';
+      if (method === 'GET') {
+        return { ok: true, status: 200, json: async () => ({ gear: gearDoc([EXISTING], 'r-old') }) } as Response;
+      }
+      calls.push({ method, body: init?.body ? JSON.parse(String(init.body)) : null });
+      // POST returns the doc with the new racket appended, pointer untouched —
+      // exactly what the real route does.
+      return { ok: true, status: 200, json: async () => ({ gear: gearDoc([EXISTING, ADDED], 'r-old') }) } as Response;
+    }) as unknown as typeof fetch);
+  }
+
+  it('follows the add with a PATCH activating the racket it just created', async () => {
+    const calls: { method: string; body: unknown }[] = [];
+    stubFetch(calls);
+    render(<Probe makeActive />);
+    fireEvent.click(screen.getByText('add'));
+
+    await waitFor(() => expect(calls.map((c) => c.method)).toEqual(['POST', 'PATCH']));
+    // The id exists only in the POST's response body, so this is also the
+    // regression test for reading it off a ref rather than racing state.
+    expect(calls[1].body).toMatchObject({ activeRacketId: 'r-new' });
+  });
+
+  it('leaves the pointer alone when the caller did not ask', async () => {
+    const calls: { method: string; body: unknown }[] = [];
+    stubFetch(calls);
+    render(<Probe makeActive={false} />);
+    fireEvent.click(screen.getByText('add'));
+
+    await waitFor(() => expect(calls.length).toBeGreaterThan(0));
+    expect(calls.map((c) => c.method)).toEqual(['POST']);
+  });
+});
