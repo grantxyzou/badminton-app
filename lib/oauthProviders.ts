@@ -36,8 +36,10 @@ export function appOrigin(_fallbackUrl: string): string {
 export function googleClient(origin: string): Google | null {
   const id = process.env.GOOGLE_CLIENT_ID;
   const secret = process.env.GOOGLE_CLIENT_SECRET;
-  if (!id || !secret) return null;
-  return new Google(id, secret, redirectUri('google', origin));
+  // Same check as configuredProviders, or /start would happily redirect to
+  // Google carrying a placeholder and fail there instead of here.
+  if (!isRealCredential(id) || !isRealCredential(secret)) return null;
+  return new Google(id!, secret!, redirectUri('google', origin));
 }
 
 /**
@@ -55,11 +57,18 @@ export function appleClient(origin: string): Apple | null {
   const teamId = process.env.APPLE_TEAM_ID;
   const keyId = process.env.APPLE_KEY_ID;
   const pem = process.env.APPLE_PRIVATE_KEY;
-  if (!clientId || !teamId || !keyId || !pem) return null;
+  if (
+    !isRealCredential(clientId) ||
+    !isRealCredential(teamId) ||
+    !isRealCredential(keyId) ||
+    !isRealCredential(pem)
+  ) {
+    return null;
+  }
 
-  const der = pkcs8FromPem(pem);
+  const der = pkcs8FromPem(pem!);
   if (!der) return null;
-  return new Apple(clientId, teamId, keyId, der, redirectUri('apple', origin));
+  return new Apple(clientId!, teamId!, keyId!, der, redirectUri('apple', origin));
 }
 
 /** Strips the PEM armour and base64-decodes to the DER bytes arctic expects. */
@@ -77,15 +86,40 @@ function pkcs8FromPem(pem: string): Uint8Array | null {
   }
 }
 
+
+/**
+ * Is this env var a real credential, or a leftover placeholder?
+ *
+ * `configuredProviders()` used to test only that the value was non-empty, so
+ * `GOOGLE_CLIENT_ID=YOUR_ID_HERE` counted as configured. The app then offered
+ * the button, redirected to Google, and Google answered `invalid_client` — a
+ * confusing failure at the provider for a problem that was local and obvious.
+ *
+ * This deliberately checks for placeholder SHAPES rather than asserting
+ * Google's actual format (`*.apps.googleusercontent.com`). Requiring the
+ * positive format would silently hide the button if Google ever changed it,
+ * turning a provider-side change into a feature that vanishes with no error.
+ * Rejecting known junk is the safer direction to be wrong in.
+ */
+const PLACEHOLDER = /^(your[-_ ]|paste|replace|changeme|todo|xxx+|<|example|test[-_]?(id|secret)$)/i;
+
+export function isRealCredential(value: string | undefined): boolean {
+  const v = value?.trim();
+  if (!v || v.length < 8) return false;
+  return !PLACEHOLDER.test(v);
+}
+
 /** Which providers this deployment can actually offer. Drives the UI buttons. */
 export function configuredProviders(): ProviderName[] {
   const out: ProviderName[] = [];
-  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) out.push('google');
+  if (isRealCredential(process.env.GOOGLE_CLIENT_ID) && isRealCredential(process.env.GOOGLE_CLIENT_SECRET)) {
+    out.push('google');
+  }
   if (
-    process.env.APPLE_CLIENT_ID &&
-    process.env.APPLE_TEAM_ID &&
-    process.env.APPLE_KEY_ID &&
-    process.env.APPLE_PRIVATE_KEY
+    isRealCredential(process.env.APPLE_CLIENT_ID) &&
+    isRealCredential(process.env.APPLE_TEAM_ID) &&
+    isRealCredential(process.env.APPLE_KEY_ID) &&
+    isRealCredential(process.env.APPLE_PRIVATE_KEY)
   ) {
     out.push('apple');
   }

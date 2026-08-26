@@ -18,8 +18,11 @@ beforeEach(() => {
   resetMockStore();
   setupAdminPin();
   process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
-  process.env.GOOGLE_CLIENT_ID = 'test-id';
-  process.env.GOOGLE_CLIENT_SECRET = 'test-secret';
+  // Must look like a REAL credential: configuredProviders now rejects
+  // placeholder shapes, so 'test-id' would (correctly) report google as
+  // unconfigured and this file would be testing the wrong branch.
+  process.env.GOOGLE_CLIENT_ID = '123456789012-a1b2c3d4.apps.googleusercontent.com';
+  process.env.GOOGLE_CLIENT_SECRET = 'GOCSPX-AbCdEfGhIjKlMnOp';
   // Apple deliberately left unconfigured.
   delete process.env.APPLE_CLIENT_ID;
 });
