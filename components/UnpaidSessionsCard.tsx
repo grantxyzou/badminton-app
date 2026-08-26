@@ -51,6 +51,9 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
   const format = useFormatter();
   const [data, setData] = useState<UnpaidData | null>(null);
   const [loaded, setLoaded] = useState(false);
+  // Must sit with the other hooks: it was below an early return, which is a
+  // rules-of-hooks violation and broke the component outright.
+  const [openOverride, setOpenOverride] = useState<boolean | null>(null);
   const [loadError, setLoadError] = useState(false);
   // A refusal is not an unknown failure: /api/players/unpaid is owner-or-admin
   // gated, so a device whose 30-day member_session expired while
@@ -105,6 +108,15 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
   if (isHome && !loaded && !loadError && !forbidden) return null;
 
   const showPaidUp = isHome && owesNothing;
+  /* Collapsed by default when there is nothing owed. A card whose entire content
+     is "you're all paid up" does not need a card's worth of Home every week; a
+     card that says you owe money does. Errors stay OPEN whatever the balance —
+     a collapsed error is a hidden error, the same failure as a lying empty state.
+
+     `openOverride` is null until the user touches it, so the default keeps
+     tracking the data: pay the balance off and the card closes itself. */
+  const collapsible = isHome && !forbidden && !loadError;
+  const open = openOverride ?? !owesNothing;
   const title = isHome ? tBal('title') : t('title');
   const titleColor = showPaidUp ? 'var(--accent)' : 'var(--sev-warn)';
   const lineItems = data?.sessions ?? [];
@@ -114,9 +126,30 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
       className={`glass-card ${isHome ? "p-4" : "p-5"}`}
       style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
     >
-      <p className="section-label" style={{ margin: 0, color: titleColor }}>
-        {title}
-      </p>
+      {collapsible ? (
+        <button
+          type="button"
+          onClick={() => setOpenOverride(!open)}
+          aria-expanded={open}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: 'var(--space-3)', width: '100%', background: 'none', border: 'none',
+            padding: 0, margin: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left',
+          }}
+        >
+          <span className="section-label" style={{ color: titleColor }}>{title}</span>
+          <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>
+            {open ? 'expand_less' : 'expand_more'}
+          </span>
+        </button>
+      ) : (
+        <p className="section-label" style={{ margin: 0, color: titleColor }}>
+          {title}
+        </p>
+      )}
+
+      {(!collapsible || open) && (
+      <>
 
       {forbidden ? (
         <ErrorState message={t('signInAgain')} />
@@ -170,6 +203,8 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
             )}
           </>
         )
+      )}
+      </>
       )}
     </div>
   );

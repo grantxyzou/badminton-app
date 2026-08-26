@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import enMessages from '@/messages/en.json';
 import UnpaidSessionsCard from '@/components/UnpaidSessionsCard';
@@ -92,6 +92,11 @@ describe('<UnpaidSessionsCard />', () => {
     expect(screen.getAllByText('$40').length).toBe(2);
   });
 
+  /* The rule here is unchanged: paid-up must not render as NOTHING — the card
+     has to say so. What changed is that it says so collapsed, because a card
+     whose whole content is "you're all paid up" does not need a card's worth of
+     Home every week. So: the card and its title are present, and the copy is
+     one tap away rather than absent. */
   it('home variant shows a paid-up state when nothing is owed (instead of nothing)', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue(
       new Response(
@@ -101,8 +106,13 @@ describe('<UnpaidSessionsCard />', () => {
     );
 
     wrap(<UnpaidSessionsCard name="Lin" variant="home" />);
-    await waitFor(() => {
-      expect(screen.getByText(/all paid up/i)).toBeTruthy();
-    });
+    // Renders, rather than vanishing.
+    const toggle = await screen.findByRole('button', { name: /your balance/i });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    // Collapsed by default when there is nothing owed...
+    expect(screen.queryByText(/all paid up/i)).toBeNull();
+    // ...and the copy is there on expand.
+    fireEvent.click(toggle);
+    await waitFor(() => expect(screen.getByText(/all paid up/i)).toBeTruthy());
   });
 });

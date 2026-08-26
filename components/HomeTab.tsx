@@ -435,11 +435,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         </div>
       </div>
 
-      {/* What the signed-in player still owes — across every past session they
-          weren't marked paid (frozen amount where settled, computed share where
-          not). Replaces the old per-person cost estimate. Same data as the
-          Profile card (shared /api/players/unpaid), so the two always agree. */}
-      {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" />}
 
       {/* Announcement card — pure club communications surface. */}
       {effectiveAnnouncement && (
@@ -673,6 +668,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           </div>
         )}
       </div>
+      {/* What the signed-in player still owes — across every past session they
+          weren't marked paid (frozen amount where settled, computed share where
+          not). Replaces the old per-person cost estimate. Same data as the
+          Profile card (shared /api/players/unpaid), so the two always agree. */}
+      {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" />}
+
 
       {/* Stringing service — announced, not yet built. A "Coming soon" card
           rather than a hidden feature: players already ask about restringing at
