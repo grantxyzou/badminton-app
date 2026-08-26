@@ -14,6 +14,15 @@ afterEach(() => {
   delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
 });
 
+/**
+ * scrypt at N=2^16 allocates 64 MiB per derivation. Deriving once per test
+ * would put ~500 MiB of transient allocation through a suite that vitest runs
+ * in parallel workers, which is enough to time out unrelated jsdom tests. The
+ * hash is identical for a fixed password, so derive it once for the file.
+ */
+const PASSWORD = 'a good long password';
+const hashPromise = hashPassword(PASSWORD);
+
 async function seedAccount(
   name: string,
   email: string,
@@ -23,7 +32,7 @@ async function seedAccount(
   const member = seedMember(name, {
     email,
     emailVerified: true,
-    passwordHash: await hashPassword(password),
+    passwordHash: password === PASSWORD ? await hashPromise : await hashPassword(password),
     ...over,
   });
   await reserveIdentity('email', email, member.id);
