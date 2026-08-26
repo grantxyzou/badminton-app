@@ -61,10 +61,14 @@ export default function StatCard({
   const hero = size === 'hero';
   const valueSize = hero ? 'clamp(40px, 13vw, 56px)' : 'var(--fs-stat-lg)';
 
+  /* Radius is NOT inline: an inline style beats every selector, and this card
+     appears in two positions that need different values -- page-level in
+     OverviewStrip (where its siblings are .glass-card) and nested inside a
+     .glass-card in SkillTrendCard (where it must be concentric). The .stat-card
+     class lets the existing position rules decide. */
   const base: CSSProperties = {
     position: 'relative',
     overflow: 'hidden',
-    borderRadius: 'var(--radius-xl)',
     background: GRADIENTS[tone],
     boxShadow: 'var(--glass-shadow)',
     padding: hero ? 'var(--space-6)' : 'var(--space-5)',
@@ -135,13 +139,13 @@ export default function StatCard({
 
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} aria-label={ariaLabel} style={{ ...base, display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}>
+      <button type="button" className="stat-card" onClick={onClick} aria-label={ariaLabel} style={{ ...base, display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer', font: 'inherit' }}>
         {inner}
       </button>
     );
   }
   return (
-    <div style={base} aria-label={ariaLabel}>
+    <div className="stat-card" style={base} aria-label={ariaLabel}>
       {inner}
     </div>
   );

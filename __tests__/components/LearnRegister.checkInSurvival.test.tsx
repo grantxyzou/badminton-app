@@ -76,7 +76,7 @@ describe('LearnRegister — the check-in sheet survives its own save', () => {
     mockFetch(state);
     renderLearn();
 
-    await waitFor(() => expect(screen.getByText('Do a check-in first')).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start check-in' })).toBeTruthy());
     expect(state.getCount).toBe(1);
 
     fireEvent.click(screen.getByRole('button', { name: 'Start check-in' }));
@@ -95,7 +95,7 @@ describe('LearnRegister — the check-in sheet survives its own save', () => {
     fireEvent.click(screen.getByText('stub-close'));
     await waitFor(() => expect(state.getCount).toBe(2));
     expect(screen.queryByTestId('check-in-sheet')).toBeNull();
-    await waitFor(() => expect(screen.queryByText('Do a check-in first')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Start check-in' })).toBeNull());
   });
 
   it('does not refetch on close when nothing was saved', async () => {
@@ -103,7 +103,7 @@ describe('LearnRegister — the check-in sheet survives its own save', () => {
     mockFetch(state);
     renderLearn();
 
-    await waitFor(() => expect(screen.getByText('Do a check-in first')).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start check-in' })).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: 'Start check-in' }));
     fireEvent.click(screen.getByText('stub-close'));
 

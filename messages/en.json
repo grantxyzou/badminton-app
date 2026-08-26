@@ -1,5 +1,10 @@
 {
   "home": {
+    "stringing": {
+      "title": "Stringing service",
+      "subtitle": "Request and track the progress of your racket here.",
+      "soon": "Coming soon"
+    },
     "skillDiscovery": {
       "title": "Curious if your game's improving?",
       "titleSignedUp": "You're in! Want to track your game?",
@@ -255,7 +260,7 @@
       "gear": "Gear"
     },
     "gear": {
-      "kitTitle": "Your kit",
+      "kitTitle": "Items you own",
       "kitSubtitle": "What you play with. Logging it is what makes the club tally useful.",
       "notSet": "Not set",
       "change": "Change",
@@ -279,7 +284,6 @@
       "tensionError": "Couldn't work out your tension — refresh to try again.",
       "clubTitle": "What the club plays",
       "clubSubtitle": "Aggregated from everyone's kit.",
-      "clubFootnote": "Logging your strings is what makes this list useful — for you and for whoever stocks up.",
       "clubEmpty": "Not enough kit logged yet. Add yours and this fills in.",
       "clubError": "Couldn't load — refresh to try again",
       "catalogGap": "Recommendations beyond rackets are coming — the catalog only has rackets so far.",
@@ -367,8 +371,7 @@
       "error": "Couldn't load your drills — refresh to try again",
       "saveError": "Couldn't save that — try again.",
       "offline": "You're offline — this needs a connection.",
-      "needsCheckInTitle": "Do a check-in first",
-      "needsCheckInBody": "Rate your skills once and we'll pick something to work on. About two minutes.",
+      "needsCheckInBody": "No data yet — rate your skills weekly to keep track of your progress.",
       "needsCheckInCta": "Start check-in",
       "empty": "Nothing to practise yet — check in again and we'll pick something."
     },
@@ -402,14 +405,13 @@
       "done": "Done"
     },
     "record": {
-      "title": "Your record",
+      "title": "Scores",
       "subtitle": "Games you logged, newest first.",
       "fraction": "{won} of {played}",
       "with": "with {partner}",
       "won": "won",
       "lost": "lost",
       "add": "Add a game",
-      "hint": "Partner, opponents, score. Three taps and a number.",
       "empty": "No games logged yet. Log one and it shows up here.",
       "error": "Couldn't load your games — refresh to try again"
     },
@@ -504,7 +506,8 @@
     "signInAgainBody": "This device isn't signed in to your account, so your stats and insights can't load. Sign in from Profile.",
     "summaryGreeting": {
       "ariaLabel": "Your AI summary",
-      "beta": "Beta"
+      "beta": "Beta",
+      "ai": "AI"
     },
     "insightChip": {
       "aiGenerated": "AI generated",
@@ -524,7 +527,7 @@
       "allSkills": "All skills",
       "hideSkills": "Hide skills",
       "notRated": "Not rated yet",
-      "empty": "No check-in yet — take your first to start tracking your game.",
+      "empty": "No data yet — rate your skills weekly to keep track of your progress.",
       "baseline": "Baseline saved — check in again after a few sessions to watch it move.",
       "medianLegend": "tick marks are the club median",
       "review": "Review",

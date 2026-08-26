@@ -1662,7 +1662,8 @@ html[data-visual="field"] .cc-progress-track {
 html[data-visual="field"] .admin-hero,
 html[data-visual="field"] .cc-dcard,
 html[data-visual="field"] .cc-tile,
-html[data-visual="field"] .cc-mini-card {
+html[data-visual="field"] .cc-mini-card,
+html[data-visual="field"] .stat-card {
   border-radius: var(--fcard-radius);
 }
 
@@ -1773,12 +1774,14 @@ html[data-visual="field"] .glass-card.is-flush {
    AdminConsoleHero nests .cc-grid3 > .cc-tile inside .admin-hero, and without
    this those tiles rendered at the CARD radius (30px) inside a 30px card. */
 html[data-visual="field"] .admin-hero .cc-tile,
+html[data-visual="field"] .admin-hero .stat-card,
 html[data-visual="field"] .admin-hero .cc-session-chip,
 html[data-visual="field"] .admin-hero .cc-mini-card,
 html[data-visual="field"] .admin-hero .cc-dcard,
 html[data-visual="field"] .admin-hero .inner-card,
 html[data-visual="field"] .admin-hero .glass-card-soft,
 html[data-visual="field"] .cc-dcard .cc-tile,
+html[data-visual="field"] .cc-dcard .stat-card,
 html[data-visual="field"] .cc-dcard .cc-session-chip,
 html[data-visual="field"] .cc-dcard .cc-mini-card,
 html[data-visual="field"] .glass-card .glass-card-soft,
@@ -1786,6 +1789,7 @@ html[data-visual="field"] .glass-card .inner-card,
 html[data-visual="field"] .glass-card .inner-card-green,
 html[data-visual="field"] .glass-card .cc-mini-card,
 html[data-visual="field"] .glass-card .cc-tile,
+html[data-visual="field"] .glass-card .stat-card,
 html[data-visual="field"] .glass-card .cc-session-chip,
 html[data-visual="field"] .glass-card .cc-dcard,
 /* Full-width controls are flush to the padding too, so they are governed by the
@@ -1894,11 +1898,57 @@ html[data-visual="field"] .ink-button {
    generated (the `.is-generating` class). The spin freezes in place the
    instant the text lands — no eased tail. The angle lever is a registered
    custom property because plain custom props don't interpolate. */
+/* The AI provenance rim, defined ONCE and worn by both the insight card and
+   its badge. It was inlined in .insight-rim::before; a second copy in the badge
+   would be two gradients to keep in sync, which is how a badge ends up a
+   slightly different rainbow from the card it sits on. */
+:root {
+  --ai-rim: conic-gradient(
+    from var(--conic-a),
+    var(--accent, #22c55e),
+    #0ea5e9,
+    #8b5cf6,
+    #f59e0b,
+    var(--accent, #22c55e)
+  );
+}
+
 @property --conic-a {
   syntax: '<angle>';
   inherits: false;
   initial-value: 0deg;
 }
+/* AI badge — the card's rim at pill scale, so the marker and the surface it
+   marks are visibly one idea. Thinner ring (1.25px vs the card's 1.75px):
+   the same thickness reads as a hairline at card size and as a stripe at
+   badge size. */
+.badge-ai {
+  position: relative;
+  border: none !important;
+}
+.badge-ai::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.25px;
+  background: var(--ai-rim);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  pointer-events: none;
+}
+
+/* StatCard's surface radius. Was inline on the component, which meant no
+   selector could reach it; moved here so position can decide (page-level vs
+   nested). This is the value it always had with the flag off. */
+.stat-card { border-radius: var(--radius-xl); }
+
 .insight-rim {
   position: relative;
   border-color: transparent; /* the conic ring is the only edge treatment */
@@ -1909,14 +1959,7 @@ html[data-visual="field"] .ink-button {
   inset: 0;
   border-radius: inherit;
   padding: 1.75px; /* ring thickness */
-  background: conic-gradient(
-    from var(--conic-a),
-    var(--accent, #22c55e),
-    #0ea5e9,
-    #8b5cf6,
-    #f59e0b,
-    var(--accent, #22c55e)
-  );
+  background: var(--ai-rim);
   /* Cut out the centre so only the edge ring shows. */
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,

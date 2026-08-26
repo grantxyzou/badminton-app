@@ -91,7 +91,6 @@ export default function ClubGearCard() {
           ))}
         </div>
       )}
-      <p style={{ margin: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('clubFootnote')}</p>
     </div>
   );
 }

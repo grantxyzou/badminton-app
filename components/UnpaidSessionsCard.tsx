@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations, useFormatter } from 'next-intl';
 import ErrorState from './primitives/ErrorState';
+import EmptyState from './primitives/EmptyState';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DAY_SHORT = { weekday: 'short', month: 'short', day: 'numeric' } as const;
@@ -122,9 +123,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
       ) : loadError ? (
         <ErrorState message={t('loadError')} />
       ) : showPaidUp ? (
-        <p style={{ margin: 0, fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)' }}>
-          {tBal('paidUp')}
-        </p>
+        <EmptyState icon="check_circle">{tBal('paidUp')}</EmptyState>
       ) : (
         data && (
           <>

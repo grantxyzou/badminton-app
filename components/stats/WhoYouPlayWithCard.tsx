@@ -84,7 +84,7 @@ export default function WhoYouPlayWithCard({ activeName }: WhoYouPlayWithCardPro
       ) : status === 'error' ? (
         <ErrorState message={t('error')} />
       ) : top.length === 0 ? (
-        <EmptyState>{t('empty')}</EmptyState>
+        <EmptyState icon="groups">{t('empty')}</EmptyState>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           {top.map((p, i) => (

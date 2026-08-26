@@ -7,6 +7,8 @@ import type { DevOverrides } from '@/components/DevPanel';
 import { getIdentity, setIdentity, clearIdentity, resolveStaleIdentity } from '@/lib/identity';
 import { TabSkeleton } from '@/components/primitives/CardSkeleton';
 import UnpaidSessionsCard from '@/components/UnpaidSessionsCard';
+import StatusBadge from '@/components/primitives/StatusBadge';
+import CardHeader from '@/components/primitives/CardHeader';
 import InstallBanner from '@/components/InstallBanner';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
@@ -16,7 +18,6 @@ import PageHeader from '@/components/primitives/PageHeader';
 import EnterCodeSheet from './EnterCodeSheet';
 import PinInput from './PinInput';
 import NameAutocompleteInput from './home/NameAutocompleteInput';
-import SkillDiscoveryCard from './home/SkillDiscoveryCard';
 import { useMemberProbe } from '@/lib/useHasPin';
 import { useOnline } from '@/lib/useOnline';
 import { renderMarkdown } from '@/lib/miniMarkdown';
@@ -394,7 +395,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       <div className="grid grid-cols-2 gap-3">
         {/* Location tile */}
         <div className="glass-card p-4 space-y-2">
-          <p className="section-label mb-1">{t('location.label')}</p>
+          <p className="section-label mb-1" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <span className="material-icons icon-xs" aria-hidden="true">location_on</span>
+              {t('location.label')}
+            </p>
           {session?.locationName && (
             <p className="text-lg font-semibold text-gray-200 leading-snug line-clamp-2">
               {session.locationName}
@@ -418,7 +422,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
         {/* Date & Time tile */}
         <div className="glass-card p-4 space-y-2">
-          <p className="section-label mb-1">{t('session.date')}</p>
+          <p className="section-label mb-1" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <span className="material-icons icon-xs" aria-hidden="true">event</span>
+              {t('session.date')}
+            </p>
           <p className="text-lg font-semibold text-gray-200 leading-snug">
             {session ? format.dateTime(new Date(session.datetime), DAY_LONG) : '—'}
           </p>
@@ -663,13 +670,19 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         )}
       </div>
 
-      {/* Discovery hook for skill rating — surfaces at the sign-up touchpoint,
-          self-retires once the player rates or dismisses it. */}
-      <SkillDiscoveryCard
-        name={currentUser}
-        signedUp={effectiveIsSignedUp}
-        onOpen={() => onTabChange?.('skills')}
-      />
+      {/* Stringing service — announced, not yet built. A "Coming soon" card
+          rather than a hidden feature: players already ask about restringing at
+          sessions, so saying it is coming is more useful than saying nothing.
+          Deliberately not interactive; there is nothing to open yet. */}
+      <div className="glass-card p-5">
+        <CardHeader
+          icon="science"
+          title={t('stringing.title')}
+          subtitle={t('stringing.subtitle')}
+          badge={<StatusBadge variant="muted">{t('stringing.soon')}</StatusBadge>}
+        />
+      </div>
+
 
       <EnterCodeSheet
         open={enterCodeOpen}

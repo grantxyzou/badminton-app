@@ -130,13 +130,12 @@ export default function LearnRegister({ activeName, onCheckedIn }: LearnRegister
   if (needsCheckIn) {
     return (
       <>
+        {/* Same shape as every other "you have no data yet" card: standing
+            EmptyState over the CTA. It used to be a bare h3 + paragraph, which
+            made the one card that is purely an invitation look less finished
+            than the cards it sits beside. */}
         <div className="glass-card p-5 space-y-3">
-          <h3 className="bpm-h3" style={{ margin: 0 }}>
-            {t('needsCheckInTitle')}
-          </h3>
-          <p style={{ margin: 0, fontSize: 'var(--fs-md)', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
-            {t('needsCheckInBody')}
-          </p>
+          <EmptyState icon="school">{t('needsCheckInBody')}</EmptyState>
           <button
             type="button"
             className="cc-btn cc-btn-primary cc-btn-lg"

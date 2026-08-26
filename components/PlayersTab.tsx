@@ -5,7 +5,10 @@ import { useTranslations, useFormatter } from 'next-intl';
 import type { Player, Session } from '@/lib/types';
 import { getIdentity, setIdentity } from '@/lib/identity';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import SkillDiscoveryCard from './home/SkillDiscoveryCard';
+import type { Tab } from './HomeShell';
 import ShuttleIcon from '@/components/ShuttleIcon';
+import EmptyState from '@/components/primitives/EmptyState';
 import PageHeader from '@/components/primitives/PageHeader';
 import ConfirmInline from '@/components/primitives/ConfirmInline';
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
@@ -13,7 +16,7 @@ import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
 
-export default function PlayersTab() {
+export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) => void } = {}) {
   const pageT = useTranslations('pages.signup');
   const t = useTranslations('players');
   const online = useOnline();
@@ -121,13 +124,14 @@ export default function PlayersTab() {
     return (
       <div className="space-y-5">
         <PageHeader>{pageT('title')}</PageHeader>
-        <div className="glass-card p-10 text-center">
-          {/* Brand shuttle for empty state — design spec reserves this glyph
-              for "anywhere the UI refers to the sport itself." Replaces
-              Material's sports_tennis racquet. */}
-          <ShuttleIcon size={36} color="var(--text-muted)" ariaLabel="No players yet" />
-          <div className="h-2" />
-          <p className="text-gray-500 fs-md">{t('empty')}</p>
+        {/* Brand shuttle rather than a Material glyph — design spec reserves it
+            for "anywhere the UI refers to the sport itself". Routed through
+            <EmptyState> so the spacing, size and ink match every other empty
+            state instead of being a hand-rolled p-10 with a spacer div. */}
+        <div className="glass-card p-5">
+          <EmptyState icon={<ShuttleIcon size={40} color="var(--text-muted)" />}>
+            {t('empty')}
+          </EmptyState>
         </div>
       </div>
     );
@@ -263,6 +267,17 @@ export default function PlayersTab() {
         </div>
       )}
       </div>
+
+      {/* Skill-rating discovery hook. Lives here rather than on Home because
+          this IS the sign-up touchpoint -- the moment a player has just
+          confirmed they're playing is when "is my game improving?" lands.
+          Self-retiring: flag-on, identified, unrated and undismissed only. */}
+      <SkillDiscoveryCard
+        name={currentUser}
+        signedUp={activePlayers.some((p) => p.name === currentUser)}
+        onOpen={() => onTabChange?.('skills')}
+      />
+
     </div>
   );
 }
