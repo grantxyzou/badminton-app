@@ -637,7 +637,7 @@ body {
   --field-stats:     radial-gradient(120% 70% at 78% 4%, rgba(96, 165, 250, 0.34), transparent 70%);
   --field-profile:   radial-gradient(120% 70% at 78% 4%, rgba(167, 139, 250, 0.30), transparent 70%);
   --field-admin:     radial-gradient(120% 70% at 78% 4%, rgba(234, 88, 12, 0.28), transparent 70%);
-  --field-scrim:     linear-gradient(180deg, rgba(255, 255, 255, 0.30) 0%, transparent 40%, rgba(255, 255, 255, 0.45) 100%);
+  --field-scrim:     linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, transparent 42%, rgba(255, 255, 255, 0.14) 100%);
 
 
   /* ── Card materials ──
@@ -1537,8 +1537,14 @@ html[data-visual="field"] .nav-glass {
 html[data-visual="field"][data-theme="light"] .rail-bar,
 [data-theme="light"] html[data-visual="field"] .nav-glass,
 html[data-visual="field"][data-theme="light"] .nav-glass {
-  --rail-border: rgba(0, 0, 0, 0.18);
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.10);
+  /* Light does not reach 3:1 the way dark does, and chasing it would be the
+     wrong call: a hairline dark enough to clear 3:1 on cream is rgba(0,0,0,.43),
+     which reads as a heavy rule rather than an edge. It is also not the same
+     failure -- in dark the nav was genuinely unfindable; in light it is merely
+     quiet, and the icons and labels carry their own text contrast. So the
+     shadow does most of the work here and the border is nudged, not forced. */
+  --rail-border: rgba(0, 0, 0, 0.24);
+  box-shadow: 0 -8px 22px rgba(0, 0, 0, 0.14);
 }
 
 /* ── Padding and concentric inner radii ──
