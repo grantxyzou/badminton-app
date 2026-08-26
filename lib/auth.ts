@@ -59,7 +59,7 @@ function appendClearCookie(res: NextResponse, name: string): void {
   for (const path of [COOKIE_PATH, LEGACY_COOKIE_PATH]) {
     res.headers.append(
       'set-cookie',
-      `${name}=; Path=${path}; Max-Age=0; HttpOnly; SameSite=Strict${secure}`,
+      `${name}=; Path=${path}; Max-Age=0; HttpOnly; SameSite=Lax${secure}`,
     );
   }
 }
@@ -161,7 +161,7 @@ export function setAdminCookie(res: NextResponse, memberId: string, name: string
   };
   res.cookies.set(COOKIE_NAME, signPayload(payload), {
     httpOnly: true,
-    sameSite: 'strict',
+    sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     maxAge: COOKIE_MAX_AGE_S,
     path: COOKIE_PATH,
@@ -185,9 +185,24 @@ export function clearAdminCookie(res: NextResponse): void {
 // sign-out (cleared alongside the admin cookie).
 const MEMBER_COOKIE_NAME = 'member_session';
 
+/**
+ * `sameSite: 'lax'`, not `'strict'`.
+ *
+ * A Strict cookie is not sent on a cross-site navigation, and an OAuth callback
+ * (Google, Apple) is exactly that. Chrome evaluates the WHOLE redirect chain,
+ * so a Strict session cookie set by a provider callback and then redirected to
+ * `/bpm` never reaches the landing request — the user would hold a perfectly
+ * valid session while the page rendered signed-out, which is indistinguishable
+ * from a broken sign-in.
+ *
+ * Lax still blocks cross-site POST and subresource sends, which is the CSRF
+ * property that matters here: every mutating route in this app is
+ * POST/PATCH/DELETE with a JSON content type, and a simple cross-site form
+ * cannot produce that.
+ */
 const COOKIE_OPTS = {
   httpOnly: true as const,
-  sameSite: 'strict' as const,
+  sameSite: 'lax' as const,
   secure: process.env.NODE_ENV === 'production',
   path: COOKIE_PATH,
 };

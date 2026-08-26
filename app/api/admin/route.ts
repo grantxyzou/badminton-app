@@ -108,8 +108,13 @@ export async function POST(req: NextRequest) {
 
 /**
  * DELETE — logout. Clears the cookie. Requires a valid cookie to call (so
- * an unauthenticated CSRF can't clear someone else's session — though
- * SameSite=strict already makes that very unlikely).
+ * an unauthenticated CSRF can't clear someone else's session).
+ *
+ * The session cookies moved from SameSite=Strict to Lax so OAuth callbacks
+ * work (see COOKIE_OPTS in lib/auth.ts). Lax is still sufficient here: it
+ * blocks cross-site sends on anything that isn't a top-level GET navigation,
+ * and this is a DELETE. A forced logout remains the mildest possible CSRF
+ * outcome regardless.
  */
 export async function DELETE(_req: NextRequest) {
   // Logout — clear BOTH session cookies. Not privileged (you're only clearing
