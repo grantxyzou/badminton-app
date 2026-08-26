@@ -263,7 +263,7 @@ export default function ProfileTab({
       <div className="animate-fadeIn flex flex-col gap-4">
         <PageHeader>{t('anonymousTitle')}</PageHeader>
         <p style={{ color: 'var(--text-secondary)' }}>{t('anonymousBody')}</p>
-        <div className="glass-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="glass-card p-4" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <SignInForm
             sessionId={sessionId}
             onSuccess={handleSignInSuccess}

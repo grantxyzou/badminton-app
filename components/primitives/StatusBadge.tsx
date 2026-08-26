@@ -9,13 +9,17 @@ import type { CSSProperties, ReactNode } from 'react';
  * One shared shape; pick a variant:
  *   - `accent` (default) — the Live/Beta pill (accent border + text, --fs-2xs)
  *   - `muted`            — the compact "Coming soon" tag (muted border/text, 9px)
+ *   - `ai`               — AI provenance marker. Wears the insight card's own
+ *                          conic rim (`--ai-rim`) at pill scale, so the badge and
+ *                          the surface it marks read as one idea rather than a
+ *                          green pill sitting on a rainbow card.
  *   - `phase`            — the larger skill-phase tag; pass `tone="amber"` for
  *                          the "switch" phase, else accent
  *
  * Colors come from tokens (`--accent` / `--accent-amber` / `--inner-card-border`
  * / `--text-muted`); radius from `--radius-pill`. Text is the children.
  */
-export type StatusBadgeVariant = 'accent' | 'muted' | 'phase';
+export type StatusBadgeVariant = 'accent' | 'muted' | 'phase' | 'ai';
 
 export interface StatusBadgeProps {
   children: ReactNode;
@@ -35,6 +39,18 @@ const BASE: CSSProperties = {
 
 export default function StatusBadge({ children, variant = 'accent', tone = 'accent' }: StatusBadgeProps) {
   let style: CSSProperties;
+  if (variant === 'ai') {
+    // The ring is a masked ::before on .badge-ai, so no border here — the
+    // class sets `border: none` to stop BASE's border painting under it.
+    return (
+      <span className="badge-ai" style={{ ...BASE, fontSize: 'var(--fs-2xs)', padding: '3px 9px', color: 'var(--text-primary)' }}>
+        {/* The ring is an absolutely-positioned ::before, which paints ABOVE the
+            parent's own text. Lift the label into its own positioned box so it
+            sits on top of the ring instead of underneath it. */}
+        <span style={{ position: 'relative' }}>{children}</span>
+      </span>
+    );
+  }
   if (variant === 'muted') {
     style = { ...BASE, fontSize: 'var(--fs-2xs)', padding: '2px 7px', border: '1px solid var(--inner-card-border)', color: 'var(--text-muted)' };
   } else if (variant === 'phase') {

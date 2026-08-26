@@ -115,17 +115,17 @@ The voice is **friendly, direct, and pragmatic** — the same tone a neighborhoo
 ### Color
 - **One brand accent, two modes.** `#4ade80` court-green on `#100F0F` near-black (dark), `#16a34a` court-green on `#FAF8F5` warm cream (light). Chosen for luminance contrast against the background, not for decoration.
 - **Semantic colors are Tailwind's 400-tier.** `amber-400` (waitlist), `orange-400` (full/warning), `red-400` (errors/PIN), `blue-400` (dates, info). Light-mode overrides push those down to 600-tier for contrast.
-- **No third brand color.** Every other surface is glass — translucent white-on-dark or translucent-ink-on-cream.
+- **No third brand color.** Every other surface is glass — translucent white-on-dark or translucent-ink-on-cream. *(Qualified 2026-08-26: the per-tab **fields** give each tab its own ground hue. This rule still governs COMPONENTS — a card, pill or button may not invent a hue — but it no longer governs the page ground. The four semantic hues that were spent are re-pitched in `globals.css` under "Semantic hues displaced by the fields".)*
 
 ### Type
-- **System font stack.** `-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`. No web fonts loaded for body copy. Material Icons is the only web font.
+- **Brand type trio.** Space Grotesk (display) + IBM Plex Sans (body, `var(--font-sans)`) + JetBrains Mono (data), self-hosted as variable TTFs in `app/fonts/` via `next/font/local`; system fonts remain only as fallbacks so first paint never blocks. *(Corrected 2026-08-26 — this bullet used to claim a system font stack with Material Icons as the only web font, which stopped being true when the trio was adopted. See DESIGN.md #15.)*
 - **Accessibility bump.** `text-xs` and `text-sm` are shifted up one step (12→14px, 14→16px) so readers 50+ don't pinch-zoom. Other sizes remain Tailwind defaults.
 - **Page title is 30px bold.** `text-3xl font-bold`, left-aligned in the column, with 8px left padding so it visually aligns with the section-labels inside the glass cards.
 - **Section labels, not dividers.** Uppercase 14px bold tracking-widest, colored `var(--accent)` for active sections and `var(--text-muted)` for passive. They split content instead of hard `<hr>` rules.
 - **Monospace only in the release-notes terminal.** `SF Mono, Menlo, Consolas, 'Roboto Mono'`.
 
 ### Spacing
-- `space-y-5` between cards in a tab (20px). `p-5` inside cards (20px). `p-4` for tile-row cards (16px). `gap-3` inside 2-column tile rows (12px). `rounded-3xl`-ish (24px) card corners.
+- `space-y-5` between cards in a tab (20px). `p-5` inside cards (20px). `p-4` for tile-row cards (16px). `gap-3` inside 2-column tile rows (12px). Card corners follow the radii ladder and cap at **16px** (`--radius-xl`); the one scoped exception is field cards at `--radius-3xl` (30px). *(Corrected 2026-08-26 — this used to say ``rounded-3xl``-ish (24px), which is the exact value CLAUDE.md calls a self-inflicted spec violation. See DESIGN.md #4.)*
 - **Tile rows come in pairs.** Location + Date, not a single full-width tile.
 - **Actions live at the bottom of their surface.** HomeTab's info-then-action order (Tiles → Cost → Announcement → Sign-Up → Payment reminder) is deliberate for one-handed thumb reach. The `BottomNav` is pinned to the viewport bottom (`fixed bottom-0`) with a safe-area inset for iOS home-indicator.
 

@@ -162,7 +162,7 @@ export default function SkillTrendCard() {
     return (
       <>
         <Frame>
-          <EmptyState>{t('assess.empty')}</EmptyState>
+          <EmptyState icon="trending_up">{t('assess.empty')}</EmptyState>
           <button type="button" onClick={() => setCheckInOpen(true)} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
             {t('assess.rateSkills')}
           </button>

@@ -46,7 +46,7 @@ describe('GearRegister — single owner of the gear document', () => {
     // "Your kit" replaces its skeleton only once `loaded` flipped true, so
     // reaching it proves the gear read has settled and every effect keyed on
     // that has already been given the chance to fire.
-    await screen.findByText('Your kit');
+    await screen.findByText('Items you own');
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
 
     expect(gearReads().length).toBe(1);
@@ -90,7 +90,7 @@ describe('GearRegister — D2, one tension number at a time', () => {
     // the card's is round(21 + level). Both on screen is two answers to "what
     // should I tell my stringer".
     mountWith(25.5);
-    await screen.findByText('Your kit');
+    await screen.findByText('Items you own');
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
     expect(screen.queryByText('String tension')).toBeNull();
   });
@@ -107,7 +107,7 @@ describe('GearRegister — D2, one tension number at a time', () => {
    */
   it('costs exactly two recommend calls per mount, not a loop', async () => {
     mountWith(25.5);
-    await screen.findByText('Your kit');
+    await screen.findByText('Items you own');
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
 
     const recommendCalls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls
@@ -120,7 +120,7 @@ describe('GearRegister — D2, one tension number at a time', () => {
     // 11 of 71 frames publish no tension ceiling. Falling back is the whole
     // reason lib/tension.ts is not deleted.
     mountWith(null);
-    await screen.findByText('Your kit');
+    await screen.findByText('Items you own');
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
     await waitFor(() => expect(screen.queryByText('String tension')).not.toBeNull());
   });

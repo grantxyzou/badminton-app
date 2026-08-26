@@ -91,6 +91,9 @@
   --rail-inactive: rgba(255, 255, 255, 0.5);
   --rail-border: rgba(255, 255, 255, 0.1);
   --rail-blur: blur(20px) saturate(150%);
+  /* Off-ladder on purpose. This is a sliding pill sized to its own 30px
+     track, not a rectangular surface, so the 6/8/10/12/16 ladder does not
+     apply to it. Documented so it stops reading as drift on the next audit. */
   --rail-indicator-radius: 15px;
 
   /* ── Inputs ── */
@@ -489,6 +492,195 @@ body {
   --space-4: 12px;
   --space-5: 16px;
   --space-6: 20px;
+
+  /* ══════════════════════════════════════════════════════════════════════
+     FIELDS & CARD MATERIALS  (design: "Visual Colours" §06, 2026-08-25)
+
+     A FIELD is the coloured ground that tells you which tab you're in —
+     it replaces the shared aurora. A FIELD CARD is the frosted surface
+     that sits on it. Both are gated behind NEXT_PUBLIC_FLAG_VISUAL_FIELDS
+     and scoped `html[data-visual="field"]`, so the flag is a real off
+     switch rather than a code revert.
+
+     Two tracks were built and compared on /design/backgrounds. The one
+     that shipped (2026-08-26) gives each tab its own hue; the one that
+     kept a single hue at five depths was deleted. That choice has a
+     price, paid for below under "SEMANTIC HUES DISPLACED BY THE FIELDS".
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* The 30px rung. From the design's own reconciliation of the ladder:
+       "the 16px radius cap now holds for flat-field surfaces and
+        --radius-3xl (30px) is scoped to field cards only"
+     Deliberately NOT part of the --radius-xs..xl ladder above, which
+     stays capped at 16. Never write `border-radius: 30px` — always this
+     token; __tests__/design-canary.test.ts enforces that. */
+  --radius-3xl: 30px;
+
+  /* ── Fields — one hue per tab (chosen 2026-08-26 on /design/backgrounds) ──
+     The alternative kept a single hue at five depths and preserved the
+     "no third brand colour" rule. This one was picked because five tabs
+     are recognisable at a glance, and it KNOWINGLY spends four semantic
+     hues that were doing a job elsewhere:
+       Sign-Ups amber   was "waitlist"
+       Stats    blue    was "dates / info" (--sev-low-text)
+       Profile  violet  was the admin pill
+       Admin    orange  was "session full"
+     Two of those collide on their OWN tab and are re-pitched below — see
+     "SEMANTIC HUES DISPLACED BY THE FIELDS". Don't reintroduce a 6-7%
+     amber tint on Sign-Ups or a flat --sev-low-text blue on Stats without
+     checking it against the field first. */
+  --field-base:      var(--page-bg);
+  --field-home:      radial-gradient(120% 70% at 78% 4%, rgba(74, 222, 128, 0.42), transparent 70%);
+  --field-signups:   radial-gradient(120% 70% at 78% 4%, rgba(251, 191, 36, 0.40), transparent 70%);
+  --field-stats:     radial-gradient(120% 70% at 78% 4%, rgba(96, 165, 250, 0.40), rgba(27, 50, 77, 0.30) 48%, transparent 74%);
+  --field-profile:   radial-gradient(120% 70% at 78% 4%, rgba(196, 181, 253, 0.38), transparent 70%);
+  --field-admin:     radial-gradient(120% 70% at 78% 4%, rgba(251, 146, 60, 0.40), transparent 70%);
+  /* Top/bottom scrim so copy keeps contrast over the brightest corner of
+     the gradient (at 78% 4% — exactly where --text-muted will fail AA). */
+  /* Top-weighted, because the field is lit at 78% 4% -- the TOP-right. The
+     design's own scrim ended at rgba(0,0,0,.62), which is the right shape for
+     a PHOTOGRAPHIC ground with content at both ends; against a top-lit
+     gradient the bottom stop fights nothing and crushes the page to #060606,
+     which is what made the bottom nav disappear into it.
+
+     The top stop is also far lighter than the design's .40, for a reason that
+     is easy to miss: CARDS backdrop-filter the ground, so anything the scrim
+     takes out of the page it also takes out of every card sitting on it. At
+     .40 the 17% frost landed on #3f5e4a instead of #4d805f and the whole
+     design read flat and near-black -- the frosted panel stopped looking
+     frosted. .18 still lifts bare text off the bright corner without taxing
+     every card to do it.
+
+     Worth knowing why the tax was small in the first place: the field is
+     `120% 70% at 78% 4%` and fades to transparent by 70%, so only the
+     top-right corner is ever at full alpha. Most cards sit over ground that
+     is already close to --page-bg. A full-bleed scrim was always the wrong
+     instrument for a problem confined to one corner. */
+  --field-scrim:     linear-gradient(180deg, rgba(0, 0, 0, 0.18) 0%, rgba(0, 0, 0, 0.06) 42%, rgba(0, 0, 0, 0.12) 100%);
+
+
+  /* ── Card materials ──
+     Every card is two layers, not one: a 160deg tint gradient and an
+     inset top highlight. Note --fcard-shadow is byte-identical to
+     --glass-shadow, which .glass-card defines and has never applied. */
+  --fcard-radius:     var(--radius-3xl);
+  /* Padding comes from the design source, not from a derivation. An earlier
+     pass here reasoned from optical uniformity -- at a rounded corner the arc
+     curves away from the content box, so clearance is not even:
+
+        edge gap = p ;  corner gap = R - sqrt(2)*(R - p)   (for p < R)
+
+     and concluded p should be ~0.9R, i.e. 24px. That is defensible in a vacuum
+     and it is not what the design does. The reference markup puts 30px cards at
+     `padding: 15px 18px` (the solid pick card at 18/20), so the real proportion
+     is roughly half the radius, with horizontal slightly larger than vertical
+     -- corners eat into a short row horizontally first. 24px read as far too
+     much, which is the correct verdict; trust the source over the heuristic.
+
+     Asymmetric on purpose. Keep the two axes as separate tokens so the
+     concentric rule below has an unambiguous horizontal inset to work from. */
+  --fcard-pad-y:      15px;
+  --fcard-pad-x:      18px;
+  --fcard-pad:        var(--fcard-pad-y) var(--fcard-pad-x);
+  /* Concentric nesting: an element flush against the card's padding must curve
+     PARALLEL to the card, so inner = outer - inset. Measured on the horizontal
+     inset, because inner rows are full-width and it is their left/right edges
+     that sit against the card's.
+
+     This lands on 30 - 18 = 12px, which is exactly the radius the design uses
+     on its inner rows -- so the 12-inside-30 nesting was correct all along and
+     the 24px padding was what made it look wrong. Still a calc() rather than a
+     literal 12px: the relationship is the rule, and hard-coding the answer is
+     how it silently desynchronises the next time either input moves. */
+  --fcard-inner-radius: calc(var(--fcard-radius) - var(--fcard-pad-x));
+  /* A 17% WHITE frost was the design's value, drawn against its Stats field
+     whose core is opaque forest #0a1f0e -- a DARK ground. Our fields are raw
+     bright hues at ~.40, and white-on-bright composites to mid-tone, where
+     light text cannot pass AA. Measured at the brightest point of each field,
+     every dark tab failed: --text-primary 3.73-4.53:1 and --text-secondary
+     3.14-3.67:1. Today's app, for comparison, is 6.81 / 5.07 at ITS worst (a
+     card over the brightest aurora blob) -- so the direction as drawn was a
+     regression, not a pre-existing bar.
+
+     Halving the field alpha fixes it arithmetically and guts the reason Track B
+     was chosen, so the frost changes instead. brightness() is MULTIPLICATIVE:
+     it crushes the bright corner where the problem is and barely touches
+     near-black where the field has faded out, which a flat dark overlay cannot
+     do -- that would have reproduced the vanishing-nav bug on every card. The
+     small white lift is what keeps the card separate from the ground in those
+     faded areas.
+
+     Result at the worst point of any dark field: primary 7.22, secondary 5.33
+     -- both above today's baseline -- with chroma 16-53 still in the card, so
+     tabs stay recognisable. Light is untouched: it measures 14.05-14.49 with
+     the white frost, and brightness() there would only darken a passing card. */
+  --fcard-bg:         linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.05));
+  --fcard-blur:       blur(16px) saturate(130%) brightness(0.65);
+  --fcard-inset:      inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --fcard-shadow:     0 8px 40px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.12);
+  /* The pick — the only opaque card. At most ONE per screen: two solid
+     greens and neither reads as the answer. */
+  --fcard-pick-bg:    linear-gradient(150deg, rgba(22, 101, 52, 0.86), rgba(74, 222, 128, 0.72) 68%, rgba(163, 230, 53, 0.68));
+  --fcard-pick-inset: inset 0 1px 0 rgba(255, 255, 255, 0.30);
+  /* Semantic fills stay rare — amber/orange/red mean something is waiting,
+     closing or wrong. Three at once and the screen has stopped talking. */
+  --fcard-good-bg:    linear-gradient(160deg, rgba(74, 222, 128, 0.20), rgba(74, 222, 128, 0.09));
+  --fcard-wait-bg:    linear-gradient(160deg, rgba(251, 191, 36, 0.20), rgba(251, 191, 36, 0.09));
+  --fcard-full-bg:    linear-gradient(160deg, rgba(251, 146, 60, 0.21), rgba(251, 146, 60, 0.10));
+  --fcard-error-bg:   linear-gradient(160deg, rgba(248, 113, 113, 0.22), rgba(248, 113, 113, 0.11));
+  /* Locked is flat — no gradient, no inset, and (in the class) no blur.
+     Dropping the backdrop filter is what makes private data read as inert
+     rather than merely dim. It is the one material that isn't glass. */
+  --fcard-locked-bg:  rgba(255, 255, 255, 0.06);
+
+  /* On-card ink. --fcard-title is #fff in dark rather than --text-primary
+     (#e2e8f0): the heavier frost can carry pure white, and the design
+     specifies it. */
+  --fcard-title:      #ffffff;
+  --fcard-label:      rgba(255, 255, 255, 0.72);
+  --fcard-footnote:   rgba(255, 255, 255, 0.50);
+  /* The constant: identical in both modes, which is what makes the
+     direction recognisable. Do NOT give this a light override. */
+  --ink-button:       #131313;
+  --ink-button-fg:    #ffffff;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FIELDS & CARD MATERIALS — light mode
+   Partner block for the FIELDS section above. Note what is deliberately
+   ABSENT: --field-base (it resolves through var(--page-bg), which light
+   already overrides) and --ink-button / --ink-button-fg (constant by design).
+   ══════════════════════════════════════════════════════════════════════════ */
+[data-theme="light"] {
+  /* ── Fields — one hue per tab ── */
+  --field-home:      radial-gradient(120% 70% at 78% 4%, rgba(22, 163, 74, 0.34), transparent 70%);
+  --field-signups:   radial-gradient(120% 70% at 78% 4%, rgba(217, 119, 6, 0.30), transparent 70%);
+  --field-stats:     radial-gradient(120% 70% at 78% 4%, rgba(96, 165, 250, 0.34), transparent 70%);
+  --field-profile:   radial-gradient(120% 70% at 78% 4%, rgba(167, 139, 250, 0.30), transparent 70%);
+  --field-admin:     radial-gradient(120% 70% at 78% 4%, rgba(234, 88, 12, 0.28), transparent 70%);
+  --field-scrim:     linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, transparent 42%, rgba(255, 255, 255, 0.14) 100%);
+
+
+  /* ── Card materials ──
+     The fill barely moves from the current light --glass-bg (.72 -> .55
+     becomes .72 -> .50). What actually changes in light mode is the EDGE:
+     the 1px rgba(0,0,0,.08) border goes away and the top inset nearly
+     doubles, so the card edge becomes a highlight instead of a drawn line. */
+  --fcard-bg:         linear-gradient(160deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.50));
+  --fcard-blur:       blur(20px) saturate(140%);
+  --fcard-inset:      inset 0 1px 0 rgba(255, 255, 255, 0.90);
+  --fcard-shadow:     0 8px 26px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.04);
+  --fcard-pick-bg:    linear-gradient(150deg, #22c55e, #16a34a 74%, #15803d);
+  --fcard-pick-inset: inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  --fcard-good-bg:    linear-gradient(160deg, rgba(22, 163, 74, 0.17), rgba(22, 163, 74, 0.07));
+  --fcard-wait-bg:    linear-gradient(160deg, rgba(217, 119, 6, 0.17), rgba(217, 119, 6, 0.07));
+  --fcard-full-bg:    linear-gradient(160deg, rgba(234, 88, 12, 0.18), rgba(234, 88, 12, 0.07));
+  --fcard-error-bg:   linear-gradient(160deg, rgba(220, 38, 38, 0.15), rgba(220, 38, 38, 0.06));
+  --fcard-locked-bg:  rgba(0, 0, 0, 0.03);
+
+  --fcard-title:      var(--text-primary);
+  --fcard-label:      rgba(26, 35, 50, 0.66);
+  --fcard-footnote:   rgba(26, 35, 50, 0.45);
 }
 
 /* Bare heading elements default to the display family (Space Grotesk) per
@@ -1016,6 +1208,158 @@ html[data-tab="admin"] .court-bg {
   background: var(--page-bg);
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   FIELDS — per-tab coloured grounds        [NEXT_PUBLIC_FLAG_VISUAL_FIELDS]
+
+   Everything below is scoped `html[data-visual="field"]` so the flag is a
+   genuine off switch: unset it and the aurora rules above take over again
+   with zero component changes.
+
+   The key structural fact this builds on: the existing per-tab rules already
+   split GROUND from MOTIF — the ground lives on `.court-bg { background }`
+   and the motif (the Sign-Ups doubles-court SVG, the Stats dot grid) lives
+   on `.court-bg::before`. So a field slots UNDER the motif rather than
+   replacing it, and the two tabs that already have a hard-won identity keep
+   it. Only `background` is touched below; no `::before` rule is redefined.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SEMANTIC HUES DISPLACED BY THE FIELDS    [NEXT_PUBLIC_FLAG_VISUAL_FIELDS]
+
+   One hue per tab means four hues that meant something now also mean "which
+   tab is this". Two of them collide on their OWN tab, and the collision is
+   arithmetic rather than taste:
+
+     Sign-Ups field = amber at 40%. Every waitlist signal on that tab is
+     amber at 5-9%. Composited over the frosted card, a .07 tint measures
+     1.086:1 against the card it sits on — 1.000:1 is literally identical.
+     (On the old flat ground the same tint was 1.117:1: already marginal,
+     which is why nobody had noticed.)
+
+     Home field = court green at 42%, and the "this is you" row is green
+     at .07 — same story, 1.079:1.
+
+   The fix is not a new hue: after Track B there ISN'T a free one. It is to
+   stop expressing these as near-transparent tints and put them on the same
+   alpha ladder the field CARDS already use (--fcard-*-bg starts at .20),
+   because that ladder was designed to read against a coloured ground.
+   .22 measures ~1.29:1, and adding the border back gives it an edge that
+   survives any ground at all.
+
+   If you retune a field, re-run the numbers. The relationship is between
+   the row tint and the CARD colour, which is itself the field seen through
+   17% white frost — change the field and both sides move.
+   ══════════════════════════════════════════════════════════════════════════ */
+/* The blue that Stats' field displaced. --sev-low-text (#93c5fd) is used five
+   times in components/stats: three are gradient FILLS and two are 10px category
+   eyebrows. WCAG holds those to different bars, and on the card over a blue
+   field at its brightest point (#536a86) they land on opposite sides:
+
+     gradient fills  (DimensionBars, StatCard, StringTensionCard)
+       graphical objects -> 3:1 required -> 3.10:1  PASS
+     category eyebrows (LearnRegister setting, GearPickCard category)
+       small text -> 4.5:1 required -> 3.10:1  FAIL
+
+   So only the text moves. --sev-low-label is --sev-low-text everywhere except
+   on a dark field, where it lifts to blue-100 (4.58:1) and still reads blue.
+   Dark-mode only, deliberately: light mode's card resolves to #eff5fd, where
+   the existing #1e40af already measures 7.96:1 and blue-100 would be 1.11:1. */
+:root { --sev-low-label: var(--sev-low-text); }
+
+html[data-visual="field"] {
+  --sev-low-label: #dbeafe;
+  --highlight-green: rgba(74, 222, 128, 0.22);
+  --highlight-amber: rgba(251, 191, 36, 0.22);
+
+  /* Section headers ("Waitlist", "Playing") — same problem, same ladder.
+     The text was at .65 alpha, which on an amber card reads as a smudge;
+     on a field it goes solid and earns its contrast from weight instead. */
+  --list-green-bg: rgba(74, 222, 128, 0.18);
+  --list-green-text: var(--accent);
+  --list-green-border: rgba(74, 222, 128, 0.32);
+  --list-amber-bg: rgba(251, 191, 36, 0.18);
+  --list-amber-text: var(--accent-amber);
+  --list-amber-border: rgba(251, 191, 36, 0.32);
+}
+
+/* A tint alone is a weak figure on a coloured ground no matter how it is
+   tuned, so the highlighted row also gets an edge. This is a status marker
+   on one specific row, not a divider between rows — the "no hard dividers"
+   rule in CLAUDE.md is about separating list items, which this doesn't do. */
+/* Light mode keeps the dark blue — see the note above. */
+html[data-visual="field"][data-theme="light"] {
+  --sev-low-label: var(--sev-low-text);
+}
+
+html[data-visual="field"] .player-highlight-green {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+html[data-visual="field"] .player-highlight-amber {
+  box-shadow: inset 2px 0 0 var(--accent-amber);
+}
+
+/* The aurora is the thing being replaced. Hide it — do NOT delete the rules
+   above: __tests__/design-canary.test.ts asserts .aurora-blob-1 still appears
+   in the reduced-motion block, and the flag has to be able to bring it back. */
+html[data-visual="field"] .aurora-blob-1,
+html[data-visual="field"] .aurora-blob-2,
+html[data-visual="field"] .aurora-blob-3 {
+  display: none;
+}
+
+/* Home is the UN-ATTRIBUTED default, deliberately.
+   `data-tab` is only set post-hydration by HomeShell, so on the first paint
+   there is no attribute at all. Making Home's field the base means that frame
+   renders the correct ground instead of an un-fielded one. It also gives
+   /design/* a sane ground — its layout renders .court-bg with no data-tab
+   (HomeShell's cleanup removes the attribute on unmount). */
+html[data-visual="field"] .court-bg {
+  background: var(--field-home), var(--field-base);
+}
+
+/* Sign-Ups — field under the doubles-court etching. ::before untouched. */
+html[data-visual="field"][data-tab="players"] .court-bg {
+  background: var(--field-signups), var(--field-base);
+}
+
+/* Stats — field under the 42px dot grid. ::before untouched.
+   The grid's rgba(74,222,128,.22) was tuned against a FLAT --page-bg; on the
+   deeper forest field it reads hot, so it drops to .14 here. */
+html[data-visual="field"][data-tab="skills"] .court-bg {
+  background: var(--field-stats), var(--field-base);
+}
+html[data-visual="field"][data-tab="skills"] .court-bg::before {
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(74, 222, 128, 0.14) 1.5px, transparent 2px);
+}
+
+/* Profile and Admin had no per-tab override at all — they fell through to the
+   aurora (Profile) or to flat --page-bg (Admin). These are the two genuinely
+   new fields. */
+html[data-visual="field"][data-tab="profile"] .court-bg {
+  background: var(--field-profile), var(--field-base);
+}
+html[data-visual="field"][data-tab="admin"] .court-bg {
+  background: var(--field-admin), var(--field-base);
+}
+
+/* Scrim — keeps copy legible over the brightest corner of the gradient
+   (at 78% 4%), which is exactly where --text-muted fails AA. It was already
+   bumped .35 -> .55 once for this reason.
+
+   Stacking: ::before (motif) and ::after (scrim) are siblings with no
+   z-index, so paint order is ground -> ::before -> ::after. That is the order
+   we want, and it holds inside `contain: strict` because containment does not
+   reorder a stacking context's own descendants. */
+html[data-visual="field"] .court-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--field-scrim);
+}
+
+
 /* ── Stats-tab glass highlight ──
    On Stats, the cursor-tracked highlight uses a desaturated neutral grey at
    ~half the global alpha so the cards read as ambient-lit, not spotlit.
@@ -1127,6 +1471,424 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
   }
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   FIELD CARD MATERIAL                      [NEXT_PUBLIC_FLAG_VISUAL_FIELDS]
+
+   This SHADOWS the .glass-card rule above rather than rewriting it in place.
+   Both live in the file until the flag retires (then the old one goes and the
+   `html[data-visual="field"]` scoping comes off every rule). Keeping the old
+   rule is what makes "flip the flag off" a real rollback instead of a revert.
+
+   The class name never changes, deliberately — it is load-bearing in tests:
+   design-canary asserts the literal `.glass-card` is in this file, and
+   UnpaidSessionsCard / WhereYouSitCard use querySelector('.glass-card') as
+   their "did it render" check. So all 124 call sites are untouched.
+
+   Dark mode is where the material actually changes: the fill goes from
+   rgba(255,255,255,.03 -> .01) to (.17 -> .09), a 5-9x jump — an almost
+   invisible film becomes a frosted panel. Light mode's fill barely moves;
+   what changes there is the EDGE (border removed, inset .50 -> .90).
+
+   Note --fcard-shadow is byte-identical to --glass-shadow, a token this file
+   has defined since v1 and .glass-card has never applied.
+   ══════════════════════════════════════════════════════════════════════════ */
+html[data-visual="field"] .glass-card {
+  /* Keep the GlassPhysics mouse-tracked highlight layered over the new tint —
+     it is the app's signature interaction and costs nothing here. */
+  background:
+    radial-gradient(
+      ellipse at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
+      rgba(var(--glass-tint), 0.07) 0%,
+      transparent 65%
+    ),
+    var(--fcard-bg);
+  -webkit-backdrop-filter: var(--fcard-blur);
+  backdrop-filter: var(--fcard-blur);
+  /* Both of these are OVERRIDES, not defaults — the shadowed rule above still
+     sets `border: 1px solid var(--glass-border)` and `border-radius: 16px`.
+     Neither line is redundant; dropping either leaves the old value in place. */
+  border: none;
+  border-radius: var(--fcard-radius);
+  box-shadow: var(--fcard-inset), var(--fcard-shadow);
+}
+
+@media (hover: hover) {
+  html[data-visual="field"] .glass-card:hover {
+    box-shadow: var(--fcard-inset), var(--glass-shadow-hover);
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ADMIN cc-* ON THE FIELD MATERIAL          [NEXT_PUBLIC_FLAG_VISUAL_FIELDS]
+
+   Admin ran a parallel card system: .admin-hero / .cc-dcard / .cc-tile /
+   .cc-mini-card / .cc-session-chip, each with its own hand-tuned rgba pair for
+   dark and light. An earlier pass aligned only their RADIUS, which stopped the
+   column looking broken but left two materials side by side -- .glass-card
+   frosted and blurred, .cc-dcard a flat tint.
+
+   This puts them on one material. Every value below resolves through an
+   existing token; there is not a single new literal, which is the point --
+   a parallel system is exactly what a second set of literals grows into.
+
+   Tier follows position, per DESIGN.md #9:
+     page-level surfaces (.admin-hero, .cc-dcard)  -> Tier 1, the field card
+     inner surfaces (.cc-tile, .cc-mini-card,
+                     .cc-session-chip, tracks)     -> Tier 2, flat + border
+   Tier 2 nested inside Tier 1 keeps the concentric radius from the rule above.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Tier 1 · page-level admin cards ── */
+html[data-visual="field"] .cc-dcard {
+  background: var(--fcard-bg);
+  -webkit-backdrop-filter: var(--fcard-blur);
+  backdrop-filter: var(--fcard-blur);
+  border: none;
+  box-shadow: var(--fcard-inset), var(--fcard-shadow);
+}
+/* The two semantic dashboard states reuse the card materials rather than
+   inventing an orange and an amber: "something is closing" and "something is
+   waiting" already have fills. */
+html[data-visual="field"] .cc-dcard.alert { background: var(--fcard-full-bg); }
+html[data-visual="field"] .cc-dcard.warn  { background: var(--fcard-wait-bg); }
+
+/* Hover was a border-colour change, which cannot survive border: none. Moved to
+   the same inset-brightening the field card already uses, so admin hover and
+   app hover are one behaviour. */
+@media (hover: hover) {
+  html[data-visual="field"] .cc-dcard:hover {
+    border-color: transparent;
+    box-shadow: inset 0 1px 0 var(--glass-inset-hover), var(--glass-shadow-hover);
+  }
+}
+
+/* The hero keeps its accent rim: it is the "you are in admin" marker, not
+   decoration, and it is the one place the rim carries meaning. */
+html[data-visual="field"] .admin-hero {
+  padding: var(--fcard-pad);
+  background: var(--fcard-bg);
+  -webkit-backdrop-filter: var(--fcard-blur);
+  backdrop-filter: var(--fcard-blur);
+  border: 1px solid var(--btn-primary-border);
+  box-shadow: var(--fcard-inset), var(--fcard-shadow);
+}
+
+/* ── Status pills ──
+   The pill text colours were tuned against the old near-black / near-white
+   admin card. On a field card the fill sits on a mid-tone and four of the
+   eight combinations drop below the 4.5 bar these 11px labels need:
+     dark  muted  #9ca3af  3.32      light success #15803d  4.06
+     dark  amber  #fbbf24  4.40      light amber   #b45309  3.96
+   Two of the four replacements are existing tokens (--sev-med-text is exactly
+   this amber, --amber is already the light value chosen above); the other two
+   are one rung further along the same ramp. */
+html[data-visual="field"] .cc-pill-muted { color: #cbd5e1; }
+html[data-visual="field"] .cc-pill-amber { color: var(--sev-med-text); }
+html[data-visual="field"][data-theme="light"] .cc-pill-muted { color: var(--text-secondary); }
+html[data-visual="field"][data-theme="light"] .cc-pill-amber { color: var(--amber); }
+html[data-visual="field"][data-theme="light"] .cc-pill-success { color: #166534; }
+
+/* ── Touch targets ──
+   .cc-btn is padding-sized (0.5rem/0.875rem at 13px) and lands at 28-38px
+   depending on its content -- measured on the live admin console. WCAG 2.5.8
+   only asks 24px so this is not an AA failure, but the app's own rule is 44px
+   minimum "everywhere" (DESIGN.md, and the Stats handoff repeats it), and
+   admin is used one-handed on a phone like every other tab.
+
+   min-height rather than more padding: padding would also widen the dense
+   toolbars these sit in, min-height only grows the axis that is short. */
+html[data-visual="field"] .cc-btn,
+html[data-visual="field"] .cc-session-chip {
+  min-height: 44px;
+}
+
+/* ── Tier 2 · inner admin surfaces ──
+   rgba(var(--glass-tint), N) is theme-aware by construction: the tint token is
+   255,255,255 in dark and 0,0,0 in light. That is why none of these need a
+   [data-theme="light"] partner, and why the old pairs could drift. */
+html[data-visual="field"] .cc-tile,
+html[data-visual="field"] .cc-mini-card,
+html[data-visual="field"] .cc-session-chip {
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+@media (hover: hover) {
+  html[data-visual="field"] .cc-tile:hover,
+  html[data-visual="field"] .cc-session-chip:hover {
+    background: var(--glass-soft-bg);
+    border-color: var(--glass-border);
+  }
+  /* -static is a read-only stat display and must not offer a hover affordance. */
+  html[data-visual="field"] .cc-tile-static:hover {
+    background: var(--inner-card-bg);
+    border-color: var(--inner-card-border);
+  }
+}
+html[data-visual="field"] .cc-progress-track {
+  background: var(--inner-card-bg);
+}
+
+/* Reduced transparency: same contract as .glass-card -- no blur, flat fill, and
+   the rim comes back because the inset alone is not an edge without frost. */
+@media (prefers-reduced-transparency: reduce) {
+  html[data-visual="field"] .cc-dcard,
+  html[data-visual="field"] .admin-hero {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--fcard-locked-bg);
+    border: 1px solid var(--glass-border);
+  }
+}
+
+/* ── Admin's parallel card system: radius ──
+   The cc-* family (.admin-hero, .cc-dcard, .cc-tile, .cc-mini-card) is a
+   separate design language for dense admin tables, and migrating its MATERIAL
+   is deliberately out of scope -- see the note in Stage 7 of
+   docs/plans/visual-fields-direction.md.
+
+   Its RADIUS is a different question, and leaving it alone was wrong. Admin
+   mixes both systems in one column: a .glass-card at 30px, then two .cc-dcard
+   at 16px, then another .glass-card at 30px. Measured on the live page. That
+   does not read as two systems, it reads as one system with a mistake in it.
+
+   So page-level cc-* surfaces take the card radius and nothing else changes --
+   no background, no blur, no shadow. The in-card rule above is more specific
+   (0,3,1 vs 0,2,1) so tiles nested inside a card still get the concentric
+   value, which is the correct answer for them. */
+html[data-visual="field"] .admin-hero,
+html[data-visual="field"] .cc-dcard,
+html[data-visual="field"] .cc-tile,
+html[data-visual="field"] .cc-mini-card,
+html[data-visual="field"] .stat-card {
+  border-radius: var(--fcard-radius);
+}
+
+/* ── Sheets are field surfaces too ──        [NEXT_PUBLIC_FLAG_VISUAL_FIELDS]
+   Two things the field rules missed, both found by opening a sheet and
+   measuring it rather than trusting that inheriting the background was the
+   whole job.
+
+   1. The sheet sat at the old 16px top radius while the cards behind it were
+      at 30. The sheet is the DOMINANT surface when it is open, so being less
+      rounded than the small cards it covers reads backwards.
+
+   2. Its interior had the same split the cards did -- inputs at 12px, buttons
+      at 16px, stacked in one column. The earlier fix was scoped to
+      `.glass-card` descendants and a sheet is not a card, so it never reached
+      here. Fixing it in only one of the two containers is how this kind of
+      thing comes back.
+
+   Note the interior value is the CARD's concentric radius, not the sheet's own.
+   Sheets pad at 20px, so strictly concentric would be 30 - 20 = 10px. The 2px
+   difference is not perceptible and one shared token is worth more than two
+   near-identical ones -- if sheet padding ever moves materially, revisit. */
+html[data-visual="field"] .bottom-sheet {
+  border-top-left-radius: var(--fcard-radius);
+  border-top-right-radius: var(--fcard-radius);
+}
+html[data-visual="field"] .bottom-sheet .btn-primary,
+html[data-visual="field"] .bottom-sheet .btn-ghost,
+html[data-visual="field"] .bottom-sheet .cc-btn,
+html[data-visual="field"] .bottom-sheet input,
+html[data-visual="field"] .bottom-sheet select,
+html[data-visual="field"] .bottom-sheet textarea {
+  border-radius: var(--fcard-inner-radius);
+}
+
+/* ── Motifs follow their tab's hue ──         [NEXT_PUBLIC_FLAG_VISUAL_FIELDS]
+   The Sign-Ups court etching and the Stats dot grid were both drawn in court
+   green, which was right when every tab shared a green ground. One hue per tab
+   breaks that: green lines on the amber Sign-Ups field read as muddy olive --
+   two hues fighting rather than a motif sitting in its field.
+
+   The motif belongs to its tab, so it takes its tab's hue. Alpha is unchanged
+   (0.14 lines / 0.22 net; 0.14 dots), so this is a hue swap and not a change in
+   how present the motif is. */
+html[data-visual="field"][data-tab="players"] .court-bg::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'><g fill='none' stroke='%23fbbf24' stroke-width='0.5' opacity='0.14' vector-effect='non-scaling-stroke'><rect x='0' y='0' width='100' height='220'/><line x1='7.54' y1='0' x2='7.54' y2='220'/><line x1='92.46' y1='0' x2='92.46' y2='220'/><line x1='0' y1='77.5' x2='100' y2='77.5'/><line x1='0' y1='142.5' x2='100' y2='142.5'/><line x1='0' y1='12.5' x2='100' y2='12.5'/><line x1='0' y1='207.5' x2='100' y2='207.5'/><line x1='50' y1='0' x2='50' y2='77.5'/><line x1='50' y1='142.5' x2='50' y2='220'/></g><line x1='0' y1='110' x2='100' y2='110' stroke='%23fbbf24' stroke-width='0.9' stroke-dasharray='2 2' opacity='0.22' vector-effect='non-scaling-stroke'/></svg>");
+}
+html[data-visual="field"][data-tab="skills"] .court-bg::before {
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(96, 165, 250, 0.14) 1.5px, transparent 2px);
+}
+
+/* ── The bottom nav needs its own edge on a field ──
+   The rail is a near-opaque dark bar (--rail-bg .84 -> .98) separated from the
+   page by a single 1px rgba(255,255,255,.10) hairline. That hairline was never
+   the load-bearing part: the aurora put a GREEN blob at bottom: -8vh, so the
+   ground behind the nav was coloured and the dark bar read against it.
+
+   The field is lit at 78% 4% -- the top-right -- so hiding the blobs removed
+   the bottom light source entirely. On the resulting flat near-black ground
+   the hairline measures 1.23:1 and the nav visually disappears.
+
+   Fixed the way the boundary is actually perceived, not by tinting the bar:
+   the border goes to .34 (3.06:1, clearing the 3:1 WCAG 1.4.11 asks of a
+   non-text boundary that conveys structure) and an upward shadow lifts the
+   rail onto its own plane. Both revert with the flag. */
+html[data-visual="field"] .rail-bar,
+html[data-visual="field"] .nav-glass {
+  --rail-border: rgba(255, 255, 255, 0.34);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
+}
+[data-theme="light"] html[data-visual="field"] .rail-bar,
+html[data-visual="field"][data-theme="light"] .rail-bar,
+[data-theme="light"] html[data-visual="field"] .nav-glass,
+html[data-visual="field"][data-theme="light"] .nav-glass {
+  /* Light does not reach 3:1 the way dark does, and chasing it would be the
+     wrong call: a hairline dark enough to clear 3:1 on cream is rgba(0,0,0,.43),
+     which reads as a heavy rule rather than an edge. It is also not the same
+     failure -- in dark the nav was genuinely unfindable; in light it is merely
+     quiet, and the icons and labels carry their own text contrast. So the
+     shadow does most of the work here and the border is nudged, not forced. */
+  --rail-border: rgba(0, 0, 0, 0.24);
+  box-shadow: 0 -8px 22px rgba(0, 0, 0, 0.14);
+}
+
+/* ── Padding and concentric inner radii ──
+   Set centrally rather than swept across ~124 call sites, and it works because
+   of specificity: `html[data-visual="field"] .glass-card` is (0,2,1) and every
+   Tailwind padding utility is a bare class at (0,1,0), so this wins over p-3 /
+   p-4 / p-5 / p-6 / p-10 without touching any of them -- and stops applying the
+   moment the flag is off. Inline `style={{ padding }}` still beats it; those
+   call sites are swept separately.
+
+   Cards that are deliberately full-bleed (a list that should clip to the card
+   edge) opt out with .is-flush rather than fighting this with an inline zero. */
+html[data-visual="field"] .glass-card {
+  padding: var(--fcard-pad);
+}
+html[data-visual="field"] .glass-card.is-flush {
+  padding: 0;
+}
+
+/* Anything sitting flush inside a field card curves parallel to it. Without
+   this a 12px inner row inside a 30px card reads as two unrelated shapes --
+   the nesting looks accidental, which is the other half of "weird". */
+/* Every Tier-1 container, not just .glass-card. .admin-hero and .cc-dcard are
+   now the same material, so anything flush inside them curves parallel too --
+   AdminConsoleHero nests .cc-grid3 > .cc-tile inside .admin-hero, and without
+   this those tiles rendered at the CARD radius (30px) inside a 30px card. */
+html[data-visual="field"] .admin-hero .cc-tile,
+html[data-visual="field"] .admin-hero .stat-card,
+html[data-visual="field"] .admin-hero .cc-session-chip,
+html[data-visual="field"] .admin-hero .cc-mini-card,
+html[data-visual="field"] .admin-hero .cc-dcard,
+html[data-visual="field"] .admin-hero .inner-card,
+html[data-visual="field"] .admin-hero .glass-card-soft,
+html[data-visual="field"] .cc-dcard .cc-tile,
+html[data-visual="field"] .cc-dcard .stat-card,
+html[data-visual="field"] .cc-dcard .cc-session-chip,
+html[data-visual="field"] .cc-dcard .cc-mini-card,
+html[data-visual="field"] .glass-card .glass-card-soft,
+html[data-visual="field"] .glass-card .inner-card,
+html[data-visual="field"] .glass-card .inner-card-green,
+html[data-visual="field"] .glass-card .cc-mini-card,
+html[data-visual="field"] .glass-card .cc-tile,
+html[data-visual="field"] .glass-card .stat-card,
+html[data-visual="field"] .glass-card .cc-session-chip,
+html[data-visual="field"] .glass-card .cc-dcard,
+/* Full-width controls are flush to the padding too, so they are governed by the
+   same rule. Inputs already resolved to 12px via --radius-lg and happened to
+   agree; the button family did not. An earlier commit here snapped
+   .btn-primary / .btn-ghost / .cc-btn-lg to --radius-xl (16px) to get them off
+   a raw 14px -- correct as a ladder fix, wrong once they sit inside a 30px
+   card, because 16 is not the concentric value. The visible symptom was an
+   input at 12 stacked directly above a button at 16 in the same column, which
+   is most obvious on Profile where the column is almost entirely buttons.
+   Deliberately NOT listed: pill controls (.ink-button, .cc-pill, segment and
+   rail tabs). A pill is a shape, not an inset rectangle, so concentricity
+   does not apply to it. */
+html[data-visual="field"] .glass-card .btn-primary,
+html[data-visual="field"] .glass-card .btn-ghost,
+html[data-visual="field"] .glass-card .cc-btn,
+html[data-visual="field"] .glass-card input,
+html[data-visual="field"] .glass-card select,
+html[data-visual="field"] .glass-card textarea {
+  border-radius: var(--fcard-inner-radius);
+}
+
+/* ── Semantic card materials ──
+   Two composition rules from the design, neither of which is lintable, both
+   of which are review's job:
+     · at most ONE .is-pick per screen — two solid greens and neither reads
+       as the answer;
+     · semantic fills stay rare — amber/orange/red mean something is waiting,
+       closing or wrong. Three at once and the screen has stopped talking. */
+/* Worked example of the one-pick rule, because it is easy to get wrong:
+   the Gear rail (components/stats/GearPickCard.tsx) renders ONE card per
+   category -- racket, shoes, strings, shuttles. Marking "is this a
+   recommendation?" with .is-pick looks right per card and is wrong per
+   screen: a member who owns none of the four would get four solid cards and
+   no answer. The rail is a set of peers; .is-pick is for the single card that
+   IS the answer. */
+html[data-visual="field"] .glass-card.is-pick {
+  background: var(--fcard-pick-bg);
+  box-shadow: var(--fcard-pick-inset), var(--fcard-shadow);
+}
+html[data-visual="field"] .glass-card.is-good  { background: var(--fcard-good-bg); }
+html[data-visual="field"] .glass-card.is-wait  { background: var(--fcard-wait-bg); }
+html[data-visual="field"] .glass-card.is-full  { background: var(--fcard-full-bg); }
+html[data-visual="field"] .glass-card.is-error { background: var(--fcard-error-bg); }
+
+/* Locked is the one material that isn't glass. Dropping the backdrop filter
+   is what makes private data read as INERT rather than merely dim — a blurred
+   card still looks like it has something behind it. */
+html[data-visual="field"] .glass-card.is-locked {
+  background: var(--fcard-locked-bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+/* Inert means inert on hover too. `box-shadow` is already handled -- the rule
+   above has the same specificity as the scoped :hover and comes later, so it
+   wins. `transform` does NOT: the 2px lift comes from the UNSCOPED
+   `.glass-card:hover` further up the file, which .is-locked never overrides.
+   Without this, a card the member has deliberately kept private animates when
+   you point at it, which is precisely the affordance the material exists to
+   withhold. */
+@media (hover: hover) {
+  html[data-visual="field"] .glass-card.is-locked:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}
+
+/* On-card ink helpers, so call sites don't hand-type the alphas. */
+html[data-visual="field"] .fcard-label    { color: var(--fcard-label); }
+html[data-visual="field"] .fcard-footnote { color: var(--fcard-footnote); }
+
+/* The ink button — #131313 in BOTH modes. That constant is what makes the
+   direction recognisable, so it deliberately has no light override. */
+html[data-visual="field"] .ink-button {
+  background: var(--ink-button);
+  color: var(--ink-button-fg);
+  border: none;
+  border-radius: var(--radius-pill);
+}
+
+/* ── Reduced transparency ──
+   AUDIT FINDING: the existing (prefers-reduced-transparency: reduce) block
+   only stops the aurora blobs ANIMATING — it has never flattened .glass-card
+   at all. That was survivable at a 3% fill; at 17% plus 16px of blur it is
+   not. Give the material a real fallback: drop the blur, keep an opaque-ish
+   tint so the card still reads as a surface, and restore a hairline border
+   since the inset alone stops being enough edge without the frost. */
+@media (prefers-reduced-transparency: reduce) {
+  html[data-visual="field"] .glass-card {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--fcard-locked-bg);
+    border: 1px solid var(--glass-border);
+  }
+  html[data-visual="field"] .court-bg::after { display: none; }
+}
+
+
 /* ── AI insight gradient rim ──
    Persistent conic-gradient border marking the Stats "Your read" as an AI
    surface (replaces the old green side-stripe). A masked ::before paints only
@@ -1136,11 +1898,61 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
    generated (the `.is-generating` class). The spin freezes in place the
    instant the text lands — no eased tail. The angle lever is a registered
    custom property because plain custom props don't interpolate. */
+/* The AI provenance rim, defined ONCE and worn by both the insight card and
+   its badge. It was inlined in .insight-rim::before; a second copy in the badge
+   would be two gradients to keep in sync, which is how a badge ends up a
+   slightly different rainbow from the card it sits on. */
+:root {
+  --ai-rim: conic-gradient(
+    from var(--conic-a),
+    var(--accent, #22c55e),
+    #0ea5e9,
+    #8b5cf6,
+    #f59e0b,
+    var(--accent, #22c55e)
+  );
+}
+
 @property --conic-a {
   syntax: '<angle>';
   inherits: false;
   initial-value: 0deg;
 }
+/* AI badge — the card's rim at pill scale, so the marker and the surface it
+   marks are visibly one idea. Thinner ring (1.25px vs the card's 1.75px):
+   the same thickness reads as a hairline at card size and as a stripe at
+   badge size. */
+.badge-ai {
+  position: relative;
+  border: none !important;
+}
+.badge-ai::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.25px;
+  background: var(--ai-rim);
+  /* ORDER MATTERS. `mask`/`-webkit-mask` are SHORTHANDS, so they reset
+     mask-composite to its initial value (`add`). Setting the composite first
+     and the shorthand second silently undoes the cut-out and the ring renders
+     as a filled pill -- which is exactly what happened here. Composite last. */
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* StatCard's surface radius. Was inline on the component, which meant no
+   selector could reach it; moved here so position can decide (page-level vs
+   nested). This is the value it always had with the flag off. */
+.stat-card { border-radius: var(--radius-xl); }
+
 .insight-rim {
   position: relative;
   border-color: transparent; /* the conic ring is the only edge treatment */
@@ -1151,14 +1963,7 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
   inset: 0;
   border-radius: inherit;
   padding: 1.75px; /* ring thickness */
-  background: conic-gradient(
-    from var(--conic-a),
-    var(--accent, #22c55e),
-    #0ea5e9,
-    #8b5cf6,
-    #f59e0b,
-    var(--accent, #22c55e)
-  );
+  background: var(--ai-rim);
   /* Cut out the centre so only the edge ring shows. */
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
@@ -1186,7 +1991,7 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   backdrop-filter: blur(20px) saturate(150%);
   border: 1px solid var(--btn-primary-border);
-  border-radius: 14px;
+  border-radius: var(--radius-xl);
   box-shadow: var(--btn-primary-shadow);
   color: var(--btn-primary-text);
   padding: 12px 20px;
@@ -1225,7 +2030,7 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   backdrop-filter: blur(20px) saturate(150%);
   border: 1px solid var(--btn-ghost-border);
-  border-radius: 14px;
+  border-radius: var(--radius-xl);
   box-shadow:
     inset 0 1px 0 var(--glass-inset),
     0 2px 8px rgba(0, 0, 0, 0.15);
@@ -1499,7 +2304,12 @@ textarea {
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border: 1px solid var(--input-border);
-  border-radius: 14px;
+  /* Was a raw 14px, which is not a ladder rung (it jumps 12 -> 16). Inputs sit
+     inside cards, so they take the inner-row rung, same as .cc-tile. Note the
+     --radius-sm comment still says "inner-card, inputs" from an older spec;
+     the live value has been 14 for a long time, so this moves 14 -> 12 rather
+     than 14 -> 8, which would be a visible change to every form in the app. */
+  border-radius: var(--radius-lg);
   color: var(--input-text);
   padding: 11px 14px;
   width: 100%;
@@ -1812,6 +2622,18 @@ textarea {
   color: var(--text-muted);
 }
 
+/* An icon inside a section label is PART of the label, so it takes the label's
+   weight and colour rather than the base icon defaults. Material Symbols weight
+   is a variable axis and `.material-icons` sets 'wght' 400 — beside 700-weight
+   uppercase that reads visibly thinner, and at --icon-xs it also reads small
+   against the cap height. 600 at --icon-sm matches the label optically without
+   going chunky, which a literal 700 does at this size. */
+.section-label .material-icons,
+.section-label-muted .material-icons {
+  font-size: var(--icon-sm);
+  font-variation-settings: 'opsz' 24, 'wght' 600, 'FILL' 0, 'GRAD' 0;
+}
+
 /* ── Sticky level picker ── */
 .level-picker-sticky {
   position: sticky;
@@ -1835,7 +2657,10 @@ textarea {
 .segment-tab-active {
   background: var(--segment-active-bg);
   color: var(--segment-active-text);
-  border-radius: 20px;
+  /* Was a raw 20px. The tab is 28px tall (32px track less 2px padding each
+     side), so a 20px radius already clamps to a full pill at 14px -- this is
+     a zero-visual-change swap onto the ladder, not a restyle. */
+  border-radius: var(--radius-pill);
   font-weight: 590;
 }
 
@@ -2148,6 +2973,36 @@ html[data-hydrated="true"] .splash {
   background: var(--page-bg);
   border-top: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
 }
+
+/* ── Sheets inherit their tab's field ──     [NEXT_PUBLIC_FLAG_VISUAL_FIELDS]
+   Design rule 1: one field per TAB, never per screen -- sub-screens and
+   sheets inherit it. Without this a sheet opens as a flat slab of --page-bg
+   over a coloured page and reads as a different app.
+
+   This works because <BottomSheet> portals to document.body, which is still
+   inside <html>, so the sheet can see data-tab even though it is not inside
+   the tab's subtree.
+
+   Still fully opaque: --field-base resolves to --page-bg, so the field rides
+   on solid ground and scrolled page content cannot bleed through. That was
+   the whole point of the rule above, and a translucent sheet would also mean
+   a tall backdrop-filter on every sheet -- a real cost on the iPhone 15 /
+   Pixel 8 floor this app targets. */
+html[data-visual="field"] .bottom-sheet {
+  background: var(--field-home), var(--field-base);
+}
+html[data-visual="field"][data-tab="players"] .bottom-sheet {
+  background: var(--field-signups), var(--field-base);
+}
+html[data-visual="field"][data-tab="skills"] .bottom-sheet {
+  background: var(--field-stats), var(--field-base);
+}
+html[data-visual="field"][data-tab="profile"] .bottom-sheet {
+  background: var(--field-profile), var(--field-base);
+}
+html[data-visual="field"][data-tab="admin"] .bottom-sheet {
+  background: var(--field-admin), var(--field-base);
+}
 .bottom-sheet-backdrop[data-state="closing"] {
   opacity: 0;
 }
@@ -2282,7 +3137,7 @@ html[data-hydrated="true"] .splash {
 .cc-btn-lg {
   padding: 14px 16px;
   font-size: 15px;
-  border-radius: 14px;
+  border-radius: var(--radius-xl);
   font-weight: 700;
   letter-spacing: -0.005em;
   width: 100%;
@@ -2419,7 +3274,39 @@ html[data-hydrated="true"] .splash {
   --ink-faint: rgba(255, 255, 255, 0.42);
 }
 [data-theme="light"] {
+  /* PRE-EXISTING BUG, not introduced by the fields: these three had NO light
+     values, so an admin running light mode got #fbbf24 / #fb923c / #f87171 --
+     dark-mode brights -- on a near-white card. Measured on the light admin
+     card: 1.45:1, 1.95:1 and worse. They carry small text (an 11px
+     role="alert" in BirdsPage, 14px amounts in PaymentsCard), so the bar is
+     4.5:1, and they were nowhere near it in any theme-light admin screen.
+     Values chosen to clear 4.5 on the plain card AND on its own tinted
+     variant, since .cc-dcard.alert / .warn colour the number with the same
+     hue as the fill it sits on. */
+  --amber: #92400e;
+  --orange: #9a3412;
+  --red-soft: #b91c1c;
   --ink-faint: rgba(0, 0, 0, 0.42);
+}
+
+/* On a field the dark values need lifting too -- but ONLY on a field. Off the
+   flag these sit on a near-black card where #fb923c and #f87171 pass easily;
+   on the admin field card (#563d28) they measure 4.44 and 3.63 against a 4.5
+   bar. Reusing the severity ramp rather than inventing two lighter oranges:
+   --sev-high-text and --sev-crit-text already exist for exactly this role. */
+html[data-visual="field"] {
+  --orange: var(--sev-high-text);
+  --red-soft: var(--sev-crit-text);
+  /* --amber is left alone: it measures 6.02 on the same card. */
+
+  /* --ink-faint at .42 is below AA on any field surface (3.04 dark / 2.96
+     light on a .cc-tile). It labels deltas and eyebrows -- small text, 4.5
+     bar. .65 is the worst case across all five dark fields (Home is tightest
+     at .65, Sign-Ups .64) and still reads as the quietest ink in the system. */
+  --ink-faint: rgba(255, 255, 255, 0.65);
+}
+html[data-visual="field"][data-theme="light"] {
+  --ink-faint: rgba(0, 0, 0, 0.65);
 }
 
 /* Profile-screen Admin Console hero */
@@ -2483,7 +3370,7 @@ html[data-hydrated="true"] .splash {
 
 .cc-tile {
   padding: 14px;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
@@ -2517,7 +3404,10 @@ html[data-hydrated="true"] .splash {
 }
 .cc-tile.warn .num { color: var(--amber); }
 .cc-tile.bad .num { color: var(--orange); }
-.cc-tile.info .num { color: #60a5fa; }
+/* Was a raw #60a5fa, which has no light value and measures 2.12:1 on a light
+   tile against a 3:1 bar (.num is 28px/700, large text). --sev-low-text is the
+   system token for exactly this role and is theme-aware: 4.54 dark, 7.27 light. */
+.cc-tile.info .num { color: var(--sev-low-text); }
 
 /* Stat-only variant — no hover, no pointer; the tile shows a number,
    not a target. Use when the cell is a glanceable stat rather than a
