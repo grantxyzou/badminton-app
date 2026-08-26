@@ -537,7 +537,12 @@ body {
   --field-admin:     radial-gradient(120% 70% at 78% 4%, rgba(251, 146, 60, 0.40), transparent 70%);
   /* Top/bottom scrim so copy keeps contrast over the brightest corner of
      the gradient (at 78% 4% — exactly where --text-muted will fail AA). */
-  --field-scrim:     linear-gradient(180deg, rgba(0, 0, 0, 0.40) 0%, rgba(0, 0, 0, 0.12) 38%, rgba(0, 0, 0, 0.62) 100%);
+  /* Top-weighted, because the field is lit at 78% 4% -- the TOP-right. The
+     design's own scrim ended at rgba(0,0,0,.62), which is the right shape for
+     a PHOTOGRAPHIC ground with content at both ends; against a top-lit
+     gradient the bottom stop fights nothing and crushes the page to #060606,
+     which is what made the bottom nav disappear into it. */
+  --field-scrim:     linear-gradient(180deg, rgba(0, 0, 0, 0.40) 0%, rgba(0, 0, 0, 0.10) 42%, rgba(0, 0, 0, 0.12) 100%);
 
 
   /* ── Card materials ──
@@ -1466,6 +1471,33 @@ html[data-visual="field"] .glass-card {
   html[data-visual="field"] .glass-card:hover {
     box-shadow: var(--fcard-inset), var(--glass-shadow-hover);
   }
+}
+
+/* ── The bottom nav needs its own edge on a field ──
+   The rail is a near-opaque dark bar (--rail-bg .84 -> .98) separated from the
+   page by a single 1px rgba(255,255,255,.10) hairline. That hairline was never
+   the load-bearing part: the aurora put a GREEN blob at bottom: -8vh, so the
+   ground behind the nav was coloured and the dark bar read against it.
+
+   The field is lit at 78% 4% -- the top-right -- so hiding the blobs removed
+   the bottom light source entirely. On the resulting flat near-black ground
+   the hairline measures 1.23:1 and the nav visually disappears.
+
+   Fixed the way the boundary is actually perceived, not by tinting the bar:
+   the border goes to .34 (3.06:1, clearing the 3:1 WCAG 1.4.11 asks of a
+   non-text boundary that conveys structure) and an upward shadow lifts the
+   rail onto its own plane. Both revert with the flag. */
+html[data-visual="field"] .rail-bar,
+html[data-visual="field"] .nav-glass {
+  --rail-border: rgba(255, 255, 255, 0.34);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
+}
+[data-theme="light"] html[data-visual="field"] .rail-bar,
+html[data-visual="field"][data-theme="light"] .rail-bar,
+[data-theme="light"] html[data-visual="field"] .nav-glass,
+html[data-visual="field"][data-theme="light"] .nav-glass {
+  --rail-border: rgba(0, 0, 0, 0.18);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.10);
 }
 
 /* ── Padding and concentric inner radii ──
