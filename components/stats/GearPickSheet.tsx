@@ -90,10 +90,16 @@ function specLine(item: CatalogItem): string {
  */
 export default function GearPickSheet({ open, onClose, category, pick, owned, gear }: GearPickSheetProps) {
   const t = useTranslations('stats.gear');
+  // The two lapsed-session lines live with the other bag-write failures in
+  // `valueHub`, alongside bagFull/bagDuplicate, rather than being duplicated.
+  const tGearErr = useTranslations('valueHub');
   const tRecovery = useTranslations('recovery');
   const tStats = useTranslations('stats');
   const [addError, setAddError] = useState<string | null>(null);
-  const [prefError, setPrefError] = useState(false);
+  // Holds the MESSAGE, not a boolean. As a boolean it could only ever render
+  // the generic add-failure line, so a refused preference write said
+  // "couldn't add that" no matter what the server actually answered.
+  const [prefError, setPrefError] = useState<string | null>(null);
 
   // The rail keeps this sheet MOUNTED for the whole register's life (it is the
   // one sheet for every card), so a refusal from one visit would still be on
@@ -102,7 +108,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   // through here.
   function close() {
     setAddError(null);
-    setPrefError(false);
+    setPrefError(null);
     onClose();
   }
 
@@ -136,9 +142,12 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   const budgetMaxCad = prefsKnown ? (gear.gear?.budgetMaxCad ?? null) : undefined;
 
   async function setPref(prefs: { playFormat?: 'singles' | 'doubles' | 'both'; budgetMaxCad?: number | null }) {
-    setPrefError(false);
+    setPrefError(null);
     const res = await gear.setPrefs(prefs);
-    if (!res.ok) setPrefError(true);
+    if (res.ok) return;
+    if (res.reason === 'unauthorized') setPrefError(tGearErr('bagSignInAgain'));
+    else if (res.reason === 'member_not_found') setPrefError(tGearErr('bagMemberMissing'));
+    else setPrefError(t('pickSheetAddError'));
   }
 
   async function add() {
@@ -154,6 +163,11 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
     // bag that fills some other way says so instead of reading as a crash.
     if (res.reason === 'bag_full') setAddError(t('pickSheetBagFull'));
     else if (res.reason === 'duplicate_racket') setAddError(t('pickSheetDuplicate'));
+    // Same two reasons the catalog sheet now names. This surface shares the
+    // register's one `useGear`, so it fails the same way and must say so the
+    // same way.
+    else if (res.reason === 'unauthorized') setAddError(tGearErr('bagSignInAgain'));
+    else if (res.reason === 'member_not_found') setAddError(tGearErr('bagMemberMissing'));
     else setAddError(t('pickSheetAddError'));
   }
 
@@ -240,7 +254,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
       </section>
 
       {gear.loadError && <ErrorState message={t('kitError')} />}
-      {prefError && <ErrorState message={t('pickSheetAddError')} />}
+      {prefError && <ErrorState message={prefError} />}
     </>
   ) : null;
 

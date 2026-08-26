@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
+import { useState } from 'react';
 import { render, screen, cleanup, fireEvent, waitFor, act } from '@testing-library/react';
 import { useGear } from '../../components/stats/useGear';
 import type { CatalogItem, PlayerGear } from '../../lib/types';
@@ -255,5 +256,114 @@ describe('useGear — add() with a tension follow-up', () => {
     await waitFor(() => expect(screen.getByTestId('bag').textContent).toBe('Yonex Astrox 100ZZ'));
 
     expect(calls.filter((m) => m === 'PUT')).toHaveLength(0);
+  });
+});
+
+/**
+ * A refused write must say WHICH refusal it was.
+ *
+ * Every non-409 failure used to collapse into `reason: 'error'`, which both
+ * sheets render as "Couldn't load that — refresh to try again". For a lapsed
+ * `member_session` that instruction is not vague, it is wrong: the cookie has
+ * a 30-day TTL, `badminton_identity` in localStorage has none, so the app goes
+ * on resolving an active name — Stats renders, the kit card renders, the sheet
+ * opens — while every write is refused, and refreshing can never mint a
+ * cookie. The member re-taps a dead button indefinitely.
+ */
+describe('useGear — a refusal names itself', () => {
+  afterEach(cleanup);
+
+  function ReasonProbe({ item }: { item: CatalogItem }) {
+    const gear = useGear('Lin');
+    const [reason, setReason] = useState('none');
+    return (
+      <div>
+        <span data-testid="reason">{reason}</span>
+        <button onClick={async () => setReason(JSON.stringify(await gear.add(item)))}>add</button>
+      </div>
+    );
+  }
+
+  const CASES: [number, string | null, string][] = [
+    [401, null, 'unauthorized'],
+    [403, null, 'unauthorized'],
+    [404, 'member_not_found', 'member_not_found'],
+    [409, 'bag_full', 'bag_full'],
+    [409, 'duplicate_racket', 'duplicate_racket'],
+    // An unrecognised code must NOT be promoted to a specific reason the
+    // server never gave — the narrowness rule the union was written under.
+    [409, 'save_conflict', 'error'],
+    [500, 'save_failed', 'error'],
+    // Reachable by anyone: the bag limiter runs BEFORE auth, so twenty taps in
+    // an hour replaces whatever the original fault was with this one — the
+    // failure mode of someone trying to reproduce a bug.
+    [429, 'rate_limited', 'rate_limited'],
+  ];
+
+  for (const [status, body, expected] of CASES) {
+    it(`maps ${status}${body ? ` ${body}` : ''} to ${expected}`, async () => {
+      vi.stubGlobal('fetch', vi.fn(async (_u: string, init?: RequestInit) => {
+        const method = init?.method ?? 'GET';
+        if (method === 'GET') return { ok: true, status: 200, json: async () => ({ gear: null }) } as Response;
+        return { ok: false, status, json: async () => ({ error: body }) } as Response;
+      }) as unknown as typeof fetch);
+
+      render(<ReasonProbe item={ASTROX} />);
+      fireEvent.click(screen.getByText('add'));
+      await waitFor(() =>
+        expect(screen.getByTestId('reason').textContent).toBe(JSON.stringify({ ok: false, reason: expected })),
+      );
+    });
+  }
+});
+
+/**
+ * Adding a string is TWO writes, and the second one failing is not the same
+ * event as the first one failing.
+ *
+ * `add` returned the tension PUT's own failure, so the sheet reported
+ * "couldn't save that" — while the POST had already succeeded and the string
+ * was in the bag. Worse, the item then appears in `ownedCatalogIds` and is
+ * filtered out of the catalog list, so there is no row left to tap to retry.
+ * The member is told nothing saved, sees the string listed anyway, and has no
+ * route forward.
+ */
+describe('useGear — a failed tension follow-up is not a failed add', () => {
+  afterEach(cleanup);
+
+  function StringProbe() {
+    const gear = useGear('Lin');
+    const [reason, setReason] = useState('none');
+    return (
+      <div>
+        <span data-testid="reason">{reason}</span>
+        <span data-testid="bag">{(gear.gear?.items ?? []).map((i) => i.label).join(',')}</span>
+        <button onClick={async () => setReason(JSON.stringify(await gear.add(BG65, { tensionLbs: 24 })))}>add</button>
+      </div>
+    );
+  }
+
+  it('reports tension_not_saved, and the string stays in the bag', async () => {
+    const added = { id: 's1', catalogId: BG65.id, category: 'string' as const, label: 'Yonex BG65' };
+    vi.stubGlobal('fetch', vi.fn(async (_u: string, init?: RequestInit) => {
+      const method = init?.method ?? 'GET';
+      if (method === 'GET') return { ok: true, status: 200, json: async () => ({ gear: null }) } as Response;
+      if (method === 'POST') {
+        return { ok: true, status: 200, json: async () => ({ gear: gearDoc([added]) }) } as Response;
+      }
+      // The tension write fails.
+      return { ok: false, status: 500, json: async () => ({ error: 'save_failed' }) } as Response;
+    }) as unknown as typeof fetch);
+
+    render(<StringProbe />);
+    fireEvent.click(screen.getByText('add'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('reason').textContent)
+        .toBe(JSON.stringify({ ok: false, reason: 'tension_not_saved' })),
+    );
+    // The POST's document was applied, so the bag must still show the string —
+    // the failure is about the tension, not the item.
+    expect(screen.getByTestId('bag').textContent).toBe('Yonex BG65');
   });
 });

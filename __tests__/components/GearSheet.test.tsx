@@ -544,3 +544,56 @@ describe('GearSheet — the tension follow-up failure path (real useGear)', () =
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 });
+
+/**
+ * The bag rows must report their own refusals.
+ *
+ * `YourKitCard` wired these as `{ void activate(id) }` / `{ void remove(id) }`,
+ * discarding the `GearResult`. So a refused activate or remove — a lapsed
+ * `member_session` being the realistic cause, since that cookie expires at 30
+ * days while `badminton_identity` never does — rendered NOTHING: no pill, no
+ * change, no explanation. Tapping "Use this one" or the ✕ was indistinguishable
+ * from a dead button, and it stayed that way across a reload. These two
+ * controls live inside the sheet the member is looking at, which makes it the
+ * worst possible place to swallow an error.
+ */
+describe('GearSheet — a refused bag operation says so', () => {
+  const OWNED = [
+    { id: 'own-1', catalogId: 'racket-yonex-astrox-88d-pro', category: 'racket' as const, label: 'Yonex Astrox 88D Pro' },
+    { id: 'own-2', catalogId: 'racket-yonex-nanoflare-800', category: 'racket' as const, label: 'Yonex Nanoflare 800' },
+  ];
+
+  it('shows the sign-in-again message when activate is refused', async () => {
+    const onActivate = vi.fn(async () => ({ ok: false as const, reason: 'unauthorized' as const }));
+    renderSheet({ ownedItems: OWNED, activeItemId: 'own-1', onActivate });
+
+    // 'own-1' is active and renders a badge, so the button belongs to 'own-2'.
+    fireEvent.click(screen.getByLabelText(/Use this one — Yonex Nanoflare 800/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toBe(enMessages.valueHub.bagSignInAgain);
+    });
+    expect(onActivate).toHaveBeenCalledWith('own-2');
+  });
+
+  it('shows a message when remove is refused, rather than nothing at all', async () => {
+    const onRemove = vi.fn(async () => ({ ok: false as const, reason: 'member_not_found' as const }));
+    renderSheet({ ownedItems: OWNED, activeItemId: 'own-1', onRemove });
+
+    fireEvent.click(screen.getByLabelText(/Remove — Yonex Astrox 88D Pro/i));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert').textContent).toBe(enMessages.valueHub.bagMemberMissing);
+    });
+  });
+
+  it('stays silent when the operation succeeds', async () => {
+    const onRemove = vi.fn(async () => ({ ok: true as const }));
+    renderSheet({ ownedItems: OWNED, activeItemId: 'own-1', onRemove });
+
+    fireEvent.click(screen.getByLabelText(/Remove — Yonex Astrox 88D Pro/i));
+
+    await waitFor(() => expect(onRemove).toHaveBeenCalled());
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
