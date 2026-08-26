@@ -1497,6 +1497,23 @@ html[data-visual="field"] .glass-card {
   }
 }
 
+/* ── Motifs follow their tab's hue ──         [NEXT_PUBLIC_FLAG_VISUAL_FIELDS]
+   The Sign-Ups court etching and the Stats dot grid were both drawn in court
+   green, which was right when every tab shared a green ground. One hue per tab
+   breaks that: green lines on the amber Sign-Ups field read as muddy olive --
+   two hues fighting rather than a motif sitting in its field.
+
+   The motif belongs to its tab, so it takes its tab's hue. Alpha is unchanged
+   (0.14 lines / 0.22 net; 0.14 dots), so this is a hue swap and not a change in
+   how present the motif is. */
+html[data-visual="field"][data-tab="players"] .court-bg::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'><g fill='none' stroke='%23fbbf24' stroke-width='0.5' opacity='0.14' vector-effect='non-scaling-stroke'><rect x='0' y='0' width='100' height='220'/><line x1='7.54' y1='0' x2='7.54' y2='220'/><line x1='92.46' y1='0' x2='92.46' y2='220'/><line x1='0' y1='77.5' x2='100' y2='77.5'/><line x1='0' y1='142.5' x2='100' y2='142.5'/><line x1='0' y1='12.5' x2='100' y2='12.5'/><line x1='0' y1='207.5' x2='100' y2='207.5'/><line x1='50' y1='0' x2='50' y2='77.5'/><line x1='50' y1='142.5' x2='50' y2='220'/></g><line x1='0' y1='110' x2='100' y2='110' stroke='%23fbbf24' stroke-width='0.9' stroke-dasharray='2 2' opacity='0.22' vector-effect='non-scaling-stroke'/></svg>");
+}
+html[data-visual="field"][data-tab="skills"] .court-bg::before {
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(96, 165, 250, 0.14) 1.5px, transparent 2px);
+}
+
 /* ── The bottom nav needs its own edge on a field ──
    The rail is a near-opaque dark bar (--rail-bg .84 -> .98) separated from the
    page by a single 1px rgba(255,255,255,.10) hairline. That hairline was never
