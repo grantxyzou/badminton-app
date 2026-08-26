@@ -332,6 +332,7 @@
       "ownedTitle": "Already in your kit",
       "ownedActive": "Using today",
       "ownedSetActive": "Use this one",
+      "ownedSetTension": "Set tension",
       "ownedRemove": "Remove",
       "tensionCaptureLabel": "Tension you strung at"
     },

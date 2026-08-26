@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import GearSheet from '../../components/stats/GearSheet';
 import { useGear } from '../../components/stats/useGear';
 import enMessages from '../../messages/en.json';
+import type { GearItem } from '../../lib/types';
 
 /**
  * GearSheet is the one place a category's items live: what you already own
@@ -637,5 +638,73 @@ describe('GearSheet — a refused bag operation says so', () => {
 
     await waitFor(() => expect(onRemove).toHaveBeenCalled());
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+/**
+ * The tension field has to be able to describe a string you already own.
+ *
+ * It could only ever describe a string you did NOT own: owned catalogIds are
+ * filtered out of the list below, and the bag rows were read-only. So a
+ * member whose goal was "record the tension on my current strings" had no
+ * route to it at all — the field worked once, at add time, and never again.
+ */
+describe('GearSheet — setting tension on a string already in the bag', () => {
+  const OWNED_STRING = {
+    id: 's1', catalogId: 'string-yonex-bg65', category: 'string' as const, label: 'Yonex BG65',
+  };
+
+  it('offers the control only once a usable number is in the field', async () => {
+    mockCatalogAndLevel(STRING_CATALOG, 3);
+    // Params declared so `mock.calls[0][n]` is indexable — a bare
+    // `vi.fn(async () => ...)` types its calls as `[]` and tsc rejects the
+    // assertions below even though vitest runs them happily.
+    const onSetTension = vi.fn(
+      async (_item: GearItem, _tensionLbs: number) => ({ ok: true as const }),
+    );
+    renderSheet({
+      category: 'string', activeName: 'Lin', format: 'doubles',
+      ownedItems: [OWNED_STRING], ownedCatalogIds: [OWNED_STRING.catalogId], onSetTension,
+    });
+
+    const button = await screen.findByLabelText('Set tension — Yonex BG65') as HTMLButtonElement;
+    // The advice is a placeholder, so the field starts genuinely empty and
+    // there is nothing to apply yet.
+    expect(button.disabled).toBe(true);
+
+    const input = screen.getByLabelText('Tension you strung at') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '27' } });
+    await waitFor(() => expect(button.disabled).toBe(false));
+
+    fireEvent.click(button);
+    await waitFor(() => expect(onSetTension).toHaveBeenCalled());
+    expect(onSetTension.mock.calls[0][0]).toMatchObject({ id: 's1' });
+    expect(onSetTension.mock.calls[0][1]).toBe(27);
+  });
+
+  it('reports a refusal through the sheet error slot like every other write', async () => {
+    mockCatalogAndLevel(STRING_CATALOG, 3);
+    const onSetTension = vi.fn(async () => ({ ok: false as const, reason: 'unauthorized' as const }));
+    renderSheet({
+      category: 'string', activeName: 'Lin', format: 'doubles',
+      ownedItems: [OWNED_STRING], ownedCatalogIds: [OWNED_STRING.catalogId], onSetTension,
+    });
+
+    const input = await screen.findByLabelText('Tension you strung at') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '27' } });
+    fireEvent.click(await screen.findByLabelText('Set tension — Yonex BG65'));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toBe(enMessages.valueHub.bagSignInAgain));
+  });
+
+  it('offers no tension control on racket rows', async () => {
+    mockCatalog();
+    renderSheet({
+      ownedItems: [{ id: 'r1', catalogId: 'c1', category: 'racket', label: 'Astrox 88D Pro' }],
+      onSetTension: vi.fn(async () => ({ ok: true as const })),
+    });
+    await screen.findByText('Nanoflare 800');
+    expect(screen.queryByLabelText(/^Set tension/)).toBeNull();
   });
 });

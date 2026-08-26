@@ -60,6 +60,8 @@ export interface UseGear {
   activate: (itemId: string) => Promise<GearResult>;
   remove: (itemId: string) => Promise<GearResult>;
   setPrefs: (prefs: { playFormat?: 'singles' | 'doubles' | 'both'; budgetMaxCad?: number | null }) => Promise<GearResult>;
+  /** Record the tension of a string ALREADY in the bag. See the impl. */
+  setTension: (item: GearItem, tensionLbs: number) => Promise<GearResult>;
 }
 
 /**
@@ -306,6 +308,39 @@ export function useGear(name: string | null): UseGear {
     { method: 'DELETE' },
   )), [mutate, name]);
 
+  /**
+   * Set the tension on a string the member already owns.
+   *
+   * There was no way to do this at all. `BagList` renders owned strings
+   * read-only, and `GearSheet` filters everything you own out of the catalog,
+   * so your current string was not tappable anywhere — the only way to record
+   * a tension was to add a string you did NOT already have. Which means the
+   * feature worked exactly once per string and never again, and a member
+   * whose goal was "record the tension of the strings on my racket" could not
+   * do it. That is the whole point of the field.
+   *
+   * PUT rather than POST because PUT is the idempotent "set this item" verb:
+   * it matches on catalogId and updates in place instead of appending a
+   * duplicate (route.ts) — which is exactly the operation missing here. Safe
+   * for strings specifically: PUT's pointer rule only fires for
+   * `category === 'racket'`, so a string write leaves `activeRacketId` alone.
+   */
+  const setTension = useCallback((item: GearItem, tensionLbs: number) => mutate(
+    () => fetch(`${BASE}/api/equipment/gear`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        item: {
+          catalogId: item.catalogId,
+          category: item.category ?? 'string',
+          label: item.label,
+          tensionLbs,
+        },
+      }),
+    }),
+  ), [mutate, name]);
+
   const setPrefs = useCallback((prefs: { playFormat?: 'singles' | 'doubles' | 'both'; budgetMaxCad?: number | null }) =>
     mutate(() => fetch(`${BASE}/api/equipment/gear`, {
       method: 'PATCH',
@@ -326,6 +361,7 @@ export function useGear(name: string | null): UseGear {
     activate,
     remove,
     setPrefs,
+    setTension,
   };
 }
 
