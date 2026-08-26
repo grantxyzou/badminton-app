@@ -396,7 +396,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         {/* Location tile */}
         <div className="glass-card p-4 space-y-2">
           <p className="section-label mb-1" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-              <span className="material-icons icon-xs" aria-hidden="true">location_on</span>
+              <span className="material-icons" aria-hidden="true">location_on</span>
               {t('location.label')}
             </p>
           {session?.locationName && (
@@ -410,12 +410,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 href={mapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="fs-sm text-gray-300 underline underline-offset-2 decoration-dotted line-clamp-2 block"
+                className="fs-md text-gray-300 underline underline-offset-2 decoration-dotted line-clamp-2 block"
               >
                 {session.locationAddress}
               </a>
             ) : (
-              <p className="fs-sm text-gray-300 line-clamp-2">{session.locationAddress}</p>
+              <p className="fs-md text-gray-300 line-clamp-2">{session.locationAddress}</p>
             )
           ) : null}
         </div>
@@ -423,7 +423,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         {/* Date & Time tile */}
         <div className="glass-card p-4 space-y-2">
           <p className="section-label mb-1" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-              <span className="material-icons icon-xs" aria-hidden="true">event</span>
+              <span className="material-icons" aria-hidden="true">event</span>
               {t('session.date')}
             </p>
           <p className="text-lg font-semibold text-gray-200 leading-snug">

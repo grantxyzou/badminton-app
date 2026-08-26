@@ -186,11 +186,10 @@ function GlassTile({
 }) {
   return (
     <div
-      className="glass-card"
+      className="glass-card p-4"
       style={{
         flex: 1,
         minWidth: 0,
-        padding: 'var(--space-5)',
         display: 'flex',
         flexDirection: 'column',
         gap: 'var(--space-1)',

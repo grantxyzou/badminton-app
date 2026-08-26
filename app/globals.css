@@ -2618,6 +2618,18 @@ textarea {
   color: var(--text-muted);
 }
 
+/* An icon inside a section label is PART of the label, so it takes the label's
+   weight and colour rather than the base icon defaults. Material Symbols weight
+   is a variable axis and `.material-icons` sets 'wght' 400 — beside 700-weight
+   uppercase that reads visibly thinner, and at --icon-xs it also reads small
+   against the cap height. 600 at --icon-sm matches the label optically without
+   going chunky, which a literal 700 does at this size. */
+.section-label .material-icons,
+.section-label-muted .material-icons {
+  font-size: var(--icon-sm);
+  font-variation-settings: 'opsz' 24, 'wght' 600, 'FILL' 0, 'GRAD' 0;
+}
+
 /* ── Sticky level picker ── */
 .level-picker-sticky {
   position: sticky;
