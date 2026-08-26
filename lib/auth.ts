@@ -148,6 +148,54 @@ function verifyToken(token: string): SessionPayload | null {
 }
 
 /**
+ * Generic signed-value helpers, sharing the session HMAC secret.
+ *
+ * Exists for short-lived server-issued payloads that are NOT sessions — the
+ * `pending_signup` cookie that carries an unclaimed provider identity across
+ * the "choose a display name" round trip. That payload asserts "Google told us
+ * this sub owns this verified address", so it MUST be unforgeable: without a
+ * signature the client could post any provider identity it liked and claim
+ * someone else's linked account.
+ *
+ * Kept here rather than in a new module so there is exactly one place that
+ * knows how this app signs things, and one `SESSION_SECRET` fail-closed check.
+ */
+export function signValue<T extends object>(value: T, ttlSeconds: number): string {
+  const now = Math.floor(Date.now() / 1000);
+  const envelope = JSON.stringify({ v: value, iat: now, exp: now + ttlSeconds });
+  const b64 = base64urlEncode(Buffer.from(envelope, 'utf8'));
+  const sig = createHmac('sha256', getSessionSecret()).update(b64).digest();
+  return `${b64}.${base64urlEncode(sig)}`;
+}
+
+/** Returns null for a bad signature, a malformed envelope, or an expired one. */
+export function verifySignedValue<T>(token: string | null | undefined): T | null {
+  if (!token) return null;
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const [b64, sigB64] = parts;
+  const expected = createHmac('sha256', getSessionSecret()).update(b64).digest();
+  let provided: Buffer;
+  try {
+    provided = base64urlDecode(sigB64);
+  } catch {
+    return null;
+  }
+  if (provided.length !== expected.length) return null;
+  if (!timingSafeEqual(provided, expected)) return null;
+  try {
+    const env = JSON.parse(base64urlDecode(b64).toString('utf8')) as {
+      v: T;
+      exp?: number;
+    };
+    if (typeof env.exp !== 'number' || env.exp < Math.floor(Date.now() / 1000)) return null;
+    return env.v ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Sets the admin session cookie. The cookie value is a signed payload that
  * binds the session to a specific Member (by id + name). 8h lifetime.
  */
