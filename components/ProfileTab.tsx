@@ -11,6 +11,8 @@ import ReleaseNotesSheet from './ReleaseNotesSheet';
 import ReportProblemSheet from './ReportProblemSheet';
 import InstallSheet from './InstallSheet';
 import SignInForm from './SignInForm';
+import ProviderButtons from './auth/ProviderButtons';
+import SecureAccountCard from './auth/SecureAccountCard';
 import { isStandalone } from '@/lib/standalone';
 import PageHeader from './primitives/PageHeader';
 import ProfileEyebrow from './primitives/ProfileEyebrow';
@@ -293,6 +295,10 @@ export default function ProfileTab({
           >
             {t('anonymousCreateCta')}
           </button>
+          {/* Google / Apple. The component renders nothing at all when no
+              provider is configured for this deployment, so a build without
+              credentials looks exactly as it did before. */}
+          {isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS') && <ProviderButtons mode="signin" />}
           {/* Standalone "Have a recovery code" link removed — the SignInForm's
               "Forgot your PIN?" link is the single entry to EnterCodeSheet now. #93 */}
         </div>
@@ -311,6 +317,10 @@ export default function ProfileTab({
           sessionId={sessionId}
           onRecovered={handleRecovered}
         />
+        {/* Self-hiding: renders null unless the server says this member still
+            has only a PIN. Dismissal is stored on the MEMBER, so it does not
+            re-nag across devices. */}
+        {isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS') && <SecureAccountCard />}
         {isAdmin && (
           <div className="glass-card p-5">
             <button type="button" onClick={onAdminTools} className="cc-btn cc-btn-primary cc-btn-lg">

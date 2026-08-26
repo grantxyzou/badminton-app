@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
+import ChooseNameSheet from './auth/ChooseNameSheet';
 import BottomNav from '@/components/BottomNav';
 import HomeTab from '@/components/HomeTab';
 import PlayersTab from '@/components/PlayersTab';
@@ -59,6 +60,11 @@ export default function HomeShell({ initialAnnouncement }: Props) {
   const [devMode, setDevMode] = useState(false);
   const [devOverrides, setDevOverrides] = useState<DevOverrides>({});
   const [profileSession, setProfileSession] = useState<{ id: string; label: string }>({ id: '', label: '' });
+  // Set when a provider callback bounced back with ?authFlow=name -- i.e. an
+  // authenticated provider identity with no member yet. The verified provider
+  // facts live in a signed, HttpOnly cookie the client cannot read; all this
+  // flag does is decide whether to show the name prompt.
+  const [chooseNameOpen, setChooseNameOpen] = useState(false);
   const [demoMode, setDemoMode] = useState(false);
   // KNOWN-refused, never merely unknown: set only by an actual 403 from an
   // owner-gated read (see the insight prewarm below), cleared by any other
@@ -80,6 +86,16 @@ export default function HomeShell({ initialAnnouncement }: Props) {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     if (params.has('dev')) setDevMode(true);
+
+    // A provider callback returned here needing a display name. Read it before
+    // the tab-precedence branches below, which return early. Strip it after so
+    // the iOS PWA does not restore a stale prompt on a cold launch.
+    if (params.get('authFlow') === 'name') {
+      setChooseNameOpen(true);
+      const cleaned = new URL(window.location.href);
+      cleaned.searchParams.delete('authFlow');
+      window.history.replaceState(window.history.state, '', cleaned);
+    }
 
     const isTab = (v: string | null): v is Tab =>
       v === 'home' || v === 'players' || v === 'skills' || v === 'admin' || v === 'profile';
@@ -315,6 +331,14 @@ export default function HomeShell({ initialAnnouncement }: Props) {
         <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
       {demoMode && <DemoMode onClose={() => setDemoMode(false)} />}
+      {/* Mounted at shell level, not inside a tab: the provider callback lands
+          on whatever tab the app restores, and the name prompt has to appear
+          regardless of which one that is. */}
+      <ChooseNameSheet
+        open={chooseNameOpen}
+        onClose={() => setChooseNameOpen(false)}
+        sessionId={profileSession.id}
+      />
     </>
   );
 }

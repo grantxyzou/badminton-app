@@ -24,6 +24,32 @@ import type { Member } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * GET — what the pending signup can safely tell the client.
+ *
+ * ONLY the suggested name. The `sub` and `email` stay inside the signed,
+ * HttpOnly cookie: they are the facts POST trusts when it reserves an identity,
+ * and handing them to the client would invite a UI that posts them back.
+ *
+ * This endpoint exists because Apple's name is otherwise unreachable. Apple
+ * sends it on the FIRST authorization only, the callback parks it in a cookie
+ * the browser cannot read, and without a way to read it back the name Apple
+ * will never send again would be silently discarded at the moment we ask the
+ * user to type one.
+ */
+export async function GET(req: NextRequest) {
+  if (!isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS')) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+  const pending = readPendingSignup(req);
+  if (!pending) return NextResponse.json({ pending: false, suggestedName: null });
+  return NextResponse.json({
+    pending: true,
+    provider: pending.provider,
+    suggestedName: pending.suggestedName ?? null,
+  });
+}
+
 export async function POST(req: NextRequest) {
   if (!isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS')) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });

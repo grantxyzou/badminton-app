@@ -138,6 +138,28 @@
     "profile": "档案"
   },
   "profile": {
+    "auth": {
+          "continueGoogle": "使用 Google 继续",
+          "continueApple": "使用 Apple 继续",
+          "connectGoogle": "连接 Google",
+          "connectApple": "连接 Apple",
+          "googleConnected": "已连接 Google",
+          "appleConnected": "已连接 Apple",
+          "offline": "当前离线——重新连接后才能用这种方式登录。",
+          "nudgeTitle": "让回到账号更容易",
+          "nudgeSubtitle": "目前 PIN 码是进入你账号的唯一方式。",
+          "nudgeDismiss": "暂不",
+          "chooseNameTitle": "怎么称呼你？",
+          "chooseNameBody": "这是队友在报名名单上看到的名字。",
+          "chooseNamePlaceholder": "你的名字",
+          "chooseNameCta": "就是我",
+          "chooseNameSaving": "设置中…",
+          "nameTaken": "已经有人用这个名字了。如果那是你，请先用 PIN 码登录，然后在“我的”页面连接。",
+          "pendingExpired": "等待时间有点长——请再点一次按钮重新开始。",
+          "alreadyLinked": "该账号已连接到这里的其他人。",
+          "emailTaken": "该邮箱已绑定到另一个账号。",
+          "genericError": "没能完成——请再试一次。"
+    },
     "anonymousTitle": "欢迎回来",
     "anonymousBody": "用名字和 PIN 登录，或创建账号。",
     "anonymousCreateCta": "创建账号",

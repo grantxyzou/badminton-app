@@ -138,6 +138,28 @@
     "profile": "Profile"
   },
   "profile": {
+    "auth": {
+          "continueGoogle": "Continue with Google",
+          "continueApple": "Continue with Apple",
+          "connectGoogle": "Connect Google",
+          "connectApple": "Connect Apple",
+          "googleConnected": "Google connected",
+          "appleConnected": "Apple connected",
+          "offline": "You're offline — reconnect to sign in this way.",
+          "nudgeTitle": "Make getting back in easier",
+          "nudgeSubtitle": "Right now a PIN is the only way into your account.",
+          "nudgeDismiss": "Not now",
+          "chooseNameTitle": "What should we call you?",
+          "chooseNameBody": "This is the name your friends see on the sign-up list.",
+          "chooseNamePlaceholder": "Your name",
+          "chooseNameCta": "That's me",
+          "chooseNameSaving": "Setting up…",
+          "nameTaken": "Someone already plays under that name. If that's you, sign in with your PIN first, then connect this from Profile.",
+          "pendingExpired": "That took a while — tap the button again to start over.",
+          "alreadyLinked": "That account is already connected to someone here.",
+          "emailTaken": "That email is already on another account.",
+          "genericError": "Couldn't finish that — try again."
+    },
     "anonymousTitle": "Welcome back",
     "anonymousBody": "Sign in with your name and PIN, or set up an account.",
     "anonymousCreateCta": "Create an account",
