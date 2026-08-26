@@ -1565,7 +1565,24 @@ html[data-visual="field"] .glass-card .glass-card-soft,
 html[data-visual="field"] .glass-card .inner-card,
 html[data-visual="field"] .glass-card .inner-card-green,
 html[data-visual="field"] .glass-card .cc-mini-card,
-html[data-visual="field"] .glass-card .cc-tile {
+html[data-visual="field"] .glass-card .cc-tile,
+/* Full-width controls are flush to the padding too, so they are governed by the
+   same rule. Inputs already resolved to 12px via --radius-lg and happened to
+   agree; the button family did not. An earlier commit here snapped
+   .btn-primary / .btn-ghost / .cc-btn-lg to --radius-xl (16px) to get them off
+   a raw 14px -- correct as a ladder fix, wrong once they sit inside a 30px
+   card, because 16 is not the concentric value. The visible symptom was an
+   input at 12 stacked directly above a button at 16 in the same column, which
+   is most obvious on Profile where the column is almost entirely buttons.
+   Deliberately NOT listed: pill controls (.ink-button, .cc-pill, segment and
+   rail tabs). A pill is a shape, not an inset rectangle, so concentricity
+   does not apply to it. */
+html[data-visual="field"] .glass-card .btn-primary,
+html[data-visual="field"] .glass-card .btn-ghost,
+html[data-visual="field"] .glass-card .cc-btn,
+html[data-visual="field"] .glass-card input,
+html[data-visual="field"] .glass-card select,
+html[data-visual="field"] .glass-card textarea {
   border-radius: var(--fcard-inner-radius);
 }
 
