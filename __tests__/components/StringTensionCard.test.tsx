@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import StringTensionCard from '../../components/stats/StringTensionCard';
 import type { UseGear } from '../../components/stats/useGear';
@@ -109,6 +109,61 @@ describe('StringTensionCard — no number without something behind it', () => {
     mockLevel(500, { error: 'load_failed' });
     const { container } = renderCard(fakeGear({ loadError: true }), true);
     await waitFor(() => expect(container.textContent).toBe(''));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+/**
+ * A refused format change must say so.
+ *
+ * The toggle was `void gear.setPrefs(...)`, defended in a comment as "silent
+ * by design: the preference is not something the member is waiting on". The
+ * headline number on this card IS `recommendTension(level, format)`, so
+ * tapping Singles is precisely the member asking for a different number. On a
+ * refusal `useGear` correctly leaves the stored value alone — which means the
+ * segment snaps back to Doubles, the number does not move, and nothing
+ * explains why. A dead control, unchanged by reload.
+ */
+describe('StringTensionCard — a refused format change is not silent', () => {
+  afterEach(cleanup);
+
+  it('names a lapsed session instead of doing nothing at all', async () => {
+    mockLevel(200, { level: { level: 3 } });
+    const gear = fakeGear({
+      setPrefs: vi.fn(async () => ({ ok: false as const, reason: 'unauthorized' as const })),
+    });
+    renderCard(gear);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Singles' })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Singles' }));
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe(SIGN_IN_COPY));
+    expect(gear.setPrefs).toHaveBeenCalledWith({ playFormat: 'singles' });
+  });
+
+  it('keeps the recommendation on screen — only the change was refused', async () => {
+    mockLevel(200, { level: { level: 3 } });
+    renderCard(fakeGear({
+      setPrefs: vi.fn(async () => ({ ok: false as const, reason: 'error' as const })),
+    }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Singles' })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Singles' }));
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe(TENSION_ERROR));
+    // The number is still valid data; a refused change must not blank the card.
+    expect(screen.getByRole('button', { name: 'Doubles' })).toBeTruthy();
+  });
+
+  it('stays silent when the change is accepted', async () => {
+    mockLevel(200, { level: { level: 3 } });
+    const gear = fakeGear();
+    renderCard(gear);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Singles' })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Singles' }));
+
+    await waitFor(() => expect(gear.setPrefs).toHaveBeenCalled());
     expect(screen.queryByRole('alert')).toBeNull();
   });
 });

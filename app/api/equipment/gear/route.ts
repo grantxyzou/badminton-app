@@ -102,9 +102,29 @@ async function writeGearDoc(memberId: string, prior: StoredGear | undefined, nex
   // IfMatch path. (`IfNoneMatch: '*'` would express the same intent but its
   // behaviour can't be verified here before shipping; `create` can.)
   const container = getContainer('playerGear');
-  const { resource } = prior?._etag
-    ? await container.items.upsert(doc, { accessCondition: { type: 'IfMatch', condition: prior._etag } })
-    : await container.items.create(doc);
+  if (!prior) return (await container.items.create(doc)).resource;
+  // Branch on the PRIOR DOCUMENT, not on its etag. Those are different
+  // questions, and conflating them was a live defect: `prior?._etag ? upsert :
+  // create` sent an existing-but-token-less document down the `create` path,
+  // the one verb that can never succeed against an id already in the
+  // container. `commitGearDoc` reads that 409 as a retry signal, so it spent
+  // all three attempts on a condition that cannot change and answered
+  // `save_conflict` — every write to that document failed, forever, and the
+  // client painted it as a generic error. The dev seed produced exactly this
+  // shape (six fixture members, none of whom could add a racket).
+  if (!prior._etag) {
+    // Deliberately loud, and deliberately not an unguarded upsert. A document
+    // Cosmos handed us always carries `_etag`, so reaching here means a
+    // non-Cosmos writer (a seed, a fixture) put it there — a bug at that
+    // writer. Falling back to a write with no `IfMatch` would paper over it by
+    // silently dropping the lost-update guard this whole read-modify-write
+    // machine exists to provide, which is the regression #276 closed.
+    throw new Error(`gear document gear-${memberId} carries no _etag; refusing to write without a concurrency guard`);
+  }
+  const { resource } = await container.items.upsert(
+    doc,
+    { accessCondition: { type: 'IfMatch', condition: prior._etag } },
+  );
   return resource;
 }
 
@@ -123,6 +143,15 @@ type GearComputation =
 
 /**
  * Read → compute → write as one optimistically-concurrent unit.
+ *
+ * CALL IT AS `return await commitGearDoc(...)`, never `return commitGearDoc(...)`.
+ * The bare return hands back the promise, so the calling handler has already
+ * returned by the time it rejects and its own `try/catch` never runs: the
+ * route's `console.error(...)` does not fire and the caller gets the
+ * framework's default error instead of this route's `save_failed` JSON. All
+ * four verbs shipped that way, which made every real failure on this route
+ * invisible in the server logs — the one place you would go looking when a
+ * member reports that their bag will not save. The `await` is load-bearing.
  *
  * `compute` re-runs on every attempt ON PURPOSE. It carries each verb's
  * validation (duplicate, bag_full, racket_not_found), and after a losing race
@@ -195,7 +224,7 @@ export async function POST(req: NextRequest) {
     const auth = await authorizeBagWrite(req, name);
     if (auth.error) return auth.error;
 
-    return commitGearDoc(auth.memberId, (prior) => {
+    return await commitGearDoc(auth.memberId, (prior) => {
       const existing = prior?.items ?? [];
       const catalogId = typeof body.item.catalogId === 'string' ? body.item.catalogId : null;
       const label = String(body.item.label ?? '').slice(0, 80);
@@ -287,7 +316,7 @@ export async function PATCH(req: NextRequest) {
     const auth = await authorizeBagWrite(req, name);
     if (auth.error) return auth.error;
 
-    return commitGearDoc(auth.memberId, (prior) => {
+    return await commitGearDoc(auth.memberId, (prior) => {
       if (activeRacketId) {
         if (!rackets(prior ?? null).some((i) => i.id === activeRacketId)) {
           return { ok: false, response: NextResponse.json({ error: 'racket_not_found' }, { status: 404 }) };
@@ -317,7 +346,7 @@ export async function DELETE(req: NextRequest) {
     const auth = await authorizeBagWrite(req, name);
     if (auth.error) return auth.error;
 
-    return commitGearDoc(auth.memberId, (prior) => {
+    return await commitGearDoc(auth.memberId, (prior) => {
       const existing = prior?.items ?? [];
       if (!existing.some((i) => i.id === itemId)) {
         return { ok: false, response: NextResponse.json({ error: 'racket_not_found' }, { status: 404 }) };
@@ -377,7 +406,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
 
-    return commitGearDoc(memberId, (prior) => {
+    return await commitGearDoc(memberId, (prior) => {
       const existing = prior?.items ?? [];
       const catalogId = typeof body.item.catalogId === 'string' ? body.item.catalogId : null;
       const label = String(body.item.label ?? '').slice(0, 80);
