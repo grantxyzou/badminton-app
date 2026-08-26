@@ -27,6 +27,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ role: 'member', hasPin: false, statsPrivacy: null });
     }
 
+    // NOTE: this is a PROJECTED select, so there is no destructure here and
+    // therefore no strip site. Add fields to the projection one at a time and
+    // deliberately -- never widen it to `SELECT *`, and never add
+    // `c.passwordHash`, `c.emailVerification` or `c.passwordReset`.
+    // `__tests__/auth-strip-canary.test.ts` enforces both rules, because the
+    // usual destructure-based canary cannot fire on a projection at all.
     const container = getContainer('members');
     const { resources } = await container.items
       .query({

@@ -46,6 +46,30 @@ describe('auth strip canary', () => {
     }
   });
 
+  it('never projects a member secret in a SELECT, where no strip site can exist', () => {
+    // The inverse hazard to the destructure rule above, and the reason this
+    // second check exists: a PROJECTED select (`SELECT c.role, c.pinHash, ...`)
+    // has no destructure at all, so `recoveryCode: _rc` never appears and the
+    // canary above can never fire on it. `app/api/members/me/route.ts` is
+    // currently the only projection that returns member fields to a client.
+    // If a secret is ever added to a projection, it reaches the client with
+    // nothing standing in the way.
+    const src = execSync('grep -rn "SELECT c\\." app lib', { encoding: 'utf8' });
+    for (const secret of ['c.passwordHash', 'c.emailVerification', 'c.passwordReset']) {
+      const offenders = src.split('\n').filter((line) => line.includes(secret));
+      expect(offenders, `${secret} must never appear in a projection`).toEqual([]);
+    }
+    // c.email is allowed, but only where the caller reads their own record.
+    const emailProjections = src
+      .split('\n')
+      .filter((line) => line.includes('c.email') && !line.includes('c.emailVerif'));
+    for (const line of emailProjections) {
+      expect(line, 'c.email may only be projected by members/me').toContain(
+        'app/api/members/me/route.ts',
+      );
+    }
+  });
+
   it('strips email from cross-member responses but NOT from members/me', () => {
     // email is a NARROW canary: the caller must be able to read their own
     // address back on Profile, exactly as statsPrivacy already works. Any

@@ -950,4 +950,20 @@ MSG
 
 ---
 
-*Phases 2–5 continue in `2026-08-26-multi-provider-auth-phase2plus.md`.*
+## Remaining phases
+
+Phases 2–5 are specified in the design doc's **Staging** section and are written
+as their own plan documents immediately before each is executed, so that each
+one can incorporate what the previous phase actually learned rather than
+guessing ahead of it. Phase 1 already produced two such corrections that would
+have been wrong if written in advance:
+
+- the mock store silently ignored `WHERE c.memberId = @memberId`, which changes
+  what a Phase 3 test of `listIdentitiesForMember` can be trusted to prove;
+- `app/api/members/me/route.ts` uses a *projected* SELECT, so it has no
+  destructure and the strip canary cannot fire on it — Phase 5 adds `email` to
+  that projection and must do so deliberately.
+
+**Phase order** (from the spec): 2 email+password → 3 Google → 4 Apple →
+5 nudge + Profile. Do not reorder: 3 and 4 both depend on the resolution table
+built in 2, and 5 renders state that only exists once 2–4 write it.
