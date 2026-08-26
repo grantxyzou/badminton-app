@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     const { token, record } = createToken(RESET_TTL_MS);
     await container.items.upsert({ ...member, passwordReset: record });
 
-    const origin = process.env.NEXT_PUBLIC_APP_ORIGIN || new URL(req.url).origin;
+    const origin = process.env.APP_ORIGIN || new URL(req.url).origin;
     const url = `${origin}/bpm?reset=${token}&email=${encodeURIComponent(email)}`;
     try {
       await sendPasswordResetEmail(email, member.name, url);

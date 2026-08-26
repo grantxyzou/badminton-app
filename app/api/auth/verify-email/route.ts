@@ -22,7 +22,7 @@ import type { Member } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 function landing(req: NextRequest, ok: boolean): NextResponse {
-  const origin = process.env.NEXT_PUBLIC_APP_ORIGIN || new URL(req.url).origin;
+  const origin = process.env.APP_ORIGIN || new URL(req.url).origin;
   return NextResponse.redirect(`${origin}/bpm?verified=${ok ? '1' : '0'}`);
 }
 

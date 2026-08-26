@@ -16,6 +16,25 @@
  * reservation pointing at a member that does not exist — it blocks that one
  * address, belongs to nobody, and is releasable. The catch makes even that
  * transient.
+ *
+ * WHY THIS SIGNS THE USER IN BEFORE THE ADDRESS IS VERIFIED
+ * --------------------------------------------------------
+ * `completeSignIn` mints `member_session` while `emailVerified` is still false,
+ * and that cookie is the credential for the WS#3-guarded writes (equipment/gear
+ * PUT, first-PIN set, kudos, games, events). That is deliberate, and it is not
+ * a privilege escalation:
+ *
+ * - A name collision is refused above, so this can only ever mint a cookie for
+ *   a member that did not exist a moment ago — the signer-in's own new account.
+ * - It is exactly the trust level the anonymous Home sign-up already grants,
+ *   and "accounts stay optional" means an email account must not be treated as
+ *   LESS trustworthy than typing a name into a box.
+ *
+ * What `emailVerified: false` does withhold is the thing that actually matters:
+ * an OAuth identity may only be auto-linked to an existing member when BOTH the
+ * provider AND this record assert a verified address. An unverified `email` is
+ * a claim, never proof, so signing up with someone else's address grants
+ * nothing over that person's account.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
@@ -38,7 +57,7 @@ export const dynamic = 'force-dynamic';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function appOrigin(req: NextRequest): string {
-  return process.env.NEXT_PUBLIC_APP_ORIGIN || new URL(req.url).origin;
+  return process.env.APP_ORIGIN || new URL(req.url).origin;
 }
 
 export async function POST(req: NextRequest) {
