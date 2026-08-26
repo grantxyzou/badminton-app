@@ -480,7 +480,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         ) : effectiveIsSignedUp ? (
           /* ── State 1: Active sign-up ── */
           <div className="space-y-4">
-            <div className="flex items-start justify-between">
+            {/* baseline, not items-start: the count is 14px beside a 20px heading,
+                so aligning the TOPS leaves it floating above the title's baseline.
+                Same alignment YourRecordCard's header already uses. All four
+                sign-up states share this header, so all four move together. */}
+            <div className="flex items-baseline justify-between">
               <p className="bpm-h2">{t('signup.heading')}</p>
               <p key={spotsTotal - activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
             </div>
@@ -498,7 +502,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         ) : isWaitlisted ? (
           /* ── State 2: On waitlist ── */
           <div className="space-y-4">
-            <div className="flex items-start justify-between">
+            <div className="flex items-baseline justify-between">
               <p className="bpm-h2">{t('signup.heading')}</p>
               <div className="text-right">
                 <p className="fs-sm text-gray-400">{tStates('waitlistLabel')}</p>
@@ -520,7 +524,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         ) : isFull && !isDeadlinePast ? (
           /* ── State 3: Full — join waitlist form ── */
           <div className="space-y-4">
-            <div className="flex items-start justify-between">
+            <div className="flex items-baseline justify-between">
               <p className="bpm-h2">{t('signup.heading')}</p>
               <p key={activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsFull', { count: activePlayers.length })}</p>
             </div>
@@ -592,7 +596,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         ) : (
           /* ── State 4: Open — normal sign-up ── */
           <div className="space-y-4">
-            <div className="flex items-start justify-between">
+            <div className="flex items-baseline justify-between">
               <p className="bpm-h2">{t('signup.heading')}</p>
               <p key={spotsTotal - activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
             </div>
