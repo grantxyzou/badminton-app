@@ -52,8 +52,13 @@ export default function SetupPage({ onBack }: SetupPageProps) {
   const [endTime, setEndTime] = useState('');
   const [deadlineDate, setDeadlineDate] = useState('');
   const [deadlineTime, setDeadlineTime] = useState('');
-  const [courts, setCourts] = useState(2);
-  const [maxPlayers, setMaxPlayers] = useState(12);
+  /* `number | null`, following the costPerCourt convention below: null means the
+     field is EMPTY, not zero. These used to clamp on every keystroke
+     (`Math.max(1, ... || 1)`), which made the field impossible to clear -- the
+     moment you backspaced the last digit it snapped straight back to 1. Clamp
+     where the value is USED, not while it is being typed. */
+  const [courts, setCourts] = useState<number | null>(2);
+  const [maxPlayers, setMaxPlayers] = useState<number | null>(12);
   const [costPerCourt, setCostPerCourt] = useState<number | null>(null);
   const [signupOpen, setSignupOpen] = useState(true);
   const [showCostBreakdown, setShowCostBreakdown] = useState(true);
@@ -151,7 +156,10 @@ export default function SetupPage({ onBack }: SetupPageProps) {
 
   const autoPrice = useMemo(() => currentPricePerTube(birdPurchases), [birdPurchases]);
 
-  const courtCost = useMemo(() => (costPerCourt ?? 0) * courts, [costPerCourt, courts]);
+  // Resolved values: the clamp lives here so the inputs stay freely editable.
+  const courtsVal = Math.max(1, Math.min(20, courts ?? 1));
+  const maxPlayersVal = Math.max(1, Math.min(100, maxPlayers ?? 1));
+  const courtCost = useMemo(() => (costPerCourt ?? 0) * courtsVal, [costPerCourt, courtsVal]);
   const totalCost = courtCost + birdCost;
   const perPlayer = activePlayerCount > 0 && totalCost > 0 ? Math.round((totalCost / activePlayerCount) * 100) / 100 : 0;
 
@@ -178,8 +186,8 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         datetime,
         endDatetime,
         deadline,
-        courts,
-        maxPlayers,
+        courts: courtsVal,
+        maxPlayers: maxPlayersVal,
         signupOpen,
         showCostBreakdown,
         ...(costPerCourt !== null ? { costPerCourt } : {}),
@@ -211,13 +219,13 @@ export default function SetupPage({ onBack }: SetupPageProps) {
     return {
       datetime: withLocalTz(date, time) || `${date}T${time}`,
       costPerPerson: perPlayer,
-      courts,
+      courts: courtsVal,
       totalCost,
       playerNames: activePlayerNames,
       recipient: { name: recipient.name, email: recipient.email },
       memoTemplate: recipient.memo,
     };
-  }, [recipient, date, time, perPlayer, courts, totalCost, activePlayerNames]);
+  }, [recipient, date, time, perPlayer, courtsVal, totalCost, activePlayerNames]);
 
   const previewText = receiptInput ? renderGroupText(receiptInput) : '';
 
@@ -313,10 +321,10 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         </Field>
         <div style={{ display: 'flex', gap: 10 }}>
           <Field label="Courts" style={{ flex: 1 }}>
-            <input type="number" inputMode="numeric" value={courts} onChange={(e) => setCourts(Math.max(1, Math.min(20, parseInt(e.target.value, 10) || 1)))} />
+            <input type="number" inputMode="numeric" min={1} max={20} value={courts ?? ''} onChange={(e) => setCourts(e.target.value === '' ? null : parseInt(e.target.value, 10))} />
           </Field>
           <Field label="Max players" style={{ flex: 1 }}>
-            <input type="number" inputMode="numeric" value={maxPlayers} onChange={(e) => setMaxPlayers(Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 12)))} />
+            <input type="number" inputMode="numeric" min={1} max={100} value={maxPlayers ?? ''} onChange={(e) => setMaxPlayers(e.target.value === '' ? null : parseInt(e.target.value, 10))} />
           </Field>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px' }}>
@@ -358,7 +366,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         {/* Court row */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>{courts} court{courts === 1 ? '' : 's'} × cost</span>
+            <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>{courtsVal} court{courtsVal === 1 ? '' : 's'} × cost</span>
             <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 'var(--fs-sm)' }}>${courtCost.toFixed(2)}</span>
           </div>
           <input

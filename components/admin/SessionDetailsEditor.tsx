@@ -82,8 +82,8 @@ type BirdUsageRow = { purchaseId: string; tubes: number };
 type DetailsForm = {
   locationName: string;
   locationAddress: string;
-  courts: number;
-  maxPlayers: number;
+  courts: number | null;
+  maxPlayers: number | null;
   signupOpen: boolean;
   costPerCourt: number | null;
   birdUsages: BirdUsageRow[];
@@ -202,6 +202,11 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
         body: JSON.stringify({
           title: s?.title ?? '',
           ...form,
+          /* The spread would send null for a field left empty, and the API
+             validates `typeof === 'number'`. Resolve them here, next to the
+             costPerCourt line that already does exactly this. */
+          courts: courtsVal,
+          maxPlayers: maxPlayersVal,
           costPerCourt: form.costPerCourt ?? 0,
           date: dateStr,
           time: timeStr,
@@ -245,9 +250,12 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
     return (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((f) => ({ ...f, [key]: e.target.value }));
   }
+  /* Mirrors setFloat below: an empty field is null, not 0. It used to coerce
+     with `|| 0`, so clearing courts left a literal 0 in the box -- a value that
+     is never valid for either field it serves. */
   function setNum(key: keyof DetailsForm) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
-      setForm((f) => ({ ...f, [key]: parseInt(e.target.value) || 0 }));
+      setForm((f) => ({ ...f, [key]: e.target.value === '' ? null : parseInt(e.target.value, 10) }));
   }
   function setFloat(key: keyof DetailsForm) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -255,7 +263,9 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
   }
 
   /* ── Cost computation for the preview ── */
-  const courtTotal = (form.costPerCourt ?? 0) * form.courts;
+  const courtsVal = Math.max(1, Math.min(20, form.courts ?? 1));
+  const maxPlayersVal = Math.max(1, Math.min(100, form.maxPlayers ?? 1));
+  const courtTotal = (form.costPerCourt ?? 0) * courtsVal;
   const birdTotal = form.birdUsages.reduce((sum, row) => {
     const selected = purchases.find((p) => p.id === row.purchaseId);
     return sum + (selected ? row.tubes * selected.costPerTube : 0);
@@ -300,10 +310,10 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
           </Label>
           <div className="grid grid-cols-2 gap-3">
             <Label text="Courts">
-              <input id="session-courts" name="courts" type="number" min={1} value={form.courts} onChange={setNum('courts')} />
+              <input id="session-courts" name="courts" type="number" min={1} value={form.courts ?? ''} onChange={setNum('courts')} />
             </Label>
             <Label text="Max Players">
-              <input id="session-max-players" name="maxPlayers" type="number" min={1} value={form.maxPlayers} onChange={setNum('maxPlayers')} />
+              <input id="session-max-players" name="maxPlayers" type="number" min={1} value={form.maxPlayers ?? ''} onChange={setNum('maxPlayers')} />
             </Label>
           </div>
 

@@ -41,8 +41,11 @@ export default function AdvanceSessionForm({ onBack }: Props) {
   const [endTime, setEndTime] = useState('');
   const [deadlineDate, setDeadlineDate] = useState('');
   const [deadlineTime, setDeadlineTime] = useState('');
-  const [courts, setCourts] = useState(2);
-  const [maxPlayers, setMaxPlayers] = useState(12);
+  /* null = the field is empty, not zero. These used to coerce with
+     `parseInt(...) || 0`, so backspacing the last digit showed a 0 you then had
+     to select and overwrite. Clamp at use, not on every keystroke. */
+  const [courts, setCourts] = useState<number | null>(2);
+  const [maxPlayers, setMaxPlayers] = useState<number | null>(12);
   const [costPerCourt, setCostPerCourt] = useState<number | null>(null);
   const [recentCosts, setRecentCosts] = useState<number[]>([]);
   const [title, setTitle] = useState('');
@@ -188,8 +191,8 @@ export default function AdvanceSessionForm({ onBack }: Props) {
           datetime: withLocalTz(date, time),
           endDatetime: withLocalTz(endDate, endTime),
           deadline: withLocalTz(deadlineDate, deadlineTime),
-          courts,
-          maxPlayers,
+          courts: Math.max(1, Math.min(20, courts ?? 1)),
+          maxPlayers: Math.max(1, Math.min(100, maxPlayers ?? 1)),
           ...(title.trim() ? { title: title.trim() } : {}),
           locationName: locationName.trim(),
           locationAddress: locationAddress.trim(),
@@ -346,10 +349,10 @@ export default function AdvanceSessionForm({ onBack }: Props) {
 
           <div className="grid grid-cols-2 gap-3">
             <Label text="Courts">
-              <input id="advance-courts" name="courts" type="number" min={1} value={courts} onChange={e => setCourts(parseInt(e.target.value) || 0)} />
+              <input id="advance-courts" name="courts" type="number" min={1} max={20} value={courts ?? ''} onChange={e => setCourts(e.target.value === '' ? null : parseInt(e.target.value, 10))} />
             </Label>
             <Label text="Max Players">
-              <input id="advance-max-players" name="maxPlayers" type="number" min={1} value={maxPlayers} onChange={e => setMaxPlayers(parseInt(e.target.value) || 0)} />
+              <input id="advance-max-players" name="maxPlayers" type="number" min={1} max={100} value={maxPlayers ?? ''} onChange={e => setMaxPlayers(e.target.value === '' ? null : parseInt(e.target.value, 10))} />
             </Label>
           </div>
 

@@ -46,8 +46,8 @@ export default function InstallBanner() {
   return (
     <>
       <div
-        className="glass-card"
-        style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 12 }}
+        className="glass-card p-3"
+        style={{ display: 'flex', alignItems: 'center', gap: 12 }}
       >
         <span
           aria-hidden="true"

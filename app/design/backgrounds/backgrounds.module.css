@@ -137,3 +137,57 @@
   background-size: 100% 100%;
   background-repeat: no-repeat;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   07-16 · FIELDS               [design "Visual Colours" §06 — Stage 4 gate]
+
+   Unlike variants 01-06 above, these do NOT mirror hand-copied values: they
+   read the live --field-* tokens straight from globals.css. The tokens are
+   declared unconditionally on :root (only the RULES that apply them are
+   behind html[data-visual="field"]), so they resolve here either way. That
+   makes this page drift-proof — retune a field token and the preview moves
+   with it, which is the whole point of a comparison surface.
+
+   Track A = one hue, five depths. Track B = one hue per tab.
+   Whichever loses at the Stage 4 gate gets deleted, tokens and all.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── The shipped fields — one hue per tab ── */
+.fieldHome     { background: var(--field-home),      var(--field-base); }
+.fieldSignups  { background: var(--field-signups),   var(--field-base); }
+.fieldStats    { background: var(--field-stats),     var(--field-base); }
+.fieldProfile  { background: var(--field-profile),   var(--field-base); }
+.fieldAdmin    { background: var(--field-admin),     var(--field-base); }
+
+
+/* The motifs that survive a field, shown in place so the Stage 4 call is made
+   against what actually ships. Both are the live recipes from globals.css:
+   the Sign-Ups doubles-court etching and the Stats dot grid ride on ::before
+   while the field owns `background` — that split is why those two tabs keep
+   their identity. The grid is at .14 here, not the .22 it uses on flat
+   --page-bg, matching the retune in globals.css. */
+.motifCourt::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  height: 92%;
+  aspect-ratio: 100 / 220;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220' fill='none' stroke='%234ade80' stroke-width='0.5' opacity='0.14'><rect x='0.5' y='0.5' width='99' height='219'/><line x1='7.54' y1='0' x2='7.54' y2='220'/><line x1='92.46' y1='0' x2='92.46' y2='220'/><line x1='0' y1='77.5' x2='100' y2='77.5'/><line x1='0' y1='142.5' x2='100' y2='142.5'/><line x1='0' y1='12.5' x2='100' y2='12.5'/><line x1='0' y1='207.5' x2='100' y2='207.5'/><line x1='50' y1='12.5' x2='50' y2='207.5'/></svg>");
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.motifDots::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(74, 222, 128, 0.14) 1.5px, transparent 2px);
+  background-size: 42px 42px;
+  -webkit-mask-image: radial-gradient(60% 60% at 50% 50%, black 0%, transparent 85%);
+          mask-image: radial-gradient(60% 60% at 50% 50%, black 0%, transparent 85%);
+}

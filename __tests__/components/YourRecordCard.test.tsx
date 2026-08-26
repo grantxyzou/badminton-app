@@ -83,7 +83,13 @@ describe('YourRecordCard', () => {
     await waitFor(() => expect(screen.getByText(/No games logged yet/)).toBeTruthy());
     // The empty state must not hide the CTA — it is the way out of empty.
     expect(screen.getByRole('button', { name: 'Add a game' })).toBeTruthy();
-    expect(screen.getByText('0 of 0')).toBeTruthy();
+    // The fraction is deliberately ABSENT at zero. This assertion used to
+    // require "0 of 0", and the rule it was protecting still holds: a loaded
+    // empty read must stay distinguishable from a failed one (see the next
+    // test). What carries that signal changed — the empty state now renders an
+    // icon and "No games logged yet", which says it more plainly than a zero
+    // that reads like a score. A failed read renders role=alert and neither.
+    expect(screen.queryByText('0 of 0')).toBeNull();
   });
 
   it('never renders "0 of 0" when the read FAILED', async () => {

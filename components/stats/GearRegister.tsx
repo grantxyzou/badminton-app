@@ -53,8 +53,11 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
 
   return (
     <>
-      <GearPickRail activeName={activeName} gear={gear} onPairTension={setPairTension} />
+      {/* What you already own comes first, then what we'd suggest. The rail's
+          whole job is to say "here is a pick, and whether you already have it",
+          which only means something once you have seen your own kit. */}
       <YourKitCard activeName={activeName} gear={gear} />
+      <GearPickRail activeName={activeName} gear={gear} onPairTension={setPairTension} />
       <StringTensionCard
         activeName={activeName}
         gear={gear}

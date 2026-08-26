@@ -62,6 +62,77 @@ describe('design-system canary: globals.css token/class contract', () => {
     expect(css).toContain('--radius-pill: 100px');
   });
 
+  /* The 30px rung is a scoped EXCEPTION, not a new cap. The design that
+     introduced it ("Visual Colours" §06) reconciles it explicitly: "the 16px
+     radius cap now holds for flat-field surfaces and --radius-3xl (30px) is
+     scoped to field cards only". The ladder above still stops at 16.
+
+     This is the only guardrail that exists for it. ESLint's radius rule is
+     `Property[key.name='borderRadius'] > Literal[raw=/^[0-9]/]` — it catches a
+     RAW NUMBER in JSX, so `borderRadius: 'var(--radius-3xl)'` never matches,
+     and ESLint does not parse CSS at all. Without the second assertion below,
+     nothing but prose stops the next person hardcoding 30px everywhere and
+     quietly re-establishing it as the default corner. */
+  it('scopes the 30px rung to a token instead of raw literals', () => {
+    expect(css).toContain('--radius-3xl: 30px');
+    // Every 30px corner must resolve through the token. Strip comments first —
+    // the prose explaining this rule necessarily names the literal it forbids,
+    // and a doc comment is not a declaration.
+    const declarations = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(declarations).not.toMatch(/border-radius:\s*30px/);
+  });
+
+  /* Fields and card materials are a token family, not inline values — four
+     directories lint bare rgba()/hex at ERROR, so the gradients have to live
+     here. Presence-only, same contract as REQUIRED_TOKENS above. */
+  it('defines the field + card-material token families', () => {
+    for (const token of [
+      '--field-base', '--field-home', '--field-signups', '--field-stats',
+      '--field-profile', '--field-admin', '--field-scrim',
+      '--fcard-bg', '--fcard-blur', '--fcard-inset', '--fcard-shadow',
+      '--fcard-pick-bg', '--fcard-good-bg', '--fcard-wait-bg',
+      '--fcard-full-bg', '--fcard-error-bg', '--fcard-locked-bg',
+      '--fcard-title', '--fcard-label', '--fcard-footnote',
+      '--ink-button', '--ink-button-fg',
+      // Carries the Stats AA fix. Two components/stats files consume it; if it
+      // is renamed away they inherit a colour instead of failing, so nothing
+      // else would catch it.
+      '--sev-low-label',
+      // Padding is load-bearing geometry at radius 30, not decoration --
+      // see the derivation beside --fcard-pad in globals.css.
+      '--fcard-pad', '--fcard-pad-x', '--fcard-pad-y', '--fcard-inner-radius',
+    ]) {
+      expect(css).toContain(`${token}:`);
+    }
+  });
+
+  /* Three facts the field work depends on that fail SILENTLY rather than
+     loudly, which is the only reason they are pinned here. */
+  it('keeps the field scoping selector and its light-mode escape hatch', () => {
+    // Rename this selector and every field rule stops matching. Nothing errors;
+    // the app just quietly looks the way it did before.
+    expect(css).toContain('html[data-visual="field"]');
+
+    // --sev-low-label lifts to blue-100 on a dark field for AA (4.58:1). Light
+    // mode MUST reset it: its card resolves to #eff5fd, where blue-100 measures
+    // 1.11:1. This reset is one tidy-up away from being deleted.
+    expect(css).toContain('html[data-visual="field"][data-theme="light"]');
+
+    // The locked material is defined by what it removes.
+    const locked = css.slice(css.indexOf('.glass-card.is-locked'));
+    expect(locked.slice(0, 400)).toContain('backdrop-filter: none');
+  });
+
+  /* The inner radius must stay DERIVED. Hand-typing 6px here would look
+     identical today and silently desynchronise the moment --fcard-radius or
+     --fcard-pad moves, which is exactly how the 30px-vs-12px mismatch that
+     prompted this arose in the first place. */
+  it('derives the concentric inner radius rather than hard-coding it', () => {
+    expect(css).toMatch(
+      /--fcard-inner-radius:\s*calc\(\s*var\(--fcard-radius\)\s*-\s*var\(--fcard-pad-x\)\s*\)/
+    );
+  });
+
   /* Reduced motion means fewer and gentler, not zero (PRODUCT.md → Accessibility).
      The wildcard must keep opacity in its transition-property allowlist so state
      changes stay legible as changes; collapsing it back to a blanket

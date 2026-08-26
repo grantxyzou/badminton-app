@@ -27,6 +27,18 @@ function StateLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+/* The seven field card materials. `tone` is the value colour — the semantic
+   cards recolour their number, the base and pick cards do not. */
+const FIELD_CARDS: { cls: string; label: string; value: string; tone: string }[] = [
+  { cls: '',           label: 'BASE',    value: '2.6',   tone: 'var(--fcard-title)' },
+  { cls: 'is-pick',    label: 'THE PICK', value: '24 lb', tone: 'var(--btn-primary-text)' },
+  { cls: 'is-good',    label: 'DONE',    value: '3/4',   tone: 'var(--accent)' },
+  { cls: 'is-wait',    label: 'WAITLIST', value: '#2',   tone: 'var(--accent-amber)' },
+  { cls: 'is-full',    label: 'FULL',    value: '12/12', tone: 'var(--orange, #fb923c)' },
+  { cls: 'is-error',   label: 'OWING',   value: '$8.50', tone: 'var(--color-red)' },
+  { cls: 'is-locked',  label: 'PRIVATE', value: '—',     tone: 'var(--text-muted)' },
+];
+
 export default function ComponentsPage() {
   return (
     <main style={{ maxWidth: 720, margin: '0 auto', padding: '2rem 1rem', display: 'grid', gap: '1.25rem' }}>
@@ -256,6 +268,38 @@ export default function ComponentsPage() {
         </div>
         <ErrorState message="Couldn't load — refresh to try again" />
         <EmptyState>No data yet</EmptyState>
+      </Row>
+
+      {/* ── Field card materials ──────────────────────────────────────────
+          Only renders as designed while NEXT_PUBLIC_FLAG_VISUAL_FIELDS is on
+          (the rules are scoped html[data-visual="field"]). With the flag off
+          these fall back to the current .glass-card, which is itself a useful
+          before/after: toggle the flag and reload to compare. */}
+      <Row
+        title="FIELD CARD MATERIALS"
+        caption="Seven states on one material, at --radius-3xl (30px). Two rules the CSS cannot enforce, so review has to: at most ONE .is-pick per screen (two solid greens and neither reads as the answer), and semantic fills stay rare (three at once means the screen has stopped communicating). Locked is the only one that isn't glass — dropping the backdrop filter is what makes private data read as inert rather than merely dim."
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9.5rem, 1fr))', gap: '0.625rem' }}>
+          {FIELD_CARDS.map((c) => (
+            <div key={c.cls || 'base'} className={`glass-card ${c.cls}`} style={{ padding: '0.875rem' }}>
+              <p className="bpm-section-label" style={{ color: 'var(--fcard-label)' }}>{c.label}</p>
+              <p style={{ margin: '0.75rem 0 0', font: '600 var(--fs-stat)/1 var(--font-display)', letterSpacing: '-0.03em', color: c.tone }}>
+                {c.value}
+              </p>
+              <p className="bpm-mono" style={{ margin: '0.5rem 0 0', fontSize: 'var(--fs-2xs)', color: 'var(--fcard-footnote)' }}>
+                {c.cls || '.glass-card'}
+              </p>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginTop: '0.25rem' }}>
+          <button type="button" className="ink-button" style={{ padding: '0.625rem 1rem', font: '600 var(--fs-md) var(--font-sans)' }}>
+            Ink button
+          </button>
+          <span className="bpm-caption">
+            <code className="bpm-mono">--ink-button</code> is #131313 in <em>both</em> themes — the constant that makes the direction recognisable.
+          </span>
+        </div>
       </Row>
     </main>
   );

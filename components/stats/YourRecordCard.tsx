@@ -77,7 +77,6 @@ export default function YourRecordCard({ activeName }: YourRecordCardProps) {
       >
         {t('add')}
       </button>
-      <p style={{ margin: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('hint')}</p>
       {sessionId && (
         <SteppedGameLoggerSheet
           you={activeName}
@@ -106,11 +105,13 @@ export default function YourRecordCard({ activeName }: YourRecordCardProps) {
 
   return (
     <div className="glass-card p-5 space-y-3">
-      <Header t={t} fraction={t('fraction', { won: rec.won, played: rec.played })} />
+      {/* No fraction at zero: "0 of 0" restates what the empty state already
+          says, and reads as a score rather than an absence. */}
+      <Header t={t} fraction={rec.played === 0 ? null : t('fraction', { won: rec.won, played: rec.played })} />
 
       {rec.played === 0 ? (
         // The empty state must not hide the only action on the card.
-        <EmptyState>{t('empty')}</EmptyState>
+        <EmptyState icon="sports_tennis">{t('empty')}</EmptyState>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           {rec.rows.slice(0, CAP).map((g) => (

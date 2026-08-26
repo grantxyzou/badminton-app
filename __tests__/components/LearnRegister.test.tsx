@@ -157,7 +157,7 @@ describe('LearnRegister', () => {
   it('invites a check-in when there is nothing to pick from', async () => {
     mockFetch({ drills: [] });
     renderLearn();
-    await waitFor(() => expect(screen.getByText('Do a check-in first')).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start check-in' })).toBeTruthy());
     expect(screen.getByRole('button', { name: 'Start check-in' })).toBeTruthy();
     // One invitation, not four empty cards apologising.
     expect(screen.queryByText('Two things to do')).toBeNull();
@@ -167,7 +167,7 @@ describe('LearnRegister', () => {
     mockFetch({ drillsOk: false });
     renderLearn();
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
-    expect(screen.queryByText('Do a check-in first')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Start check-in' })).toBeNull();
   });
 
   it('renders nothing without an active name', () => {

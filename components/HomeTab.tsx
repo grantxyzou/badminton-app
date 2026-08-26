@@ -7,6 +7,8 @@ import type { DevOverrides } from '@/components/DevPanel';
 import { getIdentity, setIdentity, clearIdentity, resolveStaleIdentity } from '@/lib/identity';
 import { TabSkeleton } from '@/components/primitives/CardSkeleton';
 import UnpaidSessionsCard from '@/components/UnpaidSessionsCard';
+import StatusBadge from '@/components/primitives/StatusBadge';
+import CardHeader from '@/components/primitives/CardHeader';
 import InstallBanner from '@/components/InstallBanner';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
@@ -16,7 +18,6 @@ import PageHeader from '@/components/primitives/PageHeader';
 import EnterCodeSheet from './EnterCodeSheet';
 import PinInput from './PinInput';
 import NameAutocompleteInput from './home/NameAutocompleteInput';
-import SkillDiscoveryCard from './home/SkillDiscoveryCard';
 import { useMemberProbe } from '@/lib/useHasPin';
 import { useOnline } from '@/lib/useOnline';
 import { renderMarkdown } from '@/lib/miniMarkdown';
@@ -394,7 +395,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       <div className="grid grid-cols-2 gap-3">
         {/* Location tile */}
         <div className="glass-card p-4 space-y-2">
-          <p className="section-label mb-1">{t('location.label')}</p>
+          <p className="section-label mb-1" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <span className="material-icons" aria-hidden="true">location_on</span>
+              {t('location.label')}
+            </p>
           {session?.locationName && (
             <p className="text-lg font-semibold text-gray-200 leading-snug line-clamp-2">
               {session.locationName}
@@ -406,19 +410,22 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 href={mapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="fs-sm text-gray-300 underline underline-offset-2 decoration-dotted line-clamp-2 block"
+                className="fs-md text-gray-300 underline underline-offset-2 decoration-dotted line-clamp-2 block"
               >
                 {session.locationAddress}
               </a>
             ) : (
-              <p className="fs-sm text-gray-300 line-clamp-2">{session.locationAddress}</p>
+              <p className="fs-md text-gray-300 line-clamp-2">{session.locationAddress}</p>
             )
           ) : null}
         </div>
 
         {/* Date & Time tile */}
         <div className="glass-card p-4 space-y-2">
-          <p className="section-label mb-1">{t('session.date')}</p>
+          <p className="section-label mb-1" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <span className="material-icons" aria-hidden="true">event</span>
+              {t('session.date')}
+            </p>
           <p className="text-lg font-semibold text-gray-200 leading-snug">
             {session ? format.dateTime(new Date(session.datetime), DAY_LONG) : '—'}
           </p>
@@ -428,11 +435,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         </div>
       </div>
 
-      {/* What the signed-in player still owes — across every past session they
-          weren't marked paid (frozen amount where settled, computed share where
-          not). Replaces the old per-person cost estimate. Same data as the
-          Profile card (shared /api/players/unpaid), so the two always agree. */}
-      {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" />}
 
       {/* Announcement card — pure club communications surface. */}
       {effectiveAnnouncement && (
@@ -473,7 +475,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         ) : effectiveIsSignedUp ? (
           /* ── State 1: Active sign-up ── */
           <div className="space-y-4">
-            <div className="flex items-start justify-between">
+            {/* baseline, not items-start: the count is 14px beside a 20px heading,
+                so aligning the TOPS leaves it floating above the title's baseline.
+                Same alignment YourRecordCard's header already uses. All four
+                sign-up states share this header, so all four move together. */}
+            <div className="flex items-baseline justify-between">
               <p className="bpm-h2">{t('signup.heading')}</p>
               <p key={spotsTotal - activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
             </div>
@@ -491,7 +497,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         ) : isWaitlisted ? (
           /* ── State 2: On waitlist ── */
           <div className="space-y-4">
-            <div className="flex items-start justify-between">
+            <div className="flex items-baseline justify-between">
               <p className="bpm-h2">{t('signup.heading')}</p>
               <div className="text-right">
                 <p className="fs-sm text-gray-400">{tStates('waitlistLabel')}</p>
@@ -513,7 +519,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         ) : isFull && !isDeadlinePast ? (
           /* ── State 3: Full — join waitlist form ── */
           <div className="space-y-4">
-            <div className="flex items-start justify-between">
+            <div className="flex items-baseline justify-between">
               <p className="bpm-h2">{t('signup.heading')}</p>
               <p key={activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsFull', { count: activePlayers.length })}</p>
             </div>
@@ -585,7 +591,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         ) : (
           /* ── State 4: Open — normal sign-up ── */
           <div className="space-y-4">
-            <div className="flex items-start justify-between">
+            <div className="flex items-baseline justify-between">
               <p className="bpm-h2">{t('signup.heading')}</p>
               <p key={spotsTotal - activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
             </div>
@@ -662,14 +668,26 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           </div>
         )}
       </div>
+      {/* What the signed-in player still owes — across every past session they
+          weren't marked paid (frozen amount where settled, computed share where
+          not). Replaces the old per-person cost estimate. Same data as the
+          Profile card (shared /api/players/unpaid), so the two always agree. */}
+      {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" />}
 
-      {/* Discovery hook for skill rating — surfaces at the sign-up touchpoint,
-          self-retires once the player rates or dismisses it. */}
-      <SkillDiscoveryCard
-        name={currentUser}
-        signedUp={effectiveIsSignedUp}
-        onOpen={() => onTabChange?.('skills')}
-      />
+
+      {/* Stringing service — announced, not yet built. A "Coming soon" card
+          rather than a hidden feature: players already ask about restringing at
+          sessions, so saying it is coming is more useful than saying nothing.
+          Deliberately not interactive; there is nothing to open yet. */}
+      <div className="glass-card p-5">
+        <CardHeader
+          icon="science"
+          title={t('stringing.title')}
+          subtitle={t('stringing.subtitle')}
+          badge={<StatusBadge variant="muted">{t('stringing.soon')}</StatusBadge>}
+        />
+      </div>
+
 
       <EnterCodeSheet
         open={enterCodeOpen}

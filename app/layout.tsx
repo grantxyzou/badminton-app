@@ -6,6 +6,7 @@ import { getLocale, getMessages } from 'next-intl/server';
 import PreviewBanner from '@/components/PreviewBanner';
 import HydrationMark from '@/components/HydrationMark';
 import { APP_TIME_ZONE } from '@/i18n/request';
+import { isFlagOn } from '@/lib/flags';
 import './globals.css';
 
 // Locked type system (design-system bundle v3, subset 2026-05-07):
@@ -101,6 +102,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Standalone status-bar / Android toolbar tint — matches the dark brand bg
   // and the cold-start splash (var(--page-bg)).
+  // Stays the un-tinted base — see the note in app/manifest.ts. A single
+  // static value cannot track five per-tab fields.
   themeColor: '#100F0F',
   // Pinch / double-tap / input-focus zoom disabled by product decision — the
   // accidental-zoom jank on the saved-to-homescreen iOS web app outweighed the
@@ -116,7 +119,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className={`${spaceGrotesk.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable}`}>
+    /* `data-visual` is read on the SERVER and stamped here, unlike `data-tab`
+       which HomeShell sets in a useEffect. That difference matters: the field
+       is the page's ground colour, so resolving it after hydration would flash
+       on the LCP frame. NEXT_PUBLIC_* vars are inlined at build time on both
+       sides, so this costs nothing. Every field rule is scoped
+       `html[data-visual="field"]`, which is what makes the flag a real off
+       switch — CSS cannot call isFlagOn(). */
+    <html
+      lang={locale}
+      data-visual={isFlagOn('NEXT_PUBLIC_FLAG_VISUAL_FIELDS') ? 'field' : undefined}
+      className={`${spaceGrotesk.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable}`}
+    >
       <head>
         {/* iOS standalone launch (no Safari chrome). Next emits the modern
             `mobile-web-app-capable` from metadata.appleWebApp, but older iOS
@@ -131,7 +145,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             the dynamic icon_names subset, so opt this one out of the rule. */}
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,add_to_home_screen,admin_panel_settings,arrow_back,arrow_forward,article_person,auto_fix_high,bar_chart,bolt,calendar_today,campaign,celebration,check_circle,chevron_left,chevron_right,close,dark_mode,delete,delete_forever,delete_outline,delete_sweep,download,edit,emoji_events,error,error_outline,event,expand_less,expand_more,fact_check,fitness_center,flag,format_list_bulleted,format_list_numbered,group,group_add,groups,help_outline,home,hourglass_empty,hourglass_top,how_to_reg,image,install_mobile,inventory_2,ios_share,key,light_mode,local_fire_department,lock,lock_clock,logout,more_vert,paid,payments,person,person_add,person_remove,radio_button_unchecked,receipt_long,remove,request_quote,restore,schedule,school,science,search,send,share,shield,sports_tennis,star,subdirectory_arrow_left,translate,trending_up,verified,visibility,volunteer_activism,warning,watch_later&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=add,add_shopping_cart,add_to_home_screen,admin_panel_settings,arrow_back,arrow_forward,article_person,auto_fix_high,bar_chart,bolt,calendar_today,campaign,celebration,check_circle,chevron_left,chevron_right,close,dark_mode,delete,delete_forever,delete_outline,delete_sweep,download,edit,emoji_events,error,error_outline,event,expand_less,expand_more,fact_check,fitness_center,flag,format_list_bulleted,format_list_numbered,group,group_add,groups,help_outline,home,hourglass_empty,hourglass_top,how_to_reg,image,install_mobile,inventory_2,ios_share,key,light_mode,local_fire_department,location_on,lock,lock_clock,logout,more_vert,paid,payments,person,person_add,person_remove,radio_button_unchecked,receipt_long,remove,request_quote,restore,schedule,school,science,search,send,share,shield,sports_tennis,star,subdirectory_arrow_left,translate,trending_up,verified,visibility,volunteer_activism,warning,watch_later&display=swap"
           rel="stylesheet"
         />
       </head>

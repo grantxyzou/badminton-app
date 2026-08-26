@@ -684,7 +684,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
       {recentPurchases.length === 0 ? (
         <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '0 4px' }}>No purchases in the last 60 days.</p>
       ) : (
-        <div className="glass-card" style={{ padding: '4px 0' }}>
+        <div className="glass-card is-flush" style={{ padding: '4px 0' }}>
           {recentPurchases.map((p, i) => (
             <PurchaseRow key={p.id} purchase={p} index={i} onEdit={openEditSheet} />
           ))}
@@ -707,7 +707,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           >
             Older purchases
           </p>
-          <div className="glass-card" style={{ padding: '4px 0' }}>
+          <div className="glass-card is-flush" style={{ padding: '4px 0' }}>
             {olderPurchases.map((p, i) => (
               <PurchaseRow key={p.id} purchase={p} index={i} onEdit={openEditSheet} />
             ))}

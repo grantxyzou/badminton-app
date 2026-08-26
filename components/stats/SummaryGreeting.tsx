@@ -13,7 +13,8 @@ import ErrorState from '@/components/primitives/ErrorState';
  * Additive + legible-fail: renders nothing while loading, on an unknown load
  * failure, or when there's no greeting (anonymous viewer / no API key). The
  * card below it always stands on its own. Carries the conic AI rim
- * (`.insight-rim`) + a Beta marker so the AI provenance is honest.
+ * (`.insight-rim`) + an AI marker wearing that same rim, so the provenance is
+ * honest and the badge reads as part of the surface rather than stuck on it.
  *
  * A 403 is the ONE failure that does render. `/api/stats/insight` is
  * owner-or-admin gated, so a device with no `member_session` cookie for this
@@ -42,7 +43,7 @@ export default function SummaryGreeting() {
       </span>
       <p style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: 1.45, color: 'var(--text-primary)', flex: 1, minWidth: 0 }}>{greeting}</p>
       <span style={{ flexShrink: 0 }}>
-        <StatusBadge>{t('summaryGreeting.beta')}</StatusBadge>
+        <StatusBadge variant="ai">{t('summaryGreeting.ai')}</StatusBadge>
       </span>
     </div>
   );
