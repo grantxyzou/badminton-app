@@ -148,7 +148,6 @@ export default function GearSheet({
   const [query, setQuery] = useState('');
   const [level, setLevel] = useState<number | null>(null);
   const [tensionInput, setTensionInput] = useState('');
-  const [tensionTouched, setTensionTouched] = useState(false);
   const heading = title ?? t('racketSheetTitle');
 
   useEffect(() => {
@@ -166,7 +165,6 @@ export default function GearSheet({
     setPickError(null);
     setBrand(null); // brands differ per category — don't carry one across
     setTensionInput('');
-    setTensionTouched(false);
     setLevel(null); // stale-level guard: see the level-fetch effect below
     fetch(`${BASE}/api/equipment/catalog?category=${category}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
@@ -211,11 +209,22 @@ export default function GearSheet({
     () => (category === 'string' ? recommendTension(level, format ?? 'doubles') : null),
     [category, level, format],
   );
-  // Shown value tracks the live advice UNTIL the member edits it — no effect
-  // syncing an initial value into state, which would race the level fetch
-  // resolving after mount. Once touched it freezes on whatever they typed;
-  // see `pick()` for why an untouched value is never sent.
-  const tensionDisplay = tensionTouched ? tensionInput : (tensionAdvice ? String(tensionAdvice.lb) : '');
+  // The advice is a PLACEHOLDER, never the value.
+  //
+  // It used to be rendered as the input's value until the member typed, which
+  // made the field unusable: there is no select-on-focus, so tapping it put a
+  // caret next to the recommendation and the first keystroke APPENDED. A
+  // member on 26 lb tapped a field reading "24", typed 26, and produced
+  // "2426" — which `clampTension` then folded to MAX_LB and saved as 30 lb,
+  // silently and plausibly. Every tension anyone entered was 30.
+  //
+  // Making it a placeholder costs nothing, because the prefill was never sent
+  // anyway: `pick()` only ever forwarded a tension the member had actually
+  // typed. It looked like a value while functioning as a hint, and its one
+  // real effect was to corrupt the next thing typed. As a placeholder the
+  // guidance still shows, an untouched field is genuinely empty, and
+  // `clampTension('')` already reads that as "nothing" rather than 20.
+  const tensionPlaceholder = tensionAdvice ? String(tensionAdvice.lb) : undefined;
 
   // Rackets already in the bag never appear. Done before brand/query so the
   // tab counts and the "no matches" state both describe what's really here.
@@ -294,13 +303,12 @@ export default function GearSheet({
   async function pick(item: CatalogItem) {
     if (busy) return;
     setPickError(null);
-    // Only an EDITED tension value is sent. `tensionDisplay` mirrors the
-    // advice until the member touches the field, and sending it unconditionally
-    // would silently persist a recommendation as if it were the fact the
-    // member reported — the exact thing this field exists to keep apart.
-    const tensionLbs = category === 'string' && tensionTouched
-      ? clampTension(tensionInput)
-      : undefined;
+    // Only a value the member actually typed is sent. With the advice moved
+    // to the placeholder an untouched field is empty, and `clampTension`
+    // returns undefined for that — so a recommendation can never be persisted
+    // as though it were the fact the member reported, which is the whole
+    // reason this field exists.
+    const tensionLbs = category === 'string' ? clampTension(tensionInput) : undefined;
     const res = await onPick(item, tensionLbs);
     if (res.ok) { onClose(); return; }
     // Actionable, not decorative. "Refresh to try again" is the wrong
@@ -348,8 +356,28 @@ export default function GearSheet({
                   inputMode="numeric"
                   min={MIN_LB}
                   max={MAX_LB}
-                  value={tensionDisplay}
-                  onChange={(e) => { setTensionTouched(true); setTensionInput(e.target.value); }}
+                  value={tensionInput}
+                  placeholder={tensionPlaceholder}
+                  onChange={(e) => setTensionInput(e.target.value)}
+                  // Select-on-focus, because this field is a two-digit whole
+                  // value that is always REPLACED, never appended to. Moving
+                  // the advice to the placeholder fixed the first edit, but
+                  // not the second: once the field legitimately holds a number
+                  // (the member's own, or the blur-normalised one), tapping it
+                  // again drops a caret at the end and the next keystroke
+                  // appends exactly as before — "30" plus a corrected "26"
+                  // becomes 3026, and the clamp turns that back into 30. One
+                  // tap should mean "replace this".
+                  onFocus={(e) => e.currentTarget.select()}
+                  // Show the member the number that will actually be stored.
+                  // The clamp is deliberate, but applying it invisibly at save
+                  // time means a typo becomes a plausible-looking tension the
+                  // member never gave — the same "assert nothing the member
+                  // didn't say" rule the rest of this sheet follows.
+                  onBlur={() => {
+                    const clamped = clampTension(tensionInput);
+                    setTensionInput(clamped === undefined ? '' : String(clamped));
+                  }}
                   aria-label={tGear('tensionCaptureLabel')}
                   className="fs-md"
                   style={{

@@ -49,7 +49,14 @@ export interface UseGear {
   reload: () => void;
   /** The second argument attaches a string's tension at add time — see `add`'s
    *  own comment for why it needs a follow-up write rather than one call. */
-  add: (item: CatalogItem, extra?: { tensionLbs?: number }) => Promise<GearResult>;
+  add: (
+    item: CatalogItem,
+    extra?: {
+      tensionLbs?: number;
+      /** Rackets only: make the added racket the active one. See `add`. */
+      makeActive?: boolean;
+    },
+  ) => Promise<GearResult>;
   activate: (itemId: string) => Promise<GearResult>;
   remove: (itemId: string) => Promise<GearResult>;
   setPrefs: (prefs: { playFormat?: 'singles' | 'doubles' | 'both'; budgetMaxCad?: number | null }) => Promise<GearResult>;
@@ -76,6 +83,10 @@ export function useGear(name: string | null): UseGear {
   const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const opRef = useRef(0);
+  // Mirrors `gear` for follow-up writes inside one user action. `add` needs the
+  // id of the item the POST just created, and that id only exists in the
+  // response body — reading it back off `gear` would race the state flush.
+  const gearRef = useRef<PlayerGear | null>(null);
   // Mirrors `loaded` for the recovery check in `mutate`, which runs inside a
   // closure that would otherwise read a stale value.
   const loadedRef = useRef(false);
@@ -88,7 +99,8 @@ export function useGear(name: string | null): UseGear {
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
         if (opId !== opRef.current) return;
-        setGear((d.gear as PlayerGear | null) ?? null);
+        gearRef.current = (d.gear as PlayerGear | null) ?? null;
+        setGear(gearRef.current);
         markLoaded();
         setLoadError(false);
       })
@@ -134,7 +146,8 @@ export function useGear(name: string | null): UseGear {
       if (!res.ok) throw new Error(String(res.status));
       const d = await res.json();
       if (opId === opRef.current) {
-        setGear((d.gear as PlayerGear | null) ?? null);
+        gearRef.current = (d.gear as PlayerGear | null) ?? null;
+        setGear(gearRef.current);
         // The response body IS the doc, so a write is also a definitive read —
         // it must set `loaded`, not only clear the error. Claiming the op id
         // above cancelled any in-flight initial GET, and `setLoaded(true)`
@@ -197,7 +210,10 @@ export function useGear(name: string | null): UseGear {
    * but the two verbs disagree by design and this call site must not be the
    * place that finds out.
    */
-  const add = useCallback(async (item: CatalogItem, extra?: { tensionLbs?: number }): Promise<GearResult> => {
+  const add = useCallback(async (
+    item: CatalogItem,
+    extra?: { tensionLbs?: number; makeActive?: boolean },
+  ): Promise<GearResult> => {
     const res = await mutate(() => fetch(`${BASE}/api/equipment/gear`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -210,6 +226,38 @@ export function useGear(name: string | null): UseGear {
         },
       }),
     }));
+    // `makeActive` exists because POST and the UI mean different things by
+    // "pick this racket". POST's contract is "append to my bag" and it must
+    // NOT move `activeRacketId` (route.ts:180) — appending a spare must never
+    // silently change the racket you play with. But the kit row that opens
+    // this sheet is labelled "Change", and the sheet closes the moment you
+    // pick, so the member never reaches `BagList`'s "Use this one" to finish
+    // the job. The result was a control that demonstrably did nothing: tap
+    // Change, choose a different racket, and the row still read the old one
+    // while the write returned 200.
+    //
+    // So the CALLER states the intent, and a caller that means "this is the
+    // one I'm using now" says so — the same distinction `PUT` already draws
+    // against POST (route.ts:373). Done as an explicit follow-up rather than
+    // by loosening POST, so appending a spare from anywhere else keeps the
+    // pointer exactly where the route intends.
+    if (res.ok && extra?.makeActive && item.category === 'racket') {
+      // The new item's id exists only in the doc the POST returned; `gear`
+      // may not have flushed yet, hence the ref. The server refuses duplicate
+      // catalogIds, so this match is unique.
+      const added = (gearRef.current?.items ?? []).find((i) => i.catalogId === item.id);
+      if (added) {
+        const activated = await mutate(() => fetch(`${BASE}/api/equipment/gear`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, activeRacketId: added.id }),
+        }));
+        // The racket IS in the bag either way; only the pointer move failed.
+        // Reported rather than swallowed, but never as "the add failed".
+        if (!activated.ok) return activated;
+      }
+    }
+
     if (res.ok && item.category === 'string' && typeof extra?.tensionLbs === 'number') {
       const withTension = await mutate(() => fetch(`${BASE}/api/equipment/gear`, {
         method: 'PUT',
