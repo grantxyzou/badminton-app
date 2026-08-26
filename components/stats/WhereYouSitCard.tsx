@@ -133,7 +133,13 @@ export default function WhereYouSitCard({ activeName, promptOpen = false }: Wher
   );
 
   return (
-    <div className="glass-card p-5 space-y-3">
+    /* Not revealed => the design's `locked` material, which drops backdrop-filter
+       entirely. That flatness is the point: a blurred card still looks like it
+       has something behind it, so a merely-dimmed card reads as "loading" or
+       "disabled" rather than "private". Inert is the honest signal here, and it
+       matches the lock pill and unfilled bands already in this branch.
+       No-op unless NEXT_PUBLIC_FLAG_VISUAL_FIELDS is on. */
+    <div className={`glass-card p-5 space-y-3${revealed ? '' : ' is-locked'}`}>
       <CardHeader
         icon="groups"
         title={t('title')}

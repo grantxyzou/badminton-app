@@ -1456,6 +1456,13 @@ html[data-visual="field"] .glass-card {
        as the answer;
      · semantic fills stay rare — amber/orange/red mean something is waiting,
        closing or wrong. Three at once and the screen has stopped talking. */
+/* Worked example of the one-pick rule, because it is easy to get wrong:
+   the Gear rail (components/stats/GearPickCard.tsx) renders ONE card per
+   category -- racket, shoes, strings, shuttles. Marking "is this a
+   recommendation?" with .is-pick looks right per card and is wrong per
+   screen: a member who owns none of the four would get four solid cards and
+   no answer. The rail is a set of peers; .is-pick is for the single card that
+   IS the answer. */
 html[data-visual="field"] .glass-card.is-pick {
   background: var(--fcard-pick-bg);
   box-shadow: var(--fcard-pick-inset), var(--fcard-shadow);
