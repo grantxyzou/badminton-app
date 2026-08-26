@@ -98,6 +98,9 @@ describe('design-system canary: globals.css token/class contract', () => {
       // is renamed away they inherit a colour instead of failing, so nothing
       // else would catch it.
       '--sev-low-label',
+      // Padding is load-bearing geometry at radius 30, not decoration --
+      // see the derivation beside --fcard-pad in globals.css.
+      '--fcard-pad', '--fcard-inner-radius',
     ]) {
       expect(css).toContain(`${token}:`);
     }
@@ -118,6 +121,16 @@ describe('design-system canary: globals.css token/class contract', () => {
     // The locked material is defined by what it removes.
     const locked = css.slice(css.indexOf('.glass-card.is-locked'));
     expect(locked.slice(0, 400)).toContain('backdrop-filter: none');
+  });
+
+  /* The inner radius must stay DERIVED. Hand-typing 6px here would look
+     identical today and silently desynchronise the moment --fcard-radius or
+     --fcard-pad moves, which is exactly how the 30px-vs-12px mismatch that
+     prompted this arose in the first place. */
+  it('derives the concentric inner radius rather than hard-coding it', () => {
+    expect(css).toMatch(
+      /--fcard-inner-radius:\s*calc\(\s*var\(--fcard-radius\)\s*-\s*var\(--fcard-pad\)\s*\)/
+    );
   });
 
   /* Reduced motion means fewer and gentler, not zero (PRODUCT.md → Accessibility).

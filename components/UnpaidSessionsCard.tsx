@@ -110,8 +110,8 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
 
   return (
     <div
-      className="glass-card"
-      style={{ padding: isHome ? 16 : 20, display: 'flex', flexDirection: 'column', gap: 10 }}
+      className={`glass-card ${isHome ? "p-4" : "p-5"}`}
+      style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
     >
       <p className="section-label" style={{ margin: 0, color: titleColor }}>
         {title}
