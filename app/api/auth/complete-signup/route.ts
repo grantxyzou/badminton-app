@@ -41,6 +41,15 @@ export async function GET(req: NextRequest) {
   if (!isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS')) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
+  // Rate limited like every other handler here. Generous (60/hr) because it is
+  // read-only and returns only a name from a cookie the caller already holds --
+  // but the project rule is "rate limit first in every handler", and an
+  // unlimited endpoint is worth flagging even when the exposure is small.
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`auth-pending:${ip}`, 60, 60 * 60 * 1000)) {
+    return NextResponse.json({ pending: false, suggestedName: null });
+  }
+
   const pending = readPendingSignup(req);
   if (!pending) return NextResponse.json({ pending: false, suggestedName: null });
   return NextResponse.json({
