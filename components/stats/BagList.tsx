@@ -9,6 +9,11 @@ interface Props {
   activeId: string | undefined;
   onActivate: (id: string) => void;
   onRemove: (id: string) => void;
+  /** Apply the sheet's tension field to an owned STRING. Absent (or with no
+   *  number typed) and the control is not offered. See the docstring. */
+  onSetTension?: (item: GearItem) => void;
+  /** Whether a usable number is currently in the tension field. */
+  tensionReady?: boolean;
   busy: boolean;
 }
 
@@ -34,8 +39,19 @@ interface Props {
  * `YourKitCard`'s row) — this list is where a member would look to confirm a
  * tension they just entered actually landed, so it can't show a plainer view
  * of the same item than the row that opened this sheet.
+ *
+ * It also has to be where they can CHANGE it. These rows were read-only, and
+ * `GearSheet` filters everything you own out of the catalog below, so a string
+ * already in the bag was not tappable anywhere: the only way to record a
+ * tension was to add a string you did not already own. The feature therefore
+ * worked exactly once per string and never again, and "update the tension on
+ * the strings I'm playing" — the thing the field exists for — was impossible.
+ * The control mirrors the racket rows' "Use this one": same place, same
+ * shape, one job.
  */
-export default function BagList({ items, activeId, onActivate, onRemove, busy }: Props) {
+export default function BagList({
+  items, activeId, onActivate, onRemove, onSetTension, tensionReady, busy,
+}: Props) {
   const t = useTranslations('stats.gear');
   if (items.length === 0) return null;
 
@@ -66,6 +82,21 @@ export default function BagList({ items, activeId, onActivate, onRemove, busy }:
                   {t('ownedSetActive')}
                 </button>
               ))}
+              {onSetTension && item.category === 'string' && (
+                <button
+                  type="button"
+                  className="cc-btn cc-btn-ghost"
+                  // Disabled rather than hidden when the field is empty: the
+                  // control appearing and vanishing as you type reads as a
+                  // glitch, and the disabled state is the app's own way of
+                  // saying "this needs something from you first".
+                  disabled={busy || !tensionReady}
+                  aria-label={`${t('ownedSetTension')} — ${item.label}`}
+                  onClick={() => onSetTension(item)}
+                >
+                  {t('ownedSetTension')}
+                </button>
+              )}
               <button
                 type="button"
                 className="cc-btn cc-btn-ghost"

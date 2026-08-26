@@ -52,7 +52,7 @@ function kitValue(item: GearItem | undefined, t: (key: string) => string): strin
  */
 export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
   const t = useTranslations('stats.gear');
-  const { gear: doc, loaded, loadError, busy, online, add, activate, remove, active } = gear;
+  const { gear: doc, loaded, loadError, busy, online, add, activate, remove, setTension, active } = gear;
   const [picking, setPicking] = useState<EquipmentCategory | null>(null);
 
   const items = (doc?.items ?? []) as GearItem[];
@@ -63,11 +63,16 @@ export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
 
   // Legacy gear docs predate `category` and are all rackets — same read
   // tolerance as normalizeBirdUsages.
+  // LAST of each category, not first. `items` is append-ordered, so "first"
+  // is the STALEST thing the member ever added — a member who logged BG65 a
+  // year ago and a new string tonight saw the year-old one named as their
+  // kit, and the string they just recorded a tension for was invisible. The
+  // freshest entry is the one that answers "what are you playing with".
+  // Rackets are overridden below by their explicit pointer.
   const byCategory = new Map<EquipmentCategory, GearItem>();
   for (const item of items) {
     if (!item || item.retiredAt) continue;
-    const cat = (item.category ?? 'racket') as EquipmentCategory;
-    if (!byCategory.has(cat)) byCategory.set(cat, item);
+    byCategory.set((item.category ?? 'racket') as EquipmentCategory, item);
   }
   // Rackets have an active POINTER; array order is not it. This row showed
   // `items[0]`, so a member whose active racket was not the first one added
@@ -186,6 +191,7 @@ export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
         // docs on `GearSheet`. The sheet renders the failure.
         onActivate={activate}
         onRemove={remove}
+        onSetTension={setTension}
         // `makeActive` for rackets: this row's action word is "Change", and the
         // sheet closes on pick, so picking here means "this is the one I'm
         // using now" — not "add a spare to my bag". Without it the write

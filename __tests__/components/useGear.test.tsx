@@ -428,3 +428,58 @@ describe('useGear — makeActive states the caller intent POST cannot infer', ()
     expect(calls.map((c) => c.method)).toEqual(['POST']);
   });
 });
+
+/**
+ * Recording the tension of a string you ALREADY own.
+ *
+ * There was no way to do it. `BagList` rendered owned strings read-only and
+ * `GearSheet` filters everything you own out of the catalog, so the string on
+ * your racket was not tappable anywhere — the only way to record a tension
+ * was to add a string you did not already have. The feature worked exactly
+ * once per string and never again, which means "update the tension on the
+ * strings I'm playing", the thing the field exists for, was impossible.
+ */
+describe('useGear — setTension updates an owned string in place', () => {
+  afterEach(cleanup);
+
+  const OWNED = { id: 's1', catalogId: 'string-yonex-bg65', category: 'string' as const, label: 'Yonex BG65' };
+
+  it('PUTs by catalogId rather than appending a second copy', async () => {
+    const calls: { method: string; body: Record<string, unknown> }[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_u: string, init?: RequestInit) => {
+      const method = init?.method ?? 'GET';
+      if (method === 'GET') {
+        return { ok: true, status: 200, json: async () => ({ gear: gearDoc([OWNED]) }) } as Response;
+      }
+      calls.push({ method, body: JSON.parse(String(init?.body)) });
+      return {
+        ok: true, status: 200,
+        json: async () => ({ gear: gearDoc([{ ...OWNED, tensionLbs: 27 }]) }),
+      } as Response;
+    }) as unknown as typeof fetch);
+
+    function Probe() {
+      const gear = useGear('Lin');
+      return (
+        <div>
+          <span data-testid="bag">{(gear.gear?.items ?? []).map((i) => `${i.label}@${i.tensionLbs ?? 'none'}`).join(',')}</span>
+          <button onClick={() => { void gear.setTension(OWNED, 27); }}>set</button>
+        </div>
+      );
+    }
+
+    render(<Probe />);
+    await waitFor(() => expect(screen.getByTestId('bag').textContent).toBe('Yonex BG65@none'));
+    fireEvent.click(screen.getByText('set'));
+
+    // PUT is the idempotent "set this item" verb — it matches on catalogId and
+    // updates in place. POST would 409 as a duplicate.
+    await waitFor(() => expect(calls.length).toBe(1));
+    expect(calls[0].method).toBe('PUT');
+    expect(calls[0].body).toMatchObject({
+      name: 'Lin',
+      item: { catalogId: 'string-yonex-bg65', category: 'string', tensionLbs: 27 },
+    });
+    await waitFor(() => expect(screen.getByTestId('bag').textContent).toBe('Yonex BG65@27'));
+  });
+});
