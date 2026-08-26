@@ -564,25 +564,35 @@ body {
      inset top highlight. Note --fcard-shadow is byte-identical to
      --glass-shadow, which .glass-card defines and has never applied. */
   --fcard-radius:     var(--radius-3xl);
-  /* Padding is not a free choice once the radius is 30. At a rounded corner the
-     arc curves away from the content box, so clearance at the corner is smaller
-     than clearance along the edges:
+  /* Padding comes from the design source, not from a derivation. An earlier
+     pass here reasoned from optical uniformity -- at a rounded corner the arc
+     curves away from the content box, so clearance is not even:
 
-        edge gap   = p
-        corner gap = R - sqrt(2) * (R - p)          (for p < R)
+        edge gap = p ;  corner gap = R - sqrt(2)*(R - p)   (for p < R)
 
-     At the old p-5 (20px) that is 15.9 vs 20 -- a ratio of 0.79, i.e. content
-     visibly tighter into the corners than along the sides. That mismatch is
-     what reads as "the radius is weird with the content inside"; it was
-     invisible at radius 16 and is not at 30. The ratio can only reach 1.00 at
-     p == R, so the practical target is 0.85-0.90. 24px gives 0.90.
-     Recompute this if --fcard-radius ever moves. */
-  --fcard-pad:        24px;
+     and concluded p should be ~0.9R, i.e. 24px. That is defensible in a vacuum
+     and it is not what the design does. The reference markup puts 30px cards at
+     `padding: 15px 18px` (the solid pick card at 18/20), so the real proportion
+     is roughly half the radius, with horizontal slightly larger than vertical
+     -- corners eat into a short row horizontally first. 24px read as far too
+     much, which is the correct verdict; trust the source over the heuristic.
+
+     Asymmetric on purpose. Keep the two axes as separate tokens so the
+     concentric rule below has an unambiguous horizontal inset to work from. */
+  --fcard-pad-y:      15px;
+  --fcard-pad-x:      18px;
+  --fcard-pad:        var(--fcard-pad-y) var(--fcard-pad-x);
   /* Concentric nesting: an element flush against the card's padding must curve
-     PARALLEL to the card, which means inner = outer - inset. Derived with calc()
-     rather than hand-typed so it can never drift from the two values it depends
-     on. At 30/24 it resolves to 6px = --radius-xs, on the ladder. */
-  --fcard-inner-radius: calc(var(--fcard-radius) - var(--fcard-pad));
+     PARALLEL to the card, so inner = outer - inset. Measured on the horizontal
+     inset, because inner rows are full-width and it is their left/right edges
+     that sit against the card's.
+
+     This lands on 30 - 18 = 12px, which is exactly the radius the design uses
+     on its inner rows -- so the 12-inside-30 nesting was correct all along and
+     the 24px padding was what made it look wrong. Still a calc() rather than a
+     literal 12px: the relationship is the rule, and hard-coding the answer is
+     how it silently desynchronises the next time either input moves. */
+  --fcard-inner-radius: calc(var(--fcard-radius) - var(--fcard-pad-x));
   --fcard-bg:         linear-gradient(160deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.09));
   --fcard-blur:       blur(16px) saturate(130%);
   --fcard-inset:      inset 0 1px 0 rgba(255, 255, 255, 0.14);

@@ -100,7 +100,7 @@ describe('design-system canary: globals.css token/class contract', () => {
       '--sev-low-label',
       // Padding is load-bearing geometry at radius 30, not decoration --
       // see the derivation beside --fcard-pad in globals.css.
-      '--fcard-pad', '--fcard-inner-radius',
+      '--fcard-pad', '--fcard-pad-x', '--fcard-pad-y', '--fcard-inner-radius',
     ]) {
       expect(css).toContain(`${token}:`);
     }
@@ -129,7 +129,7 @@ describe('design-system canary: globals.css token/class contract', () => {
      prompted this arose in the first place. */
   it('derives the concentric inner radius rather than hard-coding it', () => {
     expect(css).toMatch(
-      /--fcard-inner-radius:\s*calc\(\s*var\(--fcard-radius\)\s*-\s*var\(--fcard-pad\)\s*\)/
+      /--fcard-inner-radius:\s*calc\(\s*var\(--fcard-radius\)\s*-\s*var\(--fcard-pad-x\)\s*\)/
     );
   });
 
