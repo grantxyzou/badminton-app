@@ -17,13 +17,19 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isFlagOn } from '@/lib/flags';
 import { checkToken } from '@/lib/authToken';
 import { normalizeEmail, lookupIdentity } from '@/lib/authIdentity';
+import { outboundOriginOrNull } from '@/lib/appOrigin';
 import type { Member } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 function landing(req: NextRequest, ok: boolean): NextResponse {
-  const origin = process.env.APP_ORIGIN || new URL(req.url).origin;
-  return NextResponse.redirect(`${origin}/bpm?verified=${ok ? '1' : '0'}`);
+  // Same rule as the emailed links: never trust the request's own origin.
+  // A relative redirect is the safe fallback -- the browser resolves it
+  // against whatever host it actually reached, with nothing attacker-supplied
+  // baked in by us.
+  const origin = outboundOriginOrNull();
+  const target = `${origin ?? ''}/bpm?verified=${ok ? '1' : '0'}`;
+  return NextResponse.redirect(origin ? target : new URL(target, req.url));
 }
 
 export async function GET(req: NextRequest) {

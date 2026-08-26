@@ -1,25 +1,21 @@
 # `.well-known`
 
-Files here are served at the **domain root**, not under `/bpm`, via the
-`basePath: false` rewrite in `next.config.js`.
-
-## `apple-developer-domain-association.txt`
-
+**Nothing here is currently reachable at the domain root.** `next.config.js`
+sets `basePath: '/bpm'`, so files in `public/` are served under `/bpm/...`, and
 Sign in with Apple verifies domain ownership by fetching
 
 ```
 https://bpm.grantzou.com/.well-known/apple-developer-domain-association.txt
 ```
 
-Download that file from the Apple developer console when configuring the
-Services ID (Identifiers → your Services ID → Sign In with Apple → Configure →
-Domains and Subdomains), drop it in this directory, and deploy **before**
-clicking Verify — the console fetches it live.
+A `rewrites()` entry with `basePath: false` does **not** work — Next refuses it
+at boot ("rewrites urls outside of the basePath… use a destination that starts
+with http:// or https://"), because escaping the basePath makes the destination
+external too.
 
-Confirm it is actually reachable first:
+See the "Domain verification" section of `docs/auth-provider-setup.md` for the
+remaining options. The most promising is serving the token from `proxy.ts`,
+which already runs on paths outside the basePath.
 
-```bash
-curl -sS https://bpm.grantzou.com/.well-known/apple-developer-domain-association.txt | head -3
-```
-
-Full walkthrough: `docs/auth-provider-setup.md`.
+This directory is kept so the file has an obvious home once that is solved.
+It blocks **Apple only** — Google needs none of it.

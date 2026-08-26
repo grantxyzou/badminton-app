@@ -13,7 +13,7 @@ APPLE_CLIENT_ID=          # the Services ID, e.g. com.grantzou.bpm.web
 APPLE_TEAM_ID=            # 10 characters
 APPLE_KEY_ID=             # 10 characters
 APPLE_PRIVATE_KEY=        # the contents of the .p8 file
-APP_ORIGIN=               # http://localhost:3000 locally, https://bpm.grantzou.com in prod
+APP_ORIGIN=               # REQUIRED in production. http://localhost:3000 locally
 ```
 
 ---
@@ -118,34 +118,36 @@ Apple gives you `apple-developer-domain-association.txt` and requires it at:
 https://bpm.grantzou.com/.well-known/apple-developer-domain-association.txt
 ```
 
-**This does not work out of the box on this app.** `next.config.js` sets
-`basePath: '/bpm'`, so anything in `public/` is served under `/bpm/...`. Apple
-checks the **domain root**, which Next will 404.
+**This does not work out of the box on this app, and is currently UNSOLVED.**
+`next.config.js` sets `basePath: '/bpm'`, so anything in `public/` is served
+under `/bpm/...`. Apple checks the **domain root**, which Next 404s.
 
-(The other half of the usual `public/` hazard — `output: 'standalone'` dropping
-the directory — is already handled: `deploy-next.yml:79` does
-`cp -r public .next/standalone/public`, which covers a new `.well-known`
-subdirectory. Nothing to change there.)
+A `rewrites()` entry with `basePath: false` looks like the fix and is not:
+Next rejects it at boot with
 
-The fix is a root-escaping rewrite in `next.config.js`, which currently has no
-`rewrites` block at all:
-
-```js
-async rewrites() {
-  return [
-    {
-      source: '/.well-known/apple-developer-domain-association.txt',
-      destination: '/bpm/.well-known/apple-developer-domain-association.txt',
-      basePath: false, // serve this OUTSIDE the /bpm basePath
-    },
-  ];
-}
+```
+The route /.well-known/apple-developer-domain-association.txt rewrites urls
+outside of the basePath. Please use a destination that starts with http:// or
+https://
+Error: Invalid rewrite found
 ```
 
-with the file at `public/.well-known/apple-developer-domain-association.txt`.
-Tell me when you have the file from Apple and I will add the rewrite and verify
-it deploys — it needs a push to production before Apple's Verify button can
-succeed.
+Once the source escapes the basePath, the destination is treated as external
+too, so only an absolute URL is accepted — which would mean the app proxying to
+itself by hardcoded hostname.
+
+The remaining options, none yet implemented:
+
+1. **Serve it from `proxy.ts`** (the renamed middleware, already present for
+   i18n). It sees the full pathname including outside the basePath, so it can
+   match `/.well-known/apple-developer-domain-association.txt` and return the
+   token from an env var — no filesystem access, and changeable without a
+   deploy. Most promising.
+2. An absolute-URL rewrite to the app's own public hostname. Works, but adds a
+   self-proxy hop and hardcodes the domain.
+3. Drop `basePath` — far too invasive; it is load-bearing everywhere.
+
+**This blocks Apple, and only Apple.** Google needs none of it. Do Google first.
 
 Verify it is actually reachable before clicking Verify in Apple's console:
 
@@ -202,7 +204,15 @@ Apple's four variables can be left out locally — the Apple button hides itself
 when they are absent, rather than failing at the point of tapping it.
 
 **Production** — Azure App Settings on `vnext-badminton-app` (not the workflow;
-none of these are `NEXT_PUBLIC_`, so they need no rebuild):
+none of these are `NEXT_PUBLIC_`, so they need no rebuild).
+
+> ⚠️ **`APP_ORIGIN` is REQUIRED, not optional.** It is the origin of every link
+> the app mails out. It is deliberately never derived from the request, because
+> `req.url` follows the client-controlled `Host` header — and a password-reset
+> link built from an attacker's host is an account takeover: the victim
+> receives a genuine BPM email whose link hands their reset token to the
+> attacker. With `APP_ORIGIN` unset outside local dev, the app **refuses to
+> send** verification and reset emails rather than send a poisoned link.
 
 ```bash
 az webapp config appsettings set \

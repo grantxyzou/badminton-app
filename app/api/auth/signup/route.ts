@@ -47,6 +47,7 @@ import { sendVerificationEmail } from '@/lib/authEmail';
 import { completeSignIn } from '@/lib/authSession';
 import { normalizeEmail, reserveIdentity, releaseIdentity } from '@/lib/authIdentity';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
+import { outboundOriginOrNull } from '@/lib/appOrigin';
 import type { Member } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -55,10 +56,6 @@ export const dynamic = 'force-dynamic';
 // and the verification mail is the actual proof that an address works —
 // this only catches obvious typos before we spend a Cosmos write on them.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function appOrigin(req: NextRequest): string {
-  return process.env.APP_ORIGIN || new URL(req.url).origin;
-}
 
 export async function POST(req: NextRequest) {
   // Flag gate FIRST: read server-side, because a client flag cannot protect the
@@ -136,14 +133,25 @@ export async function POST(req: NextRequest) {
     // Best-effort. The account already exists and works, so a mail failure must
     // not fail the request — but the caller is told, so the UI can offer a
     // resend rather than silently implying a mail is on its way.
-    const verifyUrl =
-      `${appOrigin(req)}/bpm/api/auth/verify-email` +
-      `?token=${verification.token}&email=${encodeURIComponent(email)}`;
+    // NEVER from the request: `req.url` follows the client-controlled Host
+    // header, so a spoofed one would mail this member a genuine-looking BPM
+    // email whose verification link points at the attacker. Skip the send
+    // outright rather than send a poisoned link — the account already exists
+    // and works, and the response reports `verificationSent: false` so the UI
+    // can offer a resend once APP_ORIGIN is configured.
+    const origin = outboundOriginOrNull();
     let sent = false;
-    try {
-      ({ sent } = await sendVerificationEmail(email, name, verifyUrl));
-    } catch (err) {
-      console.error('signup verification mail failed:', err);
+    if (!origin) {
+      console.error('signup: APP_ORIGIN unset — skipping verification email');
+    } else {
+      const verifyUrl =
+        `${origin}/bpm/api/auth/verify-email` +
+        `?token=${verification.token}&email=${encodeURIComponent(email)}`;
+      try {
+        ({ sent } = await sendVerificationEmail(email, name, verifyUrl));
+      } catch (err) {
+        console.error('signup verification mail failed:', err);
+      }
     }
 
     const res = NextResponse.json(

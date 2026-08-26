@@ -14,6 +14,7 @@
  * That is the legible-fail posture applied to configuration.
  */
 import { Google, Apple } from 'arctic';
+import { requireRedirectOrigin } from '@/lib/appOrigin';
 
 export type ProviderName = 'google' | 'apple';
 
@@ -22,8 +23,14 @@ export function redirectUri(provider: ProviderName, origin: string): string {
   return `${origin}/bpm/api/auth/${provider}/callback`;
 }
 
-export function appOrigin(fallbackUrl: string): string {
-  return process.env.APP_ORIGIN || new URL(fallbackUrl).origin;
+/**
+ * Origin for building a `redirect_uri`. Delegates to the strict helper — see
+ * lib/appOrigin.ts for why the request is never consulted. The `fallbackUrl`
+ * parameter is retained so call sites read the same, but is deliberately
+ * unused.
+ */
+export function appOrigin(_fallbackUrl: string): string {
+  return requireRedirectOrigin();
 }
 
 export function googleClient(origin: string): Google | null {

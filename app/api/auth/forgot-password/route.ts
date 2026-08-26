@@ -19,6 +19,7 @@ import { isFlagOn } from '@/lib/flags';
 import { createToken, RESET_TTL_MS } from '@/lib/authToken';
 import { sendPasswordResetEmail } from '@/lib/authEmail';
 import { normalizeEmail, lookupIdentity } from '@/lib/authIdentity';
+import { outboundOriginOrNull } from '@/lib/appOrigin';
 import type { Member } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -59,10 +60,20 @@ export async function POST(req: NextRequest) {
       .read<Member>();
     if (!member || member.active !== true) return OK();
 
+    // Resolve the origin BEFORE minting a token. `req.url` follows the
+    // client-controlled Host header, and a reset link is a live credential:
+    // an attacker who could set Host would have us mail the victim a genuine
+    // BPM email whose link hands the attacker their reset token. Nothing in
+    // that chain looks wrong to the victim, so this fails closed.
+    const origin = outboundOriginOrNull();
+    if (!origin) {
+      console.error('forgot-password: APP_ORIGIN unset — refusing to mail a reset link');
+      return OK();
+    }
+
     const { token, record } = createToken(RESET_TTL_MS);
     await container.items.upsert({ ...member, passwordReset: record });
 
-    const origin = process.env.APP_ORIGIN || new URL(req.url).origin;
     const url = `${origin}/bpm?reset=${token}&email=${encodeURIComponent(email)}`;
     try {
       await sendPasswordResetEmail(email, member.name, url);
