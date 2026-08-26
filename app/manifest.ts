@@ -25,6 +25,13 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: `${BASE}/`,
     display: 'standalone',
     orientation: 'portrait',
+    /* Deliberately the un-tinted base, NOT a field colour, now that each tab
+       has its own coloured ground. theme_color is a single static value and
+       the fields are per-tab, so any tab's tint is wrong on the other four.
+       The base is the only value that is never grossly wrong: every field is
+       a radial gradient that fades to transparent by ~70%, so the bottom of
+       every page -- and the whole of a page scrolled down -- resolves to it.
+       Revisit only if the fields ever become full-bleed. */
     background_color: '#100F0F',
     theme_color: '#100F0F',
     icons: [

@@ -91,6 +91,9 @@
   --rail-inactive: rgba(255, 255, 255, 0.5);
   --rail-border: rgba(255, 255, 255, 0.1);
   --rail-blur: blur(20px) saturate(150%);
+  /* Off-ladder on purpose. This is a sliding pill sized to its own 30px
+     track, not a rectangular surface, so the 6/8/10/12/16 ladder does not
+     apply to it. Documented so it stops reading as drift on the next audit. */
   --rail-indicator-radius: 15px;
 
   /* ── Inputs ── */
@@ -1562,7 +1565,7 @@ html[data-visual="field"] .ink-button {
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   backdrop-filter: blur(20px) saturate(150%);
   border: 1px solid var(--btn-primary-border);
-  border-radius: 14px;
+  border-radius: var(--radius-xl);
   box-shadow: var(--btn-primary-shadow);
   color: var(--btn-primary-text);
   padding: 12px 20px;
@@ -1601,7 +1604,7 @@ html[data-visual="field"] .ink-button {
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   backdrop-filter: blur(20px) saturate(150%);
   border: 1px solid var(--btn-ghost-border);
-  border-radius: 14px;
+  border-radius: var(--radius-xl);
   box-shadow:
     inset 0 1px 0 var(--glass-inset),
     0 2px 8px rgba(0, 0, 0, 0.15);
@@ -1875,7 +1878,12 @@ textarea {
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border: 1px solid var(--input-border);
-  border-radius: 14px;
+  /* Was a raw 14px, which is not a ladder rung (it jumps 12 -> 16). Inputs sit
+     inside cards, so they take the inner-row rung, same as .cc-tile. Note the
+     --radius-sm comment still says "inner-card, inputs" from an older spec;
+     the live value has been 14 for a long time, so this moves 14 -> 12 rather
+     than 14 -> 8, which would be a visible change to every form in the app. */
+  border-radius: var(--radius-lg);
   color: var(--input-text);
   padding: 11px 14px;
   width: 100%;
@@ -2211,7 +2219,10 @@ textarea {
 .segment-tab-active {
   background: var(--segment-active-bg);
   color: var(--segment-active-text);
-  border-radius: 20px;
+  /* Was a raw 20px. The tab is 28px tall (32px track less 2px padding each
+     side), so a 20px radius already clamps to a full pill at 14px -- this is
+     a zero-visual-change swap onto the ladder, not a restyle. */
+  border-radius: var(--radius-pill);
   font-weight: 590;
 }
 
@@ -2524,6 +2535,36 @@ html[data-hydrated="true"] .splash {
   background: var(--page-bg);
   border-top: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
 }
+
+/* ── Sheets inherit their tab's field ──     [NEXT_PUBLIC_FLAG_VISUAL_FIELDS]
+   Design rule 1: one field per TAB, never per screen -- sub-screens and
+   sheets inherit it. Without this a sheet opens as a flat slab of --page-bg
+   over a coloured page and reads as a different app.
+
+   This works because <BottomSheet> portals to document.body, which is still
+   inside <html>, so the sheet can see data-tab even though it is not inside
+   the tab's subtree.
+
+   Still fully opaque: --field-base resolves to --page-bg, so the field rides
+   on solid ground and scrolled page content cannot bleed through. That was
+   the whole point of the rule above, and a translucent sheet would also mean
+   a tall backdrop-filter on every sheet -- a real cost on the iPhone 15 /
+   Pixel 8 floor this app targets. */
+html[data-visual="field"] .bottom-sheet {
+  background: var(--field-home), var(--field-base);
+}
+html[data-visual="field"][data-tab="players"] .bottom-sheet {
+  background: var(--field-signups), var(--field-base);
+}
+html[data-visual="field"][data-tab="skills"] .bottom-sheet {
+  background: var(--field-stats), var(--field-base);
+}
+html[data-visual="field"][data-tab="profile"] .bottom-sheet {
+  background: var(--field-profile), var(--field-base);
+}
+html[data-visual="field"][data-tab="admin"] .bottom-sheet {
+  background: var(--field-admin), var(--field-base);
+}
 .bottom-sheet-backdrop[data-state="closing"] {
   opacity: 0;
 }
@@ -2658,7 +2699,7 @@ html[data-hydrated="true"] .splash {
 .cc-btn-lg {
   padding: 14px 16px;
   font-size: 15px;
-  border-radius: 14px;
+  border-radius: var(--radius-xl);
   font-weight: 700;
   letter-spacing: -0.005em;
   width: 100%;
@@ -2859,7 +2900,7 @@ html[data-hydrated="true"] .splash {
 
 .cc-tile {
   padding: 14px;
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;

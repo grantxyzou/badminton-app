@@ -102,6 +102,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Standalone status-bar / Android toolbar tint — matches the dark brand bg
   // and the cold-start splash (var(--page-bg)).
+  // Stays the un-tinted base — see the note in app/manifest.ts. A single
+  // static value cannot track five per-tab fields.
   themeColor: '#100F0F',
   // Pinch / double-tap / input-focus zoom disabled by product decision — the
   // accidental-zoom jank on the saved-to-homescreen iOS web app outweighed the
