@@ -47,7 +47,7 @@ const SETTING_ICON: Record<DrillPick['setting'], string> = {
 const SETTING_COLOR: Record<DrillPick['setting'], string> = {
   solo: 'var(--accent)',
   pair: 'var(--accent-amber)',
-  group: 'var(--sev-low-text)',
+  group: 'var(--sev-low-label)',
 };
 
 export interface LearnRegisterProps {

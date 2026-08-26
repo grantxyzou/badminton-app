@@ -79,7 +79,7 @@ const META: Record<EquipmentCategory, CategoryMeta> = {
   // and disowns something that ships, which is exactly what 6f7ea48 fixed for
   // racket.
   string: {
-    labelKey: 'catString', icon: 'science', color: 'var(--sev-low-text)',
+    labelKey: 'catString', icon: 'science', color: 'var(--sev-low-label)',
     soonKey: 'railStringsSoon', badgeKey: 'railNoPickYet',
   },
   shoe: { labelKey: 'catShoe', icon: 'fitness_center', color: 'var(--accent-amber)', soonKey: 'railShoesSoon' },

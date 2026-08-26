@@ -152,19 +152,13 @@
    Whichever loses at the Stage 4 gate gets deleted, tokens and all.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Track A — one hue, five depths ── */
+/* ── The shipped fields — one hue per tab ── */
 .fieldHome     { background: var(--field-home),      var(--field-base); }
 .fieldSignups  { background: var(--field-signups),   var(--field-base); }
 .fieldStats    { background: var(--field-stats),     var(--field-base); }
 .fieldProfile  { background: var(--field-profile),   var(--field-base); }
 .fieldAdmin    { background: var(--field-admin),     var(--field-base); }
 
-/* ── Track B — one hue per tab ── */
-.fieldBHome    { background: var(--field-b-home),    var(--field-base); }
-.fieldBSignups { background: var(--field-b-signups), var(--field-base); }
-.fieldBStats   { background: var(--field-b-stats),   var(--field-base); }
-.fieldBProfile { background: var(--field-b-profile), var(--field-base); }
-.fieldBAdmin   { background: var(--field-b-admin),   var(--field-base); }
 
 /* The motifs that survive a field, shown in place so the Stage 4 call is made
    against what actually ships. Both are the live recipes from globals.css:
