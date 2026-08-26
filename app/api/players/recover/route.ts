@@ -1,36 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { setAdminCookie, clearAdminCookie, setMemberCookie } from '@/lib/auth';
+import { completeSignIn } from '@/lib/authSession';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer } from '@/lib/cosmos';
 import { verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import { verifyRecoveryCode } from '@/lib/memberRecoveryCode';
 import { appendEvent } from '@/lib/recoveryAudit';
-
-/**
- * Single-identity model: when a member with `role === 'admin'` proves their
- * PIN, issue the admin session cookie so they don't have to log in again on
- * AdminTab. Admin status is a property of the member record, not a separate
- * auth surface. Conversely, when a non-admin member signs in, ANY existing
- * admin cookie must be cleared — otherwise admin powers persist across
- * player sign-out → sign-in-as-different-player and leak to whoever logs
- * in next.
- */
-function syncAdminCookie(
-  res: NextResponse,
-  member: { id: string; name: string; role?: string } | null | undefined,
-): void {
-  // PIN proven → trust this device as the member for 30 days so future
-  // sign-ups skip the PIN re-entry. Issued for ALL members (admin or not).
-  if (member) {
-    setMemberCookie(res, member.id, member.name);
-  }
-  if (member && member.role === 'admin') {
-    setAdminCookie(res, member.id, member.name);
-  } else {
-    clearAdminCookie(res);
-  }
-}
 
 export const dynamic = 'force-dynamic';
 
@@ -84,7 +59,7 @@ async function handlePost(req: NextRequest) {
   // Note: the previous "admins must use /reset-access" guard was retired
   // alongside the single-identity model. Recovery only succeeds with the
   // player's own PIN, so an admin cookie holder can't impersonate other
-  // players — the syncAdminCookie call below also clears admin status if
+  // players — the completeSignIn call below also clears admin status if
   // the recovered identity is not itself an admin.
 
   const playersContainer = getContainer('players');
@@ -161,7 +136,7 @@ async function handlePost(req: NextRequest) {
         pinHash: member.pinHash,
       });
       const res = NextResponse.json({ deleteToken: newDeleteToken });
-      syncAdminCookie(res, member);
+      completeSignIn(res, member);
       return res;
     }
 
@@ -174,7 +149,7 @@ async function handlePost(req: NextRequest) {
     // admin cookie still syncs because admin status is a property of
     // the member, independent of session participation.
     const res = NextResponse.json({ deleteToken: null });
-    syncAdminCookie(res, member);
+    completeSignIn(res, member);
     return res;
   }
 
@@ -244,6 +219,10 @@ async function handlePost(req: NextRequest) {
   // sign-in does on the pin path), so mint the member_session cookie. This is
   // what lets the user — who just cleared their PIN — pass the members/me
   // first-set guard when they pick a new PIN in the next sheet.
-  setMemberCookie(res, String(member.id), String(member.name));
+  completeSignIn(res, {
+    id: String(member.id),
+    name: String(member.name),
+    role: typeof member.role === 'string' ? member.role : undefined,
+  });
   return res;
 }
