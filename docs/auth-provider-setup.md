@@ -72,6 +72,17 @@ Create → copy the **Client ID** and **Client secret**.
 
 ---
 
+## Apple — DEFERRED (2026-08-26)
+
+> **Not being set up right now.** The code is written, tested, and inert:
+> `configuredProviders()` omits Apple when its env vars are absent, so the
+> button never renders and `/api/auth/apple/start` answers a distinct 503
+> rather than failing when tapped. Nothing needs removing or re-adding — this
+> section is the whole remaining task whenever it is picked up.
+>
+> Rough cost: ~30 minutes of console work, one production deploy in the middle
+> (for domain verification), and it cannot be exercised on localhost at all.
+
 ## Apple (~30 minutes, **cannot** be tested on localhost)
 
 Requires the paid Apple Developer Program membership you already have.
