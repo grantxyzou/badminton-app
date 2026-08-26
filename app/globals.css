@@ -593,8 +593,29 @@ body {
      literal 12px: the relationship is the rule, and hard-coding the answer is
      how it silently desynchronises the next time either input moves. */
   --fcard-inner-radius: calc(var(--fcard-radius) - var(--fcard-pad-x));
-  --fcard-bg:         linear-gradient(160deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.09));
-  --fcard-blur:       blur(16px) saturate(130%);
+  /* A 17% WHITE frost was the design's value, drawn against its Stats field
+     whose core is opaque forest #0a1f0e -- a DARK ground. Our fields are raw
+     bright hues at ~.40, and white-on-bright composites to mid-tone, where
+     light text cannot pass AA. Measured at the brightest point of each field,
+     every dark tab failed: --text-primary 3.73-4.53:1 and --text-secondary
+     3.14-3.67:1. Today's app, for comparison, is 6.81 / 5.07 at ITS worst (a
+     card over the brightest aurora blob) -- so the direction as drawn was a
+     regression, not a pre-existing bar.
+
+     Halving the field alpha fixes it arithmetically and guts the reason Track B
+     was chosen, so the frost changes instead. brightness() is MULTIPLICATIVE:
+     it crushes the bright corner where the problem is and barely touches
+     near-black where the field has faded out, which a flat dark overlay cannot
+     do -- that would have reproduced the vanishing-nav bug on every card. The
+     small white lift is what keeps the card separate from the ground in those
+     faded areas.
+
+     Result at the worst point of any dark field: primary 7.22, secondary 5.33
+     -- both above today's baseline -- with chroma 16-53 still in the card, so
+     tabs stay recognisable. Light is untouched: it measures 14.05-14.49 with
+     the white frost, and brightness() there would only darken a passing card. */
+  --fcard-bg:         linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.05));
+  --fcard-blur:       blur(16px) saturate(130%) brightness(0.65);
   --fcard-inset:      inset 0 1px 0 rgba(255, 255, 255, 0.14);
   --fcard-shadow:     0 8px 40px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.12);
   /* The pick — the only opaque card. At most ONE per screen: two solid
@@ -1497,7 +1518,133 @@ html[data-visual="field"] .glass-card {
   }
 }
 
-/* ── Admin's parallel card system: radius only ──
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ADMIN cc-* ON THE FIELD MATERIAL          [NEXT_PUBLIC_FLAG_VISUAL_FIELDS]
+
+   Admin ran a parallel card system: .admin-hero / .cc-dcard / .cc-tile /
+   .cc-mini-card / .cc-session-chip, each with its own hand-tuned rgba pair for
+   dark and light. An earlier pass aligned only their RADIUS, which stopped the
+   column looking broken but left two materials side by side -- .glass-card
+   frosted and blurred, .cc-dcard a flat tint.
+
+   This puts them on one material. Every value below resolves through an
+   existing token; there is not a single new literal, which is the point --
+   a parallel system is exactly what a second set of literals grows into.
+
+   Tier follows position, per DESIGN.md #9:
+     page-level surfaces (.admin-hero, .cc-dcard)  -> Tier 1, the field card
+     inner surfaces (.cc-tile, .cc-mini-card,
+                     .cc-session-chip, tracks)     -> Tier 2, flat + border
+   Tier 2 nested inside Tier 1 keeps the concentric radius from the rule above.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Tier 1 · page-level admin cards ── */
+html[data-visual="field"] .cc-dcard {
+  background: var(--fcard-bg);
+  -webkit-backdrop-filter: var(--fcard-blur);
+  backdrop-filter: var(--fcard-blur);
+  border: none;
+  box-shadow: var(--fcard-inset), var(--fcard-shadow);
+}
+/* The two semantic dashboard states reuse the card materials rather than
+   inventing an orange and an amber: "something is closing" and "something is
+   waiting" already have fills. */
+html[data-visual="field"] .cc-dcard.alert { background: var(--fcard-full-bg); }
+html[data-visual="field"] .cc-dcard.warn  { background: var(--fcard-wait-bg); }
+
+/* Hover was a border-colour change, which cannot survive border: none. Moved to
+   the same inset-brightening the field card already uses, so admin hover and
+   app hover are one behaviour. */
+@media (hover: hover) {
+  html[data-visual="field"] .cc-dcard:hover {
+    border-color: transparent;
+    box-shadow: inset 0 1px 0 var(--glass-inset-hover), var(--glass-shadow-hover);
+  }
+}
+
+/* The hero keeps its accent rim: it is the "you are in admin" marker, not
+   decoration, and it is the one place the rim carries meaning. */
+html[data-visual="field"] .admin-hero {
+  padding: var(--fcard-pad);
+  background: var(--fcard-bg);
+  -webkit-backdrop-filter: var(--fcard-blur);
+  backdrop-filter: var(--fcard-blur);
+  border: 1px solid var(--btn-primary-border);
+  box-shadow: var(--fcard-inset), var(--fcard-shadow);
+}
+
+/* ── Status pills ──
+   The pill text colours were tuned against the old near-black / near-white
+   admin card. On a field card the fill sits on a mid-tone and four of the
+   eight combinations drop below the 4.5 bar these 11px labels need:
+     dark  muted  #9ca3af  3.32      light success #15803d  4.06
+     dark  amber  #fbbf24  4.40      light amber   #b45309  3.96
+   Two of the four replacements are existing tokens (--sev-med-text is exactly
+   this amber, --amber is already the light value chosen above); the other two
+   are one rung further along the same ramp. */
+html[data-visual="field"] .cc-pill-muted { color: #cbd5e1; }
+html[data-visual="field"] .cc-pill-amber { color: var(--sev-med-text); }
+html[data-visual="field"][data-theme="light"] .cc-pill-muted { color: var(--text-secondary); }
+html[data-visual="field"][data-theme="light"] .cc-pill-amber { color: var(--amber); }
+html[data-visual="field"][data-theme="light"] .cc-pill-success { color: #166534; }
+
+/* ── Touch targets ──
+   .cc-btn is padding-sized (0.5rem/0.875rem at 13px) and lands at 28-38px
+   depending on its content -- measured on the live admin console. WCAG 2.5.8
+   only asks 24px so this is not an AA failure, but the app's own rule is 44px
+   minimum "everywhere" (DESIGN.md, and the Stats handoff repeats it), and
+   admin is used one-handed on a phone like every other tab.
+
+   min-height rather than more padding: padding would also widen the dense
+   toolbars these sit in, min-height only grows the axis that is short. */
+html[data-visual="field"] .cc-btn,
+html[data-visual="field"] .cc-session-chip {
+  min-height: 44px;
+}
+
+/* ── Tier 2 · inner admin surfaces ──
+   rgba(var(--glass-tint), N) is theme-aware by construction: the tint token is
+   255,255,255 in dark and 0,0,0 in light. That is why none of these need a
+   [data-theme="light"] partner, and why the old pairs could drift. */
+html[data-visual="field"] .cc-tile,
+html[data-visual="field"] .cc-mini-card,
+html[data-visual="field"] .cc-session-chip {
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+@media (hover: hover) {
+  html[data-visual="field"] .cc-tile:hover,
+  html[data-visual="field"] .cc-session-chip:hover {
+    background: var(--glass-soft-bg);
+    border-color: var(--glass-border);
+  }
+  /* -static is a read-only stat display and must not offer a hover affordance. */
+  html[data-visual="field"] .cc-tile-static:hover {
+    background: var(--inner-card-bg);
+    border-color: var(--inner-card-border);
+  }
+}
+html[data-visual="field"] .cc-progress-track {
+  background: var(--inner-card-bg);
+}
+
+/* Reduced transparency: same contract as .glass-card -- no blur, flat fill, and
+   the rim comes back because the inset alone is not an edge without frost. */
+@media (prefers-reduced-transparency: reduce) {
+  html[data-visual="field"] .cc-dcard,
+  html[data-visual="field"] .admin-hero {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--fcard-locked-bg);
+    border: 1px solid var(--glass-border);
+  }
+}
+
+/* ── Admin's parallel card system: radius ──
    The cc-* family (.admin-hero, .cc-dcard, .cc-tile, .cc-mini-card) is a
    separate design language for dense admin tables, and migrating its MATERIAL
    is deliberately out of scope -- see the note in Stage 7 of
@@ -1621,11 +1768,25 @@ html[data-visual="field"] .glass-card.is-flush {
 /* Anything sitting flush inside a field card curves parallel to it. Without
    this a 12px inner row inside a 30px card reads as two unrelated shapes --
    the nesting looks accidental, which is the other half of "weird". */
+/* Every Tier-1 container, not just .glass-card. .admin-hero and .cc-dcard are
+   now the same material, so anything flush inside them curves parallel too --
+   AdminConsoleHero nests .cc-grid3 > .cc-tile inside .admin-hero, and without
+   this those tiles rendered at the CARD radius (30px) inside a 30px card. */
+html[data-visual="field"] .admin-hero .cc-tile,
+html[data-visual="field"] .admin-hero .cc-session-chip,
+html[data-visual="field"] .admin-hero .cc-mini-card,
+html[data-visual="field"] .admin-hero .cc-dcard,
+html[data-visual="field"] .admin-hero .inner-card,
+html[data-visual="field"] .admin-hero .glass-card-soft,
+html[data-visual="field"] .cc-dcard .cc-tile,
+html[data-visual="field"] .cc-dcard .cc-session-chip,
+html[data-visual="field"] .cc-dcard .cc-mini-card,
 html[data-visual="field"] .glass-card .glass-card-soft,
 html[data-visual="field"] .glass-card .inner-card,
 html[data-visual="field"] .glass-card .inner-card-green,
 html[data-visual="field"] .glass-card .cc-mini-card,
 html[data-visual="field"] .glass-card .cc-tile,
+html[data-visual="field"] .glass-card .cc-session-chip,
 html[data-visual="field"] .glass-card .cc-dcard,
 /* Full-width controls are flush to the padding too, so they are governed by the
    same rule. Inputs already resolved to 12px via --radius-lg and happened to
@@ -3054,7 +3215,39 @@ html[data-visual="field"][data-tab="admin"] .bottom-sheet {
   --ink-faint: rgba(255, 255, 255, 0.42);
 }
 [data-theme="light"] {
+  /* PRE-EXISTING BUG, not introduced by the fields: these three had NO light
+     values, so an admin running light mode got #fbbf24 / #fb923c / #f87171 --
+     dark-mode brights -- on a near-white card. Measured on the light admin
+     card: 1.45:1, 1.95:1 and worse. They carry small text (an 11px
+     role="alert" in BirdsPage, 14px amounts in PaymentsCard), so the bar is
+     4.5:1, and they were nowhere near it in any theme-light admin screen.
+     Values chosen to clear 4.5 on the plain card AND on its own tinted
+     variant, since .cc-dcard.alert / .warn colour the number with the same
+     hue as the fill it sits on. */
+  --amber: #92400e;
+  --orange: #9a3412;
+  --red-soft: #b91c1c;
   --ink-faint: rgba(0, 0, 0, 0.42);
+}
+
+/* On a field the dark values need lifting too -- but ONLY on a field. Off the
+   flag these sit on a near-black card where #fb923c and #f87171 pass easily;
+   on the admin field card (#563d28) they measure 4.44 and 3.63 against a 4.5
+   bar. Reusing the severity ramp rather than inventing two lighter oranges:
+   --sev-high-text and --sev-crit-text already exist for exactly this role. */
+html[data-visual="field"] {
+  --orange: var(--sev-high-text);
+  --red-soft: var(--sev-crit-text);
+  /* --amber is left alone: it measures 6.02 on the same card. */
+
+  /* --ink-faint at .42 is below AA on any field surface (3.04 dark / 2.96
+     light on a .cc-tile). It labels deltas and eyebrows -- small text, 4.5
+     bar. .65 is the worst case across all five dark fields (Home is tightest
+     at .65, Sign-Ups .64) and still reads as the quietest ink in the system. */
+  --ink-faint: rgba(255, 255, 255, 0.65);
+}
+html[data-visual="field"][data-theme="light"] {
+  --ink-faint: rgba(0, 0, 0, 0.65);
 }
 
 /* Profile-screen Admin Console hero */
@@ -3152,7 +3345,10 @@ html[data-visual="field"][data-tab="admin"] .bottom-sheet {
 }
 .cc-tile.warn .num { color: var(--amber); }
 .cc-tile.bad .num { color: var(--orange); }
-.cc-tile.info .num { color: #60a5fa; }
+/* Was a raw #60a5fa, which has no light value and measures 2.12:1 on a light
+   tile against a 3:1 bar (.num is 28px/700, large text). --sev-low-text is the
+   system token for exactly this role and is theme-aware: 4.54 dark, 7.27 light. */
+.cc-tile.info .num { color: var(--sev-low-text); }
 
 /* Stat-only variant — no hover, no pointer; the tile shows a number,
    not a target. Use when the cell is a glanceable stat rather than a

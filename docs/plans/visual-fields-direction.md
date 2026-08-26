@@ -22,6 +22,22 @@
 > had never flattened `.glass-card` at all, and 30px radii were mechanically
 > unguarded. Both are now covered.
 >
+> **Admin `cc-*` is no longer deferred.** Stage 7 below scoped its material out
+> and aligned only its radius. That has since been completed: `.admin-hero` and
+> `.cc-dcard` are Tier 1 on the field material, the inner `cc-*` surfaces are
+> Tier 2, and the family's ~80 hand-tuned rgba pairs now resolve through
+> existing tokens. Doing it surfaced a **pre-existing** bug unrelated to the
+> fields: `--amber`, `--orange` and `--red-soft` had no light-mode values at
+> all, so light-mode admin rendered dark-mode brights on a near-white card at
+> 1.45–1.95:1.
+>
+> It also forced a change to the card material itself. Measured at each field's
+> brightest point, **every dark tab failed AA** (3.73–4.53:1 primary) because a
+> 17% white frost over a bright hue composites to mid-tone. The frost is now
+> `brightness(0.65)` plus a small white lift — multiplicative, so it crushes the
+> bright corner and barely touches the faded areas. Worst case is now 7.22
+> primary / 5.33 secondary, above the pre-field baseline of 6.81 / 5.07.
+>
 > The sections below are the original audit and plan, kept as written.
 
 ## Context
