@@ -44,7 +44,10 @@ export default function StatusBadge({ children, variant = 'accent', tone = 'acce
     // class sets `border: none` to stop BASE's border painting under it.
     return (
       <span className="badge-ai" style={{ ...BASE, fontSize: 'var(--fs-2xs)', padding: '3px 9px', color: 'var(--text-primary)' }}>
-        {children}
+        {/* The ring is an absolutely-positioned ::before, which paints ABOVE the
+            parent's own text. Lift the label into its own positioned box so it
+            sits on top of the ring instead of underneath it. */}
+        <span style={{ position: 'relative' }}>{children}</span>
       </span>
     );
   }

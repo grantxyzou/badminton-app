@@ -1933,14 +1933,18 @@ html[data-visual="field"] .ink-button {
   border-radius: inherit;
   padding: 1.25px;
   background: var(--ai-rim);
+  /* ORDER MATTERS. `mask`/`-webkit-mask` are SHORTHANDS, so they reset
+     mask-composite to its initial value (`add`). Setting the composite first
+     and the shorthand second silently undoes the cut-out and the ring renders
+     as a filled pill -- which is exactly what happened here. Composite last. */
   -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
           mask-composite: exclude;
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
   pointer-events: none;
 }
 
