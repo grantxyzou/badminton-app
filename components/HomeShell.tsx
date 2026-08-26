@@ -334,7 +334,10 @@ export default function HomeShell({ initialAnnouncement }: Props) {
       {/* Mounted at shell level, not inside a tab: the provider callback lands
           on whatever tab the app restores, and the name prompt has to appear
           regardless of which one that is. */}
+      {/* Keyed on open so the sheet REMOUNTS each time: mode, PIN field and
+          error all reset without setState-in-effect. */}
       <ChooseNameSheet
+        key={chooseNameOpen ? 'choose-name-open' : 'choose-name-closed'}
         open={chooseNameOpen}
         onClose={() => setChooseNameOpen(false)}
         sessionId={profileSession.id}
