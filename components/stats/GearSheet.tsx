@@ -6,7 +6,7 @@ import EmptyState from '@/components/primitives/EmptyState';
 import ListRow from '@/components/primitives/ListRow';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
 import BagList from './BagList';
-import type { GearResult } from './useGear';
+import type { GearFailure, GearResult } from './useGear';
 import type { CatalogItem, EquipmentCategory, GearItem } from '@/lib/types';
 import { recommendTension, MIN_LB, MAX_LB, type PlayFormat } from '@/lib/tension';
 import { searchCatalog } from '@/lib/gearSearch';
@@ -30,9 +30,17 @@ interface Props {
    *  `item.category === 'racket'`, so passing this for other categories is
    *  harmless. */
   activeItemId?: string;
-  /** Wired straight through to `BagList`. No-ops if `ownedItems` is empty. */
-  onActivate?: (id: string) => void;
-  onRemove?: (id: string) => void;
+  /** Wired through to `BagList`. No-ops if `ownedItems` is empty.
+   *
+   *  These RETURN their result. They used to be `=> void`, and `YourKitCard`
+   *  called them as `{ void activate(id) }` — so a refused activate or remove
+   *  produced no pill, no change and no explanation whatsoever. Tapping "Use
+   *  this one" or the ✕ simply did nothing, forever. That is the same
+   *  lying-empty-state family as a swallowed load error, on the two controls
+   *  that live INSIDE this sheet, and it is indistinguishable from a dead
+   *  button. Both now report through the one error slot below. */
+  onActivate?: (id: string) => Promise<GearResult>;
+  onRemove?: (id: string) => Promise<GearResult>;
   /** Adds the racket and makes it active, then the sheet closes. Owned by
    *  useGear one level up; this sheet holds no gear state. The second
    *  argument is the string-tension capture (see the tension field below) —
@@ -254,6 +262,35 @@ export default function GearSheet({
   // that fills up some other way says so instead of reading as a crash. An
   // unrecognised reason falls through to the generic message; it never asserts
   // a cause the server didn't give.
+  /** One place a `GearFailure` becomes words, so the catalog rows and the bag
+   *  rows can never describe the same refusal differently. */
+  function messageFor(reason: GearFailure): string {
+    if (reason === 'bag_full') return t('bagFull');
+    if (reason === 'duplicate_racket') return t('bagDuplicate');
+    if (reason === 'unauthorized') return t('bagSignInAgain');
+    if (reason === 'member_not_found') return t('bagMemberMissing');
+    if (reason === 'tension_not_saved') return t('bagTensionNotSaved');
+    if (reason === 'rate_limited') return t('bagRateLimited');
+    return t('recError');
+  }
+
+  /** Activate / remove, with their answer actually rendered. */
+  async function runBagOp(op: ((id: string) => Promise<GearResult>) | undefined, id: string) {
+    if (!op || busy) return;
+    setPickError(null);
+    const res = await op(id);
+    // A handler that reports nothing is UNKNOWN, not failed. The prop type
+    // asks for a `GearResult`, but a type cannot police a runtime caller —
+    // a plain `() => void` handler (every pre-Task call site, and the older
+    // tests) resolves to `undefined`, and reading `.ok` off that throws
+    // inside an un-awaited click handler, where it surfaces as an unhandled
+    // rejection rather than a visible failure. Painting an error here would
+    // be worse still: it would assert a refusal nobody reported, which is the
+    // mirror of the lying-empty-state rule and the same mistake as promoting
+    // an unrecognised status to a named `GearFailure`.
+    if (res && !res.ok) setPickError(messageFor(res.reason));
+  }
+
   async function pick(item: CatalogItem) {
     if (busy) return;
     setPickError(null);
@@ -266,9 +303,10 @@ export default function GearSheet({
       : undefined;
     const res = await onPick(item, tensionLbs);
     if (res.ok) { onClose(); return; }
-    if (res.reason === 'bag_full') setPickError(t('bagFull'));
-    else if (res.reason === 'duplicate_racket') setPickError(t('bagDuplicate'));
-    else setPickError(t('recError'));
+    // Actionable, not decorative. "Refresh to try again" is the wrong
+    // instruction for a lapsed session — refreshing cannot mint a cookie, so
+    // it sends the member round a loop that never terminates.
+    setPickError(messageFor(res.reason));
   }
 
   return (
@@ -292,8 +330,8 @@ export default function GearSheet({
             <BagList
               items={ownedItems}
               activeId={activeItemId}
-              onActivate={(id) => onActivate?.(id)}
-              onRemove={(id) => onRemove?.(id)}
+              onActivate={(id) => { void runBagOp(onActivate, id); }}
+              onRemove={(id) => { void runBagOp(onRemove, id); }}
               busy={busy}
             />
           )}

@@ -296,6 +296,13 @@ function seedDevScenarioIfRequested(containerName: string) {
     ];
     for (const [who, racket, strings] of kit) {
       mockStore.playerGear.push({
+        // Seeded documents must carry a concurrency token like any other.
+        // `playerGear` is the only container written under `IfMatch`, and
+        // without an etag its route cannot pick the upsert branch at all — it
+        // fell through to `create`, hit the id that was already here, and
+        // answered `save_conflict` on every retry. Net effect: not one fixture
+        // member could add a racket or a string in local dev.
+        _etag: `mock-etag-seed-${who}`,
         id: `gear-dev-member-${who}`,
         memberId: `dev-member-${who}`,
         items: [

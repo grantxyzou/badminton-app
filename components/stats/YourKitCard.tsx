@@ -173,8 +173,11 @@ export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
           .filter((id): id is string => typeof id === 'string')}
         ownedItems={ownedItemsForPicking}
         activeItemId={active?.id}
-        onActivate={(id) => { void activate(id); }}
-        onRemove={(id) => { void remove(id); }}
+        // RETURNED, not `void`-ed. Discarding these results meant a refused
+        // activate or remove showed the member nothing at all — see the prop
+        // docs on `GearSheet`. The sheet renders the failure.
+        onActivate={activate}
+        onRemove={remove}
         onPick={(item, tensionLbs) => add(item, typeof tensionLbs === 'number' ? { tensionLbs } : undefined)}
         busy={busy}
         online={online}

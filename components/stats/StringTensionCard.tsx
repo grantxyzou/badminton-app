@@ -42,12 +42,19 @@ export interface StringTensionCardProps {
 export default function StringTensionCard({ activeName, gear, suppressed }: StringTensionCardProps) {
   const t = useTranslations('stats.gear');
   const tStats = useTranslations('stats');
+  // The bag-write failure vocabulary, shared with both gear sheets so one
+  // refusal cannot be described two different ways on one tab.
+  const tGearErr = useTranslations('valueHub');
   const [level, setLevel] = useState<number | null>(null);
   // Was a bare `ready` boolean, which merged three different worlds: read
   // succeeded with a level, read succeeded with no level, and read FAILED.
   // The last two both left `level` null, so a failed read vanished the card
   // exactly like a member who has never checked in.
   const [levelStatus, setLevelStatus] = useState<'loading' | 'ready' | 'error' | 'forbidden'>('loading');
+  // A refused format write. Deliberately NOT a local copy of `format` — the
+  // docstring above is right that a second source of truth is the bug. This
+  // holds only the reason the stored value did not move.
+  const [prefError, setPrefError] = useState<string | null>(null);
 
   // `levelStatus` gates on the LEVEL read alone. The gear doc only decides
   // which toggle is lit; this card's render/no-render rule has always been "do
@@ -115,11 +122,24 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
   const selected = formatForToggle(format);
 
   // Writes through the single owner so the recommender, the rail and this card
-  // all agree immediately. Failure is silent by design: the preference is not
-  // something the member is waiting on, and `useGear` leaves the previous value
-  // in place rather than showing one the server never took.
-  const pick = (next: 'singles' | 'doubles') => {
-    void gear.setPrefs({ playFormat: next });
+  // all agree immediately.
+  //
+  // This used to be `void gear.setPrefs(...)`, justified in a comment as
+  // "silent by design: the preference is not something the member is waiting
+  // on". That was wrong, and visibly so: the headline number below IS
+  // `recommendTension(level, format)`. Tapping Singles is the member asking
+  // for a different number. When the write is refused, `useGear` correctly
+  // leaves the stored value alone — so the segment snaps back to Doubles and
+  // the number does not move, which is a dead control with no explanation.
+  // The silence is only defensible for a preference nothing on screen depends
+  // on, and this card is built out of exactly this one.
+  const pick = async (next: 'singles' | 'doubles') => {
+    setPrefError(null);
+    const res = await gear.setPrefs({ playFormat: next });
+    if (res.ok) return;
+    if (res.reason === 'unauthorized') setPrefError(tStats('signInAgain'));
+    else if (res.reason === 'member_not_found') setPrefError(tGearErr('bagMemberMissing'));
+    else setPrefError(t('tensionError'));
   };
 
   return (
@@ -131,7 +151,7 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
           <button
             key={f}
             type="button"
-            onClick={() => pick(f)}
+            onClick={() => { void pick(f); }}
             disabled={gear.busy}
             aria-current={selected === f ? 'true' : undefined}
             className={`flex-1 flex items-center justify-center fs-sm transition-all ${
@@ -142,6 +162,11 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
           </button>
         ))}
       </div>
+
+      {/* Inline, not `failed(...)`: the recommendation itself is still valid
+          and still worth showing — only the member's requested CHANGE to it
+          was refused. Replacing the whole card would throw away good data. */}
+      {prefError && <ErrorState message={prefError} />}
 
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 'var(--space-2)' }}>
         <span

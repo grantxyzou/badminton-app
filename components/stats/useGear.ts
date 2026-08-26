@@ -6,9 +6,31 @@ import type { PlayerGear, GearItem, CatalogItem } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
-/** Why a 409 was refused. Deliberately narrow: an unrecognised 409 code maps to
- *  'error', never to a specific reason the server didn't actually give. */
-export type GearFailure = 'bag_full' | 'duplicate_racket' | 'error';
+/** Why a write was refused. Deliberately narrow: an unrecognised code maps to
+ *  'error', never to a specific reason the server didn't actually give.
+ *
+ *  `unauthorized` and `member_not_found` are here because collapsing them into
+ *  'error' made this route undiagnosable from the outside. Every non-409
+ *  failure rendered as "Couldn't load that — refresh to try again", which for
+ *  an expired `member_session` is not merely vague but WRONG: refreshing can
+ *  never mint a cookie, and the member sits there re-tapping a button that
+ *  will not work until they sign in. That cookie has a 30-day TTL while
+ *  `badminton_identity` in localStorage does not expire at all, so the app
+ *  goes on resolving an active name — Stats renders, the kit card renders,
+ *  the sheet opens — while every write is refused. `GearPickSheet` already
+ *  names this exact state in a comment about its own preference controls; it
+ *  just had no way to say so out loud. */
+export type GearFailure =
+  | 'bag_full'
+  | 'duplicate_racket'
+  | 'unauthorized'
+  | 'member_not_found'
+  /** Strings only: the item WAS added, its tension was not. See `add`. */
+  | 'tension_not_saved'
+  /** 20 bag writes per hour per name+IP. Nothing is broken and nothing the
+   *  member does now will help — only waiting will. */
+  | 'rate_limited'
+  | 'error';
 export type GearResult = { ok: true } | { ok: false; reason: GearFailure };
 
 export interface UseGear {
@@ -88,10 +110,25 @@ export function useGear(name: string | null): UseGear {
     const opId = ++opRef.current;
     try {
       const res = await run();
-      if (res.status === 409) {
+      // 401/403: the caller is not (or is no longer) this member. Read the
+      // body for nothing — the status alone is the whole story, and it is a
+      // story the member can act on.
+      if (res.status === 401 || res.status === 403) {
+        return { ok: false, reason: 'unauthorized' };
+      }
+      // The bag limiter runs BEFORE auth (Rule 4), so this is reachable by
+      // anyone — including, in practice, a member re-tapping a button that is
+      // failing for some OTHER reason: twenty taps in an hour and the original
+      // fault is replaced by this one. Folded into the generic message it read
+      // as "refresh to try again", which is wrong twice — refreshing does
+      // nothing, and the window is an hour, so the app stays broken for
+      // precisely as long as someone keeps trying to reproduce the problem.
+      if (res.status === 429) return { ok: false, reason: 'rate_limited' };
+      if (res.status === 409 || res.status === 404) {
         const { error } = await res.json().catch(() => ({ error: null }));
         if (error === 'bag_full') return { ok: false, reason: 'bag_full' };
         if (error === 'duplicate_racket') return { ok: false, reason: 'duplicate_racket' };
+        if (error === 'member_not_found') return { ok: false, reason: 'member_not_found' };
         return { ok: false, reason: 'error' };
       }
       if (!res.ok) throw new Error(String(res.status));
@@ -174,7 +211,7 @@ export function useGear(name: string | null): UseGear {
       }),
     }));
     if (res.ok && item.category === 'string' && typeof extra?.tensionLbs === 'number') {
-      return mutate(() => fetch(`${BASE}/api/equipment/gear`, {
+      const withTension = await mutate(() => fetch(`${BASE}/api/equipment/gear`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -187,6 +224,19 @@ export function useGear(name: string | null): UseGear {
           },
         }),
       }));
+      // Returning the PUT's own failure here described the wrong event. The
+      // POST above already succeeded, so the string IS in the bag — but the
+      // sheet would report "couldn't save that", and because the item now
+      // appears in `ownedCatalogIds` it is filtered out of the catalog, so
+      // there is no row left to tap to retry. The member is told nothing
+      // saved, sees the string listed anyway, and has no way forward.
+      //
+      // One reason for every PUT failure, deliberately: whatever the status
+      // was, the salient and actionable fact is the same — the string landed,
+      // the tension did not. (A 401 here is close to impossible anyway; the
+      // POST it follows proved the credential a moment earlier.)
+      if (!withTension.ok) return { ok: false, reason: 'tension_not_saved' };
+      return withTension;
     }
     return res;
   }, [mutate, name]);
