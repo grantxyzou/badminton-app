@@ -105,6 +105,23 @@ export async function releaseIdentity(provider: AuthProvider, key: string): Prom
   }
 }
 
+/**
+ * Delete an identity by its document, rather than by (provider, key).
+ *
+ * Callers that already hold an `AuthIdentity` should not have to take its `id`
+ * apart to remove it — the `<provider>:<key>` encoding is this module's alone,
+ * and a caller doing `id.slice(provider.length + 1)` is a second place that
+ * knows the format and can drift from it.
+ */
+export async function releaseIdentityDoc(identity: AuthIdentity): Promise<void> {
+  await ready();
+  try {
+    await getContainer('identities').item(identity.id, identity.id).delete();
+  } catch {
+    // Already gone is the desired end state.
+  }
+}
+
 export async function listIdentitiesForMember(memberId: string): Promise<AuthIdentity[]> {
   await ready();
   const { resources } = await getContainer('identities')

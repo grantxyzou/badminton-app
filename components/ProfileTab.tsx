@@ -12,7 +12,7 @@ import ReportProblemSheet from './ReportProblemSheet';
 import InstallSheet from './InstallSheet';
 import SignInForm from './SignInForm';
 import ProviderButtons from './auth/ProviderButtons';
-import SecureAccountCard from './auth/SecureAccountCard';
+import SignInMethodsCard from './auth/SignInMethodsCard';
 import { isStandalone } from '@/lib/standalone';
 import PageHeader from './primitives/PageHeader';
 import ProfileEyebrow from './primitives/ProfileEyebrow';
@@ -317,10 +317,12 @@ export default function ProfileTab({
           sessionId={sessionId}
           onRecovered={handleRecovered}
         />
-        {/* Self-hiding: renders null unless the server says this member still
-            has only a PIN. Dismissal is stored on the MEMBER, so it does not
-            re-nag across devices. */}
-        {isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS') && <SecureAccountCard />}
+        {/* Always present for a signed-in member: the upgrade nudge is a
+            VARIANT of this card, not a separate surface. The nudge-only card it
+            replaced required hasPin, which left every Google- and
+            email-created account with no route to connect a second provider or
+            disconnect anything. */}
+        {isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS') && <SignInMethodsCard />}
         {isAdmin && (
           <div className="glass-card p-5">
             <button type="button" onClick={onAdminTools} className="cc-btn cc-btn-primary cc-btn-lg">

@@ -139,6 +139,17 @@
   },
   "profile": {
     "auth": {
+      "methodsTitle": "你的登录方式",
+      "methodsSubtitle": "可以用来回到账号的方式。",
+      "methodPin": "PIN 码",
+      "methodPassword": "邮箱和密码",
+      "methodPinOnly": "目前 PIN 码是你唯一的登录方式。",
+      "disconnect": "断开连接",
+      "disconnectConfirm": "确定断开？",
+      "disconnectCancel": "先留着",
+      "lastCredential": "这是你唯一的登录方式，必须保留。请先添加 PIN 码或其他登录方式。",
+      "disconnectFailed": "没能断开连接 — 请再试一次。",
+      "methodsLoadError": "没能加载你的登录方式 — 请刷新重试。",
       "claimTitle": "这是你吗？",
       "claimBody": "已经有人以 {name} 的身份打球。如果那是你，请输入 PIN 码，我们会把这个登录方式连接到你的账号。",
       "claimPinLabel": "你的 4 位 PIN 码",

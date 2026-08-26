@@ -139,6 +139,17 @@
   },
   "profile": {
     "auth": {
+      "methodsTitle": "How you sign in",
+      "methodsSubtitle": "Ways to get back into your account.",
+      "methodPin": "PIN",
+      "methodPassword": "Email and password",
+      "methodPinOnly": "A PIN is your only way in right now.",
+      "disconnect": "Disconnect",
+      "disconnectConfirm": "Disconnect?",
+      "disconnectCancel": "Keep it",
+      "lastCredential": "This is your only way back in, so it has to stay. Add a PIN or another sign-in first.",
+      "disconnectFailed": "Couldn't disconnect that — try again.",
+      "methodsLoadError": "Couldn't load your sign-in methods — refresh to retry.",
       "claimTitle": "Is that you?",
       "claimBody": "Someone already plays as {name}. If that's you, enter your PIN and we'll connect this sign-in to your account.",
       "claimPinLabel": "Your 4-digit PIN",
