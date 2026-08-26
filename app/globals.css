@@ -489,6 +489,137 @@ body {
   --space-4: 12px;
   --space-5: 16px;
   --space-6: 20px;
+
+  /* ══════════════════════════════════════════════════════════════════════
+     FIELDS & CARD MATERIALS  (design: "Visual Colours" §06, 2026-08-25)
+
+     A FIELD is the coloured ground that tells you which tab you're in —
+     it replaces the shared aurora. A FIELD CARD is the frosted surface
+     that sits on it. Both are gated behind NEXT_PUBLIC_FLAG_VISUAL_FIELDS
+     and scoped `html[data-visual="field"]`, so the flag is a real off
+     switch rather than a code revert.
+
+     Nothing here is a new colour: every value is an existing token, or
+     that token at a stated alpha. Two field tracks ship side by side —
+     Track A (--field-*) keeps the one-brand-accent rule and separates
+     tabs by depth; Track B (--field-b-*) gives each tab its own hue.
+     They are compared on /design/backgrounds; the loser gets deleted.
+     ══════════════════════════════════════════════════════════════════════ */
+
+  /* The 30px rung. From the design's own reconciliation of the ladder:
+       "the 16px radius cap now holds for flat-field surfaces and
+        --radius-3xl (30px) is scoped to field cards only"
+     Deliberately NOT part of the --radius-xs..xl ladder above, which
+     stays capped at 16. Never write `border-radius: 30px` — always this
+     token; __tests__/design-canary.test.ts enforces that. */
+  --radius-3xl: 30px;
+
+  /* ── Fields · Track A — one hue, five depths ──
+     Tabs are told apart by how deep and how warm the ground is, never by
+     a new hue, so amber/orange/blue/violet stay free to mean waitlist /
+     session-full / info / admin. Profile and Admin borrow the two aurora
+     blob colours, which were never brand colours. */
+  --field-base:      var(--page-bg);
+  --field-home:      radial-gradient(120% 70% at 78% 4%, rgba(74, 222, 128, 0.42), transparent 70%);
+  --field-signups:   radial-gradient(120% 70% at 78% 4%, rgba(22, 163, 74, 0.44), transparent 70%);
+  --field-stats:     radial-gradient(120% 70% at 78% 4%, var(--forest-800), rgba(22, 163, 74, 0.34) 44%, transparent 74%);
+  --field-profile:   radial-gradient(120% 70% at 78% 4%, rgba(143, 162, 176, 0.40), rgba(27, 50, 77, 0.34) 48%, transparent 74%);
+  --field-admin:     radial-gradient(120% 70% at 78% 4%, rgba(190, 178, 147, 0.42), transparent 70%);
+  /* Top/bottom scrim so copy keeps contrast over the brightest corner of
+     the gradient (at 78% 4% — exactly where --text-muted will fail AA). */
+  --field-scrim:     linear-gradient(180deg, rgba(0, 0, 0, 0.40) 0%, rgba(0, 0, 0, 0.12) 38%, rgba(0, 0, 0, 0.62) 100%);
+
+  /* ── Fields · Track B — one hue per tab ──
+     Looks better and breaks the no-third-colour rule. Each hue is already
+     in the file doing a semantic job elsewhere, so using it as a ground
+     SPENDS that meaning: amber = waitlist, blue = dates/info, violet =
+     admin pill, orange = session full. If Track B wins, those four roles
+     must be reassigned in the same PR — an orange session-full banner on
+     an orange Admin field is invisible. */
+  --field-b-home:    radial-gradient(120% 70% at 78% 4%, rgba(74, 222, 128, 0.42), transparent 70%);
+  --field-b-signups: radial-gradient(120% 70% at 78% 4%, rgba(251, 191, 36, 0.40), transparent 70%);
+  --field-b-stats:   radial-gradient(120% 70% at 78% 4%, rgba(96, 165, 250, 0.40), rgba(27, 50, 77, 0.30) 48%, transparent 74%);
+  --field-b-profile: radial-gradient(120% 70% at 78% 4%, rgba(196, 181, 253, 0.38), transparent 70%);
+  --field-b-admin:   radial-gradient(120% 70% at 78% 4%, rgba(251, 146, 60, 0.40), transparent 70%);
+
+  /* ── Card materials ──
+     Every card is two layers, not one: a 160deg tint gradient and an
+     inset top highlight. Note --fcard-shadow is byte-identical to
+     --glass-shadow, which .glass-card defines and has never applied. */
+  --fcard-radius:     var(--radius-3xl);
+  --fcard-bg:         linear-gradient(160deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.09));
+  --fcard-blur:       blur(16px) saturate(130%);
+  --fcard-inset:      inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --fcard-shadow:     0 8px 40px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.12);
+  /* The pick — the only opaque card. At most ONE per screen: two solid
+     greens and neither reads as the answer. */
+  --fcard-pick-bg:    linear-gradient(150deg, rgba(22, 101, 52, 0.86), rgba(74, 222, 128, 0.72) 68%, rgba(163, 230, 53, 0.68));
+  --fcard-pick-inset: inset 0 1px 0 rgba(255, 255, 255, 0.30);
+  /* Semantic fills stay rare — amber/orange/red mean something is waiting,
+     closing or wrong. Three at once and the screen has stopped talking. */
+  --fcard-good-bg:    linear-gradient(160deg, rgba(74, 222, 128, 0.20), rgba(74, 222, 128, 0.09));
+  --fcard-wait-bg:    linear-gradient(160deg, rgba(251, 191, 36, 0.20), rgba(251, 191, 36, 0.09));
+  --fcard-full-bg:    linear-gradient(160deg, rgba(251, 146, 60, 0.21), rgba(251, 146, 60, 0.10));
+  --fcard-error-bg:   linear-gradient(160deg, rgba(248, 113, 113, 0.22), rgba(248, 113, 113, 0.11));
+  /* Locked is flat — no gradient, no inset, and (in the class) no blur.
+     Dropping the backdrop filter is what makes private data read as inert
+     rather than merely dim. It is the one material that isn't glass. */
+  --fcard-locked-bg:  rgba(255, 255, 255, 0.06);
+
+  /* On-card ink. --fcard-title is #fff in dark rather than --text-primary
+     (#e2e8f0): the heavier frost can carry pure white, and the design
+     specifies it. */
+  --fcard-title:      #ffffff;
+  --fcard-label:      rgba(255, 255, 255, 0.72);
+  --fcard-footnote:   rgba(255, 255, 255, 0.50);
+  /* The constant: identical in both modes, which is what makes the
+     direction recognisable. Do NOT give this a light override. */
+  --ink-button:       #131313;
+  --ink-button-fg:    #ffffff;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FIELDS & CARD MATERIALS — light mode
+   Partner block for the FIELDS section above. Note what is deliberately
+   ABSENT: --field-base (it resolves through var(--page-bg), which light
+   already overrides) and --ink-button / --ink-button-fg (constant by design).
+   ══════════════════════════════════════════════════════════════════════════ */
+[data-theme="light"] {
+  /* ── Fields · Track A ── */
+  --field-home:      radial-gradient(120% 70% at 78% 4%, rgba(22, 163, 74, 0.34), transparent 70%);
+  --field-signups:   radial-gradient(120% 70% at 78% 4%, rgba(22, 163, 74, 0.22), transparent 70%);
+  --field-stats:     radial-gradient(120% 70% at 78% 4%, rgba(168, 213, 186, 0.90), rgba(232, 245, 233, 0.50) 46%, transparent 74%);
+  --field-profile:   radial-gradient(120% 70% at 78% 4%, rgba(143, 162, 176, 0.34), transparent 70%);
+  --field-admin:     radial-gradient(120% 70% at 78% 4%, rgba(245, 230, 200, 0.90), transparent 70%);
+  --field-scrim:     linear-gradient(180deg, rgba(255, 255, 255, 0.30) 0%, transparent 40%, rgba(255, 255, 255, 0.45) 100%);
+
+  /* ── Fields · Track B ── */
+  --field-b-home:    radial-gradient(120% 70% at 78% 4%, rgba(22, 163, 74, 0.34), transparent 70%);
+  --field-b-signups: radial-gradient(120% 70% at 78% 4%, rgba(217, 119, 6, 0.30), transparent 70%);
+  --field-b-stats:   radial-gradient(120% 70% at 78% 4%, rgba(96, 165, 250, 0.34), transparent 70%);
+  --field-b-profile: radial-gradient(120% 70% at 78% 4%, rgba(167, 139, 250, 0.30), transparent 70%);
+  --field-b-admin:   radial-gradient(120% 70% at 78% 4%, rgba(234, 88, 12, 0.28), transparent 70%);
+
+  /* ── Card materials ──
+     The fill barely moves from the current light --glass-bg (.72 -> .55
+     becomes .72 -> .50). What actually changes in light mode is the EDGE:
+     the 1px rgba(0,0,0,.08) border goes away and the top inset nearly
+     doubles, so the card edge becomes a highlight instead of a drawn line. */
+  --fcard-bg:         linear-gradient(160deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.50));
+  --fcard-blur:       blur(20px) saturate(140%);
+  --fcard-inset:      inset 0 1px 0 rgba(255, 255, 255, 0.90);
+  --fcard-shadow:     0 8px 26px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.04);
+  --fcard-pick-bg:    linear-gradient(150deg, #22c55e, #16a34a 74%, #15803d);
+  --fcard-pick-inset: inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  --fcard-good-bg:    linear-gradient(160deg, rgba(22, 163, 74, 0.17), rgba(22, 163, 74, 0.07));
+  --fcard-wait-bg:    linear-gradient(160deg, rgba(217, 119, 6, 0.17), rgba(217, 119, 6, 0.07));
+  --fcard-full-bg:    linear-gradient(160deg, rgba(234, 88, 12, 0.18), rgba(234, 88, 12, 0.07));
+  --fcard-error-bg:   linear-gradient(160deg, rgba(220, 38, 38, 0.15), rgba(220, 38, 38, 0.06));
+  --fcard-locked-bg:  rgba(0, 0, 0, 0.03);
+
+  --fcard-title:      var(--text-primary);
+  --fcard-label:      rgba(26, 35, 50, 0.66);
+  --fcard-footnote:   rgba(26, 35, 50, 0.45);
 }
 
 /* Bare heading elements default to the display family (Space Grotesk) per
@@ -1016,6 +1147,83 @@ html[data-tab="admin"] .court-bg {
   background: var(--page-bg);
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   FIELDS — per-tab coloured grounds        [NEXT_PUBLIC_FLAG_VISUAL_FIELDS]
+
+   Everything below is scoped `html[data-visual="field"]` so the flag is a
+   genuine off switch: unset it and the aurora rules above take over again
+   with zero component changes.
+
+   The key structural fact this builds on: the existing per-tab rules already
+   split GROUND from MOTIF — the ground lives on `.court-bg { background }`
+   and the motif (the Sign-Ups doubles-court SVG, the Stats dot grid) lives
+   on `.court-bg::before`. So a field slots UNDER the motif rather than
+   replacing it, and the two tabs that already have a hard-won identity keep
+   it. Only `background` is touched below; no `::before` rule is redefined.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* The aurora is the thing being replaced. Hide it — do NOT delete the rules
+   above: __tests__/design-canary.test.ts asserts .aurora-blob-1 still appears
+   in the reduced-motion block, and the flag has to be able to bring it back. */
+html[data-visual="field"] .aurora-blob-1,
+html[data-visual="field"] .aurora-blob-2,
+html[data-visual="field"] .aurora-blob-3 {
+  display: none;
+}
+
+/* Home is the UN-ATTRIBUTED default, deliberately.
+   `data-tab` is only set post-hydration by HomeShell, so on the first paint
+   there is no attribute at all. Making Home's field the base means that frame
+   renders the correct ground instead of an un-fielded one. It also gives
+   /design/* a sane ground — its layout renders .court-bg with no data-tab
+   (HomeShell's cleanup removes the attribute on unmount). */
+html[data-visual="field"] .court-bg {
+  background: var(--field-home), var(--field-base);
+}
+
+/* Sign-Ups — field under the doubles-court etching. ::before untouched. */
+html[data-visual="field"][data-tab="players"] .court-bg {
+  background: var(--field-signups), var(--field-base);
+}
+
+/* Stats — field under the 42px dot grid. ::before untouched.
+   The grid's rgba(74,222,128,.22) was tuned against a FLAT --page-bg; on the
+   deeper forest field it reads hot, so it drops to .14 here. */
+html[data-visual="field"][data-tab="skills"] .court-bg {
+  background: var(--field-stats), var(--field-base);
+}
+html[data-visual="field"][data-tab="skills"] .court-bg::before {
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(74, 222, 128, 0.14) 1.5px, transparent 2px);
+}
+
+/* Profile and Admin had no per-tab override at all — they fell through to the
+   aurora (Profile) or to flat --page-bg (Admin). These are the two genuinely
+   new fields. */
+html[data-visual="field"][data-tab="profile"] .court-bg {
+  background: var(--field-profile), var(--field-base);
+}
+html[data-visual="field"][data-tab="admin"] .court-bg {
+  background: var(--field-admin), var(--field-base);
+}
+
+/* Scrim — keeps copy legible over the brightest corner of the gradient
+   (at 78% 4%), which is exactly where --text-muted fails AA. It was already
+   bumped .35 -> .55 once for this reason.
+
+   Stacking: ::before (motif) and ::after (scrim) are siblings with no
+   z-index, so paint order is ground -> ::before -> ::after. That is the order
+   we want, and it holds inside `contain: strict` because containment does not
+   reorder a stacking context's own descendants. */
+html[data-visual="field"] .court-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--field-scrim);
+}
+
+
 /* ── Stats-tab glass highlight ──
    On Stats, the cursor-tracked highlight uses a desaturated neutral grey at
    ~half the global alpha so the cards read as ambient-lit, not spotlit.
@@ -1126,6 +1334,110 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
       inset 0 1px 0 var(--glass-inset-hover);
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FIELD CARD MATERIAL                      [NEXT_PUBLIC_FLAG_VISUAL_FIELDS]
+
+   This SHADOWS the .glass-card rule above rather than rewriting it in place.
+   Both live in the file until the flag retires (then the old one goes and the
+   `html[data-visual="field"]` scoping comes off every rule). Keeping the old
+   rule is what makes "flip the flag off" a real rollback instead of a revert.
+
+   The class name never changes, deliberately — it is load-bearing in tests:
+   design-canary asserts the literal `.glass-card` is in this file, and
+   UnpaidSessionsCard / WhereYouSitCard use querySelector('.glass-card') as
+   their "did it render" check. So all 124 call sites are untouched.
+
+   Dark mode is where the material actually changes: the fill goes from
+   rgba(255,255,255,.03 -> .01) to (.17 -> .09), a 5-9x jump — an almost
+   invisible film becomes a frosted panel. Light mode's fill barely moves;
+   what changes there is the EDGE (border removed, inset .50 -> .90).
+
+   Note --fcard-shadow is byte-identical to --glass-shadow, a token this file
+   has defined since v1 and .glass-card has never applied.
+   ══════════════════════════════════════════════════════════════════════════ */
+html[data-visual="field"] .glass-card {
+  /* Keep the GlassPhysics mouse-tracked highlight layered over the new tint —
+     it is the app's signature interaction and costs nothing here. */
+  background:
+    radial-gradient(
+      ellipse at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
+      rgba(var(--glass-tint), 0.07) 0%,
+      transparent 65%
+    ),
+    var(--fcard-bg);
+  -webkit-backdrop-filter: var(--fcard-blur);
+  backdrop-filter: var(--fcard-blur);
+  /* Both of these are OVERRIDES, not defaults — the shadowed rule above still
+     sets `border: 1px solid var(--glass-border)` and `border-radius: 16px`.
+     Neither line is redundant; dropping either leaves the old value in place. */
+  border: none;
+  border-radius: var(--fcard-radius);
+  box-shadow: var(--fcard-inset), var(--fcard-shadow);
+}
+
+@media (hover: hover) {
+  html[data-visual="field"] .glass-card:hover {
+    box-shadow: var(--fcard-inset), var(--glass-shadow-hover);
+  }
+}
+
+/* ── Semantic card materials ──
+   Two composition rules from the design, neither of which is lintable, both
+   of which are review's job:
+     · at most ONE .is-pick per screen — two solid greens and neither reads
+       as the answer;
+     · semantic fills stay rare — amber/orange/red mean something is waiting,
+       closing or wrong. Three at once and the screen has stopped talking. */
+html[data-visual="field"] .glass-card.is-pick {
+  background: var(--fcard-pick-bg);
+  box-shadow: var(--fcard-pick-inset), var(--fcard-shadow);
+}
+html[data-visual="field"] .glass-card.is-good  { background: var(--fcard-good-bg); }
+html[data-visual="field"] .glass-card.is-wait  { background: var(--fcard-wait-bg); }
+html[data-visual="field"] .glass-card.is-full  { background: var(--fcard-full-bg); }
+html[data-visual="field"] .glass-card.is-error { background: var(--fcard-error-bg); }
+
+/* Locked is the one material that isn't glass. Dropping the backdrop filter
+   is what makes private data read as INERT rather than merely dim — a blurred
+   card still looks like it has something behind it. */
+html[data-visual="field"] .glass-card.is-locked {
+  background: var(--fcard-locked-bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+/* On-card ink helpers, so call sites don't hand-type the alphas. */
+html[data-visual="field"] .fcard-label    { color: var(--fcard-label); }
+html[data-visual="field"] .fcard-footnote { color: var(--fcard-footnote); }
+
+/* The ink button — #131313 in BOTH modes. That constant is what makes the
+   direction recognisable, so it deliberately has no light override. */
+html[data-visual="field"] .ink-button {
+  background: var(--ink-button);
+  color: var(--ink-button-fg);
+  border: none;
+  border-radius: var(--radius-pill);
+}
+
+/* ── Reduced transparency ──
+   AUDIT FINDING: the existing (prefers-reduced-transparency: reduce) block
+   only stops the aurora blobs ANIMATING — it has never flattened .glass-card
+   at all. That was survivable at a 3% fill; at 17% plus 16px of blur it is
+   not. Give the material a real fallback: drop the blur, keep an opaque-ish
+   tint so the card still reads as a surface, and restore a hairline border
+   since the inset alone stops being enough edge without the frost. */
+@media (prefers-reduced-transparency: reduce) {
+  html[data-visual="field"] .glass-card {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--fcard-locked-bg);
+    border: 1px solid var(--glass-border);
+  }
+  html[data-visual="field"] .court-bg::after { display: none; }
+}
+
 
 /* ── AI insight gradient rim ──
    Persistent conic-gradient border marking the Stats "Your read" as an AI

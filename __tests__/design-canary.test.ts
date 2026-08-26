@@ -62,6 +62,43 @@ describe('design-system canary: globals.css token/class contract', () => {
     expect(css).toContain('--radius-pill: 100px');
   });
 
+  /* The 30px rung is a scoped EXCEPTION, not a new cap. The design that
+     introduced it ("Visual Colours" §06) reconciles it explicitly: "the 16px
+     radius cap now holds for flat-field surfaces and --radius-3xl (30px) is
+     scoped to field cards only". The ladder above still stops at 16.
+
+     This is the only guardrail that exists for it. ESLint's radius rule is
+     `Property[key.name='borderRadius'] > Literal[raw=/^[0-9]/]` — it catches a
+     RAW NUMBER in JSX, so `borderRadius: 'var(--radius-3xl)'` never matches,
+     and ESLint does not parse CSS at all. Without the second assertion below,
+     nothing but prose stops the next person hardcoding 30px everywhere and
+     quietly re-establishing it as the default corner. */
+  it('scopes the 30px rung to a token instead of raw literals', () => {
+    expect(css).toContain('--radius-3xl: 30px');
+    // Every 30px corner must resolve through the token. Strip comments first —
+    // the prose explaining this rule necessarily names the literal it forbids,
+    // and a doc comment is not a declaration.
+    const declarations = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(declarations).not.toMatch(/border-radius:\s*30px/);
+  });
+
+  /* Fields and card materials are a token family, not inline values — four
+     directories lint bare rgba()/hex at ERROR, so the gradients have to live
+     here. Presence-only, same contract as REQUIRED_TOKENS above. */
+  it('defines the field + card-material token families', () => {
+    for (const token of [
+      '--field-base', '--field-home', '--field-signups', '--field-stats',
+      '--field-profile', '--field-admin', '--field-scrim',
+      '--fcard-bg', '--fcard-blur', '--fcard-inset', '--fcard-shadow',
+      '--fcard-pick-bg', '--fcard-good-bg', '--fcard-wait-bg',
+      '--fcard-full-bg', '--fcard-error-bg', '--fcard-locked-bg',
+      '--fcard-title', '--fcard-label', '--fcard-footnote',
+      '--ink-button', '--ink-button-fg',
+    ]) {
+      expect(css).toContain(`${token}:`);
+    }
+  });
+
   /* Reduced motion means fewer and gentler, not zero (PRODUCT.md → Accessibility).
      The wildcard must keep opacity in its transition-property allowlist so state
      changes stay legible as changes; collapsing it back to a blanket
