@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { POST, DELETE, GET } from '../app/api/equipment/gear/route';
 import {
-  resetMockStore, seedMember, memberCookieValue, makeRequest, makeGetRequest, setupAdminPin,
+  resetMockStore, seedMember, memberCookieValue, makeRequest, makeGetRequest, setupAdminPin, getStore,
 } from './helpers';
 import { getContainer } from '../lib/cosmos';
 import type { PlayerGear } from '../lib/types';
@@ -159,5 +159,72 @@ describe('mock store — etag contract the retry depends on', () => {
     expect((updated as unknown as { items: string[] }).items).toEqual(['ok']);
     // A fresh etag every write, or the next writer's guard is meaningless.
     expect((updated as unknown as { _etag: string })._etag).not.toBe(etag);
+  });
+});
+
+/**
+ * A prior document that carries NO concurrency token.
+ *
+ * `writeGearDoc` chose its verb on `prior?._etag`, which conflates two very
+ * different states: "there is no document yet" (create is correct) and "there
+ * is a document but it arrived without an etag" (create is the one verb that
+ * can NEVER succeed — the id is already taken). The second state routed to
+ * `create`, whose 409 `commitGearDoc` reads as a retry signal, so it burned
+ * all three attempts against a condition that cannot change and answered
+ * `save_conflict`. Every write to that document failed forever.
+ *
+ * Reproduced end-to-end in the dev mock store, whose `fresh-thursday` seed
+ * pushes six gear docs straight into the array with no `_etag`: tapping any
+ * racket in the sheet returned 409 and painted the generic error pill. Real
+ * Cosmos always stamps `_etag`, so the seed is fixed too — but the branch is
+ * wrong on its own terms, and this is the test that says so.
+ */
+describe('gear document — a prior with no etag is still an update', () => {
+  it('never routes an existing document to create, and never lies that it is contention', async () => {
+    // Straight into the store, bypassing `create` — exactly how a seed or a
+    // fixture (and only a seed or a fixture) can produce an etag-less doc.
+    getStore()['playerGear'] = [{
+      id: `gear-${MEMBER_ID}`,
+      memberId: MEMBER_ID,
+      items: [{ id: 'existing', catalogId: null, category: 'racket', label: 'Astrox 88D Pro' }],
+      activeRacketId: 'existing',
+    }];
+
+    const res = await POST(authed('POST', URL_BASE, {
+      name: NAME,
+      item: { catalogId: 'racket-yx-ax99pro', category: 'racket', label: 'Yonex Astrox 99 Pro' },
+    }));
+
+    // The assertion that matters is the NEGATIVE one. 409 `save_conflict` is
+    // the answer the old branch gave, and it is a lie twice over: nothing was
+    // contended, and its own contract invites a client retry that can never
+    // succeed. An honest 500 says the write is broken.
+    const body = await res.json();
+    expect(body.error).not.toBe('save_conflict');
+    expect(res.status).toBe(500);
+    expect(body.error).toBe('save_failed');
+  });
+
+  it('the fresh-thursday dev seed writes gear documents that carry a token', async () => {
+    // The seed is the only producer of etag-less documents, and it produced
+    // six of them — one per fixture member — so in local dev NOBODY could add
+    // a racket or a string. Pins the seed itself, not just the route's
+    // tolerance of it.
+    resetMockStore();
+    const g = global as typeof globalThis & { _devScenarioSeeded?: boolean };
+    const wasSeeded = g._devScenarioSeeded;
+    g._devScenarioSeeded = false;
+    process.env.SEED_DEV_SCENARIO = 'fresh-thursday';
+    try {
+      // The seed fires on first access to `sessions` or `members` only — it
+      // populates every container in one pass, gear included.
+      getContainer('members');
+      const seeded = getStore()['playerGear'] as { _etag?: string }[];
+      expect(seeded.length).toBeGreaterThan(0);
+      for (const doc of seeded) expect(doc._etag).toBeTruthy();
+    } finally {
+      delete process.env.SEED_DEV_SCENARIO;
+      g._devScenarioSeeded = wasSeeded;
+    }
   });
 });
