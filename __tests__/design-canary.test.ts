@@ -94,9 +94,30 @@ describe('design-system canary: globals.css token/class contract', () => {
       '--fcard-full-bg', '--fcard-error-bg', '--fcard-locked-bg',
       '--fcard-title', '--fcard-label', '--fcard-footnote',
       '--ink-button', '--ink-button-fg',
+      // Carries the Stats AA fix. Two components/stats files consume it; if it
+      // is renamed away they inherit a colour instead of failing, so nothing
+      // else would catch it.
+      '--sev-low-label',
     ]) {
       expect(css).toContain(`${token}:`);
     }
+  });
+
+  /* Three facts the field work depends on that fail SILENTLY rather than
+     loudly, which is the only reason they are pinned here. */
+  it('keeps the field scoping selector and its light-mode escape hatch', () => {
+    // Rename this selector and every field rule stops matching. Nothing errors;
+    // the app just quietly looks the way it did before.
+    expect(css).toContain('html[data-visual="field"]');
+
+    // --sev-low-label lifts to blue-100 on a dark field for AA (4.58:1). Light
+    // mode MUST reset it: its card resolves to #eff5fd, where blue-100 measures
+    // 1.11:1. This reset is one tidy-up away from being deleted.
+    expect(css).toContain('html[data-visual="field"][data-theme="light"]');
+
+    // The locked material is defined by what it removes.
+    const locked = css.slice(css.indexOf('.glass-card.is-locked'));
+    expect(locked.slice(0, 400)).toContain('backdrop-filter: none');
   });
 
   /* Reduced motion means fewer and gentler, not zero (PRODUCT.md → Accessibility).

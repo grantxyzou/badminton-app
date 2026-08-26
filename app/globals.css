@@ -583,7 +583,7 @@ body {
    already overrides) and --ink-button / --ink-button-fg (constant by design).
    ══════════════════════════════════════════════════════════════════════════ */
 [data-theme="light"] {
-  /* ── Fields · Track A ── */
+  /* ── Fields — one hue per tab ── */
   --field-home:      radial-gradient(120% 70% at 78% 4%, rgba(22, 163, 74, 0.34), transparent 70%);
   --field-signups:   radial-gradient(120% 70% at 78% 4%, rgba(217, 119, 6, 0.30), transparent 70%);
   --field-stats:     radial-gradient(120% 70% at 78% 4%, rgba(96, 165, 250, 0.34), transparent 70%);
@@ -1480,6 +1480,19 @@ html[data-visual="field"] .glass-card.is-locked {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   box-shadow: none;
+}
+/* Inert means inert on hover too. `box-shadow` is already handled -- the rule
+   above has the same specificity as the scoped :hover and comes later, so it
+   wins. `transform` does NOT: the 2px lift comes from the UNSCOPED
+   `.glass-card:hover` further up the file, which .is-locked never overrides.
+   Without this, a card the member has deliberately kept private animates when
+   you point at it, which is precisely the affordance the material exists to
+   withhold. */
+@media (hover: hover) {
+  html[data-visual="field"] .glass-card.is-locked:hover {
+    transform: none;
+    box-shadow: none;
+  }
 }
 
 /* On-card ink helpers, so call sites don't hand-type the alphas. */
