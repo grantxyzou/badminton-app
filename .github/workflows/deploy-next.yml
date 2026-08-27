@@ -69,13 +69,28 @@ jobs:
           # NEXT_PUBLIC_* is baked at build time, so this must live here -- an
           # Azure App Setting cannot turn it on.
           #
-          # ON does not by itself put a Google button on screen. Availability is
-          # resolved from GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET at request
-          # time, and while those are unset in the App Service the signed-out
-          # card renders exactly as it did before: PIN form, divider, create
-          # button, no provider row and no error. That is the intended
-          # configured-or-not behaviour, not a fallback.
-          NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: 'true'
+          # OFF since 2026-08-26, after Google sign-in was found broken on an
+          # installed iOS home-screen app: the callback is issued from a browser
+          # container that never saw the bpm_oauth_state cookie /start wrote
+          # inside the PWA, so every attempt dies as state_mismatch and strands
+          # the user in Safari. Reproduced on device three times. The server
+          # side is NOT at fault -- replaying the handshake with curl sets the
+          # cookie, matches the state and passes the check.
+          #
+          # Landing the redirect inside the manifest scope (f5e0c65) was tried
+          # and did not fix it, which rules out the callback simply being
+          # bounced for an out-of-scope target.
+          #
+          # Turning this off leaves PIN and email+password untouched; both work
+          # everywhere, including in the PWA, because neither leaves the origin.
+          # GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET stay set in the App Service
+          # -- they are inert while this is off, and re-flipping is one line.
+          #
+          # NEXT DIAGNOSTIC, before any further fix attempt: state_mismatch
+          # currently means BOTH "no cookie arrived" and "a different cookie
+          # arrived", and those are different bugs. Make it say which, then read
+          # it live with `az webapp log tail` during a device tap.
+          NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: 'false'
 
       - name: Package standalone build
         run: |
