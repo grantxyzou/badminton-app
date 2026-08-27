@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // @vitest-environment-options { "url": "http://localhost:3000/bpm" }
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import ProviderButtons from '../../components/auth/ProviderButtons';
 import enMessages from '../../messages/en.json';
@@ -84,6 +84,12 @@ describe('ProviderButtons', () => {
 
     const href = google.closest('a')!.getAttribute('href')!;
     const ref = new URLSearchParams(href.split('?')[1]).get('hr')!;
+
+    /* Nothing is stored until the TAP. Minting on mount would clobber a
+       handoff already in flight, because this component remounts when the
+       person returns from the excursion. */
+    expect(localStorage.getItem('badminton_auth_handoff')).toBeNull();
+    fireEvent.click(google.closest('a')!);
     const secret = localStorage.getItem('badminton_auth_handoff');
 
     expect(secret).toMatch(/^[0-9a-f]{64}$/);

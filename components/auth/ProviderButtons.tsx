@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { beginHandoff } from '@/lib/handoffClient';
+import { mintHandoff, stageHandoff } from '@/lib/handoffClient';
 import { markExternalExcursion } from '@/lib/excursion';
 import { useTranslations } from 'next-intl';
 import { useOnline } from '@/lib/useOnline';
@@ -64,16 +64,17 @@ export default function ProviderButtons({
      handler: these are plain <a> elements, and a tap must not wait on an async
      digest before navigating. `null` degrades to the cookie flow, which is the
      right answer for every browser that keeps one jar. */
-  const [handoffRef, setHandoffRef] = useState<string | null>(null);
+  const [handoff, setHandoff] = useState<{ id: string; ref: string } | null>(null);
   useEffect(() => {
     let cancelled = false;
-    void beginHandoff().then((ref) => {
-      if (!cancelled) setHandoffRef(ref);
+    void mintHandoff().then((pair) => {
+      if (!cancelled) setHandoff(pair);
     });
     return () => {
       cancelled = true;
     };
   }, []);
+  const handoffRef = handoff?.ref ?? null;
 
   useEffect(() => {
     // The server already answered. Note this checks for the PROP being absent,
@@ -156,7 +157,13 @@ export default function ProviderButtons({
             /* iOS evicts the PWA while a system browser is in front, so the
                return looks like a cold start and lands on Home. Same hand-off
                marker ReceiptSheet uses — see lib/excursion.ts. */
-            onClick={() => markExternalExcursion()}
+            onClick={() => {
+              /* Commit the id HERE, not at mint time. This component remounts
+                 when the person returns from the excursion, and writing on
+                 mount would overwrite the handoff they came back to collect. */
+              if (handoff) stageHandoff(handoff.id);
+              markExternalExcursion();
+            }}
             aria-disabled={!online}
             className={branded ? 'cc-btn btn-google' : 'cc-btn cc-btn-secondary'}
             style={{

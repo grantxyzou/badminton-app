@@ -30,22 +30,39 @@ async function sha256Hex(input: string): Promise<string> {
 }
 
 /**
- * Mint a handoff and return the REF to put on the start URL.
+ * Mint a handoff pair WITHOUT storing it.
+ *
+ * Deliberately does not touch localStorage. The ref is needed at render time to
+ * build the `href`, but writing the id then would clobber a handoff that is
+ * still in flight: the component remounts when the person returns from the
+ * excursion, and a fresh mint would orphan the very stash they came back to
+ * collect. Found in a browser, not in a unit test — the remount only happens
+ * on a real return.
  *
  * Returns null when the platform cannot support it — `crypto.subtle` is absent
- * on insecure origins, and localStorage throws in some privacy modes. Both are
- * non-fatal by design: the caller simply omits `?hr=` and the flow degrades to
- * the cookie path, which is what every single-jar browser uses anyway.
+ * on insecure origins. Non-fatal by design: the caller omits `?hr=` and the
+ * flow degrades to the cookie path, which every single-jar browser uses anyway.
  */
-export async function beginHandoff(): Promise<string | null> {
+export async function mintHandoff(): Promise<{ id: string; ref: string } | null> {
   try {
     if (!crypto?.subtle) return null;
     const id = hex(crypto.getRandomValues(new Uint8Array(32)));
-    const ref = await sha256Hex(id);
-    localStorage.setItem(KEY, id);
-    return ref;
+    return { id, ref: await sha256Hex(id) };
   } catch {
     return null;
+  }
+}
+
+/**
+ * Commit a minted id as THE pending handoff. Call this at the moment of the
+ * tap — that is the only point at which we know a flow is actually starting,
+ * and therefore the only point at which overwriting the previous one is right.
+ */
+export function stageHandoff(id: string): void {
+  try {
+    localStorage.setItem(KEY, id);
+  } catch {
+    /* privacy mode — the flow degrades to the cookie path */
   }
 }
 
