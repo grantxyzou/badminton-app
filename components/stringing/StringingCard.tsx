@@ -116,8 +116,12 @@ export default function StringingCard({ hasIdentity }: Props) {
   if (open !== true) {
     return (
       <div className="glass-card p-5 space-y-3">
+        {/* Same treatment as the live card — the title should not change size
+            when the shop opens. */}
         <CardHeader
+          compact
           icon="science"
+          iconColor="var(--text-secondary)"
           title={t('title')}
           subtitle={t('subtitle')}
           badge={<StatusBadge variant="muted">{t('soon')}</StatusBadge>}
@@ -144,6 +148,7 @@ export default function StringingCard({ hasIdentity }: Props) {
             the week's one real action — dressing it in accent made it compete
             with the thing above it. */}
         <CardHeader
+          compact
           icon="science"
           iconColor="var(--text-secondary)"
           title={t('title')}
