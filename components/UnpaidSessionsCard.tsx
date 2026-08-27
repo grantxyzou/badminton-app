@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations, useFormatter } from 'next-intl';
 import ErrorState from './primitives/ErrorState';
 import EmptyState from './primitives/EmptyState';
+import CardHeader from './primitives/CardHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DAY_SHORT = { weekday: 'short', month: 'short', day: 'numeric' } as const;
@@ -140,31 +141,25 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
      nothing. */
   const grouped = lineItems.length > 0 && stringingItems.length > 0;
 
-  return (
-    <div
-      className={`glass-card ${isHome ? "p-4" : "p-5"}`}
-      style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
-    >
-      {collapsible ? (
-        <button
-          type="button"
-          onClick={() => setOpenOverride(!open)}
-          aria-expanded={open}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            gap: 'var(--space-3)', width: '100%', background: 'none', border: 'none',
-            padding: 0, margin: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left',
-          }}
-        >
-          {/* Sentence case and neutral, not an uppercase accent label. On Home
-              the accent is reserved for the primary button, the one link and
-              the active tab — a label that never changes was spending it. */}
-          {/* Icon + label, matching the stringing card beside it — the two
-              cards in this group should introduce themselves the same way. */}
-          <span className="section-label-muted" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <span className="material-icons" aria-hidden="true">receipt_long</span>
-            {title}
-          </span>
+  /* Routed through <CardHeader compact> rather than hand-rolled, so this and
+     the stringing card beside it cannot drift again — they had already reached
+     three different icon sizes, weights and colours between them while both
+     claiming to "introduce themselves the same way".
+
+     Sentence case and neutral, not an uppercase accent label: on Home the
+     accent is reserved for the primary button, the one link and the active
+     tab, and a label that never changes was spending it. */
+  const header = (
+    <CardHeader
+      compact
+      icon="receipt_long"
+      title={title}
+      /* `undefined`, not an empty span, when there is nothing to trail with:
+         CardHeader treats any node as trailing content and switches to a
+         space-between row for it, so an empty one would silently change the
+         layout of the non-collapsible (Profile) variant. */
+      badge={
+        collapsible ? (
           <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
             {/* The figure only while COLLAPSED. Expanded, the Total row two
                 lines below says the same number — and a card that states its
@@ -186,11 +181,40 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
               {open ? 'expand_less' : 'expand_more'}
             </span>
           </span>
+        ) : undefined
+      }
+    />
+  );
+
+  return (
+    <div
+      className={`glass-card ${isHome ? "p-4" : "p-5"}`}
+      style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+    >
+      {collapsible ? (
+        <button
+          type="button"
+          onClick={() => setOpenOverride(!open)}
+          aria-expanded={open}
+          /* `block`, matching StringingCard: CardHeader owns the
+             space-between row now, so a flex button around it would be a
+             second layout fighting the first. */
+          style={{
+            display: 'block',
+            width: '100%',
+            padding: 0,
+            margin: 0,
+            background: 'none',
+            border: 'none',
+            font: 'inherit',
+            textAlign: 'left',
+            cursor: 'pointer',
+          }}
+        >
+          {header}
         </button>
       ) : (
-        <p className="section-label-muted" style={{ margin: 0 }}>
-          {title}
-        </p>
+        header
       )}
 
       {(!collapsible || open) && (
