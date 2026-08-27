@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { useInsight } from '@/lib/useInsight';
-import StatusBadge from '@/components/primitives/StatusBadge';
+import AIBadge from '@/components/primitives/AIBadge';
 import ErrorState from '@/components/primitives/ErrorState';
 
 /**
@@ -12,9 +12,13 @@ import ErrorState from '@/components/primitives/ErrorState';
  *
  * Additive + legible-fail: renders nothing while loading, on an unknown load
  * failure, or when there's no greeting (anonymous viewer / no API key). The
- * card below it always stands on its own. Carries the conic AI rim
- * (`.insight-rim`) + an AI marker wearing that same rim, so the provenance is
- * honest and the badge reads as part of the surface rather than stuck on it.
+ * card below it always stands on its own.
+ *
+ * Provenance is marked by `<AIBadge>` alone. The card used to wear the same
+ * conic rainbow rim (`.insight-rim`) at full size, which spent the app's
+ * loudest visual device on a footnote — a rainbow ring around a whole surface,
+ * competing with the sentence inside it. An ordinary `.glass-card` with a
+ * marked badge says the same thing at the right volume.
  *
  * A 403 is the ONE failure that does render. `/api/stats/insight` is
  * owner-or-admin gated, so a device with no `member_session` cookie for this
@@ -34,7 +38,7 @@ export default function SummaryGreeting() {
 
   return (
     <div
-      className="glass-card insight-rim animate-fadeIn"
+      className="glass-card animate-fadeIn"
       style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', alignItems: 'center', gap: 12 }}
       aria-label={t('summaryGreeting.ariaLabel')}
     >
@@ -43,7 +47,11 @@ export default function SummaryGreeting() {
       </span>
       <p style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: 1.45, color: 'var(--text-primary)', flex: 1, minWidth: 0 }}>{greeting}</p>
       <span style={{ flexShrink: 0 }}>
-        <StatusBadge variant="ai">{t('summaryGreeting.ai')}</StatusBadge>
+        {/* Reuses InsightChip's string rather than adding a second copy of
+            "AI generated" — both are stats AI-provenance labels under the same
+            namespace. NOT `summaryGreeting.ariaLabel`, which the card itself
+            already carries; repeating it would announce the surface twice. */}
+        <AIBadge label={t('insightChip.aiGenerated')}>{t('summaryGreeting.ai')}</AIBadge>
       </span>
     </div>
   );

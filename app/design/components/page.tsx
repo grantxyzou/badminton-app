@@ -6,6 +6,7 @@
 
 import CardHeader from '@/components/primitives/CardHeader';
 import StatusBadge from '@/components/primitives/StatusBadge';
+import AIBadge from '@/components/primitives/AIBadge';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 
@@ -253,7 +254,7 @@ export default function ComponentsPage() {
       </Row>
 
       {/* ── Standardization primitives (live components, not specimens) ──── */}
-      <Row title="STANDARDIZATION PRIMITIVES" caption="The shared composition primitives from components/primitives/. These render the real components, so this is the canonical visual reference — CardHeader (two-tier header spec), StatusBadge (accent/muted/phase), ErrorState + EmptyState (legible-fail).">
+      <Row title="STANDARDIZATION PRIMITIVES" caption="The shared composition primitives from components/primitives/. These render the real components, so this is the canonical visual reference — CardHeader (two-tier header spec), StatusBadge (accent/muted/phase), AIBadge (provenance), ErrorState + EmptyState (legible-fail).">
         <CardHeader
           icon="trending_up"
           title="Card header"
@@ -268,6 +269,37 @@ export default function ComponentsPage() {
         </div>
         <ErrorState message="Couldn't load — refresh to try again" />
         <EmptyState>No data yet</EmptyState>
+      </Row>
+
+      {/* ── AI provenance ─────────────────────────────────────────────────
+          Its own row rather than a fifth StatusBadge chip: every StatusBadge
+          variant answers "what state is this in", and this one answers "where
+          did this text come from". Shown ON a glass card because that is the
+          only place it appears, and because the pairing IS the spec now — the
+          card is deliberately unmarked and the badge carries the rainbow
+          alone. */}
+      <Row
+        title="AI PROVENANCE"
+        caption="AIBadge marks model-written text. The conic rim (--ai-rim) is defined once in globals.css and painted as a masked ::before on .badge-ai, because a conic gradient cannot be a border-color. The surface it sits on stays an ordinary glass-card: the card wore this same rim until 2026-08-27, which spent the loudest device in the system on a footnote."
+      >
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <AIBadge label="AI generated">AI</AIBadge>
+          <AIBadge label="AI generated">Beta AI</AIBadge>
+        </div>
+        <div
+          className="glass-card"
+          style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', alignItems: 'center', gap: 12 }}
+        >
+          <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-stat-lg)', color: 'var(--accent)', flexShrink: 0 }}>
+            auto_fix_high
+          </span>
+          <p style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: 1.45, flex: 1, minWidth: 0 }}>
+            In place: an unmarked card, one marked badge.
+          </p>
+          <span style={{ flexShrink: 0 }}>
+            <AIBadge label="AI generated">AI</AIBadge>
+          </span>
+        </div>
       </Row>
 
       {/* ── Field card materials ──────────────────────────────────────────
