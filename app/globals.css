@@ -2025,6 +2025,33 @@ html[data-visual="field"] .ink-button {
   cursor: not-allowed;
 }
 
+/* Quiet text link — a way OUT of the current choice, not another action.
+ *
+ * Stacking these as .btn-ghost pills made the signed-out card five full-width
+ * buttons of identical weight, so "Sign in", "Forgot your password?" and
+ * "Use your name and PIN instead" all read as equally important. Navigation
+ * should recede; only the primary action should look like an action.
+ *
+ * 44px min-height keeps the touch target even though the text is small.
+ */
+.link-quiet {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  text-decoration: underline;
+  cursor: pointer;
+  align-self: center;
+  padding: 0 12px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.link-quiet:hover {
+  color: var(--text-primary);
+}
+
 .btn-ghost {
   background: var(--btn-ghost-bg);
   -webkit-backdrop-filter: blur(20px) saturate(150%);

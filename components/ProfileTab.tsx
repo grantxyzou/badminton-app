@@ -293,16 +293,6 @@ export default function ProfileTab({
               onForgotPin={() => setEnterCodeOpen(true)}
             />
           )}
-          {authProvidersOn && (
-            <button
-              type="button"
-              onClick={() => setCredMode((m) => (m === 'pin' ? 'email' : 'pin'))}
-              className="btn-ghost"
-              style={{ width: '100%', fontSize: 'var(--fs-base)' }}
-            >
-              {credMode === 'pin' ? t('auth.useEmailInstead') : t('auth.usePinInstead')}
-            </button>
-          )}
           <div
             aria-hidden="true"
             style={{
@@ -337,6 +327,17 @@ export default function ProfileTab({
               provider is configured for this deployment, so a build without
               credentials looks exactly as it did before. */}
           {authProvidersOn && <ProviderButtons mode="signin" />}
+          {/* Switching credential TYPE is navigation, so it sits last and reads
+              as a link. As a full-width pill it competed with Sign in. */}
+          {authProvidersOn && (
+            <button
+              type="button"
+              onClick={() => setCredMode((m) => (m === 'pin' ? 'email' : 'pin'))}
+              className="link-quiet"
+            >
+              {credMode === 'pin' ? t('auth.useEmailInstead') : t('auth.usePinInstead')}
+            </button>
+          )}
           {/* Standalone "Have a recovery code" link removed — the SignInForm's
               "Forgot your PIN?" link is the single entry to EnterCodeSheet now. #93 */}
         </div>
