@@ -10,6 +10,14 @@
           {
             "type": "command",
             "command": "node scripts/check-flag-sync.mjs"
+          },
+          {
+            "type": "command",
+            "command": "node scripts/check-i18n-keys.mjs"
+          },
+          {
+            "type": "command",
+            "command": "node scripts/check-lint-errors.mjs"
           }
         ]
       }
