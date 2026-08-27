@@ -11,7 +11,7 @@ import ReleaseNotesSheet from './ReleaseNotesSheet';
 import ReportProblemSheet from './ReportProblemSheet';
 import InstallSheet from './InstallSheet';
 import SignInForm from './SignInForm';
-import ProviderButtons from './auth/ProviderButtons';
+import ProviderButtons, { type Provider as AuthProvider } from './auth/ProviderButtons';
 import SignInMethodsCard from './auth/SignInMethodsCard';
 import EmailSignInForm from './auth/EmailSignInForm';
 import EmailSignUpSheet from './auth/EmailSignUpSheet';
@@ -33,12 +33,19 @@ interface Props {
   sessionLabel: string;
   isAdmin: boolean;
   onAdminTools: () => void;
+  /**
+   * Providers this deployment can offer, resolved on the server and threaded
+   * down from `app/page.tsx`. See `ProviderButtons` for why it is not probed
+   * here: these buttons lead the anonymous card, and a probe would reflow it.
+   */
+  authProviders?: AuthProvider[];
 }
 
 export default function ProfileTab({
   sessionId,
   isAdmin,
   onAdminTools,
+  authProviders = [],
 }: Props) {
   const t = useTranslations('profile');
   const [identity, setLocalIdentity] = useState<Identity | null>(null);
@@ -46,8 +53,13 @@ export default function ProfileTab({
    * Which credential the anonymous card is asking for. One form is visible at a
    * time — a PIN form, an email form and two account-creation buttons stacked
    * together would be four competing calls to action on the first screen a
-   * signed-out person sees. Defaults to 'pin' because the installed base is PIN
-   * members; email is one tap away.
+   * signed-out person sees.
+   *
+   * Defaults to 'pin', and that is a fact about the POPULATION rather than a
+   * judgement about the credential: every existing member has a PIN and none
+   * has a password yet, so someone who declines the providers and reaches for a
+   * form can only use this one. Flip the default once real password accounts
+   * exist.
    */
   const [credMode, setCredMode] = useState<'pin' | 'email'>('pin');
   const [emailSignUpOpen, setEmailSignUpOpen] = useState(false);
@@ -276,12 +288,67 @@ export default function ProfileTab({
   const authProvidersOn = isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS');
 
   if (!identity) {
+    // Availability is server-resolved, so this is settled on the first paint
+    // rather than arriving later and reflowing the card.
+    const providersLead = authProvidersOn && authProviders.length > 0;
+    const emailMode = authProvidersOn && credMode === 'email';
+    const orDivider = (
+      <div
+        aria-hidden="true"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          color: 'var(--text-muted)',
+          fontSize: 'var(--fs-xs)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.1em',
+        }}
+      >
+        <span style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
+        <span>{t('anonymousOrDivider')}</span>
+        <span style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
+      </div>
+    );
+    const switchCredentialLink = authProvidersOn ? (
+      <button
+        type="button"
+        onClick={() => setCredMode((m) => (m === 'pin' ? 'email' : 'pin'))}
+        className="link-quiet"
+      >
+        {credMode === 'pin' ? t('auth.useEmailInstead') : t('auth.usePinInstead')}
+      </button>
+    ) : null;
+    const createAccountLabel = emailMode ? t('auth.createEmailCta') : t('anonymousCreateCta');
+    const openCreateAccount = () =>
+      emailMode ? setEmailSignUpOpen(true) : setCreateAccountOpen(true);
     return (
       <div className="animate-fadeIn flex flex-col gap-4">
         <PageHeader>{t('anonymousTitle')}</PageHeader>
         <p style={{ color: 'var(--text-secondary)' }}>{t('anonymousBody')}</p>
         <div className="glass-card p-4" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {authProvidersOn && credMode === 'email' ? (
+          {/* Providers LEAD. One tap, nothing to remember, and the only route
+              that works on a phone which has never seen this app — it is also
+              the only one that ends up holding a verified email, so recovery
+              works afterwards.
+
+              An existing PIN member who taps here is not stranded: the callback
+              lands on ChooseNameSheet, their name comes back `name_taken`, and
+              "Is that you?" merges the account against their PIN. That claim
+              path is the migration this whole feature exists for, so leading
+              with it is the point rather than a risk. */}
+          {providersLead && (
+            <>
+              <ProviderButtons mode="signin" available={authProviders} />
+              {/* The meaningful cut is one-tap vs typing — NOT sign-in vs
+                  create, which was the old reading and was never true: both
+                  halves of this card do both. Rendered here only when the
+                  buttons above it exist, or a deployment with no provider
+                  credentials gets a divider with nothing above it. */}
+              {orDivider}
+            </>
+          )}
+          {emailMode ? (
             <EmailSignInForm
               onSuccess={handleSignInSuccess}
               onForgotPassword={() => setForgotPasswordOpen(true)}
@@ -293,50 +360,45 @@ export default function ProfileTab({
               onForgotPin={() => setEnterCodeOpen(true)}
             />
           )}
-          <div
-            aria-hidden="true"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              color: 'var(--text-muted)',
-              fontSize: 'var(--fs-xs)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em',
-            }}
-          >
-            <span style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
-            <span>{t('anonymousOrDivider')}</span>
-            <span style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
-          </div>
-          <button
-            type="button"
-            onClick={() =>
-              authProvidersOn && credMode === 'email'
-                ? setEmailSignUpOpen(true)
-                : setCreateAccountOpen(true)
-            }
-            className="btn-ghost"
-            style={{ width: '100%' }}
-          >
-            {authProvidersOn && credMode === 'email'
-              ? t('auth.createEmailCta')
-              : t('anonymousCreateCta')}
-          </button>
-          {/* Google / Apple. The component renders nothing at all when no
-              provider is configured for this deployment, so a build without
-              credentials looks exactly as it did before. */}
-          {authProvidersOn && <ProviderButtons mode="signin" />}
-          {/* Switching credential TYPE is navigation, so it sits last and reads
-              as a link. As a full-width pill it competed with Sign in. */}
-          {authProvidersOn && (
-            <button
-              type="button"
-              onClick={() => setCredMode((m) => (m === 'pin' ? 'email' : 'pin'))}
-              className="link-quiet"
+          {/* A control's weight is relative to what it competes with, so
+              "Create an account" is a link ONLY when providers lead.
+
+              With them, a full-width button over-weights the rarer path:
+              "Continue with Google" already creates accounts, so this is the
+              second creation route, not the first. Without them — the flag off,
+              or a deployment holding no provider credentials — it is the only
+              way to make an account from this screen and nothing above it is
+              competing, so it keeps the button it has always had. Three
+              competing full-width pills was the clutter; one is not. */}
+          {providersLead ? (
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                flexWrap: 'wrap',
+                columnGap: 'var(--space-2)',
+              }}
             >
-              {credMode === 'pin' ? t('auth.useEmailInstead') : t('auth.usePinInstead')}
-            </button>
+              <button type="button" onClick={openCreateAccount} className="link-quiet">
+                {createAccountLabel}
+              </button>
+              {switchCredentialLink}
+            </div>
+          ) : (
+            <>
+              {orDivider}
+              <button
+                type="button"
+                onClick={openCreateAccount}
+                className="btn-ghost"
+                style={{ width: '100%' }}
+              >
+                {createAccountLabel}
+              </button>
+              {/* Choosing a credential TYPE is navigation, so it sits last and
+                  reads as a link. As a full-width pill it competed with Sign in. */}
+              {switchCredentialLink}
+            </>
           )}
           {/* Standalone "Have a recovery code" link removed — the SignInForm's
               "Forgot your PIN?" link is the single entry to EnterCodeSheet now. #93 */}

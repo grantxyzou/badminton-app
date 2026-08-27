@@ -250,7 +250,7 @@
           "genericError": "没能完成——请再试一次。"
     },
     "anonymousTitle": "欢迎回来",
-    "anonymousBody": "用名字和 PIN 登录，或创建账号。",
+    "anonymousBody": "登录后，你的数据、球具和付款记录会跟着你换到任何一台手机。",
     "anonymousCreateCta": "创建账号",
     "anonymousNamePlaceholder": "你叫什么名字？",
     "anonymousPinLabel": "PIN",
