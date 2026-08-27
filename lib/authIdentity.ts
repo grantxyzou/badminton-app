@@ -88,7 +88,16 @@ export function identityId(provider: AuthProvider, key: string): string {
 // containers the way the mock store does. Same pattern as app/api/skills.
 let ensured: Promise<void> | null = null;
 function ready(): Promise<void> {
-  if (!ensured) ensured = ensureContainer('identities', '/id');
+  // The rejection is cleared, NOT memoized. Caching a failed promise would turn
+  // one transient cold-start error into every identity operation failing for
+  // the life of the process — the container bootstrap is exactly the call most
+  // likely to fail once and then succeed.
+  if (!ensured) {
+    ensured = ensureContainer('identities', '/id').catch((err) => {
+      ensured = null;
+      throw err;
+    });
+  }
   return ensured;
 }
 
@@ -171,7 +180,15 @@ export async function listIdentitiesForMember(memberId: string): Promise<AuthIde
   return resources ?? [];
 }
 
+/**
+ * Best-effort `lastUsedAt` stamp. Call sites fire this as `void touchIdentity(...)`,
+ * so it must NEVER reject: an unhandled rejection is fatal under Node 22's
+ * default `--unhandled-rejections=throw`, and this is telemetry on a sign-in
+ * path. The whole body is guarded, including the container bootstrap that
+ * `lookupIdentity` performs.
+ */
 export async function touchIdentity(provider: AuthProvider, key: string): Promise<void> {
+  try {
   const existing = await lookupIdentity(provider, key);
   if (!existing) return;
   try {
@@ -181,5 +198,8 @@ export async function touchIdentity(provider: AuthProvider, key: string): Promis
     });
   } catch {
     // Best-effort telemetry; never fail a sign-in over it.
+  }
+  } catch {
+    // Including the container bootstrap — see the docblock.
   }
 }

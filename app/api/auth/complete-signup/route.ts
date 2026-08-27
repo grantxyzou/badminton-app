@@ -133,8 +133,13 @@ export async function POST(req: NextRequest) {
       { id: memberId, name, email: claimEmail, provider: pending.provider },
       { status: 201 },
     );
-    completeSignIn(res, member);
+    // ORDER: every `cookies.set` must happen BEFORE completeSignIn. Its
+    // clearAdminCookie branch APPENDS raw Set-Cookie headers, and a later
+    // `.set()` re-serializes the whole cookie map and silently drops them --
+    // leaving a stale admin_session alive for a non-admin. Verified, and
+    // pinned by __tests__/auth-cookie-order.test.ts.
     clearPendingSignup(res);
+    completeSignIn(res, member);
     return res;
   } catch (err) {
     await releaseIdentity(pending.provider, pending.sub);

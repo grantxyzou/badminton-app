@@ -23,7 +23,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
-  const origin = appOrigin(req.url);
+  // appOrigin THROWS when APP_ORIGIN is unset outside local dev. Unguarded,
+  // that 500s before ANY of this route's oauthFailure redirects can run -- and
+  // oauthFailure itself needs an origin to redirect to, so the fallback is a
+  // relative landing the browser resolves against whatever host it reached.
+  let origin: string;
+  try {
+    origin = appOrigin(req.url);
+  } catch {
+    return NextResponse.redirect(new URL('/bpm?authError=misconfigured', req.url), {
+      status: 303,
+    });
+  }
 
   const ip = getClientIp(req);
   if (!checkRateLimit(`oauth-callback:${ip}`, 10, 60 * 60 * 1000)) {

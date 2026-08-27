@@ -41,8 +41,9 @@ describe('GET /api/auth/verify-email', () => {
     const { token, member } = await seedUnverified();
     const res = await GET(makeRequest('GET', url(token)));
     // A redirect, not JSON: this URL is opened from a mail client, and a raw
-    // JSON error page is a dead end for the person reading it.
-    expect(res.status).toBe(307);
+    // JSON error page is a dead end for the person reading it. 303 rather than
+    // Next's default 307, so a redirect can never preserve a request method.
+    expect(res.status).toBe(303);
     expect(res.headers.get('location')).toContain('verified=1');
 
     const after = stored(member.id);
@@ -50,16 +51,39 @@ describe('GET /api/auth/verify-email', () => {
     expect(after.emailVerification).toBeUndefined();
   });
 
-  it('is idempotent on a re-tapped link, and the token stays consumed', async () => {
-    // People re-tap links out of mailboxes. The token is genuinely single-use
-    // -- the stored record is deleted on redemption, so it grants nothing the
-    // second time -- but the account state is already terminal, so answering
-    // "that failed" would be a worse lie than answering yes twice.
+  it('does NOT report success for a re-tapped, consumed link', async () => {
+    // This used to answer verified=1 without checking the token, so that
+    // re-tapping stayed idempotent. That made the endpoint an enumeration
+    // oracle: probe `?token=anything&email=<addr>` and verified=1 confirmed a
+    // verified account exists at that address -- precisely what an attacker
+    // wants before trying a reset.
+    //
+    // The idempotency is recovered in COPY instead: the verified=0 landing says
+    // the link is used or expired and that an already-confirmed address needs
+    // nothing further. True either way, and it reveals nothing.
     const { token, member } = await seedUnverified();
     await GET(makeRequest('GET', url(token)));
     const again = await GET(makeRequest('GET', url(token)));
-    expect(again.headers.get('location')).toContain('verified=1');
+    expect(again.headers.get('location')).toContain('verified=0');
+    // The address stays verified — only the ANSWER is uninformative.
+    expect(stored(member.id).emailVerified).toBe(true);
     expect(stored(member.id).emailVerification).toBeUndefined();
+  });
+
+  it('gives an unverified-account probe the same answer as a wrong token', async () => {
+    // The oracle test: an attacker guessing at addresses must not be able to
+    // tell a real verified account from anything else.
+    const { member } = await seedUnverified();
+    const row = stored(member.id);
+    row.emailVerified = true;
+    delete row.emailVerification;
+
+    const probeReal = await GET(makeRequest('GET', url('deadbeef')));
+    const probeUnknown = await GET(
+      makeRequest('GET', url('deadbeef', 'nobody-at-all@example.com')),
+    );
+    expect(probeReal.headers.get('location')).toContain('verified=0');
+    expect(probeUnknown.headers.get('location')).toContain('verified=0');
   });
 
   it('cannot verify an unverified member with an already-consumed token', async () => {

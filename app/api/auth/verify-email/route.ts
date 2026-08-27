@@ -29,7 +29,9 @@ function landing(req: NextRequest, ok: boolean): NextResponse {
   // baked in by us.
   const origin = outboundOriginOrNull();
   const target = `${origin ?? ''}/bpm?verified=${ok ? '1' : '0'}`;
-  return NextResponse.redirect(origin ? target : new URL(target, req.url));
+  // 303 for the same reason as the provider callbacks: a redirect that
+  // cannot accidentally preserve a method.
+  return NextResponse.redirect(origin ? target : new URL(target, req.url), { status: 303 });
 }
 
 export async function GET(req: NextRequest) {
@@ -58,13 +60,19 @@ export async function GET(req: NextRequest) {
       .read<Member>();
     if (!member || member.active !== true) return landing(req, false);
 
-    // Already verified is a SUCCESS, not an error. People re-tap links, and
-    // telling someone their confirmed address failed to confirm is a worse lie
-    // than saying yes twice.
-    if (member.emailVerified === true && !member.emailVerification) {
-      return landing(req, true);
-    }
-
+    // NO early return for the already-verified case.
+    //
+    // It used to answer success without checking the token, so that re-tapping
+    // a consumed link stayed idempotent. That made the endpoint an enumeration
+    // oracle: anyone could probe `?token=anything&email=<addr>` and tell
+    // "a verified account exists here" (verified=1) from everything else
+    // (verified=0). A member's address is exactly what an attacker wants to
+    // confirm before trying a reset.
+    //
+    // The idempotency it bought is not worth that, and is recoverable in copy:
+    // the verified=0 landing says the link is used or expired AND that an
+    // already-confirmed address needs nothing further — true in both cases, and
+    // it reveals nothing.
     if (!checkToken(token, member.emailVerification)) return landing(req, false);
 
     // Deleting the record is what makes the link single-use — `checkToken`
