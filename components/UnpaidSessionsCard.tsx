@@ -159,7 +159,11 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
           {/* Sentence case and neutral, not an uppercase accent label. On Home
               the accent is reserved for the primary button, the one link and
               the active tab — a label that never changes was spending it. */}
-          <span className="bpm-card-title">{title}</span>
+          {/* The same class LOCATION / WHEN / SIGN UP wear. Matching only the
+              font family left sentence-case semibold sitting beside uppercase
+              tracked bold — the same voice, still two different kinds of
+              title. */}
+          <span className="section-label-muted">{title}</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
             {/* THE FIGURE, even collapsed. A collapsed card showing only a
                 label spends a whole card to say nothing — and the number is

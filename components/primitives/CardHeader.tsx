@@ -43,13 +43,13 @@ export interface CardHeaderProps {
   /** Icon color token. Defaults to the accent. */
   iconColor?: string;
   /**
-   * Render the title as a card ROW title rather than a heading — display
-   * family at body size, `.bpm-card-title`.
+   * Render the title as a SECTION LABEL rather than a heading — the same
+   * `.section-label-muted` worn by LOCATION / WHEN / SIGN UP.
    *
-   * For a card that names a thing rather than announces one. Home's account
-   * group uses it so "Your balance" and "Stringing service" agree with each
-   * other and with the section labels above them; `.bpm-h3` is a size up and
-   * had the two cards in one group disagreeing about how loud they were.
+   * For a card that names a thing rather than announces one. Matching the
+   * family alone was not enough: sentence-case semibold beside uppercase
+   * tracked bold still read as two different kinds of title on one screen.
+   * Same class, so they cannot drift apart again.
    */
   compact?: boolean;
 }
@@ -77,7 +77,7 @@ export default function CardHeader({
         </span>
       )}
       <div style={{ minWidth: 0 }}>
-        <h3 className={`${compact ? 'bpm-card-title' : 'bpm-h3'} m-0`}>{title}</h3>
+        <h3 className={`${compact ? 'section-label-muted' : 'bpm-h3'} m-0`}>{title}</h3>
         {subtitle && (
           <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '2px 0 0' }}>
             {subtitle}

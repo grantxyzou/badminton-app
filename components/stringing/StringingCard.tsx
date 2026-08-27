@@ -54,6 +54,16 @@ export default function StringingCard({ hasIdentity }: Props) {
   const [jobs, setJobs] = useState<PlayerStringingJob[] | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [pricingOpen, setPricingOpen] = useState(false);
+  /**
+   * Collapsed/expanded, and null means "the player has not chosen".
+   *
+   * Null rather than a boolean so the DEFAULT keeps tracking the data: with a
+   * racket in, the card opens collapsed — the rail already answers the only
+   * question a glance is asking — and it reverts to that on its own once the
+   * job finishes. A boolean initialised to `false` would freeze whichever
+   * state happened to be right when the component first mounted.
+   */
+  const [openOverride, setOpenOverride] = useState<boolean | null>(null);
   // null = unknown/unread. `[]` means nothing posted — the expander says so
   // rather than showing a blank panel.
   const [pricing, setPricing] = useState<ServicePrice[] | null>(null);
@@ -139,33 +149,78 @@ export default function StringingCard({ hasIdentity }: Props) {
       (j) => KNOWN_STAGES.includes(j?.stage as string) && j.stage !== 'done',
     ) ?? null;
 
+  /**
+   * COLLAPSIBLE ONLY WHEN THERE IS A RACKET.
+   *
+   * With nothing in, the card is already two rows — a chevron would offer to
+   * hide "Submit a request", which is the only reason the card is there. With
+   * a racket in, the rail is the glance answer and the detail is the thing
+   * worth folding away, so the card opens collapsed and expands to the racket.
+   */
+  const collapsible = active !== null;
+  const expanded = !collapsible || (openOverride ?? false);
+
+  const header = (
+    <CardHeader
+      compact
+      icon="science"
+      iconColor="var(--text-secondary)"
+      title={t('title')}
+      badge={
+        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+          <StatusBadge variant="accent">{t('openBadge')}</StatusBadge>
+          {collapsible && (
+            <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>
+              {expanded ? 'expand_less' : 'expand_more'}
+            </span>
+          )}
+        </span>
+      }
+    />
+  );
+
   return (
     <>
       <div className="glass-card p-5 space-y-3">
         {/* No subtitle: the step strip below explains the process better than a
-            sentence did, and repeating it in prose was just noise above it. */}
-        {/* Neutral icon and title. This card sits in the ACCOUNT group, below
-            the week's one real action — dressing it in accent made it compete
-            with the thing above it. */}
-        <CardHeader
-          compact
-          icon="science"
-          iconColor="var(--text-secondary)"
-          title={t('title')}
-          badge={<StatusBadge variant="accent">{t('openBadge')}</StatusBadge>}
-        />
-
-        {/* THE RAIL WAITS UNTIL THERE IS A JOB.
-            Four steps and ~90px of vertical space described a process nobody
-            had started — an explanation charged against the height of a card
-            that had nothing to report yet. It returns the moment a racket is
-            actually in, which is when the progress display is worth its space
-            and the card has earned the room. */}
-        {active && (
-          <StringingSteps current={stepForStage((active.stage as PlayerStage) ?? null)} />
+            sentence did, and repeating it in prose was just noise above it.
+            Neutral icon and title — this card sits in the ACCOUNT group, below
+            the week's one real action, and dressing it in accent made it
+            compete with the thing above it. */}
+        {collapsible ? (
+          <button
+            type="button"
+            onClick={() => setOpenOverride(!expanded)}
+            aria-expanded={expanded}
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: 0,
+              background: 'none',
+              border: 'none',
+              font: 'inherit',
+              textAlign: 'left',
+              cursor: 'pointer',
+            }}
+          >
+            {header}
+          </button>
+        ) : (
+          header
         )}
 
+        {/* THE RAIL WAITS UNTIL THERE IS A JOB, and then it is what the
+            COLLAPSED card shows — four steps and ~90px describing a process
+            nobody had started was an explanation charged against a card with
+            nothing to report. Extra headroom because collapsed it is the
+            card's whole content and sat too close to the title. */}
         {active && (
+          <div style={{ paddingTop: expanded ? 0 : 'var(--space-4)' }}>
+            <StringingSteps current={stepForStage((active.stage as PlayerStage) ?? null)} />
+          </div>
+        )}
+
+        {active && expanded && (
           <div
             className="cc-mini-card"
             style={{
@@ -197,6 +252,8 @@ export default function StringingCard({ hasIdentity }: Props) {
           </div>
         )}
 
+        {expanded && (
+          <>
         {/* A TEXT ROW, not a filled block.
             As a full-width button this outweighed "I'm in this week" — the
             week's actual decision — from inside the group below it. Demoted to
@@ -265,6 +322,8 @@ export default function StringingCard({ hasIdentity }: Props) {
           <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
             {t('needName')}
           </p>
+        )}
+          </>
         )}
       </div>
 
