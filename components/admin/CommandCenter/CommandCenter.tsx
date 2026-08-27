@@ -144,8 +144,8 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
       {/* Profile-style settings list (mirrors ProfileTab's SettingsList).
           Announcements / E-transfer / Skip dates / Ledger / Release notes
           are drill-in sub-pages (AdminBackHeader) wired in AdminDashboard. */}
-      <div className="glass-card-soft" style={{ padding: 0, overflow: 'hidden' }}>
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+      <div className="glass-card-soft" style={{ padding: '0', overflow: 'hidden' }}>
+        <ul style={{ listStyle: 'none', margin: '0', padding: '0' }}>
           {[
             { icon: 'campaign', label: 'Announcements', onClick: () => setView('announcements') },
             { icon: 'payments', label: 'E-transfer recipient', onClick: () => setView('etransfer') },
@@ -173,8 +173,8 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
                   width: '100%',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 12,
-                  padding: '14px 16px',
+                  gap: 'var(--space-4)',
+                  padding: 'var(--space-4) var(--space-5)',
                   background: 'transparent',
                   border: 'none',
                   cursor: 'pointer',

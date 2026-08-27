@@ -110,16 +110,16 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
         <AdminBackHeader onBack={onBack} title="Ledger" />
         <div
           role="alert"
-          style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)' }}
+          style={{ padding: 'var(--space-9) var(--space-7)', textAlign: 'center', color: 'var(--text-muted)' }}
         >
           <p style={{ fontWeight: 600, color: 'var(--text)' }}>Couldn&apos;t load the ledger</p>
-          <p style={{ fontSize: 'var(--fs-base)', marginTop: 6 }}>
+          <p style={{ fontSize: 'var(--fs-base)', marginTop: 'var(--space-2)' }}>
             Backend may be cold-starting. Reconnect, then retry.
           </p>
           <button
             type="button"
             className="cc-btn cc-btn-ghost"
-            style={{ marginTop: 14 }}
+            style={{ marginTop: 'var(--space-4)' }}
             onClick={() => void load()}
           >
             Retry
@@ -143,7 +143,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
     <div className="animate-slideInRight space-y-3">
       <AdminBackHeader onBack={onBack} title="Ledger" />
 
-      <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '0 4px' }}>
+      <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '0 var(--space-1)' }}>
         Who owes what. Cover anyone you don&apos;t want to chase.
       </p>
 
@@ -168,7 +168,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
       {summary.sessionCount === 0 ? (
         <div
           style={{
-            padding: '48px 24px',
+            padding: 'var(--space-9) var(--space-7)',
             textAlign: 'center',
             color: 'var(--text-muted)',
             fontSize: 'var(--fs-md)',
@@ -179,7 +179,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
       ) : (
         <>
           {/* Summary tiles */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-3)' }}>
             <div className="cc-tile cc-tile-static">
               <span className="num">{money(summary.collected)}</span>
               <span className="lbl">Collected</span>
@@ -199,7 +199,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
             style={{
               fontSize: 'var(--fs-sm)',
               color: 'var(--ink-faint)',
-              margin: '0 4px',
+              margin: '0 var(--space-1)',
               fontFamily: 'var(--font-mono, "JetBrains Mono")',
             }}
           >
@@ -213,7 +213,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
                 fontSize: 'var(--fs-base)',
                 color: 'var(--accent)',
                 fontWeight: 600,
-                margin: '4px 4px 0',
+                margin: 'var(--space-1) var(--space-1) 0',
               }}
             >
               Everyone&apos;s caught up. Nice.
@@ -255,7 +255,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
               trailing chevron is the same affordance the CommandCenter
               settings list uses to signal a row navigates. */}
           {activeTab === 'session' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
               {bySession.map((s) => {
                 const settled = s.unpaidCount === 0;
                 return (
@@ -266,11 +266,11 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
                     onClick={() => onOpenSession?.(s.sessionId)}
                     aria-label={`Payments for ${fmtSessionLabel(s.date)}`}
                     style={{
-                      padding: '12px 14px',
+                      padding: 'var(--space-4) var(--space-5)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      gap: 12,
+                      gap: 'var(--space-4)',
                       width: '100%',
                       textAlign: 'left',
                       font: 'inherit',
@@ -284,17 +284,17 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
                           fontFamily: 'var(--font-display, "Space Grotesk")',
                           fontSize: 'var(--fs-md)',
                           fontWeight: 600,
-                          margin: 0,
+                          margin: '0',
                         }}
                       >
                         {fmtSessionLabel(s.date)}
                       </p>
-                      <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
+                      <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: 'var(--space-05) 0 0' }}>
                         {money(s.totalCost)} · {s.attendanceCount} player
                         {s.attendanceCount === 1 ? '' : 's'}
                       </p>
                     </div>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                       {settled ? (
                         <span className="cc-pill cc-pill-success">✓ all settled</span>
                       ) : (
@@ -315,7 +315,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
               })}
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
               {byPlayer.map((p) => {
                 // Only memberId-linked rows drill into a profile. Legacy
                 // pre-migration records (no memberId) have no history to
@@ -324,11 +324,11 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
                 // tappability you can't honor" principle).
                 const linked = p.memberId !== null;
                 const rowStyle = {
-                  padding: '12px 14px',
+                  padding: 'var(--space-4) var(--space-5)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  gap: 12,
+                  gap: 'var(--space-4)',
                   width: '100%',
                   textAlign: 'left' as const,
                   font: 'inherit',
@@ -343,12 +343,12 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
                           fontFamily: 'var(--font-display, "Space Grotesk")',
                           fontSize: 'var(--fs-md)',
                           fontWeight: 600,
-                          margin: 0,
+                          margin: '0',
                         }}
                       >
                         {p.name}
                       </p>
-                      <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
+                      <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: 'var(--space-05) 0 0' }}>
                         {p.sessionCount} unpaid session{p.sessionCount === 1 ? '' : 's'}
                       </p>
                     </div>
@@ -356,7 +356,7 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
                         row's primary figure (cf. BirdsPage stock numbers).
                         The session row uses cc-pill-amber because there the
                         amount is secondary status, not the headline. */}
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                       <span
                         style={{
                           fontFamily: 'var(--font-display, "Space Grotesk")',

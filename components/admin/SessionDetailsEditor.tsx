@@ -368,7 +368,7 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
                 value={form.costPerCourt ?? ''}
                 onChange={setFloat('costPerCourt')}
                 placeholder="None"
-                style={form.costPerCourt !== null && form.costPerCourt > 0 ? { paddingLeft: '1.5rem' } : undefined}
+                style={form.costPerCourt !== null && form.costPerCourt > 0 ? { paddingLeft: 'var(--space-7)' } : undefined}
               />
             </div>
           </Label>
@@ -442,7 +442,8 @@ export default function SessionDetailsEditor({ onBack }: { onBack: () => void })
                               appearance: 'none',
                               WebkitAppearance: 'none',
                               MozAppearance: 'none',
-                              paddingRight: 40,
+                              // Clearance for the custom dropdown chevron, not layout rhythm.
+                              paddingRight: 'calc(var(--space-6) * 2)',
                             }}
                           >
                             <option value="">Select brand…</option>

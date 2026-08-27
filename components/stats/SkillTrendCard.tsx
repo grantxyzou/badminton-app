@@ -219,7 +219,7 @@ export default function SkillTrendCard() {
           delta arrow, so a separate colour key would explain nothing. The
           first-rating hint stays. */}
       {!prev && (
-        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0, textAlign: 'center' }}>{t('assess.baseline')}</p>
+        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '0', textAlign: 'center' }}>{t('assess.baseline')}</p>
       )}
 
       {insightsOn && insight?.trend && <InsightChip {...insight.trend} />}
@@ -279,13 +279,13 @@ function Legend({
 }) {
   return (
     <div className="space-y-1">
-      <p className="section-label" style={{ fontSize: 'var(--fs-2xs)', letterSpacing: '0.08em', color: 'var(--text-muted)', margin: 0 }}>{title}</p>
+      <p className="section-label" style={{ fontSize: 'var(--fs-2xs)', letterSpacing: '0.08em', color: 'var(--text-muted)', margin: '0' }}>{title}</p>
       {items.map((r) => {
         const skill = SKILL_BY_KEY.get(r.skillKey);
         if (!skill) return null;
         const v = nowMap.get(r.skillKey) ?? r.value;
         return (
-          <div key={r.skillKey} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+          <div key={r.skillKey} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
             <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', lineHeight: 1.3, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{skill.label}</span>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-sm)', fontWeight: 700, color: accent ? 'var(--accent)' : 'var(--text-muted)' }}>{v}</span>
           </div>
@@ -306,7 +306,7 @@ function SkillList({
 }) {
   return (
     <div className="space-y-2">
-      <p className="section-label" style={{ fontSize: 'var(--fs-2xs)', letterSpacing: '0.08em', color: 'var(--text-muted)', margin: 0 }}>{title}</p>
+      <p className="section-label" style={{ fontSize: 'var(--fs-2xs)', letterSpacing: '0.08em', color: 'var(--text-muted)', margin: '0' }}>{title}</p>
       {items.map((r) => {
         const skill = SKILL_BY_KEY.get(r.skillKey);
         if (!skill) return null;
@@ -319,7 +319,7 @@ function SkillList({
             ariaLabel={skill.label}
             title={<span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 1.2 }}>{skill.label}</span>}
             trailing={
-              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, whiteSpace: 'nowrap' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--space-1)', whiteSpace: 'nowrap' }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md)', fontWeight: 700, color: 'var(--text-primary)' }}>{nowV}</span>
                 {thenV !== undefined && <Delta value={nowV - thenV} />}
               </span>
@@ -357,7 +357,7 @@ function SkillAnchorSheet({ skillKey, value, onClose }: { skillKey: string; valu
             <span className="material-icons" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>close</span>
           </button>
         </BottomSheetHeader>
-        <BottomSheetBody bare className="px-5 pb-8" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
+        <BottomSheetBody bare className="px-5 pb-8" style={{ paddingBottom: 'max(var(--space-8), env(safe-area-inset-bottom))' }}>
           <div className="space-y-2">
             {skill.anchors.map((anchor, i) => {
               const level = i + 1;
@@ -371,13 +371,13 @@ function SkillAnchorSheet({ skillKey, value, onClose }: { skillKey: string; valu
                     border: `1.5px solid ${isActive ? 'var(--inner-card-green-border)' : 'var(--inner-card-border)'}`,
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-05)' }}>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-base)', fontWeight: 700, color: isActive ? 'var(--accent, #22c55e)' : 'var(--text-muted)' }}>{level}</span>
                     {isActive && (
                       <span className="material-icons" style={{ fontSize: 'var(--icon-sm)', color: 'var(--accent, #22c55e)' }}>check_circle</span>
                     )}
                   </div>
-                  <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.45, color: isActive ? 'var(--text-primary)' : 'var(--text-muted)', margin: 0 }}>{anchor}</p>
+                  <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.45, color: isActive ? 'var(--text-primary)' : 'var(--text-muted)', margin: '0' }}>{anchor}</p>
                 </div>
               );
             })}

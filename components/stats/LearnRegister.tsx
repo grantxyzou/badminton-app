@@ -216,13 +216,13 @@ export default function LearnRegister({ activeName, onCheckedIn }: LearnRegister
             </span>
             <p
               className="bpm-h2"
-              style={{ margin: '10px 0 0', color: 'white' }}
+              style={{ margin: 'var(--space-4) 0 0', color: 'white' }}
             >
               {focusTitle(t, focus)}
             </p>
             <p
               style={{
-                margin: '8px 0 0',
+                margin: 'var(--space-3) 0 0',
                 fontSize: 'var(--fs-base)',
                 lineHeight: 1.45,
                 color: 'color-mix(in srgb, white 82%, transparent)',
@@ -236,7 +236,7 @@ export default function LearnRegister({ activeName, onCheckedIn }: LearnRegister
 
       <div className="glass-card p-5 space-y-3">
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
-          <h3 className="bpm-h3" style={{ margin: 0 }}>
+          <h3 className="bpm-h3" style={{ margin: '0' }}>
             {t('twoTitle')}
           </h3>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-sm)', color: 'var(--accent)' }}>
@@ -304,7 +304,7 @@ export default function LearnRegister({ activeName, onCheckedIn }: LearnRegister
                     <span
                       style={{
                         display: 'block',
-                        marginTop: 2,
+                        marginTop: 'var(--space-05)',
                         fontSize: 'var(--fs-md)',
                         fontWeight: 600,
                         color: 'var(--text-primary)',
@@ -316,7 +316,7 @@ export default function LearnRegister({ activeName, onCheckedIn }: LearnRegister
                     <span
                       style={{
                         display: 'block',
-                        marginTop: 6,
+                        marginTop: 'var(--space-2)',
                         fontFamily: 'var(--font-mono)',
                         fontSize: 'var(--fs-sm)',
                         color: 'var(--text-secondary)',
@@ -343,7 +343,7 @@ export default function LearnRegister({ activeName, onCheckedIn }: LearnRegister
         )}
 
         {saveError && <ErrorState message={t('saveError')} />}
-        {!online && <p style={{ margin: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('offline')}</p>}
+        {!online && <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('offline')}</p>}
       </div>
 
       {allDone && focus && (
@@ -362,10 +362,10 @@ export default function LearnRegister({ activeName, onCheckedIn }: LearnRegister
             check_circle
           </span>
           <div>
-            <p className="bpm-h3" style={{ margin: 0 }}>
+            <p className="bpm-h3" style={{ margin: '0' }}>
               {t('doneTitle')}
             </p>
-            <p style={{ margin: '6px 0 0', fontSize: 'var(--fs-base)', lineHeight: 1.45, color: 'var(--text-secondary)' }}>
+            <p style={{ margin: 'var(--space-2) 0 0', fontSize: 'var(--fs-base)', lineHeight: 1.45, color: 'var(--text-secondary)' }}>
               {t('doneBody', { skill: focus.skillLabel })}
             </p>
           </div>
@@ -419,7 +419,7 @@ function DrillSheet({
   return (
     <BottomSheet open={!!drill} onClose={onClose} ariaLabel={drill?.title ?? ''} maxHeight="75vh">
       <BottomSheetHeader>
-        <h2 className="bpm-h3" style={{ margin: 0 }}>
+        <h2 className="bpm-h3" style={{ margin: '0' }}>
           {drill?.title}
         </h2>
         <button type="button" onClick={onClose} aria-label={t('close')} className="cc-btn cc-btn-ghost" style={{ minWidth: 44, minHeight: 44 }}>
@@ -428,12 +428,12 @@ function DrillSheet({
       </BottomSheetHeader>
       <BottomSheetBody bare>
         {drill && (
-          <div style={{ padding: '0 20px 34px', display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+          <div style={{ padding: '0 var(--space-6) var(--space-8)', display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
               <span
                 style={{
                   fontSize: 'var(--fs-2xs)',
-                  padding: '2px 8px',
+                  padding: 'var(--space-05) var(--space-3)',
                   borderRadius: 'var(--radius-pill)',
                   fontWeight: 700,
                   letterSpacing: '0.04em',
@@ -451,8 +451,8 @@ function DrillSheet({
                 {drill.setting}
               </span>
             </div>
-            <p style={{ margin: 0, fontSize: 'var(--fs-md)', lineHeight: 1.5, color: 'var(--text-primary)' }}>{drill.description}</p>
-            <p style={{ margin: 0, fontSize: 'var(--fs-sm)', fontStyle: 'italic', color: 'var(--text-muted)' }}>{drill.reason}</p>
+            <p style={{ margin: '0', fontSize: 'var(--fs-md)', lineHeight: 1.5, color: 'var(--text-primary)' }}>{drill.description}</p>
+            <p style={{ margin: '0', fontSize: 'var(--fs-sm)', fontStyle: 'italic', color: 'var(--text-muted)' }}>{drill.reason}</p>
             <button
               type="button"
               className="cc-btn cc-btn-primary cc-btn-lg"

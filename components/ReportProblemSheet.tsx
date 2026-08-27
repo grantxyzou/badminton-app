@@ -81,8 +81,8 @@ export default function ReportProblemSheet({ open, onClose, name }: Props) {
             {t('success')}
           </p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: 0 }}>{t('help')}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: '0' }}>{t('help')}</p>
             <textarea
               aria-label={t('placeholder')}
               placeholder={t('placeholder')}
@@ -92,7 +92,7 @@ export default function ReportProblemSheet({ open, onClose, name }: Props) {
               maxLength={2000}
               style={{
                 width: '100%',
-                padding: 12,
+                padding: 'var(--space-4)',
                 borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--glass-border)',
                 background: 'var(--input-bg, rgba(255,255,255,0.05))',
@@ -107,7 +107,7 @@ export default function ReportProblemSheet({ open, onClose, name }: Props) {
               disabled={submitting || !message.trim() || !online}
               onClick={submit}
               className="cc-btn cc-btn-primary cc-btn-lg"
-              style={{ marginTop: 4 }}
+              style={{ marginTop: 'var(--space-1)' }}
             >
               {submitting ? t('sending') : t('send')}
             </button>

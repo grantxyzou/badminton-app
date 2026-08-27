@@ -112,7 +112,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
       </BottomSheetHeader>
 
       <BottomSheetBody>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
           {error && (
             <p
               role="alert"
@@ -120,7 +120,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
                 color: 'var(--color-red)',
                 fontSize: 'var(--fs-base)',
                 lineHeight: 1.5,
-                margin: 0,
+                margin: '0',
               }}
             >
               {error}
@@ -155,7 +155,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
               </div>
 
               {mode === 'individual' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                   <label className="section-label" style={{ color: 'var(--text-muted)' }}>Recipient</label>
                   <select
                     value={selectedPlayer ?? ''}
@@ -170,7 +170,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
               )}
 
               {mode === 'group' && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-3)' }}>
                   {/* Offscreen generator — drawn to, then exported as a PNG.
                       Displaying the exported <img> (rather than the live
                       <canvas>) keeps sizing stable across re-renders and never
@@ -215,7 +215,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
                       style={{
                         fontSize: 'var(--fs-sm)',
                         color: 'var(--text-muted)',
-                        margin: 0,
+                        margin: '0',
                         textAlign: 'center',
                         maxWidth: 300,
                       }}
@@ -226,7 +226,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
                 </div>
               )}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                 <label className="section-label" style={{ color: 'var(--text-muted)' }}>Text version</label>
                 <pre
                   style={{
@@ -234,8 +234,8 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
                     fontSize: 'var(--fs-sm)',
                     lineHeight: 1.55,
                     whiteSpace: 'pre-wrap',
-                    margin: 0,
-                    padding: 12,
+                    margin: '0',
+                    padding: 'var(--space-4)',
                     borderRadius: 'var(--radius-lg)',
                     background: 'var(--input-bg)',
                     border: '1px solid var(--input-border, rgba(255,255,255,0.08))',
@@ -247,11 +247,11 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
               </div>
 
               {actionError && (
-                <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: 0 }}>
+                <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: '0' }}>
                   {actionError}
                 </p>
               )}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
                   onClick={copyText}

@@ -173,7 +173,7 @@ export default function GearPickCard({ category, pick, owned, status, onOpen }: 
           flex: '0 0 auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: 5,
+          gap: 'var(--space-2)',
           opacity: 0.72,
         }}
       >
@@ -193,7 +193,7 @@ export default function GearPickCard({ category, pick, owned, status, onOpen }: 
             {meta.icon}
           </span>
         </span>
-        <span className="fs-base" style={{ marginTop: 6, lineHeight: 'var(--lh-normal)', color: 'var(--text-secondary)' }}>
+        <span className="fs-base" style={{ marginTop: 'var(--space-2)', lineHeight: 'var(--lh-normal)', color: 'var(--text-secondary)' }}>
           {t(meta.soonKey ?? 'railComingSoon')}
         </span>
       </div>
@@ -217,7 +217,7 @@ export default function GearPickCard({ category, pick, owned, status, onOpen }: 
         flex: '0 0 auto',
         display: 'flex',
         flexDirection: 'column',
-        gap: 5,
+        gap: 'var(--space-2)',
         textAlign: 'left',
         cursor: 'pointer',
         minHeight: 44,
@@ -256,7 +256,7 @@ export default function GearPickCard({ category, pick, owned, status, onOpen }: 
           : owned ? t('railInKitLine') : t('railStyleMatched')}
       </span>
 
-      <span style={{ marginTop: 6, fontSize: 'var(--fs-md)', fontWeight: 600, lineHeight: 'var(--lh-snug)', color: 'var(--text-primary)' }}>
+      <span style={{ marginTop: 'var(--space-2)', fontSize: 'var(--fs-md)', fontWeight: 600, lineHeight: 'var(--lh-snug)', color: 'var(--text-primary)' }}>
         {item.model}
       </span>
       <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -267,9 +267,9 @@ export default function GearPickCard({ category, pick, owned, status, onOpen }: 
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: 2,
+          gap: 'var(--space-05)',
           marginTop: 'auto',
-          paddingTop: 4,
+          paddingTop: 'var(--space-1)',
           fontSize: 'var(--fs-xs)',
           color: 'var(--text-secondary)',
         }}

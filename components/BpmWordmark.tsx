@@ -40,6 +40,11 @@ function BpmWordmark({
         style={{
           display: 'inline-flex',
           alignItems: 'flex-end',
+          /* EXEMPT from the spacing ladder, deliberately. The dots below are
+             sized in `em` so the ornament scales with whatever font-size the
+             wordmark is rendered at (splash, topbar, footer are all
+             different). Their gap has to scale with them; a px token would
+             fix the gap while the dots grew. */
           gap: '0.11em',
           marginLeft: '0.06em',
           paddingBottom: '0.05em',  // align baseline of dots with text baseline

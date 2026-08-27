@@ -260,7 +260,7 @@ export default function ProfileTab({
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
+          gap: 'var(--space-3)',
           color: 'var(--text-muted)',
           fontSize: 'var(--fs-xs)',
           textTransform: 'uppercase',
@@ -338,7 +338,7 @@ export default function ProfileTab({
       <div className="animate-fadeIn flex flex-col gap-4">
         <PageHeader>{t('anonymousTitle')}</PageHeader>
         <p style={{ color: 'var(--text-secondary)' }}>{t('anonymousBody')}</p>
-        <div className="glass-card p-4" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="glass-card p-4" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           {/* Providers LEAD. One tap, nothing to remember, and the only route
               that works on a phone which has never seen this app — it is also
               the only one that ends up holding a verified email, so recovery
@@ -601,7 +601,7 @@ export default function ProfileTab({
           background: 'none',
           border: 'none',
           cursor: 'pointer',
-          padding: 12,
+          padding: 'var(--space-4)',
           fontSize: 'var(--fs-lg)',
           color: 'var(--color-red)',
           fontFamily: 'inherit',
@@ -711,8 +711,8 @@ interface SettingsRow {
 
 function SettingsList({ rows }: { rows: SettingsRow[] }) {
   return (
-    <div className="glass-card-soft" style={{ padding: 0, overflow: 'hidden' }}>
-      <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+    <div className="glass-card-soft" style={{ padding: '0', overflow: 'hidden' }}>
+      <ul style={{ listStyle: 'none', margin: '0', padding: '0' }}>
         {rows.map((row, idx) => (
           <li key={row.label} style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--divider)' }}>
             <button
@@ -722,8 +722,8 @@ function SettingsList({ rows }: { rows: SettingsRow[] }) {
                 width: '100%',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 12,
-                padding: '14px 16px',
+                gap: 'var(--space-4)',
+                padding: 'var(--space-4) var(--space-5)',
                 background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
@@ -793,10 +793,10 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin }: Pro
     <div
       className="glass-card-soft"
       style={{
-        padding: 16,
+        padding: 'var(--space-5)',
         display: 'flex',
         alignItems: 'center',
-        gap: 13,
+        gap: 'var(--space-4)',
       }}
     >
       {/* The "NAME" eyebrow that sat above this is gone: a 46px avatar and the
@@ -839,7 +839,7 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin }: Pro
             fontSize: 'var(--fs-stat)',
             fontWeight: 600,
             letterSpacing: '-0.015em',
-            margin: 0,
+            margin: '0',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -848,14 +848,14 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin }: Pro
           {name}
         </p>
         {memberSince && (
-          <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginTop: 2 }}>
+          <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginTop: 'var(--space-05)' }}>
             Member since {memberSince}
           </p>
         )}
       </div>
       {/* Side by side, not stacked: two badges in a column read as a status
           column with a hierarchy between them. They are peers. */}
-      <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+      <div style={{ display: 'inline-flex', gap: 'var(--space-2)', alignItems: 'center', flexShrink: 0 }}>
         {isSignedUp && (
           <span className="pill-paid" style={{ whiteSpace: 'nowrap' }}>
             In
@@ -867,7 +867,7 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin }: Pro
               whiteSpace: 'nowrap',
               background: 'rgba(var(--glass-tint), 0.09)',
               color: 'var(--text-secondary)',
-              padding: '4px 11px',
+              padding: 'var(--space-1) var(--space-4)',
               borderRadius: 'var(--radius-pill)',
               fontSize: 'var(--fs-sm)',
             }}

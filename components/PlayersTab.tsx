@@ -315,7 +315,7 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
               <h2 className="bpm-h3 m-0">
                 {imWaitlisted ? t('leaveSheetTitle') : t('cancelConfirm')}
               </h2>
-              <p className="fs-base m-0" style={{ marginTop: 6, color: 'var(--text-secondary)' }}>
+              <p className="fs-base m-0" style={{ marginTop: 'var(--space-2)', color: 'var(--text-secondary)' }}>
                 {imWaitlisted ? t('leaveSheetBody') : t('cancelSheetBody')}
               </p>
             </div>

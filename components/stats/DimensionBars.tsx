@@ -148,7 +148,7 @@ export default function DimensionBars({
       {anyTick && (
         <p
           style={{
-            margin: 0,
+            margin: '0',
             fontSize: 'var(--fs-xs)',
             color: 'var(--text-muted)',
             display: 'flex',

@@ -45,7 +45,7 @@ export default function SummaryGreeting() {
          than marks. Aligned to the first line it stays put at any length —
          the same reason CardHeader offsets its icon by a pixel instead of
          centring it against a subtitle. */
-      style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', alignItems: 'flex-start', gap: 12 }}
+      style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', alignItems: 'flex-start', gap: 'var(--space-4)' }}
       aria-label={t('summaryGreeting.ariaLabel')}
     >
       {/* The badge IS the icon. There were two AI signifiers on one card — a
@@ -57,10 +57,10 @@ export default function SummaryGreeting() {
           generated" — both are stats AI-provenance labels under the same
           namespace. NOT `summaryGreeting.ariaLabel`, which the card itself
           already carries; repeating it would announce the surface twice. */}
-      <span style={{ flexShrink: 0, marginTop: 2 }}>
+      <span style={{ flexShrink: 0, marginTop: 'var(--space-05)' }}>
         <AIBadge label={t('insightChip.aiGenerated')}>{t('summaryGreeting.ai')}</AIBadge>
       </span>
-      <p style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: 1.45, color: 'var(--text-primary)', flex: 1, minWidth: 0 }}>{greeting}</p>
+      <p style={{ margin: '0', fontSize: 'var(--fs-lg)', lineHeight: 1.45, color: 'var(--text-primary)', flex: 1, minWidth: 0 }}>{greeting}</p>
     </div>
   );
 }

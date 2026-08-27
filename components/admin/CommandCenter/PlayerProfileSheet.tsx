@@ -213,38 +213,38 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
       </BottomSheetHeader>
 
       <BottomSheetBody>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {loading && <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-muted)', margin: 0 }}>Loading…</p>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+          {loading && <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-muted)', margin: '0' }}>Loading…</p>}
           {error && (
-            <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: 0 }}>
+            <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
               {error}
             </p>
           )}
 
           {history && !loading && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
                 <Stat label="Sessions attended" value={history.lifetime.attended} />
                 <Stat label="Times paid" value={history.lifetime.totalPaid} />
               </div>
 
-              <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                 <p style={{
                   fontSize: 'var(--fs-xs)',
                   letterSpacing: '0.06em',
                   textTransform: 'uppercase',
                   color: 'var(--text-muted)',
-                  margin: 0,
+                  margin: '0',
                   fontWeight: 600,
                 }}>
                   Recent sessions
                 </p>
                 {history.sessions.length === 0 ? (
-                  <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-muted)', margin: 0 }}>
+                  <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-muted)', margin: '0' }}>
                     No sessions on record yet.
                   </p>
                 ) : (
-                  <ul role="list" style={{ display: 'flex', flexDirection: 'column', gap: 0, listStyle: 'none', margin: 0, padding: 0 }}>
+                  <ul role="list" style={{ display: 'flex', flexDirection: 'column', gap: '0', listStyle: 'none', margin: '0', padding: '0' }}>
                     {history.sessions.slice(0, 12).map((s, i, arr) => (
                       <li
                         key={s.sessionId}
@@ -252,14 +252,14 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          gap: 12,
-                          padding: '12px 0',
+                          gap: 'var(--space-4)',
+                          padding: 'var(--space-4) 0',
                           borderBottom: i < arr.length - 1 ? '1px solid var(--border-subtle))' : 'none',
                           fontSize: 'var(--fs-md)',
                         }}
                       >
                         <span style={{ color: 'var(--text-primary)' }}>{fmtDate(s.date)}</span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                           {!s.attended && (
                             <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>Missed</span>
                           )}
@@ -282,20 +282,20 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
                   </ul>
                 )}
                 {history.sessions.length > 12 && (
-                  <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                  <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0 0' }}>
                     +{history.sessions.length - 12} more older sessions
                   </p>
                 )}
               </section>
 
-              <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+              <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
                   <p style={{
                     fontSize: 'var(--fs-xs)',
                     letterSpacing: '0.06em',
                     textTransform: 'uppercase',
                     color: 'var(--text-muted)',
-                    margin: 0,
+                    margin: '0',
                     fontWeight: 600,
                   }}>
                     Owed breakdown
@@ -308,21 +308,21 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
                 </div>
 
                 {auditError ? (
-                  <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: 0 }}>
+                  <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
                     Couldn’t load owed breakdown.
                   </p>
                 ) : !audit ? (
-                  <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: 0 }}>Loading…</p>
+                  <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '0' }}>Loading…</p>
                 ) : audit.sessions.length === 0 ? (
-                  <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-muted)', margin: 0 }}>No billable sessions on record.</p>
+                  <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-muted)', margin: '0' }}>No billable sessions on record.</p>
                 ) : (
                   <>
                     {audit.names.length > 1 && (
-                      <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>
+                      <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '0' }}>
                         Linked names: {audit.names.join(', ')}
                       </p>
                     )}
-                    <ul role="list" style={{ display: 'flex', flexDirection: 'column', gap: 0, listStyle: 'none', margin: 0, padding: 0 }}>
+                    <ul role="list" style={{ display: 'flex', flexDirection: 'column', gap: '0', listStyle: 'none', margin: '0', padding: '0' }}>
                       {audit.sessions.map((s, i, arr) => (
                         <li
                           key={s.sessionId}
@@ -330,8 +330,8 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            gap: 12,
-                            padding: '10px 0',
+                            gap: 'var(--space-4)',
+                            padding: 'var(--space-4) 0',
                             borderBottom: i < arr.length - 1 ? '1px solid var(--border-subtle))' : 'none',
                             fontSize: 'var(--fs-md)',
                           }}
@@ -366,14 +366,14 @@ function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div
       style={{
-        padding: 12,
+        padding: 'var(--space-4)',
         borderRadius: 'var(--radius-lg)',
         background: 'var(--input-bg)',
         border: '1px solid var(--border-subtle))',
       }}
     >
-      <p style={{ fontSize: 28, fontWeight: 600, lineHeight: 1.1, margin: 0, color: 'var(--text-primary)' }}>{value}</p>
-      <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>{label}</p>
+      <p style={{ fontSize: 28, fontWeight: 600, lineHeight: 1.1, margin: '0', color: 'var(--text-primary)' }}>{value}</p>
+      <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0 0' }}>{label}</p>
     </div>
   );
 }

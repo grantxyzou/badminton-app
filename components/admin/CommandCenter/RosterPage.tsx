@@ -55,7 +55,7 @@ function Avatar({ name, size = 32 }: { name: string; size?: number }) {
 
 function Sparkline({ presence }: { presence: Array<1 | null> }) {
   return (
-    <span style={{ display: 'inline-flex', gap: 3 }}>
+    <span style={{ display: 'inline-flex', gap: 'var(--space-1)' }}>
       {presence.map((v, i) => (
         <span
           key={i}
@@ -421,8 +421,8 @@ export default function RosterPage({ onBack }: RosterPageProps) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
-          padding: '10px 14px',
+          gap: 'var(--space-3)',
+          padding: 'var(--space-4) var(--space-5)',
           background: 'rgba(var(--glass-tint), 0.04)',
           border: '1px solid rgba(var(--glass-tint), 0.12)',
           borderRadius: 'var(--radius-lg)',
@@ -447,7 +447,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
       </div>
 
       {/* Filter chips */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '10px 0 6px' }}>
+      <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', margin: 'var(--space-4) 0 var(--space-2)' }}>
         {chipDefs.map(([k, label, count]) => {
           const on = filter === k;
           return (
@@ -458,8 +458,8 @@ export default function RosterPage({ onBack }: RosterPageProps) {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 5,
-                padding: '6px 11px',
+                gap: 'var(--space-2)',
+                padding: 'var(--space-2) var(--space-4)',
                 borderRadius: 'var(--radius-pill)',
                 background: on ? 'rgba(74,222,128,0.13)' : 'rgba(var(--glass-tint), 0.04)',
                 border: `1px solid ${on ? 'rgba(74,222,128,0.35)' : 'rgba(var(--glass-tint), 0.12)'}`,
@@ -475,7 +475,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                 style={{
                   fontFamily: 'var(--font-mono, "JetBrains Mono")',
                   fontSize: 'var(--fs-2xs)',
-                  marginLeft: 2,
+                  marginLeft: 'var(--space-05)',
                   color: on ? '#86efac' : 'var(--ink-faint)',
                 }}
               >
@@ -487,9 +487,9 @@ export default function RosterPage({ onBack }: RosterPageProps) {
       </div>
 
       {/* Groups */}
-      <div style={{ margin: '12px -16px 0' }}>
+      <div style={{ margin: 'var(--space-4) calc(-1 * var(--space-5)) 0' }}>
         {groups.length === 0 && (
-          <p style={{ padding: '24px 16px', textAlign: 'center', fontSize: 'var(--fs-base)', color: 'var(--text-muted)' }}>
+          <p style={{ padding: 'var(--space-7) var(--space-5)', textAlign: 'center', fontSize: 'var(--fs-base)', color: 'var(--text-muted)' }}>
             No matches.
           </p>
         )}
@@ -497,10 +497,10 @@ export default function RosterPage({ onBack }: RosterPageProps) {
           <div key={letter}>
             <div
               style={{
-                padding: '10px 24px 4px',
+                padding: 'var(--space-4) var(--space-7) var(--space-1)',
                 display: 'flex',
                 alignItems: 'baseline',
-                gap: 8,
+                gap: 'var(--space-3)',
                 position: 'sticky',
                 top: 0,
                 background: 'rgba(16,15,15,0.85)',
@@ -523,16 +523,16 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                   border: 'none',
                   textAlign: 'left',
                   cursor: 'pointer',
-                  padding: '10px 24px',
+                  padding: 'var(--space-4) var(--space-7)',
                   alignItems: 'center',
-                  gap: 12,
+                  gap: 'var(--space-4)',
                   borderBottom: '1px solid rgba(var(--glass-tint), 0.04)',
                 }}
                 aria-label={`Edit ${r.member.name}`}
               >
                 <Avatar name={r.member.name} />
-                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: 2 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: 'var(--space-05)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                     <span
                       style={{
                         fontFamily: 'var(--font-display, "Space Grotesk")',
@@ -549,7 +549,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                           background: 'rgba(74,222,128,0.13)',
                           color: '#86efac',
                           border: '1px solid rgba(74,222,128,0.25)',
-                          padding: '1px 6px',
+                          padding: 'var(--space-hair) var(--space-2)',
                           borderRadius: 'var(--radius-pill)',
                           fontSize: 'var(--fs-2xs)',
                           fontWeight: 600,
@@ -565,7 +565,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                           background: 'rgba(167,139,250,0.13)',
                           color: '#a78bfa',
                           border: '1px solid rgba(167,139,250,0.28)',
-                          padding: '1px 6px',
+                          padding: 'var(--space-hair) var(--space-2)',
                           borderRadius: 'var(--radius-pill)',
                           fontSize: 'var(--fs-2xs)',
                           fontWeight: 600,
@@ -585,7 +585,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 8,
+                      gap: 'var(--space-3)',
                       fontFamily: 'var(--font-mono, "JetBrains Mono")',
                       fontSize: 'var(--fs-2xs)',
                       color: 'var(--ink-faint)',
@@ -672,7 +672,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
         </BottomSheetHeader>
 
         <BottomSheetBody>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <Field label="Name">
               <input
                 type="text"
@@ -691,7 +691,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                 maxLength={100}
                 placeholder="Name on e-transfers, if different"
               />
-              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0' }}>
                 Used to match incoming payments when the e-transfer name doesn&apos;t match the in-app name.
               </p>
             </Field>
@@ -699,7 +699,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
             {editingId && (
               <>
                 <Field label="Role">
-                  <div style={{ display: 'inline-flex', gap: 6 }}>
+                  <div style={{ display: 'inline-flex', gap: 'var(--space-2)' }}>
                     {(['member', 'admin'] as const).map((r) => (
                       <button
                         key={r}
@@ -732,7 +732,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                   >
                     {resettingPin ? 'Generating…' : 'Generate reset code'}
                   </button>
-                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0' }}>
                     For a player who forgot their PIN. Give them the code — they enter it under
                     Profile → &ldquo;Have a recovery code?&rdquo; to set a new PIN. No signup needed.
                   </p>
@@ -741,12 +741,12 @@ export default function RosterPage({ onBack }: RosterPageProps) {
             )}
 
             {formError && (
-              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: 0 }}>
+              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
                 {formError}
               </p>
             )}
 
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
               {editingId && (
                 <button
                   type="button"
@@ -794,7 +794,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
       <label style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{label}</label>
       {children}
     </div>

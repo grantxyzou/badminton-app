@@ -61,8 +61,8 @@ export default function BagList({
           it was one green among few; on the Gear tab it sits directly under a
           green CardHeader icon, and accent is currency — it marks the thing
           worth tapping, and this label never changes. */}
-      <p className="section-label-muted" style={{ margin: 0 }}>{t('ownedTitle')}</p>
-      <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <p className="section-label-muted" style={{ margin: '0' }}>{t('ownedTitle')}</p>
+      <ul style={{ listStyle: 'none', margin: '0', padding: '0', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
         {items.map((item) => {
           const isActive = item.id === activeId;
           const showActivate = item.category === 'racket';
@@ -70,7 +70,7 @@ export default function BagList({
             <li
               key={item.id}
               className="cc-mini-card"
-              style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 12, borderRadius: 'var(--radius-lg)' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)' }}
             >
               <span style={{ flex: 1, fontSize: 'var(--fs-md)' }}>{gearItemLabel(item, t('lb'))}</span>
               {showActivate && (isActive ? (

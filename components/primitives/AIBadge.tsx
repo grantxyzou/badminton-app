@@ -44,7 +44,7 @@ export default function AIBadge({ children, label }: AIBadgeProps) {
         letterSpacing: '0.04em',
         textTransform: 'uppercase',
         fontSize: 'var(--fs-2xs)',
-        padding: '3px 9px',
+        padding: 'var(--space-1) var(--space-3)',
         color: 'var(--text-primary)',
       }}
     >

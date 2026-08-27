@@ -251,7 +251,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   const controls = showPrefs ? (
     <>
       <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-        <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>{t('formatLabel')}</p>
+        <p className="fs-sm" style={{ margin: '0', color: 'var(--text-secondary)' }}>{t('formatLabel')}</p>
         <div className="segment-control flex" role="tablist" aria-label={t('formatLabel')}>
           {(['doubles', 'singles', 'both'] as const).map((f) => (
             <button
@@ -270,7 +270,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
       </section>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-        <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>{t('budgetLabel')}</p>
+        <p className="fs-sm" style={{ margin: '0', color: 'var(--text-secondary)' }}>{t('budgetLabel')}</p>
         <div className="segment-control flex" role="tablist" aria-label={t('budgetLabel')}>
           {([
             [100, 'budget_100'],
@@ -331,7 +331,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
           onClick={() => setPrefsOpen((v) => !v)}
           aria-expanded={prefsOpen}
           className="fs-sm"
-          style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--accent)' }}
+          style={{ background: 'transparent', border: 'none', padding: '0', cursor: 'pointer', color: 'var(--accent)' }}
         >
           {t('pickSheetChange')}
         </button>
@@ -409,7 +409,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
           {/* The reason, at the top of the type scale for this body — it is
               the thing a member can act on. */}
           {headline && (
-            <p className="fs-lg" style={{ margin: 0, lineHeight: 'var(--lh-snug)', color: 'var(--text-primary)' }}>
+            <p className="fs-lg" style={{ margin: '0', lineHeight: 'var(--lh-snug)', color: 'var(--text-primary)' }}>
               {headline}
             </p>
           )}
@@ -423,11 +423,11 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
                   <span
                     className="material-icons"
                     aria-hidden="true"
-                    style={{ fontSize: 'var(--icon-sm)', color: 'var(--text-muted)', flex: '0 0 auto', marginTop: 1 }}
+                    style={{ fontSize: 'var(--icon-sm)', color: 'var(--text-muted)', flex: '0 0 auto', marginTop: 'var(--space-hair)' }}
                   >
                     check
                   </span>
-                  <p className="fs-md" style={{ margin: 0, lineHeight: 'var(--lh-normal)', color: 'var(--text-secondary)' }}>
+                  <p className="fs-md" style={{ margin: '0', lineHeight: 'var(--lh-normal)', color: 'var(--text-secondary)' }}>
                     {r}
                   </p>
                 </div>
@@ -443,7 +443,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
                 <p
                   key={`warning-${i}`}
                   className="fs-md"
-                  style={{ margin: 0, lineHeight: 'var(--lh-normal)', color: 'var(--sev-warn)' }}
+                  style={{ margin: '0', lineHeight: 'var(--lh-normal)', color: 'var(--sev-warn)' }}
                 >
                   {w}
                 </p>
@@ -488,7 +488,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
                 aria-controls="pick-sheet-specs"
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)',
-                  width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+                  width: '100%', background: 'transparent', border: 'none', padding: '0', cursor: 'pointer',
                   color: 'inherit', textAlign: 'left',
                 }}
               >
@@ -519,7 +519,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
                   {specRows.map((r) => (
                     <Fragment key={r.labelKey}>
                       <dt className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t(r.labelKey)}</dt>
-                      <dd className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                      <dd className="fs-sm" style={{ margin: '0', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                         {r.value}
                       </dd>
                     </Fragment>
@@ -531,13 +531,13 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
 
           {/* A category with no curated spec list still shows what it has. */}
           {specRows.length === 0 && specLine(item) && (
-            <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>{specLine(item)}</p>
+            <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>{specLine(item)}</p>
           )}
 
           {addError && <ErrorState message={addError} />}
 
           {!gear.online && (
-            <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>{tStats('offline')}</p>
+            <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>{tStats('offline')}</p>
           )}
         </div>
       </BottomSheetBody>
@@ -545,7 +545,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
       {/* Pinned, so the action is reachable at any scroll position. */}
       <BottomSheetFooter>
         {owned ? (
-          <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+          <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
             {t('railInKitLine')}
           </p>
         ) : (

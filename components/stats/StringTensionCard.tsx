@@ -183,7 +183,7 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
         <span style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', fontWeight: 600 }}>{t('lb')}</span>
       </div>
 
-      <div style={{ position: 'relative', margin: '0 8px' }}>
+      <div style={{ position: 'relative', margin: '0 var(--space-3)' }}>
         <div
           style={{
             height: 8,
@@ -217,7 +217,7 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
         </span>
       </div>
 
-      <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
+      <p style={{ margin: '0', fontSize: 'var(--fs-base)', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
         {t(
           advice.reasonKey === 'lowLevel'
             ? 'tensionLowLevel'
@@ -226,7 +226,7 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
               : 'tensionHighLevel',
         )}
       </p>
-      <p style={{ margin: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('tensionAdvisory')}</p>
+      <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('tensionAdvisory')}</p>
     </div>
   );
 }

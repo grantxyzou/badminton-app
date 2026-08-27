@@ -184,7 +184,7 @@ ${rawNotes}`;
               type="button"
               onClick={loadFromChangelog}
               className="text-[11px]"
-              style={{ color: 'var(--accent)', background: 'transparent', border: 'none', padding: '2px 6px', cursor: 'pointer' }}
+              style={{ color: 'var(--accent)', background: 'transparent', border: 'none', padding: 'var(--space-05) var(--space-2)', cursor: 'pointer' }}
               aria-label="Refresh from CHANGELOG.md Unreleased section"
               title="Re-pull the Unreleased bullets from CHANGELOG.md"
             >

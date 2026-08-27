@@ -385,7 +385,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
         <p
           role="status"
           className="fs-sm"
-          style={{ color: 'var(--amber)', margin: 0, display: 'flex', alignItems: 'flex-start', gap: 6 }}
+          style={{ color: 'var(--amber)', margin: '0', display: 'flex', alignItems: 'flex-start', gap: 'var(--space-2)' }}
         >
           <span className="material-icons" style={{ fontSize: 'var(--icon-sm)', flexShrink: 0 }} aria-hidden="true">warning</span>
           <span>
@@ -429,11 +429,11 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
             </button>
           </BottomSheetHeader>
           <BottomSheetBody>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+              <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '0', lineHeight: 1.5 }}>
                 Can&apos;t go back to the previous week once you advance.
               </p>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
                 <button type="button" onClick={() => setConfirmingAdvance(false)} className="cc-btn cc-btn-ghost">
                   Cancel
                 </button>

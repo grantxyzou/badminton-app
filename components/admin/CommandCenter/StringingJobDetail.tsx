@@ -71,7 +71,7 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
     <div>
       <AdminBackHeader onBack={onBack} title={local.memberName} />
       <div className="flex flex-col gap-4 px-4 pb-6">
-        <p className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', margin: 0 }}>
+        <p className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', margin: '0' }}>
           {local.jobNo} · {t(`status.${local.status}`)}
         </p>
 
@@ -171,7 +171,7 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
           </div>
         </div>
 
-        <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
+        <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0' }}>
           {local.stringerName ? t('heldBy', { name: local.stringerName }) : t('unclaimed')}
         </p>
 

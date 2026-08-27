@@ -71,7 +71,7 @@ export default function PinInput({
             bottom: 0,
             display: 'flex',
             alignItems: 'center',
-            gap: 6,
+            gap: 'var(--space-2)',
             pointerEvents: 'none',
           }}
         >

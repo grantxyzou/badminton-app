@@ -167,7 +167,7 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
           <p className="flex-1 fs-md m-0" style={{ lineHeight: 'var(--lh-snug)' }}>
             {anomaly.message}
             {dismissError === anomaly.code && (
-              <span className="field-error" style={{ display: 'block', marginTop: 2 }}>
+              <span className="field-error" style={{ display: 'block', marginTop: 'var(--space-05)' }}>
                 Couldn&apos;t dismiss — try again.
               </span>
             )}

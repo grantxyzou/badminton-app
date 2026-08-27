@@ -61,7 +61,7 @@ export default function PreviewBanner() {
           left: 0,
           right: 0,
           zIndex: 9999,
-          padding: '6px 12px',
+          padding: 'var(--space-2) var(--space-4)',
           textAlign: 'center',
           fontSize: '12px',
           fontWeight: 600,
@@ -85,7 +85,7 @@ export default function PreviewBanner() {
             border: 'none',
             cursor: 'pointer',
             font: 'inherit',
-            padding: 0,
+            padding: '0',
           }}
         >
           report a bug / idea
@@ -117,12 +117,12 @@ export default function PreviewBanner() {
               background: 'var(--bg-elevated)',
               border: '1px solid rgba(var(--glass-tint), 0.12)',
               borderRadius: 'var(--radius-lg)',
-              padding: 8,
+              padding: 'var(--space-3)',
               boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
               minWidth: 220,
               display: 'flex',
               flexDirection: 'column',
-              gap: 4,
+              gap: 'var(--space-1)',
             }}
           >
             <a
@@ -132,11 +132,11 @@ export default function PreviewBanner() {
               rel="noopener noreferrer"
               onClick={() => setPickerOpen(false)}
               style={{
-                padding: '10px 12px',
+                padding: 'var(--space-4) var(--space-4)',
                 minHeight: 44,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
+                gap: 'var(--space-3)',
                 color: 'var(--text-primary, #fff)',
                 textDecoration: 'none',
                 borderRadius: 'var(--radius-sm)',
@@ -155,11 +155,11 @@ export default function PreviewBanner() {
               rel="noopener noreferrer"
               onClick={() => setPickerOpen(false)}
               style={{
-                padding: '10px 12px',
+                padding: 'var(--space-4) var(--space-4)',
                 minHeight: 44,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
+                gap: 'var(--space-3)',
                 color: 'var(--text-primary, #fff)',
                 textDecoration: 'none',
                 borderRadius: 'var(--radius-sm)',
@@ -176,11 +176,11 @@ export default function PreviewBanner() {
               href={`mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(`bpm-next feedback · ${sha}`)}`}
               onClick={() => setPickerOpen(false)}
               style={{
-                padding: '10px 12px',
+                padding: 'var(--space-4) var(--space-4)',
                 minHeight: 44,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
+                gap: 'var(--space-3)',
                 color: 'var(--text-muted, #aaa)',
                 textDecoration: 'none',
                 borderRadius: 'var(--radius-sm)',

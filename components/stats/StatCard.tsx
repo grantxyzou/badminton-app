@@ -127,7 +127,7 @@ export default function StatCard({
           )}
           {children}
           {caption && (
-            <p className="fs-sm" style={{ margin: 0, marginTop: 'var(--space-3)', color: ON_DIM, textShadow: TEXT_SHADOW }}>
+            <p className="fs-sm" style={{ margin: '0', marginTop: 'var(--space-3)', color: ON_DIM, textShadow: TEXT_SHADOW }}>
               {caption}
             </p>
           )}

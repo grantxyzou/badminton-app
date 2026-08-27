@@ -47,7 +47,7 @@ export default function InstallBanner() {
     <>
       <div
         className="glass-card p-3"
-        style={{ display: 'flex', alignItems: 'center', gap: 12 }}
+        style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}
       >
         <span
           aria-hidden="true"
@@ -57,15 +57,15 @@ export default function InstallBanner() {
           install_mobile
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)' }}>
+          <p style={{ margin: '0', fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)' }}>
             {t('bannerTitle')}
           </p>
           <button
             type="button"
             onClick={() => setOpen(true)}
             style={{
-              margin: 0,
-              padding: 0,
+              margin: '0',
+              padding: '0',
               background: 'none',
               border: 'none',
               fontSize: 'var(--fs-sm)',
@@ -82,7 +82,7 @@ export default function InstallBanner() {
           onClick={dismiss}
           aria-label={t('dismiss')}
           className="cc-btn cc-btn-ghost"
-          style={{ padding: 6, flex: '0 0 auto' }}
+          style={{ padding: 'var(--space-2)', flex: '0 0 auto' }}
         >
           <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)' }}>close</span>
         </button>

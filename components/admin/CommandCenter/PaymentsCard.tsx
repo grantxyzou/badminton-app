@@ -475,7 +475,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                 <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, display: 'block' }}>
                   {fmtSessionLabel(s.datetime)}
                 </span>
-                <span style={{ fontSize: 'var(--fs-xs)', display: 'block', marginTop: 2, opacity: 0.7 }}>
+                <span style={{ fontSize: 'var(--fs-xs)', display: 'block', marginTop: 'var(--space-05)', opacity: 0.7 }}>
                   {isActive ? 'Current' : sent ? 'Sent' : 'Past'}
                 </span>
               </button>
@@ -487,7 +487,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       {/* Load-error affordance preserved from the removed header (the
           lying-empty-state rule forbids dropping it). */}
       {(loadError || playersError) && (
-        <p role="alert" className="fs-sm" style={{ color: 'var(--color-red)', margin: 0 }}>
+        <p role="alert" className="fs-sm" style={{ color: 'var(--color-red)', margin: '0' }}>
           Couldn&apos;t load — refresh to retry
         </p>
       )}
@@ -497,7 +497,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           rule). The "X of Y paid" count was removed by design; this is
           the no-roster case, not the count. */}
       {!loadError && !playersError && total === 0 && (
-        <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
+        <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0' }}>
           No active players
         </p>
       )}
@@ -508,8 +508,8 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           style={{
             fontSize: 'var(--fs-sm)',
             color: 'var(--color-red)',
-            margin: 0,
-            padding: '8px 12px',
+            margin: '0',
+            padding: 'var(--space-3) var(--space-4)',
             background: 'rgba(239,68,68,0.06)',
             border: '1px solid rgba(239,68,68,0.2)',
             borderRadius: 'var(--radius-sm)',
@@ -523,8 +523,8 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           viewed chip. Line 1 is cost-independent; line 2 (amount + Share)
           is gated on settleFlagOn like the other dollar surfaces below. */}
       {!loadError && !playersError && viewedSession && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+          <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0' }}>
             {[
               fmtSessionLabel(viewedSession.datetime),
               `${total} player${total === 1 ? '' : 's'}`,
@@ -532,7 +532,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
             ].filter(Boolean).join(' · ')}
           </p>
           {settleFlagOn && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
               <span
                 className="fs-md"
                 style={{
@@ -548,7 +548,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                 onClick={() => openReceiptSheet('group')}
                 disabled={receiptBuild?.costPerPerson == null}
                 className="cc-btn cc-btn-secondary"
-                style={{ fontSize: 'var(--fs-sm)', padding: '4px 12px' }}
+                style={{ fontSize: 'var(--fs-sm)', padding: 'var(--space-1) var(--space-4)' }}
               >
                 Share receipt
               </button>
@@ -561,7 +561,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       {ledgerFlagOn && settleFlagOn && !!viewedSession?.settled?.coveredTotal && (
         <p
           className="fs-sm"
-          style={{ color: '#d8b4fe', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}
+          style={{ color: '#d8b4fe', margin: '0', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
         >
           <span className="material-icons" style={{ fontSize: 'var(--icon-sm)' }} aria-hidden="true">volunteer_activism</span>
           You&apos;ve covered ${viewedSession.settled.coveredTotal} this session
@@ -668,7 +668,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           form styles from globals.css (which include focus ring + light
           mode); we only set flex on the wrapper. */}
       {isCurrentSession && (
-        <form onSubmit={handleAdd} style={{ display: 'flex', gap: 8, paddingTop: 8 }}>
+        <form onSubmit={handleAdd} style={{ display: 'flex', gap: 'var(--space-3)', paddingTop: 'var(--space-3)' }}>
           <input
             type="text"
             value={addName}
@@ -691,13 +691,13 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
 
       {/* Waitlist */}
       {lists.waitlisted.length > 0 && (
-        <div style={{ marginTop: 4 }}>
-          <p style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--amber)', margin: '14px 2px 6px' }}>
+        <div style={{ marginTop: 'var(--space-1)' }}>
+          <p style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--amber)', margin: 'var(--space-4) var(--space-05) var(--space-2)' }}>
             {lists.waitlisted.length} waitlisted
           </p>
           <ul role="list" style={{ display: 'flex', flexDirection: 'column' }}>
             {lists.waitlisted.map((p) => (
-              <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(var(--glass-tint), 0.04)', fontSize: 'var(--fs-md)' }}>
+              <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-3) 0', borderBottom: '1px solid rgba(var(--glass-tint), 0.04)', fontSize: 'var(--fs-md)' }}>
                 <span style={{ flex: 1, color: 'var(--text-secondary)' }}>{p.name}</span>
                 {isCurrentSession && (
                   <button
@@ -705,7 +705,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                     onClick={() => handlePromote(p)}
                     disabled={busyId === p.id}
                     className="cc-btn cc-btn-secondary"
-                    style={{ fontSize: 'var(--fs-xs)', padding: '4px 10px' }}
+                    style={{ fontSize: 'var(--fs-xs)', padding: 'var(--space-1) var(--space-4)' }}
                   >
                     {busyId === p.id ? '…' : 'Promote'}
                   </button>
@@ -718,11 +718,11 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
 
       {/* Removed (collapsible) */}
       {lists.removed.length > 0 && (
-        <div style={{ marginTop: 4 }}>
+        <div style={{ marginTop: 'var(--space-1)' }}>
           <button
             type="button"
             onClick={() => setRemovedCollapsed((v) => !v)}
-            style={{ background: 'transparent', border: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '8px 2px', color: 'var(--text-secondary)' }}
+            style={{ background: 'transparent', border: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: 'var(--space-3) var(--space-05)', color: 'var(--text-secondary)' }}
             aria-expanded={!removedCollapsed}
           >
             <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
@@ -735,7 +735,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           {!removedCollapsed && (
             <ul role="list">
               {lists.removed.map((p) => (
-                <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(var(--glass-tint), 0.04)', fontSize: 'var(--fs-md)' }}>
+                <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', padding: 'var(--space-3) 0', borderBottom: '1px solid rgba(var(--glass-tint), 0.04)', fontSize: 'var(--fs-md)' }}>
                   <span style={{ flex: 1, color: 'var(--text-muted)', textDecoration: 'line-through' }}>{p.name}</span>
                   {p.removedAt && (
                     <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
@@ -748,7 +748,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                       onClick={() => handleRestore(p)}
                       disabled={busyId === p.id}
                       className="cc-btn cc-btn-secondary"
-                      style={{ fontSize: 'var(--fs-xs)', padding: '4px 10px' }}
+                      style={{ fontSize: 'var(--fs-xs)', padding: 'var(--space-1) var(--space-4)' }}
                     >
                       {busyId === p.id ? '…' : 'Restore'}
                     </button>
@@ -780,9 +780,9 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           </button>
         </BottomSheetHeader>
         <BottomSheetBody>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {actionError && (
-              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: 0 }}>
+              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
                 {actionError}
               </p>
             )}
@@ -888,8 +888,8 @@ function ActionRow({
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 12,
-        padding: '12px 14px',
+        gap: 'var(--space-4)',
+        padding: 'var(--space-4) var(--space-5)',
         borderRadius: 'var(--radius-lg)',
         background: 'rgba(var(--glass-tint), 0.04)',
         border: '1px solid rgba(var(--glass-tint), 0.10)',
@@ -910,7 +910,7 @@ function ActionRow({
           {label}
         </span>
         {hint && (
-          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: 2 }}>{hint}</span>
+          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-05)' }}>{hint}</span>
         )}
       </span>
     </button>

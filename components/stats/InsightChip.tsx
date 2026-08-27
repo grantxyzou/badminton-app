@@ -34,20 +34,20 @@ export default function InsightChip({ headline, support, kind }: CardSlice) {
       className="animate-fadeIn"
       style={{
         display: 'flex',
-        gap: 10,
+        gap: 'var(--space-4)',
         alignItems: 'flex-start',
-        padding: '10px 12px',
+        padding: 'var(--space-4) var(--space-4)',
         borderRadius: 'var(--radius-lg)',
         background: 'var(--inner-card-bg)',
         border: '1px solid var(--inner-card-border)',
       }}
     >
-      <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: ACCENT, marginTop: 1, flexShrink: 0 }}>
+      <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: ACCENT, marginTop: 'var(--space-hair)', flexShrink: 0 }}>
         {icon}
       </span>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <p style={{ margin: 0, fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.35 }}>{headline}</p>
-        {support && <p style={{ margin: '2px 0 0', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', lineHeight: 1.4 }}>{support}</p>}
+        <p style={{ margin: '0', fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.35 }}>{headline}</p>
+        {support && <p style={{ margin: 'var(--space-05) 0 0', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', lineHeight: 1.4 }}>{support}</p>}
       </div>
       {/* The same marker the summary greeting wears. This was a hand-rolled
           accent-outlined pill — same word, same aria-label, different look —

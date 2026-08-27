@@ -92,12 +92,12 @@ export default class AdminErrorBoundary extends Component<Props, State> {
       return (
         <div
           role="alert"
-          style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)' }}
+          style={{ padding: 'var(--space-9) var(--space-7)', textAlign: 'center', color: 'var(--text-muted)' }}
         >
           <p style={{ fontWeight: 600, color: 'var(--text)' }}>
             {this.state.isChunkError ? 'Admin needs a connection' : 'Couldn’t load admin'}
           </p>
-          <p style={{ fontSize: 'var(--fs-base)', marginTop: 6 }}>
+          <p style={{ fontSize: 'var(--fs-base)', marginTop: 'var(--space-2)' }}>
             {this.state.isChunkError
               ? 'It’ll reload automatically when you’re back online.'
               : 'Something went wrong loading this view.'}
@@ -105,7 +105,7 @@ export default class AdminErrorBoundary extends Component<Props, State> {
           <button
             type="button"
             className="cc-btn cc-btn-ghost"
-            style={{ marginTop: 14 }}
+            style={{ marginTop: 'var(--space-4)' }}
             onClick={this.handleReload}
             disabled={this.state.isOffline}
             aria-disabled={this.state.isOffline}

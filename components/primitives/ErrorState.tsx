@@ -15,7 +15,7 @@ export interface ErrorStateProps {
 
 export default function ErrorState({ message }: ErrorStateProps) {
   return (
-    <p className="field-error" role="alert" style={{ margin: 0 }}>
+    <p className="field-error" role="alert" style={{ margin: '0' }}>
       {message}
     </p>
   );
