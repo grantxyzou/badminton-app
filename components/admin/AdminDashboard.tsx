@@ -25,6 +25,7 @@ import BirdsPage from './CommandCenter/BirdsPage';
 import RosterPage from './CommandCenter/RosterPage';
 import SetupPage from './CommandCenter/SetupPage';
 import PastSessionsPage from './CommandCenter/PastSessionsPage';
+import StringingPage from './CommandCenter/StringingPage';
 import LedgerPage from './LedgerPage';
 import PaymentsCard from './CommandCenter/PaymentsCard';
 import AdminBackHeader from './AdminBackHeader';
@@ -100,6 +101,11 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   }
   if (view === 'advance') return <div className="animate-slideInRight"><AdvanceSessionForm onBack={goBack} /></div>;
   if (view === 'releases') return <div className="animate-slideInRight"><ReleasesView onBack={goBack} /></div>;
+  // Flag-gated at the route level too — every price on this screen is exact,
+  // which is precisely what the player API strips.
+  if (view === 'stringing' && isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) {
+    return <div className="animate-slideInRight"><StringingPage onBack={goBack} /></div>;
+  }
   if (view === 'ledger') {
     // Flag gates the UI entry point; the GET endpoint is always available
     // (admin-auth is its own gate). If the flag is off, fall through to the
@@ -617,6 +623,12 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
           <span className="material-icons icon-sm">campaign</span>
           Releases
         </button>
+        {isFlagOn('NEXT_PUBLIC_FLAG_STRINGING') && (
+          <button onClick={() => setView('stringing')} className="btn-ghost flex-1">
+            <span className="material-icons icon-sm">sports_tennis</span>
+            Bench
+          </button>
+        )}
       </div>
 
       {/* Next Week */}
