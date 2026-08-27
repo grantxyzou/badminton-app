@@ -28,7 +28,8 @@
  * requests from players" — it is a sign in the window, not a lock on the door.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, ensureContainer } from '@/lib/cosmos';
+import { getContainer } from '@/lib/cosmos';
+import { ensureClubSettings, readShopOpen, SHOP_DOC_ID, type ShopDoc } from '@/lib/stringingShop';
 import { isAdminAuthedWithMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -36,25 +37,6 @@ import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 export const dynamic = 'force-dynamic';
 
 const HOUR_MS = 60 * 60 * 1000;
-const DOC_ID = 'stringing';
-
-let ready: Promise<void> | null = null;
-function ensureSettings(): Promise<void> {
-  if (!ready) {
-    ready = ensureContainer('clubSettings', '/id').catch((err) => {
-      ready = null;
-      throw err;
-    });
-  }
-  return ready;
-}
-
-interface ShopDoc {
-  id: string;
-  open: boolean;
-  updatedAt: string;
-  updatedBy: string | null;
-}
 
 export async function GET(req: NextRequest) {
   if (!isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) {
@@ -70,16 +52,8 @@ export async function GET(req: NextRequest) {
 
   // Deliberately readable without auth: the sign is for players, and whether
   // this club strings rackets is not a secret. Nothing else is exposed.
-  try {
-    await ensureSettings();
-    const { resource } = await getContainer('clubSettings').item(DOC_ID, DOC_ID).read<ShopDoc>();
-    // No document means nobody has opened it yet. Closed is the safe default:
-    // a service that has never been switched on should not advertise itself.
-    return NextResponse.json({ open: resource?.open === true });
-  } catch (err) {
-    console.error('GET /api/stringing/shop failed:', err);
-    return NextResponse.json({ open: null });
-  }
+  // Shared with the request route so the two cannot disagree about "open".
+  return NextResponse.json({ open: await readShopOpen() });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -101,9 +75,9 @@ export async function PATCH(req: NextRequest) {
   }
 
   try {
-    await ensureSettings();
+    await ensureClubSettings();
     const doc: ShopDoc = {
-      id: DOC_ID,
+      id: SHOP_DOC_ID,
       open: body.open,
       updatedAt: new Date().toISOString(),
       updatedBy: admin.memberId,

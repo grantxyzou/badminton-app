@@ -1,6 +1,40 @@
 {
   "home": {
     "stringing": {
+        "subtitleOpen": "在球局上把球拍交给 Grant，剩下的交给他。",
+        "subtitleActive": "你的球拍进度在这里。",
+        "openBadge": "开放中",
+        "requestCta": "申请穿线",
+        "needName": "先在上面填你的名字，Grant 才知道是谁的拍。",
+        "stage": {
+          "with_stringer": "在 Grant 那里",
+          "being_strung": "正在穿线",
+          "ready_for_you": "可以取了",
+          "done": "已取走"
+        },
+        "requestTitle": "申请穿线",
+        "requestBody": "告诉 Grant 你的要求，球局上把拍子交给他。",
+        "sendCta": "发送申请",
+        "requestSending": "发送中…",
+        "requestSent": "已发送。球局上把拍子交给 Grant，他会确认价格。",
+        "requestDone": "知道了",
+        "racketPlaceholder": "哪一支球拍？",
+        "stringPlaceholder": "什么线？例如 BG80 白色",
+        "mains": "竖线",
+        "crosses": "横线",
+        "lb": "磅",
+        "decrease": "减少{field}",
+        "increase": "增加{field}",
+        "priceLater": "Grant 收到拍子后会确认价格。",
+        "error": {
+          "generic": "没能发送 — 再试一次。",
+          "shop_closed": "Grant 现在不收拍子，改天再来吧。",
+          "too_many_open": "你已经有几支在 Grant 那里了 — 先取回来吧。",
+          "invalid_tension": "磅数需要在 18 到 32 磅之间。",
+          "invalid_request": "先填球拍和拍线。",
+          "unauthorized": "先在首页填上你的名字。",
+          "rate_limited": "先歇一会儿，稍后再试。"
+        },
       "title": "穿线服务",
       "subtitle": "在这里申请并追踪你的球拍进度。",
       "soon": "敬请期待"
