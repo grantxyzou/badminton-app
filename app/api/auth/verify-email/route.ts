@@ -16,7 +16,7 @@ import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isFlagOn } from '@/lib/flags';
 import { checkToken } from '@/lib/authToken';
-import { normalizeEmail, lookupIdentity } from '@/lib/authIdentity';
+import { normalizeEmail, lookupIdentity, MAX_EMAIL_LENGTH } from '@/lib/authIdentity';
 import { outboundOriginOrNull } from '@/lib/appOrigin';
 import type { Member } from '@/lib/types';
 
@@ -44,7 +44,8 @@ export async function GET(req: NextRequest) {
 
   const params = new URL(req.url).searchParams;
   const token = params.get('token') ?? '';
-  const email = normalizeEmail(params.get('email') ?? '');
+  const raw = params.get('email') ?? '';
+  const email = raw.length <= MAX_EMAIL_LENGTH ? normalizeEmail(raw) : '';
   if (!token || !email) return landing(req, false);
 
   try {

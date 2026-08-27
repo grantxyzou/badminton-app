@@ -18,7 +18,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isFlagOn } from '@/lib/flags';
 import { createToken, RESET_TTL_MS } from '@/lib/authToken';
 import { sendPasswordResetEmail } from '@/lib/authEmail';
-import { normalizeEmail, lookupIdentity } from '@/lib/authIdentity';
+import { normalizeEmail, lookupIdentity, MAX_EMAIL_LENGTH } from '@/lib/authIdentity';
 import { outboundOriginOrNull } from '@/lib/appOrigin';
 import type { Member } from '@/lib/types';
 
@@ -47,7 +47,10 @@ export async function POST(req: NextRequest) {
   } catch {
     return OK();
   }
-  const email = typeof body.email === 'string' ? normalizeEmail(body.email) : '';
+  const email =
+    typeof body.email === 'string' && body.email.length <= MAX_EMAIL_LENGTH
+      ? normalizeEmail(body.email)
+      : '';
   if (!email) return OK();
 
   try {

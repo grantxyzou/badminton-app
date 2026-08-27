@@ -17,7 +17,7 @@ import { isFlagOn } from '@/lib/flags';
 import { hashPassword, validatePasswordStrength } from '@/lib/passwordHash';
 import { checkToken } from '@/lib/authToken';
 import { completeSignIn } from '@/lib/authSession';
-import { normalizeEmail, lookupIdentity } from '@/lib/authIdentity';
+import { normalizeEmail, lookupIdentity, MAX_EMAIL_LENGTH } from '@/lib/authIdentity';
 import type { Member } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -41,7 +41,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
 
-  const email = typeof body.email === 'string' ? normalizeEmail(body.email) : '';
+  const email =
+    typeof body.email === 'string' && body.email.length <= MAX_EMAIL_LENGTH
+      ? normalizeEmail(body.email)
+      : '';
   const token = typeof body.token === 'string' ? body.token : '';
   const password = typeof body.password === 'string' ? body.password : '';
   if (!email || !token) return BAD();

@@ -17,7 +17,12 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isFlagOn } from '@/lib/flags';
 import { verifyPassword, FAKE_PASSWORD_HASH } from '@/lib/passwordHash';
 import { completeSignIn } from '@/lib/authSession';
-import { normalizeEmail, lookupIdentity, touchIdentity } from '@/lib/authIdentity';
+import {
+  normalizeEmail,
+  lookupIdentity,
+  touchIdentity,
+  MAX_EMAIL_LENGTH,
+} from '@/lib/authIdentity';
 import type { Member } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -38,7 +43,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
 
-  const email = typeof body.email === 'string' ? normalizeEmail(body.email) : '';
+  // Capped before use: the address becomes a Cosmos document id, and an
+  // unbounded one from an unauthenticated body is both a bad key and the
+  // shape that turns string handling into a denial of service.
+  const email =
+    typeof body.email === 'string' && body.email.length <= MAX_EMAIL_LENGTH
+      ? normalizeEmail(body.email)
+      : '';
   const password = typeof body.password === 'string' ? body.password : '';
   if (!email || !password) return FAIL();
 

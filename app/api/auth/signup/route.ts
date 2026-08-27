@@ -45,17 +45,17 @@ import { hashPassword, validatePasswordStrength } from '@/lib/passwordHash';
 import { createToken, VERIFICATION_TTL_MS } from '@/lib/authToken';
 import { sendVerificationEmail } from '@/lib/authEmail';
 import { completeSignIn } from '@/lib/authSession';
-import { normalizeEmail, reserveIdentity, releaseIdentity } from '@/lib/authIdentity';
+import {
+  normalizeEmail,
+  isPlausibleEmail,
+  reserveIdentity,
+  releaseIdentity,
+} from '@/lib/authIdentity';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { outboundOriginOrNull } from '@/lib/appOrigin';
 import type { Member } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
-
-// Deliberately permissive. Strict RFC 5322 validation rejects real addresses,
-// and the verification mail is the actual proof that an address works —
-// this only catches obvious typos before we spend a Cosmos write on them.
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: NextRequest) {
   // Flag gate FIRST: read server-side, because a client flag cannot protect the
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
   const email = normalizeEmail(rawEmail);
   const password = typeof body.password === 'string' ? body.password : '';
 
-  if (!name || !EMAIL_RE.test(email)) {
+  if (!name || !isPlausibleEmail(email)) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
   const strength = validatePasswordStrength(password);
