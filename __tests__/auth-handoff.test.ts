@@ -178,3 +178,41 @@ describe('the full bridge — start in one context, finish in another', () => {
     expect(victimClaim).toEqual({ status: 'ready', memberId: 'victim-member' });
   });
 });
+
+/**
+ * THE NEW-ACCOUNT PATH, which the sign-in path does not cover.
+ *
+ * A brand-new provider identity has no member at callback time, so the
+ * callback parks nothing and hands off to the name step instead. If the ref
+ * did not ride along on the pending-signup cookie, a first-time Google user
+ * would sign in everywhere EXCEPT the app that started the flow — the same jar
+ * split as before, one step later, and invisible to anyone who already has an
+ * account.
+ */
+describe('handoff through the name step', () => {
+  it('a ref parked at /start is still completable later, by complete-signup', async () => {
+    const id = createHandoffId();
+    const ref = handoffRef(id);
+
+    // /start parks it; the callback resolves to "new account" and completes
+    // NOTHING, so the stash is still pending after the handshake.
+    await beginHandoff(ref, { state: 'state-value-here-ok', codeVerifier: 'v' });
+    expect(await claimHandoff(id)).toEqual({ status: 'pending' });
+
+    // The name step creates the member and completes it.
+    expect(await completeHandoff(ref, 'brand-new-member')).toBe(true);
+    expect(await claimHandoff(id)).toEqual({ status: 'ready', memberId: 'brand-new-member' });
+  });
+
+  it('the stash outlives the name step rather than expiring on the callback', async () => {
+    const id = createHandoffId();
+    const ref = handoffRef(id);
+    const t0 = 1_000_000;
+    await beginHandoff(ref, { state: 'state-value-here-ok', codeVerifier: 'v' }, t0);
+
+    // Picking a name takes a moment; still claimable a few minutes later.
+    const later = t0 + 5 * 60 * 1000;
+    expect(await completeHandoff(ref, 'm', later)).toBe(true);
+    expect(await claimHandoff(id, later)).toEqual({ status: 'ready', memberId: 'm' });
+  });
+});

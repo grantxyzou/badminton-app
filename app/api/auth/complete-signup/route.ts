@@ -20,6 +20,7 @@ import { completeSignIn } from '@/lib/authSession';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { reserveIdentity, releaseIdentity } from '@/lib/authIdentity';
 import { readPendingSignup, clearPendingSignup } from '@/lib/pendingSignup';
+import { completeHandoff } from '@/lib/authHandoff';
 import type { Member } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -128,6 +129,18 @@ export async function POST(req: NextRequest) {
       ...(claimEmail ? { email: claimEmail, emailVerified: true } : {}),
     };
     await getContainer('members').items.create(member);
+
+    /* The PWA case: this response's cookies are being issued to Safari, so
+       park the member the app can collect instead. Without this a brand-new
+       Google account signs in everywhere EXCEPT the app that started it —
+       the same jar split as the sign-in path, one step later. */
+    if (pending.handoff) {
+      try {
+        await completeHandoff(pending.handoff, memberId);
+      } catch (err) {
+        console.error('handoff complete (signup) failed:', err);
+      }
+    }
 
     const res = NextResponse.json(
       { id: memberId, name, email: claimEmail, provider: pending.provider },

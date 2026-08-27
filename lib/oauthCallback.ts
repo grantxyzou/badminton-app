@@ -141,6 +141,9 @@ export async function finishOAuthCallback(
       email,
       emailVerified: claims.emailVerified,
       suggestedName: claims.suggestedName,
+      // A NEW account has no member to park yet, so the ref rides along to
+      // complete-signup, which is where one first exists.
+      handoff: claims.handoff ?? null,
     });
     clearOAuthCookies(res);
     return res;
