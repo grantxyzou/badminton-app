@@ -35,7 +35,7 @@ interface Props {
  */
 export default function ChooseNameSheet({ open, onClose, sessionId }: Props) {
   const t = useTranslations('profile.auth');
-  const [mode, setMode] = useState<'name' | 'claim'>('name');
+  const [mode, setMode] = useState<'name' | 'claim' | 'expired'>('name');
   const [name, setName] = useState('');
   const [secret, setSecret] = useState('');
   const [useCode, setUseCode] = useState(false);
@@ -53,7 +53,16 @@ export default function ChooseNameSheet({ open, onClose, sessionId }: Props) {
     fetch(`${BASE}/api/auth/complete-signup`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (!cancelled && d?.suggestedName) setName(String(d.suggestedName).slice(0, 50));
+        if (cancelled || !d) return;
+        // The GET already knows whether the signed pending cookie survived.
+        // Saying so NOW is the difference between "this expired, start again"
+        // and letting someone choose a name, commit to it, and only then be
+        // told their submit could never have worked.
+        if (d.pending === false) {
+          setMode('expired');
+          return;
+        }
+        if (d.suggestedName) setName(String(d.suggestedName).slice(0, 50));
       })
       .catch(() => {
         // No prefill is a fine outcome — the user types their name.
@@ -87,7 +96,7 @@ export default function ChooseNameSheet({ open, onClose, sessionId }: Props) {
       if (!res.ok) {
         // Not a dead end: offer to prove the name is theirs.
         if (data.error === 'name_taken') setMode('claim');
-        else if (data.error === 'no_pending_signup') setError(t('pendingExpired'));
+        else if (data.error === 'no_pending_signup') setMode('expired');
         else if (data.error === 'already_linked') setError(t('alreadyLinked'));
         else if (data.error === 'email_taken') setError(t('emailTaken'));
         else setError(t('genericError'));
@@ -120,7 +129,7 @@ export default function ChooseNameSheet({ open, onClose, sessionId }: Props) {
       if (!res.ok) {
         if (res.status === 429) setError(t('claimRateLimited'));
         else if (data.error === 'already_linked') setError(t('claimAlreadyLinked'));
-        else if (data.error === 'no_pending_signup') setError(t('pendingExpired'));
+        else if (data.error === 'no_pending_signup') setMode('expired');
         else setError(t('claimWrong'));
         setBusy(false);
         return;
@@ -133,17 +142,36 @@ export default function ChooseNameSheet({ open, onClose, sessionId }: Props) {
   }
 
   const claiming = mode === 'claim';
+  const expired = mode === 'expired';
   const digits = useCode ? 6 : 4;
 
   return (
     <BottomSheet
       open={open}
       onClose={onClose}
-      ariaLabel={claiming ? t('claimTitle') : t('chooseNameTitle')}
+      ariaLabel={expired ? t('pendingExpiredTitle') : claiming ? t('claimTitle') : t('chooseNameTitle')}
     >
-      <BottomSheetHeader>{claiming ? t('claimTitle') : t('chooseNameTitle')}</BottomSheetHeader>
+      <BottomSheetHeader>
+        {expired ? t('pendingExpiredTitle') : claiming ? t('claimTitle') : t('chooseNameTitle')}
+      </BottomSheetHeader>
       <BottomSheetBody>
-        {claiming ? (
+        {expired ? (
+          <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: 0 }}>
+              {t('pendingExpired')}
+            </p>
+            {/* A way OUT. The old copy said "tap the button again" while the
+                sheet contained no such button — a dead end. */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="cc-btn cc-btn-primary cc-btn-lg"
+              style={{ width: '100%' }}
+            >
+              {t('pendingExpiredCta')}
+            </button>
+          </div>
+        ) : claiming ? (
           <form onSubmit={submitClaim} style={{ display: 'grid', gap: 'var(--space-4)' }}>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: 0 }}>
               {t('claimBody', { name: name.trim() })}
@@ -215,7 +243,7 @@ export default function ChooseNameSheet({ open, onClose, sessionId }: Props) {
               placeholder={t('chooseNamePlaceholder')}
               maxLength={50}
               autoFocus
-              aria-label={t('chooseNameTitle')}
+              aria-label={t('chooseNamePlaceholder')}
               autoComplete="nickname"
             />
             {error && <p className="field-error">{error}</p>}
