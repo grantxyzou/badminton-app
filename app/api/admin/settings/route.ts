@@ -80,7 +80,18 @@ export async function PATCH(req: NextRequest) {
     };
     const { resource } = await container.items.upsert(updated);
     const safe = resource as Record<string, unknown>;
-    const { pinHash: _ph, ...exposed } = safe;
+    // This reads and echoes back the caller's own MEMBER document, so every
+    // member secret has to come off — not just the PIN hash. `recoveryCode`
+    // was already leaking here before the credential fields existed.
+    const {
+      pinHash: _ph,
+      recoveryCode: _rc,
+      passwordHash: _pw,
+      emailVerification: _ev,
+      passwordReset: _pr,
+      email: _em,
+      ...exposed
+    } = safe;
     return NextResponse.json(exposed);
   } catch (error) {
     console.error('PATCH /api/admin/settings error:', error);

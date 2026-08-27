@@ -414,6 +414,18 @@ function getMockContainer(name: string) {
             if ('@id' in params) {
               results = results.filter((r) => r.id === params['@id']);
             }
+            // Seven routes query `WHERE c.memberId = @memberId`. The mock used
+            // to ignore the clause and hand back EVERY row, so several of them
+            // grew a JS-side re-filter with a comment explaining the mock does
+            // not honor it — while `stats/drills` and `members/[id]/history`
+            // relied on the clause alone and were therefore never actually
+            // exercised in tests. Honoring it here is what makes those queries
+            // mean the same thing in the mock as in Cosmos; the routes that
+            // already re-filter are unaffected, since filtering twice is
+            // idempotent.
+            if ('@memberId' in params) {
+              results = results.filter((r) => r.memberId === params['@memberId']);
+            }
             if ('@pointerId' in params) {
               results = results.filter((r) => r.id !== params['@pointerId']);
             }

@@ -1,0 +1,132 @@
+/**
+ * Everything a provider callback does AFTER the code exchange.
+ *
+ * Google and Apple differ only in how the code arrives (query string vs
+ * form-post body) and how it is exchanged. From verified claims onward the
+ * behaviour must be identical, so it lives here once — a second copy is how
+ * one provider quietly grows a weaker linking rule than the other.
+ */
+import { NextRequest, NextResponse } from 'next/server';
+import { getContainer } from '@/lib/cosmos';
+import { completeSignIn } from '@/lib/authSession';
+import { verifyMemberAuth } from '@/lib/auth';
+import { resolveOAuthIdentity } from '@/lib/authResolve';
+import {
+  normalizeEmail,
+  lookupIdentity,
+  reserveIdentity,
+  touchIdentity,
+  type AuthProvider,
+} from '@/lib/authIdentity';
+import { setPendingSignup } from '@/lib/pendingSignup';
+import { clearOAuthCookies } from '@/lib/oauthState';
+import type { Member } from '@/lib/types';
+
+export interface ProviderClaims {
+  provider: Extract<AuthProvider, 'google' | 'apple'>;
+  sub: string;
+  email: string | null;
+  emailVerified: boolean;
+  /** Apple sends this on the FIRST authorization only. Google never does. */
+  suggestedName: string | null;
+}
+
+function landing(origin: string, params: Record<string, string>): string {
+  const qs = new URLSearchParams(params).toString();
+  return `${origin}/bpm?${qs}`;
+}
+
+/** Redirect home with a machine-readable reason the UI can render. */
+export function oauthFailure(origin: string, reason: string): NextResponse {
+  const res = NextResponse.redirect(landing(origin, { authError: reason }));
+  clearOAuthCookies(res);
+  return res;
+}
+
+/**
+ * Look up the facts the resolution table needs, apply it, and act.
+ *
+ * The lookups live here and the DECISION lives in `lib/authResolve.ts`, which
+ * is pure and exhaustively tested. The mock store cannot perform a cross-site
+ * redirect, so no test can prove the handshake — keeping the decision separate
+ * is what makes the security-critical half provable at all.
+ */
+export async function finishOAuthCallback(
+  req: NextRequest,
+  origin: string,
+  claims: ProviderClaims,
+): Promise<NextResponse> {
+  const container = getContainer('members');
+  const email = claims.email ? normalizeEmail(claims.email) : null;
+
+  const existing = await lookupIdentity(claims.provider, claims.sub);
+
+  // Only a VERIFIED address on our side may be used to link. An unverified
+  // `email` on a member is a claim the member typed, not proof — treating it
+  // as proof would let anyone claim an account by signing up with its address.
+  let memberIdByVerifiedEmail: string | null = null;
+  if (email) {
+    const emailIdentity = await lookupIdentity('email', email);
+    if (emailIdentity) {
+      const { resource } = await container
+        .item(emailIdentity.memberId, emailIdentity.memberId)
+        .read<Member>();
+      if (resource?.active === true && resource.emailVerified === true) {
+        memberIdByVerifiedEmail = resource.id;
+      }
+    }
+  }
+
+  const action = resolveOAuthIdentity({
+    existingIdentityMemberId: existing?.memberId ?? null,
+    sessionMemberId: verifyMemberAuth(req)?.memberId ?? null,
+    providerEmail: email,
+    providerEmailVerified: claims.emailVerified,
+    memberIdByVerifiedEmail,
+  });
+
+  if (action.kind === 'new-account') {
+    // Needs a display name from the user, and must refuse names already taken —
+    // so it cannot finish here. Park the verified facts in a SIGNED cookie and
+    // let /api/auth/complete-signup finish once a name is chosen.
+    const res = NextResponse.redirect(landing(origin, { authFlow: 'name' }));
+    setPendingSignup(res, {
+      provider: claims.provider,
+      sub: claims.sub,
+      email,
+      emailVerified: claims.emailVerified,
+      suggestedName: claims.suggestedName,
+    });
+    clearOAuthCookies(res);
+    return res;
+  }
+
+  const { resource: member } = await container
+    .item(action.memberId, action.memberId)
+    .read<Member>();
+  if (!member || member.active !== true) return oauthFailure(origin, 'account_unavailable');
+
+  if (action.kind === 'link') {
+    const reserved = await reserveIdentity(claims.provider, claims.sub, member.id);
+    if (!reserved.ok) {
+      // Someone else already holds this provider identity. Never steal it.
+      return oauthFailure(origin, 'already_linked');
+    }
+    const linked = new Set([...(member.linkedProviders ?? []), claims.provider]);
+    await container.items.upsert({
+      ...member,
+      linkedProviders: [...linked],
+      // Linking does NOT confer verification: rule 3 already required a
+      // verified address on both sides, and rules 1-2 did not check one at all.
+    });
+  } else {
+    void touchIdentity(claims.provider, claims.sub);
+  }
+
+  const res = NextResponse.redirect(
+    landing(origin, { signedIn: '1', provider: claims.provider }),
+  );
+  completeSignIn(res, member);
+  clearOAuthCookies(res);
+  return res;
+}
