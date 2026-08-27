@@ -36,7 +36,7 @@ import { verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import { verifyRecoveryCode } from '@/lib/memberRecoveryCode';
 import { appendEvent } from '@/lib/recoveryAudit';
 import { completeSignIn } from '@/lib/authSession';
-import { reserveIdentity, normalizeEmail } from '@/lib/authIdentity';
+import { reserveIdentity, releaseIdentity, normalizeEmail } from '@/lib/authIdentity';
 import { readPendingSignup, clearPendingSignup } from '@/lib/pendingSignup';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import type { Member } from '@/lib/types';
@@ -138,7 +138,19 @@ export async function POST(req: NextRequest) {
     if (pending.email && pending.emailVerified) {
       const email = normalizeEmail(pending.email);
       const emailReserved = await reserveIdentity('email', email, member.id);
-      if (emailReserved.ok) claimedEmail = email;
+      if (emailReserved.ok) {
+        claimedEmail = email;
+        // Release the address this member previously held, if it changed.
+        // Leaving it reserved would keep `old@addr -> memberId` resolving, so
+        // password sign-in with the OLD address would still work and the OAuth
+        // linker would still treat it as a verified link target — while
+        // `member.email` says otherwise. It would also block that address for
+        // whoever actually owns it, permanently.
+        const previous = typeof member.email === 'string' ? normalizeEmail(member.email) : null;
+        if (previous && previous !== email) {
+          await releaseIdentity('email', previous);
+        }
+      }
     }
 
     const linked = new Set([...(member.linkedProviders ?? []), pending.provider]);
@@ -165,8 +177,13 @@ export async function POST(req: NextRequest) {
       name: member.name,
       provider: pending.provider,
     });
-    completeSignIn(res, updated);
+    // ORDER: every `cookies.set` must happen BEFORE completeSignIn. Its
+    // clearAdminCookie branch APPENDS raw Set-Cookie headers, and a later
+    // `.set()` re-serializes the whole cookie map and silently drops them --
+    // leaving a stale admin_session alive for a non-admin. Verified, and
+    // pinned by __tests__/auth-cookie-order.test.ts.
     clearPendingSignup(res);
+    completeSignIn(res, updated);
     return res;
   } catch (err) {
     // A Cosmos throttle must be distinguishable from a wrong PIN, or the
