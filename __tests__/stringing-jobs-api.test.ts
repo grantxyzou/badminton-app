@@ -162,7 +162,7 @@ describe('the exact amount crosses only when it is a BILL', () => {
   it('sends NULL while the racket is still on the bench', async () => {
     // Billing for work in progress asks someone to pay for a racket they
     // cannot use yet.
-    for (const status of ['requested', 'received', 'strung']) {
+    for (const status of ['requested', 'received', 'strung'] as StringingJob['status'][]) {
       resetMockStore();
       await seedJob({ status, priceCents: 3000 });
       const res = await GET(memberReq('GET', 'http://x/api/stringing/jobs', 'wei'));

@@ -156,13 +156,31 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
             padding: 0, margin: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left',
           }}
         >
-          <span className="section-label" style={{ color: titleColor }}>{title}</span>
-          <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>
-            {open ? 'expand_less' : 'expand_more'}
+          {/* Sentence case and neutral, not an uppercase accent label. On Home
+              the accent is reserved for the primary button, the one link and
+              the active tab — a label that never changes was spending it. */}
+          <span className="fs-md" style={{ color: 'var(--text-primary)' }}>{title}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            {/* THE FIGURE, even collapsed. A collapsed card showing only a
+                label spends a whole card to say nothing — and the number is
+                the only reason to open it. */}
+            <span
+              className="fs-md"
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontWeight: 600,
+                color: showPaidUp ? 'var(--text-secondary)' : titleColor,
+              }}
+            >
+              {fmtMoney(data?.totalOwed ?? 0)}
+            </span>
+            <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>
+              {open ? 'expand_less' : 'expand_more'}
+            </span>
           </span>
         </button>
       ) : (
-        <p className="section-label" style={{ margin: 0, color: titleColor }}>
+        <p className="section-label-muted" style={{ margin: 0 }}>
           {title}
         </p>
       )}

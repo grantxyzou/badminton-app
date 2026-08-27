@@ -1,5 +1,9 @@
 {
   "home": {
+      "groups": {
+        "session": "本周",
+        "account": "你的账户"
+      },
     "stringing": {
         "viewPricing": "查看价格",
         "pricingEmpty": "Grant 还没公布价格 — 收到拍子时他会确认。",
@@ -61,6 +65,7 @@
       "dismiss": "关闭"
     },
     "signup": {
+      "spotsLeftSuffix": "个空位",
       "heading": "报名",
       "button": "本周参加",
       "waitlist": "加入候补",

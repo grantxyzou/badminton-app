@@ -1,5 +1,9 @@
 {
   "home": {
+      "groups": {
+        "session": "This week",
+        "account": "Your account"
+      },
     "stringing": {
         "viewPricing": "View pricing",
         "pricingEmpty": "Grant hasn't posted prices yet — he'll confirm when he takes the racket.",
@@ -61,6 +65,7 @@
       "dismiss": "Dismiss"
     },
     "signup": {
+      "spotsLeftSuffix": "spots left",
       "heading": "Sign up",
       "button": "I'm in this week",
       "waitlist": "Join Waitlist",

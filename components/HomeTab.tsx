@@ -364,7 +364,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           the title via inline marginTop (beats the space-y-5 gap).
           The easter-egg `onTitleTap` lives on the inner span so PageHeader owns
           the scroll-condense. */}
-      <PageHeader>
+      <PageHeader compact>
         <span
           role="button"
           tabIndex={0}
@@ -387,17 +387,26 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       {/* Reveal the data cards together on load. Wrapping below the sticky
           PageHeader keeps the header out of the transform (containing-block
           trap) while the card stack fades in once when data lands. */}
-      <div className="space-y-5 animate-fadeIn">
+      {/* TWO GROUPS, NOT FIVE CARDS.
+          Tight inside a group, loose between them: proximity is what says
+          "these belong together" without adding a heading to each. The first
+          group is this week's session — where, when, and are you in. The
+          second is your account — what you owe and what you have with the
+          stringer. Five evenly-spaced cards read as five unrelated errands. */}
+      <div className="bpm-home-stack animate-fadeIn">
       {/* One-time nudge to install to the home screen (mobile browser only). */}
       <InstallBanner />
+
+      <section className="bpm-home-group" aria-label={t('groups.session')}>
       {/* Tile row: Location | Date & Time */}
       <div className="grid grid-cols-2 gap-3">
         {/* Location tile */}
         <div className="glass-card p-4 space-y-2">
-          <p className="section-label mb-1" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-              <span className="material-icons" aria-hidden="true">location_on</span>
-              {t('location.label')}
-            </p>
+          {/* Neutral, and no icon. Accent is currency: spending it on a label
+              that never changes leaves nothing to mark the one thing worth
+              tapping. Green now appears exactly three times on this screen —
+              the primary button, the one link, the active tab. */}
+          <p className="section-label-muted mb-1">{t('location.label')}</p>
           {session?.locationName && (
             <p className="text-lg font-semibold text-gray-200 leading-snug line-clamp-2">
               {session.locationName}
@@ -421,14 +430,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
         {/* Date & Time tile */}
         <div className="glass-card p-4 space-y-2">
-          <p className="section-label mb-1" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-              <span className="material-icons" aria-hidden="true">event</span>
-              {t('session.date')}
-            </p>
+          <p className="section-label-muted mb-1">{t('session.date')}</p>
           <p className="text-lg font-semibold text-gray-200 leading-snug">
             {session ? format.dateTime(new Date(session.datetime), DAY_LONG) : '—'}
           </p>
-          <p className="text-lg font-semibold text-gray-200 leading-snug">
+          {/* The time drops to secondary so the DATE reads as one unit. Two
+              lines at equal weight made "Saturday, August 29" and "02:16 AM"
+              compete, and the date is what people are checking. */}
+          <p className="fs-md" style={{ color: 'var(--text-secondary)' }}>
             {session ? format.dateTime(new Date(session.datetime), TIME_SHORT) : '—'}
           </p>
         </div>
@@ -444,18 +453,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           </div>
         </div>
       )}
-
-      {/* Balance — ABOVE the sign-up card, deliberately.
-          This inverts the old context-on-top / action-on-bottom order for one
-          card, and the reason is that what you owe is not context, it is the
-          thing you came to check. Buried under a sign-up form it was read
-          after the decision it should inform. The sign-up card keeps the thumb
-          zone; this sits in the reading zone above it.
-
-          It is now the app's ONLY balance surface — the Profile copy was
-          removed rather than kept in sync, since two cards reading the same
-          endpoint is two chances to disagree about money. */}
-      {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" />}
 
       {/* Sign-Up Card — the submit button / payment action / "I paid" button
           sit in the thumb zone for one-handed use. */}
@@ -602,9 +599,25 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         ) : (
           /* ── State 4: Open — normal sign-up ── */
           <div className="space-y-4">
-            <div className="flex items-baseline justify-between">
-              <p className="bpm-h2">{t('signup.heading')}</p>
-              <p key={spotsTotal - activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
+            {/* The COUNT is the headline, not the word "Sign up".
+                It is the number that decides whether you tap, and it was 13px
+                muted at the far right while a heading that never changes took
+                the weight. Swapped: the heading becomes a section label, the
+                count becomes the largest thing on the screen. */}
+            <div>
+              <p className="section-label-muted">{t('signup.heading')}</p>
+              <p
+                key={spotsTotal - activePlayers.length}
+                className="animate-count-tick"
+                style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}
+              >
+                <span className="bpm-count">
+                  {spotsTotal - activePlayers.length}/{spotsTotal}
+                </span>
+                <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>
+                  {t('signup.spotsLeftSuffix')}
+                </span>
+              </p>
             </div>
             <form onSubmit={handleSignUp} className="space-y-3">
               <NameAutocompleteInput
@@ -655,7 +668,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   || (authMode === 'sign-in' && pin.length !== 4)
                   || (authMode === 'create' && (pin.length !== 4 || confirmPin.length !== 4))
                 }
-                className="cc-btn cc-btn-primary cc-btn-lg"
+                /* `.btn-primary`, not `.cc-btn-primary`. The latter is the
+                   tinted ADMIN action (18% green fill, green text) — a compact
+                   secondary weight. This is the app's most prominent CTA and
+                   takes the filled gradient, which is also what makes the one
+                   green thing on the screen unmistakable. */
+                className="btn-primary w-full flex items-center justify-center gap-2"
               >
                 {!isSubmitting && <span className="material-icons icon-sm" aria-hidden="true">how_to_reg</span>}
                 {isSubmitting ? t('signup.submitting') : t('signup.button')}
@@ -671,7 +689,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 </button>
               )}
               {session?.deadline && authMode === 'anon' && (
-                <p className={`text-center fs-sm font-medium ${isDeadlineApproaching ? 'text-red-400' : 'text-gray-400'}`}>
+                /* A close date is INFORMATION, not an error. Red here spent
+                   the failure colour on a fact that is true every week, so a
+                   real error had nothing louder to reach for. Amber inside the
+                   last 24 hours still escalates; the rest is a footnote. */
+                <p
+                  className="text-center fs-sm"
+                  style={{ color: isDeadlineApproaching ? 'var(--sev-warn)' : 'var(--text-muted)' }}
+                >
                   {t('signup.closesOn', { date: format.dateTime(new Date(session.deadline), DAY_LONG) })}
                 </p>
               )}
@@ -680,11 +705,21 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         )}
       </div>
 
+      </section>
+
+      <section className="bpm-home-group" aria-label={t('groups.account')}>
+      {/* Your balance — what you owe, across sessions and stringing. Sits in
+          the ACCOUNT group rather than above sign-up: as a one-line row
+          carrying its own figure it no longer needs the top slot to be read,
+          and most weeks it says $0. */}
+      {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" />}
+
       {/* Stringing service. Still "Coming soon" by default — the card only goes
           live once an admin has opened the shop, and an UNKNOWN answer keeps
           the modest version too. See StringingCard for why unknown is not
           treated as closed-but-shown. */}
       <StringingCard hasIdentity={hasIdentity} />
+      </section>
 
 
       <EnterCodeSheet
