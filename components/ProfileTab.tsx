@@ -317,12 +317,6 @@ export default function ProfileTab({
           sessionId={sessionId}
           onRecovered={handleRecovered}
         />
-        {/* Always present for a signed-in member: the upgrade nudge is a
-            VARIANT of this card, not a separate surface. The nudge-only card it
-            replaced required hasPin, which left every Google- and
-            email-created account with no route to connect a second provider or
-            disconnect anything. */}
-        {isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS') && <SignInMethodsCard />}
         {isAdmin && (
           <div className="glass-card p-5">
             <button type="button" onClick={onAdminTools} className="cc-btn cc-btn-primary cc-btn-lg">
@@ -373,6 +367,17 @@ export default function ProfileTab({
       />
 
       <UnpaidSessionsCard name={identity.name} />
+
+      {/* Always present for a SIGNED-IN member: the upgrade nudge is a variant
+          of this card, not a separate surface, so dismissing the prompt does not
+          take the credential management with it.
+
+          It lived in the anonymous branch until now, which meant the people it
+          exists for never saw it while signed-out visitors got it duplicated
+          beneath the provider buttons. Nothing caught that: the card's own tests
+          render it directly, and ProfileTab's tests render both states without
+          asserting on it. They do now. */}
+      {isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS') && <SignInMethodsCard />}
 
       {showAdminHero && (
         <>

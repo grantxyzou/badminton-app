@@ -56,6 +56,48 @@ describe('ProfileTab', () => {
     expect(screen.getByText(/Recovery PIN/i)).toBeDefined();
   });
 
+  it('shows the sign-in methods card ONLY when signed in', async () => {
+    // Regression: the card shipped inside the anonymous branch, so the members
+    // it exists for never saw it and signed-out visitors got it duplicated
+    // beneath the provider buttons. Its own tests render it directly, and these
+    // tests rendered both states without ever asserting on it, so nothing
+    // caught the misplacement.
+    process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'true';
+    // URL-aware: ProfileTab also fetches /api/players and /api/members/me, and
+    // answering those with the methods payload breaks its render.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string) => {
+        const u = String(url);
+        const body = u.includes('/api/auth/methods')
+          ? { available: [], linked: [], hasPin: true, hasPassword: false, nudge: false }
+          : u.includes('/api/players/unpaid')
+            ? { totalOwed: 0, sessionCount: 0, mostRecent: null, sessions: [] }
+            : u.includes('/api/players')
+              ? []
+              : {};
+        return Promise.resolve({ ok: true, json: async () => body } as unknown as Response);
+      }),
+    );
+
+    // Anonymous: absent.
+    renderWith();
+    await Promise.resolve();
+    expect(screen.queryByText('How you sign in')).toBeNull();
+    cleanup();
+
+    // Signed in: present.
+    localStorage.setItem(
+      'badminton_identity',
+      JSON.stringify({ name: 'Michael', token: 'tok', sessionId: 'session-2026-04-27' }),
+    );
+    renderWith();
+    expect(await screen.findByText('How you sign in')).toBeDefined();
+
+    delete process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
+    vi.unstubAllGlobals();
+  });
+
   it('shows admin tools button only when isAdmin', () => {
     renderWith({ isAdmin: false });
     expect(screen.queryByText(/Admin tools/i)).toBeNull();
