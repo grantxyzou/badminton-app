@@ -77,7 +77,7 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
 
         {error && <ErrorState message={t('saveError')} />}
 
-        <div className="glass-card p-5">
+        <div className="glass-card p-5 space-y-3">
           <CardHeader icon="sports_tennis" title={t('spec.title')} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {specRows.map(([k, v]) => (
@@ -90,7 +90,7 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
         </div>
 
         <div
-          className="glass-card p-5"
+          className="glass-card p-5 space-y-3"
           style={{ background: 'var(--banner-green-bg)', borderColor: 'var(--banner-green-border)' }}
         >
           <CardHeader icon="request_quote" title={t('quoted')} />
@@ -98,7 +98,7 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
             {formatPriceExact(local.priceCents) ?? t('unpriced')}
           </div>
           {local.readyBy && (
-            <div className="fs-sm" style={{ color: 'var(--text-secondary)', marginTop: 'var(--space-1)' }}>
+            <div className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
               {/* Formatted when it is a date; shown verbatim when it is not.
                   Rows written before readyBy became a date still hold free
                   text like "Sunday", and echoing that back beats relabelling
@@ -110,7 +110,6 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
           <div
             className="fs-sm"
             style={{
-              marginTop: 'var(--space-4)',
               paddingTop: 'var(--space-4)',
               borderTop: '1px solid var(--banner-green-border)',
               color: 'var(--text-secondary)',
@@ -126,7 +125,7 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
           </div>
         </div>
 
-        <div className="glass-card p-5">
+        <div className="glass-card p-5 space-y-3">
           <CardHeader icon="fact_check" title={t('statusTitle')} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             {STRINGING_FLOW.map((step: StringingStatus) => {

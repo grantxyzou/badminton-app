@@ -139,7 +139,7 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
       <AdminBackHeader onBack={onBack} title={t('newJob')} />
       <div className="flex flex-col gap-4 px-4 pb-6">
         {/* Who */}
-        <div className="glass-card p-5">
+        <div className="glass-card p-5 space-y-3">
           <CardHeader icon="person" title={t('who')} subtitle={t('whoHint')} />
           {membersError && <ErrorState message={t('membersError')} />}
           {picked ? (
@@ -193,7 +193,7 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
         </div>
 
         {/* What */}
-        <div className="glass-card p-5">
+        <div className="glass-card p-5 space-y-3">
           <CardHeader icon="sports_tennis" title={t('theRacket')} />
           <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
             <input
@@ -217,7 +217,7 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
 
         {/* Tension */}
         <div
-          className="glass-card p-5"
+          className="glass-card p-5 space-y-3"
           style={{ background: 'var(--banner-green-bg)', borderColor: 'var(--banner-green-border)' }}
         >
           <CardHeader icon="bolt" title={t('tension')} />
@@ -265,7 +265,7 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
         </div>
 
         {/* Money — and what the player will read */}
-        <div className="glass-card p-5">
+        <div className="glass-card p-5 space-y-3">
           <CardHeader icon="paid" title={t('yourPrice')} subtitle={t('priceOptional')} />
           {/* The $ sits INSIDE the field rather than in the placeholder, which
               is where the rest of the app puts it today (SetupPage's "$ per
@@ -304,7 +304,7 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
               field could not be translated, could not be compared, and so
               nothing could ever be overdue — which is the entire reason a
               stringer opens the bench. */}
-          <div style={{ marginTop: 'var(--space-3)' }}>
+          <div>
             <DatePicker value={readyBy} onChange={setReadyBy} placeholder={t('readyByPlaceholder')} />
           </div>
           {/* The band, shown live. The stringer should never have to guess what
@@ -312,7 +312,6 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
           <div
             className="fs-sm"
             style={{
-              marginTop: 'var(--space-4)',
               paddingTop: 'var(--space-4)',
               borderTop: '1px solid var(--divider)',
               display: 'flex',
