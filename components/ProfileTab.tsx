@@ -20,10 +20,8 @@ import PageHeader from './primitives/PageHeader';
 import ProfileEyebrow from './primitives/ProfileEyebrow';
 import StatsPrivacyScreen from './StatsPrivacyScreen';
 import { useStatsPrivacy } from '@/lib/useStatsPrivacy';
-import AdminConsoleHero from './admin/CommandCenter/AdminConsoleHero';
 import { isFlagOn } from '@/lib/flags';
-import { avatarColors as profileAvaColors } from '@/lib/avatar';
-import { sessionCostTotals } from '@/lib/sessionCost';
+import { useAdminNeedsYou } from '@/lib/useAdminNeedsYou';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -86,6 +84,11 @@ export default function ProfileTab({
   // sub-screens.
   const [view, setView] = useState<'root' | 'stats-privacy'>('root');
   const privacyState = useStatsPrivacy(identity?.name ?? null);
+  // Called unconditionally, and gated by its own argument, because the two
+  // early returns below (anonymous, and the Stats & privacy sub-screen) sit
+  // between here and the row that renders the count.
+  const showAdminRow = isAdmin && isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER');
+  const adminSignals = useAdminNeedsYou(showAdminRow);
   const [reportOpen, setReportOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
   // Only offer "Add to Home Screen" when NOT already installed. Resolved
@@ -185,63 +188,12 @@ export default function ProfileTab({
     };
   }, [identity]);
 
-  // Cost-to-pay summary for the identity card.
-  // per-person = (court + bird totals) / active count, shown only when the
-  // admin has made the breakdown public (showCostBreakdown). `paid` comes from
-  // the viewer's own player record; `prevOwe` is the frozen last-session snapshot.
-  const [oweThisWeek, setOweThisWeek] = useState<number | null>(null);
-  const [paidThisWeek, setPaidThisWeek] = useState(false);
-  const [prevOwe, setPrevOwe] = useState<number | null>(null);
-  const [sessionDatetime, setSessionDatetime] = useState<string | null>(null);
-  const [prevSessionDate, setPrevSessionDate] = useState<string | null>(null);
-  // Whether the active session is settled (cost frozen). When false, the
-  // "this week" figure is a live estimate — say so rather than asserting "owe".
-  const [settledThisWeek, setSettledThisWeek] = useState(false);
-
-  useEffect(() => {
-    if (!identity) {
-      setOweThisWeek(null);
-      setPaidThisWeek(false);
-      setPrevOwe(null);
-      setSessionDatetime(null);
-      setPrevSessionDate(null);
-      setSettledThisWeek(false);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const [sRes, pRes] = await Promise.all([
-          fetch(`${BASE}/api/session`, { cache: 'no-store' }),
-          fetch(`${BASE}/api/players`, { cache: 'no-store' }),
-        ]);
-        if (cancelled || !sRes.ok || !pRes.ok) return;
-        const session = await sRes.json();
-        const players = (await pRes.json()) as Array<{ name?: string; removed?: boolean; waitlisted?: boolean; paid?: boolean }>;
-        if (cancelled) return;
-        setSessionDatetime(typeof session.datetime === 'string' ? session.datetime : null);
-        setSettledThisWeek(!!session.settled);
-        const active = players.filter((p) => !p.removed && !p.waitlisted);
-        const me = active.find((p) => typeof p.name === 'string' && p.name.toLowerCase() === identity.name.toLowerCase());
-        const { courtTotal, birdTotal } = sessionCostTotals(session);
-        const total = courtTotal + (session.showCostBreakdown ? birdTotal : 0);
-        const per = session.showCostBreakdown && total > 0 && active.length > 0 ? total / active.length : null;
-        setOweThisWeek(me ? per : null);
-        setPaidThisWeek(!!me?.paid);
-        setPrevOwe(
-          session.showCostBreakdown && typeof session.prevCostPerPerson === 'number' && session.prevCostPerPerson > 0
-            ? session.prevCostPerPerson
-            : null,
-        );
-        setPrevSessionDate(typeof session.prevSessionDate === 'string' ? session.prevSessionDate : null);
-      } catch {
-        /* leave nulls — the cost row just won't render */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [identity]);
+  // Money used to live here too — "This week / Estimated $17.46" and "Last
+  // session / Final cost" rows inside the identity card. It moved to Home's
+  // balance card (design "Profile hierarchy", 2026-08-27): identity and
+  // what-you-owe were sharing one surface, and the amount was set at the same
+  // size as the member's own name. One number, one place, on the tab you open
+  // first. Profile is identity, permissions and settings only.
 
   // After a recovery-code redemption, the user's old PIN was cleared server-
   // side and a member_session cookie was minted. Walk them straight into
@@ -502,7 +454,6 @@ export default function ProfileTab({
   }
 
   // Player (and possibly admin) state
-  const showAdminHero = isAdmin && isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER');
   return (
     <div className="animate-fadeIn flex flex-col gap-4">
       <PageHeader>{tNav('profile')}</PageHeader>
@@ -512,13 +463,6 @@ export default function ProfileTab({
         memberCreatedAt={memberCreatedAt}
         isSignedUp={isSignedUp}
         isAdmin={isAdmin}
-        nameLabel={t('playerName')}
-        oweThisWeek={oweThisWeek}
-        paidThisWeek={paidThisWeek}
-        settledThisWeek={settledThisWeek}
-        prevOwe={prevOwe}
-        prevSessionDate={prevSessionDate}
-        sessionDatetime={sessionDatetime}
       />
 
 
@@ -531,63 +475,111 @@ export default function ProfileTab({
           beneath the provider buttons. Nothing caught that: the card's own tests
           render it directly, and ProfileTab's tests render both states without
           asserting on it. They do now. */}
-      {isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS') && <SignInMethodsCard />}
-
-      {showAdminHero && (
+      {/* Credential management, so it belongs to ACCOUNT rather than floating
+          between the identity card and admin. */}
+      {showAdminRow && (
         <>
-          <ProfileEyebrow>Admin</ProfileEyebrow>
-          <AdminConsoleHero onOpenAdmin={onAdminTools} />
+          <ProfileEyebrow>{t('admin.group')}</ProfileEyebrow>
+          {/* One row, not a hero. The console had the only glowing border, the
+              largest type in any card and a full-width CTA — on the screen a
+              player opens to change their PIN. The count survives here; the
+              three stat tiles live on admin home, where they can be acted on.
+
+              No meta at all when the count is unknown: "0 need you" off a dead
+              fetch is the lying-empty-state pattern, and the row's real job —
+              opening admin — works regardless. */}
+          <SettingsList
+            rows={[
+              {
+                icon: 'admin_panel_settings',
+                label: t('admin.console'),
+                meta:
+                  adminSignals.needsYou === null
+                    ? undefined
+                    : adminSignals.needsYou > 0
+                    ? t('admin.needYou', { count: adminSignals.needsYou })
+                    : t('admin.allClear'),
+                // Accent marks the one live count, never the all-clear.
+                accent: (adminSignals.needsYou ?? 0) > 0,
+                onClick: onAdminTools,
+              },
+            ]}
+          />
         </>
       )}
 
       <ProfileEyebrow>{tSettings('title')}</ProfileEyebrow>
+      {isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS') && <SignInMethodsCard />}
       <SettingsList
         rows={[
-            // Batch B (expanded): PIN management is now member-scoped via
-            // PATCH /api/members/me — works regardless of whether the user
-            // has a session player. The previous "Sign up for a session
-            // first" gate is no longer needed.
-            {
-              icon: 'key',
-              // pinIsSet === null means we couldn't load status. Show the
-              // generic section title rather than asserting "New PIN" (which
-              // would suggest "you don't have one yet" — false on transient
-              // backend failures).
-              label: pinIsSet === null
-                ? t('pinSectionTitle')
-                : pinIsSet
-                ? tSettings('updatePin')
-                : tSettings('newPin'),
-              onClick: () => setRecoveryPinOpen(true),
-            },
-            {
-              icon: 'help_outline',
-              label: tSettings('recoveryCode'),
-              onClick: () => setEnterCodeOpen(true),
-            },
-            // Between "Have a recovery code?" and "What's new", per the design.
-            // `meta` shows the state so nobody has to open the row to check it.
-            {
-              icon: 'visibility',
-              label: tSettings('statsPrivacy'),
-              meta: privacyState.privacy
-                ? privacyState.privacy.clubComparison
-                  ? tSettings('statsPrivacyOn')
-                  : tSettings('statsPrivacyOff')
-                : undefined,
-              onClick: () => setView('stats-privacy'),
-            },
-            { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
-            { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setReportOpen(true) },
-            ...(!installed
-              ? [{ icon: 'install_mobile', label: tSettings('install'), onClick: () => setInstallOpen(true) }]
-              : []),
-            ...(isAdmin
-              ? [{ icon: 'admin_panel_settings', label: tSettings('adminAccess'), onClick: onAdminTools }]
-              : []),
-            { icon: 'logout', label: tSettings('logout'), onClick: handleLogout, destructive: true },
-          ]}
-        />
+          // Batch B (expanded): PIN management is now member-scoped via
+          // PATCH /api/members/me — works regardless of whether the user
+          // has a session player. The previous "Sign up for a session
+          // first" gate is no longer needed.
+          {
+            icon: 'key',
+            // pinIsSet === null means we couldn't load status. Show the
+            // generic section title rather than asserting "New PIN" (which
+            // would suggest "you don't have one yet" — false on transient
+            // backend failures).
+            label: pinIsSet === null
+              ? t('pinSectionTitle')
+              : pinIsSet
+              ? tSettings('updatePin')
+              : tSettings('newPin'),
+            onClick: () => setRecoveryPinOpen(true),
+          },
+          {
+            icon: 'help_outline',
+            label: tSettings('recoveryCode'),
+            onClick: () => setEnterCodeOpen(true),
+          },
+        ]}
+      />
+
+      {/* Security, app and help were interleaved — a recovery code sat next to
+          What's new next to Add to Home Screen. Splitting them is what lets
+          ACCOUNT stay two rows. */}
+      <ProfileEyebrow>{tSettings('appGroup')}</ProfileEyebrow>
+      <SettingsList
+        rows={[
+          // `meta` shows the state so nobody has to open the row to check it.
+          {
+            icon: 'visibility',
+            label: tSettings('statsPrivacy'),
+            meta: privacyState.privacy
+              ? privacyState.privacy.clubComparison
+                ? tSettings('statsPrivacyOn')
+                : tSettings('statsPrivacyOff')
+              : undefined,
+            onClick: () => setView('stats-privacy'),
+          },
+          ...(!installed
+            ? [{ icon: 'install_mobile', label: tSettings('install'), onClick: () => setInstallOpen(true) }]
+            : []),
+          { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
+          { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setReportOpen(true) },
+        ]}
+      />
+
+      {/* Log out stops pretending to navigate. It had a chevron like the rows
+          above it and it was amber, which in this system means full or warning.
+          Separated below the list, centred, no chevron, no card. */}
+      <button
+        type="button"
+        onClick={handleLogout}
+        style={{
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: 12,
+          fontSize: 'var(--fs-lg)',
+          color: 'var(--color-red)',
+          fontFamily: 'inherit',
+        }}
+      >
+        {tSettings('logout')}
+      </button>
 
       <RecoveryPinSheet
         open={recoveryPinOpen}
@@ -625,28 +617,20 @@ interface SettingsRow {
   icon: string;
   label: string;
   onClick: () => void;
-  destructive?: boolean;
   /** Right-aligned status text shown before the chevron (e.g. "Set" / "Not set"). */
   meta?: string;
+  /**
+   * Tint the icon and meta green. Reserved for a live count that is asking to
+   * be acted on — accent is currency here, the same rule Home follows. The
+   * `destructive` variant this replaces went with Log out when it left the
+   * list to become a standalone centred button.
+   */
+  accent?: boolean;
 }
 
-function SettingsList({ title, rows }: { title?: string; rows: SettingsRow[] }) {
+function SettingsList({ rows }: { rows: SettingsRow[] }) {
   return (
     <div className="glass-card-soft" style={{ padding: 0, overflow: 'hidden' }}>
-      {title && (
-        <p
-          style={{
-            padding: '14px 16px 8px',
-            fontSize: 'var(--fs-xs)',
-            fontWeight: 600,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            color: 'var(--text-secondary)',
-          }}
-        >
-          {title}
-        </p>
-      )}
       <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
         {rows.map((row, idx) => (
           <li key={row.label} style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--divider)' }}>
@@ -662,7 +646,7 @@ function SettingsList({ title, rows }: { title?: string; rows: SettingsRow[] }) 
                 background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
-                color: row.destructive ? 'var(--color-amber)' : 'var(--text-primary)',
+                color: 'var(--text-primary)',
                 fontSize: 'var(--fs-lg)',
                 textAlign: 'left',
               }}
@@ -670,13 +654,23 @@ function SettingsList({ title, rows }: { title?: string; rows: SettingsRow[] }) 
               <span
                 className="material-icons"
                 aria-hidden="true"
-                style={{ fontSize: 'var(--fs-stat)', color: 'var(--text-secondary)' }}
+                style={{
+                  fontSize: 'var(--fs-stat)',
+                  color: row.accent ? 'var(--accent)' : 'var(--text-secondary)',
+                }}
               >
                 {row.icon}
               </span>
               <span style={{ flex: 1 }}>{row.label}</span>
               {row.meta && (
-                <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>{row.meta}</span>
+                <span
+                  style={{
+                    fontSize: 'var(--fs-base)',
+                    color: row.accent ? 'var(--accent)' : 'var(--text-secondary)',
+                  }}
+                >
+                  {row.meta}
+                </span>
               )}
               <span
                 className="material-icons"
@@ -709,98 +703,10 @@ interface ProfileIdentityCardProps {
   memberCreatedAt: string | null;
   isSignedUp: boolean;
   isAdmin: boolean;
-  nameLabel: string;
-  /** Per-person cost for the active session if the viewer is signed up and the
-   *  breakdown is public; null otherwise (no cost row). */
-  oweThisWeek: number | null;
-  /** Whether the viewer's player record is marked paid for the active session. */
-  paidThisWeek: boolean;
-  /** Whether the active session is settled (cost frozen). When false the
-   *  "this week" amount is a live estimate, shown as such. */
-  settledThisWeek: boolean;
-  /** Frozen last-session per-person snapshot, if public; null otherwise. */
-  prevOwe: number | null;
-  prevSessionDate: string | null;
-  /** Active session datetime (ISO) for the cost row's date/time line. */
-  sessionDatetime: string | null;
 }
 
-function fmtMoney(n: number): string {
-  return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
-}
-
-/** Short date for the cost rows — 'Jul 9'. Null-safe. */
-function fmtShortDay(iso: string | null): string | null {
-  if (!iso) return null;
-  try {
-    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  } catch {
-    return null;
-  }
-}
-
-/**
- * One cost row in the Profile identity card: period + date on the left,
- * a small qualifier eyebrow over the amount on the right. Same shape for
- * "This week" (estimated / final / paid) and "Last session" (final), so the
- * two read as a consistent pair instead of a headline + afterthought.
- */
-function CostRow({
-  label,
-  date,
-  qualifier,
-  amount,
-  tone,
-}: {
-  label: string;
-  date: string | null;
-  qualifier: string;
-  amount: string;
-  tone: 'primary' | 'muted' | 'accent';
-}) {
-  const amountColor =
-    tone === 'accent' ? 'var(--accent, #22c55e)' : tone === 'muted' ? 'var(--text-secondary)' : 'var(--text-primary)';
-  const qualColor = tone === 'accent' ? 'var(--accent, #22c55e)' : 'var(--text-muted)';
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-      <div style={{ minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)' }}>{label}</span>
-        {date && <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{date}</span>}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flex: '0 0 auto' }}>
-        <span
-          style={{
-            fontSize: 'var(--fs-2xs)',
-            fontWeight: 700,
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            color: qualColor,
-            lineHeight: 1.3,
-          }}
-        >
-          {qualifier}
-        </span>
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 'var(--fs-lg)',
-            fontWeight: 700,
-            color: amountColor,
-            lineHeight: 1.25,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {amount}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameLabel, oweThisWeek, paidThisWeek, settledThisWeek, prevOwe, prevSessionDate, sessionDatetime }: ProfileIdentityCardProps) {
-  const ava = profileAvaColors(name);
+function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin }: ProfileIdentityCardProps) {
   const memberSince = fmtMemberSince(memberCreatedAt);
-  const showCostRow = oweThisWeek !== null || prevOwe !== null;
 
   return (
     <div
@@ -808,126 +714,87 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin, nameL
       style={{
         padding: 16,
         display: 'flex',
-        flexDirection: 'column',
-        gap: 12,
+        alignItems: 'center',
+        gap: 13,
       }}
     >
-      <p
+      {/* The "NAME" eyebrow that sat above this is gone: a 46px avatar and the
+          name in display type already say it, and it created a false parallel
+          with ADMIN and ACCOUNT, which are real groupings.
+
+          Neutral rather than per-name colour. `avatarColors` gives Profile a
+          violet circle, which — with the old violet ADMIN pill — was a fourth
+          brand colour on a page whose palette is meant to be green for status
+          and red for log out. Other surfaces keep the coloured avatar: there
+          it distinguishes one player from another, which is the job it was
+          built for. Here there is only ever one person. */}
+      <span
+        aria-hidden="true"
         style={{
+          width: 46,
+          height: 46,
+          borderRadius: '50%',
+          background: 'rgba(var(--glass-tint), 0.10)',
+          color: 'var(--text-primary)',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           fontFamily: 'var(--font-display, "Space Grotesk")',
-          fontSize: 'var(--fs-2xs)',
-          fontWeight: 700,
-          letterSpacing: '0.16em',
-          textTransform: 'uppercase',
-          color: 'var(--ink-faint, rgba(255,255,255,0.42))',
-          margin: 0,
+          fontWeight: 600,
+          fontSize: 'var(--fs-stat)',
+          flexShrink: 0,
+          border: '1px solid rgba(var(--glass-tint), 0.10)',
         }}
       >
-        {nameLabel}
-      </p>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <span
-          aria-hidden="true"
+        {name.slice(0, 1).toUpperCase()}
+      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Semibold at --fs-stat, down from bold at --fs-stat-lg. The name is a
+            fact about you, not the page's headline — and it no longer has to
+            out-shout a dollar amount set at the same size beside it. */}
+        <p
           style={{
-            width: 48,
-            height: 48,
-            borderRadius: '50%',
-            background: ava.bg,
-            color: ava.fg,
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
             fontFamily: 'var(--font-display, "Space Grotesk")',
-            fontWeight: 600,
             fontSize: 'var(--fs-stat)',
-            flexShrink: 0,
-            border: '1px solid rgba(var(--glass-tint), 0.10)',
+            fontWeight: 600,
+            letterSpacing: '-0.015em',
+            margin: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
           }}
         >
-          {name.slice(0, 1).toUpperCase()}
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p
+          {name}
+        </p>
+        {memberSince && (
+          <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginTop: 2 }}>
+            Member since {memberSince}
+          </p>
+        )}
+      </div>
+      {/* Side by side, not stacked: two badges in a column read as a status
+          column with a hierarchy between them. They are peers. */}
+      <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+        {isSignedUp && (
+          <span className="pill-paid" style={{ whiteSpace: 'nowrap' }}>
+            In
+          </span>
+        )}
+        {isAdmin && (
+          <span
             style={{
-              fontFamily: 'var(--font-display, "Space Grotesk")',
-              fontSize: 'var(--fs-stat-lg)',
-              fontWeight: 700,
-              letterSpacing: '-0.02em',
-              margin: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
+              background: 'rgba(var(--glass-tint), 0.09)',
+              color: 'var(--text-secondary)',
+              padding: '4px 11px',
+              borderRadius: 'var(--radius-pill)',
+              fontSize: 'var(--fs-sm)',
             }}
           >
-            {name}
-          </p>
-          {memberSince && (
-            <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginTop: 2 }}>
-              Member since {memberSince}
-            </p>
-          )}
-        </div>
-        <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end', flexShrink: 0 }}>
-          {isSignedUp && (
-            <span
-              className="pill-paid"
-              style={{ whiteSpace: 'nowrap' }}
-            >
-              In
-            </span>
-          )}
-          {isAdmin && (
-            <span
-              style={{
-                whiteSpace: 'nowrap',
-                background: 'rgba(167,139,250,0.13)',
-                color: '#a78bfa',
-                border: '1px solid rgba(167,139,250,0.28)',
-                padding: '3px 10px',
-                borderRadius: 'var(--radius-pill)',
-                fontSize: 'var(--fs-xs)',
-                fontFamily: 'var(--font-display, "Space Grotesk")',
-                fontWeight: 600,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-              }}
-            >
-              Admin
-            </span>
-          )}
-        </div>
+            Admin
+          </span>
+        )}
       </div>
-
-      {showCostRow && (
-        <div
-          style={{
-            borderTop: '1px solid var(--inner-card-border)',
-            paddingTop: 12,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-          }}
-        >
-          {oweThisWeek !== null && (
-            <CostRow
-              label="This week"
-              date={fmtShortDay(sessionDatetime)}
-              qualifier={paidThisWeek ? 'Paid ✓' : settledThisWeek ? 'Final cost' : 'Estimated'}
-              amount={fmtMoney(oweThisWeek)}
-              tone={paidThisWeek ? 'accent' : 'primary'}
-            />
-          )}
-          {prevOwe !== null && (
-            <CostRow
-              label="Last session"
-              date={fmtShortDay(prevSessionDate)}
-              qualifier="Final cost"
-              amount={fmtMoney(prevOwe)}
-              tone="muted"
-            />
-          )}
-        </div>
-      )}
     </div>
   );
 }
