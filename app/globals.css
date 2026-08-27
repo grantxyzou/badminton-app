@@ -3697,3 +3697,99 @@ html[data-visual="field"][data-theme="light"] {
 [data-theme='light'] .btn-google:hover {
   background: #f2f2f2;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PROCESS STRIP  —  o——o——o——o
+   ══════════════════════════════════════════════════════════════════════════
+   A horizontal sequence of steps with a connecting rail, used on the Home
+   stringing card. Defined here rather than inlined because the dot and rail
+   are GEOMETRY, and geometry hand-typed at each call site is exactly how a
+   second strip ends up 11px next to a 12px one.
+
+   Two sizes only, and both are tokens: the dot, and the rail's thickness —
+   which is also the dot's border, so a change keeps them visually related
+   instead of drifting apart.
+
+   The rail is drawn as two legs either side of each dot rather than one line
+   underneath, so the leg BEHIND a step can be tinted independently of the leg
+   ahead of it. That is what lets a half-finished sequence read correctly. */
+:root {
+  --step-dot: 12px;
+  --step-rail: 2px;
+}
+
+.bpm-steps {
+  display: grid;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.bpm-steps__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.bpm-steps__rail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+.bpm-steps__leg {
+  flex: 1;
+  height: var(--step-rail);
+  background: var(--divider);
+}
+.bpm-steps__leg--on { background: var(--accent); }
+/* The outer legs of the first and last steps have nothing to connect to. */
+.bpm-steps__leg--end { background: transparent; }
+
+.bpm-steps__dot {
+  flex: 0 0 auto;
+  width: var(--step-dot);
+  height: var(--step-dot);
+  border-radius: var(--radius-pill);
+  border: var(--step-rail) solid var(--text-muted);
+  background: transparent;
+}
+/* Filled means "reached", which includes where you are standing — a hollow
+   current step reads as not-started. */
+.bpm-steps__dot--on {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.bpm-steps__label {
+  margin-top: var(--space-2);
+  padding-inline: var(--space-1);
+  text-align: center;
+  line-height: var(--lh-snug);
+  color: var(--text-muted);
+}
+.bpm-steps__label--here {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   REMOVABLE CHIP
+   ══════════════════════════════════════════════════════════════════════════
+   A value someone added and can take away again — the stringer's stocked
+   string list. Deliberately NOT one of the `.pill-*` classes: those are
+   read-only status badges with a fixed semantic colour, and reusing one here
+   would say "waitlisted" or "paid" about a spool of string. Same geometry as
+   the pills so the two families look related; different name because they mean
+   different things and only one of them is tappable. */
+.bpm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.bpm-chip:hover { background: var(--glass-bg); }
+.bpm-chip:disabled { opacity: 0.5; pointer-events: none; }

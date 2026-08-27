@@ -109,14 +109,11 @@ export default function OfferedStringsCard() {
               disabled={busy || !online}
               onClick={() => void save(strings.filter((x) => x !== s))}
               aria-label={t('strings.remove', { name: s })}
-              className="cc-mini-card"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 'var(--space-2)',
-                padding: '6px 10px',
-                borderRadius: 'var(--radius-pill)',
-              }}
+              // `.bpm-chip` in globals.css — a value someone added and can take
+              // away. Not one of the `.pill-*` classes: those are read-only
+              // status badges with a fixed semantic colour, and wearing one
+              // here would say "waitlisted" about a spool of string.
+              className="bpm-chip"
             >
               <span className="fs-sm">{s}</span>
               <span className="material-icons icon-xs" style={{ color: 'var(--text-muted)' }}>
