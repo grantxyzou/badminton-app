@@ -1951,6 +1951,8 @@ html[data-visual="field"] .ink-button {
   position: absolute;
   inset: 0;
   border-radius: inherit;
+  /* NOT SPACING — this padding draws the gradient hairline ring itself
+     (the ::before is the border). Exempt from the spacing ladder. */
   padding: 1.25px;
   background: var(--ai-rim);
   /* ORDER MATTERS. `mask`/`-webkit-mask` are SHORTHANDS, so they reset
@@ -2593,6 +2595,8 @@ textarea {
 .icon-pin {
   font-size: 16px;
   color: var(--pin-color);
+  /* Optical hairline nudge, not a layout gap — the pin glyph sits 1px high
+     against its label. Exempt from the spacing ladder. */
   margin-top: 1px;
 }
 
