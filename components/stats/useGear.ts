@@ -232,11 +232,17 @@ export function useGear(name: string | null): UseGear {
     // "pick this racket". POST's contract is "append to my bag" and it must
     // NOT move `activeRacketId` (route.ts:180) — appending a spare must never
     // silently change the racket you play with. But the kit row that opens
-    // this sheet is labelled "Change", and the sheet closes the moment you
-    // pick, so the member never reaches `BagList`'s "Use this one" to finish
-    // the job. The result was a control that demonstrably did nothing: tap
-    // Change, choose a different racket, and the row still read the old one
-    // while the write returned 200.
+    // this sheet is labelled "Change", so picking there means "this is the one
+    // I am using now". `BagList` — which is where "Use this one" lives — is on
+    // the Gear tab behind this sheet, so without the pointer move the member
+    // would have to close the sheet and find it to finish the job. The result
+    // was a control that demonstrably did nothing: tap Change, choose a
+    // different racket, and the row still read the old one while the write
+    // returned 200.
+    //
+    // (This used to say "the sheet closes the moment you pick". It no longer
+    // does — a pick leaves the sheet open so the row can show its checked
+    // state. The pointer move is still the caller's to ask for.)
     //
     // So the CALLER states the intent, and a caller that means "this is the
     // one I'm using now" says so — the same distinction `PUT` already draws

@@ -13,9 +13,10 @@ import type { GearItem } from '../../lib/types';
  * tension — stacked above the catalog somebody had opened in order to add
  * something. That half moved to `YourKitCard`, and its tests moved with it
  * (see `YourKitCard.test.tsx`). What is pinned here is the browse job: one tap
- * commits and closes, owned rows appear IN PLACE rather than being hidden or
- * lifted into a separate section, brand is a group heading with a count rather
- * than the first line of every row, and search leads.
+ * commits and the sheet STAYS OPEN so the row can show its checked state,
+ * owned rows appear IN PLACE rather than being hidden or lifted into a
+ * separate section, brand is a group heading with a count rather than the
+ * first line of every row, and search leads.
  */
 
 const CATALOG = [
@@ -166,15 +167,23 @@ describe('GearSheet (catalog picker)', () => {
     expect(screen.getByText('Victor · 1')).toBeTruthy();
   });
 
-  // The whole point of the redesign: picking is one tap, not tap-then-Save.
-  it('tapping a model picks it and closes the sheet — there is no Save button', async () => {
+  /**
+   * Picking is one tap, not tap-then-Save — and the tap does NOT dismiss.
+   *
+   * The sheet used to close the instant a pick succeeded. That was defensible
+   * while owned rows were hidden from the catalog: there was nothing left to
+   * see. Now the tapped row turns into a checked, tinted, inert owned row,
+   * and that is the only confirmation the action has — closing on success
+   * rendered it for one frame to nobody.
+   */
+  it('commits on one tap and stays open — no Save button, no dismiss', async () => {
     mockCatalog();
     const { onPick, onClose } = renderSheet();
     fireEvent.click(await screen.findByText('Nanoflare 800'));
 
     await waitFor(() => expect(onPick).toHaveBeenCalledTimes(1));
     expect(onPick.mock.calls[0][0].id).toBe('racket-yonex-nanoflare-800');
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(onClose).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: /^Save/ })).toBeNull();
   });
 

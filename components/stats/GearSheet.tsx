@@ -85,6 +85,13 @@ function specLine(item: CatalogItem): string {
  * task is finding it among 50, so search leads and brand is the only filter.
  * Spec filters would be answering a question nobody asked here (you don't know
  * your own racket's balance; that's what the hero card tells you afterwards).
+ *
+ * A tap COMMITS BUT DOES NOT CLOSE. The sheet used to dismiss itself the
+ * instant a pick succeeded, which was defensible while owned items were
+ * hidden from the list — there was nothing left to look at. Now the row turns
+ * into a checked, tinted, inert owned row, and that is the only confirmation
+ * the action has; closing on success rendered it for one frame to nobody. The
+ * close button is the way out.
  */
 export default function GearSheet({
   open,
@@ -222,7 +229,17 @@ export default function GearSheet({
     if (busy) return;
     setPickError(null);
     const res = await onPick(item);
-    if (res.ok) { onClose(); return; }
+    if (res.ok) {
+      // Deliberately NOT closing. The row you just tapped becomes an owned
+      // row — checked, tinted, inert — and closing on success meant that
+      // state existed for one frame that nobody ever saw. The sheet is the
+      // only place it is legible, so the confirmation IS the row, and the
+      // member leaves when they are done rather than being shown the door
+      // after every pick. `useGear` is the single owner, so `ownedCatalogIds`
+      // updates here without a refetch and without this sheet holding any
+      // gear state of its own.
+      return;
+    }
     // Actionable, not decorative. "Refresh to try again" is the wrong
     // instruction for a lapsed session — refreshing cannot mint a cookie, so
     // it sends the member round a loop that never terminates.

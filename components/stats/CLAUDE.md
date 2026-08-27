@@ -32,7 +32,14 @@ state of its own except the one thing it exists to own (below).
     own headline reason) and the catalog spec line second — the spec line is
     a display line here, never a "why this" reason (see `lib/pickReasons.ts`).
   - **`GearSheet`** is "choose your own" — the full catalog for a category,
-    search-first, one tap commits and closes. It opens on an **All** brand tab,
+    search-first, one tap commits and the sheet STAYS OPEN. Closing on success
+    was right while owned rows were hidden (nothing was left to look at); now
+    the tapped row becomes a checked, tinted, inert owned row, and dismissing
+    rendered that state for one frame to nobody. The confirmation IS the row.
+    `GearPickSheet` follows the same rule — a successful add flips its action
+    to the IN YOUR KIT badge in place. Both rely on `useGear` being the single
+    owner: the write updates the shared doc, so ownership re-renders with no
+    refetch and neither sheet holds gear state. It opens on an **All** brand tab,
     not on the first brand: defaulting to a brand hid 46 of the 71 rackets
     behind tabs nobody suspected, and reached us as "the racket database isn't
     showing some rackets". Search runs through **`lib/gearSearch.ts`** (pure,

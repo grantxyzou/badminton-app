@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useState } from 'react';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
@@ -317,5 +318,75 @@ describe('YourKitCard — the picker learns what you own from this card', () => 
 
     expect(await screen.findByText('Nanoflare 800')).toBeTruthy();
     expect(screen.queryByText(/In your kit/)).toBeNull();
+  });
+});
+
+/**
+ * Tapping a catalog row leaves the sheet OPEN and flips that row in place.
+ *
+ * This needs a stateful owner: `fakeGear`'s `add` is a stub that reports
+ * success without changing the document, so the row could never flip and the
+ * assertion would pass vacuously against a component that had simply stopped
+ * closing. The harness below mutates the gear doc the way `useGear` does, so
+ * the propagation path — add → shared doc → ownedCatalogIds → checked row —
+ * is the thing under test rather than the absence of an onClose call.
+ */
+describe('YourKitCard — a pick confirms itself in place', () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  const CATALOG = [
+    {
+      id: 'racket-yonex-astrox-88d-pro', category: 'racket', brand: 'Yonex', model: 'Astrox 88D Pro',
+      msrp: 309, skillRange: [4, 6],
+      attributes: { weight: '4U', balance: 'head-heavy', flex: 'stiff' },
+    },
+  ];
+
+  function Harness() {
+    const [doc, setDoc] = useState({ id: 'g1', memberId: 'm1', items: [] } as unknown as PlayerGear);
+    const gear = fakeGear(doc, {
+      add: async (item: { id: string; category?: string; brand: string; model: string }) => {
+        setDoc((d) => ({
+          ...d,
+          items: [...d.items, {
+            id: 'new-1',
+            catalogId: item.id,
+            category: (item.category ?? 'racket') as 'racket',
+            label: `${item.brand} ${item.model}`,
+          }],
+        }));
+        return { ok: true as const };
+      },
+    } as Partial<UseGear>);
+    return (
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <YourKitCard activeName="Lin" gear={gear} />
+      </NextIntlClientProvider>
+    );
+  }
+
+  it('marks the tapped row in place and leaves the sheet open', async () => {
+    global.fetch = vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url).includes('/api/equipment/catalog')) {
+        return new Response(JSON.stringify({ items: CATALOG }), { status: 200 });
+      }
+      return new Response('{}', { status: 404 });
+    }) as unknown as typeof fetch;
+
+    render(<Harness />);
+    fireEvent.click(screen.getByLabelText(/^Racket —/));
+
+    const row = await screen.findByRole('button', { name: 'Yonex Astrox 88D Pro' });
+    fireEvent.click(row);
+
+    // The row became an owned row...
+    expect(await screen.findByText(/In your kit/)).toBeTruthy();
+    // ...and is no longer something you can add again.
+    expect(screen.queryByRole('button', { name: 'Yonex Astrox 88D Pro' })).toBeNull();
+    // ...while the sheet is still standing.
+    expect(screen.getByRole('dialog')).toBeTruthy();
   });
 });

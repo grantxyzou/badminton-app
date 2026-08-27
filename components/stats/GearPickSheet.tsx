@@ -102,6 +102,10 @@ function specLine(item: CatalogItem): string {
  *  - Accent is spent on two things: the Change link and the button. Five green
  *    section labels left the green CTA no way to stand out.
  *
+ * A successful add does NOT close the sheet. `owned` flips off the shared
+ * `useGear`, so the button becomes the IN YOUR KIT badge in place — the state
+ * change is the confirmation, and dismissing on success showed it to nobody.
+ *
  * Two things are deliberately NOT collapsed or merged. `warnings` stay inline
  * and uncollapsed — a safety flag that needs a tap to reveal is a safety flag
  * that does not exist. And `provenance` is a separate field from `warnings`
@@ -178,7 +182,10 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
     setAddError(null);
     const res = await gear.add(item);
     if (res.ok) {
-      close();
+      // Same rule as the catalog sheet: the answer to "did that work" is the
+      // surface changing, not the surface leaving. `owned` flips off the
+      // register's shared `useGear`, so the action swaps to the IN YOUR KIT
+      // badge and the footer line in place.
       return;
     }
     // `duplicate_racket` is unreachable from here (an owned pick shows the
