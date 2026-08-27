@@ -34,8 +34,6 @@ import { randomBytes, timingSafeEqual } from 'crypto';
 
 export const STATE_COOKIE = 'bpm_oauth_state';
 export const VERIFIER_COOKIE = 'bpm_oauth_verifier';
-/** Where to send the user once the callback finishes. Same lifetime as state. */
-export const RETURN_COOKIE = 'bpm_oauth_return';
 
 const TTL_S = 10 * 60;
 const COOKIE_PATH = '/bpm';
@@ -67,29 +65,26 @@ function options(mode: CallbackMode) {
 export function setOAuthCookies(
   res: NextResponse,
   mode: CallbackMode,
-  values: { state: string; codeVerifier?: string; returnTo?: string },
+  values: { state: string; codeVerifier?: string },
 ): void {
   const opts = options(mode);
   res.cookies.set(STATE_COOKIE, values.state, opts);
   if (values.codeVerifier) res.cookies.set(VERIFIER_COOKIE, values.codeVerifier, opts);
-  if (values.returnTo) res.cookies.set(RETURN_COOKIE, values.returnTo, opts);
 }
 
 export function readOAuthCookies(req: NextRequest): {
   state: string | null;
   codeVerifier: string | null;
-  returnTo: string | null;
 } {
   return {
     state: req.cookies.get(STATE_COOKIE)?.value ?? null,
     codeVerifier: req.cookies.get(VERIFIER_COOKIE)?.value ?? null,
-    returnTo: req.cookies.get(RETURN_COOKIE)?.value ?? null,
   };
 }
 
-/** Delete all three. Called on every callback, success or failure. */
+/** Delete both. Called on every callback, success or failure. */
 export function clearOAuthCookies(res: NextResponse): void {
-  for (const name of [STATE_COOKIE, VERIFIER_COOKIE, RETURN_COOKIE]) {
+  for (const name of [STATE_COOKIE, VERIFIER_COOKIE]) {
     res.cookies.set(name, '', { httpOnly: true, path: COOKIE_PATH, maxAge: 0 });
   }
 }

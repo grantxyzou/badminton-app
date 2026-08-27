@@ -64,19 +64,19 @@ describe('readOAuthCookies / clearOAuthCookies', () => {
       headers: { cookie: `${STATE_COOKIE}=s1; ${VERIFIER_COOKIE}=v1` },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
-    expect(readOAuthCookies(req)).toEqual({ state: 's1', codeVerifier: 'v1', returnTo: null });
+    expect(readOAuthCookies(req)).toEqual({ state: 's1', codeVerifier: 'v1' });
   });
 
   it('reports nulls when nothing is present', () => {
     const req = new NextRequest('http://localhost:3000/bpm/api/auth/google/callback');
-    expect(readOAuthCookies(req)).toEqual({ state: null, codeVerifier: null, returnTo: null });
+    expect(readOAuthCookies(req)).toEqual({ state: null, codeVerifier: null });
   });
 
-  it('expires all three on clear', () => {
+  it('expires both on clear', () => {
     const res = NextResponse.json({});
     clearOAuthCookies(res);
     const headers = res.headers.getSetCookie();
-    expect(headers.filter((h) => /Max-Age=0/.test(h))).toHaveLength(3);
+    expect(headers.filter((h) => /Max-Age=0/.test(h))).toHaveLength(2);
   });
 });
 

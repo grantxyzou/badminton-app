@@ -19,7 +19,7 @@ import { requireRedirectOrigin } from '@/lib/appOrigin';
 export type ProviderName = 'google' | 'apple';
 
 /** Absolute callback URL. Must match the provider console byte for byte. */
-export function redirectUri(provider: ProviderName, origin: string): string {
+function redirectUri(provider: ProviderName, origin: string): string {
   return `${origin}/bpm/api/auth/${provider}/callback`;
 }
 
