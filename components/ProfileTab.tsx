@@ -13,6 +13,9 @@ import InstallSheet from './InstallSheet';
 import SignInForm from './SignInForm';
 import ProviderButtons from './auth/ProviderButtons';
 import SignInMethodsCard from './auth/SignInMethodsCard';
+import EmailSignInForm from './auth/EmailSignInForm';
+import EmailSignUpSheet from './auth/EmailSignUpSheet';
+import ForgotPasswordSheet from './auth/ForgotPasswordSheet';
 import { isStandalone } from '@/lib/standalone';
 import PageHeader from './primitives/PageHeader';
 import ProfileEyebrow from './primitives/ProfileEyebrow';
@@ -39,6 +42,16 @@ export default function ProfileTab({
 }: Props) {
   const t = useTranslations('profile');
   const [identity, setLocalIdentity] = useState<Identity | null>(null);
+  /**
+   * Which credential the anonymous card is asking for. One form is visible at a
+   * time — a PIN form, an email form and two account-creation buttons stacked
+   * together would be four competing calls to action on the first screen a
+   * signed-out person sees. Defaults to 'pin' because the installed base is PIN
+   * members; email is one tap away.
+   */
+  const [credMode, setCredMode] = useState<'pin' | 'email'>('pin');
+  const [emailSignUpOpen, setEmailSignUpOpen] = useState(false);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   // null = unknown/loading or fetch failed. Used to avoid the bug where a
   // 5xx on /api/members/me silently rendered "Recovery PIN: Not set" and
   // pushed users into a re-create loop that 409'd on `account_exists`.
@@ -260,17 +273,36 @@ export default function ProfileTab({
     setIdentity({ name, token, sessionId });
     setLocalIdentity(getIdentity());
   }
+  const authProvidersOn = isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS');
+
   if (!identity) {
     return (
       <div className="animate-fadeIn flex flex-col gap-4">
         <PageHeader>{t('anonymousTitle')}</PageHeader>
         <p style={{ color: 'var(--text-secondary)' }}>{t('anonymousBody')}</p>
         <div className="glass-card p-4" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <SignInForm
-            sessionId={sessionId}
-            onSuccess={handleSignInSuccess}
-            onForgotPin={() => setEnterCodeOpen(true)}
-          />
+          {authProvidersOn && credMode === 'email' ? (
+            <EmailSignInForm
+              onSuccess={handleSignInSuccess}
+              onForgotPassword={() => setForgotPasswordOpen(true)}
+            />
+          ) : (
+            <SignInForm
+              sessionId={sessionId}
+              onSuccess={handleSignInSuccess}
+              onForgotPin={() => setEnterCodeOpen(true)}
+            />
+          )}
+          {authProvidersOn && (
+            <button
+              type="button"
+              onClick={() => setCredMode((m) => (m === 'pin' ? 'email' : 'pin'))}
+              className="btn-ghost"
+              style={{ width: '100%', fontSize: 'var(--fs-base)' }}
+            >
+              {credMode === 'pin' ? t('auth.useEmailInstead') : t('auth.usePinInstead')}
+            </button>
+          )}
           <div
             aria-hidden="true"
             style={{
@@ -289,16 +321,22 @@ export default function ProfileTab({
           </div>
           <button
             type="button"
-            onClick={() => setCreateAccountOpen(true)}
+            onClick={() =>
+              authProvidersOn && credMode === 'email'
+                ? setEmailSignUpOpen(true)
+                : setCreateAccountOpen(true)
+            }
             className="btn-ghost"
             style={{ width: '100%' }}
           >
-            {t('anonymousCreateCta')}
+            {authProvidersOn && credMode === 'email'
+              ? t('auth.createEmailCta')
+              : t('anonymousCreateCta')}
           </button>
           {/* Google / Apple. The component renders nothing at all when no
               provider is configured for this deployment, so a build without
               credentials looks exactly as it did before. */}
-          {isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS') && <ProviderButtons mode="signin" />}
+          {authProvidersOn && <ProviderButtons mode="signin" />}
           {/* Standalone "Have a recovery code" link removed — the SignInForm's
               "Forgot your PIN?" link is the single entry to EnterCodeSheet now. #93 */}
         </div>
@@ -316,6 +354,21 @@ export default function ProfileTab({
           onClose={() => setEnterCodeOpen(false)}
           sessionId={sessionId}
           onRecovered={handleRecovered}
+        />
+        <EmailSignUpSheet
+          open={emailSignUpOpen}
+          onClose={() => {
+            setEmailSignUpOpen(false);
+            setLocalIdentity(getIdentity());
+          }}
+          onSuccess={({ name }) => {
+            handleSignInSuccess({ name });
+            setEmailSignUpOpen(false);
+          }}
+        />
+        <ForgotPasswordSheet
+          open={forgotPasswordOpen}
+          onClose={() => setForgotPasswordOpen(false)}
         />
         {isAdmin && (
           <div className="glass-card p-5">
