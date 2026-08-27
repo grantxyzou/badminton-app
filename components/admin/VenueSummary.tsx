@@ -20,7 +20,7 @@ export default function VenueSummary({ session, onEdit }: Props) {
   return (
     <button
       onClick={onEdit}
-      className="w-full glass-card p-3 flex items-start justify-between transition-all active:scale-[0.98] text-left"
+      className="w-full glass-card p-4 flex items-start justify-between transition-all active:scale-[0.98] text-left"
       style={{ minHeight: 44 }}
     >
       <div className="min-w-0">
