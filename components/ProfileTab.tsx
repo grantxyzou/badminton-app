@@ -310,6 +310,54 @@ export default function ProfileTab({
         <span style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
       </div>
     );
+    const createAccountLabel = emailMode ? t('auth.createEmailCta') : t('anonymousCreateCta');
+    const openCreateAccount = () =>
+      emailMode ? setEmailSignUpOpen(true) : setCreateAccountOpen(true);
+    /**
+     * The three secondary routes, on one row.
+     *
+     * They used to sit on two: "Forgot your PIN?" is rendered BY the form, and
+     * the other two lived in a row beneath it. Both forms expose their forgot
+     * callback as optional, so when providers lead we withhold it and render
+     * all three here instead — one plane of equal-weight links under the form,
+     * rather than a stray link followed by a pair.
+     *
+     * Labels are deliberately shorter than the full-sentence versions the forms
+     * use elsewhere: three of those do not fit across a 366px card, and the
+     * shared keys still read in full inside RecoverySheet where there is room.
+     */
+    const secondaryRow = (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          // Inherited by the three buttons: a label must never break mid-phrase
+          // ("Forgot / PIN?"). If the row runs out of width the ROW wraps, which
+          // still reads, whereas a broken label reads as a rendering fault.
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => (emailMode ? setForgotPasswordOpen(true) : setEnterCodeOpen(true))}
+          className="link-quiet"
+        >
+          {emailMode ? t('auth.rowForgotPassword') : t('auth.rowForgotPin')}
+        </button>
+        <button type="button" onClick={openCreateAccount} className="link-quiet">
+          {t('auth.rowCreateAccount')}
+        </button>
+        <button
+          type="button"
+          onClick={() => setCredMode((m) => (m === 'pin' ? 'email' : 'pin'))}
+          className="link-quiet"
+        >
+          {credMode === 'pin' ? t('auth.rowUseEmail') : t('auth.rowUsePin')}
+        </button>
+      </div>
+    );
     const switchCredentialLink = authProvidersOn ? (
       <button
         type="button"
@@ -319,9 +367,6 @@ export default function ProfileTab({
         {credMode === 'pin' ? t('auth.useEmailInstead') : t('auth.usePinInstead')}
       </button>
     ) : null;
-    const createAccountLabel = emailMode ? t('auth.createEmailCta') : t('anonymousCreateCta');
-    const openCreateAccount = () =>
-      emailMode ? setEmailSignUpOpen(true) : setCreateAccountOpen(true);
     return (
       <div className="animate-fadeIn flex flex-col gap-4">
         <PageHeader>{t('anonymousTitle')}</PageHeader>
@@ -351,13 +396,15 @@ export default function ProfileTab({
           {emailMode ? (
             <EmailSignInForm
               onSuccess={handleSignInSuccess}
-              onForgotPassword={() => setForgotPasswordOpen(true)}
+              // Withheld when the row below owns it, or the card renders the
+              // same escape hatch twice.
+              onForgotPassword={providersLead ? undefined : () => setForgotPasswordOpen(true)}
             />
           ) : (
             <SignInForm
               sessionId={sessionId}
               onSuccess={handleSignInSuccess}
-              onForgotPin={() => setEnterCodeOpen(true)}
+              onForgotPin={providersLead ? undefined : () => setEnterCodeOpen(true)}
             />
           )}
           {/* A control's weight is relative to what it competes with, so
@@ -371,19 +418,7 @@ export default function ProfileTab({
               competing, so it keeps the button it has always had. Three
               competing full-width pills was the clutter; one is not. */}
           {providersLead ? (
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                flexWrap: 'wrap',
-                columnGap: 'var(--space-2)',
-              }}
-            >
-              <button type="button" onClick={openCreateAccount} className="link-quiet">
-                {createAccountLabel}
-              </button>
-              {switchCredentialLink}
-            </div>
+            secondaryRow
           ) : (
             <>
               {orDivider}
