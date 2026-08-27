@@ -69,7 +69,7 @@ export default function AdminTab({ onExit }: { onExit: () => void }) {
       <div className="space-y-5">
         <PageHeader>{pageT('title')}</PageHeader>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="glass-card p-6 w-full max-w-xs space-y-5">
+          <div className="glass-card p-5 w-full max-w-xs space-y-5">
             <div className="text-center">
               <span className="material-icons icon-xl text-green-400">lock</span>
               <p className="fs-md text-gray-400 mt-2">{pageT('signInHelp')}</p>

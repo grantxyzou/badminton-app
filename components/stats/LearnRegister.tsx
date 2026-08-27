@@ -433,7 +433,7 @@ function DrillSheet({
               <span
                 style={{
                   fontSize: 'var(--fs-2xs)',
-                  padding: 'var(--space-05) var(--space-3)',
+                  padding: 'var(--space-1) var(--space-3)',
                   borderRadius: 'var(--radius-pill)',
                   fontWeight: 700,
                   letterSpacing: '0.04em',
