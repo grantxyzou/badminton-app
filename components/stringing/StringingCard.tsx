@@ -6,6 +6,9 @@ import CardHeader from '@/components/primitives/CardHeader';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import { useOnline } from '@/lib/useOnline';
 import RequestStringingSheet from './RequestStringingSheet';
+import StringingSteps, { stepForStage } from './StringingSteps';
+import { formatServicePrice, type ServicePrice } from '@/lib/stringingPricing';
+import type { PlayerStage } from '@/lib/stringing';
 import type { PlayerStringingJob } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -44,6 +47,10 @@ export default function StringingCard({ hasIdentity }: Props) {
   const [open, setOpen] = useState<boolean | null>(null);
   const [jobs, setJobs] = useState<PlayerStringingJob[] | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [pricingOpen, setPricingOpen] = useState(false);
+  // null = unknown/unread. `[]` means nothing posted — the expander says so
+  // rather than showing a blank panel.
+  const [pricing, setPricing] = useState<ServicePrice[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +88,24 @@ export default function StringingCard({ hasIdentity }: Props) {
     if (open === true) loadJobs();
   }, [open, loadJobs]);
 
+  // Fetched only when the expander is first opened. A rate card nobody has
+  // asked to see is not worth a request on every Home render.
+  useEffect(() => {
+    if (!pricingOpen || pricing !== null) return;
+    let cancelled = false;
+    fetch(`${BASE}/api/stringing/pricing`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d && Array.isArray(d.services)) setPricing(d.services);
+      })
+      .catch(() => {
+        /* stays null — the panel says it could not load */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pricingOpen, pricing]);
+
   // Anything that is not a confirmed open shop keeps the original card.
   if (open !== true) {
     return (
@@ -107,12 +132,15 @@ export default function StringingCard({ hasIdentity }: Props) {
   return (
     <>
       <div className="glass-card p-5 space-y-3">
+        {/* No subtitle: the step strip below explains the process better than a
+            sentence did, and repeating it in prose was just noise above it. */}
         <CardHeader
           icon="science"
           title={t('title')}
-          subtitle={active ? t('subtitleActive') : t('subtitleOpen')}
           badge={<StatusBadge variant="accent">{t('openBadge')}</StatusBadge>}
         />
+
+        <StringingSteps current={stepForStage((active?.stage as PlayerStage) ?? null)} />
 
         {active && (
           <div
@@ -144,11 +172,54 @@ export default function StringingCard({ hasIdentity }: Props) {
           type="button"
           onClick={() => setSheetOpen(true)}
           disabled={!hasIdentity || !online}
-          className="cc-btn cc-btn-primary cc-btn-lg"
+          className="cc-btn cc-btn-secondary cc-btn-lg"
           style={{ width: '100%' }}
         >
           {t('requestCta')}
         </button>
+
+        {/* Pricing is a disclosure, not an action — hence a quiet row rather
+            than a third button competing with the one that matters. */}
+        <button
+          type="button"
+          onClick={() => setPricingOpen((v) => !v)}
+          aria-expanded={pricingOpen}
+          className="link-quiet"
+          style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
+        >
+          <span className="material-icons icon-sm" aria-hidden="true">
+            {pricingOpen ? 'expand_less' : 'expand_more'}
+          </span>
+          {t('viewPricing')}
+        </button>
+
+        {pricingOpen && (
+          <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+            {pricing === null && (
+              <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                {t('pricingUnavailable')}
+              </p>
+            )}
+            {pricing !== null && pricing.length === 0 && (
+              <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                {t('pricingEmpty')}
+              </p>
+            )}
+            {(pricing ?? []).map((svc) => (
+              <div
+                key={svc.label}
+                style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)' }}
+              >
+                <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>{svc.label}</span>
+                <span className="fs-md" style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+                  {/* "Ask" rather than $0.00 — a null price means there is no
+                      fixed one, which is a different thing from free. */}
+                  {formatServicePrice(svc.priceCents) ?? t('pricingAsk')}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
         {!hasIdentity && (
           <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
             {t('needName')}

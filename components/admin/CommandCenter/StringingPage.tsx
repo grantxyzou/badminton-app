@@ -13,6 +13,7 @@ import type { StringingJob } from '@/lib/types';
 import StringingJobDetail from './StringingJobDetail';
 import StringingIntake from './StringingIntake';
 import OfferedStringsCard from './OfferedStringsCard';
+import PricingCard from './PricingCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -202,6 +203,9 @@ export default function StringingPage({ onBack }: Props) {
             Sits with the shop sign because both are "how the service is set
             up" rather than "what is on the bench right now". */}
         <OfferedStringsCard />
+
+        {/* The rate card players read behind "View pricing" on Home. */}
+        <PricingCard />
 
         {/* Mine / All. The wrapper needs `flex` and each tab `flex-1` —
             .segment-control sets no display, so without it the active pill

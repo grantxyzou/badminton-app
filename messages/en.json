@@ -1,6 +1,16 @@
 {
   "home": {
     "stringing": {
+        "viewPricing": "View pricing",
+        "pricingEmpty": "Grant hasn't posted prices yet — he'll confirm when he takes the racket.",
+        "pricingUnavailable": "Couldn't load prices just now.",
+        "pricingAsk": "Ask",
+        "steps": {
+          "submit": "Submit a request",
+          "dropOff": "Drop off your racket",
+          "track": "Track progress",
+          "collect": "Pick up and pay"
+        },
         "requestTitle": "Request stringing",
         "requestSubtitle": "Intake form",
         "whichString": "Which string?",
@@ -10,10 +20,8 @@
         "standardRequest": "Back to the usual",
         "noStringsYet": "Grant hasn't listed what he stocks yet, so tell him what you'd like.",
         "unusualPair": "Unusual pair — most rackets go {suggested} on the crosses.",
-        "subtitleOpen": "Hand Grant your racket at the session and he'll take it from there.",
-        "subtitleActive": "Here's where your racket is up to.",
         "openBadge": "Open",
-        "requestCta": "Request a restring",
+        "requestCta": "Submit a request",
         "needName": "Add your name above first, so Grant knows whose racket it is.",
         "stage": {
           "with_stringer": "With Grant",
@@ -757,6 +765,20 @@
   },
   "admin": {
     "stringing": {
+        "pricing": {
+          "title": "Your prices",
+          "hint": "Players read these behind “View pricing” on Home.",
+          "empty": "No prices posted yet.",
+          "labelPlaceholder": "Service, e.g. Labour + string",
+          "pricePlaceholder": "30",
+          "add": "Add",
+          "ask": "Ask",
+          "remove": "Remove {name}",
+          "badPrice": "That doesn’t look like a price.",
+          "blankMeansAsk": "Leave the price blank for anything without a fixed rate — players see “Ask”.",
+          "loadError": "Couldn’t load your prices — refresh to retry.",
+          "saveError": "Couldn’t save that — give it another go."
+        },
         "strings": {
           "title": "Strings you stock",
           "hint": "These become the dropdown on a player's request.",
