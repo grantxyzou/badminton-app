@@ -77,7 +77,7 @@ export default function AnnouncementComposer({ draft, setDraft, maxLength = 800 
   }
 
   const tabStyle = (active: boolean): React.CSSProperties => ({
-    padding: '8px 14px',
+    padding: 'var(--space-3) var(--space-5)',
     minHeight: 36,
     fontSize: 'var(--fs-sm)',
     fontWeight: 600,
@@ -93,7 +93,7 @@ export default function AnnouncementComposer({ draft, setDraft, maxLength = 800 
   const formatBtnStyle: React.CSSProperties = {
     minHeight: 44,
     minWidth: 44,
-    padding: '0 10px',
+    padding: '0 var(--space-4)',
     borderRadius: 'var(--radius-md)',
     border: '1px solid var(--inner-card-border, rgba(255,255,255,0.08))',
     background: 'var(--inner-card-bg, rgba(255,255,255,0.03))',
@@ -107,7 +107,7 @@ export default function AnnouncementComposer({ draft, setDraft, maxLength = 800 
   return (
     <div className="space-y-2">
       {/* Write / Preview tabs */}
-      <div role="tablist" aria-label="Composer mode" style={{ display: 'flex', gap: 6 }}>
+      <div role="tablist" aria-label="Composer mode" style={{ display: 'flex', gap: 'var(--space-2)' }}>
         <button
           type="button"
           role="tab"
@@ -133,7 +133,7 @@ export default function AnnouncementComposer({ draft, setDraft, maxLength = 800 
         <div
           role="toolbar"
           aria-label="Formatting"
-          style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', flexWrap: 'wrap' }}
         >
           <button type="button" onClick={() => handleFormat('bold')} aria-label="Bold (**text**)" title="Bold — wraps selection in **" style={{ ...formatBtnStyle, fontWeight: 700 }}>
             B

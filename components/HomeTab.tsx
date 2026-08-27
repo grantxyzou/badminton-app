@@ -377,7 +377,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           BPM Badminton
         </span>
       </PageHeader>
-      <div style={{ marginTop: 4 }}>
+      <div style={{ marginTop: 'var(--space-1)' }}>
         <ReleaseNotesTrigger
           releases={releases}
           onOpen={openReleaseSheet}
@@ -589,7 +589,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   type="button"
                   onClick={() => setEnterCodeOpen(true)}
                   className="fs-sm underline mx-auto"
-                  style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px 12px', minHeight: 44 }}
+                  style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 'var(--space-3) var(--space-4)', minHeight: 44 }}
                 >
                   {t('signup.forgotPin')}
                 </button>
@@ -683,7 +683,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   type="button"
                   onClick={() => setEnterCodeOpen(true)}
                   className="fs-sm underline mx-auto"
-                  style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px 12px', minHeight: 44 }}
+                  style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 'var(--space-3) var(--space-4)', minHeight: 44 }}
                 >
                   {t('signup.forgotPin')}
                 </button>

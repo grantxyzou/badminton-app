@@ -204,7 +204,7 @@ export default function CheckInSheet({
         }}
       >
         <BottomSheetHeader bare className="px-5 pt-4 pb-3">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
             <h2 className="text-lg font-bold m-0" style={{ color: 'var(--text-primary)' }}>{t('assess.checkInTitle')}</h2>
             <button
               onClick={onClose}
@@ -217,12 +217,12 @@ export default function CheckInSheet({
           </div>
           {/* Progress track — only during the quiz steps. */}
           {skill && (
-            <div style={{ marginTop: 12 }}>
+            <div style={{ marginTop: 'var(--space-4)' }}>
               {/* Counter and dimension sit ABOVE the bar, on one line. The
                   bar alone answers how far along you are, but not how far is
                   left or what you are even rating right now — both of which
                   are the questions someone eleven skills deep is asking. */}
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                   {t('assess.step', { n: step + 1, total })}
                 </span>
@@ -245,7 +245,7 @@ export default function CheckInSheet({
           )}
         </BottomSheetHeader>
 
-        <BottomSheetBody bare className="px-5 pb-8" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}>
+        <BottomSheetBody bare className="px-5 pb-8" style={{ paddingBottom: 'max(var(--space-8), env(safe-area-inset-bottom))' }}>
           {/* Intro + reconciliation mirror */}
           {step === -1 && (
             <div className="space-y-4">
@@ -253,8 +253,8 @@ export default function CheckInSheet({
                 <ErrorState message={t('assess.error')} />
               ) : mirror && mirror.played > 0 ? (
                 <div className="p-4 rounded-xl" style={{ background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)' }}>
-                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('assess.mirrorTitle')}</p>
-                  <p style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-primary)', margin: '6px 0 0', lineHeight: 1.4 }}>
+                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: '0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('assess.mirrorTitle')}</p>
+                  <p style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-primary)', margin: 'var(--space-2) 0 0', lineHeight: 1.4 }}>
                     {t('assess.mirrorRecord', { won: mirror.won, played: mirror.played })}
                     {mirror.topPartner ? ` ${t('assess.mirrorPartner', { name: mirror.topPartner })}` : ''}
                   </p>
@@ -262,7 +262,7 @@ export default function CheckInSheet({
               ) : mirrorStatus === 'ready' ? (
                 <EmptyState>{t('assess.noGames')}</EmptyState>
               ) : null}
-              <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>{t('assess.ratePrompt')}</p>
+              <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: '0', lineHeight: 1.5 }}>{t('assess.ratePrompt')}</p>
               <button type="button" onClick={() => setStep(0)} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
                 {t('assess.start')}
               </button>
@@ -275,7 +275,7 @@ export default function CheckInSheet({
               <div>
                 {/* The dimension lives up beside the step counter — printing
                     it here too would show it twice on one screen. */}
-                <h3 className="bpm-h3 m-0" style={{ marginTop: 2 }}>{skill.label}</h3>
+                <h3 className="bpm-h3 m-0" style={{ marginTop: 'var(--space-05)' }}>{skill.label}</h3>
               </div>
               {skill.anchors.map((anchor, i) => {
                 const level = i + 1;
@@ -288,17 +288,17 @@ export default function CheckInSheet({
                     onClick={() => select(level)}
                     className="w-full text-left rounded-xl transition-all active:scale-[0.98]"
                     style={{
-                      padding: 14,
+                      padding: 'var(--space-4)',
                       minHeight: 44,
                       background: isActive ? 'var(--inner-card-green-bg)' : 'var(--inner-card-bg)',
                       border: `1.5px solid ${isActive ? 'var(--inner-card-green-border)' : 'var(--inner-card-border)'}`,
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-05)' }}>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-base)', fontWeight: 700, color: isActive ? 'var(--accent)' : 'var(--text-muted)' }}>{level}</span>
                       {isActive && <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-sm)', color: 'var(--accent)' }}>check_circle</span>}
                     </div>
-                    <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.45, color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)', margin: 0 }}>{anchor}</p>
+                    <p style={{ fontSize: 'var(--fs-base)', lineHeight: 1.45, color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)', margin: '0' }}>{anchor}</p>
                   </button>
                 );
               })}
@@ -307,7 +307,7 @@ export default function CheckInSheet({
                     skip was to not answer — and the label changed under your
                     finger the moment you did. Two controls, one meaning
                     each. */}
-                <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
+                <div style={{ display: 'flex', gap: 'var(--space-4)', paddingTop: 'var(--space-1)' }}>
                   <button
                     type="button"
                     onClick={() => setStep((s) => Math.max(s - 1, -1))}
@@ -358,7 +358,7 @@ export default function CheckInSheet({
           {/* Review + save */}
           {step === total && (
             <div className="space-y-4">
-              <p style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-primary)', margin: 0, lineHeight: 1.4 }}>{t('assess.reviewCount', { rated: ratedCount, total })}</p>
+              <p style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-primary)', margin: '0', lineHeight: 1.4 }}>{t('assess.reviewCount', { rated: ratedCount, total })}</p>
 
               {changes.length > 0 ? (
                 // A bare count ("3 of 14 rated") does not tell you WHAT you
@@ -408,14 +408,14 @@ export default function CheckInSheet({
               )}
 
               {changes.length > 0 && (
-                <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>{t('assess.reviewPrompt')}</p>
+                <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '0' }}>{t('assess.reviewPrompt')}</p>
               )}
 
               {error && <ErrorState message={error} />}
               {!online && (
-                <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>{t('offline')}</p>
+                <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '0' }}>{t('offline')}</p>
               )}
-              <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
                 <button
                   type="button"
                   onClick={() => setStep(-1)}
@@ -456,7 +456,7 @@ export default function CheckInSheet({
                   <span style={{ fontSize: 'var(--fs-2xs)', color: 'color-mix(in srgb, white 86%, transparent)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>
                     {t('assess.savedEyebrow')}
                   </span>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
                     {/* Same hero-number treatment as StatCard size="hero" —
                         responsive rather than a fixed 48, so it does not
                         crowd the sheet on a narrow phone. */}
@@ -468,13 +468,13 @@ export default function CheckInSheet({
                     </span>
                   </div>
                   {savedLevel?.phase && (
-                    <p style={{ margin: '8px 0 0', fontSize: 'var(--fs-sm)', color: 'color-mix(in srgb, white 78%, transparent)' }}>
+                    <p style={{ margin: 'var(--space-3) 0 0', fontSize: 'var(--fs-sm)', color: 'color-mix(in srgb, white 78%, transparent)' }}>
                       {t(`assess.phase.${savedLevel.phase}`)}
                     </p>
                   )}
                 </div>
               </div>
-              <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
+              <p style={{ margin: '0', fontSize: 'var(--fs-base)', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
                 {t('assess.savedBody')}
               </p>
               <button type="button" onClick={onClose} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>

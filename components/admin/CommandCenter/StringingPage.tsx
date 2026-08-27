@@ -180,7 +180,7 @@ export default function StringingPage({ onBack }: Props) {
               <div className="bpm-h3 m-0">
                 {shopOpen === null ? t('shop.unknown') : shopOpen ? t('shop.open') : t('shop.closed')}
               </div>
-              <p className="fs-sm" style={{ color: 'var(--text-secondary)', margin: '2px 0 0' }}>
+              <p className="fs-sm" style={{ color: 'var(--text-secondary)', margin: 'var(--space-05) 0 0' }}>
                 {shopOpen === null
                   ? t('shop.unknownHint')
                   : shopOpen
@@ -263,7 +263,7 @@ export default function StringingPage({ onBack }: Props) {
                   style={{
                     flex: '0 0 auto',
                     fontWeight: 600,
-                    padding: '5px 11px',
+                    padding: 'var(--space-2) var(--space-4)',
                     borderRadius: 'var(--radius-pill)',
                     background: tone.bg,
                     color: tone.fg,

@@ -151,7 +151,7 @@ export default function PullToRefresh({
         role="status"
         aria-label={refreshing ? 'Refreshing' : 'Pull to refresh'}
         style={{
-          marginTop: 10,
+          marginTop: 'var(--space-4)',
           width: 32,
           height: 32,
           borderRadius: '50%',

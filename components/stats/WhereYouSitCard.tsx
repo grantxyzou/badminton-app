@@ -149,10 +149,10 @@ export default function WhereYouSitCard({ activeName, promptOpen = false }: Wher
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 5,
+                gap: 'var(--space-2)',
                 borderRadius: 'var(--radius-pill)',
                 fontSize: 'var(--fs-2xs)',
-                padding: '3px 9px',
+                padding: 'var(--space-1) var(--space-3)',
                 border: '1px solid var(--inner-card-border)',
                 color: 'var(--text-muted)',
                 fontWeight: 600,
@@ -171,7 +171,7 @@ export default function WhereYouSitCard({ activeName, promptOpen = false }: Wher
       />
 
       {revealed && (
-        <p style={{ margin: 0, fontSize: 'var(--fs-md)', lineHeight: 1.5, color: 'var(--text-primary)' }}>
+        <p style={{ margin: '0', fontSize: 'var(--fs-md)', lineHeight: 1.5, color: 'var(--text-primary)' }}>
           {picked.length === 1
             ? t.rich('ledeOne', {
                 band: bandLabel(bandOf.get(picked[0]) as Band),
@@ -191,7 +191,7 @@ export default function WhereYouSitCard({ activeName, promptOpen = false }: Wher
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         {picked.map((key) => (
           <div key={key}>
-            <p style={{ margin: '0 0 5px', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
+            <p style={{ margin: '0 0 var(--space-2)', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
               {SKILL_LABEL.get(key) ?? key}
             </p>
             <BandBar band={revealed ? (bandOf.get(key) as Band) : null} />
@@ -199,7 +199,7 @@ export default function WhereYouSitCard({ activeName, promptOpen = false }: Wher
         ))}
       </div>
 
-      <p style={{ margin: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+      <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
         {revealed ? t('footnote') : t('footnotePrivate')}
       </p>
     </div>
@@ -210,7 +210,7 @@ export default function WhereYouSitCard({ activeName, promptOpen = false }: Wher
 function BandBar({ band }: { band: Band | null }) {
   const cells: Band[] = ['bottom', 'middle', 'top'];
   return (
-    <div style={{ display: 'flex', gap: 3, height: 10 }}>
+    <div style={{ display: 'flex', gap: 'var(--space-1)', height: 10 }}>
       {cells.map((cell, i) => {
         const filled = band === cell;
         return (

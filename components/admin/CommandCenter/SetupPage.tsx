@@ -272,16 +272,16 @@ export default function SetupPage({ onBack }: SetupPageProps) {
   }
 
   return (
-    <div className="animate-slideInRight" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="animate-slideInRight" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
       <AdminBackHeader onBack={onBack} title={`Set up ${date ? new Date(`${date}T${time || '00:00'}`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : 'session'}`} />
 
       {/* WHEN */}
       <SecLabel>When</SecLabel>
-      <div className="glass-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="glass-card" style={{ padding: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         <Field label="Title">
           <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={100} placeholder="Weekly Badminton Session" />
         </Field>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
           <Field label="Date" style={{ flex: 2 }}>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </Field>
@@ -289,7 +289,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
             <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
           </Field>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
           <Field label="End date" style={{ flex: 2 }}>
             <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
           </Field>
@@ -298,12 +298,12 @@ export default function SetupPage({ onBack }: SetupPageProps) {
           </Field>
         </div>
         <Field label="Sign-up deadline">
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
             <input type="date" value={deadlineDate} onChange={(e) => setDeadlineDate(e.target.value)} style={{ flex: 2 }} />
             <input type="time" value={deadlineTime} onChange={(e) => setDeadlineTime(e.target.value)} style={{ flex: 1 }} />
           </div>
           {deadlineOffsetHours !== null && deadlineOffsetHours > 0 && (
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: '4px 0 0', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
+            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
               {Math.round(deadlineOffsetHours)}h before session
             </p>
           )}
@@ -312,14 +312,14 @@ export default function SetupPage({ onBack }: SetupPageProps) {
 
       {/* WHERE */}
       <SecLabel>Where</SecLabel>
-      <div className="glass-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="glass-card" style={{ padding: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         <Field label="Venue">
           <input type="text" value={locationName} onChange={(e) => setLocationName(e.target.value)} maxLength={200} placeholder="e.g. Wing's badminton" />
         </Field>
         <Field label="Address">
           <input type="text" value={locationAddress} onChange={(e) => setLocationAddress(e.target.value)} maxLength={300} placeholder="Street + city" />
         </Field>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
           <Field label="Courts" style={{ flex: 1 }}>
             <input type="number" inputMode="numeric" min={1} max={20} value={courts ?? ''} onChange={(e) => setCourts(e.target.value === '' ? null : parseInt(e.target.value, 10))} />
           </Field>
@@ -327,8 +327,8 @@ export default function SetupPage({ onBack }: SetupPageProps) {
             <input type="number" inputMode="numeric" min={1} max={100} value={maxPlayers ?? ''} onChange={(e) => setMaxPlayers(e.target.value === '' ? null : parseInt(e.target.value, 10))} />
           </Field>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 6px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-1) var(--space-2)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-hair)' }}>
             <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 'var(--fs-base)', fontWeight: 600 }}>Sign-ups open</span>
             <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>Players can join now</span>
           </div>
@@ -341,10 +341,10 @@ export default function SetupPage({ onBack }: SetupPageProps) {
       <div
         className="glass-card"
         style={{
-          padding: '18px 16px',
+          padding: 'var(--space-6) var(--space-5)',
           display: 'flex',
           flexDirection: 'column',
-          gap: 14,
+          gap: 'var(--space-4)',
           background: 'linear-gradient(160deg, rgba(74,222,128,0.06), rgba(var(--glass-tint), 0.02))',
         }}
       >
@@ -352,7 +352,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
           <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 'var(--fs-xs)', color: 'var(--ink-faint)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Per player</span>
           <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)' }}>auto-calc</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-4)' }}>
           <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 48, fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1, color: 'var(--accent)' }}>
             ${perPlayer}
           </span>
@@ -364,7 +364,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         <div style={{ height: 1, background: 'rgba(var(--glass-tint), 0.06)' }} />
 
         {/* Court row */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>{courtsVal} court{courtsVal === 1 ? '' : 's'} × cost</span>
             <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 'var(--fs-sm)' }}>${courtCost.toFixed(2)}</span>
@@ -376,10 +376,10 @@ export default function SetupPage({ onBack }: SetupPageProps) {
             value={costPerCourt ?? ''}
             onChange={(e) => setCostPerCourt(e.target.value === '' ? null : Math.max(0, Math.min(500, Number(e.target.value))))}
             placeholder="$ per court"
-            style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)', borderRadius: 'var(--radius-sm)', padding: '8px 10px', fontSize: 'var(--fs-base)' }}
+            style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-3) var(--space-4)', fontSize: 'var(--fs-base)' }}
           />
           {recentCosts.length > 0 && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)' }}>Recent:</span>
               {recentCosts.map((c) => (
                 <button
@@ -388,7 +388,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
                   onClick={() => setCostPerCourt(c)}
                   style={{
                     fontSize: 'var(--fs-xs)',
-                    padding: '2px 8px',
+                    padding: 'var(--space-05) var(--space-3)',
                     borderRadius: 'var(--radius-pill)',
                     background: costPerCourt === c ? 'rgba(74,222,128,0.13)' : 'rgba(var(--glass-tint), 0.04)',
                     color: costPerCourt === c ? '#86efac' : 'var(--text-secondary)',
@@ -405,9 +405,9 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         </div>
 
         {/* Shuttles: pooled tubes used × price per tube */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-hair)', flex: 1, minWidth: 0 }}>
               <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>Shuttles used</span>
               <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--ink-faint)', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
                 {tubes} tube{tubes === 1 ? '' : 's'} × ${pricePerTube.toFixed(2)} = ${birdCost.toFixed(2)}
@@ -422,15 +422,15 @@ export default function SetupPage({ onBack }: SetupPageProps) {
             value={pricePerTube || ''}
             onChange={(e) => setPricePerTube(e.target.value === '' ? 0 : Math.max(0, Math.min(10000, Number(e.target.value))))}
             placeholder="$ per tube"
-            style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)', borderRadius: 'var(--radius-sm)', padding: '8px 10px', fontSize: 'var(--fs-base)' }}
+            style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-3) var(--space-4)', fontSize: 'var(--fs-base)' }}
           />
           {autoPrice > 0 && Math.abs(autoPrice - pricePerTube) > 0.005 && (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)' }}>Latest:</span>
               <button
                 type="button"
                 onClick={() => setPricePerTube(autoPrice)}
-                style={{ fontSize: 'var(--fs-xs)', padding: '2px 8px', borderRadius: 'var(--radius-pill)', background: 'rgba(var(--glass-tint), 0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(var(--glass-tint), 0.12)', cursor: 'pointer', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}
+                style={{ fontSize: 'var(--fs-xs)', padding: 'var(--space-05) var(--space-3)', borderRadius: 'var(--radius-pill)', background: 'rgba(var(--glass-tint), 0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(var(--glass-tint), 0.12)', cursor: 'pointer', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}
               >
                 ${autoPrice.toFixed(2)}/tube
               </button>
@@ -438,7 +438,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-05) 0' }}>
           <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>Show cost on Home announcement</span>
           <Toggle on={showCostBreakdown} onChange={setShowCostBreakdown} />
         </div>
@@ -451,7 +451,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
           <div
             className="glass-card"
             style={{
-              padding: '14px 16px',
+              padding: 'var(--space-4) var(--space-5)',
               fontFamily: 'var(--font-mono, "JetBrains Mono")',
               fontSize: 'var(--fs-sm)',
               color: 'var(--text-secondary)',
@@ -461,17 +461,17 @@ export default function SetupPage({ onBack }: SetupPageProps) {
           >
             {previewText}
           </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-1)' }}>
             <button type="button" onClick={copyText} className="cc-btn cc-btn-secondary" style={{ flex: 1, justifyContent: 'center' }}>
               {copied ? 'Copied ✓' : 'Copy'}
             </button>
-            <button type="button" onClick={shareImage} className="cc-btn cc-btn-primary" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <button type="button" onClick={shareImage} className="cc-btn cc-btn-primary" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)' }}>
               <span className="material-icons" style={{ fontSize: 'var(--fs-lg)' }}>image</span>
               Share image
             </button>
           </div>
           {shareMessage && (
-            <p role="status" style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '6px 4px 0' }}>
+            <p role="status" style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 'var(--space-2) var(--space-1) 0' }}>
               {shareMessage}
             </p>
           )}
@@ -481,32 +481,32 @@ export default function SetupPage({ onBack }: SetupPageProps) {
 
       {/* Save bar */}
       {loadError && (
-        <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '6px 4px 0' }}>
+        <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: 'var(--space-2) var(--space-1) 0' }}>
           Couldn&apos;t load the current session — saving is disabled to avoid overwriting it. Refresh to retry.
         </p>
       )}
       {saveError && (
-        <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '6px 4px 0' }}>
+        <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: 'var(--space-2) var(--space-1) 0' }}>
           {saveError}
         </p>
       )}
       {success ? (
         <div
           style={{
-            padding: 14,
+            padding: 'var(--space-4)',
             borderRadius: 'var(--radius-lg)',
             background: 'rgba(74,222,128,0.13)',
             border: '1px solid rgba(74,222,128,0.3)',
             color: '#86efac',
             textAlign: 'center',
             fontWeight: 600,
-            marginTop: 6,
+            marginTop: 'var(--space-2)',
           }}
         >
           Saved
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+        <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
           <button
             type="button"
             onClick={onBack}
@@ -543,11 +543,11 @@ function SecLabel({ children, right }: { children: React.ReactNode; right?: stri
         letterSpacing: '0.16em',
         textTransform: 'uppercase',
         color: 'var(--ink-faint)',
-        margin: '14px 4px 6px',
+        margin: 'var(--space-4) var(--space-1) var(--space-2)',
         display: 'flex',
         alignItems: 'baseline',
         justifyContent: 'space-between',
-        gap: 8,
+        gap: 'var(--space-3)',
       }}
     >
       <span>{children}</span>
@@ -562,7 +562,7 @@ function SecLabel({ children, right }: { children: React.ReactNode; right?: stri
 
 function Field({ label, children, style }: { label: string; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, ...style }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', ...style }}>
       <label style={{ fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</label>
       {children}
     </div>
@@ -622,8 +622,8 @@ function Stepper({
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 4,
-        padding: 4,
+        gap: 'var(--space-1)',
+        padding: 'var(--space-1)',
         background: 'rgba(var(--glass-tint), 0.04)',
         border: '1px solid rgba(var(--glass-tint), 0.12)',
         borderRadius: 'var(--radius-md)',

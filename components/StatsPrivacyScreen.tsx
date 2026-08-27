@@ -67,7 +67,7 @@ export default function StatsPrivacyScreen({ onBack, state }: StatsPrivacyScreen
         // refresh) and distinct from a stored answer — no switch is drawn at
         // all, because drawing one means claiming a position.
         <div className="glass-card p-5 space-y-3">
-          <h3 className="bpm-h3" style={{ margin: 0 }}>
+          <h3 className="bpm-h3" style={{ margin: '0' }}>
             {t('comparisonTitle')}
           </h3>
           <ErrorState message={t('unknown')} />
@@ -79,12 +79,12 @@ export default function StatsPrivacyScreen({ onBack, state }: StatsPrivacyScreen
         <div className="glass-card p-5 space-y-3">
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-5)' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <h3 className="bpm-h3" style={{ margin: 0 }}>
+              <h3 className="bpm-h3" style={{ margin: '0' }}>
                 {t('comparisonTitle')}
               </h3>
               <p
                 style={{
-                  margin: '4px 0 0',
+                  margin: 'var(--space-1) 0 0',
                   fontSize: 'var(--fs-base)',
                   lineHeight: 1.45,
                   color: 'var(--text-secondary)',
@@ -124,7 +124,7 @@ export default function StatsPrivacyScreen({ onBack, state }: StatsPrivacyScreen
             </span>
             <p
               id="stats-privacy-state"
-              style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.45, color: 'var(--text-secondary)' }}
+              style={{ margin: '0', fontSize: 'var(--fs-base)', lineHeight: 1.45, color: 'var(--text-secondary)' }}
             >
               {on ? t('stateOn') : t('stateOff')}
             </p>
@@ -132,14 +132,14 @@ export default function StatsPrivacyScreen({ onBack, state }: StatsPrivacyScreen
 
           {saveError && <ErrorState message={t('saveError')} />}
           {!online && (
-            <p style={{ margin: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('offline')}</p>
+            <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('offline')}</p>
           )}
         </div>
       )}
 
       <ProfileEyebrow>{t('othersEyebrow')}</ProfileEyebrow>
 
-      <div className="glass-card-soft" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="glass-card-soft" style={{ padding: '0', overflow: 'hidden' }}>
         {/* Kudos are ANONYMOUS in this app. The design handoff asserted the
             opposite ("Always — kudos are signed"), which would have reversed a
             documented strip-canary invariant in lib/kudos.ts. That reversal was
@@ -158,7 +158,7 @@ export default function StatsPrivacyScreen({ onBack, state }: StatsPrivacyScreen
           border: '1px solid var(--inner-card-border)',
         }}
       >
-        <p style={{ margin: 0, fontSize: 'var(--fs-base)', lineHeight: 1.55, color: 'var(--text-secondary)' }}>
+        <p style={{ margin: '0', fontSize: 'var(--fs-base)', lineHeight: 1.55, color: 'var(--text-secondary)' }}>
           {t.rich('closing', {
             you: (chunks: ReactNode) => (
               <b style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{chunks}</b>
@@ -189,22 +189,22 @@ function VisibilityRow({
         display: 'flex',
         alignItems: 'flex-start',
         gap: 'var(--space-4)',
-        padding: '14px 16px',
+        padding: 'var(--space-4) var(--space-5)',
         borderTop: first ? 'none' : '1px solid var(--divider)',
       }}
     >
       <span
         className="material-icons"
         aria-hidden="true"
-        style={{ fontSize: 'var(--icon-sm)', color: 'var(--text-secondary)', marginTop: 2 }}
+        style={{ fontSize: 'var(--icon-sm)', color: 'var(--text-secondary)', marginTop: 'var(--space-05)' }}
       >
         {icon}
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>{label}</p>
+        <p style={{ margin: '0', fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>{label}</p>
         <p
           style={{
-            margin: '3px 0 0',
+            margin: 'var(--space-1) 0 0',
             fontSize: 'var(--fs-sm)',
             lineHeight: 1.45,
             color: 'var(--text-muted)',
@@ -219,7 +219,7 @@ function VisibilityRow({
           color: 'var(--text-secondary)',
           fontWeight: 600,
           whiteSpace: 'nowrap',
-          marginTop: 2,
+          marginTop: 'var(--space-05)',
         }}
       >
         {verdict}

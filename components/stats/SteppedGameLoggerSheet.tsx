@@ -187,7 +187,7 @@ export default function SteppedGameLoggerSheet({
       maxHeight="85vh"
     >
       <BottomSheetHeader>
-        <h2 className="bpm-h3" style={{ margin: 0 }}>{t('title')}</h2>
+        <h2 className="bpm-h3" style={{ margin: '0' }}>{t('title')}</h2>
         <button
           type="button"
           onClick={onClose}
@@ -200,10 +200,10 @@ export default function SteppedGameLoggerSheet({
       </BottomSheetHeader>
 
       <BottomSheetBody bare>
-        <div style={{ padding: '0 20px 34px', display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <div style={{ padding: '0 var(--space-6) var(--space-8)', display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
           {(step === 'partner' || step === 'opponents') && (
             <>
-              <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>
+              <p style={{ margin: '0', fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>
                 {step === 'partner' ? t('whoWith') : t('whoAgainst', { partner: partner ?? '' })}
               </p>
 
@@ -238,7 +238,7 @@ export default function SteppedGameLoggerSheet({
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         gap: 'var(--space-3)',
-                        padding: '14px 12px',
+                        padding: 'var(--space-4) var(--space-4)',
                         minHeight: 48,
                         borderRadius: 'var(--radius-lg)',
                         background: picked ? 'var(--inner-card-green-bg)' : 'var(--inner-card-bg)',
@@ -284,7 +284,7 @@ export default function SteppedGameLoggerSheet({
                 </button>
               )}
 
-              <p style={{ margin: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+              <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
                 {step === 'partner' ? t('rosterNote') : t('pickTwo')}
               </p>
 
@@ -302,7 +302,7 @@ export default function SteppedGameLoggerSheet({
 
           {step === 'score' && (
             <>
-              <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>
+              <p style={{ margin: '0', fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>
                 {t('versus', { partner: partner ?? '', opponents: opponents.join(' & ') })}
               </p>
               <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
@@ -311,7 +311,7 @@ export default function SteppedGameLoggerSheet({
               </div>
               <p
                 style={{
-                  margin: 0,
+                  margin: '0',
                   textAlign: 'center',
                   fontSize: 'var(--fs-base)',
                   fontWeight: 600,
@@ -322,7 +322,7 @@ export default function SteppedGameLoggerSheet({
               </p>
               {error && <ErrorState message={t('saveError')} />}
               {!online && (
-                <p style={{ margin: 0, fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('offline')}</p>
+                <p style={{ margin: '0', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t('offline')}</p>
               )}
               <Footer
                 backLabel={t('back')}
@@ -351,17 +351,17 @@ export default function SteppedGameLoggerSheet({
                   check_circle
                 </span>
                 <div>
-                  <p style={{ margin: 0, fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  <p style={{ margin: '0', fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>
                     {t('logged')}
                   </p>
-                  <p style={{ margin: '4px 0 0', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
+                  <p style={{ margin: 'var(--space-1) 0 0', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
                     {mine}–{theirs} · {t('with', { partner: partner ?? '' })}
                   </p>
                 </div>
               </div>
 
               <div>
-                <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>
+                <p style={{ margin: '0', fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>
                   {t('kudosOffer', { partner: partner ?? '' })}
                 </p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
@@ -383,7 +383,7 @@ export default function SteppedGameLoggerSheet({
                         <span
                           className="material-icons"
                           aria-hidden="true"
-                          style={{ marginRight: 4, fontSize: 'var(--icon-sm)', verticalAlign: 'text-bottom' }}
+                          style={{ marginRight: 'var(--space-1)', fontSize: 'var(--icon-sm)', verticalAlign: 'text-bottom' }}
                         >
                           {sent ? 'check_circle' : TAG_ICON[tag]}
                         </span>
@@ -455,7 +455,7 @@ function Stepper({
     <div
       style={{
         flex: 1,
-        padding: '16px 12px',
+        padding: 'var(--space-5) var(--space-4)',
         borderRadius: 'var(--radius-lg)',
         background: 'var(--inner-card-bg)',
         border: '1px solid var(--inner-card-border)',

@@ -43,7 +43,7 @@ export default function DemoMode({ onClose }: Props) {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 24,
+        padding: 'var(--space-7)',
       }}
     >
       <button
@@ -74,7 +74,7 @@ export default function DemoMode({ onClose }: Props) {
       <div style={{ textAlign: 'center', maxWidth: 360 }}>
         <h1
           className="bpm-h1"
-          style={{ marginBottom: 12 }}
+          style={{ marginBottom: 'var(--space-4)' }}
         >
           Demo mode
         </h1>

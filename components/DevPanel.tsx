@@ -98,29 +98,29 @@ export default function DevPanel({
         WebkitBackdropFilter: 'blur(16px)',
         border: '1px solid rgba(124, 58, 237, 0.4)',
         borderRadius: 'var(--radius-xl)',
-        padding: 16,
+        padding: 'var(--space-5)',
         color: '#e2e8f0',
         fontSize: 12,
         boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
       }}
     >
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
         <span style={{ fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, color: '#a78bfa' }}>
           Dev Panel
         </span>
         <button
           onClick={() => setCollapsed(true)}
-          style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 2 }}
+          style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 'var(--space-05)' }}
         >
           <span className="material-icons" style={{ fontSize: 16 }}>close</span>
         </button>
       </div>
 
       {/* Presets */}
-      <div style={{ marginBottom: 12 }}>
-        <p style={{ fontSize: 10, color: '#94a3b8', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Presets</p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+      <div style={{ marginBottom: 'var(--space-4)' }}>
+        <p style={{ fontSize: 10, color: '#94a3b8', marginBottom: 'var(--space-2)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Presets</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-1)' }}>
           {PRESETS.map(p => (
             <button
               key={p.label}
@@ -129,7 +129,7 @@ export default function DevPanel({
                 background: 'rgba(124, 58, 237, 0.15)',
                 border: '1px solid rgba(124, 58, 237, 0.3)',
                 borderRadius: 'var(--radius-sm)',
-                padding: '3px 8px',
+                padding: 'var(--space-1) var(--space-3)',
                 color: '#c4b5fd',
                 fontSize: 10,
                 cursor: 'pointer',
@@ -142,10 +142,10 @@ export default function DevPanel({
         </div>
       </div>
 
-      <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)', margin: '8px 0' }} />
+      <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)', margin: 'var(--space-3) 0' }} />
 
       {/* Controls */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         {/* showCostBreakdown */}
         <ToggleRow
           label="Show cost to players"
@@ -155,7 +155,7 @@ export default function DevPanel({
 
         {/* costPerCourt */}
         <div>
-          <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 3 }}>
+          <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 'var(--space-1)' }}>
             Cost per court: {overrides.costPerCourt ? `$${overrides.costPerCourt}` : 'None'}
           </label>
           <input
@@ -172,7 +172,7 @@ export default function DevPanel({
 
         {/* courts */}
         <div>
-          <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 3 }}>
+          <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 'var(--space-1)' }}>
             Courts: {overrides.courts ?? 2}
           </label>
           <input
@@ -203,15 +203,15 @@ export default function DevPanel({
 
         {/* Paid status */}
         <div>
-          <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 3 }}>Paid status</label>
-          <div style={{ display: 'flex', gap: 4 }}>
+          <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 'var(--space-1)' }}>Paid status</label>
+          <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
             {(['none', 'selfReported', 'confirmed'] as const).map(s => (
               <button
                 key={s}
                 onClick={() => set('paidStatus', s)}
                 style={{
                   flex: 1,
-                  padding: '4px 0',
+                  padding: 'var(--space-1) 0',
                   fontSize: 10,
                   borderRadius: 'var(--radius-xs)',
                   border: 'none',
@@ -229,7 +229,7 @@ export default function DevPanel({
 
         {/* Active player count */}
         <div>
-          <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 3 }}>
+          <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 'var(--space-1)' }}>
             Active players: {overrides.activePlayerCount ?? 8}
           </label>
           <input
@@ -244,11 +244,11 @@ export default function DevPanel({
           />
         </div>
 
-        <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)', margin: '4px 0' }} />
+        <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)', margin: 'var(--space-1) 0' }} />
 
         {/* Previous session cost (payment reminder) */}
         <div>
-          <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 3 }}>
+          <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 'var(--space-1)' }}>
             Prev session cost: {overrides.prevCostPerPerson ? `$${overrides.prevCostPerPerson}` : 'None'}
           </label>
           <input
@@ -264,7 +264,7 @@ export default function DevPanel({
         </div>
       </div>
 
-      <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)', margin: '10px 0 6px' }} />
+      <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)', margin: 'var(--space-4) 0 var(--space-2)' }} />
 
       {/* Live calculation preview */}
       <CostPreview overrides={overrides} />
@@ -314,7 +314,7 @@ function CostPreview({ overrides }: { overrides: DevOverrides }) {
 
   return (
     <div style={{ fontSize: 10, color: '#94a3b8' }}>
-      <p style={{ marginBottom: 2 }}>
+      <p style={{ marginBottom: 'var(--space-05)' }}>
         Court total: <span style={{ color: '#e2e8f0' }}>${cost.toFixed(2)}</span>
         {' '} / {players} players = <span style={{ color: visible ? '#22c55e' : '#ef4444' }}>${perPerson.toFixed(2)}</span>
       </p>

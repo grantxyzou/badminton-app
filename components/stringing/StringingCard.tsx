@@ -200,7 +200,7 @@ export default function StringingCard({ hasIdentity }: Props) {
             style={{
               display: 'block',
               width: '100%',
-              padding: 0,
+              padding: '0',
               background: 'none',
               border: 'none',
               font: 'inherit',
@@ -323,12 +323,12 @@ export default function StringingCard({ hasIdentity }: Props) {
         {pricingOpen && (
           <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
             {pricing === null && (
-              <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+              <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
                 {t('pricingUnavailable')}
               </p>
             )}
             {pricing !== null && pricing.length === 0 && (
-              <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+              <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
                 {t('pricingEmpty')}
               </p>
             )}
@@ -348,7 +348,7 @@ export default function StringingCard({ hasIdentity }: Props) {
           </div>
         )}
         {!hasIdentity && (
-          <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+          <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
             {t('needName')}
           </p>
         )}

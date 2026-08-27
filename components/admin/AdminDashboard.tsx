@@ -430,7 +430,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
                     <span className="fs-sm text-gray-500 w-5 text-right font-mono tabular-nums">{i + 1}</span>
                     <span className="flex-1 fs-md text-gray-200 font-medium">{player.name}</span>
                     {player.selfReportedPaid && !player.paid && (
-                      <span className="cc-pill cc-pill-amber" style={{ fontSize: 'var(--fs-2xs)', padding: '2px 6px' }}>
+                      <span className="cc-pill cc-pill-amber" style={{ fontSize: 'var(--fs-2xs)', padding: 'var(--space-05) var(--space-2)' }}>
                         reported
                       </span>
                     )}
@@ -645,7 +645,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="clear-dialog-title"
-            style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 101, padding: '0 16px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 100px)' }}
+            style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 101, padding: '0 var(--space-5)', /* 100px is bottom-nav clearance for this fixed bar, not spacing rhythm — exempt from the ladder. */ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 100px)' }}
           >
             <div className="glass-card p-5 space-y-3 max-w-lg mx-auto">
               <div className="text-center space-y-1.5">

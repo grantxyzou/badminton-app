@@ -47,7 +47,7 @@ export default function ClubConsentSheet({ open, saving = false, onAnswer }: Clu
       <BottomSheetBody bare>
         <div
           style={{
-            padding: '18px 20px 28px',
+            padding: 'var(--space-6) var(--space-6) var(--space-7)',
             display: 'flex',
             flexDirection: 'column',
             gap: 'var(--space-5)',
@@ -63,11 +63,11 @@ export default function ClubConsentSheet({ open, saving = false, onAnswer }: Clu
             groups
           </span>
 
-          <h2 className="bpm-h2" style={{ margin: 0 }}>
+          <h2 className="bpm-h2" style={{ margin: '0' }}>
             {t('title')}
           </h2>
 
-          <p style={{ margin: 0, fontSize: 'var(--fs-md)', lineHeight: 1.5, color: 'var(--text-primary)' }}>
+          <p style={{ margin: '0', fontSize: 'var(--fs-md)', lineHeight: 1.5, color: 'var(--text-primary)' }}>
             {t('body')}
           </p>
 
@@ -106,12 +106,12 @@ export default function ClubConsentSheet({ open, saving = false, onAnswer }: Clu
           </button>
 
           {!online && (
-            <p style={{ margin: 0, textAlign: 'center', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+            <p style={{ margin: '0', textAlign: 'center', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
               {t('offline')}
             </p>
           )}
 
-          <p style={{ margin: 0, textAlign: 'center', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+          <p style={{ margin: '0', textAlign: 'center', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
             {t('changeLater')}
           </p>
         </div>
@@ -124,7 +124,7 @@ function Reassurance({ icon, children }: { icon: string; children: React.ReactNo
   return (
     <p
       style={{
-        margin: 0,
+        margin: '0',
         display: 'flex',
         gap: 'var(--space-3)',
         fontSize: 'var(--fs-base)',

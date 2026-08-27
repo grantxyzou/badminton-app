@@ -18,11 +18,11 @@ import type { ReactNode } from 'react';
  *
  * Replaces e.g.:
  *
- *   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+ *   <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
  *     <span className="material-icons" style={{ fontSize: 'var(--fs-stat-lg)' }}>trending_up</span>
  *     <div>
  *       <h3 className="bpm-h3 m-0">{title}</h3>
- *       <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: 0, marginTop: 2 }}>{sub}</p>
+ *       <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '0', marginTop: 'var(--space-05)' }}>{sub}</p>
  *     </div>
  *   </div>
  *
@@ -74,7 +74,7 @@ export default function CardHeader({
   const resolvedIconColor = iconColor ?? (compact ? 'var(--text-muted)' : 'var(--accent, #22c55e)');
 
   const left = (
-    <div style={{ display: 'flex', alignItems: subtitle ? 'flex-start' : 'center', gap: 8, minWidth: 0 }}>
+    <div style={{ display: 'flex', alignItems: subtitle ? 'flex-start' : 'center', gap: 'var(--space-3)', minWidth: 0 }}>
       {icon && (
         <span
           className="material-icons"
@@ -95,7 +95,7 @@ export default function CardHeader({
               ? { fontSize: 'var(--icon-sm)', fontVariationSettings: "'opsz' 24, 'wght' 600, 'FILL' 0, 'GRAD' 0" }
               : { fontSize: 'var(--fs-stat-lg)' }),
             color: resolvedIconColor,
-            ...(subtitle ? { marginTop: 1 } : null),
+            ...(subtitle ? { marginTop: 'var(--space-hair)' } : null),
           }}
         >
           {icon}
@@ -114,7 +114,7 @@ export default function CardHeader({
           <h3 className="bpm-h3 m-0">{title}</h3>
         )}
         {subtitle && (
-          <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '2px 0 0' }}>
+          <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 'var(--space-05) 0 0' }}>
             {subtitle}
           </p>
         )}
@@ -125,7 +125,7 @@ export default function CardHeader({
   if (!trailing) return left;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
       {left}
       {trailing}
     </div>

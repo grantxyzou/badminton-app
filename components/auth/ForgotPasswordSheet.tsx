@@ -71,13 +71,13 @@ export default function ForgotPasswordSheet({ open, onClose }: Props) {
         {sent ? (
           <p
             role="status"
-            style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: 0 }}
+            style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}
           >
             {t('forgotSent')}
           </p>
         ) : (
           <form onSubmit={submit} style={{ display: 'grid', gap: 'var(--space-4)' }}>
-            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: 0 }}>
+            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}>
               {t('forgotBody')}
             </p>
             <input

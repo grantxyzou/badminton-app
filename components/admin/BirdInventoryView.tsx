@@ -230,10 +230,10 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
     return (
       <div className="animate-slideInRight space-y-4">
         <AdminBackHeader onBack={onBack} title="Bird Inventory" />
-        <div role="alert" style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+        <div role="alert" style={{ padding: 'var(--space-9) var(--space-7)', textAlign: 'center', color: 'var(--text-muted)' }}>
           <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Couldn&apos;t load bird inventory</p>
-          <p style={{ fontSize: 'var(--fs-base)', marginTop: 6 }}>You may be offline. Reconnect, then retry.</p>
-          <button type="button" className="btn-primary" style={{ marginTop: 14 }} onClick={() => void loadAll()}>
+          <p style={{ fontSize: 'var(--fs-base)', marginTop: 'var(--space-2)' }}>You may be offline. Reconnect, then retry.</p>
+          <button type="button" className="btn-primary" style={{ marginTop: 'var(--space-4)' }} onClick={() => void loadAll()}>
             Retry
           </button>
         </div>
@@ -319,7 +319,7 @@ export default function BirdInventoryView({ onBack }: { onBack: () => void }) {
                     background: 'transparent',
                     border: 'none',
                     color: 'var(--text-primary)',
-                    padding: 0,
+                    padding: '0',
                     cursor: 'pointer',
                     minHeight: 44,
                   }}

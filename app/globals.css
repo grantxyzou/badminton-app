@@ -507,6 +507,7 @@ body {
      loosen every tight label/value pair in the app, so the half-rung is
      documented rather than deleted. Do not reach for it to tighten a real
      gap; --space-1 is the smallest LAYOUT rung. */
+  --space-hair: 1px;
   --space-05: 2px;
   --space-1: 4px;
   --space-2: 6px;
@@ -514,6 +515,15 @@ body {
   --space-4: 12px;
   --space-5: 16px;
   --space-6: 20px;
+  /* Section rungs. 1..6 are the INLINE MICRO scale — the space between an
+     icon and its label, a row and the row under it. 7..9 are what a section
+     needs: the breathing room around an empty state, a sheet's bottom safe
+     area, a hero's inset. They exist because 24/32/48 were being hand-typed
+     at those sites with no rung to reach for, not because the micro scale
+     was short. */
+  --space-7: 24px;
+  --space-8: 32px;
+  --space-9: 48px;
 
   /* ══════════════════════════════════════════════════════════════════════
      FIELDS & CARD MATERIALS  (design: "Visual Colours" §06, 2026-08-25)
@@ -3226,7 +3236,7 @@ button.sheet-row:hover { background: var(--glass-soft-bg); }
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-5);
   font-size: 0.8125rem;
   font-weight: 500;
   letter-spacing: 0.005em;
@@ -3357,7 +3367,7 @@ button.sheet-row:hover { background: var(--glass-soft-bg); }
 .cc-checkbox {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-4);
   font-size: 13.5px;
   color: var(--text-primary);
   cursor: pointer;
@@ -3800,7 +3810,7 @@ html[data-visual="field"][data-theme="light"] {
    --------------------------------------------------------------------------- */
 .btn-google {
   width: 100%;
-  gap: var(--space-3);
+  gap: var(--space-4);
   min-height: 44px;
   padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-pill);

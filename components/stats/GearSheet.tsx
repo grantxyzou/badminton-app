@@ -409,7 +409,7 @@ export default function GearSheet({
                             >
                               check_circle
                             </span>
-                            <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--space-05)' }}>
                               <span className="fs-lg">{c.model}</span>
                               <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{ownedCaption(c)}</span>
                             </span>
@@ -435,7 +435,7 @@ export default function GearSheet({
                           disabled={pending || !online}
                           style={pending ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
                         >
-                          <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--space-05)' }}>
                             <span className="fs-lg">{c.model}</span>
                             {spec && <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{spec}</span>}
                           </span>
@@ -459,7 +459,7 @@ export default function GearSheet({
               offline notice is context for the list, not a refusal to act on. */}
           {!online && (
             <div style={{ padding: 'var(--space-4) var(--space-6) 0' }}>
-              <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>{tStats('offline')}</p>
+              <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0' }}>{tStats('offline')}</p>
             </div>
           )}
         </div>

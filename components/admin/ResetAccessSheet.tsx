@@ -55,15 +55,15 @@ export default function ResetAccessSheet({ open, onClose, playerName, code, expi
               fontFamily: 'var(--font-mono)',
               fontSize: 36,
               letterSpacing: '0.3em',
-              margin: '24px 0 16px',
+              margin: 'var(--space-7) 0 var(--space-5)',
             }}
           >
             {code}
           </p>
-          <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginBottom: 20 }}>
+          <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginBottom: 'var(--space-6)' }}>
             {t('expiresIn', { time: `${mm}:${ss}` })}
           </p>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
             <button type="button" onClick={copy} className="btn-ghost" style={{ flex: 1 }}>
               {t('copy')}
             </button>

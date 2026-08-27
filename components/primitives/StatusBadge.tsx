@@ -42,12 +42,12 @@ const BASE: CSSProperties = {
 export default function StatusBadge({ children, variant = 'accent', tone = 'accent' }: StatusBadgeProps) {
   let style: CSSProperties;
   if (variant === 'muted') {
-    style = { ...BASE, fontSize: 'var(--fs-2xs)', padding: '2px 7px', border: '1px solid var(--inner-card-border)', color: 'var(--text-muted)' };
+    style = { ...BASE, fontSize: 'var(--fs-2xs)', padding: 'var(--space-05) var(--space-3)', border: '1px solid var(--inner-card-border)', color: 'var(--text-muted)' };
   } else if (variant === 'phase') {
     const c = tone === 'amber' ? 'var(--accent-amber)' : 'var(--accent)';
-    style = { ...BASE, fontSize: 'var(--fs-xs)', padding: '3px 10px', border: `1px solid ${c}`, color: c };
+    style = { ...BASE, fontSize: 'var(--fs-xs)', padding: 'var(--space-1) var(--space-4)', border: `1px solid ${c}`, color: c };
   } else {
-    style = { ...BASE, fontSize: 'var(--fs-2xs)', padding: '3px 8px', border: '1px solid var(--accent, #22c55e)', color: 'var(--accent, #22c55e)' };
+    style = { ...BASE, fontSize: 'var(--fs-2xs)', padding: 'var(--space-1) var(--space-3)', border: '1px solid var(--accent, #22c55e)', color: 'var(--accent, #22c55e)' };
   }
   return <span style={style}>{children}</span>;
 }

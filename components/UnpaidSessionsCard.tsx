@@ -189,7 +189,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
   return (
     <div
       className={`glass-card ${isHome ? "p-4" : "p-5"}`}
-      style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+      style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}
     >
       {collapsible ? (
         <button
@@ -202,8 +202,8 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
           style={{
             display: 'block',
             width: '100%',
-            padding: 0,
-            margin: 0,
+            padding: '0',
+            margin: '0',
             background: 'none',
             border: 'none',
             font: 'inherit',
@@ -231,16 +231,16 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
           <>
             {/* Sessions — one line per unpaid week, no dividers between rows. */}
             {lineItems.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                 {grouped && (
-                  <p className="fs-2xs" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                  <p className="fs-2xs" style={{ margin: '0', color: 'var(--text-muted)' }}>
                     {tBal('groupSessions')}
                   </p>
                 )}
                 {lineItems.map((s) => (
                   <div
                     key={s.sessionId}
-                    style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}
+                    style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}
                   >
                     <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                       {format.dateTime(new Date(s.date), DAY_SHORT)}
@@ -258,16 +258,16 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
                 so a line here is always an exact figure. See
                 lib/stringingBilling.ts. */}
             {stringingItems.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                 {grouped && (
-                  <p className="fs-2xs" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                  <p className="fs-2xs" style={{ margin: '0', color: 'var(--text-muted)' }}>
                     {tBal('groupStringing')}
                   </p>
                 )}
                 {stringingItems.map((j) => (
                   <div
                     key={j.jobId}
-                    style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}
+                    style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}
                   >
                     <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', minWidth: 0 }}>
                       {j.racketLabel}
@@ -284,11 +284,11 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
             <div
               style={{
                 borderTop: '1px solid var(--inner-card-border)',
-                paddingTop: 10,
+                paddingTop: 'var(--space-4)',
                 display: 'flex',
                 alignItems: 'baseline',
                 justifyContent: 'space-between',
-                gap: 8,
+                gap: 'var(--space-3)',
               }}
             >
               <span style={{ fontSize: 'var(--fs-md, 14px)', fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -300,7 +300,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
             </div>
 
             {etransferEmail && (
-              <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+              <p style={{ margin: '0', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                 {tPay('etransfer', { email: etransferEmail })}
               </p>
             )}

@@ -208,7 +208,7 @@ export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
                   <span
                     style={{
                       display: 'block',
-                      marginTop: 2,
+                      marginTop: 'var(--space-05)',
                       fontSize: 'var(--fs-md)',
                       color: item ? 'var(--text-primary)' : 'var(--text-muted)',
                       overflow: 'hidden',

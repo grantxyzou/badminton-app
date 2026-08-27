@@ -134,7 +134,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested }: Pr
           onClick={() => set(clamp(value - 1))}
           aria-label={t('decrease', { field: label })}
           className="cc-btn cc-btn-secondary"
-          style={{ width: 44, height: 44, borderRadius: 'var(--radius-pill)', padding: 0 }}
+          style={{ width: 44, height: 44, borderRadius: 'var(--radius-pill)', padding: '0' }}
         >
           <span className="material-icons icon-sm">remove</span>
         </button>
@@ -143,7 +143,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested }: Pr
           style={{ minWidth: 62, textAlign: 'center', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
         >
           {value}
-          <span className="fs-sm" style={{ marginLeft: 2, color: 'var(--text-muted)' }}>
+          <span className="fs-sm" style={{ marginLeft: 'var(--space-05)', color: 'var(--text-muted)' }}>
             {t('lb')}
           </span>
         </span>
@@ -152,7 +152,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested }: Pr
           onClick={() => set(clamp(value + 1))}
           aria-label={t('increase', { field: label })}
           className="cc-btn cc-btn-secondary"
-          style={{ width: 44, height: 44, borderRadius: 'var(--radius-pill)', padding: 0 }}
+          style={{ width: 44, height: 44, borderRadius: 'var(--radius-pill)', padding: '0' }}
         >
           <span className="material-icons icon-sm">add</span>
         </button>
@@ -193,7 +193,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested }: Pr
       <BottomSheetBody>
         {done ? (
           <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-            <p role="status" className="fs-md" style={{ margin: 0, color: 'var(--text-primary)' }}>
+            <p role="status" className="fs-md" style={{ margin: '0', color: 'var(--text-primary)' }}>
               {t('requestSent')}
             </p>
             <button
@@ -207,7 +207,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested }: Pr
           </div>
         ) : (
           <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-            <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+            <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
               {t('requestSubtitle')}
             </p>
 
@@ -250,7 +250,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested }: Pr
                 {stepper(t('mains'), mains, setTension)}
                 {stepper(t('crosses'), crosses, setCrosses)}
                 {!isConventionalPair(mains, crosses) && (
-                  <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                  <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
                     {t('unusualPair', { suggested: crossesFor(mains) })}
                   </p>
                 )}
@@ -260,7 +260,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested }: Pr
             )}
 
             {mustBeCustom ? (
-              <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+              <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
                 {t('noStringsYet')}
               </p>
             ) : (

@@ -72,12 +72,12 @@ export default function KudosReceivedCard() {
 
   return (
     <Frame>
-      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      <ul style={{ margin: '0', padding: '0', listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
         {KUDOS_TAGS.filter((tag) => state.kudos.some((k) => k.tag === tag)).map((tag) => {
           const count = state.kudos.find((k) => k.tag === tag)?.count ?? 0;
           return (
             <li key={tag} style={{
-              display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 'var(--radius-pill)',
+              display: 'flex', alignItems: 'center', gap: 'var(--space-2)', padding: 'var(--space-2) var(--space-4)', borderRadius: 'var(--radius-pill)',
               border: '1px solid var(--border)', fontSize: 'var(--fs-base)', color: 'var(--text-secondary)',
             }}>
               {/* Accent on received chips — these are success semantics. */}
@@ -104,7 +104,7 @@ export default function KudosReceivedCard() {
           <p className="section-label-muted" style={{ margin: '0 0 var(--space-3)' }}>
             {t('kudos.notesTitle')}
           </p>
-          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <ul style={{ margin: '0', padding: '0', listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {state.notes.map((n) => (
               <li
                 key={`${n.createdAt}-${n.raterName}-${n.tag}`}
@@ -120,7 +120,7 @@ export default function KudosReceivedCard() {
                 }}
               >
                 <p className="fs-md m-0" style={{ color: 'var(--text-primary)' }}>{n.note}</p>
-                <p className="fs-sm m-0" style={{ color: 'var(--text-muted)', marginTop: 4 }}>
+                <p className="fs-sm m-0" style={{ color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>
                   {n.raterName}
                   {' · '}
                   {t(`kudos.tag.${n.tag}`)}
