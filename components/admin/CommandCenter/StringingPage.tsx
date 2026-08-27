@@ -7,7 +7,7 @@ import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
-import { STRINGING_FLOW, formatPriceExact } from '@/lib/stringing';
+import { dueFor, todayIso, formatReadyBy, type DueTone } from '@/lib/stringingDue';
 import type { StringingStatus } from '@/lib/stringing';
 import type { StringingJob } from '@/lib/types';
 import StringingJobDetail from './StringingJobDetail';
@@ -31,6 +31,16 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  */
 
 /** Chip tone per status. Mirrors the design's TONE table. */
+/** Urgency colour for the due column. Separate from the status chip: a job can
+ *  be `received` (neutral) and overdue (red) at the same time, which is exactly
+ *  the pair a stringer scans for. */
+const DUE_FG: Record<DueTone, string> = {
+  overdue: 'var(--sev-crit-text, var(--color-red))',
+  soon: 'var(--pill-waitlist-text)',
+  ok: 'var(--text-secondary)',
+  done: 'var(--text-muted)',
+};
+
 const TONE: Record<StringingStatus, { bg: string; fg: string }> = {
   requested: { bg: 'var(--pill-unpaid-bg)', fg: 'var(--pill-unpaid-text)' },
   received: { bg: 'var(--pill-waitlist-bg)', fg: 'var(--pill-waitlist-text)' },
@@ -111,6 +121,9 @@ export default function StringingPage({ onBack }: Props) {
   }
 
   const selected = jobs?.find((j) => j.id === selectedId) ?? null;
+  // Resolved once per render rather than per row, so every row on the screen
+  // agrees about what day it is even if the render straddles midnight.
+  const today = todayIso();
 
   if (view === 'detail' && selected) {
     return (
@@ -212,6 +225,7 @@ export default function StringingPage({ onBack }: Props) {
 
         {jobs?.map((job) => {
           const tone = TONE[job.status] ?? TONE.requested;
+          const due = dueFor(job, today);
           return (
             <button
               key={job.id}
@@ -247,11 +261,22 @@ export default function StringingPage({ onBack }: Props) {
               <div className="fs-md" style={{ color: 'var(--text-secondary)' }}>{job.racketLabel}</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-3)' }}>
                 <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-faint)' }}>
-                  {job.stringLabel} · {job.tensionMains}/{job.tensionCrosses}
+                  {job.stringLabel} · {job.tensionMains}/{job.tensionCrosses}{t('lb')}
                 </span>
-                {/* The exact figure, because this screen is the stringer's. */}
-                <span className="fs-sm" style={{ fontWeight: 600, color: tone.fg }}>
-                  {formatPriceExact(job.priceCents) ?? t('unpriced')}
+                {/* URGENCY, not price. A bench is scanned for what is late, and
+                    the exact figure lives one tap away on the detail screen —
+                    where it is also the only place it belongs. */}
+                <span className="fs-sm" style={{ fontWeight: 600, color: DUE_FG[due.tone] }}>
+                  {/* Suppressed for a picked-up job: the status chip on the row
+                      above already says "Picked up", and printing it twice in
+                      one row is noise on a screen whose whole job is scanning. */}
+                  {due.key === 'pickedUp'
+                    ? ''
+                    : due.key === 'overdue'
+                      ? t('due.overdue', { days: due.days ?? 0 })
+                      : due.key === 'onDate'
+                        ? (formatReadyBy(due.date) ?? t('due.noDate'))
+                        : t(`due.${due.key}`)}
                 </span>
               </div>
             </button>
@@ -271,6 +296,3 @@ export default function StringingPage({ onBack }: Props) {
     </div>
   );
 }
-
-/** Exported for the detail screen's stepper, so both read one ordering. */
-export { STRINGING_FLOW };

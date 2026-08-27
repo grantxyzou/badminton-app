@@ -102,11 +102,17 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     }
 
     if (body.readyBy !== undefined) {
+      // Same rule as POST: a date or nothing. Legacy rows holding free text are
+      // read back unchanged — this only governs what may be WRITTEN, so
+      // existing jobs are not invalidated by the tightening.
       const r = body.readyBy;
-      if (r !== null && (typeof r !== 'string' || r.trim().length > 40)) {
-        return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+      if (r === null || r === '') {
+        next.readyBy = null;
+      } else if (typeof r === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.trim())) {
+        next.readyBy = r.trim();
+      } else {
+        return NextResponse.json({ error: 'invalid_date' }, { status: 400 });
       }
-      next.readyBy = r === null ? null : r.trim();
     }
 
     await container.item(id, memberId).replace(next);

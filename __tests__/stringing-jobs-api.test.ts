@@ -215,6 +215,62 @@ describe('the bench', () => {
   });
 });
 
+describe('readyBy is a date, not free text', () => {
+  it('accepts an ISO date', async () => {
+    const res = await POST(
+      makeAdminRequest('POST', 'http://x/api/stringing/jobs', {
+        memberId: 'member-wei', memberName: 'Wei',
+        racketLabel: 'X', stringLabel: 'Y',
+        tensionMains: 26, tensionCrosses: 28, readyBy: '2026-08-30',
+      }),
+    );
+    expect((await res.json()).job.readyBy).toBe('2026-08-30');
+  });
+
+  it('rejects the free text the field used to accept', async () => {
+    // It shipped as free text: untranslatable, uncomparable, and therefore
+    // nothing could ever be overdue — which is the whole point of the bench.
+    for (const readyBy of ['Sunday', 'next week', '30/08/2026', '2026-8-3']) {
+      const res = await POST(
+        makeAdminRequest('POST', 'http://x/api/stringing/jobs', {
+          memberId: 'member-wei', memberName: 'Wei',
+          racketLabel: 'X', stringLabel: 'Y',
+          tensionMains: 26, tensionCrosses: 28, readyBy,
+        }),
+      );
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('invalid_date');
+    }
+  });
+
+  it('treats absent and empty as "no date promised"', async () => {
+    for (const readyBy of [undefined, null, '']) {
+      const res = await POST(
+        makeAdminRequest('POST', 'http://x/api/stringing/jobs', {
+          memberId: 'member-wei', memberName: 'Wei',
+          racketLabel: 'X', stringLabel: 'Y',
+          tensionMains: 26, tensionCrosses: 28, readyBy,
+        }),
+      );
+      expect((await res.json()).job.readyBy).toBeNull();
+    }
+  });
+
+  it('does not invalidate a legacy row on an unrelated PATCH', async () => {
+    // Only WRITES to readyBy are governed. A job already holding "Sunday" must
+    // still be movable along the bench.
+    const job = await seedJob({ readyBy: 'Sunday' });
+    const res = await PATCH(
+      makeAdminRequest('PATCH', `http://x/api/stringing/jobs/${job.id}`, {
+        memberId: job.memberId, status: 'strung',
+      }),
+      { params: Promise.resolve({ id: job.id }) },
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).job.readyBy).toBe('Sunday');
+  });
+});
+
 describe('moving a job along', () => {
   it('appends to history only when the status actually changed', async () => {
     const job = await seedJob({ status: 'received' });
