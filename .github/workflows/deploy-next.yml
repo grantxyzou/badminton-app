@@ -106,7 +106,12 @@ jobs:
           zip -r ../../standalone-deploy.zip .
 
       - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@2e64e04aaaeeec4396edcb982544dbd30f8e9ddf # v3
+        # v3.0.8. Re-pinned 2026-08-27: the previous SHA was an older v3 commit
+        # declaring `using: node20`, so every deploy carried a Node 20
+        # deprecation annotation and was being force-run on Node 24 anyway.
+        # This commit declares node24. Keep the SHA pin — the floating `@v3`
+        # tag moves, which is the whole reason the other two are pinned.
+        uses: azure/webapps-deploy@02a81bead70021f5284939794bcec79c271ab383 # v3.0.8
         with:
           app-name: 'vnext-badminton-app'
           slot-name: 'Production'

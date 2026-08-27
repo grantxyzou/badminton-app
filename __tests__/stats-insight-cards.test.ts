@@ -59,13 +59,12 @@ describe('/api/stats/insight — distributed insight cards', () => {
 
   it('returns structured slices with server-set kinds when the flag is on', async () => {
     const m = seedMember('Lin');
-    // overall 3.2 → phase-gating (level signal); net_play sticky → trend signal.
+    // net_play sticky across two check-ins → trend signal.
     seedAssessment(m.id, '2026-04-01', 3.1, ['net_play']);
     seedAssessment(m.id, '2026-05-01', 3.2, ['net_play']);
     mockCreate.mockResolvedValue(
       textResponse({
         greeting: 'Quietly leveling up — nice work.',
-        level: { headline: 'A nudge from the next phase', support: 'Your weakest areas are the lever.' },
         trend: { headline: 'Net play keeps lagging', support: 'It has trailed for two check-ins.' },
       }),
     );
@@ -75,18 +74,22 @@ describe('/api/stats/insight — distributed insight cards', () => {
     const json = await res.json();
     expect(json.account).toBe(true);
     expect(json.greeting).toBe('Quietly leveling up — nice work.');
-    expect(json.level.headline).toBe('A nudge from the next phase');
-    expect(json.level.kind).toBe('phase-gating'); // attached server-side, not from the model
-    expect(json.trend.kind).toBe('sticky-weak');
+    expect(json.trend.headline).toBe('Net play keeps lagging');
+    expect(json.trend.kind).toBe('sticky-weak'); // attached server-side, not from the model
     // Legacy shape absent on the cards path.
     expect(json.recap).toBeUndefined();
+    // The level slice is gone entirely — not null, absent. It was generated and
+    // rendered nowhere, so it stopped being asked for (2026-08-27).
+    expect('level' in json).toBe(false);
   });
 
   it('forces a card slice to null when no signal backs it (silence > obvious)', async () => {
     const m = seedMember('Akane');
     // Single flat mid-band check-in → no signals at all.
     seedAssessment(m.id, '2026-05-01', 2.7);
-    // The model hallucinates a level insight anyway; the route must drop it.
+    // The model hallucinates slices anyway; the route must drop them. Includes a
+    // `level` the route no longer even asks for — a stale or creative response
+    // must not reintroduce a field nothing renders.
     mockCreate.mockResolvedValue(
       textResponse({
         greeting: 'Good to see you back.',
@@ -98,8 +101,8 @@ describe('/api/stats/insight — distributed insight cards', () => {
     const res = await GET(getAs('Akane'));
     const json = await res.json();
     expect(json.greeting).toBe('Good to see you back.');
-    expect(json.level).toBeNull();
     expect(json.trend).toBeNull();
+    expect('level' in json).toBe(false);
   });
 
   it('caches: a second call is served from cache without re-generating', async () => {

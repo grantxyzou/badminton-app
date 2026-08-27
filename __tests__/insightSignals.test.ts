@@ -35,14 +35,14 @@ describe('computeInsightSignals — the non-obvious bar', () => {
     expect(computeInsightSignals({ snapshots: [], now: NOW })).toEqual([]);
   });
 
-  it('fires phase-gating when the next phase is close, naming the lever', () => {
+  /* The phase-gating and blind-spot tests were deleted here with the level
+     card they covered (2026-08-27). Both signals only ever fed that card, and
+     nothing rendered it. */
+
+  it('stays silent when the next phase is close — phase-gating is gone', () => {
+    // 3.2 is 0.2 under the commitment band; this used to fire a level signal.
     const signals = computeInsightSignals({ snapshots: [mkSnap('2026-05-01', 3.2, ['net_play'])], now: NOW });
-    const gating = signals.find((s) => s.kind === 'phase-gating');
-    expect(gating).toBeDefined();
-    expect(gating!.card).toBe('level');
-    expect(gating!.facts.nextPhase).toBe('commitment');
-    expect(gating!.facts.gap).toBeCloseTo(0.2, 5);
-    expect(gating!.facts.weakest).toBe('Net Play');
+    expect(signals).toEqual([]);
   });
 
   it('fires sticky-weak when a skill stays in the bottom across check-ins', () => {
@@ -90,29 +90,14 @@ describe('computeInsightSignals — the non-obvious bar', () => {
     expect(signals.find((s) => s.kind === 'declining-streak')).toBeDefined();
   });
 
-  it('fires a blind-spot from game calibration and is the dominant level signal', () => {
+  it('emits no signal from a self-vs-game gap — the blind-spot is gone', () => {
     const canonicalLevel = {
       level: 3.3, stage: 4, phase: 'commitment' as const, confidence: 'high' as const,
       basis: { self: 3.0, game: 3.8, peer: null, legacyStage: null },
       explanation: [], computedAt: NOW,
     };
     const signals = computeInsightSignals({ snapshots: [mkSnap('2026-05-01', 3.0)], canonicalLevel, now: NOW });
-    const blind = signals.find((s) => s.kind === 'blindspot');
-    expect(blind).toBeDefined();
-    expect(blind!.facts.direction).toBe('above');
-    expect(blind!.facts.delta).toBeCloseTo(0.8, 5);
-    // Higher-scoring than the phase-gating that also fires at 3.0 → wins the slot.
-    expect(signalsByCard(signals).level!.kind).toBe('blindspot');
-  });
-
-  it('does not fire a blind-spot for a small self-vs-game gap', () => {
-    const canonicalLevel = {
-      level: 3.0, stage: 4, phase: 'commitment' as const, confidence: 'high' as const,
-      basis: { self: 3.0, game: 3.2, peer: null, legacyStage: null },
-      explanation: [], computedAt: NOW,
-    };
-    const signals = computeInsightSignals({ snapshots: [mkSnap('2026-05-01', 3.0)], canonicalLevel, now: NOW });
-    expect(signals.find((s) => s.kind === 'blindspot')).toBeUndefined();
+    expect(signals).toEqual([]);
   });
 
   it('signalsByCard picks the highest-scoring signal per card', () => {

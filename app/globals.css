@@ -1897,19 +1897,17 @@ html[data-visual="field"] .ink-button {
 }
 
 
-/* ── AI insight gradient rim ──
-   Persistent conic-gradient border marking the Stats "Your read" as an AI
-   surface (replaces the old green side-stripe). A masked ::before paints only
-   the edge ring over the glass card — no inner wrapper, content untouched.
+/* ── AI provenance rim ──
+   The conic gradient that marks text as model-written. Worn by `<AIBadge>`
+   (`.badge-ai`), and by nothing else since the card-sized `.insight-rim` was
+   removed — see the note further down.
 
-   The rim is STATIC by default and only spins WHILE the read is being
-   generated (the `.is-generating` class). The spin freezes in place the
-   instant the text lands — no eased tail. The angle lever is a registered
-   custom property because plain custom props don't interpolate. */
-/* The AI provenance rim, defined ONCE and worn by both the insight card and
-   its badge. It was inlined in .insight-rim::before; a second copy in the badge
-   would be two gradients to keep in sync, which is how a badge ends up a
-   slightly different rainbow from the card it sits on. */
+   Kept as a token rather than inlined in `.badge-ai` so the gradient has one
+   definition: any future AI-marked surface must wear THIS rainbow, not a
+   near-copy that drifts a hue away from the badge beside it.
+
+   The angle lever is a registered custom property (`@property --conic-a`)
+   because plain custom properties don't interpolate. */
 :root {
   --ai-rim: conic-gradient(
     from var(--conic-a),
@@ -1961,37 +1959,16 @@ html[data-visual="field"] .ink-button {
    nested). This is the value it always had with the flag off. */
 .stat-card { border-radius: var(--radius-xl); }
 
-.insight-rim {
-  position: relative;
-  border-color: transparent; /* the conic ring is the only edge treatment */
-}
-.insight-rim::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1.75px; /* ring thickness */
-  background: var(--ai-rim);
-  /* Cut out the centre so only the edge ring shows. */
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask-composite: exclude;
-  pointer-events: none;
-  /* Declared but PAUSED: static at rest, runs only while generating, and
-     freezes in place (no snap-back, no ease) when the class is removed. */
-  animation: conic-spin 1.4s linear infinite paused;
-}
-.insight-rim.is-generating::before {
-  animation-play-state: running;
-}
-@keyframes conic-spin {
-  to { --conic-a: 360deg; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .insight-rim.is-generating::before { animation-play-state: paused; }
-}
+/* `.insight-rim` lived here — the same conic ring at 1.75px worn by the whole
+   Stats "Your read" card. Removed 2026-08-27: a rainbow ring around a 400px
+   surface spends the app's loudest visual device on provenance, which is a
+   footnote. `<AIBadge>` carries the marking alone now, at badge scale.
+
+   Its `is-generating` spin went with it, and was already dead — the class was
+   styled but no component ever applied it, so the animation never once ran.
+   `@keyframes conic-spin` and the reduced-motion guard that paused it are gone
+   for the same reason. `@property --conic-a` STAYS: `--ai-rim` reads it as its
+   starting angle, so removing it flattens the badge's gradient. */
 
 /* ── Buttons ── */
 .btn-primary {
