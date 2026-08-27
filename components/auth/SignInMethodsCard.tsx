@@ -95,7 +95,7 @@ export default function SignInMethodsCard() {
 
   if (loadError) {
     return (
-      <div className="glass-card p-5">
+      <div className="glass-card p-5 space-y-3">
         <CardHeader icon="lock" title={t('methodsTitle')} />
         <ErrorState message={t('methodsLoadError')} />
       </div>

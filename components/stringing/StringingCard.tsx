@@ -84,7 +84,7 @@ export default function StringingCard({ hasIdentity }: Props) {
   // Anything that is not a confirmed open shop keeps the original card.
   if (open !== true) {
     return (
-      <div className="glass-card p-5">
+      <div className="glass-card p-5 space-y-3">
         <CardHeader
           icon="science"
           title={t('title')}
@@ -106,7 +106,7 @@ export default function StringingCard({ hasIdentity }: Props) {
 
   return (
     <>
-      <div className="glass-card p-5">
+      <div className="glass-card p-5 space-y-3">
         <CardHeader
           icon="science"
           title={t('title')}
@@ -123,7 +123,6 @@ export default function StringingCard({ hasIdentity }: Props) {
               gap: 'var(--space-3)',
               padding: 'var(--space-4)',
               borderRadius: 'var(--radius-lg)',
-              marginBottom: 'var(--space-3)',
             }}
           >
             <span className="material-icons icon-sm" style={{ color: 'var(--accent)' }}>
@@ -151,7 +150,7 @@ export default function StringingCard({ hasIdentity }: Props) {
           {t('requestCta')}
         </button>
         {!hasIdentity && (
-          <p className="fs-sm" style={{ margin: 'var(--space-2) 0 0', color: 'var(--text-muted)' }}>
+          <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
             {t('needName')}
           </p>
         )}

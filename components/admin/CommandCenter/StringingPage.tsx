@@ -160,7 +160,7 @@ export default function StringingPage({ onBack }: Props) {
             taking rackets this week. Closing does NOT stop the bench — jobs in
             flight still need finishing and a walk-up can still be logged. */}
         <div
-          className="glass-card p-5"
+          className="glass-card p-5 space-y-3"
           style={
             shopOpen
               ? { background: 'var(--banner-green-bg)', borderColor: 'var(--banner-green-border)' }
