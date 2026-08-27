@@ -10,7 +10,7 @@ import type { Tab } from './HomeShell';
 import ShuttleIcon from '@/components/ShuttleIcon';
 import EmptyState from '@/components/primitives/EmptyState';
 import PageHeader from '@/components/primitives/PageHeader';
-import ConfirmInline from '@/components/primitives/ConfirmInline';
+import { BottomSheet, BottomSheetBody } from '@/components/BottomSheet';
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -103,6 +103,12 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
 
   const activePlayers = players.filter(p => !p.waitlisted);
   const waitlistPlayers = players.filter(p => p.waitlisted);
+  /* Which list the viewer is in decides the sheet's wording: coming off a
+     waitlist is not the same event as giving up a confirmed spot, and one
+     sheet serving both rows has to say which one it means. */
+  const imWaitlisted =
+    !!currentUser &&
+    waitlistPlayers.some((p) => p.name.toLowerCase() === currentUser.toLowerCase());
 
   // Load failed and we have nothing to show: render an explicit error (standalone
   // centered text + ghost retry, per the error-state convention) instead of the
@@ -177,24 +183,14 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
                   </span>
                   {isMe && (
                     <div className="flex flex-col items-end gap-0.5">
-                      {confirmingCancel ? (
-                        <ConfirmInline
-                          message={t('cancelConfirm')}
-                          yesLabel={t('confirmYes')}
-                          noLabel={t('confirmNo')}
-                          onYes={handleCancel}
-                          onNo={() => setConfirmingCancel(false)}
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmingCancel(true)}
-                          disabled={!online}
-                          className="fs-sm text-red-400 hover:text-red-300 transition-colors ml-1"
-                        >
-                          {t('cancelAction')}
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingCancel(true)}
+                        disabled={!online}
+                        className="fs-sm text-red-400 hover:text-red-300 transition-colors ml-1"
+                      >
+                        {t('cancelAction')}
+                      </button>
                       {cancelError && (
                         <span className="field-error">{cancelError}</span>
                       )}
@@ -237,24 +233,14 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
                     </span>
                     {isMe && (
                       <div className="flex flex-col items-end gap-0.5">
-                        {confirmingCancel ? (
-                          <ConfirmInline
-                            message={t('cancelConfirm')}
-                            yesLabel={t('confirmYes')}
-                            noLabel={t('confirmNo')}
-                            onYes={handleCancel}
-                            onNo={() => setConfirmingCancel(false)}
-                          />
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setConfirmingCancel(true)}
-                            disabled={!online}
-                            className="fs-sm text-red-400 hover:text-red-300 transition-colors ml-1"
-                          >
-                            {t('leaveAction')}
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => setConfirmingCancel(true)}
+                          disabled={!online}
+                          className="fs-sm text-red-400 hover:text-red-300 transition-colors ml-1"
+                        >
+                          {t('leaveAction')}
+                        </button>
                         {cancelError && (
                           <span className="field-error">{cancelError}</span>
                         )}
@@ -278,6 +264,55 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
         onOpen={() => onTabChange?.('skills')}
       />
 
+      {/* ONE sheet for both lists, rendered here rather than inside the row.
+          The confirmation used to expand inside the row itself, which gave a
+          three-word question and two buttons the width left over after a name
+          — "Cancel your spot?" wrapped onto three lines beside a long one. A
+          row is not a container for a decision.
+
+          `confirmingCancel` was already a single component-level boolean, not
+          per-row, which is what makes one sheet the honest rendering of the
+          state that existed all along: only ever your own row can offer this,
+          so there is only ever one confirmation in flight. */}
+      <BottomSheet
+        open={confirmingCancel}
+        onClose={() => setConfirmingCancel(false)}
+        ariaLabel={imWaitlisted ? t('leaveSheetTitle') : t('cancelConfirm')}
+        width="narrow"
+      >
+        <BottomSheetBody>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <div>
+              <h2 className="bpm-h3 m-0">
+                {imWaitlisted ? t('leaveSheetTitle') : t('cancelConfirm')}
+              </h2>
+              <p className="fs-base m-0" style={{ marginTop: 6, color: 'var(--text-secondary)' }}>
+                {imWaitlisted ? t('leaveSheetBody') : t('cancelSheetBody')}
+              </p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              {/* Destructive action leads and is named for what it does —
+                  "Yes" under the question "Cancel your spot?" made the
+                  dismissing button read as "No, cancel it". */}
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={!online}
+                className="cc-btn cc-btn-danger cc-btn-lg"
+              >
+                {imWaitlisted ? t('leaveSheetConfirm') : t('cancelSheetConfirm')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingCancel(false)}
+                className="cc-btn cc-btn-ghost cc-btn-lg"
+              >
+                {t('sheetKeep')}
+              </button>
+            </div>
+          </div>
+        </BottomSheetBody>
+      </BottomSheet>
     </div>
   );
 }
