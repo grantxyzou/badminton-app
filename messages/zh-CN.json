@@ -360,8 +360,15 @@
     "pinRateLimited": "先歇一下，一小时后再试。",
     "adminToolsTitle": "管理员工具",
     "adminToolsButton": "管理员工具 →",
+    "admin": {
+      "group": "管理",
+      "console": "管理控制台",
+      "needYou": "{count} 项待处理",
+      "allClear": "一切就绪"
+    },
     "settings": {
       "title": "账号",
+      "appGroup": "应用",
       "newPin": "新建 PIN",
       "updatePin": "更新 PIN",
       "recoveryCode": "有恢复码？",
@@ -369,7 +376,6 @@
       "statsPrivacyOn": "已开启",
       "statsPrivacyOff": "私密",
       "releaseNotes": "更新日志",
-      "adminAccess": "管理员访问",
       "logout": "退出登录",
       "reportProblem": "报告问题",
       "install": "添加到主屏幕"
