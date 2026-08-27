@@ -1,3 +1,4 @@
+import type { StringingStatus, PlayerStage } from './stringing';
 import type { StatsPrivacy } from './statsPrivacy';
 
 export interface PrevSessionSnapshot {
@@ -386,4 +387,78 @@ export interface EngagementEvent {
   kind: 'rec_card_tap';
   /** ISO 8601. Sortable as a plain string, so range queries are string compares. */
   at: string;
+}
+
+/**
+ * A racket handed to a stringer.
+ *
+ * Partitioned by `/memberId`, mirroring `playerGear`: a player reading their
+ * own jobs — the hot path once the player side ships — is then a single-
+ * partition query, and their gear and their jobs sit together. The bench's
+ * "all open jobs" read is cross-partition, which is the right trade because a
+ * bench holds a handful of jobs while a season holds hundreds.
+ *
+ * `memberName`, `racketLabel` and `stringLabel` are DENORMALISED on purpose.
+ * The bench list must render without a lookup per row, and — more importantly —
+ * a job is a record of what was actually strung. If a player later renames
+ * themselves or retires that racket from their bag, the job must still say what
+ * sat on the shelf, so these are snapshots rather than live references.
+ */
+export interface StringingJob {
+  /** Random hex doc id. NOT the printed number — see `formatJobNo`. */
+  id: string;
+  /** Partition key: the player the racket belongs to. */
+  memberId: string;
+  /** Human-facing tag, e.g. `J-0042`. Unique-ish, cosmetic, never an id. */
+  jobNo: string;
+  /** Snapshot of the player's name at intake. */
+  memberName: string;
+  /** Which admin owns the job — drives the bench's Mine / All filter. Null
+   *  means unclaimed, which is legitimate: a job can be logged before anyone
+   *  has said they will string it. */
+  stringerId: string | null;
+  stringerName: string | null;
+  status: StringingStatus;
+  racketLabel: string;
+  stringLabel: string;
+  tensionMains: number;
+  tensionCrosses: number;
+  /** Free text, e.g. "Zach · 2 strings, 4 knots". A note, not an enum: the
+   *  method is a fact about how this club strings, not a setting to configure. */
+  method: string;
+  /** STRINGER-ONLY. Stripped from every player-facing response and replaced by
+   *  a band — see `priceBand` for why a band and not a margin. */
+  priceCents: number | null;
+  /** ISO date the racket is promised back. */
+  readyBy: string | null;
+  /** Set when the player accepts the quote. */
+  acceptedAt: string | null;
+  paidAt: string | null;
+  /** Session the racket changes hands at, when there is one. */
+  sessionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Append-only audit of every status change, so a correction is visible
+   *  rather than silent — this is what lets `canTransition` stay permissive. */
+  history: { status: StringingStatus; at: string; by: string | null }[];
+}
+
+/** What a PLAYER is allowed to see of their own job. Note what is missing:
+ *  `priceCents`, `stringerId`, and the bench's `status` vocabulary. */
+export interface PlayerStringingJob {
+  id: string;
+  jobNo: string;
+  stage: PlayerStage;
+  stageIndex: number;
+  racketLabel: string;
+  stringLabel: string;
+  tensionMains: number;
+  tensionCrosses: number;
+  method: string;
+  /** "$28–32" before pickup; the exact figure is never sent. */
+  priceRange: string | null;
+  readyBy: string | null;
+  paid: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
