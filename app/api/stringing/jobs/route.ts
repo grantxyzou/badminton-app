@@ -112,7 +112,22 @@ export async function GET(req: NextRequest) {
     await ensureJobs();
     const container = getContainer('stringingJobs');
 
-    if (admin.authed) {
+    /**
+     * `?view=player` forces the PLAYER projection for anybody, including an
+     * admin.
+     *
+     * Without it this route branched on the caller's role alone, so a stringer
+     * looking at their OWN Home card received the bench view — every member's
+     * jobs, shaped with `status` instead of `stage`. The card then crashed on a
+     * missing translation key, which is the loud version of the bug; the quiet
+     * version was an admin's Home card showing somebody else's racket.
+     *
+     * An admin is also a player. Which VIEW you want is a property of the
+     * screen you are on, not of who you are, so the screen says.
+     */
+    const asPlayer = req.nextUrl.searchParams.get('view') === 'player';
+
+    if (admin.authed && !asPlayer) {
       // The bench. `?mine=true` filters to the caller's own claimed jobs —
       // the design's Mine / All segment.
       const mine = req.nextUrl.searchParams.get('mine') === 'true';
@@ -127,12 +142,21 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ jobs, view: 'bench' });
     }
 
-    // A player: their own jobs, stripped. Single-partition — the reason
-    // `/memberId` is the partition key.
+    // Their own jobs, stripped. Single-partition — the reason `/memberId` is
+    // the partition key.
+    //
+    // Identity from EITHER cookie: `/api/admin` does not mint a
+    // `member_session`, so an admin asking for the player view has only the
+    // admin cookie to identify them by. Falling back to it is what lets a
+    // stringer see their own rackets on Home.
+    const memberId = caller?.memberId ?? (admin.authed ? admin.memberId : null);
+    if (!memberId) {
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    }
     const { resources } = await container.items
       .query<StringingJob>({
         query: 'SELECT * FROM c WHERE c.memberId = @memberId',
-        parameters: [{ name: '@memberId', value: caller!.memberId }],
+        parameters: [{ name: '@memberId', value: memberId }],
       })
       .fetchAll();
     const jobs = resources

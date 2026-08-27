@@ -116,6 +116,27 @@ describe('once the admin opens the shop', () => {
     expect(screen.getByText(/\$28–32/)).toBeDefined();
   });
 
+  it('survives a job with no stage rather than taking Home down', async () => {
+    // next-intl THROWS on a missing key — it does not fall back — so an
+    // unexpected row shape does not degrade, it crashes the whole tab. Which
+    // is exactly what happened: `t('stage.undefined')`.
+    mockApi(true, [{ id: 'j1', jobNo: 'J-0001', racketLabel: 'Mystery' }]);
+    wrap();
+    // The card still renders its normal live state; the malformed row is
+    // skipped rather than rendered.
+    expect(await screen.findByRole('button', { name: 'Request a restring' })).toBeDefined();
+    expect(screen.queryByText('Mystery')).toBeNull();
+  });
+
+  it('asks for the player view explicitly, so an admin does not get the bench', async () => {
+    mockApi(true);
+    wrap();
+    await screen.findByRole('button', { name: 'Request a restring' });
+    const calls = (globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    const jobsCall = calls.map((c) => String(c[0])).find((u) => u.includes('/jobs'));
+    expect(jobsCall).toContain('view=player');
+  });
+
   it('opens the request sheet, and the sheet asks for no price', async () => {
     mockApi(true);
     wrap();
