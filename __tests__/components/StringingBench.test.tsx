@@ -84,6 +84,55 @@ describe('the bench shows the stringer their own number', () => {
   });
 });
 
+describe('the shop sign', () => {
+  function respondShop(open: boolean | null) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string) =>
+        Promise.resolve({
+          ok: true,
+          json: async () =>
+            String(url).includes('/shop') ? { open } : { jobs: [job], view: 'bench' },
+        } as Response),
+      ),
+    );
+  }
+
+  it('offers Close when the shop is open, and Open when it is closed', async () => {
+    respondShop(true);
+    const { unmount } = wrap(<StringingPage onBack={() => {}} />);
+    expect(await screen.findByText('Open for stringing')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Close' })).toBeDefined();
+    unmount();
+
+    respondShop(false);
+    wrap(<StringingPage onBack={() => {}} />);
+    expect(await screen.findByText('Closed for now')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Open' })).toBeDefined();
+  });
+
+  it('says UNKNOWN rather than hanging a CLOSED sign it cannot verify', async () => {
+    // Answering "closed" on a throttled read would put a CLOSED sign on a shop
+    // that is open — the confident-wrong answer, which is the one that costs
+    // someone a restring they could have had.
+    respondShop(null);
+    wrap(<StringingPage onBack={() => {}} />);
+    expect(await screen.findByText("Can't tell right now")).toBeDefined();
+    expect(screen.queryByText('Closed for now')).toBeNull();
+    // And there is nothing to tap, because there is nothing to toggle FROM.
+    expect(screen.getByRole('button', { name: 'Open' })).toHaveProperty('disabled', true);
+  });
+
+  it('still lists the bench while the shop is closed', async () => {
+    // Closed is a sign in the window, not a lock on the door: jobs in flight
+    // still need finishing.
+    respondShop(false);
+    wrap(<StringingPage onBack={() => {}} />);
+    expect(await screen.findByText('Wei')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Add job' })).toBeDefined();
+  });
+});
+
 describe('a failed load is not an empty bench', () => {
   it('shows an error, never the empty state', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));

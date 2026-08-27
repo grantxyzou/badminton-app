@@ -716,6 +716,16 @@
   },
   "admin": {
     "stringing": {
+      "shop": {
+          "open": "Open for stringing",
+          "closed": "Closed for now",
+          "unknown": "Can't tell right now",
+          "openHint": "Players can hand you a racket and request a restring.",
+          "closedHint": "Players won't be offered it. Jobs already on the bench are unaffected.",
+          "unknownHint": "We couldn't check the sign — refresh to retry.",
+          "openCta": "Open",
+          "closeCta": "Close"
+      },
         "benchTitle": "Bench",
         "mine": "Mine",
         "all": "All",

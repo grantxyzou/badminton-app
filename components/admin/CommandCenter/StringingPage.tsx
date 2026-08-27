@@ -54,6 +54,10 @@ export default function StringingPage({ onBack }: Props) {
   const [mine, setMine] = useState(false);
   const [view, setView] = useState<'bench' | 'detail' | 'new'>('bench');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // null = UNKNOWN (throttled or failed), not closed. Rendering a CLOSED sign
+  // on a shop that is open is the confident-wrong answer, so unknown says so.
+  const [shopOpen, setShopOpen] = useState<boolean | null>(null);
+  const [shopBusy, setShopBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoadError(false);
@@ -73,6 +77,38 @@ export default function StringingPage({ onBack }: Props) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${BASE}/api/stringing/shop`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d) setShopOpen(typeof d.open === 'boolean' ? d.open : null);
+      })
+      .catch(() => {
+        /* stays null — unknown, not closed */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function toggleShop() {
+    if (shopBusy || !online || shopOpen === null) return;
+    setShopBusy(true);
+    try {
+      const res = await fetch(`${BASE}/api/stringing/shop`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ open: !shopOpen }),
+      });
+      if (res.ok) setShopOpen((await res.json()).open === true);
+    } catch {
+      /* leave the sign as it was rather than claiming a change that failed */
+    } finally {
+      setShopBusy(false);
+    }
+  }
 
   const selected = jobs?.find((j) => j.id === selectedId) ?? null;
 
@@ -106,6 +142,48 @@ export default function StringingPage({ onBack }: Props) {
     <div>
       <AdminBackHeader onBack={onBack} title={t('benchTitle')} />
       <div className="flex flex-col gap-4 px-4 pb-6">
+        {/* The shop sign. Separate from NEXT_PUBLIC_FLAG_STRINGING on purpose:
+            that says whether this code exists, this says whether Grant is
+            taking rackets this week. Closing does NOT stop the bench — jobs in
+            flight still need finishing and a walk-up can still be logged. */}
+        <div
+          className="glass-card p-5"
+          style={
+            shopOpen
+              ? { background: 'var(--banner-green-bg)', borderColor: 'var(--banner-green-border)' }
+              : undefined
+          }
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+            <span
+              className="material-icons icon-md"
+              style={{ color: shopOpen ? 'var(--accent)' : 'var(--text-muted)' }}
+            >
+              {shopOpen ? 'check_circle' : 'lock'}
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="bpm-h3 m-0">
+                {shopOpen === null ? t('shop.unknown') : shopOpen ? t('shop.open') : t('shop.closed')}
+              </div>
+              <p className="fs-sm" style={{ color: 'var(--text-secondary)', margin: '2px 0 0' }}>
+                {shopOpen === null
+                  ? t('shop.unknownHint')
+                  : shopOpen
+                    ? t('shop.openHint')
+                    : t('shop.closedHint')}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={toggleShop}
+              disabled={shopBusy || !online || shopOpen === null}
+              className={`cc-btn ${shopOpen ? 'cc-btn-secondary' : 'cc-btn-primary'}`}
+            >
+              {shopOpen ? t('shop.closeCta') : t('shop.openCta')}
+            </button>
+          </div>
+        </div>
+
         {/* Mine / All. The wrapper needs `flex` and each tab `flex-1` —
             .segment-control sets no display, so without it the active pill
             overlaps its neighbour. */}
