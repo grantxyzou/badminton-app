@@ -13,6 +13,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isFlagOn } from '@/lib/flags';
 import { appOrigin, googleClient } from '@/lib/oauthProviders';
 import { createState, createCodeVerifier, setOAuthCookies } from '@/lib/oauthState';
+import { beginHandoff, isHandoffRef } from '@/lib/authHandoff';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,10 +46,35 @@ export async function GET(req: NextRequest) {
 
   const state = createState();
   const codeVerifier = createCodeVerifier();
-  const url = client.createAuthorizationURL(state, codeVerifier, ['openid', 'profile', 'email']);
+
+  /* An installed iOS PWA sends `?hr=<sha256>` — see lib/authHandoff.ts. The
+     excursion leaves its webview, so neither cookie set below will reach the
+     callback; park their contents server-side against that ref instead. The
+     ref is a HASH, so nothing here becomes a credential if the URL leaks.
+
+     A refused begin (a live stash already holds this ref) is NOT fatal: the
+     cookies below still work for every browser that keeps one jar, so the
+     flow degrades to exactly today's behaviour rather than dead-ending. */
+  const hr = new URL(req.url).searchParams.get('hr');
+  const handoff = isHandoffRef(hr) ? hr : null;
+  if (handoff) {
+    try {
+      await beginHandoff(handoff, { state, codeVerifier });
+    } catch (err) {
+      console.error('handoff begin failed:', err);
+    }
+  }
+
+  // The ref rides in `state` so it survives the round trip through Google
+  // without needing a cookie. Separator is `~`, which is unreserved in a URL
+  // and cannot appear in either hex half.
+  const outboundState = handoff ? `${state}~${handoff}` : state;
+  const url = client.createAuthorizationURL(outboundState, codeVerifier, ['openid', 'profile', 'email']);
   url.searchParams.set('prompt', 'select_account');
 
   const res = NextResponse.redirect(url.toString());
+  // Still set, and still preferred: a browser with one jar takes this path and
+  // never touches the handoff store.
   setOAuthCookies(res, 'redirect', { state, codeVerifier });
   return res;
 }

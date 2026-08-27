@@ -54,9 +54,42 @@ describe('ProviderButtons', () => {
     // vitest, so the component's `BASE` resolves to ''. That is the same var
     // whose absence makes the whole app appear offline in dev (CLAUDE.md); the
     // prefixed route is verified against a running server instead.
+    //
+    // The href may also carry `?hr=<sha256>` — the iOS-PWA handoff ref, minted
+    // on mount (lib/handoffClient.ts). Asserted on the PATH so the presence or
+    // absence of that ref, which depends on whether crypto.subtle exists in the
+    // environment, cannot make this test flap.
     const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-    expect(google.closest('a')?.getAttribute('href')).toBe(`${BASE}/api/auth/google/start`);
-    expect(apple.closest('a')?.getAttribute('href')).toBe(`${BASE}/api/auth/apple/start`);
+    const hrefOf = (el: HTMLElement | null) => el?.closest('a')?.getAttribute('href') ?? '';
+    expect(hrefOf(google).split('?')[0]).toBe(`${BASE}/api/auth/google/start`);
+    expect(hrefOf(apple).split('?')[0]).toBe(`${BASE}/api/auth/apple/start`);
+  });
+
+  /**
+   * THE SECURITY PROPERTY OF THE HANDOFF, pinned at the only place it can leak.
+   *
+   * The id in localStorage is the claim credential. What goes on the URL — and
+   * therefore through Google, the address bar, referer headers and our logs —
+   * must be its HASH and never the id itself.
+   */
+  it('puts only the HASH on the start URL, never the stored secret', async () => {
+    mockMethods({ available: ['google'], linked: [] });
+    renderButtons();
+
+    const google = await screen.findByText('Continue with Google');
+    await waitFor(() => {
+      const href = google.closest('a')?.getAttribute('href') ?? '';
+      expect(href).toContain('hr=');
+    });
+
+    const href = google.closest('a')!.getAttribute('href')!;
+    const ref = new URLSearchParams(href.split('?')[1]).get('hr')!;
+    const secret = localStorage.getItem('badminton_auth_handoff');
+
+    expect(secret).toMatch(/^[0-9a-f]{64}$/);
+    expect(ref).toMatch(/^[0-9a-f]{64}$/);
+    expect(ref).not.toBe(secret);
+    expect(href).not.toContain(secret!);
   });
 
   it('shows only the providers this deployment actually configured', async () => {
