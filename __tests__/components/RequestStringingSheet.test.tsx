@@ -197,6 +197,23 @@ describe('when nothing is stocked', () => {
 });
 
 describe('the header', () => {
+  it('has a visible way out', async () => {
+    // BottomSheetHeader is a title-and-close ROW, but it renders whatever
+    // children it is given — passing a bare string produced a sheet with no
+    // close button. Escape and the backdrop still worked; nothing on screen
+    // said so, which is the same as not working for most people.
+    const onClose = vi.fn();
+    mockApi(['BG80 white']);
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <RequestStringingSheet open onClose={onClose} onRequested={() => {}} />
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Close' }));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+
   it('is an intake form, and promises nothing about price', async () => {
     mockApi(['BG80 white']);
     wrap();
