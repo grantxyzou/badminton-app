@@ -169,9 +169,15 @@ describe('once the admin opens the shop', () => {
     mockApi(true);
     wrap();
     await screen.findByRole('button', { name: 'Submit a request' });
-    const calls = (globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls;
-    const jobsCall = calls.map((c) => String(c[0])).find((u) => u.includes('/jobs'));
-    expect(jobsCall).toContain('view=player');
+    /* WAIT for the jobs call rather than assuming it has already happened.
+       The button resolves off the SHOP fetch; the jobs fetch is a separate
+       request, so reading mock.calls straight after was a race — it passed on
+       a fast machine and failed in CI with `jobsCall` undefined. */
+    await waitFor(() => {
+      const calls = (globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+      const jobsCall = calls.map((c) => String(c[0])).find((u) => u.includes('/jobs'));
+      expect(jobsCall).toContain('view=player');
+    });
   });
 
   it('opens the request sheet, and the sheet asks for no price at all', async () => {
