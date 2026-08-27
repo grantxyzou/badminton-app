@@ -46,7 +46,7 @@ export default function InstallBanner() {
   return (
     <>
       <div
-        className="glass-card p-3"
+        className="glass-card p-4"
         style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}
       >
         <span
