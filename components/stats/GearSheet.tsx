@@ -250,7 +250,15 @@ export default function GearSheet({
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={heading} maxHeight="92dvh">
       <BottomSheetHeader>
-        <span className="fs-lg" style={{ fontWeight: 600 }}>{heading}</span>
+        {/* 20px display bold. This is the sheet's own heading, not a card
+            title — at `fs-lg`/600 it read as a label on the search field
+            below it rather than as the name of the screen. */}
+        <span
+          className="fs-stat"
+          style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.015em' }}
+        >
+          {heading}
+        </span>
         <button
           type="button"
           onClick={onClose}

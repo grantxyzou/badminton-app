@@ -3098,10 +3098,12 @@ html[data-visual="field"][data-tab="admin"] .bottom-sheet {
   padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-}
-.sheet-search:focus-within {
-  border-color: var(--input-focus-border);
+  /* The accent border and ring are the RESTING state here, not a focus
+     treatment. This field is the first thing the sheet offers and the only
+     way through 71 rows, and the spec draws it lit. It is not autofocused —
+     on a phone that opens the keyboard over the list you just asked to see —
+     so without this the control it wants you to use looks inert. */
+  border: 1px solid var(--input-focus-border);
   box-shadow: 0 0 0 3px var(--input-focus-ring);
 }
 .sheet-search input {
@@ -3111,7 +3113,22 @@ html[data-visual="field"][data-tab="admin"] .bottom-sheet {
   border: none;
   outline: none;
   color: var(--text-primary);
-  font-size: var(--fs-md);
+  /* 16px, not 14: `type="search"` at under 16px makes iOS Safari zoom the
+     whole page on focus, and the zoom does not undo on blur. */
+  font-size: var(--fs-lg);
+  /* Chrome draws its own inset chrome on type=search otherwise, which reads
+     as a second field nested inside this one. */
+  appearance: none;
+  -webkit-appearance: none;
+  /* The app's base `input` rule paints `--input-inset` — a 1px inset top
+     highlight. That belongs on a field that draws its own surface; here the
+     WRAPPER is the field and the input is transparent inside it, so the
+     highlight lands mid-control and reads as a second, nested box. */
+  box-shadow: none;
+}
+.sheet-search input::-webkit-search-decoration,
+.sheet-search input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
 }
 .sheet-search input::placeholder { color: var(--text-muted); }
 .sheet-search > .material-icons {
@@ -3132,8 +3149,20 @@ html[data-visual="field"][data-tab="admin"] .bottom-sheet {
    rule against divider lines is about the CARD stacks on Home and
    Sign-Ups, where proximity does the grouping. */
 .sheet-list { list-style: none; margin: 0; padding: 0; }
-.sheet-list > li + li > .sheet-row { border-top: 1px solid var(--divider); }
+/* The divider is INSET to the text column, not full-bleed. Drawn as a
+   pseudo-element rather than a border because the inset has to survive the
+   row's own horizontal padding, and a border-top cannot be indented. */
+.sheet-list > li + li > .sheet-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: var(--space-6);
+  right: 0;
+  height: 1px;
+  background: var(--divider);
+}
 .sheet-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-4);
@@ -3156,6 +3185,10 @@ button.sheet-row:hover { background: var(--glass-soft-bg); }
 .sheet-group-label {
   padding: var(--space-5) var(--space-6) var(--space-2);
   margin: 0;
+  /* Explicit, because `.section-label-muted` composes Tailwind's `text-xs`,
+     which this project bumped to 14px for readability. That is the right
+     size for a card eyebrow and too heavy for a list group heading. */
+  font-size: var(--fs-sm);
 }
 .sheet-group:first-child > .sheet-group-label { padding-top: 0; }
 
