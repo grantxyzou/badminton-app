@@ -3867,18 +3867,3 @@ html[data-visual="field"][data-theme="light"] {
   border-radius: var(--radius-sm);
 }
 
-/* The title of a card that is a ROW, not a headline.
-   Home's account group — "Your balance", "Stringing service". Display family,
-   so it belongs to the same voice as the section labels above it
-   (LOCATION / WHEN / SIGN UP), but sentence case and at body size, because
-   these name a thing rather than announce one. `.bpm-h3` is a size up and
-   reads as a heading, which made the two cards in one group disagree about
-   how loud they were. */
-.bpm-card-title {
-  font-family: var(--font-display);
-  font-size: var(--fs-md);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: var(--lh-snug);
-  color: var(--text-primary);
-}

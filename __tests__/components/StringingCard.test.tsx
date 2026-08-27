@@ -109,10 +109,45 @@ describe('once the admin opens the shop', () => {
       },
     ]);
     wrap();
+    // Behind the collapse now: with a racket in, the card opens showing the
+    // RAIL, and the racket is what expanding reveals.
+    fireEvent.click(await screen.findByRole('button', { name: /Stringing service/i }));
+
     expect(await screen.findByText('Astrox 99 Pro')).toBeDefined();
     // The player's vocabulary and a BAND — never "strung", never an exact figure.
     expect(screen.getByText(/Being strung/)).toBeDefined();
     expect(screen.getByText(/\$28–32/)).toBeDefined();
+  });
+
+  it('does NOT offer a collapse when there is no racket', async () => {
+    // With nothing in, the card is two rows and a chevron would offer to hide
+    // "Submit a request" — the only reason the card is there.
+    mockApi(true, []);
+    wrap();
+    expect(await screen.findByRole('button', { name: 'Submit a request' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Stringing service/i })).toBeNull();
+  });
+
+  it('collapses to the RAIL when a racket is in, and expands to the racket', async () => {
+    mockApi(true, [
+      { id: 'j1', jobNo: 'J-1', stage: 'being_strung', stageIndex: 1, racketLabel: 'Astrox 99 Pro',
+        stringLabel: 'BG80', tensionMains: 26, tensionCrosses: 28, method: 'Zach',
+        priceRange: '$28-32', amountDue: null, readyBy: null, paid: false, createdAt: '', updatedAt: '' },
+    ]);
+    wrap();
+    // Collapsed: the rail is the glance answer, and it is all there is.
+    expect(await screen.findByText('Track progress')).toBeDefined();
+    expect(screen.queryByText('Astrox 99 Pro')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Submit a request' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /Stringing service/i }));
+
+    // Expanded: the detail, and the ways in.
+    expect(await screen.findByText('Astrox 99 Pro')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Submit a request' })).toBeDefined();
+    // The rail stays — it is the spine of the card, not a collapsed summary
+    // that gets swapped out for the detail.
+    expect(screen.getByText('Track progress')).toBeDefined();
   });
 
   it('survives a job with no stage rather than taking Home down', async () => {
