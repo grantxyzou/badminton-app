@@ -3650,3 +3650,50 @@ html[data-visual="field"][data-theme="light"] {
   border-color: rgba(202, 138, 4, 0.32);
   background: linear-gradient(160deg, rgba(202, 138, 4, 0.07), rgba(0, 0, 0, 0.01));
 }
+
+/* ---------------------------------------------------------------------------
+   Google sign-in button
+   ---------------------------------------------------------------------------
+   Composes with `.cc-btn`, so the focus ring and the active-press scale come
+   from the design system rather than being re-invented here. Everything it
+   overrides is dictated by Google's branding guidelines and is deliberately
+   NOT tokenised: these are Google's colours, and a theme switch must not
+   reach them. Both surfaces below are Google's own published pairs — the dark
+   one (#131314 / #E3E3E3 / #8E918F) and the light one (#FFFFFF / #1F1F1F /
+   #747775) — so the button stays legible and on-brand in either theme.
+
+   The pill radius is ours and is also compliant: Google sanctions both a
+   rectangular and a pill button, and the pill is the app's existing rung
+   (`--radius-pill`), so the brand button does not introduce a new shape.
+
+   The typeface is the app's body font rather than Roboto. Pulling a fifth
+   webfont for one button costs more than it returns; the mark, the wording and
+   the contrast are what carry the brand.
+   --------------------------------------------------------------------------- */
+.btn-google {
+  width: 100%;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-md);
+  font-weight: 500;
+  text-decoration: none;
+  background: #131314;
+  color: #e3e3e3;
+  border: 1px solid #8e918f;
+}
+
+.btn-google:hover {
+  background: #1e1f20;
+}
+
+[data-theme='light'] .btn-google {
+  background: #ffffff;
+  color: #1f1f1f;
+  border-color: #747775;
+}
+
+[data-theme='light'] .btn-google:hover {
+  background: #f2f2f2;
+}
