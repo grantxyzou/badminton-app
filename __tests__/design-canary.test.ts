@@ -50,6 +50,41 @@ describe('design-system canary: globals.css token/class contract', () => {
     expect(css).toContain(cls);
   });
 
+  it('defines the process strip as tokens rather than inline geometry', () => {
+    // The dot and the rail are GEOMETRY. Hand-typed at each call site, that is
+    // how a second strip ends up 11px next to a 12px one. The rail thickness
+    // doubles as the dot's border so the two cannot drift apart — pinned here
+    // because nothing else would notice them separating.
+    for (const token of ['--step-dot', '--step-rail']) {
+      expect(css).toContain(`${token}:`);
+    }
+    for (const cls of [
+      '.bpm-steps',
+      '.bpm-steps__rail',
+      '.bpm-steps__leg',
+      '.bpm-steps__dot',
+      '.bpm-steps__label',
+    ]) {
+      expect(css).toContain(cls);
+    }
+    // The dot's border IS the rail thickness. If someone gives it its own
+    // number, the strip stops looking like one object.
+    const dot = css.slice(css.indexOf('.bpm-steps__dot {'));
+    expect(dot.slice(0, 300)).toContain('var(--step-rail) solid');
+  });
+
+  it('keeps the removable chip distinct from the read-only status pills', () => {
+    // `.pill-*` carry a fixed semantic colour — paid, waitlisted, admin.
+    // Reusing one for a value the user typed would say something untrue about
+    // it, and only one of the two families is tappable.
+    expect(css).toContain('.bpm-chip');
+    const chip = css.slice(css.indexOf('.bpm-chip {'), css.indexOf('.bpm-chip {') + 400);
+    expect(chip).toContain('var(--radius-pill)');
+    // Spacing from the scale, not hand-typed.
+    expect(chip).toMatch(/padding: var\(--space-\d\) var\(--space-\d\)/);
+    expect(css).toContain('.bpm-chip:disabled');
+  });
+
   it('pins the canonical --fs scale values (a re-scale must update this test)', () => {
     expect(css).toContain('--fs-2xs: 10px');
     expect(css).toContain('--fs-sm: 12px');
