@@ -46,6 +46,13 @@ export interface PendingSignup {
    * re-fetched later.
    */
   suggestedName: string | null;
+  /**
+   * The iOS-PWA handoff ref, when the flow began in a storage context that
+   * will not receive this response's cookies. Carried through the name step
+   * because THAT is where a brand-new account is actually created — the
+   * callback had no member to park yet. See lib/authHandoff.ts.
+   */
+  handoff?: string | null;
 }
 
 export function setPendingSignup(res: NextResponse, value: PendingSignup): void {
