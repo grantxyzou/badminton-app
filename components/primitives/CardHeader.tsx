@@ -63,10 +63,15 @@ export default function CardHeader({
   subtitle,
   badge,
   action,
-  iconColor = 'var(--accent, #22c55e)',
+  iconColor,
   compact = false,
 }: CardHeaderProps) {
   const trailing = badge ?? action ?? null;
+  // Compact means the title IS a section label, and globals.css states the
+  // principle for what sits next to one: "an icon inside a section label is
+  // PART of the label, so it takes the label's weight and colour". So the
+  // compact default is the label's own colour, not the accent.
+  const resolvedIconColor = iconColor ?? (compact ? 'var(--text-muted)' : 'var(--accent, #22c55e)');
 
   const left = (
     <div style={{ display: 'flex', alignItems: subtitle ? 'flex-start' : 'center', gap: 8, minWidth: 0 }}>
@@ -89,7 +94,7 @@ export default function CardHeader({
             ...(compact
               ? { fontSize: 'var(--icon-sm)', fontVariationSettings: "'opsz' 24, 'wght' 600, 'FILL' 0, 'GRAD' 0" }
               : { fontSize: 'var(--fs-stat-lg)' }),
-            color: iconColor,
+            color: resolvedIconColor,
             ...(subtitle ? { marginTop: 1 } : null),
           }}
         >
@@ -97,7 +102,17 @@ export default function CardHeader({
         </span>
       )}
       <div style={{ minWidth: 0 }}>
-        <h3 className={`${compact ? 'section-label-muted' : 'bpm-h3'} m-0`}>{title}</h3>
+        {/* A section label is not a heading — this prop's whole point is that
+            the card NAMES a thing rather than announces one, so <h3> was
+            contradicting it. It also matters structurally: both compact
+            consumers wrap this header in a <button> to make the card
+            collapsible, and <button> takes phrasing content, which <h3> is
+            not. <p> matches the four other `.section-label-muted` sites. */}
+        {compact ? (
+          <p className="section-label-muted m-0">{title}</p>
+        ) : (
+          <h3 className="bpm-h3 m-0">{title}</h3>
+        )}
         {subtitle && (
           <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '2px 0 0' }}>
             {subtitle}

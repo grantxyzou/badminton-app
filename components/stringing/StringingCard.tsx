@@ -131,7 +131,6 @@ export default function StringingCard({ hasIdentity }: Props) {
         <CardHeader
           compact
           icon="grid_4x4"
-          iconColor="var(--text-secondary)"
           title={t('title')}
           subtitle={t('subtitle')}
           badge={<StatusBadge variant="muted">{t('soon')}</StatusBadge>}
@@ -170,7 +169,6 @@ export default function StringingCard({ hasIdentity }: Props) {
          crosses — the mesh is the thing being sold. Added to the subsetted
          glyph list in app/layout.tsx; a missing glyph renders as raw text. */
       icon="grid_4x4"
-      iconColor="var(--text-secondary)"
       title={t('title')}
       badge={
         <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
