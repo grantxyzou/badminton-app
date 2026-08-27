@@ -25,10 +25,10 @@ export default function CardSkeleton({
       style={{
         height,
         borderRadius: rounded,
-        padding: 16,
+        padding: 'var(--space-5)',
         display: 'flex',
         flexDirection: 'column',
-        gap: 10,
+        gap: 'var(--space-4)',
         justifyContent: 'center',
         overflow: 'hidden',
       }}

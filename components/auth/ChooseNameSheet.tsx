@@ -157,7 +157,7 @@ export default function ChooseNameSheet({ open, onClose, sessionId }: Props) {
       <BottomSheetBody>
         {expired ? (
           <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: 0 }}>
+            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}>
               {t('pendingExpired')}
             </p>
             {/* A way OUT. The old copy said "tap the button again" while the
@@ -173,7 +173,7 @@ export default function ChooseNameSheet({ open, onClose, sessionId }: Props) {
           </div>
         ) : claiming ? (
           <form onSubmit={submitClaim} style={{ display: 'grid', gap: 'var(--space-4)' }}>
-            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: 0 }}>
+            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}>
               {t('claimBody', { name: name.trim() })}
             </p>
             <input
@@ -230,7 +230,7 @@ export default function ChooseNameSheet({ open, onClose, sessionId }: Props) {
           </form>
         ) : (
           <form onSubmit={submitName} style={{ display: 'grid', gap: 'var(--space-4)' }}>
-            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: 0 }}>
+            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}>
               {t('chooseNameBody')}
             </p>
             <input

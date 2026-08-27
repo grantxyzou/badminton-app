@@ -238,7 +238,7 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
                 onClick={() => set(clamp(value - 1))}
                 aria-label={t('decrease', { field: label })}
                 className="cc-btn cc-btn-secondary"
-                style={{ width: 44, height: 44, borderRadius: 'var(--radius-pill)', padding: 0 }}
+                style={{ width: 44, height: 44, borderRadius: 'var(--radius-pill)', padding: '0' }}
               >
                 <span className="material-icons icon-sm">remove</span>
               </button>
@@ -247,7 +247,7 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
                 style={{ minWidth: 62, textAlign: 'center', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
               >
                 {value}
-                <span className="fs-sm" style={{ marginLeft: 2, color: 'var(--text-muted)' }}>
+                <span className="fs-sm" style={{ marginLeft: 'var(--space-05)', color: 'var(--text-muted)' }}>
                   {t('lb')}
                 </span>
               </span>
@@ -256,7 +256,7 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
                 onClick={() => set(clamp(value + 1))}
                 aria-label={t('increase', { field: label })}
                 className="cc-btn cc-btn-secondary"
-                style={{ width: 44, height: 44, borderRadius: 'var(--radius-pill)', padding: 0 }}
+                style={{ width: 44, height: 44, borderRadius: 'var(--radius-pill)', padding: '0' }}
               >
                 <span className="material-icons icon-sm">add</span>
               </button>

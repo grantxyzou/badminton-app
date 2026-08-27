@@ -242,8 +242,8 @@ export default function GearPickRail({ activeName, gear, onPairTension }: GearPi
         gap: 'var(--space-4)',
         // Bleed to the column edges so the rail reads as scrollable rather
         // than as cards that happen to be cut off — matches GearRail.
-        margin: '0 -16px',
-        padding: '2px 16px 6px',
+        margin: '0 calc(-1 * var(--space-5))',
+        padding: 'var(--space-05) var(--space-5) var(--space-2)',
         overflowX: 'auto',
         scrollSnapType: 'x proximity',
         scrollbarWidth: 'none',

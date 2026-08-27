@@ -32,7 +32,7 @@ interface BrandSummary {
 
 function Stars({ n }: { n: number }) {
   return (
-    <span style={{ display: 'inline-flex', gap: 1.5 }}>
+    <span style={{ display: 'inline-flex', gap: 'var(--space-05)' }}>
       {[1, 2, 3, 4, 5].map((i) => (
         <span
           key={i}
@@ -71,7 +71,7 @@ function PurchaseRow({
         textAlign: 'left',
         background: 'transparent',
         cursor: 'pointer',
-        padding: '12px 16px',
+        padding: 'var(--space-4) var(--space-5)',
         border: 'none',
         borderTop: index ? '1px solid rgba(var(--glass-tint), 0.05)' : 'none',
         transition: 'background 120ms ease',
@@ -79,17 +79,17 @@ function PurchaseRow({
       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(var(--glass-tint), 0.03)'; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
-          <p style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 'var(--fs-md)', fontWeight: 600, margin: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', flex: 1, minWidth: 0 }}>
+          <p style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 'var(--fs-md)', fontWeight: 600, margin: '0' }}>
             {p.name}
           </p>
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: 0 }}>
+          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', margin: '0' }}>
             {fmtDate(p.date)} · {p.tubes} tube{p.tubes === 1 ? '' : 's'}
             {typeof p.speed === 'number' && ` · spd ${p.speed}`}
           </p>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--space-05)' }}>
           <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 'var(--fs-base)', fontWeight: 600 }}>
             ${p.totalCost.toFixed(2)}
           </span>
@@ -99,7 +99,7 @@ function PurchaseRow({
         </div>
       </div>
       {(typeof p.qualityRating === 'number' || p.notes) && (
-        <div style={{ display: 'flex', alignItems: 'center', marginTop: 8, gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginTop: 'var(--space-3)', gap: 'var(--space-4)' }}>
           {typeof p.qualityRating === 'number' && <Stars n={p.qualityRating} />}
           {p.notes && (
             <span
@@ -409,13 +409,13 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
     return (
       <div className="animate-slideInRight space-y-3">
         <AdminBackHeader onBack={onBack} title="Birds" />
-        <div role="alert" style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+        <div role="alert" style={{ padding: 'var(--space-9) var(--space-7)', textAlign: 'center', color: 'var(--text-muted)' }}>
           <p style={{ fontWeight: 600, color: 'var(--text)' }}>Couldn&apos;t load birds</p>
-          <p style={{ fontSize: 'var(--fs-base)', marginTop: 6 }}>You may be offline. Reconnect, then retry.</p>
+          <p style={{ fontSize: 'var(--fs-base)', marginTop: 'var(--space-2)' }}>You may be offline. Reconnect, then retry.</p>
           <button
             type="button"
             className="cc-btn cc-btn-ghost"
-            style={{ marginTop: 14 }}
+            style={{ marginTop: 'var(--space-4)' }}
             onClick={() => void load()}
           >
             Retry
@@ -433,14 +433,14 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
       <div
         className="glass-card"
         style={{
-          padding: 18,
+          padding: 'var(--space-6)',
           overflow: 'hidden',
           position: 'relative',
           background: 'linear-gradient(160deg, rgba(74,222,128,0.08), rgba(var(--glass-tint), 0.02))',
         }}
       >
-        <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>Runs out in</p>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 2 }}>
+        <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: '0' }}>Runs out in</p>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-4)', marginTop: 'var(--space-05)' }}>
           <span
             style={{
               fontFamily: 'var(--font-display, "Space Grotesk")',
@@ -462,7 +462,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                 marginLeft: 'auto',
                 display: 'inline-flex',
                 alignItems: 'center',
-                padding: '3px 9px',
+                padding: 'var(--space-1) var(--space-3)',
                 borderRadius: 'var(--radius-pill)',
                 fontSize: 'var(--fs-xs)',
                 fontWeight: 600,
@@ -477,7 +477,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             </span>
           )}
         </div>
-        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: '6px 0 0' }}>
+        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: 'var(--space-2) 0 0' }}>
           <strong style={{ color: 'var(--text-primary)' }}>{currentStock} tubes</strong> on hand
           {currentPrice > 0 && (
             <>{' · '}<strong style={{ color: 'var(--text-primary)' }}>${currentPrice.toFixed(2)}/tube</strong> now</>
@@ -489,12 +489,12 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           )}
         </p>
         {totalAdjustments !== 0 && (
-          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--ink-faint)', margin: '4px 0 0' }}>
+          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--ink-faint)', margin: 'var(--space-1) 0 0' }}>
             includes {totalAdjustments > 0 ? '+' : '−'}{Math.abs(totalAdjustments)} from a manual recount
           </p>
         )}
         {stockDrift > 0 && (
-          <p role="alert" style={{ fontSize: 'var(--fs-xs)', color: 'var(--amber)', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <p role="alert" style={{ fontSize: 'var(--fs-xs)', color: 'var(--amber)', margin: 'var(--space-1) 0 0', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             <span className="material-icons" style={{ fontSize: 'var(--fs-md)' }} aria-hidden="true">warning</span>
             Records show {stockDrift} more tube{stockDrift === 1 ? '' : 's'} used than purchased — run a recount to true up.
           </p>
@@ -504,7 +504,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             style={{
               fontSize: 'var(--fs-xs)',
               color: 'var(--ink-faint)',
-              margin: '4px 0 0',
+              margin: 'var(--space-1) 0 0',
               fontFamily: 'var(--font-mono, "JetBrains Mono")',
             }}
             title="Burn rate = recent tubes used ÷ recent sessions (last 60 days)"
@@ -514,7 +514,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         )}
 
         {/* Timeline */}
-        <div style={{ marginTop: 18, position: 'relative' }}>
+        <div style={{ marginTop: 'var(--space-6)', position: 'relative' }}>
           <div
             style={{
               height: TIMELINE_BAR_H,
@@ -585,7 +585,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             style={{
               display: 'flex',
               justifyContent: 'space-between',
-              marginTop: 6,
+              marginTop: 'var(--space-2)',
               fontFamily: 'var(--font-mono, "JetBrains Mono")',
               fontSize: 'var(--fs-xs)',
               color: 'var(--ink-faint)',
@@ -599,11 +599,11 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+        <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-5)' }}>
           <button
             type="button"
             className="cc-btn cc-btn-primary"
-            style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+            style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)' }}
             onClick={openAddSheet}
           >
             <span className="material-icons" style={{ fontSize: 'var(--icon-md)' }}>add_shopping_cart</span>
@@ -612,7 +612,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           <button
             type="button"
             className="cc-btn cc-btn-secondary"
-            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)' }}
             onClick={openReconcileSheet}
           >
             <span className="material-icons" style={{ fontSize: 'var(--icon-md)' }}>fact_check</span>
@@ -630,21 +630,21 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           letterSpacing: '0.16em',
           textTransform: 'uppercase',
           color: 'var(--ink-faint)',
-          margin: '14px 4px 6px',
+          margin: 'var(--space-4) var(--space-1) var(--space-2)',
         }}
       >
         Brands
       </p>
       {brands.length === 0 && (
-        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '0 4px' }}>No purchases yet.</p>
+        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '0 var(--space-1)' }}>No purchases yet.</p>
       )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
         {brands.map((b) => (
-          <div key={b.brand} className="glass-card" style={{ padding: '12px 14px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                <p style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 'var(--fs-md)', fontWeight: 600, margin: 0 }}>{b.brand}</p>
-                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', display: 'flex', gap: 6, alignItems: 'center', margin: 0 }}>
+          <div key={b.brand} className="glass-card" style={{ padding: 'var(--space-4) var(--space-5)' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-05)', minWidth: 0 }}>
+                <p style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 'var(--fs-md)', fontWeight: 600, margin: '0' }}>{b.brand}</p>
+                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', display: 'flex', gap: 'var(--space-2)', alignItems: 'center', margin: '0' }}>
                   {b.speed !== null && <>spd {b.speed}</>}
                   {b.speed !== null && b.quality !== null && ' · '}
                   {b.quality !== null && <Stars n={b.quality} />}
@@ -670,10 +670,10 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           letterSpacing: '0.16em',
           textTransform: 'uppercase',
           color: 'var(--ink-faint)',
-          margin: '14px 4px 6px',
+          margin: 'var(--space-4) var(--space-1) var(--space-2)',
           display: 'flex',
           alignItems: 'baseline',
-          gap: 8,
+          gap: 'var(--space-3)',
         }}
       >
         Purchase history
@@ -682,9 +682,9 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         </span>
       </p>
       {recentPurchases.length === 0 ? (
-        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '0 4px' }}>No purchases in the last 60 days.</p>
+        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '0 var(--space-1)' }}>No purchases in the last 60 days.</p>
       ) : (
-        <div className="glass-card is-flush" style={{ padding: '4px 0' }}>
+        <div className="glass-card is-flush" style={{ padding: 'var(--space-1) 0' }}>
           {recentPurchases.map((p, i) => (
             <PurchaseRow key={p.id} purchase={p} index={i} onEdit={openEditSheet} />
           ))}
@@ -702,12 +702,12 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
               letterSpacing: '0.16em',
               textTransform: 'uppercase',
               color: 'var(--ink-faint)',
-              margin: '14px 4px 6px',
+              margin: 'var(--space-4) var(--space-1) var(--space-2)',
             }}
           >
             Older purchases
           </p>
-          <div className="glass-card is-flush" style={{ padding: '4px 0' }}>
+          <div className="glass-card is-flush" style={{ padding: 'var(--space-1) 0' }}>
             {olderPurchases.map((p, i) => (
               <PurchaseRow key={p.id} purchase={p} index={i} onEdit={openEditSheet} />
             ))}
@@ -744,7 +744,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           </button>
         </BottomSheetHeader>
         <BottomSheetBody>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <Field label="Brand / model">
               <input
                 type="text"
@@ -754,7 +754,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                 maxLength={120}
               />
             </Field>
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
               <Field label="Tubes" style={{ flex: 1 }}>
                 <input
                   type="number"
@@ -774,7 +774,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                 />
               </Field>
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
               <Field label="Date" style={{ flex: 1 }}>
                 <input
                   type="date"
@@ -793,7 +793,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
               </Field>
             </div>
             <Field label="Quality (1–5)">
-              <div style={{ display: 'inline-flex', gap: 4 }}>
+              <div style={{ display: 'inline-flex', gap: 'var(--space-1)' }}>
                 {[1, 2, 3, 4, 5].map((i) => (
                   <button
                     key={i}
@@ -804,7 +804,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                       background: 'transparent',
                       border: 'none',
                       cursor: 'pointer',
-                      padding: 0,
+                      padding: '0',
                       lineHeight: 0,
                     }}
                   >
@@ -832,7 +832,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             </Field>
 
             {formError && (
-              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: 0 }}>
+              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
                 {formError}
               </p>
             )}
@@ -860,7 +860,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                 confirm()). A referenced purchase comes back 409 with guidance
                 ("move its tubes first"), surfaced via formError above. */}
             {confirmingDelete ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
                 <span className="fs-sm" style={{ color: 'var(--text-secondary)', flex: 1, minWidth: 160 }}>
                   Delete this purchase? This cannot be undone.
                 </span>
@@ -883,7 +883,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                 </button>
               </div>
             ) : (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
                 {editingId && (
                   <button
                     type="button"
@@ -939,8 +939,8 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           </button>
         </BottomSheetHeader>
         <BottomSheetBody>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '0', lineHeight: 1.5 }}>
               The app counts <strong style={{ color: 'var(--text-primary)' }}>{currentStock} tubes</strong> on hand
               (purchased − used). If your physical count differs — broken tubes, gifts, miscounts — enter the real
               number and we&apos;ll log the difference.
@@ -956,7 +956,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
               />
             </Field>
             {typeof reconcileCount === 'number' && reconcileCount !== currentStock && (
-              <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--ink-faint)', margin: 0, fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
+              <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--ink-faint)', margin: '0', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}>
                 adjustment: {reconcileCount - currentStock > 0 ? '+' : '−'}{Math.abs(Math.round((reconcileCount - currentStock) * 100) / 100)} tubes
               </p>
             )}
@@ -970,11 +970,11 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
               />
             </Field>
             {reconcileError && (
-              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: 0 }}>
+              <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: '0' }}>
                 {reconcileError}
               </p>
             )}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={() => setReconcileOpen(false)}
@@ -1010,7 +1010,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
 
 function Field({ label, children, style }: { label: string; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, ...style }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', ...style }}>
       <label style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{label}</label>
       {children}
     </div>

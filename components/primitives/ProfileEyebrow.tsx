@@ -24,7 +24,7 @@ export default function ProfileEyebrow({ children }: { children: ReactNode }) {
         // hardcode the dark value. This directory lints bare rgba() at error
         // level, which is what surfaced it when the eyebrow moved here.
         color: 'var(--ink-faint)',
-        margin: '8px 4px -2px',
+        margin: 'var(--space-3) var(--space-1) calc(-1 * var(--space-05))',
       }}
     >
       {children}

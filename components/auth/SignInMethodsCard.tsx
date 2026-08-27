@@ -116,7 +116,7 @@ export default function SignInMethodsCard() {
 
       {/* What they already have. Rendered as facts, not actions — the PIN and
           password are managed elsewhere on Profile. */}
-      <ul style={{ display: 'grid', gap: 'var(--space-2)', margin: 0, padding: 0, listStyle: 'none' }}>
+      <ul style={{ display: 'grid', gap: 'var(--space-2)', margin: '0', padding: '0', listStyle: 'none' }}>
         {methods.hasPin && <MethodRow label={t('methodPin')} />}
         {methods.hasPassword && <MethodRow label={methods.email || t('methodPassword')} />}
         {linked.map((p) => (
@@ -153,7 +153,7 @@ export default function SignInMethodsCard() {
       </ul>
 
       {showNudge && methods.hasPin && !methods.hasPassword && linked.length === 0 && (
-        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: 0 }}>
+        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '0' }}>
           {t('methodPinOnly')}
         </p>
       )}

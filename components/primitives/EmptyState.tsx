@@ -4,10 +4,10 @@ import type { ReactNode } from 'react';
  * Empty-state copy — the muted "nothing here yet" line shown when a card
  * loaded successfully but has no data (distinct from <ErrorState>, which is
  * a load failure). Standardizes the recurring inline
- * `{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: 0 }` text on the
+ * `{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '0' }` text on the
  * `--fs-base` token.
  *
- * Replaces:  <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: 0 }}>{msg}</p>
+ * Replaces:  <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '0' }}>{msg}</p>
  * With:      <EmptyState>{msg}</EmptyState>
  *
  * ## Two shapes, and when each applies
@@ -47,7 +47,7 @@ export interface EmptyStateProps {
 export default function EmptyState({ children, icon }: EmptyStateProps) {
   if (!icon) {
     return (
-      <p className="fs-base" style={{ color: 'var(--text-muted)', margin: 0 }}>
+      <p className="fs-base" style={{ color: 'var(--text-muted)', margin: '0' }}>
         {children}
       </p>
     );
@@ -75,7 +75,7 @@ export default function EmptyState({ children, icon }: EmptyStateProps) {
       ) : (
         <span aria-hidden="true" style={{ lineHeight: 1, display: 'flex' }}>{icon}</span>
       )}
-      <p className="fs-base" style={{ color: 'var(--text-muted)', margin: 0, maxWidth: '28ch' }}>
+      <p className="fs-base" style={{ color: 'var(--text-muted)', margin: '0', maxWidth: '28ch' }}>
         {children}
       </p>
     </div>

@@ -165,10 +165,10 @@ function Header({
     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
       <div>
         {/* Icon-less by design — the mono fraction is the card's own emblem. */}
-        <h3 className="bpm-h3" style={{ margin: 0 }}>
+        <h3 className="bpm-h3" style={{ margin: '0' }}>
           {t('title')}
         </h3>
-        <p style={{ margin: '2px 0 0', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{t('subtitle')}</p>
+        <p style={{ margin: 'var(--space-05) 0 0', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{t('subtitle')}</p>
       </div>
       {fraction && (
         <span

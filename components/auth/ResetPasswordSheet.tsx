@@ -98,7 +98,7 @@ export default function ResetPasswordSheet({
       <BottomSheetBody>
         {expired ? (
           <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
-            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: 0 }}>
+            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}>
               {t('resetExpired')}
             </p>
             <button
@@ -112,7 +112,7 @@ export default function ResetPasswordSheet({
           </div>
         ) : (
           <form onSubmit={submit} style={{ display: 'grid', gap: 'var(--space-4)' }}>
-            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: 0 }}>
+            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0' }}>
               {t('resetBody')}
             </p>
             <input

@@ -88,8 +88,8 @@ export default function EnterCodeSheet({ open, onClose, sessionId, onRecovered }
             {t('welcomeBack', { name: success })}
           </p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: '0' }}>
               {t('codePathHelp')}
             </p>
             <input
@@ -101,7 +101,7 @@ export default function EnterCodeSheet({ open, onClose, sessionId, onRecovered }
               autoComplete="nickname"
               style={{
                 width: '100%',
-                padding: 12,
+                padding: 'var(--space-4)',
                 borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--glass-border)',
                 background: 'var(--input-bg, rgba(255,255,255,0.05))',
@@ -120,7 +120,7 @@ export default function EnterCodeSheet({ open, onClose, sessionId, onRecovered }
               disabled={submitting || !name.trim() || code.length !== 6}
               onClick={submit}
               className="cc-btn cc-btn-primary cc-btn-lg"
-              style={{ marginTop: 4 }}
+              style={{ marginTop: 'var(--space-1)' }}
             >
               {t('submitCode')}
             </button>

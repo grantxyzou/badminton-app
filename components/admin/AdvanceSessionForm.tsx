@@ -227,7 +227,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
         <div
           role="alert"
           style={{
-            padding: '10px 14px',
+            padding: 'var(--space-4) var(--space-5)',
             borderRadius: 'var(--radius-lg)',
             background: 'rgba(239,68,68,0.06)',
             border: '1px solid rgba(239,68,68,0.25)',
@@ -370,7 +370,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                 value={costPerCourt ?? ''}
                 onChange={e => setCostPerCourt(e.target.value === '' ? null : (parseFloat(e.target.value) || 0))}
                 placeholder="None"
-                style={costPerCourt !== null && costPerCourt > 0 ? { paddingLeft: '1.5rem' } : undefined}
+                style={costPerCourt !== null && costPerCourt > 0 ? { paddingLeft: 'var(--space-7)' } : undefined}
               />
             </div>
             {recentCosts.length > 0 && (
@@ -436,14 +436,14 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                 onChange={e => setPricePerTube(e.target.value === '' ? 0 : Math.max(0, Math.min(10000, Number(e.target.value))))}
                 placeholder="$ per tube"
                 className="fs-md"
-                style={{ flex: 1, background: 'var(--input-bg)', border: '1px solid var(--inner-card-border)', borderRadius: 'var(--radius-md)', padding: '8px 10px', color: 'var(--text-primary)' }}
+                style={{ flex: 1, background: 'var(--input-bg)', border: '1px solid var(--inner-card-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3) var(--space-4)', color: 'var(--text-primary)' }}
               />
               {autoPrice > 0 && Math.abs(autoPrice - pricePerTube) > 0.005 && (
                 <button
                   type="button"
                   onClick={() => setPricePerTube(autoPrice)}
                   className="text-[11px]"
-                  style={{ padding: '4px 8px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--inner-card-border)', background: 'var(--input-bg)', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  style={{ padding: 'var(--space-1) var(--space-3)', borderRadius: 'var(--radius-pill)', border: '1px solid var(--inner-card-border)', background: 'var(--input-bg)', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', cursor: 'pointer', whiteSpace: 'nowrap' }}
                 >
                   Latest ${autoPrice.toFixed(2)}
                 </button>

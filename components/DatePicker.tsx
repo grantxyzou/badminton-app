@@ -134,12 +134,12 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
           backdropFilter: 'blur(40px) saturate(180%)',
           border: '1px solid var(--glass-border)',
           borderRadius: 'var(--radius-xl)',
-          padding: '10px 8px',
+          padding: 'var(--space-4) var(--space-3)',
           boxShadow: 'var(--glass-shadow)',
         }}
       >
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
         <button
           type="button"
           onClick={prevMonth}
@@ -162,16 +162,16 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
       </div>
 
       {/* Day headers */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 2 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 'var(--space-05)' }}>
         {DAYS.map((d, i) => (
-          <div key={i} style={{ textAlign: 'center', fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700, padding: '1px 0' }}>
+          <div key={i} style={{ textAlign: 'center', fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700, padding: 'var(--space-hair) 0' }}>
             {d}
           </div>
         ))}
       </div>
 
       {/* Day cells */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 'var(--space-hair)' }}>
         {cells.map((day, i) => {
           if (!day) return <div key={i} />;
           const dayStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -227,14 +227,14 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
           boxShadow: open ? `0 0 0 3px var(--input-focus-ring)` : 'none',
           borderRadius: 14,
           color: value ? 'var(--text-primary)' : 'var(--text-muted)',
-          padding: '0 10px',
+          padding: '0 var(--space-4)',
           height: '42px',
           fontSize: '0.8rem',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 4,
+          gap: 'var(--space-1)',
           overflow: 'hidden',
           whiteSpace: 'nowrap',
         }}

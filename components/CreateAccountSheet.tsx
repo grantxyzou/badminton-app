@@ -110,8 +110,8 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
             {t('successWelcome', { name: successName })}
           </p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0 }}>{t('body')}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: '0' }}>{t('body')}</p>
             <input
               type="text"
               aria-label={t('nameLabel')}
@@ -122,11 +122,11 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
               autoComplete="nickname"
             />
             <div>
-              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 4 }}>{t('pinLabel')}</p>
+              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 'var(--space-1)' }}>{t('pinLabel')}</p>
               <PinInput value={pin} onChange={setPin} digits={4} label={t('pinLabel')} ariaInvalid={error === 'pin_problem'} />
             </div>
             <div>
-              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 4 }}>{t('confirmPinLabel')}</p>
+              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginBottom: 'var(--space-1)' }}>{t('confirmPinLabel')}</p>
               <PinInput value={confirmPin} onChange={setConfirmPin} digits={4} label={t('confirmPinLabel')} ariaInvalid={error === 'pin_problem'} />
             </div>
             <button
@@ -134,7 +134,7 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
               disabled={!canSubmit}
               onClick={submit}
               className="cc-btn cc-btn-primary cc-btn-lg"
-              style={{ marginTop: 4 }}
+              style={{ marginTop: 'var(--space-1)' }}
             >
               {submitting ? t('submitting') : t('submit')}
             </button>

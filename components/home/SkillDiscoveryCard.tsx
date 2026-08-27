@@ -55,19 +55,19 @@ export default function SkillDiscoveryCard({
   };
 
   return (
-    <div className="glass-card p-4" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div className="glass-card p-4" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
       <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-lg)', color: 'var(--accent, #22c55e)', flexShrink: 0 }}>
         trending_up
       </span>
       <button
         type="button"
         onClick={onOpen}
-        style={{ flex: 1, textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+        style={{ flex: 1, textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0' }}
       >
-        <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: 0, fontWeight: 600, lineHeight: 1.3 }}>
+        <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)', margin: '0', fontWeight: 600, lineHeight: 1.3 }}>
           {signedUp ? t('skillDiscovery.titleSignedUp') : t('skillDiscovery.title')}
         </p>
-        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--accent, #22c55e)', margin: '2px 0 0', fontWeight: 600 }}>
+        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--accent, #22c55e)', margin: 'var(--space-05) 0 0', fontWeight: 600 }}>
           {t('skillDiscovery.cta')} →
         </p>
       </button>

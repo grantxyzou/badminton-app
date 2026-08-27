@@ -82,7 +82,7 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin }: SignIn
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
       <input
         type="text"
         aria-label={t('nameLabel')}
@@ -104,7 +104,7 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin }: SignIn
         disabled={!canSubmit}
         onClick={submit}
         className="cc-btn cc-btn-primary cc-btn-lg"
-        style={{ marginTop: 4 }}
+        style={{ marginTop: 'var(--space-1)' }}
       >
         {submitting ? t('submitting') : t('submitPin')}
       </button>
@@ -114,22 +114,22 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin }: SignIn
         </button>
       )}
       {error === 'invalid' && (
-        <p role="alert" style={{ color: 'var(--color-red)', fontSize: 'var(--fs-sm)', margin: 0 }}>
+        <p role="alert" style={{ color: 'var(--color-red)', fontSize: 'var(--fs-sm)', margin: '0' }}>
           {t('errorInvalid')}
         </p>
       )}
       {error === 'rate_limited' && (
-        <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)', margin: 0 }}>
+        <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)', margin: '0' }}>
           {t('errorRateLimited')}
         </p>
       )}
       {error === 'admin_logged_in' && (
-        <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)', margin: 0 }}>
+        <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)', margin: '0' }}>
           {t('errorAdminLoggedIn')}
         </p>
       )}
       {error === 'network' && (
-        <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)', margin: 0 }}>
+        <p role="alert" style={{ color: 'var(--color-amber)', fontSize: 'var(--fs-sm)', margin: '0' }}>
           {t('errorNetwork')}
         </p>
       )}
