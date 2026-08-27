@@ -149,6 +149,46 @@ describe('an admin is also a player', () => {
   });
 });
 
+describe('the exact amount crosses only when it is a BILL', () => {
+  it('sends amountDue once the job is finished, priced and unpaid', async () => {
+    // The end of the price wall, not a hole in it. A quote is a range; a bill
+    // is a number, and you cannot pay a range.
+    await seedJob({ status: 'ready', priceCents: 3000, paidAt: null });
+    const res = await GET(memberReq('GET', 'http://x/api/stringing/jobs', 'wei'));
+    const [job] = (await res.json()).jobs;
+    expect(job.amountDue).toBe(30);
+  });
+
+  it('sends NULL while the racket is still on the bench', async () => {
+    // Billing for work in progress asks someone to pay for a racket they
+    // cannot use yet.
+    for (const status of ['requested', 'received', 'strung']) {
+      resetMockStore();
+      await seedJob({ status, priceCents: 3000 });
+      const res = await GET(memberReq('GET', 'http://x/api/stringing/jobs', 'wei'));
+      const [job] = (await res.json()).jobs;
+      expect(job.amountDue).toBeNull();
+      // The quote is still what they see.
+      expect(job.priceRange).toBe('$28–32');
+    }
+  });
+
+  it('sends NULL once the stringer marks it paid', async () => {
+    await seedJob({ status: 'ready', priceCents: 3000, paidAt: '2026-08-27T10:00:00Z' });
+    const res = await GET(memberReq('GET', 'http://x/api/stringing/jobs', 'wei'));
+    expect((await res.json()).jobs[0].amountDue).toBeNull();
+  });
+
+  it('still never sends priceCents, in any state', async () => {
+    // The raw field stays gone. What crosses is a dollar amount the player
+    // owes, not the stringer's stored figure.
+    await seedJob({ status: 'ready', priceCents: 3000 });
+    const raw = JSON.stringify(await (await GET(memberReq('GET', 'http://x/api/stringing/jobs', 'wei'))).json());
+    expect(raw).not.toContain('priceCents');
+    expect(raw).not.toContain('3000');
+  });
+});
+
 describe('a player only sees their own jobs', () => {
   it('never returns another member’s job', async () => {
     await seedJob({ memberId: 'member-wei', memberName: 'Wei' });

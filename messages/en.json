@@ -153,6 +153,8 @@
       "etransfer": "E-transfer to {email}"
     },
     "balance": {
+        "groupSessions": "Badminton",
+        "groupStringing": "Stringing",
       "title": "Your balance",
       "total": "Total",
       "paidUp": "You're all paid up"

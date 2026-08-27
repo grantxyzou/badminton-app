@@ -28,6 +28,7 @@ import {
   formatPriceBand,
   formatJobNo,
 } from '@/lib/stringing';
+import { isBillable } from '@/lib/stringingBilling';
 import type { StringingJob, PlayerStringingJob } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -77,6 +78,17 @@ export function toPlayerJob(job: StringingJob): PlayerStringingJob {
     // A band, never the figure. `formatPriceBand` returns null for an unpriced
     // job, which the UI renders as "Grant will confirm" rather than as free.
     priceRange: formatPriceBand(priceBand(job.priceCents)),
+    /**
+     * The EXACT amount, but only once the job is billable.
+     *
+     * Not a hole in the price wall — the end of it. The band hides a
+     * PROVISIONAL figure; once the racket is finished and priced, the player
+     * has a bill, and a bill is a number. Sending it here is also what stops
+     * the app contradicting itself: without this the Home card showed
+     * "$28–32" directly above a balance line reading "$30" for the same
+     * racket, which is the sort of thing that makes someone distrust both.
+     */
+    amountDue: isBillable(job) ? Math.round(job.priceCents!) / 100 : null,
     readyBy: job.readyBy,
     paid: job.paidAt !== null,
     createdAt: job.createdAt,

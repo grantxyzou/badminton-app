@@ -3,7 +3,9 @@ import { getContainer, POINTER_ID, getActiveSessionId } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { ownsNameOrAdmin } from '@/lib/auth';
 import { resolveIdentity, matchesIdentity, classifyOwed, finiteSessionDate } from '@/lib/playerIdentity';
-import type { Player, Session } from '@/lib/types';
+import { isFlagOn } from '@/lib/flags';
+import { stringingCharges, stringingTotal, type StringingCharge } from '@/lib/stringingBilling';
+import type { Player, Session, StringingJob } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +48,34 @@ const EMPTY = {
   sessionCount: 0,
   mostRecent: null as UnpaidSession | null,
   sessions: [] as UnpaidSession[],
+  stringing: [] as StringingCharge[],
+  sessionsOwed: 0,
+  stringingOwed: 0,
 };
+
+/**
+ * Stringing charges for this member, or [] when there are none to add.
+ *
+ * Deliberately swallows its own failure. The balance card's PRIMARY job is
+ * session money, and a stringing container that does not exist yet — or a
+ * throw while reading it — must not take the whole balance down with it. The
+ * asymmetry is intentional: showing session debt without stringing is
+ * incomplete, while showing nothing at all is useless.
+ */
+async function chargesFor(memberId: string | null): Promise<StringingCharge[]> {
+  if (!memberId || !isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) return [];
+  try {
+    const { resources } = await getContainer('stringingJobs')
+      .items.query<StringingJob>({
+        query: 'SELECT * FROM c WHERE c.memberId = @memberId',
+        parameters: [{ name: '@memberId', value: memberId }],
+      })
+      .fetchAll();
+    return stringingCharges(resources);
+  } catch {
+    return [];
+  }
+}
 
 export async function GET(req: NextRequest) {
   // Rate limit before anything else (CLAUDE.md security #4).
@@ -94,7 +123,16 @@ export async function GET(req: NextRequest) {
       return s.id !== activeSessionId && new Date(s.datetime).getTime() < now;
     });
     if (relevant.length === 0) {
-      return NextResponse.json(EMPTY);
+      // Not EMPTY: a player can have no session debt and still owe for a
+      // racket. Returning the constant here would hide the charge entirely.
+      const stringing = await chargesFor(identity.memberId);
+      const stringingOwed = stringingTotal(stringing);
+      return NextResponse.json({
+        ...EMPTY,
+        stringing,
+        stringingOwed,
+        totalOwed: stringingOwed,
+      });
     }
 
     const sessionById = new Map<string, Session>();
@@ -140,13 +178,22 @@ export async function GET(req: NextRequest) {
 
     // Newest first.
     unpaid.sort((a, b) => (a.date < b.date ? 1 : -1));
-    const totalOwed = round2(unpaid.reduce((sum, s) => sum + s.owedAmount, 0));
+    const sessionsOwed = round2(unpaid.reduce((sum, s) => sum + s.owedAmount, 0));
+    const stringing = await chargesFor(identity.memberId);
+    const stringingOwed = stringingTotal(stringing);
 
     return NextResponse.json({
-      totalOwed,
+      // `totalOwed` still means EVERYTHING owed, so existing callers that only
+      // read it keep working and keep being right. The two halves are also
+      // reported separately so the receipt can show its own subtotals without
+      // re-deriving them and risking a total that disagrees with its lines.
+      totalOwed: round2(sessionsOwed + stringingOwed),
+      sessionsOwed,
+      stringingOwed,
       sessionCount: unpaid.length,
       mostRecent: unpaid[0] ?? null,
       sessions: unpaid,
+      stringing,
     });
   } catch (error) {
     console.error('GET /api/players/unpaid error:', error);

@@ -455,8 +455,12 @@ export interface PlayerStringingJob {
   tensionMains: number;
   tensionCrosses: number;
   method: string;
-  /** "$28–32" before pickup; the exact figure is never sent. */
+  /** "$28–32" while the price is still provisional. */
   priceRange: string | null;
+  /** The exact amount owed, in dollars, once the job is billable — finished,
+   *  priced and unpaid. Null at every other point. A quote is a range; a bill
+   *  is a number. See lib/stringingBilling.ts. */
+  amountDue: number | null;
   readyBy: string | null;
   paid: boolean;
   createdAt: string;

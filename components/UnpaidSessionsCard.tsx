@@ -13,11 +13,24 @@ interface UnpaidSession {
   owedAmount: number;
 }
 
+interface StringingCharge {
+  jobId: string;
+  jobNo: string;
+  racketLabel: string;
+  amount: number;
+  at: string;
+}
+
 interface UnpaidData {
+  /** EVERYTHING owed — sessions plus stringing. */
   totalOwed: number;
   sessionCount: number;
   mostRecent: UnpaidSession | null;
   sessions: UnpaidSession[];
+  /** Absent on a response from before stringing billing existed. */
+  stringing?: StringingCharge[];
+  sessionsOwed?: number;
+  stringingOwed?: number;
 }
 
 function fmtMoney(n: number): string {
@@ -120,6 +133,12 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
   const title = isHome ? tBal('title') : t('title');
   const titleColor = showPaidUp ? 'var(--accent)' : 'var(--sev-warn)';
   const lineItems = data?.sessions ?? [];
+  const stringingItems = data?.stringing ?? [];
+  /* Group headings appear only when there is something to tell apart. A player
+     who has only ever owed for sessions keeps the plain list they already know;
+     adding "Badminton" above a single group would be chrome that explains
+     nothing. */
+  const grouped = lineItems.length > 0 && stringingItems.length > 0;
 
   return (
     <div
@@ -160,22 +179,56 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
       ) : (
         data && (
           <>
-            {/* Line items — one per unpaid session, no dividers between rows. */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {lineItems.map((s) => (
-                <div
-                  key={s.sessionId}
-                  style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}
-                >
-                  <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-                    {format.dateTime(new Date(s.date), DAY_SHORT)}
-                  </span>
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-                    {fmtMoney(s.owedAmount)}
-                  </span>
-                </div>
-              ))}
-            </div>
+            {/* Sessions — one line per unpaid week, no dividers between rows. */}
+            {lineItems.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {grouped && (
+                  <p className="fs-2xs" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                    {tBal('groupSessions')}
+                  </p>
+                )}
+                {lineItems.map((s) => (
+                  <div
+                    key={s.sessionId}
+                    style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}
+                  >
+                    <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+                      {format.dateTime(new Date(s.date), DAY_SHORT)}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                      {fmtMoney(s.owedAmount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Stringing — a racket that is finished and priced. Never a job
+                still on the bench, and never a band: you cannot pay a range,
+                so a line here is always an exact figure. See
+                lib/stringingBilling.ts. */}
+            {stringingItems.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {grouped && (
+                  <p className="fs-2xs" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                    {tBal('groupStringing')}
+                  </p>
+                )}
+                {stringingItems.map((j) => (
+                  <div
+                    key={j.jobId}
+                    style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}
+                  >
+                    <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', minWidth: 0 }}>
+                      {j.racketLabel}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                      {fmtMoney(j.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Total — single hairline rule above, invoice-style. */}
             <div

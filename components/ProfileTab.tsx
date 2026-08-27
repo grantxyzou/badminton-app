@@ -6,7 +6,6 @@ import type { Release } from '@/lib/types';
 import EnterCodeSheet from './EnterCodeSheet';
 import CreateAccountSheet from './CreateAccountSheet';
 import RecoveryPinSheet from './RecoveryPinSheet';
-import UnpaidSessionsCard from './UnpaidSessionsCard';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
 import ReportProblemSheet from './ReportProblemSheet';
 import InstallSheet from './InstallSheet';
@@ -522,7 +521,6 @@ export default function ProfileTab({
         sessionDatetime={sessionDatetime}
       />
 
-      <UnpaidSessionsCard name={identity.name} />
 
       {/* Always present for a SIGNED-IN member: the upgrade nudge is a variant
           of this card, not a separate surface, so dismissing the prompt does not
