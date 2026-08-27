@@ -1,6 +1,15 @@
 {
   "home": {
     "stringing": {
+        "requestTitle": "申请穿线",
+        "requestSubtitle": "登记表",
+        "whichString": "选哪种线？",
+        "pickString": "请选择拍线",
+        "tension": "磅数",
+        "customRequest": "自定义要求",
+        "standardRequest": "回到常规选项",
+        "noStringsYet": "Grant 还没列出有哪些线，直接告诉他你想要什么吧。",
+        "unusualPair": "这个组合不常见 — 横线一般是 {suggested} 磅。",
         "subtitleOpen": "在球局上把球拍交给 Grant，剩下的交给他。",
         "subtitleActive": "你的球拍进度在这里。",
         "openBadge": "开放中",
@@ -12,7 +21,6 @@
           "ready_for_you": "可以取了",
           "done": "已取走"
         },
-        "requestTitle": "申请穿线",
         "requestBody": "告诉 Grant 你的要求，球局上把拍子交给他。",
         "sendCta": "发送申请",
         "requestSending": "发送中…",
@@ -25,7 +33,6 @@
         "lb": "磅",
         "decrease": "减少{field}",
         "increase": "增加{field}",
-        "priceLater": "Grant 收到拍子后会确认价格。",
         "error": {
           "generic": "没能发送 — 再试一次。",
           "shop_closed": "Grant 现在不收拍子，改天再来吧。",
@@ -750,6 +757,16 @@
   },
   "admin": {
     "stringing": {
+        "strings": {
+          "title": "你有的拍线",
+          "hint": "这些会成为球友申请时的下拉选项。",
+          "empty": "还没有添加 — 在你添加之前，球友会自己填写。",
+          "placeholder": "例如 BG80 白色",
+          "add": "添加",
+          "remove": "移除 {name}",
+          "loadError": "拍线列表加载失败 — 刷新重试。",
+          "saveError": "没保存成功 — 再试一次。"
+        },
         "lb": "磅",
         "heldBy": "由 {name} 负责",
         "unclaimed": "还没有人接手。",

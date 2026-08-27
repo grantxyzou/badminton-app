@@ -74,7 +74,7 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
   },
   NEXT_PUBLIC_FLAG_STRINGING: {
     description:
-      'The stringing service (design "Stringing", Aug 2026). Stage 1 is the BENCH only: the stringingJobs container plus the admin-side job list, job detail and intake form. Gates the /api/stringing/* routes server-side as well as the UI, because the price a stringer charges is admin-only data and a client flag cannot protect it. The player-facing entry point, request sheet and status track are Stage 2 and are NOT behind this flag yet -- Home still shows the "Coming soon" card until they land. Turning this off hides the bench and 404s the routes; no player-visible surface changes either way.',
+      'The stringing service (design "Stringing", Aug 2026). Stage 1 is the BENCH only: the stringingJobs container plus the admin-side job list, job detail and intake form. Gates the /api/stringing/* routes server-side as well as the UI, because the price a stringer charges is admin-only data and a client flag cannot protect it. The player side landed too: the Home card, the request sheet, and the admin-controlled shop sign. It is behind this flag TRANSITIVELY rather than directly -- StringingCard never calls isFlagOn; it reads GET /api/stringing/shop, which 404s when the flag is off, which the card treats as UNKNOWN and renders as the "Coming soon" state. That indirection is load-bearing: tidying up the 404 handling in that card would silently un-gate the feature. Turning this off hides the bench and 404s the routes; no player-visible surface changes either way.',
     owner: 'grant',
     plannedRemoval: '2026-11-15',
   },
