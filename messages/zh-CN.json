@@ -716,6 +716,16 @@
   },
   "admin": {
     "stringing": {
+      "shop": {
+          "open": "穿线服务开放中",
+          "closed": "暂时休息",
+          "unknown": "暂时无法确认",
+          "openHint": "球友可以把球拍交给你，申请穿线。",
+          "closedHint": "球友看不到这个选项。工作台上已有的工单不受影响。",
+          "unknownHint": "没能读到状态 — 刷新重试。",
+          "openCta": "开放",
+          "closeCta": "休息"
+      },
         "benchTitle": "工作台",
         "mine": "我的",
         "all": "全部",
