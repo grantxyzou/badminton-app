@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isFlagOn } from '@/lib/flags';
 import { appOrigin, googleClient, decodeIdTokenClaims } from '@/lib/oauthProviders';
-import { readOAuthCookies, verifyState } from '@/lib/oauthState';
+import { readOAuthCookies, classifyState, describeCallbackContext } from '@/lib/oauthState';
 import { finishOAuthCallback, oauthFailure } from '@/lib/oauthCallback';
 
 export const dynamic = 'force-dynamic';
@@ -53,7 +53,22 @@ export async function GET(req: NextRequest) {
   // The state cookie is what binds this callback to the browser that STARTED
   // the flow. Without it an attacker can complete an authorization in your
   // browser and sign you into their account (login CSRF).
-  if (!verifyState(cookies.state, state)) return oauthFailure(origin, 'state_mismatch');
+  //
+  // The user-facing reason stays `state_mismatch` — the distinction below is
+  // for us, not them, and splitting the copy would mean two new strings in two
+  // locales describing a state no correctly-working client reaches.
+  const stateCheck = classifyState(cookies.state, state);
+  if (stateCheck !== 'ok') {
+    // ONE line, and it is the whole iOS-PWA diagnostic. `cookie_absent` with
+    // zero cookies from our origin proves the callback came from a different
+    // storage context than the one that started the flow (Safari vs the PWA's
+    // webview) — which no cookie attribute can fix, only a bridge. Anything
+    // else means the jars match and the bug is ordinary.
+    console.error(
+      `[oauth-diag] google callback state=${stateCheck} ${describeCallbackContext(req)}`,
+    );
+    return oauthFailure(origin, 'state_mismatch');
+  }
   if (!code || !cookies.codeVerifier) return oauthFailure(origin, 'invalid_callback');
 
   const client = googleClient(origin);
