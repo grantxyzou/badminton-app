@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import ChooseNameSheet from './auth/ChooseNameSheet';
+import ResetPasswordSheet from './auth/ResetPasswordSheet';
 import BottomNav from '@/components/BottomNav';
 import HomeTab from '@/components/HomeTab';
 import PlayersTab from '@/components/PlayersTab';
@@ -17,7 +18,8 @@ import AdminErrorBoundary from '@/components/AdminErrorBoundary';
 import PullToRefresh from '@/components/PullToRefresh';
 import type { DevOverrides } from '@/components/DevPanel';
 import type { Announcement } from '@/lib/types';
-import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
+import { getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
+import { noticeBanner, noticeTimeoutMs, type AuthNotice } from '@/lib/authNotice';
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
 import { consumeRecentExcursion } from '@/lib/excursion';
 
@@ -65,6 +67,25 @@ export default function HomeShell({ initialAnnouncement }: Props) {
   // facts live in a signed, HttpOnly cookie the client cannot read; all this
   // flag does is decide whether to show the name prompt.
   const [chooseNameOpen, setChooseNameOpen] = useState(false);
+  /**
+   * What to say after an auth redirect. One notice at a time: our own redirects
+   * only ever carry one result, so last-write-wins is fine and simpler than a
+   * queue nobody would see the back of.
+   */
+  const [authNotice, setAuthNotice] = useState<AuthNotice | null>(null);
+  /** Set by `?signedIn=1`; consumed once by the whoami effect below. */
+  const [signedInPending, setSignedInPending] = useState<{
+    provider: 'google' | 'apple' | null;
+  } | null>(null);
+  /** Set by `?reset=<token>`; opens the set-a-new-password sheet. */
+  const [resetRequest, setResetRequest] = useState<{ token: string; email: string } | null>(null);
+  /**
+   * The active session id, readable from an async callback without adding it to
+   * a dependency array. Mirrors `profileSession.id`.
+   */
+  const sessionIdRef = useRef('');
+  /** Guards the once-only whoami fetch. See the effect below. */
+  const signedInHandledRef = useRef(false);
   const [demoMode, setDemoMode] = useState(false);
   // KNOWN-refused, never merely unknown: set only by an actual 403 from an
   // owner-gated read (see the insight prewarm below), cleared by any other
@@ -81,21 +102,67 @@ export default function HomeShell({ initialAnnouncement }: Props) {
   // Only the sign-in-expired banner is translated here; the adjacent offline
   // banner predates this and stays as it is (not this task's file to churn).
   const t = useTranslations('stats');
+  const tAuth = useTranslations('profile.auth');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     if (params.has('dev')) setDevMode(true);
 
-    // A provider callback returned here needing a display name. Read it before
-    // the tab-precedence branches below, which return early. Strip it after so
-    // the iOS PWA does not restore a stale prompt on a cold launch.
+    // ── Auth redirect results ────────────────────────────────────────────
+    // ALL of these must be read BEFORE the tab-precedence branches below,
+    // which `return` early — a `?tab=profile&authError=…` landing would
+    // otherwise drop the notice on the floor.
+    //
+    // One `cleaned` URL and one replaceState for the whole group, so the
+    // deletions cannot clobber each other.
+    const cleaned = new URL(window.location.href);
+    let dirty = false;
+
+    // A provider identity with no member yet: collect a display name.
     if (params.get('authFlow') === 'name') {
       setChooseNameOpen(true);
-      const cleaned = new URL(window.location.href);
       cleaned.searchParams.delete('authFlow');
-      window.history.replaceState(window.history.state, '', cleaned);
+      dirty = true;
     }
+
+    // A provider sign-in that already resolved to a member. The name is NOT in
+    // the URL — the whoami effect below asks the server for it.
+    if (params.get('signedIn') === '1') {
+      const p = params.get('provider');
+      setSignedInPending({ provider: p === 'google' || p === 'apple' ? p : null });
+      cleaned.searchParams.delete('signedIn');
+      cleaned.searchParams.delete('provider');
+      dirty = true;
+    }
+
+    const failure = params.get('authError');
+    if (failure) {
+      setAuthNotice({ kind: 'authError', reason: failure });
+      cleaned.searchParams.delete('authError');
+      dirty = true;
+    }
+
+    const verified = params.get('verified');
+    if (verified === '1' || verified === '0') {
+      setAuthNotice({ kind: verified === '1' ? 'verified' : 'notVerified' });
+      cleaned.searchParams.delete('verified');
+      dirty = true;
+    }
+
+    // A LIVE CREDENTIAL in the URL. Stripping it is not cosmetic: the iOS PWA
+    // restores the last URL on cold launch, the share sheet would copy it, and
+    // it would sit in history. `email` is only removed alongside `reset` —
+    // on its own it is a generic param name that could belong to a deep link.
+    const resetToken = params.get('reset');
+    if (resetToken) {
+      setResetRequest({ token: resetToken, email: params.get('email') ?? '' });
+      cleaned.searchParams.delete('reset');
+      cleaned.searchParams.delete('email');
+      dirty = true;
+    }
+
+    if (dirty) window.history.replaceState(window.history.state, '', cleaned);
 
     const isTab = (v: string | null): v is Tab =>
       v === 'home' || v === 'players' || v === 'skills' || v === 'admin' || v === 'profile';
@@ -133,6 +200,70 @@ export default function HomeShell({ initialAnnouncement }: Props) {
 
   // Fetch enough session info for ProfileTab's session label + recovery sheet.
   // ProfileTab is allowed to render with empty values (anonymous state).
+  /**
+   * `?signedIn=1` landed: ask the server who we are and mirror it into
+   * localStorage, which is what ProfileTab/HomeTab actually read.
+   *
+   * WHY `sessionIdRef.current` MAY BE '' AND THAT IS CORRECT
+   * -------------------------------------------------------
+   * `resolveStaleIdentity` short-circuits on an empty `sessionId`
+   * (`if (!stored || !stored.sessionId) return {action:'keep'}`), so a blank one
+   * is never treated as stale — and it is the honest value for a returning
+   * member who has not signed up for this week yet. `ChooseNameSheet.finish()`
+   * already writes exactly this shape.
+   *
+   * The instinct on review is to "fix" this by awaiting /api/session first.
+   * Do not: a hung or failing session fetch would mean identity never lands,
+   * which is the very bug this effect exists to close. A WRONG sessionId is the
+   * dangerous value, not an absent one.
+   *
+   * Free consequence: `setIdentity` dispatches IDENTITY_EVENT, so the admin
+   * probe and insight prewarm below both re-run — an admin signing in with
+   * Google gets the Admin tab with no reload.
+   */
+  useEffect(() => {
+    if (!signedInPending || signedInHandledRef.current) return;
+    // A REF, not `setSignedInPending(null)`. Clearing the state here would
+    // change this effect's own dependency, so React would run the cleanup
+    // below — setting `cancelled` — before the fetch resolved, and the answer
+    // would be discarded every time. The ref makes it once-only without
+    // invalidating the effect, so the cleanup fires on unmount alone.
+    signedInHandledRef.current = true;
+    const provider = signedInPending.provider;
+    let cancelled = false;
+    fetch(`${BASE}/api/auth/me`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled) return;
+        if (d?.signedIn === true && typeof d.name === 'string' && d.name) {
+          setIdentity({ name: d.name, sessionId: sessionIdRef.current });
+          setAuthNotice({ kind: 'signedIn', provider });
+          return;
+        }
+        if (d?.signedIn === false) {
+          // KNOWN signed-out despite the redirect — usually the session cookie
+          // not surviving the cross-site hop. Worth saying; it is not the
+          // expected path.
+          setAuthNotice({ kind: 'signInUnconfirmed' });
+        }
+        // `signedIn === null` (throttled) or a non-OK response is UNKNOWN:
+        // write nothing, say nothing, and leave any existing identity alone.
+      })
+      .catch(() => {
+        // Network failure is unknown too — the offline banner owns that story.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [signedInPending]);
+
+  /** Notices are transient: good news clears sooner than bad. */
+  useEffect(() => {
+    if (!authNotice) return;
+    const id = setTimeout(() => setAuthNotice(null), noticeTimeoutMs(authNotice));
+    return () => clearTimeout(id);
+  }, [authNotice]);
+
   useEffect(() => {
     fetch(`${BASE}/api/session`, { cache: 'no-store' })
       .then((r) => r.json())
@@ -141,6 +272,7 @@ export default function HomeShell({ initialAnnouncement }: Props) {
         const label = s.datetime
           ? new Date(s.datetime).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
           : '';
+        sessionIdRef.current = s.id;
         setProfileSession({ id: s.id, label });
       })
       .catch(() => undefined);
@@ -312,6 +444,17 @@ export default function HomeShell({ initialAnnouncement }: Props) {
               />
             </div>
           )}
+          {authNotice && (
+            <div className="mb-3">
+              <StatusBanner
+                tone={noticeBanner(authNotice).tone}
+                icon={noticeBanner(authNotice).icon}
+                title={tAuth(noticeBanner(authNotice).titleKey)}
+                body={tAuth(noticeBanner(authNotice).bodyKey)}
+                celebrate={noticeBanner(authNotice).celebrate}
+              />
+            </div>
+          )}
           {activeTab === 'home' && <div key={`home-${refreshNonce}`} className="animate-fadeIn"><HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} /></div>}
           {activeTab === 'players' && <div key={`players-${refreshNonce}`} className="animate-fadeIn"><PlayersTab onTabChange={setActiveTab} /></div>}
           {activeTab === 'skills' && <div key={`skills-${refreshNonce}`} className="animate-fadeIn"><SkillsTab onTabChange={setActiveTab} /></div>}
@@ -341,6 +484,24 @@ export default function HomeShell({ initialAnnouncement }: Props) {
         open={chooseNameOpen}
         onClose={() => setChooseNameOpen(false)}
         sessionId={profileSession.id}
+      />
+      {/* Shell level for the same reason as ChooseNameSheet: a reset link lands
+          on /bpm at whatever tab the app restores. Keyed so the fields reset on
+          each open rather than via setState-in-effect. */}
+      <ResetPasswordSheet
+        key={resetRequest ? 'reset-open' : 'reset-closed'}
+        open={!!resetRequest}
+        request={resetRequest}
+        sessionId={profileSession.id}
+        onClose={() => setResetRequest(null)}
+        onDone={() => {
+          setResetRequest(null);
+          setAuthNotice({ kind: 'passwordReset' });
+        }}
+        onNeedNewLink={() => {
+          setResetRequest(null);
+          setActiveTab('profile');
+        }}
       />
     </>
   );
