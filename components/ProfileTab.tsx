@@ -330,7 +330,12 @@ export default function ProfileTab({
       <div
         style={{
           display: 'flex',
-          justifyContent: 'space-between',
+          // Centred as one cluster, not justified to the card edges: spread
+          // across the full width they read as three unrelated corners rather
+          // than one row of peers. `.link-quiet` already carries 12px of side
+          // padding, so adjacent labels sit 24px apart with no gap of our own —
+          // enough to separate, close enough to group.
+          justifyContent: 'center',
           alignItems: 'center',
           flexWrap: 'wrap',
           // Inherited by the three buttons: a label must never break mid-phrase
