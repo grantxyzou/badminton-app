@@ -36,6 +36,18 @@ const HOUR_MS = 60 * 60 * 1000;
 const READS_PER_HOUR = 120;
 const WRITES_PER_HOUR = 60;
 const MAX_LABEL = 80;
+/** `readyBy` is a DATE. It shipped as free text, which could not be translated,
+ *  could not be compared, and so made "overdue" impossible — see
+ *  lib/stringingDue.ts. Validated here rather than only in the form, because
+ *  the form is not the only thing that can POST. */
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function isoDateOrNull(value: unknown): string | null | undefined {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value !== 'string' || !ISO_DATE.test(value.trim())) return undefined;
+  const t = value.trim();
+  return Number.isNaN(Date.parse(`${t}T00:00:00Z`)) ? undefined : t;
+}
 
 let ready: Promise<void> | null = null;
 function ensureJobs(): Promise<void> {
@@ -173,6 +185,10 @@ export async function POST(req: NextRequest) {
   if (priceCents === undefined) {
     return NextResponse.json({ error: 'invalid_price' }, { status: 400 });
   }
+  const readyBy = isoDateOrNull(body.readyBy);
+  if (readyBy === undefined) {
+    return NextResponse.json({ error: 'invalid_date' }, { status: 400 });
+  }
   const status = body.status === undefined ? 'received' : body.status;
   if (!isStringingStatus(status)) {
     return NextResponse.json({ error: 'invalid_status' }, { status: 400 });
@@ -206,7 +222,7 @@ export async function POST(req: NextRequest) {
       tensionCrosses: body.tensionCrosses,
       method: trimmed(body.method, 120) ?? 'Zach · 2 strings, 4 knots',
       priceCents,
-      readyBy: trimmed(body.readyBy, 40),
+      readyBy,
       acceptedAt: null,
       paidAt: null,
       sessionId: trimmed(body.sessionId, 60),

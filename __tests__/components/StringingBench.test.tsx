@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import StringingPage from '../../components/admin/CommandCenter/StringingPage';
+import StringingJobDetail from '../../components/admin/CommandCenter/StringingJobDetail';
 import StringingIntake from '../../components/admin/CommandCenter/StringingIntake';
 import enMessages from '../../messages/en.json';
 import type { StringingJob } from '../../lib/types';
@@ -65,22 +66,28 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('the bench shows the stringer their own number', () => {
-  it('renders the EXACT price, not the player band', async () => {
-    respondJobs([job]);
-    wrap(<StringingPage onBack={() => {}} />);
+describe('the stringer sees their own number, on the screen that holds it', () => {
+  it('renders the EXACT price on the job detail, not the player band', () => {
+    // The price lives on the detail screen only. The bench row shows urgency
+    // instead, because a bench is scanned for what is late — and keeping the
+    // figure to one screen keeps the surface it can leak from small.
+    wrap(<StringingJobDetail job={job} onBack={() => {}} onChanged={() => {}} />);
 
-    expect(await screen.findByText('$30.00')).toBeDefined();
-    // The band belongs on the other side of the wall.
+    expect(screen.getByText('$30.00')).toBeDefined();
     expect(screen.queryByText('$28–32')).toBeNull();
   });
 
-  it('says when a job has no price rather than showing zero', async () => {
-    respondJobs([{ ...job, priceCents: null }]);
-    wrap(<StringingPage onBack={() => {}} />);
+  it('says when a job has no price rather than showing zero', () => {
+    wrap(<StringingJobDetail job={{ ...job, priceCents: null }} onBack={() => {}} onChanged={() => {}} />);
 
-    expect(await screen.findByText('Not priced yet')).toBeDefined();
+    expect(screen.getByText('Not priced yet')).toBeDefined();
     expect(screen.queryByText('$0.00')).toBeNull();
+  });
+
+  it('never puts the exact price on the bench row', () => {
+    respondJobs([job]);
+    wrap(<StringingPage onBack={() => {}} />);
+    expect(screen.queryByText('$30.00')).toBeNull();
   });
 });
 
@@ -148,6 +155,52 @@ describe('a failed load is not an empty bench', () => {
 
     expect(await screen.findByText('Nothing on the bench.')).toBeDefined();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('values carry their units', () => {
+  it('shows a visible $ on the price field, not just in a placeholder', async () => {
+    // A placeholder disappears the moment you type — the unit vanishes exactly
+    // when you are entering the number and most need to know what it means.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => [{ id: 'm1', name: 'Wei' }] } as Response),
+    );
+    const { container } = wrap(<StringingIntake onBack={() => {}} onCreated={() => {}} />);
+    const price = await screen.findByLabelText('Your price');
+
+    fireEvent.change(price, { target: { value: '30' } });
+    // Still there with a value present, which is the whole point.
+    expect(Array.from(container.querySelectorAll('span')).some((el) => el.textContent === '$')).toBe(
+      true,
+    );
+  });
+
+  it('labels the tension in pounds', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => [] } as Response),
+    );
+    wrap(<StringingIntake onBack={() => {}} onCreated={() => {}} />);
+    // Two steppers, mains and crosses, each carrying its unit.
+    expect(await screen.findAllByText('lb')).toHaveLength(2);
+  });
+
+  it('shows urgency on the bench row rather than a bare date', async () => {
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    respondJobs([{ ...job, readyBy: yesterday, status: 'received' }]);
+    wrap(<StringingPage onBack={() => {}} />);
+    expect(await screen.findByText('1 day late')).toBeDefined();
+  });
+
+  it('never marks a picked-up racket late, and says it only once', async () => {
+    // The status chip already reads "Picked up". The due column showing it too
+    // put the same words twice in one row — found by the test failing on
+    // "found multiple elements", not by reading the code.
+    respondJobs([{ ...job, readyBy: '2020-01-01', status: 'picked_up' }]);
+    wrap(<StringingPage onBack={() => {}} />);
+    expect(await screen.findByText('Picked up')).toBeDefined();
+    expect(screen.queryByText(/late/i)).toBeNull();
   });
 });
 

@@ -716,6 +716,17 @@
   },
   "admin": {
     "stringing": {
+        "lb": "磅",
+        "heldBy": "由 {name} 负责",
+        "unclaimed": "还没有人接手。",
+        "due": {
+          "pickedUp": "已取走",
+          "readyUnpaid": "可取 — 未付款",
+          "noDate": "未定日期",
+          "overdue": "迟了 {days} 天",
+          "today": "今天",
+          "tomorrow": "明天"
+        },
       "shop": {
           "open": "穿线服务开放中",
           "closed": "暂时休息",
@@ -788,6 +799,7 @@
         "saving": "保存中…",
         "saveAndTell": "保存并通知 {name}",
         "error": {
+          "invalid_date": "请选择完成日期。",
           "generic": "没保存成功 — 再试一次。",
           "invalid_price": "这看起来不像价格。",
           "invalid_tension": "磅数需要在 18 到 32 磅之间。",

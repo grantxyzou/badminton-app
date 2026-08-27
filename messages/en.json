@@ -716,6 +716,17 @@
   },
   "admin": {
     "stringing": {
+        "lb": "lb",
+        "heldBy": "With {name}",
+        "unclaimed": "Nobody's taken this one yet.",
+        "due": {
+          "pickedUp": "Picked up",
+          "readyUnpaid": "Ready — unpaid",
+          "noDate": "No date set",
+          "overdue": "{days, plural, one {# day late} other {# days late}}",
+          "today": "Today",
+          "tomorrow": "Tomorrow"
+        },
       "shop": {
           "open": "Open for stringing",
           "closed": "Closed for now",
@@ -788,6 +799,7 @@
         "saving": "Saving…",
         "saveAndTell": "Save & let {name} know",
         "error": {
+          "invalid_date": "Pick a date for when it'll be ready.",
           "generic": "Couldn't save that — give it another go.",
           "invalid_price": "That doesn't look like a price.",
           "invalid_tension": "Tension has to be between 18 and 32 lb.",

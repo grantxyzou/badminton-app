@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import AdminBackHeader from '../AdminBackHeader';
+import DatePicker from '@/components/DatePicker';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
@@ -243,9 +244,12 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
               </button>
               <span
                 className="fs-stat"
-                style={{ minWidth: 56, textAlign: 'center', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
+                style={{ minWidth: 62, textAlign: 'center', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
               >
                 {value}
+                <span className="fs-sm" style={{ marginLeft: 2, color: 'var(--text-muted)' }}>
+                  {t('lb')}
+                </span>
               </span>
               <button
                 type="button"
@@ -263,25 +267,46 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
         {/* Money — and what the player will read */}
         <div className="glass-card p-5">
           <CardHeader icon="paid" title={t('yourPrice')} subtitle={t('priceOptional')} />
-          <input
-            type="text"
-            inputMode="decimal"
-            value={priceDollars}
-            onChange={(e) => setPriceDollars(e.target.value)}
-            placeholder={t('pricePlaceholder')}
-            aria-label={t('yourPrice')}
-            maxLength={8}
-          />
+          {/* The $ sits INSIDE the field rather than in the placeholder, which
+              is where the rest of the app puts it today (SetupPage's "$ per
+              court"). A placeholder disappears the moment you type, so the
+              unit is gone exactly when you are entering the number and most
+              want to know what it means. */}
+          <div style={{ position: 'relative' }}>
+            <span
+              aria-hidden="true"
+              className="fs-md"
+              style={{
+                position: 'absolute',
+                left: 'var(--space-4)',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: priceDollars.trim() ? 'var(--text-primary)' : 'var(--text-muted)',
+                fontFamily: 'var(--font-mono)',
+                pointerEvents: 'none',
+              }}
+            >
+              $
+            </span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={priceDollars}
+              onChange={(e) => setPriceDollars(e.target.value)}
+              placeholder={t('pricePlaceholder')}
+              aria-label={t('yourPrice')}
+              maxLength={8}
+              style={{ width: '100%', paddingLeft: 'var(--space-6)', fontFamily: 'var(--font-mono)' }}
+            />
+          </div>
           {priceCents === undefined && <p className="field-error">{t('error.invalid_price')}</p>}
-          <input
-            type="text"
-            value={readyBy}
-            onChange={(e) => setReadyBy(e.target.value)}
-            placeholder={t('readyByPlaceholder')}
-            aria-label={t('readyByPlaceholder')}
-            maxLength={40}
-            style={{ marginTop: 'var(--space-3)' }}
-          />
+          {/* A DATE, not free text. See lib/stringingDue.ts: the old free-text
+              field could not be translated, could not be compared, and so
+              nothing could ever be overdue — which is the entire reason a
+              stringer opens the bench. */}
+          <div style={{ marginTop: 'var(--space-3)' }}>
+            <DatePicker value={readyBy} onChange={setReadyBy} placeholder={t('readyByPlaceholder')} />
+          </div>
           {/* The band, shown live. The stringer should never have to guess what
               the other side reads — that is the rule the whole feature rests on. */}
           <div

@@ -6,6 +6,7 @@ import AdminBackHeader from '../AdminBackHeader';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
+import { formatReadyBy } from '@/lib/stringingDue';
 import { STRINGING_FLOW, formatPriceExact, playerStageFor } from '@/lib/stringing';
 import type { StringingStatus } from '@/lib/stringing';
 import type { StringingJob } from '@/lib/types';
@@ -98,7 +99,11 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
           </div>
           {local.readyBy && (
             <div className="fs-sm" style={{ color: 'var(--text-secondary)', marginTop: 'var(--space-1)' }}>
-              {t('readyBy', { date: local.readyBy })}
+              {/* Formatted when it is a date; shown verbatim when it is not.
+                  Rows written before readyBy became a date still hold free
+                  text like "Sunday", and echoing that back beats relabelling
+                  it "Invalid Date". */}
+              {t('readyBy', { date: formatReadyBy(local.readyBy) ?? local.readyBy })}
             </div>
           )}
           {/* What the other side is reading, right now. */}
@@ -167,6 +172,10 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
           </div>
         </div>
 
+        <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
+          {local.stringerName ? t('heldBy', { name: local.stringerName }) : t('unclaimed')}
+        </p>
+
         <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
           <button
             type="button"
@@ -179,7 +188,14 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
           </button>
           <button
             type="button"
-            disabled={busy || !online || !local.stringerId}
+            // Previously `!local.stringerId`, which disabled the button on
+            // exactly the jobs worth claiming — the unclaimed ones — and left
+            // it live on the ones already yours. No ownership guard at all is
+            // the right answer rather than the inverse one: this screen cannot
+            // know which admin is looking without another round trip, taking
+            // over someone else's job is legitimate, and re-claiming your own
+            // is a harmless no-op. Who holds it is shown below instead.
+            disabled={busy || !online}
             onClick={() => patch({ claim: true })}
             className="cc-btn cc-btn-secondary"
             style={{ flex: 1 }}
