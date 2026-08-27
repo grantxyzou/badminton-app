@@ -39,20 +39,28 @@ export default function SummaryGreeting() {
   return (
     <div
       className="glass-card animate-fadeIn"
-      style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', alignItems: 'center', gap: 12 }}
+      /* `flex-start`, not `center`: the greeting runs to two or three lines
+         depending on what the model says, and a centred badge drifts down
+         beside line 2 of a three-line one, reading as though it floats rather
+         than marks. Aligned to the first line it stays put at any length —
+         the same reason CardHeader offsets its icon by a pixel instead of
+         centring it against a subtitle. */
+      style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', alignItems: 'flex-start', gap: 12 }}
       aria-label={t('summaryGreeting.ariaLabel')}
     >
-      <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-stat-lg)', color: 'var(--accent, #22c55e)', flexShrink: 0 }}>
-        auto_fix_high
-      </span>
-      <p style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: 1.45, color: 'var(--text-primary)', flex: 1, minWidth: 0 }}>{greeting}</p>
-      <span style={{ flexShrink: 0 }}>
-        {/* Reuses InsightChip's string rather than adding a second copy of
-            "AI generated" — both are stats AI-provenance labels under the same
-            namespace. NOT `summaryGreeting.ariaLabel`, which the card itself
-            already carries; repeating it would announce the surface twice. */}
+      {/* The badge IS the icon. There were two AI signifiers on one card — a
+          green wand glyph leading, and the marked badge trailing — both saying
+          the same thing about the same sentence. The badge says it in words and
+          carries the provenance rim, so the wand was the redundant one.
+
+          Reuses InsightChip's string rather than adding a second copy of "AI
+          generated" — both are stats AI-provenance labels under the same
+          namespace. NOT `summaryGreeting.ariaLabel`, which the card itself
+          already carries; repeating it would announce the surface twice. */}
+      <span style={{ flexShrink: 0, marginTop: 2 }}>
         <AIBadge label={t('insightChip.aiGenerated')}>{t('summaryGreeting.ai')}</AIBadge>
       </span>
+      <p style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: 1.45, color: 'var(--text-primary)', flex: 1, minWidth: 0 }}>{greeting}</p>
     </div>
   );
 }

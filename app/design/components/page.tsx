@@ -288,17 +288,14 @@ export default function ComponentsPage() {
         </div>
         <div
           className="glass-card"
-          style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', alignItems: 'center', gap: 12 }}
+          style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', alignItems: 'flex-start', gap: 12 }}
         >
-          <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-stat-lg)', color: 'var(--accent)', flexShrink: 0 }}>
-            auto_fix_high
-          </span>
-          <p style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: 1.45, flex: 1, minWidth: 0 }}>
-            In place: an unmarked card, one marked badge.
-          </p>
-          <span style={{ flexShrink: 0 }}>
+          <span style={{ flexShrink: 0, marginTop: 2 }}>
             <AIBadge label="AI generated">AI</AIBadge>
           </span>
+          <p style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: 1.45, flex: 1, minWidth: 0 }}>
+            In place: the badge leads, and is the only AI marker on the card.
+          </p>
         </div>
       </Row>
 
