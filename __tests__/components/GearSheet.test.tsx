@@ -414,3 +414,75 @@ describe('GearSheet search', () => {
     expect(screen.getByText('In your kit')).toBeTruthy();
   });
 });
+
+/**
+ * "Stuck after selecting a lot."
+ *
+ * Both halves of that report were introduced by keeping the sheet open on a
+ * successful pick. Before that, you could not sit in either state: the sheet
+ * dismissed itself before a refusal could arrive, and before a second tap was
+ * possible. The behaviours below are what stop a browse list from going
+ * silently dead.
+ */
+describe('GearSheet — a refusal has to be visible, and a slow write must not freeze the list', () => {
+  /**
+   * The list scrolls for thousands of pixels. An error rendered after the
+   * last row is painted where nobody is looking, so the member sees a tap
+   * that did nothing and taps again — which is how you reach the
+   * 20-writes-an-hour limiter, since a racket pick spends TWO of them.
+   *
+   * jsdom has no layout, so "above the fold" is asserted STRUCTURALLY: the
+   * alert must not live inside the scroll container.
+   */
+  it('renders a refusal outside the scroller, not below 71 rows of catalog', async () => {
+    mockCatalog();
+    const onPick = vi.fn(async () => ({ ok: false as const, reason: 'bag_full' as const }));
+    renderSheet({ onPick });
+    fireEvent.click(await screen.findByText('Astrox 88D Pro'));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain("That's all the rackets we can hold");
+    // `BottomSheetBody` is the scroller (`overflow-y-auto`). If the alert is
+    // inside it, it is somewhere down the list rather than pinned.
+    //
+    // Assert the scroller EXISTS first: without this the test passes whenever
+    // the selector stops matching anything — a renamed class would read as
+    // "the error is pinned" rather than as a broken test.
+    expect(document.querySelector('.overflow-y-auto')).toBeTruthy();
+    expect(alert.closest('.overflow-y-auto')).toBeNull();
+  });
+
+  /**
+   * A write that never settles used to leave every row at
+   * `pointer-events: none` with no spinner, no message and no timeout —
+   * indistinguishable from the app having died. Only the row being written
+   * goes inert now.
+   */
+  it('pends only the row being written, leaving the rest of the list live', async () => {
+    mockCatalog();
+    // Never settles: the hung-server case, which is what produced the report.
+    const onPick = vi.fn(() => new Promise<never>(() => {})) as unknown as PickFn;
+    renderSheet({ onPick });
+
+    const tapped = await screen.findByRole('button', { name: 'Yonex Astrox 88D Pro' });
+    fireEvent.click(tapped);
+
+    await waitFor(() => expect(tapped.getAttribute('aria-busy')).toBe('true'));
+    expect((tapped as HTMLButtonElement).disabled).toBe(true);
+
+    // Every other row is still a live control, and so is the way out.
+    const other = screen.getByRole('button', { name: 'Yonex Nanoflare 800' });
+    expect((other as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByRole('tab', { name: 'Victor' })).toBeTruthy();
+    expect(screen.getByPlaceholderText('Search 3 rackets')).toBeTruthy();
+  });
+
+  /** Offline is a refusal too — the rows must not offer a write that cannot
+   *  land. Same rule as every other network-mutating control in the app. */
+  it('disables the rows when offline', async () => {
+    mockCatalog();
+    renderSheet({ online: false });
+    const row = await screen.findByRole('button', { name: 'Yonex Astrox 88D Pro' });
+    expect((row as HTMLButtonElement).disabled).toBe(true);
+  });
+});

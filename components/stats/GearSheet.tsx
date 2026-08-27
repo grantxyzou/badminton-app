@@ -115,6 +115,17 @@ export default function GearSheet({
   const [loadError, setLoadError] = useState(false);
   const [pickError, setPickError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  /** The catalog id currently being written, or null.
+   *
+   *  Replaces greying the WHOLE list on the owner's shared `busy`. That was
+   *  survivable while a pick dismissed the sheet — you never sat in the
+   *  disabled state. Now that a pick keeps the sheet open, a slow or hung
+   *  write left all 71 rows at `pointer-events: none` with no spinner, no
+   *  message and no timeout: indistinguishable from the app having died, and
+   *  the reported symptom ("stuck after selecting a lot"). One row is now
+   *  inert at a time, and everything else — the other rows, search, the brand
+   *  tabs, close — keeps working. */
+  const [pendingId, setPendingId] = useState<string | null>(null);
   const heading = title ?? t('racketSheetTitle');
 
   useEffect(() => {
@@ -130,6 +141,7 @@ export default function GearSheet({
     setLoadError(false);
     setQuery('');
     setPickError(null);
+    setPendingId(null);
     setBrand(null); // brands differ per category — don't carry one across
     fetch(`${BASE}/api/equipment/catalog?category=${category}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
@@ -226,9 +238,22 @@ export default function GearSheet({
   }
 
   async function pick(item: CatalogItem) {
-    if (busy) return;
+    // Still guarded on the owner's shared `busy` as well as this sheet's own
+    // write: `useGear` is a single writer with one op counter, and two
+    // overlapping writes make it discard the earlier response. What changed is
+    // only the VISIBLE consequence — `busy` no longer greys all 71 rows, it
+    // greys the one being written.
+    if (busy || pendingId) return;
     setPickError(null);
-    const res = await onPick(item);
+    setPendingId(item.id);
+    let res: GearResult;
+    try {
+      res = await onPick(item);
+    } finally {
+      // In `finally` because a throwing handler used to leave the row pending
+      // forever — the failure mode this whole change is about.
+      setPendingId(null);
+    }
     if (res.ok) {
       // Deliberately NOT closing. The row you just tapped becomes an owned
       // row — checked, tinted, inert — and closing on success meant that
@@ -326,6 +351,19 @@ export default function GearSheet({
         </div>
       )}
 
+      {/* Pinned, because the list below scrolls for thousands of pixels. This
+          used to render after the last row: a refusal — bag full at ten
+          rackets, or the 20-writes-an-hour limiter, which a pick spends TWO
+          of — was painted somewhere around 4000px down, where nobody was
+          looking. The member saw a tap that did nothing, and tapped again.
+          A failure nobody can see is the lying-empty-state rule wearing an
+          error pill. */}
+      {pickError && (
+        <div style={{ flex: '0 0 auto', padding: '0 var(--space-6) var(--space-4)' }}>
+          <ErrorState message={pickError} />
+        </div>
+      )}
+
       <BottomSheetBody bare>
         <div style={{ paddingBottom: 'var(--space-6)' }}>
           {/* The messages keep the sheet's own 20px column; only the rows go
@@ -345,15 +383,10 @@ export default function GearSheet({
             )}
           </div>
 
-          {/* Disabled while a write is in flight or offline. Styled rather
-              than un-wired: dropping the onClick would swap the row from a
-              <button> to a <div>, losing the semantics with no visual cue
-              that anything changed. Same principle as .cc-btn:disabled — see
-              CLAUDE.md's design-system-first rule. */}
-          <div
-            style={busy ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
-            aria-busy={busy || undefined}
-          >
+          {/* No blanket disable here. Only the row being written goes inert
+              (see `pendingId`); the rest of the list stays live so a slow
+              write cannot make the whole sheet look dead. */}
+          <div aria-busy={pendingId !== null || undefined}>
             {groups.map((g) => (
               <section className="sheet-group" key={g.brand}>
                 <p className="section-label-muted sheet-group-label">
@@ -385,6 +418,7 @@ export default function GearSheet({
                       );
                     }
                     const spec = specLine(c);
+                    const pending = pendingId === c.id;
                     return (
                       <li key={c.id}>
                         <button
@@ -392,6 +426,14 @@ export default function GearSheet({
                           className="sheet-row"
                           onClick={() => pick(c)}
                           aria-label={`${c.brand} ${c.model}`}
+                          // Styled rather than un-wired: dropping onClick would
+                          // swap the row from a <button> to a <div>, losing the
+                          // semantics with no visual cue. Same principle as
+                          // .cc-btn:disabled — see CLAUDE.md's
+                          // design-system-first rule.
+                          aria-busy={pending || undefined}
+                          disabled={pending || !online}
+                          style={pending ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
                         >
                           <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <span className="fs-lg">{c.model}</span>
@@ -413,12 +455,13 @@ export default function GearSheet({
             ))}
           </div>
 
-          <div style={{ padding: 'var(--space-4) var(--space-6) 0', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-            {pickError && <ErrorState message={pickError} />}
-            {!online && (
+          {/* The error moved to the pinned slot above; this stays because an
+              offline notice is context for the list, not a refusal to act on. */}
+          {!online && (
+            <div style={{ padding: 'var(--space-4) var(--space-6) 0' }}>
               <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>{tStats('offline')}</p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </BottomSheetBody>
     </BottomSheet>
