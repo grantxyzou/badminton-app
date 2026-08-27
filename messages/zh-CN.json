@@ -139,6 +139,8 @@
   },
   "profile": {
     "auth": {
+      "pendingExpiredTitle": "我们重新开始吧",
+      "pendingExpiredCta": "返回登录",
       "emailLabel": "邮箱",
       "passwordLabel": "密码",
       "yourNameLabel": "你的名字",
@@ -242,7 +244,7 @@
           "chooseNameCta": "就是我",
           "chooseNameSaving": "设置中…",
           "nameTaken": "已经有人用这个名字了。如果那是你，请先用 PIN 码登录，然后在“我的”页面连接。",
-          "pendingExpired": "等待时间有点长——请再点一次按钮重新开始。",
+          "pendingExpired": "等待时间有点长，链接已超时。没有任何损失——请重新开始登录。",
           "alreadyLinked": "该账号已连接到这里的其他人。",
           "emailTaken": "该邮箱已绑定到另一个账号。",
           "genericError": "没能完成——请再试一次。"

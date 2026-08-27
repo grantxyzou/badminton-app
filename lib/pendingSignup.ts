@@ -15,15 +15,23 @@
  * vouched for. HttpOnly stops scripts reading it; the signature is what stops
  * the client WRITING it.
  *
- * Ten minutes: long enough to type a name, short enough that a shared or stolen
- * browser does not carry a claimable identity around all day.
+ * Thirty minutes. It was ten, which turned out to be too short for the actual
+ * task: people deliberate over the name their friends will see, get
+ * interrupted, and come back. Expiring mid-decision strands them on a prompt
+ * whose submit can only fail.
+ *
+ * The window is still short, and what it protects is modest: an unclaimed
+ * provider identity in an HttpOnly, signed cookie, which grants nothing until
+ * a name is chosen and can only ever create a NEW account — a name collision
+ * is refused. Thirty minutes trades a little of that for a flow people can
+ * actually finish.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { signValue, verifySignedValue } from '@/lib/auth';
 import type { ProviderName } from '@/lib/oauthProviders';
 
 export const PENDING_COOKIE = 'bpm_pending_signup';
-const TTL_S = 10 * 60;
+const TTL_S = 30 * 60;
 const COOKIE_PATH = '/bpm';
 
 export interface PendingSignup {

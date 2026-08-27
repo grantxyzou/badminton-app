@@ -139,6 +139,8 @@
   },
   "profile": {
     "auth": {
+      "pendingExpiredTitle": "Let's start that again",
+      "pendingExpiredCta": "Back to sign-in",
       "emailLabel": "Email",
       "passwordLabel": "Password",
       "yourNameLabel": "Your name",
@@ -242,7 +244,7 @@
           "chooseNameCta": "That's me",
           "chooseNameSaving": "Setting up…",
           "nameTaken": "Someone already plays under that name. If that's you, sign in with your PIN first, then connect this from Profile.",
-          "pendingExpired": "That took a while — tap the button again to start over.",
+          "pendingExpired": "That took a while, so the link timed out. Nothing is lost — start the sign-in again.",
           "alreadyLinked": "That account is already connected to someone here.",
           "emailTaken": "That email is already on another account.",
           "genericError": "Couldn't finish that — try again."
