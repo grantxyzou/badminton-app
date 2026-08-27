@@ -36,9 +36,24 @@ function landing(origin: string, params: Record<string, string>): string {
   return `${origin}/bpm?${qs}`;
 }
 
+/**
+ * 303 See Other, not Next's default 307.
+ *
+ * 307 PRESERVES THE REQUEST METHOD. Apple's callback arrives as a cross-site
+ * POST (`response_mode=form_post`), so a 307 tells the browser to re-issue that
+ * POST — form body and all — against `/bpm`, which is not a POST handler. Every
+ * Apple sign-in would dead-end at a method mismatch, success or failure alike.
+ *
+ * 303 is the status that exists for exactly this: "your POST is done, go GET
+ * the result." Harmless for Google's GET callback, so both use it.
+ */
+function seeOther(url: string): NextResponse {
+  return NextResponse.redirect(url, { status: 303 });
+}
+
 /** Redirect home with a machine-readable reason the UI can render. */
 export function oauthFailure(origin: string, reason: string): NextResponse {
-  const res = NextResponse.redirect(landing(origin, { authError: reason }));
+  const res = seeOther(landing(origin, { authError: reason }));
   clearOAuthCookies(res);
   return res;
 }
@@ -89,7 +104,7 @@ export async function finishOAuthCallback(
     // Needs a display name from the user, and must refuse names already taken —
     // so it cannot finish here. Park the verified facts in a SIGNED cookie and
     // let /api/auth/complete-signup finish once a name is chosen.
-    const res = NextResponse.redirect(landing(origin, { authFlow: 'name' }));
+    const res = seeOther(landing(origin, { authFlow: 'name' }));
     setPendingSignup(res, {
       provider: claims.provider,
       sub: claims.sub,
@@ -123,10 +138,13 @@ export async function finishOAuthCallback(
     void touchIdentity(claims.provider, claims.sub);
   }
 
-  const res = NextResponse.redirect(
-    landing(origin, { signedIn: '1', provider: claims.provider }),
-  );
-  completeSignIn(res, member);
+  const res = seeOther(landing(origin, { signedIn: '1', provider: claims.provider }));
+  // ORDER: every `cookies.set` must happen BEFORE completeSignIn. Its
+  // clearAdminCookie branch APPENDS raw Set-Cookie headers, and a later
+  // `.set()` re-serializes the whole cookie map and silently drops them --
+  // leaving a stale admin_session alive for a non-admin. Verified, and
+  // pinned by __tests__/auth-cookie-order.test.ts.
   clearOAuthCookies(res);
+  completeSignIn(res, member);
   return res;
 }

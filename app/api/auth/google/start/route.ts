@@ -26,7 +26,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 3600 }, { status: 429 });
   }
 
-  const origin = appOrigin(req.url);
+  // appOrigin THROWS when APP_ORIGIN is unset outside local dev (deliberate --
+  // see lib/appOrigin.ts). Unguarded, that 500s before reaching the
+  // provider_not_configured answer below, turning a plain misconfiguration
+  // into an opaque server error.
+  let origin: string;
+  try {
+    origin = appOrigin(req.url);
+  } catch {
+    return NextResponse.json({ error: 'provider_not_configured' }, { status: 503 });
+  }
   const client = googleClient(origin);
   if (!client) {
     // Configured-or-not is a first-class state: a deployment without Google
