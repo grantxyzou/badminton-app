@@ -22,24 +22,6 @@ const P = 1;
 const KEY_LENGTH = 32;
 const MAXMEM = 128 * N * R * 2; // 128 MiB headroom; scrypt needs 128*N*r
 
-const MIN_LENGTH = 10;
-
-/** Passwords so common that length alone does not make them safe. */
-const COMMON = new Set([
-  'password',
-  'password1',
-  'password123',
-  '1234567890',
-  '12345678901',
-  'qwertyuiop',
-  'letmein123',
-  'iloveyou12',
-  'admin12345',
-  'welcome123',
-  'badminton1',
-  'shuttlecock',
-]);
-
 function derive(password: string, salt: Buffer): Buffer {
   return scryptSync(password, salt, KEY_LENGTH, { N, r: R, p: P, maxmem: MAXMEM });
 }
@@ -98,20 +80,9 @@ export const FAKE_PASSWORD_HASH: string = (() => {
 })();
 
 /**
- * Length plus a common-password blocklist. No composition rules — they push
- * people toward `Passw0rd!`, which is weaker than a long ordinary phrase.
+ * Password rules live in `lib/passwordRules.ts`, which has no crypto import and
+ * can therefore be bundled for the browser — the client mirrors these rules for
+ * instant feedback. Re-exported here so every existing caller and test keeps
+ * importing it from the same place.
  */
-export function validatePasswordStrength(
-  password: string,
-): { ok: true } | { ok: false; reason: string } {
-  if (typeof password !== 'string' || password.length < MIN_LENGTH) {
-    return { ok: false, reason: `Use at least ${MIN_LENGTH} characters.` };
-  }
-  if (password.length > 200) {
-    return { ok: false, reason: 'That password is too long.' };
-  }
-  if (COMMON.has(password.toLowerCase())) {
-    return { ok: false, reason: 'That password is too easy to guess.' };
-  }
-  return { ok: true };
-}
+export { validatePasswordStrength } from '@/lib/passwordRules';
