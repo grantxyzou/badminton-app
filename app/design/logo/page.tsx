@@ -33,7 +33,7 @@ function Wordmark({ variant, color = 'var(--text-primary)' }: { variant: 'C' | '
   }
   // Candidate E — net + shuttle arc
   return (
-    <span style={{ ...common, display: 'inline-flex', alignItems: 'center', gap: '0.3em' }}>
+    <span style={{ ...common, display: 'inline-flex', alignItems: 'center', /* em, not the ladder: the logo specimen scales entirely with its font-size. */ gap: '0.3em' }}>
       <svg aria-hidden width="1.1em" height="1.1em" viewBox="0 0 64 64" style={{ display: 'block' }}>
         <line x1="4"  y1="50" x2="60" y2="50" stroke="currentColor" strokeWidth="2" opacity="0.35" />
         {Array.from({ length: 7 }).map((_, i) => (
@@ -59,13 +59,13 @@ function ContextTile({
   radius?: string;
 }) {
   return (
-    <div style={{ display: 'grid', gap: '0.35rem' }}>
+    <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
       <div
         style={{
           background: bg,
           borderRadius: radius,
           border: '1px solid var(--glass-border)',
-          padding: '2rem 1rem',
+          padding: 'var(--space-8) var(--space-5)',
           display: 'grid',
           placeItems: 'center',
           minHeight: '8rem',
@@ -80,15 +80,15 @@ function ContextTile({
 
 function CandidateRow({ title, description, variant, selected }: { title: string; description: string; variant: 'C' | 'CD' | 'E'; selected?: boolean }) {
   return (
-    <section style={{ display: 'grid', gap: '0.5rem' }}>
-      <header style={{ display: 'flex', gap: '0.75rem', alignItems: 'baseline' }}>
+    <section style={{ display: 'grid', gap: 'var(--space-3)' }}>
+      <header style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'baseline' }}>
         <h2 className="bpm-section-label" style={{ color: selected ? 'var(--accent)' : 'var(--text-muted)' }}>{title}</h2>
         {selected && (
           <span className="pill-paid" style={{ fontSize: '0.65rem' }}>user pick</span>
         )}
       </header>
-      <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{description}</p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))', gap: '0.75rem', marginTop: '0.5rem' }}>
+      <p style={{ margin: '0', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{description}</p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(10rem, 1fr))', gap: 'var(--space-4)', marginTop: 'var(--space-3)' }}>
         <ContextTile label="01 · Dark (primary)" bg="#100F0F">
           <Wordmark variant={variant} color="#e2e8f0" />
         </ContextTile>
@@ -110,10 +110,10 @@ function CandidateRow({ title, description, variant, selected }: { title: string
 
 export default function LogoPage() {
   return (
-    <main style={{ maxWidth: 900, margin: '0 auto', padding: '2rem 1rem', display: 'grid', gap: '1.75rem' }}>
+    <main style={{ maxWidth: 900, margin: '0 auto', padding: 'var(--space-8) var(--space-5)', display: 'grid', gap: 'var(--space-7)' }}>
       <div>
         <h1 className="bpm-h1">Logo</h1>
-        <p className="bpm-body" style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+        <p className="bpm-body" style={{ color: 'var(--text-secondary)', marginTop: 'var(--space-1)' }}>
           Three finalists from the chat iteration. Each shown in 4 contexts: dark primary, light primary,
           knockout-on-green, and app icon.
         </p>
@@ -138,14 +138,14 @@ export default function LogoPage() {
         variant="E"
       />
 
-      <section className="glass-card" style={{ padding: '1.25rem', display: 'grid', gap: '0.5rem' }}>
+      <section className="glass-card" style={{ padding: 'var(--space-6)', display: 'grid', gap: 'var(--space-3)' }}>
         <h2 className="bpm-section-label">BUNDLE SVGs</h2>
-        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+        <p style={{ margin: '0', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
           The design bundle also includes production-ready SVGs at{' '}
           <code className="bpm-mono">public/brand/bpm-logo.svg</code> and{' '}
           <code className="bpm-mono">public/brand/shuttlecock.svg</code>. Reach for these over redrawing.
         </p>
-        <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-8)', alignItems: 'center', marginTop: 'var(--space-3)' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/bpm/brand/bpm-logo.svg" alt="BPM wordmark" style={{ height: '3rem' }} />
           {/* eslint-disable-next-line @next/next/no-img-element */}

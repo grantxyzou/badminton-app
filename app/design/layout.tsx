@@ -20,18 +20,18 @@ export default function DesignLayout({ children }: { children: React.ReactNode }
   if (!allowed) notFound();
 
   return (
-    <div style={{ minHeight: '100vh', paddingBottom: '4rem' }}>
+    <div style={{ minHeight: '100vh', paddingBottom: 'calc(var(--space-9) + var(--space-5))' }}>
       <ThemeToggle />
       <header
         style={{
           position: 'sticky',
           top: 0,
           zIndex: 10,
-          padding: '0.75rem 1rem',
+          padding: 'var(--space-4) var(--space-5)',
           background: 'var(--page-bg)',
           borderBottom: '1px solid var(--divider)',
           display: 'flex',
-          gap: '0.5rem',
+          gap: 'var(--space-3)',
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
         }}
@@ -57,7 +57,7 @@ export default function DesignLayout({ children }: { children: React.ReactNode }
               fontSize: '0.875rem',
               color: 'var(--text-primary)',
               textDecoration: 'none',
-              padding: '0.35rem 0.75rem',
+              padding: 'var(--space-2) var(--space-4)',
               borderRadius: 'var(--radius-pill, 100px)',
               border: '1px solid var(--glass-border)',
               background: 'var(--glass-bg)',
