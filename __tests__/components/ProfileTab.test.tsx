@@ -190,7 +190,8 @@ describe('ProfileTab anonymous card order', () => {
         <ProfileTab {...baseProps} authProviders={['google']} />
       </NextIntlClientProvider>,
     );
-    const withProviders = screen.getByRole('button', { name: 'Create an account' });
+    // Shorter label too: three full-sentence links do not fit across the card.
+    const withProviders = screen.getByRole('button', { name: 'Create account' });
     expect(withProviders.className).toContain('link-quiet');
     expect(withProviders.className).not.toContain('btn-ghost');
     // And the divider separates one-tap from typing, so it sits above the form.
@@ -206,6 +207,38 @@ describe('ProfileTab anonymous card order', () => {
     );
     const alone = screen.getByRole('button', { name: 'Create an account' });
     expect(alone.className).toContain('btn-ghost');
+  });
+
+  it('puts all three secondary links on one row, and only one of each', () => {
+    // They used to sit on two rows: "Forgot your PIN?" is rendered BY the form,
+    // the other two lived beneath it. Withholding the form's forgot callback is
+    // what allows the row to own it — and the risk of that seam is rendering
+    // the escape hatch TWICE, so the count is asserted, not just the position.
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <ProfileTab {...baseProps} authProviders={['google']} />
+      </NextIntlClientProvider>,
+    );
+    const forgot = screen.getByRole('button', { name: 'Forgot PIN?' });
+    const create = screen.getByRole('button', { name: 'Create account' });
+    const useEmail = screen.getByRole('button', { name: 'Use email' });
+
+    expect(create.parentElement).toBe(forgot.parentElement);
+    expect(useEmail.parentElement).toBe(forgot.parentElement);
+    // The form's own full-sentence version must not also be present.
+    expect(screen.queryByRole('button', { name: /Forgot your PIN/i })).toBeNull();
+  });
+
+  it('keeps the form owning its forgot link when no provider competes', () => {
+    // The row only exists when providers lead. With the flag off — production
+    // today — the card must be exactly what it always was.
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <ProfileTab {...baseProps} authProviders={[]} />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByText(/Forgot your PIN/i)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Forgot PIN?' })).toBeNull();
   });
 
   it('renders no orphan divider when no provider is configured', () => {

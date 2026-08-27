@@ -7,7 +7,14 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 interface Props {
   onSuccess: (result: { name: string }) => void;
-  onForgotPassword: () => void;
+  /**
+   * When provided, render "Forgot your password?" below the submit button.
+   * Optional — mirroring `SignInForm`'s `onForgotPin` — so a caller that wants
+   * the link somewhere else can render it itself and leave this off, rather
+   * than getting two of them. ProfileTab's anonymous card does exactly that:
+   * it collects all three secondary routes into one row under the form.
+   */
+  onForgotPassword?: () => void;
 }
 
 /**
@@ -116,9 +123,11 @@ export default function EmailSignInForm({ onSuccess, onForgotPassword }: Props) 
         {busy ? t('emailSignInChecking') : t('emailSignInCta')}
       </button>
       {/* A way out, not another action — see `.link-quiet` in globals.css. */}
-      <button type="button" onClick={onForgotPassword} className="link-quiet">
-        {t('forgotPasswordLink')}
-      </button>
+      {onForgotPassword && (
+        <button type="button" onClick={onForgotPassword} className="link-quiet">
+          {t('forgotPasswordLink')}
+        </button>
+      )}
     </form>
   );
 }
