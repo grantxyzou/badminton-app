@@ -66,6 +66,10 @@ jobs:
           NEXT_PUBLIC_FLAG_KUDOS: 'true'
           NEXT_PUBLIC_FLAG_INSIGHT_CARDS: 'true'
           NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: 'true'
+          # Tracked but OFF until the provider flows are finished and verified
+          # end-to-end in a browser. NEXT_PUBLIC_* is baked at build time, so
+          # this must live here -- an Azure App Setting cannot turn it on.
+          NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: 'false'
 
       - name: Package standalone build
         run: |

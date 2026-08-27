@@ -59,7 +59,7 @@ function appendClearCookie(res: NextResponse, name: string): void {
   for (const path of [COOKIE_PATH, LEGACY_COOKIE_PATH]) {
     res.headers.append(
       'set-cookie',
-      `${name}=; Path=${path}; Max-Age=0; HttpOnly; SameSite=Strict${secure}`,
+      `${name}=; Path=${path}; Max-Age=0; HttpOnly; SameSite=Lax${secure}`,
     );
   }
 }
@@ -148,6 +148,54 @@ function verifyToken(token: string): SessionPayload | null {
 }
 
 /**
+ * Generic signed-value helpers, sharing the session HMAC secret.
+ *
+ * Exists for short-lived server-issued payloads that are NOT sessions — the
+ * `pending_signup` cookie that carries an unclaimed provider identity across
+ * the "choose a display name" round trip. That payload asserts "Google told us
+ * this sub owns this verified address", so it MUST be unforgeable: without a
+ * signature the client could post any provider identity it liked and claim
+ * someone else's linked account.
+ *
+ * Kept here rather than in a new module so there is exactly one place that
+ * knows how this app signs things, and one `SESSION_SECRET` fail-closed check.
+ */
+export function signValue<T extends object>(value: T, ttlSeconds: number): string {
+  const now = Math.floor(Date.now() / 1000);
+  const envelope = JSON.stringify({ v: value, iat: now, exp: now + ttlSeconds });
+  const b64 = base64urlEncode(Buffer.from(envelope, 'utf8'));
+  const sig = createHmac('sha256', getSessionSecret()).update(b64).digest();
+  return `${b64}.${base64urlEncode(sig)}`;
+}
+
+/** Returns null for a bad signature, a malformed envelope, or an expired one. */
+export function verifySignedValue<T>(token: string | null | undefined): T | null {
+  if (!token) return null;
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const [b64, sigB64] = parts;
+  const expected = createHmac('sha256', getSessionSecret()).update(b64).digest();
+  let provided: Buffer;
+  try {
+    provided = base64urlDecode(sigB64);
+  } catch {
+    return null;
+  }
+  if (provided.length !== expected.length) return null;
+  if (!timingSafeEqual(provided, expected)) return null;
+  try {
+    const env = JSON.parse(base64urlDecode(b64).toString('utf8')) as {
+      v: T;
+      exp?: number;
+    };
+    if (typeof env.exp !== 'number' || env.exp < Math.floor(Date.now() / 1000)) return null;
+    return env.v ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Sets the admin session cookie. The cookie value is a signed payload that
  * binds the session to a specific Member (by id + name). 8h lifetime.
  */
@@ -161,7 +209,7 @@ export function setAdminCookie(res: NextResponse, memberId: string, name: string
   };
   res.cookies.set(COOKIE_NAME, signPayload(payload), {
     httpOnly: true,
-    sameSite: 'strict',
+    sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     maxAge: COOKIE_MAX_AGE_S,
     path: COOKIE_PATH,
@@ -185,9 +233,24 @@ export function clearAdminCookie(res: NextResponse): void {
 // sign-out (cleared alongside the admin cookie).
 const MEMBER_COOKIE_NAME = 'member_session';
 
+/**
+ * `sameSite: 'lax'`, not `'strict'`.
+ *
+ * A Strict cookie is not sent on a cross-site navigation, and an OAuth callback
+ * (Google, Apple) is exactly that. Chrome evaluates the WHOLE redirect chain,
+ * so a Strict session cookie set by a provider callback and then redirected to
+ * `/bpm` never reaches the landing request — the user would hold a perfectly
+ * valid session while the page rendered signed-out, which is indistinguishable
+ * from a broken sign-in.
+ *
+ * Lax still blocks cross-site POST and subresource sends, which is the CSRF
+ * property that matters here: every mutating route in this app is
+ * POST/PATCH/DELETE with a JSON content type, and a simple cross-site form
+ * cannot produce that.
+ */
 const COOKIE_OPTS = {
   httpOnly: true as const,
-  sameSite: 'strict' as const,
+  sameSite: 'lax' as const,
   secure: process.env.NODE_ENV === 'production',
   path: COOKIE_PATH,
 };

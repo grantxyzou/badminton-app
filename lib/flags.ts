@@ -30,7 +30,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_KUDOS'
   | 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS'
   | 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER'
-  | 'NEXT_PUBLIC_FLAG_VISUAL_FIELDS';
+  | 'NEXT_PUBLIC_FLAG_VISUAL_FIELDS'
+  | 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS';
 
 interface FlagMeta {
   description: string;
@@ -63,6 +64,12 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     description: 'Slice-0 of the Value-Hub plan (`docs/plans/value-hub-slice-0.md`): a thin end-to-end vertical of equipment catalog (rackets only, seeded ~15 models), one-tap "What\'s your racket?" on Profile, a 30s post-session game-result logger, a single deterministic recommendation card, and the partner-frequency Stats card. Gates the player-facing UI surfaces; the backend containers (`equipmentCatalog`, `playerGear`, `gameResults`) are bootstrapped lazily via `ensureContainer` regardless, so they exist before the flag flips on. On for bpm-next + dev once landed; off on bpm-stable until the 4-week kill-criterion gate clears.',
     owner: 'grant',
     plannedRemoval: 'RETIRE. The gate was READ on 2026-08-25 (since=2026-08-16, the restarted clock) and it returned verdict: kill — recCard 3/12 repeat-tappers (0.25 vs 0.40), games 0/12 loggers (0.00 vs 0.30), racketSavers 3, cohort 12. BUT the criterion is no longer executable and must not be run as written: it says "revert everything else", and three of the four tracks it was meant to gate had ALREADY shipped (Insight: partner card, game logger, skill trend; Equipment: expanded past racket-only to strings, 71 rackets vs the planned ~15; Learning: drill library + AI coach). Only Track 4 (Reach) was never built. The fan-out decision was therefore made by SHIPPING, not by this gate — a written criterion with no scheduled read date is a note, not a gate. Reverting now would tear out months of merged, tested, live work on the strength of a tap rate. Read the numbers as product feedback instead: the rec card fails on REACH, not value (only 4 of 12 ever tapped it, but 3 of those 4 tapped more than once) — it is buried on the Gear register inside the Stats tab. CORRECTION (same day): the games 0/12 was NOT non-use. SteppedGameLoggerSheet read the roster as `d?.players`, but GET /api/players returns a BARE ARRAY, so the partner/opponent picker was EMPTY for every member, permanently — nobody could log a game even if they wanted to. Its own test mocked the same wrong shape, so the suite could never catch it. Fixed 2026-08-25. Treat games 0/12 as NO DATA, not as evidence, and re-read the criterion after the fix has been live for a few sessions — GET /api/admin/slice0 with NO ?since is now correct, since its default is the 2026-08-16 clock restart rather than the v1.7 date. The rec-card 0.25 stands (that surface worked; anyTappers:4 with 3 repeating).',
+  },
+  NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: {
+    description:
+      'Email+password sign-up, Sign in with Google, and Sign in with Apple, plus the dismissible upgrade nudge for existing PIN-only members. Gates the UI entry points AND the /api/auth/* routes (read server-side there, since a client flag cannot protect the database). The PIN path is unaffected and is NOT being retired: turning this off restores name+PIN as the only credential with no data migration and no orphaned records, because provider identities live in their own container rather than replacing anything on the member.',
+    owner: 'grant',
+    plannedRemoval: '2026-10-15',
   },
   NEXT_PUBLIC_FLAG_VISUAL_FIELDS: {
     description: 'The "fields and card materials" visual direction (design "Visual Colours", Aug 2026). Replaces the shared aurora with a per-tab FIELD — a coloured radial-gradient ground — and swaps .glass-card for a heavier frosted material at --radius-3xl (30px). Purely presentational: no routing, i18n, aria or API shape changes. Read server-side in app/layout.tsx and stamped as html[data-visual="field"], because CSS cannot call isFlagOn() and a useEffect would flash on the LCP frame. Turning it off restores the current look with zero component changes.',
@@ -148,6 +155,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS;
     case 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER':
       return process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
+    case 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS':
+      return process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
     default: {
       // Exhaustiveness guard. Adding a flag to `FlagName` without adding its
       // `case` above used to be silently legal — `readFlag` just returned

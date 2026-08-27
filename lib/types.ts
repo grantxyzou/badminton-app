@@ -163,6 +163,33 @@ export interface Member {
    * reads their own setting back via `GET /api/members/me`.
    */
   statsPrivacy?: StatsPrivacy;
+  /**
+   * Account email for the email+password provider, normalized lowercase.
+   * NARROW strip-canary: removed from every list and cross-member response,
+   * but returned by `GET /api/members/me` for the caller's OWN record — the
+   * same exception `statsPrivacy` already has, since Profile must be able to
+   * show you which address you signed in with.
+   */
+  email?: string;
+  /** True only once a mailed verification link has actually been redeemed. */
+  emailVerified?: boolean;
+  /** scrypt, self-describing format from lib/passwordHash.ts. STRIP-CANARY. */
+  passwordHash?: string;
+  /** SHA-256 of a single-use emailed token. 24h TTL. STRIP-CANARY. */
+  emailVerification?: { hash: string; expiresAt: number };
+  /** SHA-256 of a single-use emailed token. 1h TTL. STRIP-CANARY. */
+  passwordReset?: { hash: string; expiresAt: number };
+  /**
+   * DISPLAY ONLY — never authoritative. The `identities` container is the
+   * source of truth; on a mismatch, believe `identities`. Exists so Profile can
+   * render "Google connected" without a second round-trip.
+   */
+  linkedProviders?: ('google' | 'apple')[];
+  /**
+   * Upgrade-nudge dismissal. Stored on the MEMBER, not localStorage — a
+   * per-device dismissal would re-nag the same person on every device they own.
+   */
+  authNudge?: { dismissedAt: string | null };
 }
 
 export interface Alias {
