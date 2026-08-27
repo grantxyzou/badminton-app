@@ -221,6 +221,8 @@ export function useGear(name: string | null): UseGear {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name,
+        // Stated to the route, not applied afterwards — see below.
+        ...(extra?.makeActive ? { makeActive: true } : null),
         item: {
           catalogId: item.id,
           category: item.category ?? 'racket',
@@ -229,42 +231,22 @@ export function useGear(name: string | null): UseGear {
       }),
     }));
     // `makeActive` exists because POST and the UI mean different things by
-    // "pick this racket". POST's contract is "append to my bag" and it must
-    // NOT move `activeRacketId` (route.ts:180) — appending a spare must never
-    // silently change the racket you play with. But the kit row that opens
-    // this sheet is labelled "Change", so picking there means "this is the one
-    // I am using now". `BagList` — which is where "Use this one" lives — is on
-    // the Gear tab behind this sheet, so without the pointer move the member
-    // would have to close the sheet and find it to finish the job. The result
-    // was a control that demonstrably did nothing: tap Change, choose a
-    // different racket, and the row still read the old one while the write
-    // returned 200.
+    // "pick this racket". POST's contract is "append to my bag", and appending
+    // must never silently move `activeRacketId` — a spare is not a change of
+    // racket. But the kit row that opens the picker is labelled "Change", so
+    // that caller means "this is the one I'm using now" and says so.
     //
-    // (This used to say "the sheet closes the moment you pick". It no longer
-    // does — a pick leaves the sheet open so the row can show its checked
-    // state. The pointer move is still the caller's to ask for.)
+    // It used to say so with a follow-up PATCH from here. That cost a second
+    // write per pick against the route's 20-writes-an-hour limiter, and once a
+    // pick stopped closing the sheet — browsing and adding several is the
+    // normal flow now — a member ran out at about ten picks and lost every
+    // gear write for the rest of the hour. The intent rides in the POST body
+    // instead: same distinction, one request.
     //
-    // So the CALLER states the intent, and a caller that means "this is the
-    // one I'm using now" says so — the same distinction `PUT` already draws
-    // against POST (route.ts:373). Done as an explicit follow-up rather than
-    // by loosening POST, so appending a spare from anywhere else keeps the
-    // pointer exactly where the route intends.
-    if (res.ok && extra?.makeActive && item.category === 'racket') {
-      // The new item's id exists only in the doc the POST returned; `gear`
-      // may not have flushed yet, hence the ref. The server refuses duplicate
-      // catalogIds, so this match is unique.
-      const added = (gearRef.current?.items ?? []).find((i) => i.catalogId === item.id);
-      if (added) {
-        const activated = await mutate(() => fetch(`${BASE}/api/equipment/gear`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, activeRacketId: added.id }),
-        }));
-        // The racket IS in the bag either way; only the pointer move failed.
-        // Reported rather than swallowed, but never as "the add failed".
-        if (!activated.ok) return activated;
-      }
-    }
+    // It also deletes a fragile step. The PATCH had to find the item the POST
+    // had just created by matching catalogId against a ref, because the id
+    // exists only in the response body; two overlapping writes made that
+    // lookup miss and the pointer silently stayed put.
 
     if (res.ok && item.category === 'string' && typeof extra?.tensionLbs === 'number') {
       const withTension = await mutate(() => fetch(`${BASE}/api/equipment/gear`, {

@@ -141,6 +141,51 @@ describe('POST /api/equipment/gear', () => {
     expect(activeRacket(gear)?.id).toBe('legacy-1');
   });
 
+  /**
+   * `makeActive` — the caller stating an intent POST cannot infer.
+   *
+   * Appending must never move the pointer on its own (the two tests above),
+   * but "Change" in the kit row means exactly "this is the one I'm using
+   * now". That used to be said with a follow-up PATCH, which cost a second
+   * write per pick against the 20-an-hour limiter; browsing and adding
+   * several rackets then locked a member out after about ten. Saying it in
+   * the POST is the same distinction for one write.
+   */
+  it('claims the pointer when the caller explicitly asks, on a bag that already has rackets', async () => {
+    await POST(bagRequest('POST', { name: NAME, item: RACKET_A }));
+    const before = await readGear();
+    const firstId = before?.items[0].id;
+    expect(before?.activeRacketId).toBe(firstId);
+
+    await POST(bagRequest('POST', { name: NAME, item: RACKET_B, makeActive: true }));
+    const after = await readGear();
+    const secondId = after?.items[1].id;
+    expect(after?.items).toHaveLength(2);
+    expect(after?.activeRacketId).toBe(secondId);
+    expect(after?.activeRacketId).not.toBe(firstId);
+  });
+
+  it('still leaves the pointer alone when makeActive is absent or not true', async () => {
+    await POST(bagRequest('POST', { name: NAME, item: RACKET_A }));
+    const firstId = (await readGear())?.items[0].id;
+
+    await POST(bagRequest('POST', { name: NAME, item: RACKET_B }));
+    expect((await readGear())?.activeRacketId).toBe(firstId);
+  });
+
+  /** A non-racket cannot become the active RACKET, however it asks. */
+  it('ignores makeActive on a non-racket item', async () => {
+    await POST(bagRequest('POST', { name: NAME, item: RACKET_A }));
+    const firstId = (await readGear())?.items[0].id;
+
+    await POST(bagRequest('POST', {
+      name: NAME,
+      makeActive: true,
+      item: { catalogId: 'string-bg65', category: 'string', label: 'Yonex BG65' },
+    }));
+    expect((await readGear())?.activeRacketId).toBe(firstId);
+  });
+
   it('rejects a duplicate free-text racket by label when catalogId is absent', async () => {
     const freeText = { category: 'racket', label: 'My Old Racket' };
     await POST(bagRequest('POST', { name: NAME, item: freeText }));
