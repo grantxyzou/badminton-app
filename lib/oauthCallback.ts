@@ -31,9 +31,32 @@ export interface ProviderClaims {
   suggestedName: string | null;
 }
 
+/**
+ * Where the browser is sent once the handshake is over, win or lose.
+ *
+ * THE TRAILING SLASH IS LOAD-BEARING, and its absence was a live bug on iOS.
+ *
+ * The Web App Manifest declares `scope: "/bpm/"`. Manifest scope is a PATH
+ * PREFIX match, so `/bpm` — no slash — is NOT inside `/bpm/`; `/bpm/` is. This
+ * function used to return the former, which meant every provider sign-in
+ * deliberately landed the user outside the app's own declared scope.
+ *
+ * On an installed iOS PWA that is not cosmetic. iOS resolves the whole redirect
+ * chain and, finding it ends out of scope, keeps the entire excursion in the
+ * in-app Safari view rather than handing back to the PWA. The callback request
+ * is therefore issued by SAFARI — a separate cookie container, which never saw
+ * the `bpm_oauth_state` cookie that `/start` set inside the PWA. The result was
+ * a deterministic `state_mismatch` on every attempt, and the user stranded in a
+ * browser afterwards. One missing character, both symptoms.
+ *
+ * It could not be caught by the suite: the mock store never performs a
+ * cross-origin redirect and nothing in vitest models manifest scope. The canary
+ * in __tests__/oauth-landing-scope.test.ts asserts the invariant directly
+ * instead — that this URL is inside the manifest's own scope.
+ */
 function landing(origin: string, params: Record<string, string>): string {
   const qs = new URLSearchParams(params).toString();
-  return `${origin}/bpm?${qs}`;
+  return `${origin}/bpm/?${qs}`;
 }
 
 /**
@@ -41,7 +64,7 @@ function landing(origin: string, params: Record<string, string>): string {
  *
  * 307 PRESERVES THE REQUEST METHOD. Apple's callback arrives as a cross-site
  * POST (`response_mode=form_post`), so a 307 tells the browser to re-issue that
- * POST — form body and all — against `/bpm`, which is not a POST handler. Every
+ * POST — form body and all — against `/bpm/`, which is not a POST handler. Every
  * Apple sign-in would dead-end at a method mismatch, success or failure alike.
  *
  * 303 is the status that exists for exactly this: "your POST is done, go GET
