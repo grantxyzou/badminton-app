@@ -245,3 +245,77 @@ describe('YourKitCard — the string tension field', () => {
     expect(screen.queryByLabelText('Set tension — Old Racket')).toBeNull();
   });
 });
+
+/**
+ * The ownership wiring, end to end through the real derivation.
+ *
+ * `GearSheet.test.tsx` passes `ownedCatalogIds` in directly, so it proves the
+ * MARKING logic but not that anything supplies it. The production path is this
+ * card mapping `ownedItemsForPicking` → `catalogId`, and the dev seed writes
+ * `catalogId: null` (free-text entries), so a browser on the seed can never
+ * render a checked row either. Both halves passed while the seam between them
+ * was untested — this closes it.
+ */
+describe('YourKitCard — the picker learns what you own from this card', () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  const CATALOG = [
+    {
+      id: 'racket-yonex-astrox-88d-pro', category: 'racket', brand: 'Yonex', model: 'Astrox 88D Pro',
+      msrp: 309, skillRange: [4, 6],
+      attributes: { weight: '4U', balance: 'head-heavy', flex: 'stiff' },
+    },
+    {
+      id: 'racket-yonex-nanoflare-800', category: 'racket', brand: 'Yonex', model: 'Nanoflare 800',
+      msrp: 250, skillRange: [3, 6],
+      attributes: { weight: '4U', balance: 'head-light', flex: 'stiff' },
+    },
+  ];
+
+  function mockCatalog() {
+    global.fetch = vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url).includes('/api/equipment/catalog')) {
+        return new Response(JSON.stringify({ items: CATALOG }), { status: 200 });
+      }
+      return new Response('{}', { status: 404 });
+    }) as unknown as typeof fetch;
+  }
+
+  it('marks the owned catalog row as in-your-kit when the picker opens', async () => {
+    mockCatalog();
+    const OWNED = {
+      id: 'r1', catalogId: 'racket-yonex-astrox-88d-pro', category: 'racket' as const,
+      label: 'Yonex Astrox 88D Pro',
+    };
+    const doc = { id: 'g1', memberId: 'm1', items: [OWNED], activeRacketId: 'r1' } as PlayerGear;
+    renderCard(fakeGear(doc));
+
+    fireEvent.click(screen.getByLabelText(/^Racket —/));
+
+    // The catalog row is present AND marked, rather than hidden.
+    expect(await screen.findByText('Nanoflare 800')).toBeTruthy();
+    expect(screen.getByText('In your kit · using today')).toBeTruthy();
+    // And it is inert — an owned row is not something to add.
+    expect(screen.queryByRole('button', { name: 'Yonex Astrox 88D Pro' })).toBeNull();
+  });
+
+  /** A free-text entry has no catalogId, so it cannot be matched to a row.
+   *  That must degrade to "unmarked", never to a crash or a wrong match —
+   *  it is what the dev seed writes, and what legacy docs carry. */
+  it('leaves the list unmarked when the owned item is free-text', async () => {
+    mockCatalog();
+    const FREETEXT = {
+      id: 'r1', catalogId: null, category: 'racket' as const, label: 'Astrox 88D Pro',
+    };
+    const doc = { id: 'g1', memberId: 'm1', items: [FREETEXT], activeRacketId: 'r1' } as PlayerGear;
+    renderCard(fakeGear(doc));
+
+    fireEvent.click(screen.getByLabelText(/^Racket —/));
+
+    expect(await screen.findByText('Nanoflare 800')).toBeTruthy();
+    expect(screen.queryByText(/In your kit/)).toBeNull();
+  });
+});
