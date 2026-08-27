@@ -87,9 +87,12 @@ describe('PlayersTab — cancel spot preserves identity', () => {
 
     fireEvent.click(cancelBtn);
 
-    // Confirm dialog should appear with a Yes button.
-    const yesBtn = await waitFor(() => screen.getByRole('button', { name: /^Yes$/ }));
-    fireEvent.click(yesBtn);
+    // The confirmation is a bottom sheet, not an inline row expansion, and its
+    // destructive button is named for what it does rather than "Yes".
+    const confirmBtn = await waitFor(() =>
+      screen.getByRole('button', { name: enMessages.players.cancelSheetConfirm }),
+    );
+    fireEvent.click(confirmBtn);
 
     // Wait for the DELETE to settle: identity.token should be empty,
     // but name + sessionId must persist.
