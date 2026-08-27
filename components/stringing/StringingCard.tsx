@@ -16,6 +16,12 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 /** Stages this card has copy for. See the guard in the render. */
 const KNOWN_STAGES = ['with_stringer', 'being_strung', 'ready_for_you', 'done'];
 
+/** Matches the balance card's formatting, so the same number looks the same
+ *  in both places on one screen. */
+function fmtMoney(n: number): string {
+  return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
+}
+
 interface Props {
   /** Whether anyone is signed in. A request has to belong to somebody. */
   hasIdentity: boolean;
@@ -160,9 +166,15 @@ export default function StringingCard({ hasIdentity }: Props) {
               <div className="fs-md" style={{ fontWeight: 600 }}>{active.racketLabel}</div>
               <div className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
                 {t(`stage.${active.stage}`)}
-                {/* A band if it has been quoted; silence if not. Never a
-                    figure, and never a zero standing in for "not decided". */}
-                {active.priceRange ? ` · ${active.priceRange}` : ''}
+                {/* The BILL if there is one, else the quote, else silence.
+                    Showing the band once an exact amount is owed had this card
+                    reading "$28–32" directly above a balance line saying "$30"
+                    for the same racket. */}
+                {active.amountDue !== null && active.amountDue !== undefined
+                  ? ` · ${fmtMoney(active.amountDue)}`
+                  : active.priceRange
+                    ? ` · ${active.priceRange}`
+                    : ''}
               </div>
             </div>
           </div>

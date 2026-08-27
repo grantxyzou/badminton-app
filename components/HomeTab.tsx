@@ -445,8 +445,20 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         </div>
       )}
 
-      {/* Sign-Up Card — placed at the bottom so the submit button / payment
-          action / "I paid" button sit in the thumb zone for one-handed use. */}
+      {/* Balance — ABOVE the sign-up card, deliberately.
+          This inverts the old context-on-top / action-on-bottom order for one
+          card, and the reason is that what you owe is not context, it is the
+          thing you came to check. Buried under a sign-up form it was read
+          after the decision it should inform. The sign-up card keeps the thumb
+          zone; this sits in the reading zone above it.
+
+          It is now the app's ONLY balance surface — the Profile copy was
+          removed rather than kept in sync, since two cards reading the same
+          endpoint is two chances to disagree about money. */}
+      {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" />}
+
+      {/* Sign-Up Card — the submit button / payment action / "I paid" button
+          sit in the thumb zone for one-handed use. */}
       <div className="glass-card p-5">
         {isSessionFinished ? (
           /* ── State: Session finished ── */
@@ -667,12 +679,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           </div>
         )}
       </div>
-      {/* What the signed-in player still owes — across every past session they
-          weren't marked paid (frozen amount where settled, computed share where
-          not). Replaces the old per-person cost estimate. Same data as the
-          Profile card (shared /api/players/unpaid), so the two always agree. */}
-      {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" />}
-
 
       {/* Stringing service. Still "Coming soon" by default — the card only goes
           live once an admin has opened the shop, and an UNKNOWN answer keeps

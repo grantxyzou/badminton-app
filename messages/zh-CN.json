@@ -153,6 +153,8 @@
       "etransfer": "转账至 {email}"
     },
     "balance": {
+        "groupSessions": "羽毛球",
+        "groupStringing": "穿线",
       "title": "你的余额",
       "total": "合计",
       "paidUp": "你已全部付清"
