@@ -8,6 +8,25 @@ import enMessages from '../../messages/en.json';
 import type { PlayerGear } from '../../lib/types';
 
 /**
+ * Format and budget now sit behind the summary line's Change link. They are
+ * set once or twice a year, so two labelled segment controls standing open
+ * competed with the answer the sheet exists to give. Anything asserting on
+ * them opens them first.
+ *
+ * The one case that does NOT need this is a failed gear read: the preferences
+ * are then unknown, there is no honest summary sentence to write, and the
+ * controls render already-expanded so they stay reachable.
+ */
+async function openPrefs() {
+  fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+}
+
+/** The spec table is behind a disclosure that names its own row count. */
+async function openSpecs() {
+  fireEvent.click(await screen.findByRole('button', { name: /Full specs/ }));
+}
+
+/**
  * The format and budget segment controls moved here from the deleted
  * `RacketRow`, which pinned them with five tests
  * (`__tests__/components/RacketRow.test.tsx:289, 311, 325, 359, 384`). Those
@@ -93,6 +112,10 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
     mockGear(gearDoc({ playFormat: 'doubles', budgetMaxCad: 200 }));
     renderSheet();
 
+    // The summary line says it before you open anything.
+    expect(await screen.findByText('For doubles · under $200')).toBeTruthy();
+    await openPrefs();
+
     const doubles = await screen.findByRole('tab', { name: 'Doubles' });
     await waitFor(() => expect(doubles.getAttribute('aria-selected')).toBe('true'));
     expect(screen.getByRole('tab', { name: 'Singles' }).getAttribute('aria-selected')).toBe('false');
@@ -106,6 +129,7 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
   it('defaults to Both and No limit when no preference is saved yet', async () => {
     mockGear(gearDoc());
     renderSheet();
+    await openPrefs();
 
     const both = await screen.findByRole('tab', { name: 'Both' });
     expect(both.getAttribute('aria-selected')).toBe('true');
@@ -115,6 +139,7 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
   it('tapping a format tab PATCHes the preference through the shared owner', async () => {
     mockGear(gearDoc(), gearDoc({ playFormat: 'singles' }));
     renderSheet();
+    await openPrefs();
 
     fireEvent.click(await screen.findByRole('tab', { name: 'Singles' }));
 
@@ -131,6 +156,7 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
   it('tapping a budget band PATCHes the preference through the shared owner', async () => {
     mockGear(gearDoc(), gearDoc({ budgetMaxCad: 350 }));
     renderSheet();
+    await openPrefs();
 
     fireEvent.click(await screen.findByRole('tab', { name: '$200–350' }));
 
@@ -162,6 +188,7 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
     it('shows the controls when the flag is on', async () => {
       mockGear(gearDoc());
       renderSheet();
+      await openPrefs();
 
       expect(await screen.findByRole('tab', { name: 'Both' })).toBeTruthy();
       expect(screen.getByRole('tab', { name: 'Singles' })).toBeTruthy();
@@ -268,9 +295,16 @@ describe('GearPickSheet — the spec sheet has to be readable', () => {
     );
   }
 
-  it('labels the specs it shows', async () => {
+  it('labels the specs it shows, once you ask for them', async () => {
     renderSpec();
     await waitFor(() => expect(screen.getByText('N69')).toBeTruthy());
+
+    // Collapsed by default: seven mono spec rows between the name and the
+    // reason meant the eye landed on "0.69mm" before it landed on why this
+    // string. The disclosure says how many are in there.
+    expect(screen.queryByText('Gauge')).toBeNull();
+    await openSpecs();
+
     expect(screen.getByText('Gauge')).toBeTruthy();
     expect(screen.getByText('0.69mm')).toBeTruthy();
   });
@@ -335,6 +369,7 @@ describe('GearPickSheet — preferences are unknown when the gear read fails', (
   it('still lights "No limit" when the doc genuinely has no budget', async () => {
     mockGear(gearDoc({ playFormat: 'both' }));
     renderSheet();
+    await openPrefs();
 
     const none = await screen.findByRole('tab', { name: 'No limit' });
     await waitFor(() => expect(none.getAttribute('aria-selected')).toBe('true'));

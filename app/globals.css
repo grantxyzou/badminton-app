@@ -374,6 +374,10 @@
   --sev-warn: #f59e0b;
   --bg-surface: #1a1a1a;
   --bg-elevated: #1a1a1a;
+  /* Pinned sheet footer scrim — `--page-bg` at 72%, so the list stays
+     legible-but-receding under it. Alpha is the point; a solid fill would
+     make the footer read as the end of the content. */
+  --sheet-footer-bg: rgba(16, 15, 15, 0.72);
   /* easeOutQuart — was silently falling back to plain `ease-out`. */
   --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
 }
@@ -385,6 +389,7 @@
   --sev-warn: #b45309;
   --bg-surface: #ffffff;
   --bg-elevated: #ffffff;
+  --sheet-footer-bg: rgba(250, 248, 245, 0.78);
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -3061,6 +3066,98 @@ html[data-visual="field"][data-tab="admin"] .bottom-sheet {
     transition: none;
   }
 }
+
+/* ── Pinned sheet footer ─────────────────────────────────────────────
+   A sheet whose primary action sat at the bottom of ~700px of reading
+   only offers that action to someone who scrolls to the end. The footer
+   is a flex sibling AFTER BottomSheetBody (which is `flex-1 min-h-0`),
+   so it pins with no absolute positioning.
+
+   Translucent over the sheet's own field rather than opaque: the list
+   has to read as CONTINUING underneath the footer, not as having ended
+   there, or the pin reads as the bottom of the content. */
+.bottom-sheet-footer {
+  flex: 0 0 auto;
+  padding: var(--space-5) var(--space-6) var(--space-6);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--sheet-footer-bg);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+/* ── Sheet search field, with a leading icon ─────────────────────────
+   The WRAPPER carries the field chrome so the icon sits inside the
+   border, and the input inside it is stripped bare. `:focus-within`
+   therefore has to move the app's own input focus ring onto the wrapper
+   — the input no longer draws one, and without this the control would
+   have no focus indicator at all. */
+.sheet-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+}
+.sheet-search:focus-within {
+  border-color: var(--input-focus-border);
+  box-shadow: 0 0 0 3px var(--input-focus-ring);
+}
+.sheet-search input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+}
+.sheet-search input::placeholder { color: var(--text-muted); }
+.sheet-search > .material-icons {
+  flex: 0 0 auto;
+  font-size: var(--icon-md);
+  color: var(--text-muted);
+}
+
+/* ── Edge-to-edge divided rows inside a sheet ────────────────────────
+   A browse list is not a stack of cards. Rendering 38 catalog rows as
+   bordered glass cards with a gap between them fits five on screen; the
+   same rows divided fit eight, with the next group already in view.
+
+   This is the material `ProfileTab`'s account list already uses (a
+   `1px solid var(--divider)` top border, first row exempt) — promoted to
+   a named class here because a second consumer is what makes it a
+   pattern. It is scoped to sheet lists on purpose: the root CLAUDE.md
+   rule against divider lines is about the CARD stacks on Home and
+   Sign-Ups, where proximity does the grouping. */
+.sheet-list { list-style: none; margin: 0; padding: 0; }
+.sheet-list > li + li > .sheet-row { border-top: 1px solid var(--divider); }
+.sheet-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  text-align: left;
+  padding: var(--space-4) var(--space-6);
+  background: transparent;
+  border: none;
+  color: inherit;
+}
+button.sheet-row { cursor: pointer; }
+button.sheet-row:hover { background: var(--glass-soft-bg); }
+/* An owned row is not tappable — it already answers its own question. The
+   tint is the same one the roster uses to mark "this is you". */
+.sheet-row--owned { background: var(--highlight-green); }
+/* Each brand group is its OWN section + list, so `li + li` draws dividers
+   strictly between rows. A single flat list with the labels as `li` would
+   put a divider immediately under every group heading — CSS cannot ask
+   whether the previous sibling contained a row. */
+.sheet-group-label {
+  padding: var(--space-5) var(--space-6) var(--space-2);
+  margin: 0;
+}
+.sheet-group:first-child > .sheet-group-label { padding-top: 0; }
 
 /* ── Announcement body (miniMarkdown output) ────────────────────────── */
 .announcement-body {

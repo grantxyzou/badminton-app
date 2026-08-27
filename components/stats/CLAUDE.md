@@ -41,35 +41,60 @@ state of its own except the one thing it exists to own (below).
     "helbatec" for Halbertec and got an empty list indistinguishable from an
     absent row. Digits never get typo tolerance: one edit turns 5000 into 9000
     and N65 into N68. Full height (`92dvh` — `vh`
-    ignores collapsible mobile chrome and clips the sheet). Rows show brand
-    ABOVE model: a query searches all brands at once, and brand used to live
-    only in the `aria-label`, so exactly the cross-brand results where brand
-    matters rendered as bare model names. Owned items are omitted from the
-    catalog list (`duplicate_racket` off the happy path) and rendered instead
-    via `BagList` above it — this sheet is the one place a category's owned
-    items AND its catalog both live, deliberately not split across the tab
-    and a sheet any more (see the file's own docstring for why that split
-    used to exist and stopped making sense). It also carries the string-
-    tension capture field (only for `category === 'string'`) — an optional,
-    explicitly-edited value, never a silent echo of the prefilled advice.
+    ignores collapsible mobile chrome and clips the sheet).
+    **It BROWSES and nothing else** (gear-sheet redesign, 2026-08-27):
+    - **Brand is a GROUP HEADING with a count** (`YONEX · 21`), not the first
+      line of every row — it printed five times running under a filter chip
+      already naming that brand. The reason it used to ride on each row still
+      holds and is still satisfied: a query searches all brands at once, and a
+      cross-brand result set still groups, so brand stays legible exactly
+      where it matters. Do not put it back on the row.
+    - **Owned rows stay IN PLACE**, checked, captioned ("In your kit · using
+      today" / "· strung at 24 lb"), and NOT tappable. They used to be deleted
+      from the catalog and re-rendered in an "Already in your kit" section
+      pinned above it — which is bag MANAGEMENT sitting on top of the list you
+      opened in order to ADD something. `duplicate_racket` stays off the happy
+      path because the row is inert, not because it is hidden.
+    - **Rows are edge-to-edge divided rows** (`.sheet-list` / `.sheet-row` in
+      `globals.css`), not bordered cards with gaps. 38 catalog rows as glass
+      cards fit five on screen; divided they fit eight with the next group
+      already in view. Same material as `ProfileTab`'s account list.
+    - **Search leads, and its placeholder carries the catalog count**
+      (`searchCountRacket` / `searchCountString`) — which is what let the
+      instruction line above it go, and is per-category: the string sheet used
+      to say "Search rackets".
+    - **No tension field.** It was parented to nothing, duplicated the "Set
+      tension" control one row above it, and could only describe a string the
+      member did not yet own. It moved to `YourKitCard` with the rows.
   - Both sheets take the register's single `UseGear`, so adding from either
     one updates every other surface (including the other sheet, which reads
     ownership off the same object) with no reload. **`BagList` belongs to
-    `GearSheet` only** — `GearPickSheet` never imports it. `GearPickSheet` is
-    behind exactly one card and one action, so ownership there is a single
-    `StatusBadge` ("In your kit"), not a list; a list of owned items is
-    `GearSheet`'s job, since browsing the whole catalog is the only place a
-    member needs to see everything they already have at once.
+    `YourKitCard` only** — neither sheet imports it any more. `GearPickSheet`
+    is behind exactly one card and one action, so ownership there is a single
+    `StatusBadge` ("In your kit"); `GearSheet` marks owned rows in place. A
+    LIST of owned items, with controls, is the kit's own job.
 - **`YourKitCard`** — one row per equipment category ("Your kit"), showing
   what the member owns and opening `GearSheet` to change it. Unpickable
   categories (no catalog rows) render as a plain, non-interactive row rather
-  than a button that does nothing.
+  than a button that does nothing. **It is also the bag's MANAGE surface**
+  (2026-08-27): `BagList` plus the string-tension field live here, below the
+  category rows, because that is where the kit is. They were inside
+  `GearSheet`; moving them is what let the picker become a pure browse list.
+  The tension field sits ABOVE `BagList` — the flow is type a number then tap
+  the row it belongs to, and `BagList`'s control is disabled until the field
+  holds something usable. Activate/remove/set-tension results are RENDERED
+  (one `ErrorState` slot); calling them as `{ void activate(id) }` is what
+  once made a refused operation indistinguishable from a dead button.
 - **`BagList` always renders every owned item, active one included.** It used
   to hide below two items ("a bag of one is chrome") — wrong once ownership
   needed to be manageable from more than one place, because it left a
   one-item player unable to remove or replace what they owned. The active
   row shows a badge instead of "Use this one" but keeps its remove button.
-  Don't reintroduce the guard.
+  Don't reintroduce the guard. It now mounts in `YourKitCard` over ALL
+  categories at once (it already gates activate on `racket` and tension on
+  `string` per row), rather than per-category inside `GearSheet`. **It is the
+  only surface anywhere that can remove or re-activate an item — deleting it
+  strands three functions.**
 - **`lib/activeRacket.ts`** resolves the active racket read-tolerantly: new
   docs carry `activeRacketId`, legacy docs fall back to `items[0]`. No
   migration.
@@ -152,7 +177,16 @@ racket and never excluded what they owned).
   tension-WINDOW line was dropped from the reason list entirely (the sheet
   prints the same range a couple of inches above it); the ceiling-unpublished
   CAVEAT stays and keeps its front slot. Warnings are safety copy — left
-  factual and numeric throughout.
+  factual and numeric throughout, rendered inline and never collapsed.
+  **`provenance` is a SEPARATE field from `warnings`** (2026-08-27). The
+  "Performance ratings are community consensus" sentence used to be pushed
+  into `warnings`, which stopped working once `GearPickSheet` began rendering
+  the two differently: warnings stay inline, provenance joins the muted caveat
+  paragraph under the action. It is also CONDITIONAL — only the 13 of 46 rows
+  whose `ratingSource` is a consensus estimate carry it — so it must never be
+  baked into the static footnote copy: the other 33 ARE
+  manufacturer-published, and saying otherwise about them is a false claim,
+  not a cautious one.
 - **The flag-on route requires auth; flag-off stays public.** `GET
   /api/recommend` was unauthenticated because it returned only a coarse
   stage-derived pick. Engine reasons quote individual ratings ("smash 4/5"),
@@ -165,3 +199,12 @@ racket and never excluded what they owned).
   `GearPickSheet`'s controls; the refetch-on-change lives in
   `GearPickRail`'s `recKey` effect, not the sheet itself — see its own
   comments for why. Budget bands are CAD and every band sets an UPPER bound.
+  The controls sit **above** the recommendation now, folded behind a one-line
+  summary with a Change link ("For doubles · no budget limit") — they are set
+  once or twice a year, and two labelled segment controls standing open
+  competed with the answer. **Exception: when the gear read fails the
+  preferences are UNKNOWN, so there is no honest summary sentence to write and
+  the controls render already-expanded.** They must stay reachable exactly
+  then — they are what writes the doc, so they are what can leave a member
+  with a budget they cannot change back, and the rail card behind the sheet is
+  a non-interactive div in its error state.

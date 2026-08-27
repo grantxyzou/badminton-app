@@ -3,12 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
-import ListRow from '@/components/primitives/ListRow';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
-import BagList from './BagList';
-import type { GearFailure, GearResult } from './useGear';
+import type { GearResult } from './useGear';
 import type { CatalogItem, EquipmentCategory, GearItem } from '@/lib/types';
-import { recommendTension, MIN_LB, MAX_LB, type PlayFormat } from '@/lib/tension';
 import { searchCatalog } from '@/lib/gearSearch';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -16,41 +13,23 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 interface Props {
   open: boolean;
   onClose: () => void;
-  /** Catalog ids already in the player's bag. Those rows are omitted from the
-   *  catalog list below — repeating an owned row there would make it
-   *  ambiguous which one is "the" entry for that catalog id, and it takes
-   *  `duplicate_racket` off the happy path entirely. */
+  /** Catalog ids already in the player's bag. These rows are NO LONGER hidden:
+   *  they render in place, in their brand group, with a check and a line
+   *  saying what the member already knows about them. Hiding them meant the
+   *  one question a browse list is asked — "do I already have this?" — could
+   *  only be answered by a separate section pinned above the list. */
   ownedCatalogIds: string[];
-  /** The player's own gear items in THIS category, active one included.
-   *  Rendered via `BagList` above the catalog. Defaults to `[]` so every
-   *  pre-Task-6 call site keeps compiling. */
+  /** The player's own gear items in THIS category. Read ONLY to caption the
+   *  owned rows above (tension for a string, nothing for a racket). Managing
+   *  them — remove, use-this-one, set tension — is `YourKitCard`'s job now;
+   *  see this file's docstring. */
   ownedItems?: GearItem[];
-  /** Id of the active racket, for `BagList`'s badge. Only meaningful for the
-   *  racket category — `BagList` itself gates the activate affordance on
-   *  `item.category === 'racket'`, so passing this for other categories is
-   *  harmless. */
+  /** Id of the active racket, so its row can say "using today" rather than a
+   *  bare "in your kit". Meaningless for other categories, harmless to pass. */
   activeItemId?: string;
-  /** Wired through to `BagList`. No-ops if `ownedItems` is empty.
-   *
-   *  These RETURN their result. They used to be `=> void`, and `YourKitCard`
-   *  called them as `{ void activate(id) }` — so a refused activate or remove
-   *  produced no pill, no change and no explanation whatsoever. Tapping "Use
-   *  this one" or the ✕ simply did nothing, forever. That is the same
-   *  lying-empty-state family as a swallowed load error, on the two controls
-   *  that live INSIDE this sheet, and it is indistinguishable from a dead
-   *  button. Both now report through the one error slot below. */
-  onActivate?: (id: string) => Promise<GearResult>;
-  onRemove?: (id: string) => Promise<GearResult>;
-  /** Apply the tension field to a string ALREADY in the bag. Without this the
-   *  field can only ever describe a string the member does not yet own — see
-   *  `BagList`'s docstring. */
-  onSetTension?: (item: GearItem, tensionLbs: number) => Promise<GearResult>;
-  /** Adds the racket and makes it active, then the sheet closes. Owned by
-   *  useGear one level up; this sheet holds no gear state. The second
-   *  argument is the string-tension capture (see the tension field below) —
-   *  present only when the member actually entered a value, never a silent
-   *  echo of the prefilled advice. */
-  onPick: (item: CatalogItem, tensionLbs?: number) => Promise<GearResult>;
+  /** Adds the item and makes it active, then the sheet closes. Owned by
+   *  `useGear` one level up; this sheet holds no gear state. */
+  onPick: (item: CatalogItem) => Promise<GearResult>;
   busy: boolean;
   online: boolean;
   /**
@@ -58,22 +37,12 @@ interface Props {
    * existing call site is unchanged.
    *
    * Parameterised rather than forked: this sheet handles every category's
-   * owned-items-plus-catalog job identically. A StringSheet would have been a
-   * copy of 200 lines whose only difference was a query string, and the two
-   * would have drifted.
+   * browse job identically. A StringSheet would have been a copy of 200 lines
+   * whose only difference was a query string, and the two would have drifted.
    */
   category?: EquipmentCategory;
   /** Sheet heading. Defaults to the racket copy. */
   title?: string;
-  /** One-line hint under the heading. Defaults to the racket copy. */
-  hint?: string;
-  /** Member name, used only to look up their level for the string-tension
-   *  prefill. Omit and the tension field still works — it just opens empty
-   *  instead of pre-filled. */
-  activeName?: string | null;
-  /** `PlayerGear.playFormat`, for the same tension prefill. Defaults to
-   *  'doubles', matching `StringTensionCard`'s fallback. */
-  format?: PlayFormat;
 }
 
 /** "4U · head-heavy · stiff" — the spec line that makes a model recognisable
@@ -91,37 +60,31 @@ function specLine(item: CatalogItem): string {
   return [a.weight, a.balance, a.flex].filter(Boolean).join(' · ');
 }
 
-/** Parses and clamps a raw tension input to `[MIN_LB, MAX_LB]`, rounded to a
- *  whole pound (matching `recommendTension`'s own output). Returns
- *  `undefined` for anything that isn't a real number the member typed —
- *  including an empty string, which `Number('')` reads as `0` (finite!) and
- *  would otherwise silently clamp up to `MIN_LB`. A member who clears the
- *  field is saying "nothing", not "20". */
-function clampTension(raw: string): number | undefined {
-  if (raw.trim() === '') return undefined;
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return undefined;
-  return Math.min(MAX_LB, Math.max(MIN_LB, Math.round(n)));
-}
-
 /**
- * "Add a racket" — the one place a category's items live: what you already
- * own, and the catalog to add or change it.
+ * "Add a racket" — the catalog for one category, search first.
  *
- * This sheet used to be a catalog picker and nothing else, deliberately split
- * from bag management (activate, remove), because doing both on top of a
- * 50-row catalog made it read as an action sheet: two unrelated jobs fighting
- * over 75vh. That reasoning held while the bag lived on the Equipment tab,
- * one level up from this sheet. It no longer does — the tab's bag list moved
- * back in here (see `BagList`'s docstring) — so the split it was guarding
- * against doesn't exist any more: there is one job, "manage this category,"
- * and owned items plus the catalog to add more of them are both part of it.
+ * Three things this sheet deliberately does NOT do any more, all for the same
+ * reason: it had grown a second job on top of the one it is opened for.
  *
- * Lookup, not browse, for the catalog half. The player already knows which
- * racket they own — the task is finding it among 50, so search leads and
- * brand is the only filter. Spec filters would be answering a question nobody
- * asked here (you don't know your own racket's balance; that's what the hero
- * card tells you afterwards).
+ *  - It does not carry an "Already in your kit" section. That section was
+ *    remove + mark-today's-racket + set-tension — bag MANAGEMENT — sitting
+ *    above the catalog somebody opened in order to ADD something. Owned rows
+ *    now appear in place, in their brand group, checked and captioned, so the
+ *    same fact is learned without a separate surface; managing them moved to
+ *    `YourKitCard`, which is where the kit lives.
+ *  - It does not carry the tension field. Tension is a fact about a string you
+ *    already own, not part of choosing one, and the field was parented to
+ *    nothing — it duplicated the "Set tension" control one row above it. It
+ *    moved to `YourKitCard` alongside the rows it describes.
+ *  - It does not explain itself. The instruction line ("Search, or browse by
+ *    brand") sat between the heading and the control it was describing; the
+ *    search field's own placeholder carries the catalog count instead, which
+ *    also answers the question the sheet never did — how many are there.
+ *
+ * Lookup, not browse. The player already knows which racket they own — the
+ * task is finding it among 50, so search leads and brand is the only filter.
+ * Spec filters would be answering a question nobody asked here (you don't know
+ * your own racket's balance; that's what the hero card tells you afterwards).
  */
 export default function GearSheet({
   open,
@@ -129,17 +92,11 @@ export default function GearSheet({
   ownedCatalogIds,
   ownedItems = [],
   activeItemId,
-  onActivate,
-  onRemove,
-  onSetTension,
   onPick,
   busy,
   online,
   category = 'racket',
   title,
-  hint,
-  activeName,
-  format,
 }: Props) {
   const t = useTranslations('valueHub');
   const tGear = useTranslations('stats.gear');
@@ -151,8 +108,6 @@ export default function GearSheet({
   const [loadError, setLoadError] = useState(false);
   const [pickError, setPickError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [level, setLevel] = useState<number | null>(null);
-  const [tensionInput, setTensionInput] = useState('');
   const heading = title ?? t('racketSheetTitle');
 
   useEffect(() => {
@@ -169,8 +124,6 @@ export default function GearSheet({
     setQuery('');
     setPickError(null);
     setBrand(null); // brands differ per category — don't carry one across
-    setTensionInput('');
-    setLevel(null); // stale-level guard: see the level-fetch effect below
     fetch(`${BASE}/api/equipment/catalog?category=${category}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
@@ -190,60 +143,24 @@ export default function GearSheet({
     // opening it for rackets would show the racket list.
   }, [open, category]);
 
-  // Level lookup for the tension prefill. Independent of the gear-document
-  // read above (a different endpoint, the same one StringTensionCard already
-  // calls) and gated on category so rackets never pay for it. The reset for
-  // the "not applicable" case lives in the on-open effect above, not here —
-  // this effect only ever sets state from a response, never synchronously in
-  // its own body.
-  useEffect(() => {
-    if (!open || category !== 'string' || !activeName) return;
-    let live = true;
-    fetch(`${BASE}/api/stats/level?name=${encodeURIComponent(activeName)}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d) => {
-        if (!live) return;
-        const raw = d?.level?.level;
-        setLevel(typeof raw === 'number' ? raw : null);
-      })
-      .catch(() => { if (live) setLevel(null); });
-    return () => { live = false; };
-  }, [open, category, activeName]);
+  /** catalogId → the member's own entry, for the owned rows' caption. */
+  const ownedByCatalogId = useMemo(() => {
+    const m = new Map<string, GearItem>();
+    for (const i of ownedItems) if (i.catalogId) m.set(i.catalogId, i);
+    return m;
+  }, [ownedItems]);
 
-  const tensionAdvice = useMemo(
-    () => (category === 'string' ? recommendTension(level, format ?? 'doubles') : null),
-    [category, level, format],
-  );
-  // The advice is a PLACEHOLDER, never the value.
-  //
-  // It used to be rendered as the input's value until the member typed, which
-  // made the field unusable: there is no select-on-focus, so tapping it put a
-  // caret next to the recommendation and the first keystroke APPENDED. A
-  // member on 26 lb tapped a field reading "24", typed 26, and produced
-  // "2426" — which `clampTension` then folded to MAX_LB and saved as 30 lb,
-  // silently and plausibly. Every tension anyone entered was 30.
-  //
-  // Making it a placeholder costs nothing, because the prefill was never sent
-  // anyway: `pick()` only ever forwarded a tension the member had actually
-  // typed. It looked like a value while functioning as a hint, and its one
-  // real effect was to corrupt the next thing typed. As a placeholder the
-  // guidance still shows, an untouched field is genuinely empty, and
-  // `clampTension('')` already reads that as "nothing" rather than 20.
-  const tensionPlaceholder = tensionAdvice ? String(tensionAdvice.lb) : undefined;
-
-  // Rackets already in the bag never appear. Done before brand/query so the
-  // tab counts and the "no matches" state both describe what's really here.
-  const addable = useMemo(
-    () => catalog.filter((c) => !ownedCatalogIds.includes(c.id)),
-    [catalog, ownedCatalogIds],
+  const isOwned = useMemo(
+    () => (id: string) => ownedCatalogIds.includes(id) || ownedByCatalogId.has(id),
+    [ownedCatalogIds, ownedByCatalogId],
   );
 
   // Catalog order is curation order — keep it for both tabs and rows.
   const brands = useMemo(() => {
     const seen: string[] = [];
-    for (const c of addable) if (!seen.includes(c.brand)) seen.push(c.brand);
+    for (const c of catalog) if (!seen.includes(c.brand)) seen.push(c.brand);
     return seen;
-  }, [addable]);
+  }, [catalog]);
 
   // A query searches the WHOLE catalog and bypasses the brand tabs —
   // filtering within the selected brand would hide matches and read as broken.
@@ -253,32 +170,45 @@ export default function GearSheet({
   // list is indistinguishable from a row that isn't in the catalog. See
   // lib/gearSearch.ts.
   const models = useMemo(() => {
-    if (!query.trim()) return brand === null ? addable : addable.filter((c) => c.brand === brand);
-    return searchCatalog(addable, query, (c) => {
+    if (!query.trim()) return brand === null ? catalog : catalog.filter((c) => c.brand === brand);
+    return searchCatalog(catalog, query, (c) => {
       const series = typeof c.attributes?.series === 'string' ? c.attributes.series : '';
       return `${c.brand} ${c.model} ${series}`;
     });
-  }, [addable, brand, query]);
+  }, [catalog, brand, query]);
 
-  // The brand tab can still go stale one way: removing the last addable racket
-  // of a brand empties the tab you're standing on. Falling back to All rather
+  /**
+   * Rows grouped under a brand heading that carries its own count.
+   *
+   * The brand used to be the first line of every row, which meant "YONEX"
+   * printed five times in a row directly under a filter chip already saying
+   * Yonex. As a heading it says the same thing once and adds the count, and
+   * it survives the case that made the per-row brand necessary in the first
+   * place: a cross-brand SEARCH result still groups, so a result list spanning
+   * three brands still tells you which is which.
+   */
+  const groups = useMemo(() => {
+    const order: string[] = [];
+    const byBrand = new Map<string, CatalogItem[]>();
+    for (const c of models) {
+      if (!byBrand.has(c.brand)) { byBrand.set(c.brand, []); order.push(c.brand); }
+      byBrand.get(c.brand)!.push(c);
+    }
+    return order.map((b) => ({ brand: b, items: byBrand.get(b)! }));
+  }, [models]);
+
+  // The brand tab can still go stale one way: a brand disappearing from the
+  // catalog empties the tab you're standing on. Falling back to All rather
   // than to another brand — All is a superset, so it can never be empty while
-  // anything is addable, and it is the state the sheet opens in anyway.
+  // anything is in the catalog, and it is the state the sheet opens in anyway.
   //
-  // `brand === null` is NOT stale any more; it is the All tab.
+  // `brand === null` is NOT stale; it is the All tab.
   useEffect(() => {
     if (brand !== null && !brands.includes(brand)) setBrand(null);
   }, [brands, brand]);
 
-  // Both 409 reasons are unreachable by design — owned rackets are filtered
-  // out of the list, and the tab disables its Add button at MAX_RACKETS. They
-  // are still mapped rather than flattened into the generic error, so a bag
-  // that fills up some other way says so instead of reading as a crash. An
-  // unrecognised reason falls through to the generic message; it never asserts
-  // a cause the server didn't give.
-  /** One place a `GearFailure` becomes words, so the catalog rows and the bag
-   *  rows can never describe the same refusal differently. */
-  function messageFor(reason: GearFailure): string {
+  /** One place a `GearResult` failure becomes words. */
+  function messageFor(reason: string): string {
     if (reason === 'bag_full') return t('bagFull');
     if (reason === 'duplicate_racket') return t('bagDuplicate');
     if (reason === 'unauthorized') return t('bagSignInAgain');
@@ -288,46 +218,10 @@ export default function GearSheet({
     return t('recError');
   }
 
-  /** Activate / remove, with their answer actually rendered. */
-  async function runBagOp(op: ((id: string) => Promise<GearResult>) | undefined, id: string) {
-    if (!op || busy) return;
-    setPickError(null);
-    const res = await op(id);
-    // A handler that reports nothing is UNKNOWN, not failed. The prop type
-    // asks for a `GearResult`, but a type cannot police a runtime caller —
-    // a plain `() => void` handler (every pre-Task call site, and the older
-    // tests) resolves to `undefined`, and reading `.ok` off that throws
-    // inside an un-awaited click handler, where it surfaces as an unhandled
-    // rejection rather than a visible failure. Painting an error here would
-    // be worse still: it would assert a refusal nobody reported, which is the
-    // mirror of the lying-empty-state rule and the same mistake as promoting
-    // an unrecognised status to a named `GearFailure`.
-    if (res && !res.ok) setPickError(messageFor(res.reason));
-  }
-
-  /** Apply whatever is in the tension field to a string already in the bag.
-   *  Shares the one error slot and the one message mapping with every other
-   *  write this sheet makes, and stays OPEN on success — the member is
-   *  looking straight at the row, whose label reflects the new value. */
-  async function applyTension(item: GearItem) {
-    if (!onSetTension || busy) return;
-    const lbs = clampTension(tensionInput);
-    if (lbs === undefined) return;
-    setPickError(null);
-    const res = await onSetTension(item, lbs);
-    if (!res.ok) setPickError(messageFor(res.reason));
-  }
-
   async function pick(item: CatalogItem) {
     if (busy) return;
     setPickError(null);
-    // Only a value the member actually typed is sent. With the advice moved
-    // to the placeholder an untouched field is empty, and `clampTension`
-    // returns undefined for that — so a recommendation can never be persisted
-    // as though it were the fact the member reported, which is the whole
-    // reason this field exists.
-    const tensionLbs = category === 'string' ? clampTension(tensionInput) : undefined;
-    const res = await onPick(item, tensionLbs);
+    const res = await onPick(item);
     if (res.ok) { onClose(); return; }
     // Actionable, not decorative. "Refresh to try again" is the wrong
     // instruction for a lapsed session — refreshing cannot mint a cookie, so
@@ -335,10 +229,28 @@ export default function GearSheet({
     setPickError(messageFor(res.reason));
   }
 
+  /** What an owned row says about itself, in place of the spec line. */
+  function ownedCaption(item: CatalogItem): string {
+    const mine = ownedByCatalogId.get(item.id);
+    if (mine && mine.id === activeItemId && (mine.category ?? 'racket') === 'racket') {
+      return tGear('inKitActive');
+    }
+    if (mine && typeof mine.tensionLbs === 'number') {
+      return tGear('inKitTension', { lb: mine.tensionLbs });
+    }
+    return tGear('railInKit');
+  }
+
+  const searchPlaceholder = category === 'string'
+    ? t('searchCountString', { count: catalog.length })
+    : t('searchCountRacket', { count: catalog.length });
+
+  const showControls = loaded && !loadError && catalog.length > 0;
+
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={heading} maxHeight="92dvh">
       <BottomSheetHeader>
-        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{heading}</span>
+        <span className="fs-lg" style={{ fontWeight: 600 }}>{heading}</span>
         <button
           type="button"
           onClick={onClose}
@@ -348,97 +260,26 @@ export default function GearSheet({
           <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
         </button>
       </BottomSheetHeader>
-      <BottomSheetBody>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', margin: 0 }}>{hint ?? t('racketSheetHint')}</p>
 
-          {ownedItems.length > 0 && (
-            <BagList
-              items={ownedItems}
-              activeId={activeItemId}
-              onActivate={(id) => { void runBagOp(onActivate, id); }}
-              onRemove={(id) => { void runBagOp(onRemove, id); }}
-              onSetTension={onSetTension ? (item) => { void applyTension(item); } : undefined}
-              tensionReady={clampTension(tensionInput) !== undefined}
-              busy={busy}
-            />
-          )}
-
-          {category === 'string' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-              <label htmlFor="gear-sheet-tension" className="fs-xs" style={{ color: 'var(--text-muted)' }}>
-                {tGear('tensionCaptureLabel')}
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                <input
-                  id="gear-sheet-tension"
-                  type="number"
-                  inputMode="numeric"
-                  min={MIN_LB}
-                  max={MAX_LB}
-                  value={tensionInput}
-                  placeholder={tensionPlaceholder}
-                  onChange={(e) => setTensionInput(e.target.value)}
-                  // Select-on-focus, because this field is a two-digit whole
-                  // value that is always REPLACED, never appended to. Moving
-                  // the advice to the placeholder fixed the first edit, but
-                  // not the second: once the field legitimately holds a number
-                  // (the member's own, or the blur-normalised one), tapping it
-                  // again drops a caret at the end and the next keystroke
-                  // appends exactly as before — "30" plus a corrected "26"
-                  // becomes 3026, and the clamp turns that back into 30. One
-                  // tap should mean "replace this".
-                  onFocus={(e) => e.currentTarget.select()}
-                  // Show the member the number that will actually be stored.
-                  // The clamp is deliberate, but applying it invisibly at save
-                  // time means a typo becomes a plausible-looking tension the
-                  // member never gave — the same "assert nothing the member
-                  // didn't say" rule the rest of this sheet follows.
-                  onBlur={() => {
-                    const clamped = clampTension(tensionInput);
-                    setTensionInput(clamped === undefined ? '' : String(clamped));
-                  }}
-                  aria-label={tGear('tensionCaptureLabel')}
-                  className="fs-md"
-                  style={{
-                    width: 88, minHeight: 44, padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)',
-                    background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-                    color: 'var(--text-primary)', fontFamily: 'var(--font-mono)',
-                  }}
-                />
-                <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{tGear('lb')}</span>
-              </div>
-            </div>
-          )}
-
-          {loadError && <ErrorState message={t('recError')} />}
-
-          {/* Loaded-but-empty must not look like a working screen with nothing
-              on it. (Not hypothetical: the production container held zero
-              rackets from day one — see lib/catalogSeed.ts.) */}
-          {loaded && !loadError && catalog.length === 0 && (
-            <EmptyState>{t('racketCatalogEmpty')}</EmptyState>
-          )}
-
-          {loaded && !loadError && catalog.length > 0 && (
+      {/* Search and the brand tabs are the sheet's controls, so they sit
+          OUTSIDE the scroller and stay put while the list moves under them.
+          Search used to be third in reading order, below the kit card and an
+          instruction line; it is the first thing you can act on. */}
+      {showControls && (
+        <div style={{ flex: '0 0 auto', padding: '0 var(--space-6) var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <div className="sheet-search">
+            <span className="material-icons" aria-hidden="true">search</span>
             <input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('searchPlaceholder')}
-              aria-label={t('searchPlaceholder')}
-              className="fs-md"
-              style={{
-                width: '100%', padding: 'var(--space-3)', borderRadius: 'var(--radius-lg)',
-                background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
-                color: 'var(--text-primary)',
-              }}
+              placeholder={searchPlaceholder}
+              aria-label={searchPlaceholder}
             />
-          )}
+          </div>
 
           {/* Brand tabs: All plus 3 brands today, so a segment control still
-              catalog-at-a-glance; revisit as chips if curation grows past ~4.
-              Canonical pattern: wrapper needs `flex`, tabs need flex-1.
+              fits. Canonical pattern: wrapper needs `flex`, tabs need flex-1.
               Hidden while a query is active — search bypasses the brand filter
               entirely, so showing tabs that aren't in play reads as broken. */}
           {!query.trim() && brands.length > 0 && (
@@ -457,50 +298,102 @@ export default function GearSheet({
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      <BottomSheetBody bare>
+        <div style={{ paddingBottom: 'var(--space-6)' }}>
+          {/* The messages keep the sheet's own 20px column; only the rows go
+              edge to edge. */}
+          <div style={{ padding: '0 var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            {loadError && <ErrorState message={t('recError')} />}
+
+            {/* Loaded-but-empty must not look like a working screen with
+                nothing on it. (Not hypothetical: the production container held
+                zero rackets from day one — see lib/catalogSeed.ts.) */}
+            {loaded && !loadError && catalog.length === 0 && (
+              <EmptyState>{t('racketCatalogEmpty')}</EmptyState>
+            )}
+
+            {loaded && !loadError && catalog.length > 0 && models.length === 0 && (
+              <EmptyState>{t('searchNoMatches')}</EmptyState>
+            )}
+          </div>
 
           {/* Disabled while a write is in flight or offline. Styled rather
-              than un-wired: dropping ListRow's onClick would swap the row from
-              a <button> to a <div>, losing the semantics with no visual cue
+              than un-wired: dropping the onClick would swap the row from a
+              <button> to a <div>, losing the semantics with no visual cue
               that anything changed. Same principle as .cc-btn:disabled — see
               CLAUDE.md's design-system-first rule. */}
-          <ul
-            style={{
-              listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6,
-              ...(busy ? { opacity: 0.5, pointerEvents: 'none' as const } : null),
-            }}
+          <div
+            style={busy ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
             aria-busy={busy || undefined}
           >
-            {models.map((c) => (
-              <li key={c.id}>
-                <ListRow
-                  onClick={() => pick(c)}
-                  ariaLabel={`${c.brand} ${c.model}`}
-                  // Brand rides above the model rather than only in the aria
-                  // label: a query searches all three brands at once, and the
-                  // moment results are cross-brand the brand is the thing you
-                  // are actually matching on. Model alone left them ambiguous.
-                  title={(
-                    <span style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        {c.brand}
-                      </span>
-                      <span style={{ fontSize: 'var(--fs-md)', fontWeight: 600 }}>{c.model}</span>
-                    </span>
-                  )}
-                  subtitle={specLine(c) || undefined}
-                />
-              </li>
+            {groups.map((g) => (
+              <section className="sheet-group" key={g.brand}>
+                <p className="section-label-muted sheet-group-label">
+                  {g.brand} · {g.items.length}
+                </p>
+                <ul className="sheet-list">
+                  {g.items.map((c) => {
+                    const owned = isOwned(c.id);
+                    if (owned) {
+                      return (
+                        <li key={c.id}>
+                          {/* Not a button. An owned row has already answered
+                              the question you are asking the list, and there
+                              is nothing to add. */}
+                          <div className="sheet-row sheet-row--owned">
+                            <span
+                              className="material-icons"
+                              aria-hidden="true"
+                              style={{ fontSize: 'var(--icon-md)', color: 'var(--accent)', flex: '0 0 auto' }}
+                            >
+                              check_circle
+                            </span>
+                            <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <span className="fs-lg">{c.model}</span>
+                              <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{ownedCaption(c)}</span>
+                            </span>
+                          </div>
+                        </li>
+                      );
+                    }
+                    const spec = specLine(c);
+                    return (
+                      <li key={c.id}>
+                        <button
+                          type="button"
+                          className="sheet-row"
+                          onClick={() => pick(c)}
+                          aria-label={`${c.brand} ${c.model}`}
+                        >
+                          <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span className="fs-lg">{c.model}</span>
+                            {spec && <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{spec}</span>}
+                          </span>
+                          <span
+                            className="material-icons"
+                            aria-hidden="true"
+                            style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)', flex: '0 0 auto' }}
+                          >
+                            add
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
             ))}
-          </ul>
+          </div>
 
-          {loaded && !loadError && catalog.length > 0 && models.length === 0 && (
-            <EmptyState>{t('searchNoMatches')}</EmptyState>
-          )}
-
-          {pickError && <ErrorState message={pickError} />}
-          {!online && (
-            <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>{tStats('offline')}</p>
-          )}
+          <div style={{ padding: 'var(--space-4) var(--space-6) 0', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            {pickError && <ErrorState message={pickError} />}
+            {!online && (
+              <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>{tStats('offline')}</p>
+            )}
+          </div>
         </div>
       </BottomSheetBody>
     </BottomSheet>
