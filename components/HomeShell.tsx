@@ -10,6 +10,7 @@ import HomeTab from '@/components/HomeTab';
 import PlayersTab from '@/components/PlayersTab';
 import SkillsTab from '@/components/SkillsTab';
 import ProfileTab from '@/components/ProfileTab';
+import type { Provider as AuthProvider } from '@/components/auth/ProviderButtons';
 import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
@@ -44,9 +45,16 @@ interface Props {
    * HomeTab will refresh in the background via its existing useEffect.
    */
   initialAnnouncement: Announcement | null;
+  /**
+   * Sign-in providers this deployment has credentials for, resolved on the
+   * server (see app/page.tsx). Threaded down to the anonymous Profile card so
+   * the provider buttons can lead without a post-hydration reflow. Optional so
+   * component tests that mount the shell directly need not care.
+   */
+  authProviders?: AuthProvider[];
 }
 
-export default function HomeShell({ initialAnnouncement }: Props) {
+export default function HomeShell({ initialAnnouncement, authProviders = [] }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   // Bumped by pull-to-refresh — folded into each tab's React key so the active
   // tab remounts and re-runs its data fetches (no service worker; refresh ==
@@ -466,6 +474,7 @@ export default function HomeShell({ initialAnnouncement }: Props) {
                 sessionLabel={profileSession.label}
                 isAdmin={showAdmin}
                 onAdminTools={() => setActiveTab('admin')}
+                authProviders={authProviders}
               />
             </div>
           )}
