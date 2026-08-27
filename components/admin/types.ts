@@ -12,7 +12,8 @@ export type AdminView =
   | 'announcements'
   | 'etransfer'
   | 'skip-dates'
-  | 'past-sessions';
+  | 'past-sessions'
+  | 'stringing';
 
 export interface AdminNavProps {
   onBack: () => void;
