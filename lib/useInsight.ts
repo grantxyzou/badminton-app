@@ -6,7 +6,7 @@ import { useActiveName } from '@/lib/useActiveName';
 /**
  * Shared client hook for the distributed AI insight (greeting + per-card chips).
  *
- * The greeting and the level/trend chips all consume the SAME insight payload,
+ * The greeting and the trend chip both consume the SAME insight payload,
  * so this hook memoizes the fetch per (lowercased) name and shares the in-flight
  * promise — three consumers trigger ONE network call to /api/stats/insight. The
  * module cache is cleared on IDENTITY_EVENT (sign-in/out) so a new identity
@@ -26,7 +26,6 @@ export interface CardSlice {
 export interface InsightData {
   account: boolean;
   greeting: string | null;
-  level: CardSlice | null;
   trend: CardSlice | null;
 }
 

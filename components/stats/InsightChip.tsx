@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import type { CardSlice } from '@/lib/useInsight';
+import AIBadge from '@/components/primitives/AIBadge';
 
 /**
  * A compact, styled AI-insight element attached to a Stats card — NOT a plain
@@ -15,9 +16,11 @@ import type { CardSlice } from '@/lib/useInsight';
  * text. Falls back to the generic AI glyph.
  */
 
+/* `blindspot` and `phase-gating` were the level card's kinds; both left with
+   it. `sticky-weak` is the only kind a chip can carry now — the map stays
+   because the fallback below is what keeps an unknown kind from rendering a
+   glyph name as raw text. */
 const ICON_BY_KIND: Record<string, string> = {
-  blindspot: 'visibility',
-  'phase-gating': 'bolt',
   'sticky-weak': 'school',
 };
 
@@ -46,23 +49,13 @@ export default function InsightChip({ headline, support, kind }: CardSlice) {
         <p style={{ margin: 0, fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.35 }}>{headline}</p>
         {support && <p style={{ margin: '2px 0 0', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', lineHeight: 1.4 }}>{support}</p>}
       </div>
-      <span
-        aria-label={t('insightChip.aiGenerated')}
-        title={t('insightChip.aiGenerated')}
-        style={{
-          fontSize: 'var(--fs-2xs)',
-          padding: '2px 6px',
-          borderRadius: 'var(--radius-pill)',
-          whiteSpace: 'nowrap',
-          fontWeight: 600,
-          letterSpacing: '0.04em',
-          textTransform: 'uppercase',
-          border: `1px solid ${ACCENT}`,
-          color: ACCENT,
-          flexShrink: 0,
-        }}
-      >
-        {t('insightChip.aiBadge')}
+      {/* The same marker the summary greeting wears. This was a hand-rolled
+          accent-outlined pill — same word, same aria-label, different look —
+          so the Stats tab showed two AI markers in two visual languages a few
+          hundred pixels apart, and a reader could not tell whether they meant
+          the same thing. They do, so they look the same. */}
+      <span style={{ flexShrink: 0 }}>
+        <AIBadge label={t('insightChip.aiGenerated')}>{t('insightChip.aiBadge')}</AIBadge>
       </span>
     </div>
   );
