@@ -86,13 +86,14 @@ describe('<UnpaidSessionsCard />', () => {
     wrap(<UnpaidSessionsCard name="Lin" variant="home" />);
 
     await waitFor(() => {
-      expect(screen.getByText('Your balance')).toBeTruthy();
+      expect(screen.getByText('Balance')).toBeTruthy();
     });
-    // Three times now: the collapsed row's own figure, the line item, and the
-    // total. The row carries the number because a collapsed card showing only
-    // a label spends a whole card to say nothing — and the number is the only
-    // reason to open it.
-    expect(screen.getAllByText('$40').length).toBe(3);
+    // TWICE when expanded: the line item and the total. The collapsed row's
+    // own figure hides once open, because the Total row two lines below says
+    // the same number and a card that states its total twice reads like it is
+    // not sure. Collapsed, that figure is the only reason to open the card, so
+    // it is there instead.
+    expect(screen.getAllByText('$40').length).toBe(2);
   });
 
   /* The rule here is unchanged: paid-up must not render as NOTHING — the card
@@ -110,7 +111,7 @@ describe('<UnpaidSessionsCard />', () => {
 
     wrap(<UnpaidSessionsCard name="Lin" variant="home" />);
     // Renders, rather than vanishing.
-    const toggle = await screen.findByRole('button', { name: /your balance/i });
+    const toggle = await screen.findByRole('button', { name: /balance/i });
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     // Collapsed by default when there is nothing owed...
     expect(screen.queryByText(/all paid up/i)).toBeNull();
