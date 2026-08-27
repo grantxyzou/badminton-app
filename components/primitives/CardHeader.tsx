@@ -6,7 +6,8 @@ import type { ReactNode } from 'react';
  * header spec so the ~11 hand-rolled copies across stats/admin cards stop
  * drifting (see standardization Phase 1a):
  *
- *   - icon: 22px, `var(--accent)` (override via `iconColor`)
+ *   - icon: 22px, `var(--accent)` (override via `iconColor`); `--icon-sm` at
+ *     weight 600 under `compact`, matching the section label it sits beside
  *   - title: `.bpm-h3`
  *   - subtitle: `--fs-sm` (12) / `--text-muted` / `2px 0 0` / `--lh-snug`
  *   - alignment: `flex-start` + icon `marginTop:1` WHEN a subtitle is present
@@ -27,9 +28,11 @@ import type { ReactNode } from 'react';
  *
  * With:  <CardHeader icon="trending_up" title={title} subtitle={sub} />
  *
- * Note: this is for full-width "live" cards (Tier A). The compact coming-soon
- * tiles use a smaller header (icon 20 / badge 9) and are intentionally not
- * routed through this primitive.
+ * Note: the Tier-A spec above is the default. Cards that NAME a thing rather
+ * than announce one pass `compact` and get the section-label treatment for both
+ * title and icon — see that prop. (This comment used to say compact tiles were
+ * "intentionally not routed through this primitive"; StringingCard routes
+ * through it, which is how the icon-size mismatch got in.)
  */
 export interface CardHeaderProps {
   /** Material Symbols glyph name (e.g. `'trending_up'`). Omit for no icon. */
@@ -71,7 +74,24 @@ export default function CardHeader({
         <span
           className="material-icons"
           aria-hidden="true"
-          style={{ fontSize: 'var(--fs-stat-lg)', color: iconColor, ...(subtitle ? { marginTop: 1 } : null) }}
+          style={{
+            // `compact` turns the title into a section label, so the icon has
+            // to become part of that label too — 22px/400 beside an 11px
+            // tracked uppercase title is the Tier-A heading icon wearing a
+            // section label's clothes, and it read as a size bug on Home next
+            // to UnpaidSessionsCard's 16px one.
+            //
+            // These are the values globals.css already gives
+            // `.section-label-muted .material-icons`, and the reason they are
+            // repeated here rather than inherited is structural: that rule is a
+            // DESCENDANT selector, and this icon is a SIBLING of the <h3>, not
+            // inside it. Keep the two in step.
+            ...(compact
+              ? { fontSize: 'var(--icon-sm)', fontVariationSettings: "'opsz' 24, 'wght' 600, 'FILL' 0, 'GRAD' 0" }
+              : { fontSize: 'var(--fs-stat-lg)' }),
+            color: iconColor,
+            ...(subtitle ? { marginTop: 1 } : null),
+          }}
         >
           {icon}
         </span>
