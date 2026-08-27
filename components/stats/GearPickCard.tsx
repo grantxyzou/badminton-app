@@ -16,6 +16,11 @@ export interface GearPick {
    *  optional to DISPLAY: `GearPickSheet` renders warnings uncollapsed. A card
    *  that hides a real warning is worse than a card that expands nothing. */
   warnings?: string[];
+  /** Where this pick's performance numbers came from, when they are not the
+   *  manufacturer's. Rendered in the muted caveat paragraph under the action,
+   *  NOT with `warnings` — this is sourcing, not a safety flag, and only some
+   *  catalog rows carry it. Absent means published. */
+  provenance?: string;
   /** Which racket this pick was scored against, and whether the member owns
    *  it. String picks are pairings, not standalone recommendations — a string
    *  shown without the frame it assumed is advice for someone else's racket.

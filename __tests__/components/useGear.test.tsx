@@ -406,16 +406,24 @@ describe('useGear — makeActive states the caller intent POST cannot infer', ()
     }) as unknown as typeof fetch);
   }
 
-  it('follows the add with a PATCH activating the racket it just created', async () => {
+  /**
+   * ONE request, not two.
+   *
+   * This used to be a POST followed by a PATCH carrying the new item's id.
+   * That spent two of the route's 20-writes-an-hour on every pick, and once a
+   * pick stopped closing the sheet — browsing and adding several became the
+   * normal flow — a member ran out at about ten picks and lost every gear
+   * write for the rest of the hour. The count is the assertion.
+   */
+  it('states makeActive in the POST rather than following it with a PATCH', async () => {
     const calls: { method: string; body: unknown }[] = [];
     stubFetch(calls);
     render(<Probe makeActive />);
     fireEvent.click(screen.getByText('add'));
 
-    await waitFor(() => expect(calls.map((c) => c.method)).toEqual(['POST', 'PATCH']));
-    // The id exists only in the POST's response body, so this is also the
-    // regression test for reading it off a ref rather than racing state.
-    expect(calls[1].body).toMatchObject({ activeRacketId: 'r-new' });
+    await waitFor(() => expect(calls.length).toBeGreaterThan(0));
+    expect(calls.map((c) => c.method)).toEqual(['POST']);
+    expect(calls[0].body).toMatchObject({ makeActive: true });
   });
 
   it('leaves the pointer alone when the caller did not ask', async () => {
@@ -426,6 +434,9 @@ describe('useGear — makeActive states the caller intent POST cannot infer', ()
 
     await waitFor(() => expect(calls.length).toBeGreaterThan(0));
     expect(calls.map((c) => c.method)).toEqual(['POST']);
+    // Absent, not `false` — the route treats only an explicit true as intent,
+    // and sending false would still be the caller talking about the pointer.
+    expect((calls[0].body as Record<string, unknown>).makeActive).toBeUndefined();
   });
 });
 

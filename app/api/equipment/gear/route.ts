@@ -260,13 +260,26 @@ export async function POST(req: NextRequest) {
       };
 
       const items = [...existing, incoming];
-      // Only claim the pointer when the bag had NO rackets before this add —
-      // a legacy bag (rackets present, pointer absent) already has an
-      // effective active racket via activeRacket()'s items[0] fallback, and
-      // appending must never silently move it onto the new racket.
+      // Appending must never SILENTLY move the pointer: a legacy bag (rackets
+      // present, pointer absent) already has an effective active racket via
+      // activeRacket()'s items[0] fallback, and adding a spare is not the same
+      // statement as changing what you play with. So the pointer is claimed
+      // implicitly only when the bag had NO rackets at all.
+      //
+      // `makeActive` is the caller saying it explicitly, which is a different
+      // thing from inferring it — the same distinction PUT already draws. It
+      // exists so "Change" can be one request. It used to be a follow-up PATCH
+      // from `useGear`, which made every racket pick cost TWO writes against a
+      // 20-per-hour limiter; once a pick stopped closing the sheet and
+      // browsing-and-adding became the normal flow, that capped a member at
+      // about ten picks an hour and then locked all gear writes for the rest
+      // of it. One request, one unit.
       const priorRackets = rackets(prior ?? null);
-      const activeRacketId = prior?.activeRacketId
-        ?? (priorRackets.length === 0 && incoming.category === 'racket' ? incoming.id : undefined);
+      const claimsPointer = body.makeActive === true && incoming.category === 'racket';
+      const activeRacketId = claimsPointer
+        ? incoming.id
+        : (prior?.activeRacketId
+          ?? (priorRackets.length === 0 && incoming.category === 'racket' ? incoming.id : undefined));
 
       return { ok: true, next: { items, activeRacketId } };
     });

@@ -216,6 +216,10 @@ export async function GET(req: NextRequest) {
           reason: reasons[0] ?? null,
           reasons,
           warnings: pairing.warnings,
+          // Distinct from `warnings` all the way to the sheet — the caveat
+          // paragraph under the action carries this, the inline warning list
+          // carries those. See `StringPairing.provenance`.
+          provenance: pairing.provenance,
           pairedWith: { label: `${frame.brand} ${frame.model}`, source },
           tensionLbs: pairTension(frame, pairing.item, profile),
         });

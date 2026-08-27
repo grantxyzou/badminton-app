@@ -3,17 +3,20 @@ import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import GearSheet from '../../components/stats/GearSheet';
-import { useGear } from '../../components/stats/useGear';
 import enMessages from '../../messages/en.json';
 import type { GearItem } from '../../lib/types';
 
 /**
- * GearSheet is the one place a category's items live: what you already own
- * (via `BagList`) plus the catalog to add or change it. The behaviours worth
- * pinning here are the ones that changed with that shape: one tap commits and
- * closes (no Save button), rackets already owned never appear in the catalog
- * list, every row shows its brand, owned items surface above the catalog, and
- * (strings only) an edited tension value rides along on the pick.
+ * GearSheet BROWSES a category's catalog and nothing else.
+ *
+ * It used to also be the bag-management surface — remove, use-this-one, set
+ * tension — stacked above the catalog somebody had opened in order to add
+ * something. That half moved to `YourKitCard`, and its tests moved with it
+ * (see `YourKitCard.test.tsx`). What is pinned here is the browse job: one tap
+ * commits and the sheet STAYS OPEN so the row can show its checked state,
+ * owned rows appear IN PLACE rather than being hidden or lifted into a
+ * separate section, brand is a group heading with a count rather than the
+ * first line of every row, and search leads.
  */
 
 const CATALOG = [
@@ -51,17 +54,14 @@ function mockCatalog(items: unknown = CATALOG, status = 200) {
   }) as unknown as typeof fetch;
 }
 
-/** Also answers `/api/stats/level`, for the string-tension prefill. `level:
- *  null` mimics a member with no check-in yet — `recommendTension` returns
- *  `null` for that, same as `StringTensionCard`. */
-function mockCatalogAndLevel(items: unknown = STRING_CATALOG, level: number | null = 3) {
+/** Answers with a different catalog per category, so a category switch can be
+ *  used to change which brands exist without touching ownership. */
+function mockCatalogByCategory(byCategory: Record<string, unknown>) {
   global.fetch = vi.fn(async (url: RequestInfo | URL) => {
     const u = String(url);
     if (u.includes('/api/equipment/catalog')) {
-      return new Response(JSON.stringify({ items }), { status: 200 });
-    }
-    if (u.includes('/api/stats/level')) {
-      return new Response(JSON.stringify({ level: level === null ? null : { level } }), { status: 200 });
+      const cat = new URL(u, 'http://x').searchParams.get('category') ?? 'racket';
+      return new Response(JSON.stringify({ items: byCategory[cat] ?? [] }), { status: 200 });
     }
     return new Response('{}', { status: 404 });
   }) as unknown as typeof fetch;
@@ -103,7 +103,34 @@ describe('GearSheet (catalog picker)', () => {
     renderSheet();
     expect(await screen.findByRole('tab', { name: 'Yonex' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Victor' })).toBeTruthy();
-    expect(screen.getByPlaceholderText('Search rackets')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Search 3 rackets')).toBeTruthy();
+  });
+
+  /**
+   * The placeholder carries the catalog count, which is what let the
+   * instruction line above it go — and it answers a question the sheet never
+   * did: how many are there. It is also per-category; the string sheet used
+   * the racket copy, so "Search rackets" appeared over a list of strings.
+   */
+  it('counts the catalog in the search placeholder, per category', async () => {
+    mockCatalog();
+    const { unmount } = renderSheet();
+    expect(await screen.findByPlaceholderText('Search 3 rackets')).toBeTruthy();
+    unmount();
+    cleanup();
+
+    mockCatalog(STRING_CATALOG);
+    renderSheet({ category: 'string', title: 'Add a string' });
+    expect(await screen.findByPlaceholderText('Search 1 strings')).toBeTruthy();
+    expect(screen.queryByPlaceholderText(/rackets/)).toBeNull();
+  });
+
+  /** The instruction line explained the control it sat above. */
+  it('does not explain how to search', async () => {
+    mockCatalog();
+    renderSheet();
+    await screen.findByText('Astrox 88D Pro');
+    expect(screen.queryByText(/Search, or browse by brand/)).toBeNull();
   });
 
   /**
@@ -128,72 +155,120 @@ describe('GearSheet (catalog picker)', () => {
     expect(screen.getByText('Astrox 88D Pro')).toBeTruthy();
   });
 
-  // The whole point of the redesign: picking is one tap, not tap-then-Save.
-  it('tapping a model picks it and closes the sheet — there is no Save button', async () => {
+  /**
+   * The brand was the first line of every row — printed five times running,
+   * directly under a filter chip already naming that brand. As a heading it is
+   * said once and carries the count.
+   */
+  it('groups rows under a brand heading that carries its own count', async () => {
+    mockCatalog();
+    renderSheet();
+    expect(await screen.findByText('Yonex · 2')).toBeTruthy();
+    expect(screen.getByText('Victor · 1')).toBeTruthy();
+  });
+
+  /**
+   * Picking is one tap, not tap-then-Save — and the tap does NOT dismiss.
+   *
+   * The sheet used to close the instant a pick succeeded. That was defensible
+   * while owned rows were hidden from the catalog: there was nothing left to
+   * see. Now the tapped row turns into a checked, tinted, inert owned row,
+   * and that is the only confirmation the action has — closing on success
+   * rendered it for one frame to nobody.
+   */
+  it('commits on one tap and stays open — no Save button, no dismiss', async () => {
     mockCatalog();
     const { onPick, onClose } = renderSheet();
     fireEvent.click(await screen.findByText('Nanoflare 800'));
 
     await waitFor(() => expect(onPick).toHaveBeenCalledTimes(1));
     expect(onPick.mock.calls[0][0].id).toBe('racket-yonex-nanoflare-800');
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(onClose).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: /^Save/ })).toBeNull();
   });
 
-  // A category with nothing owned yet shows no owned-items section — BagList
-  // itself renders null on an empty list, and the sheet must not draw an
-  // empty "Your rackets" shell above the catalog.
-  it('renders no owned-items section when the player owns nothing in this category yet', async () => {
-    mockCatalog();
-    renderSheet();
-    await screen.findByText('Astrox 88D Pro');
-    expect(screen.queryByText('Using today')).toBeNull();
-  });
-
-  it('omits rackets already in the bag', async () => {
+  /**
+   * Owned rows used to be REMOVED from the catalog and re-rendered in a
+   * separate "Already in your kit" section pinned above it. They stay in
+   * place now, checked and captioned — the question a browse list is asked is
+   * "do I already have this?", and the list itself should answer it.
+   */
+  it('keeps a racket you own in the list, marked, rather than hiding it', async () => {
     mockCatalog();
     renderSheet({ ownedCatalogIds: ['racket-yonex-astrox-88d-pro'] });
-    expect(await screen.findByText('Nanoflare 800')).toBeTruthy();
-    expect(screen.queryByText('Astrox 88D Pro')).toBeNull();
+    expect(await screen.findByText('Astrox 88D Pro')).toBeTruthy();
+    expect(screen.getByText('In your kit')).toBeTruthy();
+    // Still counted in its brand group — the count describes the catalog, not
+    // what is left to buy.
+    expect(screen.getByText('Yonex · 2')).toBeTruthy();
   });
 
-  // If every racket of a brand is already owned, that brand's tab must go too
-  // — an empty tab you can stand on reads as broken.
-  it('drops a brand tab once all of its rackets are owned, and moves off it', async () => {
+  it('does not offer an owned row as something to add', async () => {
+    mockCatalog();
+    const { onPick } = renderSheet({ ownedCatalogIds: ['racket-yonex-astrox-88d-pro'] });
+    fireEvent.click(await screen.findByText('Astrox 88D Pro'));
+    expect(onPick).not.toHaveBeenCalled();
+    // Not a button at all: there is nothing to do to a row you already own.
+    expect(screen.queryByRole('button', { name: 'Yonex Astrox 88D Pro' })).toBeNull();
+  });
+
+  it('says which owned racket is the one in play today', async () => {
+    mockCatalog();
+    const owned: GearItem[] = [
+      { id: 'g1', catalogId: 'racket-yonex-astrox-88d-pro', category: 'racket', label: 'Yonex Astrox 88D Pro' },
+    ];
+    renderSheet({ ownedCatalogIds: [owned[0].catalogId!], ownedItems: owned, activeItemId: 'g1' });
+    expect(await screen.findByText('In your kit · using today')).toBeTruthy();
+  });
+
+  it('says what tension an owned string is strung at', async () => {
+    mockCatalog(STRING_CATALOG);
+    const owned: GearItem[] = [
+      { id: 'g9', catalogId: 'string-yonex-bg65', category: 'string', label: 'Yonex BG65', tensionLbs: 24 },
+    ];
+    renderSheet({ category: 'string', ownedCatalogIds: ['string-yonex-bg65'], ownedItems: owned });
+    expect(await screen.findByText('In your kit · strung at 24 lb')).toBeTruthy();
+  });
+
+  /** Brand tabs describe the CATALOG, so owning everything of a brand no
+   *  longer empties its tab — the rows are still there, checked. */
+  it('keeps a brand tab whose every racket is already owned', async () => {
     mockCatalog();
     renderSheet({
       ownedCatalogIds: ['racket-yonex-astrox-88d-pro', 'racket-yonex-nanoflare-800'],
     });
-    expect(await screen.findByText('DriveX 9X')).toBeTruthy();
-    expect(screen.queryByRole('tab', { name: 'Yonex' })).toBeNull();
-    // Falls back to All rather than to some other brand: All is a superset, so
-    // it cannot itself be the tab that just emptied.
-    expect(screen.getByRole('tab', { name: 'All' }).getAttribute('aria-selected')).toBe('true');
+    expect(await screen.findByRole('tab', { name: 'Yonex' })).toBeTruthy();
+    expect(screen.getByText('Yonex · 2')).toBeTruthy();
   });
 
-  it('moves off a brand tab that empties while you are standing on it', async () => {
-    mockCatalog();
-    const sheet = (ownedCatalogIds: string[]) => (
+  /** The stale-brand guard still matters: switching category refetches, and a
+   *  tab from the previous category would otherwise survive into a list that
+   *  has no such brand. */
+  it('moves off a brand tab that the next category does not have', async () => {
+    mockCatalogByCategory({ racket: CATALOG, string: STRING_CATALOG });
+    const sheet = (category: 'racket' | 'string') => (
       <NextIntlClientProvider locale="en" messages={enMessages}>
         <GearSheet
           open
           onClose={vi.fn()}
-          ownedCatalogIds={ownedCatalogIds}
+          category={category}
+          ownedCatalogIds={[]}
           onPick={vi.fn(async () => ({ ok: true as const }))}
           busy={false}
           online
         />
       </NextIntlClientProvider>
     );
-    const { rerender } = render(sheet([]));
+    const { rerender } = render(sheet('racket'));
     await screen.findByText('DriveX 9X');
     fireEvent.click(screen.getByRole('tab', { name: 'Victor' }));
     expect(screen.getByRole('tab', { name: 'Victor' }).getAttribute('aria-selected')).toBe('true');
 
-    rerender(sheet(['racket-victor-drivex-9x']));
+    rerender(sheet('string'));
     await waitFor(() =>
       expect(screen.getByRole('tab', { name: 'All' }).getAttribute('aria-selected')).toBe('true'),
     );
+    expect(screen.queryByRole('tab', { name: 'Victor' })).toBeNull();
   });
 
   it('does not fire onPick while busy', async () => {
@@ -201,6 +276,16 @@ describe('GearSheet (catalog picker)', () => {
     const { onPick } = renderSheet({ busy: true });
     fireEvent.click(await screen.findByText('Astrox 88D Pro'));
     expect(onPick).not.toHaveBeenCalled();
+  });
+
+  /** The tension field left with the kit section — it described a string the
+   *  member did not yet own, and duplicated a control one row above it. */
+  it('carries no tension field, for either category', async () => {
+    mockCatalog(STRING_CATALOG);
+    renderSheet({ category: 'string', title: 'Add a string' });
+    await screen.findByText('BG65');
+    expect(screen.queryByLabelText('Tension you strung at')).toBeNull();
+    expect(screen.queryByRole('spinbutton')).toBeNull();
   });
 
   it('says so when the catalog is empty, instead of rendering a blank sheet', async () => {
@@ -225,9 +310,6 @@ describe('GearSheet (catalog picker)', () => {
 });
 
 describe('GearSheet refusal messages', () => {
-  // Both 409 reasons are unreachable by design now (owned rackets are filtered
-  // out, and the tab disables Add at MAX_RACKETS). They stay mapped so a bag
-  // that fills some other way says so rather than reading as a crash.
   it.each([
     ['bag_full', "That's all the rackets we can hold — remove one first."],
     ['duplicate_racket', 'That racket is already in your bag.'],
@@ -255,35 +337,38 @@ describe('GearSheet refusal messages', () => {
 });
 
 describe('GearSheet search', () => {
+  const PLACEHOLDER = 'Search 3 rackets';
+
   it('matches on model across every brand, ignoring the selected tab', async () => {
     mockCatalog();
     renderSheet();
     await waitFor(() => screen.getByText('Astrox 88D Pro'));
-    fireEvent.change(screen.getByPlaceholderText('Search rackets'), { target: { value: 'drivex' } });
-    // DriveX is a Victor racket; the sheet opens on Yonex.
+    fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: 'drivex' } });
     expect(screen.getByText('DriveX 9X')).toBeTruthy();
     expect(screen.queryByText('Astrox 88D Pro')).toBeNull();
   });
 
-  // The row's brand used to live only in its aria-label, so a cross-brand
-  // search — the one case where brand is exactly what you're matching on —
-  // rendered as bare model names.
-  it('shows the brand on the row, visibly, in cross-brand results', async () => {
+  /**
+   * Brand still has to be legible in a cross-brand result — that was the whole
+   * reason it used to ride on every row. Grouping preserves it: the heading is
+   * present even while the brand tabs are hidden by an active query.
+   */
+  it('still names the brand in cross-brand results, via the group heading', async () => {
     mockCatalog();
     renderSheet();
     await waitFor(() => screen.getByText('Astrox 88D Pro'));
-    fireEvent.change(screen.getByPlaceholderText('Search rackets'), { target: { value: 'drivex' } });
+    fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: 'drivex' } });
     // Brand tabs are hidden while a query is active, so this can only be the
-    // row's own visible brand label.
+    // group heading.
     expect(screen.queryByRole('tab')).toBeNull();
-    expect(screen.getByText('Victor')).toBeTruthy();
+    expect(screen.getByText('Victor · 1')).toBeTruthy();
   });
 
   it('matches case-insensitively on brand', async () => {
     mockCatalog();
     renderSheet();
     await waitFor(() => screen.getByText('Astrox 88D Pro'));
-    fireEvent.change(screen.getByPlaceholderText('Search rackets'), { target: { value: 'VICTOR' } });
+    fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: 'VICTOR' } });
     expect(screen.getByText('DriveX 9X')).toBeTruthy();
   });
 
@@ -292,7 +377,7 @@ describe('GearSheet search', () => {
     mockCatalog();
     renderSheet();
     await waitFor(() => screen.getByText('Astrox 88D Pro'));
-    fireEvent.change(screen.getByPlaceholderText('Search rackets'), { target: { value: 'zzzz' } });
+    fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: 'zzzz' } });
     expect(screen.getByText('No rackets match that.')).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
   });
@@ -301,7 +386,7 @@ describe('GearSheet search', () => {
     mockCatalog();
     renderSheet();
     await waitFor(() => screen.getByText('Astrox 88D Pro'));
-    const input = screen.getByPlaceholderText('Search rackets');
+    const input = screen.getByPlaceholderText(PLACEHOLDER);
     fireEvent.change(input, { target: { value: 'drivex' } });
     expect(screen.queryByText('Astrox 88D Pro')).toBeNull();
 
@@ -316,395 +401,88 @@ describe('GearSheet search', () => {
     mockCatalog();
     renderSheet();
     await waitFor(() => screen.getByText('Astrox 88D Pro'));
-    fireEvent.change(screen.getByPlaceholderText('Search rackets'), { target: { value: 'drivx' } });
+    fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: 'drivx' } });
     expect(screen.getByText('DriveX 9X')).toBeTruthy();
   });
-});
 
-describe('GearSheet — owned items', () => {
-  // The whole point of Task 6: BagList moved back into the sheet, so a
-  // category's owned items and the catalog to add more of them live in one
-  // place again.
-  it('lists items you already own above the catalog', async () => {
+  /** A search result that includes something you own still says so. */
+  it('marks an owned row inside a search result', async () => {
     mockCatalog();
-    renderSheet({ ownedItems: [{ id: 'g1', catalogId: 'c1', category: 'racket', label: 'Astrox 88D' }] });
-    expect(await screen.findByText('Astrox 88D')).toBeTruthy();
-  });
-
-  it('wires the owned list through to onActivate and onRemove', async () => {
-    mockCatalog();
-    const onActivate = vi.fn();
-    const onRemove = vi.fn();
-    renderSheet({
-      ownedItems: [
-        { id: 'g1', catalogId: 'racket-yonex-astrox-88d-pro', category: 'racket', label: 'Astrox 88D Pro' },
-        { id: 'g2', catalogId: 'racket-yonex-nanoflare-800', category: 'racket', label: 'Nanoflare 800' },
-      ],
-      activeItemId: 'g1',
-      onActivate,
-      onRemove,
-      ownedCatalogIds: ['racket-yonex-astrox-88d-pro', 'racket-yonex-nanoflare-800'],
-    });
-    expect(await screen.findByText('Using today')).toBeTruthy();
-
-    fireEvent.click(screen.getByLabelText('Use this one — Nanoflare 800'));
-    expect(onActivate).toHaveBeenCalledWith('g2');
-
-    fireEvent.click(screen.getByLabelText('Remove — Astrox 88D Pro'));
-    expect(onRemove).toHaveBeenCalledWith('g1');
-  });
-
-  // Strings have no "active" pointer — BagList itself gates the affordance on
-  // item.category, so an owned string never grows a nonsense "Use this one".
-  it('shows an owned string with no activate control, remove only', async () => {
-    mockCatalogAndLevel(STRING_CATALOG, null);
-    renderSheet({
-      category: 'string',
-      ownedItems: [{ id: 's1', catalogId: 'string-yonex-bg65', category: 'string', label: 'Yonex BG65' }],
-      onRemove: vi.fn(),
-    });
-    expect(await screen.findByText('Yonex BG65')).toBeTruthy();
-    expect(screen.queryByLabelText(/Use this one/)).toBeNull();
-    expect(screen.getByLabelText('Remove — Yonex BG65')).toBeTruthy();
-  });
-});
-
-describe('GearSheet — string tension capture', () => {
-  it('shows no tension field for the racket category', async () => {
-    mockCatalog();
-    renderSheet();
-    await screen.findByText('Astrox 88D Pro');
-    expect(screen.queryByLabelText('Tension you strung at')).toBeNull();
-  });
-
-  /**
-   * This test used to assert `input.value === '24'` — it PINNED the bug.
-   *
-   * Rendering the advice as the field's VALUE made the field unusable. There
-   * is no select-on-focus, so tapping it put a caret beside the
-   * recommendation and the first keystroke appended: a member on 26 lb tapped
-   * a field reading "24", typed 26, got "2426", and `clampTension` folded
-   * that to MAX_LB and stored 30. Silently, and plausibly. Reproduced in a
-   * browser: every tension anyone entered was saved as 30.
-   *
-   * The advice belongs in the placeholder, which costs nothing because the
-   * prefill was never sent anyway (see the untouched-field test below). It
-   * looked like a value while functioning as a hint.
-   */
-  it('offers the recommended tension as a placeholder, never as the value', async () => {
-    mockCatalogAndLevel(STRING_CATALOG, 3);
-    renderSheet({ category: 'string', activeName: 'Lin', format: 'doubles' });
-    const input = await screen.findByLabelText('Tension you strung at') as HTMLInputElement;
-    // recommendTension(3, 'doubles') = round(21 + 3) = 24.
-    await waitFor(() => expect(input.placeholder).toBe('24'));
-    // The value must stay empty, or the next keystroke appends to it.
-    expect(input.value).toBe('');
-  });
-
-  it('stores the number the member typed, not the advice plus the number', async () => {
-    mockCatalogAndLevel(STRING_CATALOG, 3);
-    const { onPick } = renderSheet({ category: 'string', activeName: 'Lin', format: 'doubles' });
-    const input = await screen.findByLabelText('Tension you strung at') as HTMLInputElement;
-    await waitFor(() => expect(input.placeholder).toBe('24'));
-
-    fireEvent.change(input, { target: { value: '26' } });
-    fireEvent.click(await screen.findByText('BG65'));
-
-    await waitFor(() => expect(onPick).toHaveBeenCalled());
-    expect(onPick.mock.calls[0][1]).toBe(26);
-  });
-
-  it('shows the clamped value back on blur, so a typo is not stored invisibly', async () => {
-    mockCatalogAndLevel(STRING_CATALOG, 3);
-    renderSheet({ category: 'string', activeName: 'Lin', format: 'doubles' });
-    const input = await screen.findByLabelText('Tension you strung at') as HTMLInputElement;
-    await waitFor(() => expect(input.placeholder).toBe('24'));
-
-    // MAX_LB is 30. Clamping is deliberate — doing it invisibly at save time
-    // is not: it turns a typo into a plausible tension the member never gave.
-    fireEvent.change(input, { target: { value: '45' } });
-    fireEvent.blur(input);
-    await waitFor(() => expect(input.value).toBe('30'));
-  });
-
-  it('opens with an empty tension field when there is no level to advise from', async () => {
-    mockCatalogAndLevel(STRING_CATALOG, null);
-    renderSheet({ category: 'string', activeName: 'Lin', format: 'doubles' });
-    const input = await screen.findByLabelText('Tension you strung at') as HTMLInputElement;
-    expect(input.value).toBe('');
-  });
-
-  // The advice is a prefill, not a fact — an untouched field must not be
-  // silently persisted as if the member reported it.
-  it('sends no tensionLbs when the member never touches the prefilled field', async () => {
-    mockCatalogAndLevel(STRING_CATALOG, 3);
-    const { onPick } = renderSheet({ category: 'string', activeName: 'Lin', format: 'doubles' });
-    await screen.findByLabelText('Tension you strung at');
-    fireEvent.click(await screen.findByText('BG65'));
-
-    await waitFor(() => expect(onPick).toHaveBeenCalledTimes(1));
-    expect(onPick.mock.calls[0][1]).toBeUndefined();
-  });
-
-  it('sends the edited tensionLbs, clamped to [20, 30], on pick', async () => {
-    mockCatalogAndLevel(STRING_CATALOG, 3);
-    const { onPick } = renderSheet({ category: 'string', activeName: 'Lin', format: 'doubles' });
-    const input = await screen.findByLabelText('Tension you strung at');
-    fireEvent.change(input, { target: { value: '35' } });
-    fireEvent.click(await screen.findByText('BG65'));
-
-    await waitFor(() => expect(onPick).toHaveBeenCalledTimes(1));
-    expect(onPick.mock.calls[0][1]).toBe(30);
-  });
-
-  // `Number('')` is 0 — finite — so a naive clamp reads a cleared field as
-  // "20 lb", a number the member never typed, the moment after they
-  // deliberately deleted it. Touching-then-clearing must still mean "nothing
-  // entered", the same as never touching it at all.
-  it('sends no tensionLbs when the member touches the field and then clears it', async () => {
-    mockCatalogAndLevel(STRING_CATALOG, 3);
-    const { onPick } = renderSheet({ category: 'string', activeName: 'Lin', format: 'doubles' });
-    const input = await screen.findByLabelText('Tension you strung at');
-    fireEvent.change(input, { target: { value: '26' } });
-    fireEvent.change(input, { target: { value: '' } });
-    fireEvent.click(await screen.findByText('BG65'));
-
-    await waitFor(() => expect(onPick).toHaveBeenCalledTimes(1));
-    expect(onPick.mock.calls[0][1]).toBeUndefined();
-  });
-});
-
-describe('GearSheet — the tension follow-up failure path (real useGear)', () => {
-  /**
-   * Review fix, round 1: `GearSheet.pick()` only ever sees whatever `onPick`
-   * resolves to — it has no visibility into `useGear.add()`'s internal
-   * POST-then-PUT sequence. Every other test in this file mocks `onPick`
-   * away, which is exactly why the original defect (the PUT was
-   * `void mutate(...)`, fire-and-forget) shipped invisibly past all of them.
-   * This mounts the REAL `useGear` hook, wired the same way `YourKitCard`
-   * wires it, so a regression back to fire-and-forget shows up here.
-   */
-  function Harness({ onClose }: { onClose: () => void }) {
-    const gear = useGear('Lin');
-    const items = gear.gear?.items ?? [];
-    const ownedStrings = items.filter((i) => i.category === 'string');
-    return (
-      <GearSheet
-        open
-        onClose={onClose}
-        category="string"
-        activeName="Lin"
-        format="doubles"
-        ownedCatalogIds={ownedStrings.map((i) => i.catalogId).filter((id): id is string => typeof id === 'string')}
-        ownedItems={ownedStrings}
-        onPick={(item, tensionLbs) => gear.add(item, typeof tensionLbs === 'number' ? { tensionLbs } : undefined)}
-        busy={gear.busy}
-        online={gear.online}
-      />
-    );
-  }
-
-  function renderHarness() {
-    const onClose = vi.fn();
-    const utils = render(
-      <NextIntlClientProvider locale="en" messages={enMessages}>
-        <Harness onClose={onClose} />
-      </NextIntlClientProvider>,
-    );
-    return { ...utils, onClose };
-  }
-
-  it('keeps the sheet open with an error — item already visible as the retry anchor — when the tension PUT fails', async () => {
-    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input);
-      const method = (init?.method ?? 'GET').toUpperCase();
-      if (url.includes('/api/equipment/catalog')) {
-        return new Response(JSON.stringify({ items: STRING_CATALOG }), { status: 200 });
-      }
-      if (url.includes('/api/stats/level')) {
-        return new Response(JSON.stringify({ level: { level: 3 } }), { status: 200 });
-      }
-      if (url.includes('/api/equipment/gear')) {
-        if (method === 'GET') return new Response(JSON.stringify({ gear: null }), { status: 200 });
-        if (method === 'POST') {
-          const added = { id: 's1', catalogId: 'string-yonex-bg65', category: 'string', label: 'Yonex BG65' };
-          return new Response(JSON.stringify({ gear: { id: 'gear-1', memberId: 'm1', items: [added] } }), { status: 200 });
-        }
-        if (method === 'PUT') return new Response(JSON.stringify({ error: 'save_failed' }), { status: 500 });
-      }
-      return new Response('{}', { status: 404 });
-    }) as unknown as typeof fetch);
-
-    const { onClose } = renderHarness();
-    const input = await screen.findByLabelText('Tension you strung at');
-    // A distinct value from the "24" prefill — RTL's fireEvent.change on an
-    // unchanged value can fail to register with React's controlled input.
-    fireEvent.change(input, { target: { value: '26' } });
-    fireEvent.click(await screen.findByText('BG65'));
-
-    // The failed PUT must surface an error and keep the sheet open — not
-    // close on the POST alone and lose the tension silently.
-    await screen.findByRole('alert');
-    expect(onClose).not.toHaveBeenCalled();
-
-    // The item is already saved (POST succeeded, applied via the real
-    // useGear state) and visible in the owned list as the retry anchor — no
-    // new UI needed for "try the tension again".
-    expect(screen.getAllByText('Yonex BG65').length).toBeGreaterThan(0);
-  });
-
-  it('closes normally when the tension PUT succeeds', async () => {
-    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input);
-      const method = (init?.method ?? 'GET').toUpperCase();
-      if (url.includes('/api/equipment/catalog')) {
-        return new Response(JSON.stringify({ items: STRING_CATALOG }), { status: 200 });
-      }
-      if (url.includes('/api/stats/level')) {
-        return new Response(JSON.stringify({ level: { level: 3 } }), { status: 200 });
-      }
-      if (url.includes('/api/equipment/gear')) {
-        if (method === 'GET') return new Response(JSON.stringify({ gear: null }), { status: 200 });
-        if (method === 'POST') {
-          const added = { id: 's1', catalogId: 'string-yonex-bg65', category: 'string', label: 'Yonex BG65' };
-          return new Response(JSON.stringify({ gear: { id: 'gear-1', memberId: 'm1', items: [added] } }), { status: 200 });
-        }
-        if (method === 'PUT') {
-          const withTension = { id: 's1', catalogId: 'string-yonex-bg65', category: 'string', label: 'Yonex BG65', tensionLbs: 24 };
-          return new Response(JSON.stringify({ gear: { id: 'gear-1', memberId: 'm1', items: [withTension] } }), { status: 200 });
-        }
-      }
-      return new Response('{}', { status: 404 });
-    }) as unknown as typeof fetch);
-
-    const { onClose } = renderHarness();
-    const input = await screen.findByLabelText('Tension you strung at');
-    // A distinct value from the "24" prefill — RTL's fireEvent.change on an
-    // unchanged value can fail to register with React's controlled input.
-    fireEvent.change(input, { target: { value: '26' } });
-    fireEvent.click(await screen.findByText('BG65'));
-
-    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    renderSheet({ ownedCatalogIds: ['racket-victor-drivex-9x'] });
+    await waitFor(() => screen.getByText('Astrox 88D Pro'));
+    fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: 'drivex' } });
+    expect(screen.getByText('In your kit')).toBeTruthy();
   });
 });
 
 /**
- * The bag rows must report their own refusals.
+ * "Stuck after selecting a lot."
  *
- * `YourKitCard` wired these as `{ void activate(id) }` / `{ void remove(id) }`,
- * discarding the `GearResult`. So a refused activate or remove — a lapsed
- * `member_session` being the realistic cause, since that cookie expires at 30
- * days while `badminton_identity` never does — rendered NOTHING: no pill, no
- * change, no explanation. Tapping "Use this one" or the ✕ was indistinguishable
- * from a dead button, and it stayed that way across a reload. These two
- * controls live inside the sheet the member is looking at, which makes it the
- * worst possible place to swallow an error.
+ * Both halves of that report were introduced by keeping the sheet open on a
+ * successful pick. Before that, you could not sit in either state: the sheet
+ * dismissed itself before a refusal could arrive, and before a second tap was
+ * possible. The behaviours below are what stop a browse list from going
+ * silently dead.
  */
-describe('GearSheet — a refused bag operation says so', () => {
-  const OWNED = [
-    { id: 'own-1', catalogId: 'racket-yonex-astrox-88d-pro', category: 'racket' as const, label: 'Yonex Astrox 88D Pro' },
-    { id: 'own-2', catalogId: 'racket-yonex-nanoflare-800', category: 'racket' as const, label: 'Yonex Nanoflare 800' },
-  ];
-
-  it('shows the sign-in-again message when activate is refused', async () => {
-    const onActivate = vi.fn(async () => ({ ok: false as const, reason: 'unauthorized' as const }));
-    renderSheet({ ownedItems: OWNED, activeItemId: 'own-1', onActivate });
-
-    // 'own-1' is active and renders a badge, so the button belongs to 'own-2'.
-    fireEvent.click(screen.getByLabelText(/Use this one — Yonex Nanoflare 800/i));
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toBe(enMessages.valueHub.bagSignInAgain);
-    });
-    expect(onActivate).toHaveBeenCalledWith('own-2');
-  });
-
-  it('shows a message when remove is refused, rather than nothing at all', async () => {
-    const onRemove = vi.fn(async () => ({ ok: false as const, reason: 'member_not_found' as const }));
-    renderSheet({ ownedItems: OWNED, activeItemId: 'own-1', onRemove });
-
-    fireEvent.click(screen.getByLabelText(/Remove — Yonex Astrox 88D Pro/i));
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toBe(enMessages.valueHub.bagMemberMissing);
-    });
-  });
-
-  it('stays silent when the operation succeeds', async () => {
-    const onRemove = vi.fn(async () => ({ ok: true as const }));
-    renderSheet({ ownedItems: OWNED, activeItemId: 'own-1', onRemove });
-
-    fireEvent.click(screen.getByLabelText(/Remove — Yonex Astrox 88D Pro/i));
-
-    await waitFor(() => expect(onRemove).toHaveBeenCalled());
-    expect(screen.queryByRole('alert')).toBeNull();
-  });
-});
-
-/**
- * The tension field has to be able to describe a string you already own.
- *
- * It could only ever describe a string you did NOT own: owned catalogIds are
- * filtered out of the list below, and the bag rows were read-only. So a
- * member whose goal was "record the tension on my current strings" had no
- * route to it at all — the field worked once, at add time, and never again.
- */
-describe('GearSheet — setting tension on a string already in the bag', () => {
-  const OWNED_STRING = {
-    id: 's1', catalogId: 'string-yonex-bg65', category: 'string' as const, label: 'Yonex BG65',
-  };
-
-  it('offers the control only once a usable number is in the field', async () => {
-    mockCatalogAndLevel(STRING_CATALOG, 3);
-    // Params declared so `mock.calls[0][n]` is indexable — a bare
-    // `vi.fn(async () => ...)` types its calls as `[]` and tsc rejects the
-    // assertions below even though vitest runs them happily.
-    const onSetTension = vi.fn(
-      async (_item: GearItem, _tensionLbs: number) => ({ ok: true as const }),
-    );
-    renderSheet({
-      category: 'string', activeName: 'Lin', format: 'doubles',
-      ownedItems: [OWNED_STRING], ownedCatalogIds: [OWNED_STRING.catalogId], onSetTension,
-    });
-
-    const button = await screen.findByLabelText('Set tension — Yonex BG65') as HTMLButtonElement;
-    // The advice is a placeholder, so the field starts genuinely empty and
-    // there is nothing to apply yet.
-    expect(button.disabled).toBe(true);
-
-    const input = screen.getByLabelText('Tension you strung at') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: '27' } });
-    await waitFor(() => expect(button.disabled).toBe(false));
-
-    fireEvent.click(button);
-    await waitFor(() => expect(onSetTension).toHaveBeenCalled());
-    expect(onSetTension.mock.calls[0][0]).toMatchObject({ id: 's1' });
-    expect(onSetTension.mock.calls[0][1]).toBe(27);
-  });
-
-  it('reports a refusal through the sheet error slot like every other write', async () => {
-    mockCatalogAndLevel(STRING_CATALOG, 3);
-    const onSetTension = vi.fn(async () => ({ ok: false as const, reason: 'unauthorized' as const }));
-    renderSheet({
-      category: 'string', activeName: 'Lin', format: 'doubles',
-      ownedItems: [OWNED_STRING], ownedCatalogIds: [OWNED_STRING.catalogId], onSetTension,
-    });
-
-    const input = await screen.findByLabelText('Tension you strung at') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: '27' } });
-    fireEvent.click(await screen.findByLabelText('Set tension — Yonex BG65'));
-
-    await waitFor(() =>
-      expect(screen.getByRole('alert').textContent).toBe(enMessages.valueHub.bagSignInAgain));
-  });
-
-  it('offers no tension control on racket rows', async () => {
+describe('GearSheet — a refusal has to be visible, and a slow write must not freeze the list', () => {
+  /**
+   * The list scrolls for thousands of pixels. An error rendered after the
+   * last row is painted where nobody is looking, so the member sees a tap
+   * that did nothing and taps again — which is how you reach the
+   * 20-writes-an-hour limiter, since a racket pick spends TWO of them.
+   *
+   * jsdom has no layout, so "above the fold" is asserted STRUCTURALLY: the
+   * alert must not live inside the scroll container.
+   */
+  it('renders a refusal outside the scroller, not below 71 rows of catalog', async () => {
     mockCatalog();
-    renderSheet({
-      ownedItems: [{ id: 'r1', catalogId: 'c1', category: 'racket', label: 'Astrox 88D Pro' }],
-      onSetTension: vi.fn(async () => ({ ok: true as const })),
-    });
-    await screen.findByText('Nanoflare 800');
-    expect(screen.queryByLabelText(/^Set tension/)).toBeNull();
+    const onPick = vi.fn(async () => ({ ok: false as const, reason: 'bag_full' as const }));
+    renderSheet({ onPick });
+    fireEvent.click(await screen.findByText('Astrox 88D Pro'));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain("That's all the rackets we can hold");
+    // `BottomSheetBody` is the scroller (`overflow-y-auto`). If the alert is
+    // inside it, it is somewhere down the list rather than pinned.
+    //
+    // Assert the scroller EXISTS first: without this the test passes whenever
+    // the selector stops matching anything — a renamed class would read as
+    // "the error is pinned" rather than as a broken test.
+    expect(document.querySelector('.overflow-y-auto')).toBeTruthy();
+    expect(alert.closest('.overflow-y-auto')).toBeNull();
+  });
+
+  /**
+   * A write that never settles used to leave every row at
+   * `pointer-events: none` with no spinner, no message and no timeout —
+   * indistinguishable from the app having died. Only the row being written
+   * goes inert now.
+   */
+  it('pends only the row being written, leaving the rest of the list live', async () => {
+    mockCatalog();
+    // Never settles: the hung-server case, which is what produced the report.
+    const onPick = vi.fn(() => new Promise<never>(() => {})) as unknown as PickFn;
+    renderSheet({ onPick });
+
+    const tapped = await screen.findByRole('button', { name: 'Yonex Astrox 88D Pro' });
+    fireEvent.click(tapped);
+
+    await waitFor(() => expect(tapped.getAttribute('aria-busy')).toBe('true'));
+    expect((tapped as HTMLButtonElement).disabled).toBe(true);
+
+    // Every other row is still a live control, and so is the way out.
+    const other = screen.getByRole('button', { name: 'Yonex Nanoflare 800' });
+    expect((other as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByRole('tab', { name: 'Victor' })).toBeTruthy();
+    expect(screen.getByPlaceholderText('Search 3 rackets')).toBeTruthy();
+  });
+
+  /** Offline is a refusal too — the rows must not offer a write that cannot
+   *  land. Same rule as every other network-mutating control in the app. */
+  it('disables the rows when offline', async () => {
+    mockCatalog();
+    renderSheet({ online: false });
+    const row = await screen.findByRole('button', { name: 'Yonex Astrox 88D Pro' });
+    expect((row as HTMLButtonElement).disabled).toBe(true);
   });
 });

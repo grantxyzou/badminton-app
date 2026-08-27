@@ -317,6 +317,14 @@ export interface StringPairing {
   reasons: string[];
   warnings: string[];
   /**
+   * Where this row's performance numbers came from, when they are not the
+   * manufacturer's. Present only for the rows whose `ratingSource` is a
+   * consensus estimate — absent means published, never "unknown".
+   *
+   * Separate from `warnings` on purpose: see the note at its assignment.
+   */
+  provenance?: string;
+  /**
    * The combined frame-plus-string power index this pairing was scored on,
    * 0-10, and the target it was scored against.
    *
@@ -626,10 +634,19 @@ export function pairString(
 
     /* Provenance. 13 of the 46 seeded strings carry community-estimated
        ratings; without this the numbers above read as manufacturer-published.
-       Dropped in the original port, not a documented deviation. */
-    if (text(s, 'ratingSource') === 'Consensus estimate') {
-      warnings.push('Performance ratings are community consensus, not manufacturer-published.');
-    }
+       Dropped in the original port, not a documented deviation.
+
+       Reported on its own field rather than pushed into `warnings`. It is a
+       statement about where the NUMBERS came from, not a safety flag about
+       the pairing, and the two had to be told apart once the sheet started
+       rendering them differently: warnings stay inline and uncollapsed, while
+       provenance joins the muted caveat paragraph under the action. Merging
+       it into that paragraph unconditionally would have been the other bug —
+       the other 33 rows ARE manufacturer-published, and saying otherwise
+       about them is a false claim, not a cautious one. */
+    const provenance = text(s, 'ratingSource') === 'Consensus estimate'
+      ? 'Performance ratings are community consensus, not manufacturer-published.'
+      : undefined;
 
     const weighted = tension.score * 20
       + (power.score ?? 0) * 30
@@ -645,7 +662,7 @@ export function pairString(
        having changed nothing. */
     if (!best || score > best.score || (score === best.score && s.model < best.item.model)) {
       best = {
-        item: s, score, reasons, warnings,
+        item: s, score, reasons, warnings, provenance,
         systemPower: { value: power.system, target: power.target },
       };
     }

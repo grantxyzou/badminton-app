@@ -57,7 +57,11 @@ export default function BagList({
 
   return (
     <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-      <p className="section-label" style={{ margin: 0 }}>{t('ownedTitle')}</p>
+      {/* Muted, not accent. This label used to live inside `GearSheet`, where
+          it was one green among few; on the Gear tab it sits directly under a
+          green CardHeader icon, and accent is currency — it marks the thing
+          worth tapping, and this label never changes. */}
+      <p className="section-label-muted" style={{ margin: 0 }}>{t('ownedTitle')}</p>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
         {items.map((item) => {
           const isActive = item.id === activeId;

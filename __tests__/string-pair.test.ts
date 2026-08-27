@@ -245,12 +245,16 @@ describe('pairString — provenance and unknowns are not fabricated (reviews #4,
     const frame = racket('wide');
     const s = str('consensus', { ratingSource: 'Consensus estimate' });
     const pairing = pairString(frame, [s], profile())!;
-    expect(pairing.warnings.some((w) => /community consensus/i.test(w))).toBe(true);
+    expect(pairing.provenance).toMatch(/community consensus/i);
+    // It must NOT ride in `warnings`: the sheet renders that array inline and
+    // uncollapsed as safety copy, and sourcing is not a safety flag.
+    expect(pairing.warnings.some((w) => /community consensus/i.test(w))).toBe(false);
   });
 
   it('stays silent about provenance when the brand published the ratings', () => {
     const frame = racket('wide');
     const pairing = pairString(frame, [str('published')], profile())!;
+    expect(pairing.provenance).toBeUndefined();
     expect(pairing.warnings.some((w) => /community consensus/i.test(w))).toBe(false);
   });
 
