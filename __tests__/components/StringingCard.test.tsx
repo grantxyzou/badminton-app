@@ -24,16 +24,15 @@ function wrap(hasIdentity = true) {
 
 /** Answers /shop with `open`, and /jobs with whatever is passed. */
 function mockApi(open: boolean | null, jobs: unknown[] = []) {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockImplementation((url: string) =>
+  const fetchMock = vi.fn().mockImplementation((url: string) =>
       Promise.resolve({
         ok: true,
         json: async () =>
           String(url).includes('/shop') ? { open } : { jobs, view: 'player' },
       } as Response),
-    ),
   );
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
 }
 
 beforeEach(() => {
@@ -50,7 +49,7 @@ describe('Coming soon is the default', () => {
     mockApi(false);
     wrap();
     expect(await screen.findByText('Coming soon')).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Request a restring' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Submit a request' })).toBeNull();
   });
 
   it('stays Coming soon when the shop answer is UNKNOWN', async () => {
@@ -59,7 +58,7 @@ describe('Coming soon is the default', () => {
     mockApi(null);
     wrap();
     expect(await screen.findByText('Coming soon')).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Request a restring' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Submit a request' })).toBeNull();
   });
 
   it('stays Coming soon when the probe throws outright', async () => {
@@ -73,7 +72,7 @@ describe('once the admin opens the shop', () => {
   it('goes live and offers a request', async () => {
     mockApi(true);
     wrap();
-    expect(await screen.findByRole('button', { name: 'Request a restring' })).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'Submit a request' })).toBeDefined();
     expect(screen.queryByText('Coming soon')).toBeNull();
   });
 
@@ -82,8 +81,8 @@ describe('once the admin opens the shop', () => {
     // to open a sheet that 401s on submit.
     mockApi(true);
     wrap(false);
-    await screen.findByRole('button', { name: 'Request a restring' });
-    expect(screen.getByRole('button', { name: 'Request a restring' })).toHaveProperty(
+    await screen.findByRole('button', { name: 'Submit a request' });
+    expect(screen.getByRole('button', { name: 'Submit a request' })).toHaveProperty(
       'disabled',
       true,
     );
@@ -124,14 +123,14 @@ describe('once the admin opens the shop', () => {
     wrap();
     // The card still renders its normal live state; the malformed row is
     // skipped rather than rendered.
-    expect(await screen.findByRole('button', { name: 'Request a restring' })).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'Submit a request' })).toBeDefined();
     expect(screen.queryByText('Mystery')).toBeNull();
   });
 
   it('asks for the player view explicitly, so an admin does not get the bench', async () => {
     mockApi(true);
     wrap();
-    await screen.findByRole('button', { name: 'Request a restring' });
+    await screen.findByRole('button', { name: 'Submit a request' });
     const calls = (globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls;
     const jobsCall = calls.map((c) => String(c[0])).find((u) => u.includes('/jobs'));
     expect(jobsCall).toContain('view=player');
@@ -140,7 +139,7 @@ describe('once the admin opens the shop', () => {
   it('opens the request sheet, and the sheet asks for no price at all', async () => {
     mockApi(true);
     wrap();
-    fireEvent.click(await screen.findByRole('button', { name: 'Request a restring' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Submit a request' }));
 
     await waitFor(() => expect(screen.getByLabelText('Which racket?')).toBeDefined());
     // A player proposing a price would invite a negotiation the app cannot
@@ -149,5 +148,79 @@ describe('once the admin opens the shop', () => {
     expect(screen.queryByLabelText(/price/i)).toBeNull();
     expect(screen.queryByText(/confirms the price/i)).toBeNull();
     expect(screen.getByText('Intake form')).toBeDefined();
+  });
+});
+
+describe('the process strip', () => {
+  it('shows all four steps, with Submit as where you are when you have no job', async () => {
+    // Step 0 is filled on a card nobody has used: submitting IS the step you
+    // are on, not one you have already finished.
+    mockApi(true, []);
+    wrap();
+    // Scoped to the <ol>: "Submit a request" is deliberately both the first
+    // step's label and the button's, so a bare text query finds two.
+    const strip = (await screen.findByText('Drop off your racket')).closest('ol')!;
+    expect(strip).not.toBeNull();
+    expect(strip.textContent).toContain('Submit a request');
+    expect(screen.getByText('Track progress')).toBeDefined();
+    expect(screen.getByText('Pick up and pay')).toBeDefined();
+  });
+
+  it('drops the prose subtitle the strip replaced', async () => {
+    mockApi(true, []);
+    wrap();
+    await screen.findByText('Track progress');
+    expect(screen.queryByText(/Hand Grant your racket/i)).toBeNull();
+  });
+
+  it('uses a SECONDARY button, not the primary one', async () => {
+    // Home already has a primary action; a second competes with it.
+    mockApi(true, []);
+    wrap();
+    const cta = await screen.findByRole('button', { name: 'Submit a request' });
+    expect(cta.className).toContain('cc-btn-secondary');
+    expect(cta.className).not.toContain('cc-btn-primary');
+  });
+});
+
+describe('view pricing', () => {
+  it('is collapsed until asked for, and fetches nothing until then', async () => {
+    const fetchMock = mockApi(true, []);
+    wrap();
+    await screen.findByRole('button', { name: 'Submit a request' });
+    // A rate card nobody asked to see is not worth a request on every render.
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/pricing'))).toBe(false);
+  });
+
+  it('lists the posted rates once expanded', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string) =>
+        Promise.resolve({
+          ok: true,
+          json: async () => {
+            const u = String(url);
+            if (u.includes('/shop')) return { open: true };
+            if (u.includes('/pricing'))
+              return {
+                services: [
+                  { label: 'Labour', priceCents: 1500 },
+                  { label: 'Labour + string', priceCents: 3000 },
+                  { label: 'Special requests', priceCents: null },
+                ],
+              };
+            return { jobs: [], view: 'player' };
+          },
+        } as Response),
+      ),
+    );
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: /View pricing/i }));
+
+    expect(await screen.findByText('Labour + string')).toBeDefined();
+    expect(screen.getByText('$30')).toBeDefined();
+    // A null price reads "Ask", never $0.00 — those mean different things.
+    expect(screen.getByText('Ask')).toBeDefined();
+    expect(screen.queryByText('$0.00')).toBeNull();
   });
 });

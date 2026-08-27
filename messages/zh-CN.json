@@ -1,6 +1,16 @@
 {
   "home": {
     "stringing": {
+        "viewPricing": "查看价格",
+        "pricingEmpty": "Grant 还没公布价格 — 收到拍子时他会确认。",
+        "pricingUnavailable": "暂时没能读取价格。",
+        "pricingAsk": "面议",
+        "steps": {
+          "submit": "提交申请",
+          "dropOff": "交付球拍",
+          "track": "查看进度",
+          "collect": "取拍付款"
+        },
         "requestTitle": "申请穿线",
         "requestSubtitle": "登记表",
         "whichString": "选哪种线？",
@@ -10,10 +20,8 @@
         "standardRequest": "回到常规选项",
         "noStringsYet": "Grant 还没列出有哪些线，直接告诉他你想要什么吧。",
         "unusualPair": "这个组合不常见 — 横线一般是 {suggested} 磅。",
-        "subtitleOpen": "在球局上把球拍交给 Grant，剩下的交给他。",
-        "subtitleActive": "你的球拍进度在这里。",
         "openBadge": "开放中",
-        "requestCta": "申请穿线",
+        "requestCta": "提交申请",
         "needName": "先在上面填你的名字，Grant 才知道是谁的拍。",
         "stage": {
           "with_stringer": "在 Grant 那里",
@@ -757,6 +765,20 @@
   },
   "admin": {
     "stringing": {
+        "pricing": {
+          "title": "你的价格",
+          "hint": "球友会在首页的“查看价格”里看到。",
+          "empty": "还没有公布价格。",
+          "labelPlaceholder": "服务，例如 人工 + 拍线",
+          "pricePlaceholder": "30",
+          "add": "添加",
+          "ask": "面议",
+          "remove": "移除 {name}",
+          "badPrice": "这看起来不像价格。",
+          "blankMeansAsk": "没有固定价格的可以留空 — 球友会看到“面议”。",
+          "loadError": "价格加载失败 — 刷新重试。",
+          "saveError": "没保存成功 — 再试一次。"
+        },
         "strings": {
           "title": "你有的拍线",
           "hint": "这些会成为球友申请时的下拉选项。",
