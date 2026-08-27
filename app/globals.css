@@ -493,7 +493,21 @@ body {
 
   /* Inline spacing scale — for inline `padding`/`gap` (`gap: 'var(--space-3)'`).
      Class-based layout should still prefer Tailwind utilities (p-*, gap-*);
-     these exist so inline styles stop hand-typing 4/6/8/12/16/20. */
+     these exist so inline styles stop hand-typing 2/4/6/8/12/16/20.
+
+     THE RULE (spacing audit, 2026-08-27): a call site never types a spacing
+     number. It reads a token. Tokens themselves may sit off this ladder when
+     they name a deliberate design decision (--home-stack-gap is 10px and the
+     Home hierarchy pass meant it); literals at call sites may not.
+
+     --space-05 is a HALF-RUNG and is not a layout gap. It is the optical
+     nudge — the 2px that baseline-aligns a subtitle under a heading, or an
+     icon against the text beside it. `CardHeader`'s own docstring has used it
+     since it was written. Snapping those 34 sites up to 4px would visibly
+     loosen every tight label/value pair in the app, so the half-rung is
+     documented rather than deleted. Do not reach for it to tighten a real
+     gap; --space-1 is the smallest LAYOUT rung. */
+  --space-05: 2px;
   --space-1: 4px;
   --space-2: 6px;
   --space-3: 8px;
@@ -782,13 +796,13 @@ h1, h2, h3, h4 {
   z-index: 10;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-3);
   /* Bleed past the parent's 16px horizontal padding (app shell uses px-4)
      so the frosted bg reaches the column edges, then put the inner padding
      back at 16px so the back-button hit target sits where it would in the
      un-bled layout. Per spec: margin: 0 -16px; padding-x: 20px. */
-  margin: 0 -16px;
-  padding: 8px 16px 14px;
+  margin: 0 calc(-1 * var(--space-5));
+  padding: var(--space-3) var(--space-5) var(--space-4);
   background: transparent;
   border-bottom: 1px solid transparent;
   transition:
@@ -802,8 +816,8 @@ h1, h2, h3, h4 {
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
   border-bottom-color: var(--topbar-border-scrolled);
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-3);
 }
 .bpm-topbar__back {
   display: inline-flex;
@@ -811,7 +825,7 @@ h1, h2, h3, h4 {
   justify-content: center;
   min-width: 44px;
   min-height: 44px;
-  margin: -10px -8px -10px -10px;
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-3)) calc(-1 * var(--space-4)) calc(-1 * var(--space-4));
   color: var(--text-muted, #a3a3a3);
   background: transparent;
   border: 0;
@@ -868,7 +882,7 @@ h1, h2, h3, h4 {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-3);
 }
 
 .bpm-page-header {
@@ -879,12 +893,12 @@ h1, h2, h3, h4 {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-4);
   /* Same bleed strategy as .bpm-topbar — extend past the px-4 shell padding
      so the frosted backdrop spans the column. Inner padding stays 16px so
      content alignment with the rest of the page is preserved. */
-  margin: 0 -16px;
-  padding: 8px 16px 14px;
+  margin: 0 calc(-1 * var(--space-5));
+  padding: var(--space-3) var(--space-5) var(--space-4);
   background: transparent;
   border-bottom: 1px solid transparent;
   transition:
@@ -898,8 +912,8 @@ h1, h2, h3, h4 {
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
   border-bottom-color: var(--topbar-border-scrolled);
-  padding-top: 10px;
-  padding-bottom: 10px;
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-3);
 }
 .bpm-page-header__title { transition: font-size 0.25s ease; }
 .bpm-page-header.scrolled .bpm-page-header__title { font-size: 1.125rem; }
@@ -1979,7 +1993,7 @@ html[data-visual="field"] .ink-button {
   border-radius: var(--radius-xl);
   box-shadow: var(--btn-primary-shadow);
   color: var(--btn-primary-text);
-  padding: 12px 20px;
+  padding: var(--space-4) var(--space-6);
   font-weight: 600;
   font-size: 0.875rem;
   cursor: pointer;
@@ -1987,7 +2001,7 @@ html[data-visual="field"] .ink-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 @media (hover: hover) {
@@ -2027,7 +2041,7 @@ html[data-visual="field"] .ink-button {
   text-decoration: underline;
   cursor: pointer;
   align-self: center;
-  padding: 0 12px;
+  padding: 0 var(--space-4);
   min-height: 44px;
   display: inline-flex;
   align-items: center;
@@ -2047,7 +2061,7 @@ html[data-visual="field"] .ink-button {
     inset 0 1px 0 var(--glass-inset),
     0 2px 8px rgba(0, 0, 0, 0.15);
   color: var(--btn-ghost-text);
-  padding: 12px 16px;
+  padding: var(--space-4) var(--space-5);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -2055,7 +2069,7 @@ html[data-visual="field"] .ink-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 @media (hover: hover) {
@@ -2090,12 +2104,12 @@ html[data-visual="field"] .ink-button {
   border-radius: 16px;
   box-shadow: var(--nav-shadow);
   display: inline-flex;
-  padding: 4px 6px 6px;
+  padding: var(--space-1) var(--space-2) var(--space-2);
 }
 
 /* ── Safe area bottom padding for nav ── */
 .nav-safe-area {
-  padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
 }
 
 /* ── Nav tab base ──
@@ -2106,11 +2120,11 @@ html[data-visual="field"] .ink-button {
 .nav-tab {
   flex: 0 0 auto;
   min-width: 58px;
-  padding: 5px 8px 3px;
+  padding: var(--space-2) var(--space-3) var(--space-1);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-05);
   border: none;
   background: transparent;
   cursor: pointer;
@@ -2191,7 +2205,7 @@ html[data-visual="field"] .ink-button {
   /* ≥28px safe strip below the tab row, same surface, no interactive
      elements — extends on notched devices via env(). README's
      production guidance: padding-bottom on the container. */
-  padding-bottom: max(28px, env(safe-area-inset-bottom, 0px));
+  padding-bottom: max(var(--home-group-gap), env(safe-area-inset-bottom, 0px));
 }
 
 .rail-tab {
@@ -2201,8 +2215,8 @@ html[data-visual="field"] .ink-button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 8px 0; /* even rhythm — codebase has no spacing-scale token */
+  gap: var(--space-1);
+  padding: var(--space-3) 0; /* even rhythm above and below the icon+label stack */
   border: none;
   background: transparent;
   cursor: pointer;
@@ -2323,7 +2337,7 @@ textarea {
      than 14 -> 8, which would be a visible change to every form in the app. */
   border-radius: var(--radius-lg);
   color: var(--input-text);
-  padding: 11px 14px;
+  padding: var(--space-4) var(--space-5);
   width: 100%;
   min-width: 0;
   outline: none;
@@ -2605,10 +2619,10 @@ textarea {
 .status-banner-red {
   border: 1px solid;
   border-radius: 12px;
-  padding: 12px 14px;
+  padding: var(--space-4) var(--space-5);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-4);
 }
 .status-banner-green {
   background: var(--banner-green-bg);
@@ -2654,16 +2668,16 @@ textarea {
   background: var(--page-bg);
   -webkit-backdrop-filter: blur(var(--glass-blur));
   backdrop-filter: blur(var(--glass-blur));
-  padding: 8px 0 12px;
+  padding: var(--space-3) 0 var(--space-4);
 }
 
 /* ── Admin segment control (Apple HIG spec) ── */
 .segment-control {
   background: var(--segment-bg);
   border-radius: 100px;
-  padding: 2px;
+  padding: var(--space-05);
   height: 32px;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .segment-tab-active {
@@ -2777,8 +2791,8 @@ textarea {
 .pill-admin {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 12px;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-4);
   border-radius: 100px;
   font-size: 11px;
   font-weight: 600;
@@ -2792,7 +2806,7 @@ textarea {
 .pill-unpaid:has(> .material-icons:first-child),
 .pill-waitlist:has(> .material-icons:first-child),
 .pill-admin:has(> .material-icons:first-child) {
-  padding: 3px 11px 3px 9px;
+  padding: var(--space-1) var(--space-4) var(--space-1) var(--space-3);
 }
 .pill-paid     { background: var(--pill-paid-bg);     color: var(--pill-paid-text); }
 .pill-unpaid   { background: var(--pill-unpaid-bg);   color: var(--pill-unpaid-text); }
@@ -2896,7 +2910,7 @@ textarea {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
+  gap: var(--space-5);
   background: var(--page-bg, #100F0F);
   color: var(--text-primary, #e2e8f0);
   pointer-events: none;
@@ -2952,7 +2966,7 @@ html[data-hydrated="true"] .splash {
 
 .terminal-titlebar {
   background: var(--terminal-titlebar-bg);
-  padding: 8px 16px;
+  padding: var(--space-3) var(--space-5);
   font-size: 12px;
   display: flex;
   align-items: center;
@@ -3181,15 +3195,15 @@ button.sheet-row:hover { background: var(--glass-soft-bg); }
 .announcement-body ol + p,
 .announcement-body p + ul,
 .announcement-body p + ol {
-  margin-top: 0.5rem;
+  margin-top: var(--space-3);
 }
 .announcement-body ul,
 .announcement-body ol {
-  padding-left: 1.25rem;
+  padding-left: var(--space-6);
   margin: 0;
 }
 .announcement-body li {
-  margin: 0.15rem 0;
+  margin: var(--space-05) 0;
 }
 .announcement-body strong {
   color: var(--text-primary, #fff);
@@ -3207,8 +3221,8 @@ button.sheet-row:hover { background: var(--glass-soft-bg); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.375rem;
-  padding: 0.5rem 0.875rem;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
   font-size: 0.8125rem;
   font-weight: 500;
   letter-spacing: 0.005em;
@@ -3272,7 +3286,7 @@ button.sheet-row:hover { background: var(--glass-soft-bg); }
 /* Large variant — for prominent CTAs (hero buttons, etc.). Pair with
    any of the color variants (e.g. `cc-btn cc-btn-primary cc-btn-lg`). */
 .cc-btn-lg {
-  padding: 14px 16px;
+  padding: var(--space-4) var(--space-5);
   font-size: 15px;
   border-radius: var(--radius-xl);
   font-weight: 700;
@@ -3339,7 +3353,7 @@ button.sheet-row:hover { background: var(--glass-soft-bg); }
 .cc-checkbox {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
   font-size: 13.5px;
   color: var(--text-primary);
   cursor: pointer;
@@ -3456,7 +3470,7 @@ html[data-visual="field"][data-theme="light"] {
     radial-gradient(120% 80% at 100% 0%, rgba(74, 222, 128, 0.16), transparent 60%),
     linear-gradient(160deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.02) 100%);
   border: 1px solid rgba(74, 222, 128, 0.22);
-  padding: 20px;
+  padding: var(--space-6);
 }
 [data-theme="light"] .admin-hero {
   background:
@@ -3467,7 +3481,7 @@ html[data-visual="field"][data-theme="light"] {
 .admin-hero .badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   font-family: var(--font-display, 'Space Grotesk'), system-ui, sans-serif;
   font-size: 10px;
   font-weight: 700;
@@ -3489,12 +3503,12 @@ html[data-visual="field"][data-theme="light"] {
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.15;
-  margin: 10px 0 0;
+  margin: var(--space-4) 0 0;
 }
 .admin-hero .ah-subtitle {
   font-size: 13px;
   color: var(--text-secondary);
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
   line-height: 1.4;
 }
 
@@ -3502,17 +3516,17 @@ html[data-visual="field"][data-theme="light"] {
 .cc-grid3 {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
+  gap: var(--space-3);
 }
 
 .cc-tile {
-  padding: 14px;
+  padding: var(--space-4);
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--space-2);
   cursor: pointer;
   transition: background 120ms ease, border-color 120ms ease;
   text-align: left;
@@ -3577,10 +3591,10 @@ html[data-visual="field"][data-theme="light"] {
 .cc-pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   font-size: 11px;
   font-weight: 500;
-  padding: 0.25rem 0.5rem;
+  padding: var(--space-1) var(--space-3);
   border-radius: 9999px;
   border: 1px solid transparent;
   background: transparent;
@@ -3644,7 +3658,7 @@ html[data-visual="field"][data-theme="light"] {
    elsewhere (segment-tab-active / inner-card-green). */
 .cc-session-chip {
   border-radius: 10px;
-  padding: 7px 12px;
+  padding: var(--space-3) var(--space-4);
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text-secondary);
@@ -3696,16 +3710,16 @@ html[data-visual="field"][data-theme="light"] {
 .cc-dgrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: var(--space-3);
 }
 .cc-dcard {
-  padding: 13px;
+  padding: var(--space-4);
   border-radius: 16px;
   background: linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
   border: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-3);
   min-height: 96px;
   cursor: pointer;
   transition: border-color 120ms ease;
@@ -3718,7 +3732,7 @@ html[data-visual="field"][data-theme="light"] {
   color: var(--text-secondary);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 .cc-dcard .htitle .material-icons { font-size: 14px; }
 .cc-dcard .big {
@@ -3782,9 +3796,9 @@ html[data-visual="field"][data-theme="light"] {
    --------------------------------------------------------------------------- */
 .btn-google {
   width: 100%;
-  gap: 10px;
+  gap: var(--space-3);
   min-height: 44px;
-  padding: 10px 16px;
+  padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-pill);
   font-size: var(--fs-md);
   font-weight: 500;

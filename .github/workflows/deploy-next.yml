@@ -86,11 +86,16 @@ jobs:
           # GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET stay set in the App Service
           # -- they are inert while this is off, and re-flipping is one line.
           #
-          # NEXT DIAGNOSTIC, before any further fix attempt: state_mismatch
-          # currently means BOTH "no cookie arrived" and "a different cookie
-          # arrived", and those are different bugs. Make it say which, then read
-          # it live with `az webapp log tail` during a device tap.
-          NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: 'false'
+          # TEMPORARILY ON to run that diagnostic (2026-08-27). The callback
+          # 404s behind this flag, so the handshake cannot be measured with it
+          # off. `classifyState` + `describeCallbackContext` now emit one
+          # `[oauth-diag]` line per failed callback; read it with
+          # `az webapp log tail`, during a tap on the installed iOS PWA.
+          #
+          # TURN THIS BACK TO 'false' THE MOMENT THE LINE IS CAPTURED. Google
+          # sign-in is still broken in the PWA; this exposes a button that
+          # fails for exactly the users being diagnosed.
+          NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: 'true'
           # Stage 1 (bench) only. Admin-only surface, so shipping it on would be
           # low-risk -- but it stays off until the intake form has been used on a
           # real Thursday, because a half-trusted bench is worse than none.
