@@ -7,8 +7,7 @@ import type { DevOverrides } from '@/components/DevPanel';
 import { getIdentity, setIdentity, clearIdentity, resolveStaleIdentity } from '@/lib/identity';
 import { TabSkeleton } from '@/components/primitives/CardSkeleton';
 import UnpaidSessionsCard from '@/components/UnpaidSessionsCard';
-import StatusBadge from '@/components/primitives/StatusBadge';
-import CardHeader from '@/components/primitives/CardHeader';
+import StringingCard from '@/components/stringing/StringingCard';
 import InstallBanner from '@/components/InstallBanner';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
@@ -675,18 +674,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" />}
 
 
-      {/* Stringing service — announced, not yet built. A "Coming soon" card
-          rather than a hidden feature: players already ask about restringing at
-          sessions, so saying it is coming is more useful than saying nothing.
-          Deliberately not interactive; there is nothing to open yet. */}
-      <div className="glass-card p-5">
-        <CardHeader
-          icon="science"
-          title={t('stringing.title')}
-          subtitle={t('stringing.subtitle')}
-          badge={<StatusBadge variant="muted">{t('stringing.soon')}</StatusBadge>}
-        />
-      </div>
+      {/* Stringing service. Still "Coming soon" by default — the card only goes
+          live once an admin has opened the shop, and an UNKNOWN answer keeps
+          the modest version too. See StringingCard for why unknown is not
+          treated as closed-but-shown. */}
+      <StringingCard hasIdentity={hasIdentity} />
 
 
       <EnterCodeSheet

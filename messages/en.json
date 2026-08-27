@@ -1,6 +1,40 @@
 {
   "home": {
     "stringing": {
+        "subtitleOpen": "Hand Grant your racket at the session and he'll take it from there.",
+        "subtitleActive": "Here's where your racket is up to.",
+        "openBadge": "Open",
+        "requestCta": "Request a restring",
+        "needName": "Add your name above first, so Grant knows whose racket it is.",
+        "stage": {
+          "with_stringer": "With Grant",
+          "being_strung": "Being strung",
+          "ready_for_you": "Ready for you",
+          "done": "Picked up"
+        },
+        "requestTitle": "Request a restring",
+        "requestBody": "Tell Grant what you'd like. Hand him the racket at the session.",
+        "sendCta": "Send the request",
+        "requestSending": "Sending…",
+        "requestSent": "Sent. Hand Grant your racket at the session and he'll confirm the price.",
+        "requestDone": "Got it",
+        "racketPlaceholder": "Which racket?",
+        "stringPlaceholder": "Which string? e.g. BG80 white",
+        "mains": "Mains",
+        "crosses": "Crosses",
+        "lb": "lb",
+        "decrease": "Less {field}",
+        "increase": "More {field}",
+        "priceLater": "Grant confirms the price when he takes the racket.",
+        "error": {
+          "generic": "Couldn't send that — give it another go.",
+          "shop_closed": "Grant's not taking rackets right now. Try again another week.",
+          "too_many_open": "You've already got a few with Grant — pick those up first.",
+          "invalid_tension": "Tension has to be between 18 and 32 lb.",
+          "invalid_request": "Fill in the racket and the string first.",
+          "unauthorized": "Add your name on Home first.",
+          "rate_limited": "Let's give it a rest for a bit, then try again."
+        },
       "title": "Stringing service",
       "subtitle": "Request and track the progress of your racket here.",
       "soon": "Coming soon"
