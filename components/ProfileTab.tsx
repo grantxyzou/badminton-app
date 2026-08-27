@@ -867,7 +867,7 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin }: Pro
               whiteSpace: 'nowrap',
               background: 'rgba(var(--glass-tint), 0.09)',
               color: 'var(--text-secondary)',
-              padding: 'var(--space-1) var(--space-4)',
+              padding: 'var(--space-2) var(--space-4)',
               borderRadius: 'var(--radius-pill)',
               fontSize: 'var(--fs-sm)',
             }}

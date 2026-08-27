@@ -130,9 +130,12 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
     return (
       <div className="space-y-5">
         <PageHeader>{pageT('title')}</PageHeader>
-        <div className="p-10 text-center">
+        {/* Same padding as every other page-level fallback (48/24) and the
+            convention's space-y-3 instead of a hand-rolled h-3 spacer. The
+            empty-state branch below was routed through <EmptyState> for
+            exactly this reason; its error-state twin was left behind. */}
+        <div className="py-12 px-6 text-center space-y-3">
           <p className="fs-md text-gray-400" role="alert">{t('loadError')}</p>
-          <div className="h-3" />
           <button type="button" onClick={() => loadPlayers()} className="cc-btn cc-btn-ghost">{t('retry')}</button>
         </div>
       </div>
@@ -177,7 +180,7 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
               return (
                 <div
                   key={player.id}
-                  className={`flex items-center px-3 py-2.5 gap-3 rounded-xl animate-fadeIn${isMe ? ' player-highlight-green' : ''}`}
+                  className={`flex items-center px-3 py-3 gap-3 rounded-xl animate-fadeIn${isMe ? ' player-highlight-green' : ''}`}
                   /* Stagger entrance ~40ms/row, capped so a long list doesn't
                      crawl in. Stable key → only first mount + genuinely new
                      rows animate; poll refreshes don't replay it. */
@@ -246,7 +249,7 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
                 return (
                   <div
                     key={player.id}
-                    className={`flex items-center px-3 py-2.5 gap-3 rounded-xl animate-fadeIn${isMe ? ' player-highlight-amber' : ''}`}
+                    className={`flex items-center px-3 py-3 gap-3 rounded-xl animate-fadeIn${isMe ? ' player-highlight-amber' : ''}`}
                     style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
                   >
                     <span className="fs-sm text-gray-500 w-5 text-right font-mono tabular-nums">
