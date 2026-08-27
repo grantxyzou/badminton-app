@@ -377,7 +377,7 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
           {pm.loading ? (
             <div className="px-4"><ShimmerLoader lines={4} /></div>
           ) : pm.players.length === 0 ? (
-            <p className="text-center text-gray-500 fs-md p-8">No players signed up yet.</p>
+            <p className="text-center text-gray-500 fs-md p-5">No players signed up yet.</p>
           ) : (
             <div>
               <div className="list-header-green flex items-center justify-between">

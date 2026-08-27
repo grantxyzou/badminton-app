@@ -388,7 +388,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
                   onClick={() => setCostPerCourt(c)}
                   style={{
                     fontSize: 'var(--fs-xs)',
-                    padding: 'var(--space-05) var(--space-3)',
+                    padding: 'var(--space-1) var(--space-4)',
                     borderRadius: 'var(--radius-pill)',
                     background: costPerCourt === c ? 'rgba(74,222,128,0.13)' : 'rgba(var(--glass-tint), 0.04)',
                     color: costPerCourt === c ? '#86efac' : 'var(--text-secondary)',
@@ -430,7 +430,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
               <button
                 type="button"
                 onClick={() => setPricePerTube(autoPrice)}
-                style={{ fontSize: 'var(--fs-xs)', padding: 'var(--space-05) var(--space-3)', borderRadius: 'var(--radius-pill)', background: 'rgba(var(--glass-tint), 0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(var(--glass-tint), 0.12)', cursor: 'pointer', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}
+                style={{ fontSize: 'var(--fs-xs)', padding: 'var(--space-1) var(--space-4)', borderRadius: 'var(--radius-pill)', background: 'rgba(var(--glass-tint), 0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(var(--glass-tint), 0.12)', cursor: 'pointer', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}
               >
                 ${autoPrice.toFixed(2)}/tube
               </button>
