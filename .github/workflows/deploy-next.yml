@@ -66,10 +66,16 @@ jobs:
           NEXT_PUBLIC_FLAG_KUDOS: 'true'
           NEXT_PUBLIC_FLAG_INSIGHT_CARDS: 'true'
           NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: 'true'
-          # Tracked but OFF until the provider flows are finished and verified
-          # end-to-end in a browser. NEXT_PUBLIC_* is baked at build time, so
-          # this must live here -- an Azure App Setting cannot turn it on.
-          NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: 'false'
+          # NEXT_PUBLIC_* is baked at build time, so this must live here -- an
+          # Azure App Setting cannot turn it on.
+          #
+          # ON does not by itself put a Google button on screen. Availability is
+          # resolved from GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET at request
+          # time, and while those are unset in the App Service the signed-out
+          # card renders exactly as it did before: PIN form, divider, create
+          # button, no provider row and no error. That is the intended
+          # configured-or-not behaviour, not a fallback.
+          NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: 'true'
 
       - name: Package standalone build
         run: |
