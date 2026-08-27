@@ -10,6 +10,9 @@ import type { PlayerStringingJob } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
+/** Stages this card has copy for. See the guard in the render. */
+const KNOWN_STAGES = ['with_stringer', 'being_strung', 'ready_for_you', 'done'];
+
 interface Props {
   /** Whether anyone is signed in. A request has to belong to somebody. */
   hasIdentity: boolean;
@@ -59,7 +62,10 @@ export default function StringingCard({ hasIdentity }: Props) {
 
   const loadJobs = useCallback(() => {
     if (!hasIdentity) return;
-    fetch(`${BASE}/api/stringing/jobs`, { cache: 'no-store' })
+    // `view=player` explicitly: an ADMIN calling this without it gets the
+    // bench projection — every member's jobs, shaped with `status` instead of
+    // `stage`. This is a player surface regardless of who is looking.
+    fetch(`${BASE}/api/stringing/jobs?view=player`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d && Array.isArray(d.jobs)) setJobs(d.jobs as PlayerStringingJob[]);
@@ -89,7 +95,14 @@ export default function StringingCard({ hasIdentity }: Props) {
     );
   }
 
-  const active = jobs?.find((j) => j.stage !== 'done') ?? null;
+  // Guarded on `stage` being a known value, not merely on the job existing.
+  // A row without one cannot be rendered — `t()` THROWS on a missing key
+  // rather than falling back — so an unexpected shape must drop out here
+  // instead of taking the whole Home tab down with it.
+  const active =
+    jobs?.find(
+      (j) => KNOWN_STAGES.includes(j?.stage as string) && j.stage !== 'done',
+    ) ?? null;
 
   return (
     <>

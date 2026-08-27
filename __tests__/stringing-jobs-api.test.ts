@@ -112,6 +112,43 @@ describe('the exact price never reaches a player', () => {
   });
 });
 
+describe('an admin is also a player', () => {
+  it('gives an admin the PLAYER view of their OWN jobs on ?view=player', async () => {
+    // The bug this exists for: the route branched on role alone, so a stringer
+    // looking at their own Home card got the bench view — everyone's jobs,
+    // shaped with `status` instead of `stage`. The card then threw
+    // MISSING_MESSAGE on `stage.undefined`. The loud version; the quiet one was
+    // an admin's Home card showing somebody else's racket.
+    await seedJob({ memberId: 'member-test-admin', memberName: 'Test Admin', jobNo: 'J-0001' });
+    await seedJob({ memberId: 'member-wei', memberName: 'Wei', jobNo: 'J-0002' });
+
+    const res = await GET(makeAdminRequest('GET', 'http://x/api/stringing/jobs?view=player'));
+    const body = await res.json();
+
+    expect(body.view).toBe('player');
+    expect(body.jobs).toHaveLength(1);
+    expect(body.jobs[0].stage).toBeDefined();
+    // Their own only — not the whole bench.
+    expect(JSON.stringify(body)).not.toContain('J-0002');
+  });
+
+  it('identifies the admin from the admin cookie alone', async () => {
+    // /api/admin does not mint a member_session, so the admin cookie is the
+    // only identity an admin has. Without the fallback this 401s and the Home
+    // card silently shows nothing.
+    await seedJob({ memberId: 'member-test-admin', memberName: 'Test Admin' });
+    const res = await GET(makeAdminRequest('GET', 'http://x/api/stringing/jobs?view=player'));
+    expect(res.status).toBe(200);
+    expect((await res.json()).jobs).toHaveLength(1);
+  });
+
+  it('still gives the bench view without the parameter', async () => {
+    await seedJob({ memberId: 'member-wei' });
+    const res = await GET(makeAdminRequest('GET', 'http://x/api/stringing/jobs'));
+    expect((await res.json()).view).toBe('bench');
+  });
+});
+
 describe('a player only sees their own jobs', () => {
   it('never returns another member’s job', async () => {
     await seedJob({ memberId: 'member-wei', memberName: 'Wei' });
