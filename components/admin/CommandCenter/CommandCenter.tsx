@@ -12,6 +12,7 @@ import ReceiptSheet from './ReceiptSheet';
 import type { AdminView } from '../types';
 import type { ReceiptInput } from '@/lib/receiptTemplate';
 import { sessionCostTotals } from '@/lib/sessionCost';
+import { isFlagOn } from '@/lib/flags';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -152,6 +153,14 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
             { icon: 'receipt_long', label: 'Ledger', onClick: () => setView('ledger') },
             { icon: 'restore', label: 'Past sessions', onClick: () => setView('past-sessions') },
             { icon: 'bolt', label: 'Release notes', onClick: () => setView('releases') },
+            // The stringing bench. Lives here rather than in the btn-ghost row
+            // further down AdminDashboard, because that row belongs to the
+            // pre-Command-Center layout and is not rendered at all once
+            // NEXT_PUBLIC_FLAG_COMMAND_CENTER is on -- which it is everywhere
+            // this flag will be.
+            ...(isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')
+              ? [{ icon: 'sports_tennis', label: 'Stringing bench', onClick: () => setView('stringing') }]
+              : []),
           ].map((row, idx) => (
             <li
               key={row.label}
