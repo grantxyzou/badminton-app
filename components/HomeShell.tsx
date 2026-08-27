@@ -23,6 +23,7 @@ import { getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
 import { noticeBanner, noticeTimeoutMs, type AuthNotice } from '@/lib/authNotice';
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
 import { consumeRecentExcursion } from '@/lib/excursion';
+import { claimPendingHandoff, pendingHandoffId } from '@/lib/handoffClient';
 
 // AdminTab + DemoMode + DevPanel are lazy-loaded — most users never trigger
 // these surfaces (admin requires sign-in, DemoMode is URL-gated, DevPanel
@@ -229,6 +230,48 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
    * probe and insight prewarm below both re-run — an admin signing in with
    * Google gets the Admin tab with no reload.
    */
+  /**
+   * COLLECT A SIGN-IN THAT FINISHED IN ANOTHER BROWSER.
+   *
+   * On an installed iOS PWA the OAuth excursion runs in Safari, so the callback
+   * sets `member_session` in Safari's cookie jar and this app stays signed out
+   * — measured, see lib/authHandoff.ts. The callback parks the resolved member
+   * against a ref instead; this redeems it with the secret held in OUR
+   * localStorage, and the response mints the cookie in OUR jar.
+   *
+   * Runs on mount and on every return to the foreground, because the person
+   * comes back by switching apps — there is no navigation to hang this on, and
+   * iOS may have evicted the webview entirely while Safari was in front.
+   *
+   * `pending` is the normal in-flight answer and is left alone to retry.
+   */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let cancelled = false;
+
+    const collect = async () => {
+      if (cancelled || !pendingHandoffId()) return;
+      const out = await claimPendingHandoff();
+      if (cancelled || out.status !== 'ready') return;
+      setIdentity({ name: out.name, sessionId: sessionIdRef.current });
+      setAuthNotice({ kind: 'signedIn', provider: 'google' });
+    };
+
+    void collect();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void collect();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+    // sessionIdRef is a ref; setters are stable. Mount-once is intended.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!signedInPending || signedInHandledRef.current) return;
     // A REF, not `setSignedInPending(null)`. Clearing the state here would

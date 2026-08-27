@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { beginHandoff } from '@/lib/handoffClient';
+import { markExternalExcursion } from '@/lib/excursion';
 import { useTranslations } from 'next-intl';
 import { useOnline } from '@/lib/useOnline';
 import GoogleMark from './GoogleMark';
@@ -58,6 +60,20 @@ export default function ProviderButtons({
   const t = useTranslations('profile.auth');
   const online = useOnline();
   const [probed, setProbed] = useState<Provider[] | null>(null);
+  /* The handoff ref for this mount. Minted up front rather than in the click
+     handler: these are plain <a> elements, and a tap must not wait on an async
+     digest before navigating. `null` degrades to the cookie flow, which is the
+     right answer for every browser that keeps one jar. */
+  const [handoffRef, setHandoffRef] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void beginHandoff().then((ref) => {
+      if (!cancelled) setHandoffRef(ref);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     // The server already answered. Note this checks for the PROP being absent,
@@ -132,7 +148,15 @@ export default function ProviderButtons({
         return (
           <a
             key={p}
-            href={online ? `${BASE}/api/auth/${p}/start` : undefined}
+            href={
+              online
+                ? `${BASE}/api/auth/${p}/start${handoffRef ? `?hr=${handoffRef}` : ''}`
+                : undefined
+            }
+            /* iOS evicts the PWA while a system browser is in front, so the
+               return looks like a cold start and lands on Home. Same hand-off
+               marker ReceiptSheet uses — see lib/excursion.ts. */
+            onClick={() => markExternalExcursion()}
             aria-disabled={!online}
             className={branded ? 'cc-btn btn-google' : 'cc-btn cc-btn-secondary'}
             style={{

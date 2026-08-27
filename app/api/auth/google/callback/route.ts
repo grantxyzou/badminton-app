@@ -14,6 +14,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isFlagOn } from '@/lib/flags';
 import { appOrigin, googleClient, decodeIdTokenClaims } from '@/lib/oauthProviders';
 import { readOAuthCookies, classifyState, describeCallbackContext } from '@/lib/oauthState';
+import { readHandoff, handoffStateMatches, isHandoffRef } from '@/lib/authHandoff';
 import { finishOAuthCallback, oauthFailure } from '@/lib/oauthCallback';
 
 export const dynamic = 'force-dynamic';
@@ -47,8 +48,16 @@ export async function GET(req: NextRequest) {
   if (params.get('error')) return oauthFailure(origin, 'cancelled');
 
   const code = params.get('code');
-  const state = params.get('state');
+  const rawState = params.get('state');
   const cookies = readOAuthCookies(req);
+
+  /* `/start` appends `~<ref>` when the caller is a PWA that may come back in a
+     different storage context. Split it off before any comparison: the cookie
+     holds only the random half. */
+  const sep = rawState?.indexOf('~') ?? -1;
+  const state = sep >= 0 ? rawState!.slice(0, sep) : rawState;
+  const handoffCandidate = sep >= 0 ? rawState!.slice(sep + 1) : null;
+  const handoff = isHandoffRef(handoffCandidate) ? handoffCandidate : null;
 
   // The state cookie is what binds this callback to the browser that STARTED
   // the flow. Without it an attacker can complete an authorization in your
@@ -58,29 +67,37 @@ export async function GET(req: NextRequest) {
   // for us, not them, and splitting the copy would mean two new strings in two
   // locales describing a state no correctly-working client reaches.
   const stateCheck = classifyState(cookies.state, state);
+
+  /* THE COOKIE PATH IS PREFERRED AND UNCHANGED. Only when the cookie is absent
+     — the measured signature of the iOS PWA jar split — do we fall back to the
+     copy `/start` parked server-side. A `differs` is still a hard failure: that
+     means the jars DO match and the value is wrong, which is the case the state
+     check exists for. */
+  let verifier = cookies.codeVerifier;
   if (stateCheck !== 'ok') {
-    // ONE line, and it is the whole iOS-PWA diagnostic. `cookie_absent` with
-    // zero cookies from our origin proves the callback came from a different
-    // storage context than the one that started the flow (Safari vs the PWA's
-    // webview) — which no cookie attribute can fix, only a bridge. Anything
-    // else means the jars match and the bug is ordinary.
-    console.error(
-      `[oauth-diag] google callback state=${stateCheck} ${describeCallbackContext(req)}`,
-    );
-    return oauthFailure(origin, 'state_mismatch');
+    const parked = stateCheck === 'cookie_absent' && handoff ? await readHandoff(handoff) : null;
+    if (!parked || !handoffStateMatches(parked.state, state)) {
+      console.error(
+        `[oauth-diag] google callback state=${stateCheck} handoff=${handoff ? (parked ? 'state-mismatch' : 'absent') : 'none'} ${describeCallbackContext(req)}`,
+      );
+      return oauthFailure(origin, 'state_mismatch');
+    }
+    // The parked verifier stands in for the cookie the other jar is holding.
+    verifier = parked.codeVerifier;
   }
-  if (!code || !cookies.codeVerifier) return oauthFailure(origin, 'invalid_callback');
+  if (!code || !verifier) return oauthFailure(origin, 'invalid_callback');
 
   const client = googleClient(origin);
   if (!client) return oauthFailure(origin, 'provider_not_configured');
 
   try {
-    const tokens = await client.validateAuthorizationCode(code, cookies.codeVerifier);
+    const tokens = await client.validateAuthorizationCode(code, verifier);
     const idToken = tokens.idToken();
     const claims = decodeIdTokenClaims(idToken);
     if (!claims.sub) return oauthFailure(origin, 'invalid_callback');
 
     return await finishOAuthCallback(req, origin, {
+      handoff,
       provider: 'google',
       sub: claims.sub,
       email: claims.email,

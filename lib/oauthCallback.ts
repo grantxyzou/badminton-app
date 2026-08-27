@@ -20,6 +20,7 @@ import {
 } from '@/lib/authIdentity';
 import { setPendingSignup } from '@/lib/pendingSignup';
 import { clearOAuthCookies } from '@/lib/oauthState';
+import { completeHandoff } from '@/lib/authHandoff';
 import type { Member } from '@/lib/types';
 
 export interface ProviderClaims {
@@ -29,6 +30,12 @@ export interface ProviderClaims {
   emailVerified: boolean;
   /** Apple sends this on the FIRST authorization only. Google never does. */
   suggestedName: string | null;
+  /**
+   * Present when the flow began in a storage context that will not receive this
+   * response's cookies — an installed iOS PWA. The resolved member is parked
+   * against this ref for the app to collect instead. See lib/authHandoff.ts.
+   */
+  handoff?: string | null;
 }
 
 /**
@@ -159,6 +166,27 @@ export async function finishOAuthCallback(
     });
   } else {
     void touchIdentity(claims.provider, claims.sub);
+  }
+
+  /* THE JAR SPLIT. `completeSignIn` below sets `member_session` on THIS
+     response — which, for a PWA-initiated flow, is being issued to Safari. The
+     cookie would land in the wrong jar and the app would stay signed out, which
+     is the actual reported symptom ("still shows the safari shell").
+
+     So park the resolved member against the ref instead. The cookies are still
+     set: this response is a real browser session too, and signing Safari in as
+     well costs nothing. The landing tells the person to go back to the app,
+     because nothing on iOS will do it for them. */
+  if (claims.handoff) {
+    const parked = await completeHandoff(claims.handoff, member.id);
+    if (parked) {
+      const res = seeOther(landing(origin, { signedIn: '1', provider: claims.provider }));
+      clearOAuthCookies(res);
+      completeSignIn(res, member);
+      return res;
+    }
+    // Parking failed (expired or swept). Fall through: Safari is still signed
+    // in, which is better than an error, and the app will simply not collect.
   }
 
   const res = seeOther(landing(origin, { signedIn: '1', provider: claims.provider }));
