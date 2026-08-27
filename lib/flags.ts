@@ -31,7 +31,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_INSIGHT_CARDS'
   | 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER'
   | 'NEXT_PUBLIC_FLAG_VISUAL_FIELDS'
-  | 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS';
+  | 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS'
+  | 'NEXT_PUBLIC_FLAG_STRINGING';
 
 interface FlagMeta {
   description: string;
@@ -70,6 +71,12 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
       'Email+password sign-up, Sign in with Google, and Sign in with Apple, plus the dismissible upgrade nudge for existing PIN-only members. Gates the UI entry points AND the /api/auth/* routes (read server-side there, since a client flag cannot protect the database). The PIN path is unaffected and is NOT being retired: turning this off restores name+PIN as the only credential with no data migration and no orphaned records, because provider identities live in their own container rather than replacing anything on the member.',
     owner: 'grant',
     plannedRemoval: '2026-10-15',
+  },
+  NEXT_PUBLIC_FLAG_STRINGING: {
+    description:
+      'The stringing service (design "Stringing", Aug 2026). Stage 1 is the BENCH only: the stringingJobs container plus the admin-side job list, job detail and intake form. Gates the /api/stringing/* routes server-side as well as the UI, because the price a stringer charges is admin-only data and a client flag cannot protect it. The player-facing entry point, request sheet and status track are Stage 2 and are NOT behind this flag yet -- Home still shows the "Coming soon" card until they land. Turning this off hides the bench and 404s the routes; no player-visible surface changes either way.',
+    owner: 'grant',
+    plannedRemoval: '2026-11-15',
   },
   NEXT_PUBLIC_FLAG_VISUAL_FIELDS: {
     description: 'The "fields and card materials" visual direction (design "Visual Colours", Aug 2026). Replaces the shared aurora with a per-tab FIELD — a coloured radial-gradient ground — and swaps .glass-card for a heavier frosted material at --radius-3xl (30px). Purely presentational: no routing, i18n, aria or API shape changes. Read server-side in app/layout.tsx and stamped as html[data-visual="field"], because CSS cannot call isFlagOn() and a useEffect would flash on the LCP frame. Turning it off restores the current look with zero component changes.',
@@ -157,6 +164,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
     case 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS':
       return process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS;
+    case 'NEXT_PUBLIC_FLAG_STRINGING':
+      return process.env.NEXT_PUBLIC_FLAG_STRINGING;
     default: {
       // Exhaustiveness guard. Adding a flag to `FlagName` without adding its
       // `case` above used to be silently legal — `readFlag` just returned

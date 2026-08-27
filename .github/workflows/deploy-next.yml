@@ -91,6 +91,10 @@ jobs:
           # arrived", and those are different bugs. Make it say which, then read
           # it live with `az webapp log tail` during a device tap.
           NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: 'false'
+          # Stage 1 (bench) only. Admin-only surface, so shipping it on would be
+          # low-risk -- but it stays off until the intake form has been used on a
+          # real Thursday, because a half-trusted bench is worse than none.
+          NEXT_PUBLIC_FLAG_STRINGING: 'false'
 
       - name: Package standalone build
         run: |

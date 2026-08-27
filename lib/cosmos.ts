@@ -386,6 +386,14 @@ function getMockContainer(name: string) {
               params[p.name] = p.value;
             }
             let results = [...store];
+            // `SELECT VALUE COUNT(1)` returns a one-element array holding a
+            // NUMBER in Cosmos. The mock used to hand back the rows instead, so
+            // a caller counting documents silently read a document where it
+            // expected an integer and fell through to its own fallback — which
+            // works, but means no test could ever exercise the counting path.
+            if (/SELECT\s+VALUE\s+COUNT\(/i.test(q.query)) {
+              return { resources: [results.length] as unknown as Record<string, unknown>[] };
+            }
             if ('@sessionId' in params) {
               results = results.filter((r) => r.sessionId === params['@sessionId']);
             }
@@ -425,6 +433,14 @@ function getMockContainer(name: string) {
             // idempotent.
             if ('@memberId' in params) {
               results = results.filter((r) => r.memberId === params['@memberId']);
+            }
+            // The bench's Mine filter (`WHERE c.stringerId = @stringerId`).
+            // Same convention as @memberId above: the parameter is named for
+            // the field so the mock can honour the clause instead of silently
+            // returning every row, which would make the Mine/All split look
+            // broken in tests while working in Cosmos.
+            if ('@stringerId' in params) {
+              results = results.filter((r) => r.stringerId === params['@stringerId']);
             }
             if ('@pointerId' in params) {
               results = results.filter((r) => r.id !== params['@pointerId']);
@@ -481,6 +497,23 @@ function getMockContainer(name: string) {
       return {
         async read() {
           return { resource: store.find((r) => r.id === id) ?? undefined };
+        },
+        /**
+         * Real Cosmos exposes `replace` on an item; the mock did not, so any
+         * route doing a read-modify-write could not be exercised here at all —
+         * it failed with "replace is not a function" rather than with anything
+         * that looked like a data problem. Added with the stringing bench,
+         * which is the first route to need it.
+         *
+         * Replaces in place so array order (and therefore any test asserting
+         * on ordering) survives the write, which is also what Cosmos does from
+         * a query's point of view once you sort.
+         */
+        async replace(next: Record<string, unknown>) {
+          const idx = store.findIndex((r) => r.id === id);
+          if (idx >= 0) store[idx] = next;
+          else store.push(next);
+          return { resource: next };
         },
         async delete() {
           const idx = store.findIndex((r) => r.id === id);
