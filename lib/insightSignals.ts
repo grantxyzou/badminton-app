@@ -12,19 +12,21 @@
  * notability). A card with no signal above threshold gets nothing — the AI
  * returns null for it and the chip simply doesn't render. Silence beats obvious.
  *
- * Pure module (no I/O). Forward-compatible: the blind-spot signal lights up once
- * game calibration (Phase 2) feeds `canonicalLevel.basis.game`; until then it
- * stays null and the engine just emits the self-only signals.
+ * Pure module (no I/O).
  */
 
-import { SKILLS, workOnNext, type StoredAssessment, type Phase } from './assessment';
+import { SKILLS, workOnNext, type StoredAssessment } from './assessment';
 import type { CanonicalLevel } from './level';
 
 const LABEL_BY_KEY = new Map(SKILLS.map((s) => [s.key, s.label]));
 const labelOf = (key: string): string => LABEL_BY_KEY.get(key) ?? key;
 
-export type SignalKind = 'blindspot' | 'phase-gating' | 'sticky-weak' | 'improving-streak' | 'declining-streak';
-export type SignalCard = 'level' | 'trend' | 'greeting';
+/* `blindspot` and `phase-gating` left with the level card (2026-08-27). They
+   were its only two producers, and the card was generated, cached and never
+   rendered — so they computed into a void. Recoverable from git if a level
+   chip ever earns a place on the tab. */
+export type SignalKind = 'sticky-weak' | 'improving-streak' | 'declining-streak';
+export type SignalCard = 'trend' | 'greeting';
 
 export interface InsightSignal {
   kind: SignalKind;
@@ -50,16 +52,6 @@ export interface SignalInput {
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
-/** Phase bands low→high (mirrors assessment.ts PHASE_BANDS; kept local so this
- *  module stays pure and decoupled). */
-const PHASE_ORDER: { phase: Phase; min: number }[] = [
-  { phase: 'foundation', min: 1.0 },
-  { phase: 'exploration', min: 1.8 },
-  { phase: 'switch', min: 2.6 },
-  { phase: 'commitment', min: 3.4 },
-  { phase: 'advanced', min: 4.3 },
-];
-
 function sortedSnapshots(snapshots: StoredAssessment[]): StoredAssessment[] {
   return snapshots
     .filter((d): d is StoredAssessment => !!d && typeof d.takenAt === 'string')
@@ -71,14 +63,6 @@ function sortedSnapshots(snapshots: StoredAssessment[]): StoredAssessment[] {
 function bottomKeys(snap: StoredAssessment, n = 3): string[] {
   const ratings = Array.isArray(snap.ratings) ? snap.ratings : [];
   return workOnNext(ratings, n).map((r) => r.skillKey);
-}
-
-/** The next phase above `overall`, and the gap to its band minimum. Null when
- *  already at the top band. */
-function nextPhaseGap(overall: number): { nextPhase: Phase; gap: number } | null {
-  const next = PHASE_ORDER.find((b) => b.min > overall + 1e-9);
-  if (!next) return null;
-  return { nextPhase: next.phase, gap: round1(next.min - overall) };
 }
 
 /**
@@ -93,50 +77,10 @@ export function computeInsightSignals(input: SignalInput): InsightSignal[] {
   if (snaps.length === 0) return signals;
 
   const latest = snaps[snaps.length - 1];
-  const latestOverall = typeof latest.overall === 'number' ? latest.overall : null;
 
-  // ── Level card: blind-spot (self vs game-observed) ── forward-compatible;
-  // only fires once Phase-2 calibration populates basis.game.
-  const basis = input.canonicalLevel?.basis;
-  if (basis && typeof basis.self === 'number' && typeof basis.game === 'number') {
-    const delta = round1(basis.game - basis.self);
-    if (Math.abs(delta) >= 0.4) {
-      signals.push({
-        kind: 'blindspot',
-        card: 'level',
-        score: Math.min(1, Math.abs(delta) / 1.0),
-        facts: { self: basis.self, game: basis.game, delta: Math.abs(delta), direction: delta > 0 ? 'above' : 'below' },
-        hint:
-          delta > 0
-            ? `Your logged games put you ${Math.abs(delta)} above your own check-in rating — you may be underselling yourself.`
-            : `Your logged games sit ${Math.abs(delta)} under your check-in rating — recent results haven't caught up to how you rate yourself yet.`,
-      });
-    }
-  }
-
-  // ── Level card: phase-gating ── how close the next phase is, and the lever.
-  // Non-obvious: the card shows the phase + overall, never the gap or what
-  // would tip it. Only "close" gaps are notable (far ones are noise).
-  if (latestOverall !== null) {
-    const gating = nextPhaseGap(latestOverall);
-    if (gating && gating.gap > 0 && gating.gap <= 0.6) {
-      const weakest = workOnNext(Array.isArray(latest.ratings) ? latest.ratings : [], 2);
-      const weakLabels = weakest.map((r) => labelOf(r.skillKey)).filter(Boolean);
-      signals.push({
-        kind: 'phase-gating',
-        card: 'level',
-        score: 1 - gating.gap / 0.6,
-        facts: {
-          gap: gating.gap,
-          nextPhase: gating.nextPhase,
-          ...(weakLabels[0] ? { weakest: weakLabels[0] } : {}),
-        },
-        hint: `Only ${gating.gap} below the ${gating.nextPhase} band${
-          weakLabels.length ? ` — lifting your weakest areas (${weakLabels.join(', ')}) is what would tip you over` : ''
-        }.`,
-      });
-    }
-  }
+  /* The level card's two signals — blind-spot (self vs game-observed) and
+     phase-gating (how close the next band is, and the lever) — were deleted
+     here along with the card itself. Nothing rendered what they produced. */
 
   // ── Trend card: sticky weak skill ── a skill that's stayed in your bottom
   // few across multiple check-ins. The card shows the current work-on list,
@@ -221,5 +165,5 @@ export function computeInsightSignals(input: SignalInput): InsightSignal[] {
 export function signalsByCard(signals: InsightSignal[]): Record<SignalCard, InsightSignal | null> {
   const pick = (card: SignalCard): InsightSignal | null =>
     signals.filter((s) => s.card === card).sort((a, b) => b.score - a.score)[0] ?? null;
-  return { level: pick('level'), trend: pick('trend'), greeting: pick('greeting') };
+  return { trend: pick('trend'), greeting: pick('greeting') };
 }
