@@ -35,6 +35,15 @@ export async function POST(req: NextRequest) {
   }
 
   const ip = getClientIp(req);
+  // Rule 4 says rate-limit BEFORE body parsing, so the limiter cannot be
+  // bypassed. But the real limit below is keyed per-identifier, which needs the
+  // identifier out of the body -- the same bind /api/players/recover has.
+  // So: a coarse IP-only guard first (cheap, and generous enough that it only
+  // catches someone hammering the endpoint), then the precise per-identifier
+  // limit once the body is known.
+  if (!checkRateLimit(`auth-signin:ip:${ip}`, 20, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'rate_limited', retryAfter: 3600 }, { status: 429 });
+  }
 
   let body: { email?: unknown; password?: unknown };
   try {
