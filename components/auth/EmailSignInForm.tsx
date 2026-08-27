@@ -115,12 +115,8 @@ export default function EmailSignInForm({ onSuccess, onForgotPassword }: Props) 
       >
         {busy ? t('emailSignInChecking') : t('emailSignInCta')}
       </button>
-      <button
-        type="button"
-        onClick={onForgotPassword}
-        className="btn-ghost"
-        style={{ width: '100%', fontSize: 'var(--fs-base)' }}
-      >
+      {/* A way out, not another action — see `.link-quiet` in globals.css. */}
+      <button type="button" onClick={onForgotPassword} className="link-quiet">
         {t('forgotPasswordLink')}
       </button>
     </form>

@@ -109,23 +109,7 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin }: SignIn
         {submitting ? t('submitting') : t('submitPin')}
       </button>
       {onForgotPin && (
-        <button
-          type="button"
-          onClick={handleForgotPin}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--text-secondary)',
-            fontSize: 'var(--fs-sm)',
-            textDecoration: 'underline',
-            cursor: 'pointer',
-            alignSelf: 'center',
-            padding: '0 12px',
-            minHeight: 44,
-            display: 'inline-flex',
-            alignItems: 'center',
-          }}
-        >
+        <button type="button" onClick={handleForgotPin} className="link-quiet">
           {t('forgotPinLink')}
         </button>
       )}
