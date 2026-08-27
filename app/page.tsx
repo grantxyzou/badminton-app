@@ -1,6 +1,8 @@
 import HomeShell from '@/components/HomeShell';
 import { OnlineProvider } from '@/lib/useOnline';
 import { readActiveAnnouncements } from '@/lib/announcements';
+import { configuredProviders } from '@/lib/oauthProviders';
+import { isFlagOn } from '@/lib/flags';
 
 // Force dynamic rendering — the announcement read hits Cosmos at request
 // time, which Next.js would otherwise statically cache by default. We want
@@ -25,9 +27,15 @@ export const dynamic = 'force-dynamic';
 export default async function Page() {
   const announcements = await readActiveAnnouncements();
   const initialAnnouncement = announcements[0] ?? null;
+  // Which sign-in providers this deployment has credentials for. Pure env
+  // reads — no Cosmos, no network — so it costs nothing here, and resolving it
+  // on the server is what lets the provider buttons LEAD the anonymous Profile
+  // card without the card painting form-first and jumping when a client probe
+  // returns. Same reasoning as stamping the visual-fields flag in the layout.
+  const authProviders = isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS') ? configuredProviders() : [];
   return (
     <OnlineProvider>
-      <HomeShell initialAnnouncement={initialAnnouncement} />
+      <HomeShell initialAnnouncement={initialAnnouncement} authProviders={authProviders} />
     </OnlineProvider>
   );
 }

@@ -102,3 +102,35 @@ describe('ProviderButtons', () => {
     expect(screen.queryByText('Continue with Google')).toBeNull();
   });
 });
+
+/**
+ * Server-resolved availability.
+ *
+ * Which providers exist is decided by environment variables, so the server
+ * knows at render time. Passing it in is not an optimisation — it is what lets
+ * these buttons LEAD the anonymous Profile card without the card painting
+ * form-first and reflowing when a probe returns.
+ */
+describe('ProviderButtons with server-resolved availability', () => {
+  it('renders immediately and issues NO probe', async () => {
+    const spy = vi.fn();
+    vi.stubGlobal('fetch', spy);
+    renderButtons({ available: ['google'] });
+
+    expect(screen.getByText('Continue with Google')).toBeDefined();
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('treats a server-resolved empty list as a real answer, not as unknown', async () => {
+    // `[]` from the server means "no provider is configured". Probing anyway
+    // would re-ask a settled question — and, worse, a throttled probe answers
+    // `null`, which the component would then also render as nothing while
+    // having spent a request to learn less than it already knew.
+    const spy = vi.fn();
+    vi.stubGlobal('fetch', spy);
+    const { container } = renderButtons({ available: [] });
+
+    expect(container.firstChild).toBeNull();
+    expect(spy).not.toHaveBeenCalled();
+  });
+});
