@@ -152,34 +152,46 @@ describe('once the admin opens the shop', () => {
 });
 
 describe('the process strip', () => {
-  it('shows all four steps, with Submit as where you are when you have no job', async () => {
-    // Step 0 is filled on a card nobody has used: submitting IS the step you
-    // are on, not one you have already finished.
+  it('does NOT draw the rail until there is a job', async () => {
+    // Four steps and ~90px of vertical space describing a process nobody has
+    // started — an explanation charged against the height of a card with
+    // nothing to report. The card still offers the way in; it just does not
+    // pay for a progress display yet.
     mockApi(true, []);
     wrap();
-    // Scoped to the <ol>: "Submit a request" is deliberately both the first
-    // step's label and the button's, so a bare text query finds two.
+    await screen.findByRole('button', { name: 'Submit a request' });
+    expect(screen.queryByText('Drop off your racket')).toBeNull();
+    expect(screen.queryByText('Track progress')).toBeNull();
+  });
+
+  it('draws the rail the moment a racket is actually in', async () => {
+    mockApi(true, [
+      { id: 'j1', jobNo: 'J-1', stage: 'being_strung', stageIndex: 1, racketLabel: 'Astrox',
+        stringLabel: 'BG80', tensionMains: 26, tensionCrosses: 28, method: 'Zach',
+        priceRange: '$28-32', amountDue: null, readyBy: null, paid: false, createdAt: '', updatedAt: '' },
+    ]);
+    wrap();
     const strip = (await screen.findByText('Drop off your racket')).closest('ol')!;
     expect(strip).not.toBeNull();
-    expect(strip.textContent).toContain('Submit a request');
-    expect(screen.getByText('Track progress')).toBeDefined();
-    expect(screen.getByText('Pick up and pay')).toBeDefined();
+    expect(strip.textContent).toContain('Track progress');
   });
 
   it('drops the prose subtitle the strip replaced', async () => {
     mockApi(true, []);
     wrap();
-    await screen.findByText('Track progress');
+    await screen.findByRole('button', { name: 'Submit a request' });
     expect(screen.queryByText(/Hand Grant your racket/i)).toBeNull();
   });
 
-  it('uses a SECONDARY button, not the primary one', async () => {
-    // Home already has a primary action; a second competes with it.
+  it('is a text ROW, not a button that competes with sign-up', async () => {
+    // As a filled block this outweighed "I'm in this week" — the week's actual
+    // decision — from inside the group below it. Home gets exactly one primary.
     mockApi(true, []);
     wrap();
     const cta = await screen.findByRole('button', { name: 'Submit a request' });
-    expect(cta.className).toContain('cc-btn-secondary');
+    expect(cta.className).toContain('bpm-row-link');
     expect(cta.className).not.toContain('cc-btn-primary');
+    expect(cta.className).not.toContain('cc-btn-secondary');
   });
 });
 

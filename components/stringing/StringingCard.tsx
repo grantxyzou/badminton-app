@@ -140,13 +140,25 @@ export default function StringingCard({ hasIdentity }: Props) {
       <div className="glass-card p-5 space-y-3">
         {/* No subtitle: the step strip below explains the process better than a
             sentence did, and repeating it in prose was just noise above it. */}
+        {/* Neutral icon and title. This card sits in the ACCOUNT group, below
+            the week's one real action — dressing it in accent made it compete
+            with the thing above it. */}
         <CardHeader
           icon="science"
+          iconColor="var(--text-secondary)"
           title={t('title')}
           badge={<StatusBadge variant="accent">{t('openBadge')}</StatusBadge>}
         />
 
-        <StringingSteps current={stepForStage((active?.stage as PlayerStage) ?? null)} />
+        {/* THE RAIL WAITS UNTIL THERE IS A JOB.
+            Four steps and ~90px of vertical space described a process nobody
+            had started — an explanation charged against the height of a card
+            that had nothing to report yet. It returns the moment a racket is
+            actually in, which is when the progress display is worth its space
+            and the card has earned the room. */}
+        {active && (
+          <StringingSteps current={stepForStage((active.stage as PlayerStage) ?? null)} />
+        )}
 
         {active && (
           <div
@@ -180,14 +192,19 @@ export default function StringingCard({ hasIdentity }: Props) {
           </div>
         )}
 
+        {/* A TEXT ROW, not a filled block.
+            As a full-width button this outweighed "I'm in this week" — the
+            week's actual decision — from inside the group below it. Demoted to
+            a link with an arrow, it still reads as the way in without
+            competing for the one primary slot on the screen. */}
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
           disabled={!hasIdentity || !online}
-          className="cc-btn cc-btn-secondary cc-btn-lg"
-          style={{ width: '100%' }}
+          className="bpm-row-link"
         >
-          {t('requestCta')}
+          <span className="fs-md" style={{ fontWeight: 600 }}>{t('requestCta')}</span>
+          <span className="material-icons icon-sm" aria-hidden="true">arrow_forward</span>
         </button>
 
         {/* Pricing is a disclosure, not an action — hence a quiet row rather
@@ -196,10 +213,17 @@ export default function StringingCard({ hasIdentity }: Props) {
           type="button"
           onClick={() => setPricingOpen((v) => !v)}
           aria-expanded={pricingOpen}
-          className="link-quiet"
-          style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
+          className="link-quiet fs-sm"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-2)',
+            alignSelf: 'flex-start',
+            color: 'var(--text-muted)',
+            textDecoration: 'none',
+          }}
         >
-          <span className="material-icons icon-sm" aria-hidden="true">
+          <span className="material-icons icon-xs" aria-hidden="true">
             {pricingOpen ? 'expand_less' : 'expand_more'}
           </span>
           {t('viewPricing')}

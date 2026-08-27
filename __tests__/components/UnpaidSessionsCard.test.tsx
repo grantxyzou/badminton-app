@@ -88,8 +88,11 @@ describe('<UnpaidSessionsCard />', () => {
     await waitFor(() => {
       expect(screen.getByText('Your balance')).toBeTruthy();
     });
-    // $40 appears in both the line item and the total row.
-    expect(screen.getAllByText('$40').length).toBe(2);
+    // Three times now: the collapsed row's own figure, the line item, and the
+    // total. The row carries the number because a collapsed card showing only
+    // a label spends a whole card to say nothing — and the number is the only
+    // reason to open it.
+    expect(screen.getAllByText('$40').length).toBe(3);
   });
 
   /* The rule here is unchanged: paid-up must not render as NOTHING — the card

@@ -465,6 +465,9 @@ body {
      tokens so those hand-typed 20/22px values stop being magic numbers. */
   --fs-stat: 20px;
   --fs-stat-lg: 22px;
+  /* The single headline number on a screen (Home spots-left). Bigger than
+     --fs-stat, which is a value inside a row of values. */
+  --fs-count: 34px;
   /* Single-focus numeric input — a number that IS the screen's whole task, not
      a stat among others. Currently just the game logger's score steppers,
      where the value is what the member is actively changing. Deliberately a
@@ -3793,3 +3796,73 @@ html[data-visual="field"][data-theme="light"] {
 }
 .bpm-chip:hover { background: var(--glass-bg); }
 .bpm-chip:disabled { opacity: 0.5; pointer-events: none; }
+
+/* Compact page title — see PageHeader's `compact` prop.
+   The app's name on its own home screen is orientation, not content. At 30px
+   bold it took the top of the hierarchy from the thing the page exists for. */
+.bpm-page-header__title--compact {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold, 600);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+/* The one number a screen is really asking about.
+   Home's spots-left count: the thing that decides whether you tap. Big enough
+   to be the first thing read, tight tracking so a two-part figure ("12/12")
+   reads as one token rather than three. Mono because it is data. */
+.bpm-count {
+  font-family: var(--font-mono);
+  font-size: var(--fs-count);
+  font-weight: var(--fw-bold, 700);
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+/* Home's two-group stack.
+   Proximity is what says "these belong together" without giving every card a
+   heading. Tight inside a group, loose between: five evenly-spaced cards read
+   as five unrelated errands, which is what Home looked like before. */
+:root {
+  --home-stack-gap: 10px;
+  --home-group-gap: 28px;
+}
+.bpm-home-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--home-group-gap);
+}
+.bpm-home-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--home-stack-gap);
+}
+
+/* A row that acts as a link — label left, arrow right, full width.
+   The secondary weight between a filled button and a quiet underlined link:
+   unmistakably tappable, but it does not compete for the one primary slot on
+   a screen. Used by Home's stringing card, whose CTA outweighed the week's
+   actual decision when it was a filled block. */
+.bpm-row-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 0;
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  text-align: left;
+}
+.bpm-row-link:hover { color: #86efac; }
+.bpm-row-link:disabled { opacity: 0.5; pointer-events: none; }
+.bpm-row-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
