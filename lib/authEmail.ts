@@ -19,6 +19,24 @@ export interface AuthMailResult {
   sent: boolean;
 }
 
+/**
+ * When mail cannot be sent, print the link to the server log — DEVELOPMENT
+ * ONLY.
+ *
+ * Without this the verification and reset flows are untestable locally: the
+ * token exists only inside an email that never leaves, and its hash is all the
+ * database keeps. The `NODE_ENV === 'development'` guard is not decorative —
+ * these URLs are live single-use credentials, and logging one in production
+ * would put an account-takeover link into whatever aggregates the logs.
+ *
+ * Matches the fail-closed shape of `getSessionSecret()` in lib/auth.ts: an
+ * explicitly-local env only, never merely "not production".
+ */
+function logUnsentLinkInDev(kind: string, to: string, url: string): void {
+  if (process.env.NODE_ENV !== 'development') return;
+  console.info(`[dev] ${kind} email NOT sent (no SMTP). Link for ${to}:\n  ${url}`);
+}
+
 async function send(to: string, subject: string, text: string): Promise<AuthMailResult> {
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASSWORD;
@@ -51,7 +69,9 @@ export async function sendVerificationEmail(
     '',
     '— BPM Badminton',
   ].join('\n');
-  return send(to, 'Confirm your email — BPM Badminton', body);
+  const result = await send(to, 'Confirm your email — BPM Badminton', body);
+  if (!result.sent) logUnsentLinkInDev('verification', to, url);
+  return result;
 }
 
 export async function sendPasswordResetEmail(
@@ -69,5 +89,7 @@ export async function sendPasswordResetEmail(
     '',
     '— BPM Badminton',
   ].join('\n');
-  return send(to, 'Reset your password — BPM Badminton', body);
+  const result = await send(to, 'Reset your password — BPM Badminton', body);
+  if (!result.sent) logUnsentLinkInDev('password reset', to, url);
+  return result;
 }
