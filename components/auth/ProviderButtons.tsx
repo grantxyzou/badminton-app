@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useOnline } from '@/lib/useOnline';
+import GoogleMark from './GoogleMark';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -121,25 +122,32 @@ export default function ProviderButtons({
           );
         }
 
+        // Google's button is Google's, down to the surface colours — see
+        // `.btn-google` in globals.css. Apple is deliberately still on the
+        // generic style: Sign in with Apple has its own mandatory button spec
+        // (their mark, their black/white/outline set, SF), and shipping it
+        // dressed as a Google button would breach it. It needs the same
+        // treatment before the Apple provider is ever switched on.
+        const branded = p === 'google';
         return (
           <a
             key={p}
             href={online ? `${BASE}/api/auth/${p}/start` : undefined}
             aria-disabled={!online}
-            className="cc-btn cc-btn-secondary"
+            className={branded ? 'cc-btn btn-google' : 'cc-btn cc-btn-secondary'}
             style={{
-              width: '100%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 'var(--space-3)',
               textDecoration: 'none',
+              ...(branded ? {} : { width: '100%', gap: 'var(--space-3)' }),
               // Matches .cc-btn:disabled rather than inventing a new disabled
               // look — the design system's rule for a not-currently-actionable
               // control.
               ...(online ? {} : { opacity: 0.5, pointerEvents: 'none' as const }),
             }}
           >
+            {branded && <GoogleMark />}
             {label}
           </a>
         );
