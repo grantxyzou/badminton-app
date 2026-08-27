@@ -50,6 +50,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
+  const ip = getClientIp(req);
+  // Rule 4 says rate-limit BEFORE body parsing, so the limiter cannot be
+  // bypassed. But the real limit below is keyed per-identifier, which needs the
+  // identifier out of the body -- the same bind /api/players/recover has.
+  // So: a coarse IP-only guard first (cheap, and generous enough that it only
+  // catches someone hammering the endpoint), then the precise per-identifier
+  // limit once the body is known.
+  if (!checkRateLimit(`auth-claim:ip:${ip}`, 20, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'rate_limited', retryAfter: 3600 }, { status: 429 });
+  }
+
   let body: { name?: unknown; pin?: unknown; code?: unknown };
   try {
     body = await req.json();
@@ -70,7 +81,6 @@ export async function POST(req: NextRequest) {
   if (code && !/^[0-9]{6}$/.test(code)) return FAIL();
 
   // Same envelope as /recover: 5 per hour per (name, IP).
-  const ip = getClientIp(req);
   if (!checkRateLimit(`auth-claim:${name.toLowerCase()}:${ip}`, 5, 60 * 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 3600 }, { status: 429 });
   }
