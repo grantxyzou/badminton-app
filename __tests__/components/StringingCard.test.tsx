@@ -138,7 +138,10 @@ describe('once the admin opens the shop', () => {
     // Collapsed: the rail is the glance answer, and it is all there is.
     expect(await screen.findByText('Track progress')).toBeDefined();
     expect(screen.queryByText('Astrox 99 Pro')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Submit a request' })).toBeNull();
+    // The CTA stays in BOTH states. Hiding it when collapsed also caused a
+    // visible jump — `active` is null until the jobs fetch lands, so the card
+    // rendered expanded and snapped shut when data arrived.
+    expect(screen.getByRole('button', { name: 'Submit a request' })).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: /Stringing service/i }));
 

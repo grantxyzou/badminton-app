@@ -159,25 +159,29 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
           {/* Sentence case and neutral, not an uppercase accent label. On Home
               the accent is reserved for the primary button, the one link and
               the active tab — a label that never changes was spending it. */}
-          {/* The same class LOCATION / WHEN / SIGN UP wear. Matching only the
-              font family left sentence-case semibold sitting beside uppercase
-              tracked bold — the same voice, still two different kinds of
-              title. */}
-          <span className="section-label-muted">{title}</span>
+          {/* Icon + label, matching the stringing card beside it — the two
+              cards in this group should introduce themselves the same way. */}
+          <span className="section-label-muted" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <span className="material-icons" aria-hidden="true">receipt_long</span>
+            {title}
+          </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-            {/* THE FIGURE, even collapsed. A collapsed card showing only a
-                label spends a whole card to say nothing — and the number is
-                the only reason to open it. */}
-            <span
-              className="fs-md"
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontWeight: 600,
-                color: showPaidUp ? 'var(--text-secondary)' : titleColor,
-              }}
-            >
-              {fmtMoney(data?.totalOwed ?? 0)}
-            </span>
+            {/* The figure only while COLLAPSED. Expanded, the Total row two
+                lines below says the same number — and a card that states its
+                total twice reads like it is not sure. Collapsed it is the only
+                reason to open the card, so it stays. */}
+            {!open && (
+              <span
+                className="fs-md"
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontWeight: 600,
+                  color: showPaidUp ? 'var(--text-secondary)' : titleColor,
+                }}
+              >
+                {fmtMoney(data?.totalOwed ?? 0)}
+              </span>
+            )}
             <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>
               {open ? 'expand_less' : 'expand_more'}
             </span>

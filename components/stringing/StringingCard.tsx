@@ -130,7 +130,7 @@ export default function StringingCard({ hasIdentity }: Props) {
             when the shop opens. */}
         <CardHeader
           compact
-          icon="science"
+          icon="grid_4x4"
           iconColor="var(--text-secondary)"
           title={t('title')}
           subtitle={t('subtitle')}
@@ -163,7 +163,13 @@ export default function StringingCard({ hasIdentity }: Props) {
   const header = (
     <CardHeader
       compact
-      icon="science"
+      /* `grid_4x4`, not `science` (a flask says laboratory) and not
+         `sports_tennis` (the racket already appears on the row below, and
+         repeating it makes the card look like it is about rackets rather than
+         about what is done to them). A string bed IS a grid of mains and
+         crosses — the mesh is the thing being sold. Added to the subsetted
+         glyph list in app/layout.tsx; a missing glyph renders as raw text. */
+      icon="grid_4x4"
       iconColor="var(--text-secondary)"
       title={t('title')}
       badge={
@@ -252,8 +258,12 @@ export default function StringingCard({ hasIdentity }: Props) {
           </div>
         )}
 
-        {expanded && (
-          <>
+        {/* The CTA and pricing stay in BOTH states — only the RACKET folds away.
+            Hiding them when collapsed also produced a visible jump: `active` is
+            null until the jobs fetch lands, so the card rendered expanded and
+            then snapped shut the moment data arrived. Keeping them put removes
+            the flash and is what was actually asked for — collapsed shows the
+            progress, expanded shows the racket. */}
         {/* A TEXT ROW, not a filled block.
             As a full-width button this outweighed "I'm in this week" — the
             week's actual decision — from inside the group below it. Demoted to
@@ -271,24 +281,23 @@ export default function StringingCard({ hasIdentity }: Props) {
 
         {/* Pricing is a disclosure, not an action — hence a quiet row rather
             than a third button competing with the one that matters. */}
+        {/* A ROW, matching "Submit a request" above it — label left, affordance
+            right, full width. It was a left-huddled underlined link with a
+            chevron in front of the text: a third geometry on a card that
+            already had two, and the chevron read as a bullet rather than as
+            "this opens". Quieter than the CTA because it is a disclosure, but
+            the same shape, so the card has one way of presenting a row. */}
         <button
           type="button"
           onClick={() => setPricingOpen((v) => !v)}
           aria-expanded={pricingOpen}
-          className="link-quiet fs-sm"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--space-2)',
-            alignSelf: 'flex-start',
-            color: 'var(--text-muted)',
-            textDecoration: 'none',
-          }}
+          className="bpm-row-link"
+          style={{ color: 'var(--text-secondary)' }}
         >
-          <span className="material-icons icon-xs" aria-hidden="true">
+          <span className="fs-sm">{t('viewPricing')}</span>
+          <span className="material-icons icon-sm" aria-hidden="true">
             {pricingOpen ? 'expand_less' : 'expand_more'}
           </span>
-          {t('viewPricing')}
         </button>
 
         {pricingOpen && (
@@ -322,8 +331,6 @@ export default function StringingCard({ hasIdentity }: Props) {
           <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
             {t('needName')}
           </p>
-        )}
-          </>
         )}
       </div>
 
