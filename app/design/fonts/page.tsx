@@ -11,19 +11,19 @@
 
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section style={{ display: 'grid', gap: '0.5rem' }}>
+    <section style={{ display: 'grid', gap: 'var(--space-3)' }}>
       <h2 className="bpm-section-label">{title}</h2>
-      <div className="glass-card" style={{ padding: '1.5rem', display: 'grid', gap: '1rem' }}>{children}</div>
+      <div className="glass-card" style={{ padding: 'var(--space-7)', display: 'grid', gap: 'var(--space-5)' }}>{children}</div>
     </section>
   );
 }
 
 export default function TypeSystemPage() {
   return (
-    <main style={{ maxWidth: 820, margin: '0 auto', padding: '2rem 1rem', display: 'grid', gap: '1.25rem' }}>
+    <main style={{ maxWidth: 820, margin: '0 auto', padding: 'var(--space-8) var(--space-5)', display: 'grid', gap: 'var(--space-6)' }}>
       <div>
         <h1 className="bpm-h1">Type system</h1>
-        <p className="bpm-body" style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+        <p className="bpm-body" style={{ color: 'var(--text-secondary)', marginTop: 'var(--space-1)' }}>
           Locked pairing. <strong style={{ fontFamily: 'var(--font-display)' }}>Space Grotesk</strong> for
           display, <strong>IBM Plex Sans</strong> for body and UI,{' '}
           <strong style={{ fontFamily: 'var(--font-mono, monospace)' }}>JetBrains Mono</strong> for data.
@@ -50,12 +50,12 @@ export default function TypeSystemPage() {
       </Block>
 
       <Block title="BODY — IBM PLEX SANS 400 / 500">
-        <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, margin: 0 }}>
+        <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, margin: '0' }}>
           Sign up to claim your spot at this week&apos;s casual session. Twelve players on court,
           waitlist open once we&apos;re full. Your share of court + shuttles is about{' '}
           <span className="bpm-mono">~$8.50</span>.
         </p>
-        <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, margin: 0, color: 'var(--text-secondary)' }}>
+        <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, margin: '0', color: 'var(--text-secondary)' }}>
           <em>Italic accents use the italic variable TTF</em> — same family, genuine italic, not
           synthesized slant.
         </p>
@@ -65,7 +65,7 @@ export default function TypeSystemPage() {
       </Block>
 
       <Block title="MONO MOMENTS — JETBRAINS MONO">
-        <div className="bpm-mono" style={{ fontSize: '1.125rem', fontVariantNumeric: 'tabular-nums', display: 'grid', gap: '0.6rem' }}>
+        <div className="bpm-mono" style={{ fontSize: '1.125rem', fontVariantNumeric: 'tabular-nums', display: 'grid', gap: 'var(--space-4)' }}>
           <div>PIN  <strong style={{ letterSpacing: '0.25em' }}>0 4 2 7</strong></div>
           <div>Cost  <strong>~$8.50</strong> / person</div>
           <div>Next  <strong>Thu 2026-04-18 19:00</strong></div>
@@ -77,7 +77,7 @@ export default function TypeSystemPage() {
       </Block>
 
       <Block title="WEIGHT LADDER — IBM PLEX SANS">
-        <div style={{ display: 'grid', gap: '0.4rem' }}>
+        <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
           <div style={{ fontWeight: 300, fontSize: '1.25rem' }}>300 · Light — captions, metadata.</div>
           <div style={{ fontWeight: 400, fontSize: '1.25rem' }}>400 · Regular — body copy defaults here.</div>
           <div style={{ fontWeight: 500, fontSize: '1.25rem' }}>500 · Medium — list items, chip labels.</div>
@@ -90,7 +90,7 @@ export default function TypeSystemPage() {
       </Block>
 
       <Block title="ANATOMY — COMPARE THE TWO SANS">
-        <div style={{ display: 'grid', gap: '0.5rem' }}>
+        <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
             Aa Bb Gg · 4 8 2 1 &amp; ? · <span className="bpm-mono" style={{ fontWeight: 500 }}>0x4A</span>
           </div>
@@ -102,7 +102,7 @@ export default function TypeSystemPage() {
       </Block>
 
       <Block title="TOKEN REFERENCE">
-        <ul className="bpm-mono" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '0.4rem', fontSize: '0.8rem' }}>
+        <ul className="bpm-mono" style={{ listStyle: 'none', margin: '0', padding: '0', display: 'grid', gap: 'var(--space-2)', fontSize: '0.8rem' }}>
           <li><span style={{ color: 'var(--accent)' }}>--font-display</span>{' = '}<span style={{ color: 'var(--text-secondary)' }}>Space Grotesk, IBM Plex Sans, -apple-system, …</span></li>
           <li><span style={{ color: 'var(--accent)' }}>--font-sans</span>{' = '}<span style={{ color: 'var(--text-secondary)' }}>IBM Plex Sans, -apple-system, BlinkMacSystemFont, …</span></li>
           <li><span style={{ color: 'var(--accent)' }}>--font-mono</span>{' = '}<span style={{ color: 'var(--text-secondary)' }}>JetBrains Mono, SF Mono, Menlo, …</span></li>

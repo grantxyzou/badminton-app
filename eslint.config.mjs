@@ -46,6 +46,26 @@ const EXTRA_TOKEN_SELECTORS = [
   },
 ];
 
+// Spacing guardrail (spacing audit, 2026-08-27). Folded into the SAME
+// no-restricted-syntax entries as the sets above rather than a config block of
+// its own: ESLint flat config merges by rule KEY, so a second block naming
+// `no-restricted-syntax` for the same files REPLACES the first -- adding this
+// separately silently switched off the colour and radius guardrails and the
+// warning count fell from 363 to 45 with nothing appearing to be wrong.
+//
+// The app-wide hard gate for spacing is __tests__/spacing-canary.test.ts,
+// which fails the build. That is also the only thing that can see the string
+// form (padding: '12px 16px'); an AST selector reaches numeric literals only.
+// This rule deliberately does not fire on `0` -- a zero has no rung.
+const SPACING_TOKEN_SELECTORS = [
+  {
+    selector:
+      "Property[key.name=/^(padding|margin)(Top|Bottom|Left|Right|Inline|Block)?$|^(gap|rowGap|columnGap)$/] > Literal[raw=/^(?!0$)-?[0-9]/]",
+    message:
+      'Raw spacing value — use the ladder token: var(--space-hair|05|1|2|3|4|5|6|7|8|9). The rungs are in app/globals.css and rendered at /bpm/design/tokens.',
+  },
+];
+
 /** @type {import('eslint').Linter.Config[]} */
 const config = [
   {
@@ -120,7 +140,7 @@ const config = [
     // flagged — the hex there is inside the var() string, not a bare literal.
     files: ['app/**/*.{ts,tsx}', 'components/**/*.{ts,tsx}', 'lib/**/*.{ts,tsx}'],
     rules: {
-      'no-restricted-syntax': ['warn', ...DESIGN_TOKEN_SELECTORS, ...EXTRA_TOKEN_SELECTORS],
+      'no-restricted-syntax': ['warn', ...DESIGN_TOKEN_SELECTORS, ...EXTRA_TOKEN_SELECTORS, ...SPACING_TOKEN_SELECTORS],
     },
   },
   {
@@ -130,7 +150,7 @@ const config = [
     // radius drift in stats fails CI. Other areas flip to error as their sweeps land.
     files: ['components/stats/**/*.{ts,tsx}'],
     rules: {
-      'no-restricted-syntax': ['error', ...DESIGN_TOKEN_SELECTORS],
+      'no-restricted-syntax': ['error', ...DESIGN_TOKEN_SELECTORS, ...SPACING_TOKEN_SELECTORS],
     },
   },
   {
@@ -144,7 +164,19 @@ const config = [
       'components/BottomSheet/**/*.{ts,tsx}',
     ],
     rules: {
-      'no-restricted-syntax': ['error', ...DESIGN_TOKEN_SELECTORS, ...EXTRA_TOKEN_SELECTORS],
+      'no-restricted-syntax': ['error', ...DESIGN_TOKEN_SELECTORS, ...EXTRA_TOKEN_SELECTORS, ...SPACING_TOKEN_SELECTORS],
+    },
+  },
+  {
+    // The OG image renders through Satori, which does NOT resolve CSS custom
+    // properties: var(--space-4) there evaluates to nothing, so a raw pixel
+    // number is the correct code and the spacing rule must not ask for a token.
+    // It keeps the colour/type guardrails, which are advisory here anyway.
+    // Listed LAST so it wins for this file; the per-area error blocks above do
+    // not match it.
+    files: ['app/opengraph-image.tsx'],
+    rules: {
+      'no-restricted-syntax': ['warn', ...DESIGN_TOKEN_SELECTORS, ...EXTRA_TOKEN_SELECTORS],
     },
   },
 ];

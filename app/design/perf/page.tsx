@@ -117,7 +117,7 @@ function Code({ children }: { children: React.ReactNode }) {
       className="bpm-mono"
       style={{
         fontSize: '0.85em',
-        padding: '1px 5px',
+        padding: 'var(--space-hair) var(--space-2)',
         borderRadius: 3,
         background: 'rgba(74,222,128,0.10)',
         color: 'var(--sev-code-text)',  // pastel green (dark) → court-green-dark (light)
@@ -132,7 +132,7 @@ function Code({ children }: { children: React.ReactNode }) {
 function SevPill({ sev }: { sev: Severity }) {
   const s = SEV_COLORS[sev];
   return (
-    <span className="bpm-mono" style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', padding: '3px 8px', borderRadius: 5, background: s.bg, border: `1px solid ${s.border}`, color: s.text }}>
+    <span className="bpm-mono" style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', padding: 'var(--space-1) var(--space-3)', borderRadius: 5, background: s.bg, border: `1px solid ${s.border}`, color: s.text }}>
       {s.label}
     </span>
   );
@@ -140,18 +140,18 @@ function SevPill({ sev }: { sev: Severity }) {
 
 function FindingCard({ f }: { f: Finding }) {
   return (
-    <div className="glass-card" style={{ padding: '1rem 1.25rem', display: 'grid', gap: '0.6rem' }}>
-      <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+    <div className="glass-card" style={{ padding: 'var(--space-5) var(--space-6)', display: 'grid', gap: 'var(--space-4)' }}>
+      <h3 style={{ margin: '0', fontSize: '0.875rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
         <SevPill sev={f.sev} />
         <span>{f.title}</span>
       </h3>
-      <p style={{ margin: 0, fontSize: '0.8125rem', lineHeight: 1.6, color: 'var(--text-secondary)' }}>{f.body}</p>
+      <p style={{ margin: '0', fontSize: '0.8125rem', lineHeight: 1.6, color: 'var(--text-secondary)' }}>{f.body}</p>
       {f.file && (
         <code
           className="bpm-mono"
           style={{
             fontSize: '0.7rem',
-            padding: '1px 5px',
+            padding: 'var(--space-hair) var(--space-2)',
             borderRadius: 3,
             background: 'rgba(74,222,128,0.10)',
             color: 'var(--sev-code-text)',
@@ -166,7 +166,7 @@ function FindingCard({ f }: { f: Finding }) {
         style={{
           fontSize: '0.75rem',
           lineHeight: 1.55,
-          padding: '0.5rem 0.75rem',
+          padding: 'var(--space-3) var(--space-4)',
           borderRadius: 'var(--radius-xs)',
           background: 'rgba(74,222,128,0.08)',
           borderLeft: '2px solid var(--accent)',
@@ -181,10 +181,10 @@ function FindingCard({ f }: { f: Finding }) {
 
 export default function PerfAuditPage() {
   return (
-    <main style={{ maxWidth: 820, margin: '0 auto', padding: '2rem 1rem', display: 'grid', gap: '1.25rem' }}>
+    <main style={{ maxWidth: 820, margin: '0 auto', padding: 'var(--space-8) var(--space-5)', display: 'grid', gap: 'var(--space-6)' }}>
       <div>
         <h1 className="bpm-h1">Perf audit</h1>
-        <p className="bpm-body" style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+        <p className="bpm-body" style={{ color: 'var(--text-secondary)', marginTop: 'var(--space-1)' }}>
           Findings re-tiered for an <strong>iPhone 15 / Pixel 8-class (A16/A17, Tensor G3)</strong> floor.
           Modern GPUs absorb most of what would be red on older hardware. Two items remain worth fixing
           because they waste battery regardless of GPU class. Both are addressed on this branch.
@@ -202,22 +202,22 @@ export default function PerfAuditPage() {
         </div>
       </div>
 
-      <section style={{ display: 'grid', gap: '0.5rem' }}>
+      <section style={{ display: 'grid', gap: 'var(--space-3)' }}>
         <h2 className="bpm-section-label">CRITICAL PATH</h2>
         {CRITICAL.map((f) => <FindingCard key={f.title} f={f} />)}
       </section>
 
-      <section style={{ display: 'grid', gap: '0.5rem' }}>
+      <section style={{ display: 'grid', gap: 'var(--space-3)' }}>
         <h2 className="bpm-section-label">SECONDARY</h2>
         {SECONDARY.map((f) => <FindingCard key={f.title} f={f} />)}
       </section>
 
-      <section style={{ display: 'grid', gap: '0.5rem' }}>
+      <section style={{ display: 'grid', gap: 'var(--space-3)' }}>
         <h2 className="bpm-section-label" style={{ color: '#86efac' }}>ALREADY STRONG</h2>
-        <div className="glass-card" style={{ padding: '1rem 1.25rem' }}>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.4rem', fontSize: '0.8125rem' }}>
+        <div className="glass-card" style={{ padding: 'var(--space-5) var(--space-6)' }}>
+          <ul style={{ listStyle: 'none', padding: '0', margin: '0', display: 'grid', gap: 'var(--space-2)', fontSize: '0.8125rem' }}>
             {ALREADY_STRONG.map((line) => (
-              <li key={line} style={{ display: 'flex', gap: '0.5rem', color: 'var(--text-secondary)' }}>
+              <li key={line} style={{ display: 'flex', gap: 'var(--space-3)', color: 'var(--text-secondary)' }}>
                 <span style={{ color: '#4ade80', fontWeight: 700 }}>✓</span>
                 <span>{line}</span>
               </li>
@@ -226,10 +226,10 @@ export default function PerfAuditPage() {
         </div>
       </section>
 
-      <section style={{ display: 'grid', gap: '0.5rem' }}>
+      <section style={{ display: 'grid', gap: 'var(--space-3)' }}>
         <h2 className="bpm-section-label">PERFORMANCE BUDGET</h2>
-        <div className="glass-card" style={{ padding: '1rem 1.25rem' }}>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.35rem' }}>
+        <div className="glass-card" style={{ padding: 'var(--space-5) var(--space-6)' }}>
+          <ul style={{ listStyle: 'none', padding: '0', margin: '0', display: 'grid', gap: 'var(--space-2)' }}>
             {BUDGET.map(([k, v]) => (
               <li key={k} style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>{k}</span>
@@ -240,24 +240,24 @@ export default function PerfAuditPage() {
         </div>
       </section>
 
-      <section style={{ display: 'grid', gap: '0.5rem' }}>
+      <section style={{ display: 'grid', gap: 'var(--space-3)' }}>
         <h2 className="bpm-section-label">ACTION LIST</h2>
-        <div className="glass-card" style={{ padding: '1rem 1.25rem', display: 'grid', gap: '0.6rem', fontSize: '0.8125rem', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-          <p style={{ margin: 0 }}>
+        <div className="glass-card" style={{ padding: 'var(--space-5) var(--space-6)', display: 'grid', gap: 'var(--space-4)', fontSize: '0.8125rem', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+          <p style={{ margin: '0' }}>
             <strong style={{ color: 'var(--accent)' }}>1.</strong> Lock one font pairing and prune the loader to ~80 KB — biggest user-perceivable win.{' '}
             <span className="pill-paid" style={{ fontSize: '0.65rem' }}>locked on branch</span>
           </p>
-          <p style={{ margin: 0 }}>
+          <p style={{ margin: '0' }}>
             <strong style={{ color: 'var(--accent)' }}>2.</strong> Swap Material Icons full webfont for Material Symbols variable subset or SVG sprite (−60/80 KB). <em>Future branch.</em>
           </p>
-          <p style={{ margin: 0 }}>
+          <p style={{ margin: '0' }}>
             <strong style={{ color: 'var(--accent)' }}>3.</strong> Rewrite the animated blobs to the production aurora pattern — drop <Code>filter: blur()</Code> and <Code>mix-blend-mode</Code>.{' '}
             <span className="pill-paid" style={{ fontSize: '0.65rem' }}>done on branch</span>
           </p>
-          <p style={{ margin: 0 }}>
+          <p style={{ margin: '0' }}>
             <strong style={{ color: 'var(--accent)' }}>4.</strong> Pause loaders via IntersectionObserver when off-screen. <em>Polish.</em>
           </p>
-          <p style={{ margin: 0, color: 'var(--text-muted)' }}>
+          <p style={{ margin: '0', color: 'var(--text-muted)' }}>
             Everything else — blur tiering, shadow layers, <Code>will-change</Code>, SVG animations — leave as-is. Target hardware absorbs it.
           </p>
         </div>

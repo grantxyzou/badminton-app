@@ -33,8 +33,8 @@ const FIELDS: Variant[] = [
 
 function Sample({ v }: { v: Variant }) {
   return (
-    <section style={{ display: 'grid', gap: '0.5rem' }}>
-      <h2 className="bpm-section-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+    <section style={{ display: 'grid', gap: 'var(--space-3)' }}>
+      <h2 className="bpm-section-label" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
         <span>{v.title.toUpperCase()}</span>
         {v.live && <span className="pill-paid">live</span>}
       </h2>
@@ -47,10 +47,10 @@ function Sample({ v }: { v: Variant }) {
             <div className={`${styles.blob} ${styles.blobC}`} aria-hidden />
           </>
         )}
-        <div className="glass-card" style={{ padding: '1rem', maxWidth: '22rem', position: 'relative' }}>
+        <div className="glass-card" style={{ padding: 'var(--space-5)', maxWidth: '22rem', position: 'relative' }}>
           <p className="bpm-section-label" style={{ color: 'var(--text-muted)' }}>UPCOMING SESSION</p>
-          <p style={{ margin: '0.5rem 0 0', fontWeight: 600 }}>Thursday, April 18 · 7:00 PM</p>
-          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--fs-md)' }}>~$8.50 per person</p>
+          <p style={{ margin: 'var(--space-3) 0 0', fontWeight: 600 }}>Thursday, April 18 · 7:00 PM</p>
+          <p style={{ margin: '0', color: 'var(--text-secondary)', fontSize: 'var(--fs-md)' }}>~$8.50 per person</p>
         </div>
       </div>
     </section>
@@ -59,10 +59,10 @@ function Sample({ v }: { v: Variant }) {
 
 export default function BackgroundsPage() {
   return (
-    <main style={{ maxWidth: 720, margin: '0 auto', padding: '2rem 1rem', display: 'grid', gap: '1.25rem' }}>
+    <main style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--space-8) var(--space-5)', display: 'grid', gap: 'var(--space-6)' }}>
       <div>
         <h1 className="bpm-h1">Backgrounds</h1>
-        <p className="bpm-body" style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+        <p className="bpm-body" style={{ color: 'var(--text-secondary)', marginTop: 'var(--space-1)' }}>
           Each direction with an inline glass sample card on top so you can judge legibility. 01–06 mirror
           <code className="bpm-mono"> docs/design-system/preview/24-app-background.html</code>; 07–11 read the live
           <code className="bpm-mono"> --field-*</code> tokens directly, so they cannot drift from the app.
@@ -71,9 +71,9 @@ export default function BackgroundsPage() {
 
       {VARIANTS.map((v) => <Sample key={v.id} v={v} />)}
 
-      <div style={{ marginTop: '1.5rem' }}>
+      <div style={{ marginTop: 'var(--space-7)' }}>
         <h2 className="bpm-h3">Fields — one hue per tab</h2>
-        <p className="bpm-body" style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+        <p className="bpm-body" style={{ color: 'var(--text-secondary)', marginTop: 'var(--space-1)' }}>
           Five tabs you can tell apart at a glance, at the cost of the no-third-colour rule. Each hue
           was carrying a meaning elsewhere, and using it as a ground spends that meaning. Two collide on
           their <em>own</em> tab: amber was <em>waitlist</em>, and Sign-Ups is where waitlists live; blue
@@ -85,7 +85,7 @@ export default function BackgroundsPage() {
       {FIELDS.map((v) => <Sample key={v.id} v={v} />)}
 
 
-      <p className="bpm-caption" style={{ marginTop: '1rem' }}>
+      <p className="bpm-caption" style={{ marginTop: 'var(--space-5)' }}>
         Check both themes, and check the top-right corner of every field — the gradient is brightest at
         78%/4%, which is exactly where <code className="bpm-mono">--text-muted</code> fails AA. It was
         already bumped from .35 to .55 once for this reason.

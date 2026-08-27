@@ -12,10 +12,10 @@ import EmptyState from '@/components/primitives/EmptyState';
 
 function Row({ title, caption, children }: { title: string; caption?: string; children: React.ReactNode }) {
   return (
-    <section style={{ display: 'grid', gap: '0.5rem' }}>
+    <section style={{ display: 'grid', gap: 'var(--space-3)' }}>
       <h2 className="bpm-section-label">{title}</h2>
-      <div className="glass-card" style={{ padding: '1.25rem', display: 'grid', gap: '0.9rem' }}>{children}</div>
-      {caption && <p className="bpm-caption" style={{ color: 'var(--text-muted)', margin: 0 }}>{caption}</p>}
+      <div className="glass-card" style={{ padding: 'var(--space-6)', display: 'grid', gap: 'var(--space-4)' }}>{children}</div>
+      {caption && <p className="bpm-caption" style={{ color: 'var(--text-muted)', margin: '0' }}>{caption}</p>}
     </section>
   );
 }
@@ -42,10 +42,10 @@ const FIELD_CARDS: { cls: string; label: string; value: string; tone: string }[]
 
 export default function ComponentsPage() {
   return (
-    <main style={{ maxWidth: 720, margin: '0 auto', padding: '2rem 1rem', display: 'grid', gap: '1.25rem' }}>
+    <main style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--space-8) var(--space-5)', display: 'grid', gap: 'var(--space-6)' }}>
       <div>
         <h1 className="bpm-h1">Components</h1>
-        <p className="bpm-body" style={{ color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+        <p className="bpm-body" style={{ color: 'var(--text-secondary)', marginTop: 'var(--space-1)' }}>
           Canonical renderings of each component, mirroring{' '}
           <code className="bpm-mono">docs/design-system/preview/*</code>.
         </p>
@@ -53,20 +53,20 @@ export default function ComponentsPage() {
 
       {/* ── Buttons — 4 states per specimen/12 ─────────────────────────── */}
       <Row title="PRIMARY BUTTON" caption="Per preview/12-button-primary.html — 4 states: default · hover · pressed · disabled. Hover = brightness(1.08). Pressed = scale(0.97) + brightness(0.92). Disabled = opacity 0.45.">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--space-4)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             <StateLabel>Default</StateLabel>
             <button type="button" className="btn-primary">Sign Up</button>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             <StateLabel>Hover</StateLabel>
             <button type="button" className="btn-primary" style={{ filter: 'brightness(1.08)' }}>Sign Up</button>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             <StateLabel>Pressed</StateLabel>
             <button type="button" className="btn-primary" style={{ transform: 'scale(0.97)', filter: 'brightness(0.92)' }}>Sign Up</button>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             <StateLabel>Disabled</StateLabel>
             <button type="button" className="btn-primary" disabled aria-disabled style={{ opacity: 0.45, cursor: 'not-allowed' }}>Signing up…</button>
           </div>
@@ -74,7 +74,7 @@ export default function ComponentsPage() {
       </Row>
 
       <Row title="GHOST BUTTON" caption="Per preview/13-button-ghost.html — lower-emphasis pair to primary. Same shape, glass tint only.">
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
           <button type="button" className="btn-ghost">Cancel</button>
           <button type="button" className="btn-ghost" style={{ filter: 'brightness(1.08)' }}>Cancel</button>
           <button type="button" className="btn-ghost" disabled style={{ opacity: 0.45 }}>Cancel</button>
@@ -83,14 +83,14 @@ export default function ComponentsPage() {
 
       {/* ── Glass card — per specimen/14 ───────────────────────────────── */}
       <Row title="GLASS CARD" caption="Per preview/14-glass-card.html — padding 20, radius 16, backdrop blur + 180% saturation, inset rim + layered shadow. Hover = translateY(-2px).">
-        <div className="glass-card" style={{ padding: '1rem' }}>
+        <div className="glass-card" style={{ padding: 'var(--space-5)' }}>
           <p className="bpm-section-label" style={{ color: 'var(--text-muted)' }}>UPCOMING SESSION</p>
-          <p style={{ margin: '0.5rem 0 0', fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 600, letterSpacing: '-0.01em' }}>Thursday, April 18</p>
-          <p style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 600, letterSpacing: '-0.01em' }}>7:00 PM</p>
-          <p style={{ margin: '0.25rem 0 0', color: 'var(--text-secondary)', fontSize: '0.8125rem', opacity: 0.72 }}>~$8.50 per person</p>
+          <p style={{ margin: 'var(--space-3) 0 0', fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 600, letterSpacing: '-0.01em' }}>Thursday, April 18</p>
+          <p style={{ margin: '0', fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 600, letterSpacing: '-0.01em' }}>7:00 PM</p>
+          <p style={{ margin: 'var(--space-1) 0 0', color: 'var(--text-secondary)', fontSize: '0.8125rem', opacity: 0.72 }}>~$8.50 per person</p>
 
-          <div className="glass-card-soft" style={{ marginTop: '0.75rem', padding: '0.75rem' }}>
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+          <div className="glass-card-soft" style={{ marginTop: 'var(--space-4)', padding: 'var(--space-4)' }}>
+            <p style={{ margin: '0', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
               Nested: <code className="bpm-mono">.glass-card-soft</code> flattens to transparent tint inside glass. Materials simplify inward.
             </p>
           </div>
@@ -99,10 +99,10 @@ export default function ComponentsPage() {
 
       {/* ── Glass card — soft (Tier 2) ─────────────────────────────────── */}
       <Row title="GLASS CARD — SOFT" caption="Tier 2 surface. Flat tint + 1px border, no blur or shadow, radius 12. Nest inside .glass-card to group related content without restating the material. .inner-card is a backwards-compatible alias.">
-        <div className="glass-card-soft" style={{ padding: '0.875rem' }}>
+        <div className="glass-card-soft" style={{ padding: 'var(--space-4)' }}>
           <p className="bpm-section-label" style={{ color: 'var(--text-muted)' }}>RECOVERY PIN</p>
-          <p style={{ margin: '0.4rem 0 0', fontSize: '0.875rem' }}>4-digit PIN saved</p>
-          <p style={{ margin: '0.25rem 0 0', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+          <p style={{ margin: 'var(--space-2) 0 0', fontSize: '0.875rem' }}>4-digit PIN saved</p>
+          <p style={{ margin: 'var(--space-1) 0 0', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
             Used for <code className="bpm-mono">.inner-card</code> + nested groupings under the primary glass surface — settings rows, PIN editor, list items inside an admin card.
           </p>
         </div>
@@ -114,34 +114,34 @@ export default function ComponentsPage() {
           <span className="material-icons" aria-hidden style={{ fontSize: 22, color: 'var(--accent)' }}>check_circle</span>
           <div>
             <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--accent)' }}>Signed up — see you Thursday</div>
-            <div style={{ fontSize: 12, opacity: 0.72, marginTop: 2 }}>Paid · PIN saved</div>
+            <div style={{ fontSize: 12, opacity: 0.72, marginTop: 'var(--space-05)' }}>Paid · PIN saved</div>
           </div>
         </div>
         <div className="status-banner-orange">
           <span className="material-icons" aria-hidden style={{ fontSize: 22, color: 'var(--sev-med-text)' }}>watch_later</span>
           <div>
             <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--sev-med-text)' }}>You&apos;re on the waitlist</div>
-            <div style={{ fontSize: 12, opacity: 0.72, marginTop: 2 }}>Position #2 of 3</div>
+            <div style={{ fontSize: 12, opacity: 0.72, marginTop: 'var(--space-05)' }}>Position #2 of 3</div>
           </div>
         </div>
         <div className="status-banner-red">
           <span className="material-icons" aria-hidden style={{ fontSize: 22, color: 'var(--sev-crit-text)' }}>error</span>
           <div>
             <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--sev-crit-text)' }}>Sign-up is closed</div>
-            <div style={{ fontSize: 12, opacity: 0.72, marginTop: 2 }}>Session filled at 6:30 PM</div>
+            <div style={{ fontSize: 12, opacity: 0.72, marginTop: 'var(--space-05)' }}>Session filled at 6:30 PM</div>
           </div>
         </div>
       </Row>
 
       {/* ── Pills — per specimen/16 ─────────────────────────────────────── */}
       <Row title="PILLS" caption="Per preview/16-pills.html + components.jsx Pill — inline-flex, padding 4×12, radius 100, 11/600/0.04em/line-height 1. With icon: left padding 9, icon 13.">
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
           <span className="pill-paid">Paid</span>
           <span className="pill-unpaid">Unpaid</span>
           <span className="pill-waitlist">Waitlist</span>
           <span className="pill-admin">Admin</span>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
           <span className="pill-paid">
             <span className="material-icons" aria-hidden style={{ fontSize: 13 }}>check_circle</span>
             Paid
@@ -159,12 +159,12 @@ export default function ComponentsPage() {
 
       {/* ── Input — Default / Focus / Error per specimen/17 ─────────────── */}
       <Row title="INPUT" caption="Per preview/17-inputs.html — 3 states: default · focus (green 3px ring) · error (red 3px ring). Focus ring is on the box-shadow; border recolors simultaneously.">
-        <div style={{ display: 'grid', gap: '0.6rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
             <StateLabel>Default</StateLabel>
             <input name="demo-default" autoComplete="off" type="text" placeholder="Enter your name" style={{ flex: 1 }} />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
             <StateLabel>Focus</StateLabel>
             <input
               name="demo-focus"
@@ -178,7 +178,7 @@ export default function ComponentsPage() {
               }}
             />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
             <StateLabel>Error</StateLabel>
             <input
               name="demo-error"
@@ -207,24 +207,24 @@ export default function ComponentsPage() {
       {/* ── List-row tinted headers ────────────────────────────────────── */}
       <Row title="LIST-ROW TINTED HEADERS">
         <div style={{ overflow: 'hidden', borderRadius: 'var(--radius-lg, 12px)', border: '1px solid var(--glass-border)' }}>
-          <div className="list-header-green" style={{ padding: '0.5rem 1rem', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          <div className="list-header-green" style={{ padding: 'var(--space-3) var(--space-5)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Active · 8 of 12
           </div>
-          <div style={{ padding: '0.75rem 1rem', fontSize: '0.875rem' }}>Alice · Bob · Carol …</div>
-          <div className="list-header-amber" style={{ padding: '0.5rem 1rem', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          <div style={{ padding: 'var(--space-4) var(--space-5)', fontSize: '0.875rem' }}>Alice · Bob · Carol …</div>
+          <div className="list-header-amber" style={{ padding: 'var(--space-3) var(--space-5)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Waitlist · 3
           </div>
-          <div style={{ padding: '0.75rem 1rem', fontSize: '0.875rem' }}>Dave · Eve · Frank</div>
+          <div style={{ padding: 'var(--space-4) var(--space-5)', fontSize: '0.875rem' }}>Dave · Eve · Frank</div>
         </div>
       </Row>
 
       {/* ── Player highlight rows ──────────────────────────────────────── */}
       <Row title="PLAYER HIGHLIGHT ROWS (SELF)">
-        <div className="player-highlight-green" style={{ padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm, 8px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="player-highlight-green" style={{ padding: 'var(--space-4) var(--space-5)', borderRadius: 'var(--radius-sm, 8px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>1. Grant <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>(you)</span></span>
           <span className="pill-paid">Paid</span>
         </div>
-        <div className="player-highlight-amber" style={{ padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm, 8px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="player-highlight-amber" style={{ padding: 'var(--space-4) var(--space-5)', borderRadius: 'var(--radius-sm, 8px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>W1. Dave <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>(you · waitlisted)</span></span>
           <span className="pill-waitlist">Waitlist</span>
         </div>
@@ -232,7 +232,7 @@ export default function ComponentsPage() {
 
       {/* ── Iconography — per specimen/23 ──────────────────────────────── */}
       <Row title="ICONOGRAPHY — MATERIAL SYMBOLS ROUNDED" caption="Per preview/23-material-icons.html — Rounded only, 18–24px, semantic color per state. Never mix weights.">
-        <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-6)', flexWrap: 'wrap', alignItems: 'center' }}>
           {[
             { name: 'home',                 color: 'var(--text-primary)' },
             { name: 'group',                color: 'var(--accent)' },
@@ -245,7 +245,7 @@ export default function ComponentsPage() {
             { name: 'watch_later',          color: '#fcd34d' },
             { name: 'error',                color: '#fca5a5' },
           ].map((i) => (
-            <div key={i.name} style={{ display: 'grid', placeItems: 'center', gap: '0.25rem' }}>
+            <div key={i.name} style={{ display: 'grid', placeItems: 'center', gap: 'var(--space-1)' }}>
               <span className="material-icons" aria-hidden style={{ fontSize: 24, color: i.color }}>{i.name}</span>
               <code className="bpm-mono" style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{i.name}</code>
             </div>
@@ -261,7 +261,7 @@ export default function ComponentsPage() {
           subtitle="icon + bpm-h3 title + --fs-sm subtitle"
           badge={<StatusBadge>Beta</StatusBadge>}
         />
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', alignItems: 'center' }}>
           <StatusBadge>Live</StatusBadge>
           <StatusBadge variant="muted">Coming soon</StatusBadge>
           <StatusBadge variant="phase" tone="accent">Refine</StatusBadge>
@@ -282,18 +282,18 @@ export default function ComponentsPage() {
         title="AI PROVENANCE"
         caption="AIBadge marks model-written text. The conic rim (--ai-rim) is defined once in globals.css and painted as a masked ::before on .badge-ai, because a conic gradient cannot be a border-color. The surface it sits on stays an ordinary glass-card: the card wore this same rim until 2026-08-27, which spent the loudest device in the system on a footnote."
       >
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', alignItems: 'center' }}>
           <AIBadge label="AI generated">AI</AIBadge>
           <AIBadge label="AI generated">Beta AI</AIBadge>
         </div>
         <div
           className="glass-card"
-          style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', alignItems: 'flex-start', gap: 12 }}
+          style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', alignItems: 'flex-start', gap: 'var(--space-4)' }}
         >
-          <span style={{ flexShrink: 0, marginTop: 2 }}>
+          <span style={{ flexShrink: 0, marginTop: 'var(--space-05)' }}>
             <AIBadge label="AI generated">AI</AIBadge>
           </span>
-          <p style={{ margin: 0, fontSize: 'var(--fs-lg)', lineHeight: 1.45, flex: 1, minWidth: 0 }}>
+          <p style={{ margin: '0', fontSize: 'var(--fs-lg)', lineHeight: 1.45, flex: 1, minWidth: 0 }}>
             In place: the badge leads, and is the only AI marker on the card.
           </p>
         </div>
@@ -308,21 +308,21 @@ export default function ComponentsPage() {
         title="FIELD CARD MATERIALS"
         caption="Seven states on one material, at --radius-3xl (30px). Two rules the CSS cannot enforce, so review has to: at most ONE .is-pick per screen (two solid greens and neither reads as the answer), and semantic fills stay rare (three at once means the screen has stopped communicating). Locked is the only one that isn't glass — dropping the backdrop filter is what makes private data read as inert rather than merely dim."
       >
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9.5rem, 1fr))', gap: '0.625rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9.5rem, 1fr))', gap: 'var(--space-4)' }}>
           {FIELD_CARDS.map((c) => (
-            <div key={c.cls || 'base'} className={`glass-card ${c.cls}`} style={{ padding: '0.875rem' }}>
+            <div key={c.cls || 'base'} className={`glass-card ${c.cls}`} style={{ padding: 'var(--space-4)' }}>
               <p className="bpm-section-label" style={{ color: 'var(--fcard-label)' }}>{c.label}</p>
-              <p style={{ margin: '0.75rem 0 0', font: '600 var(--fs-stat)/1 var(--font-display)', letterSpacing: '-0.03em', color: c.tone }}>
+              <p style={{ margin: 'var(--space-4) 0 0', font: '600 var(--fs-stat)/1 var(--font-display)', letterSpacing: '-0.03em', color: c.tone }}>
                 {c.value}
               </p>
-              <p className="bpm-mono" style={{ margin: '0.5rem 0 0', fontSize: 'var(--fs-2xs)', color: 'var(--fcard-footnote)' }}>
+              <p className="bpm-mono" style={{ margin: 'var(--space-3) 0 0', fontSize: 'var(--fs-2xs)', color: 'var(--fcard-footnote)' }}>
                 {c.cls || '.glass-card'}
               </p>
             </div>
           ))}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginTop: '0.25rem' }}>
-          <button type="button" className="ink-button" style={{ padding: '0.625rem 1rem', font: '600 var(--fs-md) var(--font-sans)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginTop: 'var(--space-1)' }}>
+          <button type="button" className="ink-button" style={{ padding: 'var(--space-4) var(--space-5)', font: '600 var(--fs-md) var(--font-sans)' }}>
             Ink button
           </button>
           <span className="bpm-caption">

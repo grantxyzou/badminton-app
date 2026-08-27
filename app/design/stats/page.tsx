@@ -27,7 +27,7 @@ function Chip({ color, children }: { color: string; children: React.ReactNode })
     <span
       style={{
         fontSize: 10,
-        padding: '3px 8px',
+        padding: 'var(--space-1) var(--space-3)',
         borderRadius: 'var(--radius-pill)',
         whiteSpace: 'nowrap',
         fontWeight: 600,
@@ -48,13 +48,13 @@ function Card({
 }: { icon: string; title: string; beat: string; children: React.ReactNode }) {
   return (
     <div className="glass-card p-5 space-y-3">
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-        <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: ACCENT, marginTop: 2 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-4)' }}>
+        <span className="material-icons" aria-hidden="true" style={{ fontSize: 22, color: ACCENT, marginTop: 'var(--space-05)' }}>
           {icon}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, color: PRIMARY, margin: 0, lineHeight: 1.25 }}>{title}</h3>
-          <p style={{ fontSize: 12, color: MUTED, margin: 0, marginTop: 2, fontStyle: 'italic' }}>&ldquo;{beat}&rdquo;</p>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: PRIMARY, margin: '0', lineHeight: 1.25 }}>{title}</h3>
+          <p style={{ fontSize: 12, color: MUTED, margin: '0', marginTop: 'var(--space-05)', fontStyle: 'italic' }}>&ldquo;{beat}&rdquo;</p>
         </div>
       </div>
       <div>{children}</div>
@@ -73,16 +73,16 @@ function Arc({
   children: React.ReactNode;
 }) {
   return (
-    <section style={{ display: 'grid', gap: 14 }}>
+    <section style={{ display: 'grid', gap: 'var(--space-4)' }}>
       <div
         style={{
-          padding: '16px 18px',
+          padding: 'var(--space-5) var(--space-6)',
           borderLeft: `3px solid ${ACCENT}`,
           background: 'color-mix(in oklab, var(--accent, #22c55e) 8%, transparent)',
           borderRadius: 'var(--radius-lg)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-2)' }}>
           <span
             style={{
               width: 24, height: 24, borderRadius: '50%',
@@ -94,14 +94,14 @@ function Arc({
           >
             {index}
           </span>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: PRIMARY, margin: 0 }}>{title}</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: PRIMARY, margin: '0' }}>{title}</h2>
         </div>
-        <p style={{ fontSize: 13, color: PRIMARY, margin: 0, marginBottom: 4 }}>{intro}</p>
-        <p style={{ fontSize: 11, color: MUTED, margin: 0 }}>
+        <p style={{ fontSize: 13, color: PRIMARY, margin: '0', marginBottom: 'var(--space-1)' }}>{intro}</p>
+        <p style={{ fontSize: 11, color: MUTED, margin: '0' }}>
           <strong>Audience:</strong> {audience} &nbsp;·&nbsp; <strong>Ship order:</strong> {shipOrder}
         </p>
       </div>
-      <div style={{ display: 'grid', gap: 12 }}>{children}</div>
+      <div style={{ display: 'grid', gap: 'var(--space-4)' }}>{children}</div>
     </section>
   );
 }
@@ -111,11 +111,11 @@ function Arc({
 function AttendanceStrip({ weeks, label }: { weeks: number[]; label?: string }) {
   const total = weeks.filter((w) => w === 1).length;
   return (
-    <div style={{ display: 'grid', gap: 8 }}>
-      <p style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: 26, fontWeight: 700, color: PRIMARY }}>
-        {total}<span style={{ fontSize: 13, fontWeight: 500, color: MUTED, marginLeft: 6 }}>of {weeks.length} weeks</span>
+    <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+      <p style={{ margin: '0', fontFamily: 'var(--font-mono)', fontSize: 26, fontWeight: 700, color: PRIMARY }}>
+        {total}<span style={{ fontSize: 13, fontWeight: 500, color: MUTED, marginLeft: 'var(--space-2)' }}>of {weeks.length} weeks</span>
       </p>
-      <div style={{ display: 'flex', gap: 3 }}>
+      <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
         {weeks.map((w, i) => (
           <div
             key={i}
@@ -131,7 +131,7 @@ function AttendanceStrip({ weeks, label }: { weeks: number[]; label?: string }) 
           />
         ))}
       </div>
-      {label && <p style={{ margin: 0, fontSize: 11, color: MUTED }}>{label}</p>}
+      {label && <p style={{ margin: '0', fontSize: 11, color: MUTED }}>{label}</p>}
     </div>
   );
 }
@@ -139,9 +139,9 @@ function AttendanceStrip({ weeks, label }: { weeks: number[]; label?: string }) 
 function PartnerBars({ data }: { data: { name: string; count: number }[] }) {
   const max = Math.max(...data.map((d) => d.count));
   return (
-    <div style={{ display: 'grid', gap: 6 }}>
+    <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
       {data.map((d) => (
-        <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
           <span style={{ width: 64, fontSize: 12, color: PRIMARY }}>{d.name}</span>
           <div style={{ flex: 1, height: 10, borderRadius: 'var(--radius-pill)', background: 'var(--inner-card-bg)', overflow: 'hidden' }}>
             <div style={{ width: `${(d.count / max) * 100}%`, height: '100%', background: ACCENT, borderRadius: 'var(--radius-pill)' }} />
@@ -165,12 +165,12 @@ function Sparkline({ points, suffix, label }: { points: number[]; suffix?: strin
   const last = points[points.length - 1];
   const avg = Math.round((points.reduce((a, b) => a + b, 0) / points.length) * 100) / 100;
   return (
-    <div style={{ display: 'grid', gap: 6 }}>
-      <div style={{ display: 'flex', gap: 14, alignItems: 'baseline' }}>
-        <p style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: 24, fontWeight: 700, color: PRIMARY }}>
+    <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
+      <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'baseline' }}>
+        <p style={{ margin: '0', fontFamily: 'var(--font-mono)', fontSize: 24, fontWeight: 700, color: PRIMARY }}>
           {suffix === '$' ? '$' : ''}{last.toFixed(suffix === '$' ? 2 : 0)}{suffix && suffix !== '$' ? ` ${suffix}` : ''}
         </p>
-        <p style={{ margin: 0, fontSize: 11, color: MUTED }}>
+        <p style={{ margin: '0', fontSize: 11, color: MUTED }}>
           latest · avg <span style={{ fontFamily: 'var(--font-mono)' }}>{suffix === '$' ? '$' : ''}{avg.toFixed(suffix === '$' ? 2 : 0)}</span>
         </p>
       </div>
@@ -188,7 +188,7 @@ function CircleProgress({ pct, label, context }: { pct: number; label: string; c
   const R = 26;
   const C = 2 * Math.PI * R;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
       <svg width={64} height={64} viewBox="0 0 64 64">
         <circle cx={32} cy={32} r={R} fill="none" stroke="var(--inner-card-bg)" strokeWidth={8} />
         <circle
@@ -202,8 +202,8 @@ function CircleProgress({ pct, label, context }: { pct: number; label: string; c
         </text>
       </svg>
       <div>
-        <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: PRIMARY }}>{label}</p>
-        <p style={{ margin: 0, fontSize: 12, color: MUTED }}>{context}</p>
+        <p style={{ margin: '0', fontSize: 14, fontWeight: 600, color: PRIMARY }}>{label}</p>
+        <p style={{ margin: '0', fontSize: 12, color: MUTED }}>{context}</p>
       </div>
     </div>
   );
@@ -212,11 +212,11 @@ function CircleProgress({ pct, label, context }: { pct: number; label: string; c
 function HeroNumber({ value, unit, caption }: { value: string; unit?: string; caption: string }) {
   return (
     <div>
-      <p style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: 30, fontWeight: 700, color: PRIMARY, lineHeight: 1 }}>
+      <p style={{ margin: '0', fontFamily: 'var(--font-mono)', fontSize: 30, fontWeight: 700, color: PRIMARY, lineHeight: 1 }}>
         {value}
-        {unit && <span style={{ fontSize: 14, fontWeight: 500, color: MUTED, marginLeft: 6 }}>{unit}</span>}
+        {unit && <span style={{ fontSize: 14, fontWeight: 500, color: MUTED, marginLeft: 'var(--space-2)' }}>{unit}</span>}
       </p>
-      <p style={{ margin: 0, marginTop: 6, fontSize: 12, color: MUTED }}>{caption}</p>
+      <p style={{ margin: '0', marginTop: 'var(--space-2)', fontSize: 12, color: MUTED }}>{caption}</p>
     </div>
   );
 }
@@ -225,7 +225,7 @@ function HeroNumber({ value, unit, caption }: { value: string; unit?: string; ca
 
 function StreakBadge() {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
       <div
         style={{
           width: 56, height: 56, borderRadius: '50%',
@@ -236,8 +236,8 @@ function StreakBadge() {
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 700, color: '#fff' }}>7</span>
       </div>
       <div>
-        <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: PRIMARY }}>7 weeks in a row</p>
-        <p style={{ margin: 0, fontSize: 12, color: MUTED }}>Longest: 9 weeks (Feb–Apr). You&rsquo;re close to it.</p>
+        <p style={{ margin: '0', fontSize: 15, fontWeight: 600, color: PRIMARY }}>7 weeks in a row</p>
+        <p style={{ margin: '0', fontSize: 12, color: MUTED }}>Longest: 9 weeks (Feb–Apr). You&rsquo;re close to it.</p>
       </div>
     </div>
   );
@@ -250,18 +250,18 @@ function NextSession() {
         background: 'color-mix(in oklab, var(--accent, #22c55e) 10%, transparent)',
         border: `1px solid ${ACCENT}`,
         borderRadius: 'var(--radius-lg)',
-        padding: 14,
+        padding: 'var(--space-4)',
         display: 'grid',
-        gap: 4,
+        gap: 'var(--space-1)',
       }}
     >
-      <p style={{ margin: 0, fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: ACCENT, textTransform: 'uppercase' }}>
+      <p style={{ margin: '0', fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: ACCENT, textTransform: 'uppercase' }}>
         Next up
       </p>
-      <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: PRIMARY }}>
+      <p style={{ margin: '0', fontSize: 15, fontWeight: 600, color: PRIMARY }}>
         Thursday · Marpole · 7:30 pm
       </p>
-      <p style={{ margin: 0, fontSize: 12, color: MUTED }}>
+      <p style={{ margin: '0', fontSize: 12, color: MUTED }}>
         8 signed up · 4 spots left · sign up before Wed 8pm
       </p>
     </div>
@@ -273,14 +273,14 @@ function NextSession() {
 function FillTimeTrend() {
   const times = [42, 28, 19, 15, 11, 8, 6];
   return (
-    <div style={{ display: 'grid', gap: 8 }}>
-      <div style={{ display: 'flex', gap: 14, alignItems: 'baseline' }}>
-        <p style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: 26, fontWeight: 700, color: ACCENT }}>
-          6<span style={{ fontSize: 13, fontWeight: 500, color: MUTED, marginLeft: 4 }}>min</span>
+    <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+      <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'baseline' }}>
+        <p style={{ margin: '0', fontFamily: 'var(--font-mono)', fontSize: 26, fontWeight: 700, color: ACCENT }}>
+          6<span style={{ fontSize: 13, fontWeight: 500, color: MUTED, marginLeft: 'var(--space-1)' }}>min</span>
         </p>
         <Chip color={ACCENT}>Fastest ever</Chip>
       </div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 48 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--space-1)', height: 48 }}>
         {times.map((t, i) => {
           const h = Math.max(6, (t / Math.max(...times)) * 42);
           return (
@@ -297,7 +297,7 @@ function FillTimeTrend() {
           );
         })}
       </div>
-      <p style={{ margin: 0, fontSize: 11, color: MUTED }}>
+      <p style={{ margin: '0', fontSize: 11, color: MUTED }}>
         Filling 6× faster than 7 weeks ago. Time to consider a 3rd court or split the night.
       </p>
     </div>
@@ -312,9 +312,9 @@ function WaitlistPressure() {
     { name: 'Chen',  times: 2 },
   ];
   return (
-    <div style={{ display: 'grid', gap: 8 }}>
+    <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
       <HeroNumber value="4" caption="regulars repeatedly on the waitlist — might churn if we don't make room" />
-      <div style={{ display: 'grid', gap: 4, marginTop: 4 }}>
+      <div style={{ display: 'grid', gap: 'var(--space-1)', marginTop: 'var(--space-1)' }}>
         {names.map((n) => (
           <div key={n.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
             <span style={{ color: PRIMARY }}>{n.name}</span>
@@ -336,17 +336,17 @@ function BirdSupply() {
   const remaining = 52;
   const runway = 4;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-05)' }}>
         <span className="material-icons" style={{ fontSize: 32, color: runway < 3 ? WARN : ACCENT }}>
           inventory_2
         </span>
       </div>
       <div>
-        <p style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 700, color: PRIMARY }}>
+        <p style={{ margin: '0', fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 700, color: PRIMARY }}>
           {remaining}<span style={{ fontSize: 12, fontWeight: 500, color: MUTED }}> tubes</span>
         </p>
-        <p style={{ margin: 0, fontSize: 12, color: MUTED }}>
+        <p style={{ margin: '0', fontSize: 12, color: MUTED }}>
           ~{runway} weeks at current pace · reorder by mid-May
         </p>
       </div>
@@ -368,12 +368,12 @@ function AttendanceRoster() {
     { name: 'Omar',  last: '6 weeks ago' },
   ];
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
+    <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
       <div>
-        <p style={{ margin: 0, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', color: ACCENT, textTransform: 'uppercase' }}>
+        <p style={{ margin: '0', fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', color: ACCENT, textTransform: 'uppercase' }}>
           Anchors
         </p>
-        <div style={{ display: 'grid', gap: 4, marginTop: 4 }}>
+        <div style={{ display: 'grid', gap: 'var(--space-1)', marginTop: 'var(--space-1)' }}>
           {top.map((p) => (
             <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
               <span style={{ color: PRIMARY }}>{p.name}</span>
@@ -385,10 +385,10 @@ function AttendanceRoster() {
         </div>
       </div>
       <div>
-        <p style={{ margin: 0, fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', color: WARN, textTransform: 'uppercase' }}>
+        <p style={{ margin: '0', fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', color: WARN, textTransform: 'uppercase' }}>
           Drifting — send a nudge?
         </p>
-        <div style={{ display: 'grid', gap: 4, marginTop: 4 }}>
+        <div style={{ display: 'grid', gap: 'var(--space-1)', marginTop: 'var(--space-1)' }}>
           {inactive.map((p) => (
             <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
               <span style={{ color: PRIMARY }}>{p.name}</span>
@@ -411,7 +411,7 @@ function BirdValueScatter() {
   ];
   const W = 260, H = 120, pad = 24;
   return (
-    <div style={{ display: 'grid', gap: 6 }}>
+    <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%">
         <line x1={pad} x2={W - pad} y1={H - pad} y2={H - pad} stroke={MUTED} strokeOpacity={0.2} />
         <line x1={pad} x2={pad} y1={pad} y2={H - pad} stroke={MUTED} strokeOpacity={0.2} />
@@ -428,7 +428,7 @@ function BirdValueScatter() {
           );
         })}
       </svg>
-      <p style={{ margin: 0, fontSize: 11, color: MUTED }}>
+      <p style={{ margin: '0', fontSize: 11, color: MUTED }}>
         Victor Master is the sweet spot — high quality at a reasonable $/tube. Buy more of those.
       </p>
     </div>
@@ -439,11 +439,11 @@ function BirdValueScatter() {
 
 function SessionSetting() {
   return (
-    <div style={{ display: 'grid', gap: 4 }}>
-      <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: PRIMARY }}>
+    <div style={{ display: 'grid', gap: 'var(--space-1)' }}>
+      <p style={{ margin: '0', fontSize: 18, fontWeight: 700, color: PRIMARY }}>
         Thursday · April 24 · 7:30–9:30 pm
       </p>
-      <p style={{ margin: 0, fontSize: 12, color: MUTED }}>
+      <p style={{ margin: '0', fontSize: 12, color: MUTED }}>
         Marpole Community Centre · 2 courts · 12 players
       </p>
     </div>
@@ -452,15 +452,15 @@ function SessionSetting() {
 
 function DemandSignal() {
   return (
-    <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+    <div style={{ display: 'flex', gap: 'var(--space-5)', alignItems: 'center' }}>
       <div>
-        <p style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 700, color: PRIMARY }}>14 min</p>
-        <p style={{ margin: 0, fontSize: 11, color: MUTED }}>to fill</p>
+        <p style={{ margin: '0', fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 700, color: PRIMARY }}>14 min</p>
+        <p style={{ margin: '0', fontSize: 11, color: MUTED }}>to fill</p>
       </div>
       <div style={{ width: 1, height: 36, background: 'var(--inner-card-border)' }} />
       <div>
-        <p style={{ margin: 0, fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 700, color: WARN }}>3</p>
-        <p style={{ margin: 0, fontSize: 11, color: MUTED }}>waitlisted at start</p>
+        <p style={{ margin: '0', fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 700, color: WARN }}>3</p>
+        <p style={{ margin: '0', fontSize: 11, color: MUTED }}>waitlisted at start</p>
       </div>
     </div>
   );
@@ -468,11 +468,11 @@ function DemandSignal() {
 
 function SessionReceipt() {
   return (
-    <div style={{ display: 'grid', gap: 4, fontSize: 13 }}>
+    <div style={{ display: 'grid', gap: 'var(--space-1)', fontSize: 13 }}>
       <Row k="Courts" v="2 × $45 = $90.00" />
       <Row k="Birds" v="2 tubes Yonex AS-50 · $28.00" />
       <Row k="Total" v="$118.00" strong />
-      <div style={{ height: 1, background: 'var(--inner-card-border)', margin: '6px 0' }} />
+      <div style={{ height: 1, background: 'var(--inner-card-border)', margin: 'var(--space-2) 0' }} />
       <Row k="Per person" v="$11.80 (10 paid)" strong accent />
     </div>
   );
@@ -498,13 +498,13 @@ function Row({ k, v, strong, accent }: { k: string; v: string; strong?: boolean;
 function SessionRoster() {
   const played = ['Grant', 'Kevin', 'Luna', 'James', 'Anna', 'Daiyu', 'Min', 'Chen', 'Tara', 'Nate'];
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
       {played.map((name) => (
         <span
           key={name}
           style={{
             fontSize: 11,
-            padding: '4px 10px',
+            padding: 'var(--space-1) var(--space-4)',
             borderRadius: 'var(--radius-pill)',
             background: 'var(--inner-card-bg)',
             border: '1px solid var(--inner-card-border)',
@@ -520,8 +520,8 @@ function SessionRoster() {
 
 function PaymentLoopClose() {
   return (
-    <div style={{ display: 'grid', gap: 6 }}>
-      <div style={{ display: 'flex', gap: 2, height: 8, borderRadius: 'var(--radius-pill)', overflow: 'hidden' }}>
+    <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
+      <div style={{ display: 'flex', gap: 'var(--space-05)', height: 8, borderRadius: 'var(--radius-pill)', overflow: 'hidden' }}>
         <div style={{ flex: 10, background: ACCENT }} />
         <div style={{ flex: 2, background: 'var(--inner-card-border)' }} />
       </div>
@@ -537,17 +537,17 @@ function PaymentLoopClose() {
 
 export default function StatsPlaygroundPage() {
   return (
-    <main style={{ maxWidth: 720, margin: '0 auto', padding: '2rem 1rem', display: 'grid', gap: 36 }}>
+    <main style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--space-8) var(--space-5)', display: 'grid', gap: 'var(--space-8)' }}>
       <div>
         <Link
           href="/design"
-          style={{ color: MUTED, fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+          style={{ color: MUTED, fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)' }}
         >
           <span className="material-icons" style={{ fontSize: 16 }}>arrow_back</span>
           Design index
         </Link>
-        <h1 className="bpm-h1" style={{ marginTop: 12, marginBottom: 6 }}>Stats — three narratives</h1>
-        <p className="bpm-body" style={{ color: MUTED, marginTop: 0 }}>
+        <h1 className="bpm-h1" style={{ marginTop: 'var(--space-4)', marginBottom: 'var(--space-2)' }}>Stats — three narratives</h1>
+        <p className="bpm-body" style={{ color: MUTED, marginTop: '0' }}>
           Each arc is a sequence of cards with an emotional beat. Pick an arc to ship; cherry-picking single cards across
           arcs dilutes the story. All cards here are derivable today — no schema changes.
         </p>
@@ -646,12 +646,12 @@ export default function StatsPlaygroundPage() {
       {/* ── RECOMMENDATION ─────────────────────────────────────────────── */}
       <section
         className="glass-card"
-        style={{ padding: 20, display: 'grid', gap: 10, borderLeft: `3px solid ${ACCENT}` }}
+        style={{ padding: 'var(--space-6)', display: 'grid', gap: 'var(--space-4)', borderLeft: `3px solid ${ACCENT}` }}
       >
-        <p style={{ margin: 0, fontSize: 12, color: ACCENT, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+        <p style={{ margin: '0', fontSize: 12, color: ACCENT, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
           Proposed ship order
         </p>
-        <ol style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 6, fontSize: 13, color: PRIMARY }}>
+        <ol style={{ margin: '0', paddingLeft: 'var(--space-6)', display: 'grid', gap: 'var(--space-2)', fontSize: 13, color: PRIMARY }}>
           <li>
             <strong>Arc 1 · Your season so far</strong> — the Stats tab turns into a personal recap. Biggest retention pull,
             every member benefits, no admin gate.
@@ -665,7 +665,7 @@ export default function StatsPlaygroundPage() {
             and it&rsquo;s fine without it for now.
           </li>
         </ol>
-        <p style={{ margin: 0, fontSize: 12, color: MUTED }}>
+        <p style={{ margin: '0', fontSize: 12, color: MUTED }}>
           Every card on this page is derivable from what we already collect. Skill progression stays &ldquo;Coming soon&rdquo; until we
           start writing <code className="bpm-mono" style={{ color: ACCENT }}>skillsHistory</code> rows — bank that data now,
           ship the card later.
