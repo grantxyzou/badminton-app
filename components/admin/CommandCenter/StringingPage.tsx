@@ -12,6 +12,7 @@ import type { StringingStatus } from '@/lib/stringing';
 import type { StringingJob } from '@/lib/types';
 import StringingJobDetail from './StringingJobDetail';
 import StringingIntake from './StringingIntake';
+import OfferedStringsCard from './OfferedStringsCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -196,6 +197,11 @@ export default function StringingPage({ onBack }: Props) {
             </button>
           </div>
         </div>
+
+        {/* What the club stocks — the list behind the request form's dropdown.
+            Sits with the shop sign because both are "how the service is set
+            up" rather than "what is on the bench right now". */}
+        <OfferedStringsCard />
 
         {/* Mine / All. The wrapper needs `flex` and each tab `flex-1` —
             .segment-control sets no display, so without it the active pill

@@ -176,3 +176,36 @@ export function isValidTension(lb: unknown): lb is number {
 export function formatJobNo(sequence: number): string {
   return `J-${String(Math.max(0, Math.trunc(sequence))).padStart(4, '0')}`;
 }
+
+/**
+ * Crosses sit ABOVE mains, by 2 lb.
+ *
+ * Standard practice, not a preference: the cross strings are shorter and are
+ * woven over and under the mains, so at equal reference tension they end up
+ * looser in the finished bed. Adding a couple of pounds is what makes the two
+ * planes feel matched. Two pounds is also roughly the 10% that stringers quote
+ * as a rule of thumb at the tensions this club actually uses.
+ *
+ * This is why the simple request form shows ONE number. A player asking for
+ * "26" means a 26/28 job, and making them enter both invites a pair that no
+ * stringer would have chosen. Anyone who genuinely wants an unusual pair says
+ * so through the custom path, which is exactly what that path is for.
+ */
+export const CROSS_OFFSET_LB = 2;
+
+/** The crosses that go with a given mains, clamped to what a machine can hold. */
+export function crossesFor(mains: number): number {
+  return Math.min(TENSION_MAX_LB, Math.max(TENSION_MIN_LB, mains + CROSS_OFFSET_LB));
+}
+
+/**
+ * Is this pair the conventional one?
+ *
+ * Used to tell a custom request apart from a simple one after the fact, and to
+ * decide whether a hint is worth showing. Deliberately not enforced: a player
+ * who wants 28/28 is allowed to have it, and refusing would be the app
+ * overruling somebody about their own racket.
+ */
+export function isConventionalPair(mains: number, crosses: number): boolean {
+  return crosses === crossesFor(mains);
+}

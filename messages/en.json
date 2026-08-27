@@ -1,6 +1,15 @@
 {
   "home": {
     "stringing": {
+        "requestTitle": "Request stringing",
+        "requestSubtitle": "Intake form",
+        "whichString": "Which string?",
+        "pickString": "Pick a string",
+        "tension": "Tension",
+        "customRequest": "Custom request",
+        "standardRequest": "Back to the usual",
+        "noStringsYet": "Grant hasn't listed what he stocks yet, so tell him what you'd like.",
+        "unusualPair": "Unusual pair — most rackets go {suggested} on the crosses.",
         "subtitleOpen": "Hand Grant your racket at the session and he'll take it from there.",
         "subtitleActive": "Here's where your racket is up to.",
         "openBadge": "Open",
@@ -12,7 +21,6 @@
           "ready_for_you": "Ready for you",
           "done": "Picked up"
         },
-        "requestTitle": "Request a restring",
         "requestBody": "Tell Grant what you'd like. Hand him the racket at the session.",
         "sendCta": "Send the request",
         "requestSending": "Sending…",
@@ -25,7 +33,6 @@
         "lb": "lb",
         "decrease": "Less {field}",
         "increase": "More {field}",
-        "priceLater": "Grant confirms the price when he takes the racket.",
         "error": {
           "generic": "Couldn't send that — give it another go.",
           "shop_closed": "Grant's not taking rackets right now. Try again another week.",
@@ -750,6 +757,16 @@
   },
   "admin": {
     "stringing": {
+        "strings": {
+          "title": "Strings you stock",
+          "hint": "These become the dropdown on a player's request.",
+          "empty": "Nothing listed yet — players will type their own until you add some.",
+          "placeholder": "e.g. BG80 white",
+          "add": "Add",
+          "remove": "Remove {name}",
+          "loadError": "Couldn't load your string list — refresh to retry.",
+          "saveError": "Couldn't save that — give it another go."
+        },
         "lb": "lb",
         "heldBy": "With {name}",
         "unclaimed": "Nobody's taken this one yet.",

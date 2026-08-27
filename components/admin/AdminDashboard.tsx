@@ -623,12 +623,6 @@ function Dashboard({ refreshKey, setView }: DashboardProps) {
           <span className="material-icons icon-sm">campaign</span>
           Releases
         </button>
-        {isFlagOn('NEXT_PUBLIC_FLAG_STRINGING') && (
-          <button onClick={() => setView('stringing')} className="btn-ghost flex-1">
-            <span className="material-icons icon-sm">sports_tennis</span>
-            Bench
-          </button>
-        )}
       </div>
 
       {/* Next Week */}

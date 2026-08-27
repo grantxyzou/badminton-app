@@ -50,10 +50,26 @@ function wrap(node: React.ReactNode) {
   );
 }
 
+/**
+ * The bench page loads three things: jobs, the shop sign, and the offered
+ * string list. A mock that answers only the first makes the OTHER cards render
+ * their own error states, and then an assertion about "the" error on screen
+ * finds two. Answer everything; assert on one.
+ */
 function respondJobs(jobs: StringingJob[]) {
   vi.stubGlobal(
     'fetch',
-    vi.fn().mockResolvedValue({ ok: true, json: async () => ({ jobs, view: 'bench' }) } as Response),
+    vi.fn().mockImplementation((url: string) =>
+      Promise.resolve({
+        ok: true,
+        json: async () => {
+          const u = String(url);
+          if (u.includes('/shop')) return { open: false };
+          if (u.includes('/strings')) return { strings: [] };
+          return { jobs, view: 'bench' };
+        },
+      } as Response),
+    ),
   );
 }
 
@@ -142,10 +158,12 @@ describe('the shop sign', () => {
 
 describe('a failed load is not an empty bench', () => {
   it('shows an error, never the empty state', async () => {
+    // Everything on the page fails here, so assert on the BENCH's own message
+    // rather than on "an alert" — the strings card legitimately raises one too.
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     wrap(<StringingPage onBack={() => {}} />);
 
-    expect(await screen.findByRole('alert')).toBeDefined();
+    expect(await screen.findByText(/Couldn't load the bench/i)).toBeDefined();
     expect(screen.queryByText('Nothing on the bench.')).toBeNull();
   });
 
@@ -154,7 +172,7 @@ describe('a failed load is not an empty bench', () => {
     wrap(<StringingPage onBack={() => {}} />);
 
     expect(await screen.findByText('Nothing on the bench.')).toBeDefined();
-    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText(/Couldn't load the bench/i)).toBeNull();
   });
 });
 

@@ -137,15 +137,17 @@ describe('once the admin opens the shop', () => {
     expect(jobsCall).toContain('view=player');
   });
 
-  it('opens the request sheet, and the sheet asks for no price', async () => {
+  it('opens the request sheet, and the sheet asks for no price at all', async () => {
     mockApi(true);
     wrap();
     fireEvent.click(await screen.findByRole('button', { name: 'Request a restring' }));
 
     await waitFor(() => expect(screen.getByLabelText('Which racket?')).toBeDefined());
     // A player proposing a price would invite a negotiation the app cannot
-    // hold, and the exact figure is meant to live on one side of the wall.
+    // hold. No field, and no longer any promise about one either — the sheet
+    // is an intake form, not a quote.
     expect(screen.queryByLabelText(/price/i)).toBeNull();
-    expect(screen.getByText(/Grant confirms the price/i)).toBeDefined();
+    expect(screen.queryByText(/confirms the price/i)).toBeNull();
+    expect(screen.getByText('Intake form')).toBeDefined();
   });
 });
