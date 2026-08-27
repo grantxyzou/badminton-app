@@ -42,6 +42,16 @@ export interface CardHeaderProps {
   action?: ReactNode;
   /** Icon color token. Defaults to the accent. */
   iconColor?: string;
+  /**
+   * Render the title as a card ROW title rather than a heading — display
+   * family at body size, `.bpm-card-title`.
+   *
+   * For a card that names a thing rather than announces one. Home's account
+   * group uses it so "Your balance" and "Stringing service" agree with each
+   * other and with the section labels above them; `.bpm-h3` is a size up and
+   * had the two cards in one group disagreeing about how loud they were.
+   */
+  compact?: boolean;
 }
 
 export default function CardHeader({
@@ -51,6 +61,7 @@ export default function CardHeader({
   badge,
   action,
   iconColor = 'var(--accent, #22c55e)',
+  compact = false,
 }: CardHeaderProps) {
   const trailing = badge ?? action ?? null;
 
@@ -66,7 +77,7 @@ export default function CardHeader({
         </span>
       )}
       <div style={{ minWidth: 0 }}>
-        <h3 className="bpm-h3 m-0">{title}</h3>
+        <h3 className={`${compact ? 'bpm-card-title' : 'bpm-h3'} m-0`}>{title}</h3>
         {subtitle && (
           <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '2px 0 0' }}>
             {subtitle}
