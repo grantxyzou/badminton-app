@@ -134,3 +134,47 @@ describe('ProviderButtons with server-resolved availability', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Google branding.
+ *
+ * Two failure modes, and the second is the one worth a canary. The button can
+ * quietly lose the mark and become a generic pill; and — likelier, because it
+ * looks like tidying — someone can route the logo's colours through design
+ * tokens during a token sweep. Google's guidelines forbid recolouring the mark,
+ * so a token is not merely unnecessary there, it is a promise (that a theme may
+ * change it) which must never be kept.
+ */
+describe('ProviderButtons Google branding', () => {
+  it('renders the Google mark inside the button, not a bare label', () => {
+    const { container } = renderButtons({ available: ['google'] });
+    const link = screen.getByText('Continue with Google').closest('a');
+    expect(link?.querySelector('svg')).not.toBeNull();
+    expect(link?.className).toContain('btn-google');
+    expect(container.querySelectorAll('svg path').length).toBe(4);
+  });
+
+  it('keeps the mark literal — never themed, never tokenised', () => {
+    const { container } = renderButtons({ available: ['google'] });
+    const fills = Array.from(container.querySelectorAll('svg path')).map((p) =>
+      p.getAttribute('fill'),
+    );
+    expect(fills).toEqual(['#EA4335', '#4285F4', '#FBBC05', '#34A853']);
+    // Explicit about the failure this guards, so a future sweep reads the why.
+    for (const fill of fills) expect(fill?.startsWith('var(')).toBe(false);
+  });
+
+  it('does NOT dress Apple in the Google button', () => {
+    // Sign in with Apple has its own mandatory button spec. Reusing Google's
+    // surface for it would breach both brands at once.
+    renderButtons({ available: ['apple'] });
+    const link = screen.getByText('Continue with Apple').closest('a');
+    expect(link?.className).not.toContain('btn-google');
+    expect(link?.querySelector('svg')).toBeNull();
+  });
+
+  it('hides the mark from the accessibility tree — the label already says Google', () => {
+    const { container } = renderButtons({ available: ['google'] });
+    expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+  });
+});
