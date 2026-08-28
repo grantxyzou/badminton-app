@@ -275,6 +275,7 @@
       "methodsSubtitle": "可以用来回到账号的方式。",
       "methodPin": "PIN 码",
       "methodPassword": "邮箱和密码",
+      "methodEmailShort": "邮箱",
       "methodPinOnly": "目前 PIN 码是你唯一的登录方式。",
       "disconnect": "断开连接",
       "disconnectConfirm": "确定断开？",

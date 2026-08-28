@@ -12,7 +12,8 @@ import ReportProblemSheet from './ReportProblemSheet';
 import InstallSheet from './InstallSheet';
 import SignInForm from './SignInForm';
 import ProviderButtons, { type Provider as AuthProvider } from './auth/ProviderButtons';
-import SignInMethodsCard from './auth/SignInMethodsCard';
+import SignInMethodsSheet from './auth/SignInMethodsSheet';
+import { useSignInMethods, methodsSummary } from './auth/useSignInMethods';
 import EmailSignInForm from './auth/EmailSignInForm';
 import EmailSignUpSheet from './auth/EmailSignUpSheet';
 import ForgotPasswordSheet from './auth/ForgotPasswordSheet';
@@ -87,6 +88,15 @@ export default function ProfileTab({
   // from AdminDashboard, which is the only place in the app that already does
   // sub-screens.
   const [view, setView] = useState<'root' | 'stats-privacy'>('root');
+  const [methodsOpen, setMethodsOpen] = useState(false);
+  // Read once here so the row's summary and the sheet's body agree.
+  //
+  // Gated on `identity` as well as the flag: the row only exists for a
+  // signed-in member, and the anonymous card must not probe at all -- the
+  // server has already resolved availability by the time that card renders,
+  // and a probe would reflow it. Same shape as `useStatsPrivacy` above, which
+  // takes null when there is nobody to read for.
+  const methodsState = useSignInMethods(!!identity && isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS'));
   const privacyState = useStatsPrivacy(identity?.name ?? null);
   // Called unconditionally, and gated by its own argument, because the two
   // early returns below (anonymous, and the Stats & privacy sub-screen) sit
@@ -102,6 +112,7 @@ export default function ProfileTab({
   const [installed, setInstalled] = useState(false);
   const [releases, setReleases] = useState<Release[] | null>([]);
   const tSettings = useTranslations('profile.settings');
+  const tAuth = useTranslations('profile.auth');
   const tNav = useTranslations('nav');
   const tPush = useTranslations('profile.push');
   const tDelete = useTranslations('profile.deleteAccount');
@@ -520,9 +531,24 @@ export default function ProfileTab({
       )}
 
       <ProfileEyebrow>{tSettings('title')}</ProfileEyebrow>
-      {isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS') && <SignInMethodsCard />}
       <SettingsList
         rows={[
+          // Was a permanently-expanded card above this list — its own heading,
+          // a checklist, a bordered provider button and a "Not now", wedged
+          // between two one-line rows. It is a row now. The nudge survives as
+          // `accent`, the same signal the admin row uses for a live count.
+          ...(isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS')
+            ? [{
+                icon: 'lock',
+                label: tAuth('methodsTitle'),
+                meta: methodsSummary(methodsState.methods, {
+                  pin: tAuth('methodPin'),
+                  email: tAuth('methodEmailShort'),
+                }),
+                accent: methodsState.methods?.nudge === true,
+                onClick: () => setMethodsOpen(true),
+              }]
+            : []),
           // Batch B (expanded): PIN management is now member-scoped via
           // PATCH /api/members/me — works regardless of whether the user
           // has a session player. The previous "Sign up for a session
@@ -671,6 +697,11 @@ export default function ProfileTab({
         name={identity?.name}
       />
 
+      <SignInMethodsSheet
+        open={methodsOpen}
+        onClose={() => setMethodsOpen(false)}
+        state={methodsState}
+      />
       <InstallSheet open={installOpen} onClose={() => setInstallOpen(false)} />
       <PushSheet
         open={pushOpen}

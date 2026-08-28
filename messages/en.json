@@ -275,6 +275,7 @@
       "methodsSubtitle": "Ways to get back into your account.",
       "methodPin": "PIN",
       "methodPassword": "Email and password",
+      "methodEmailShort": "Email",
       "methodPinOnly": "A PIN is your only way in right now.",
       "disconnect": "Disconnect",
       "disconnectConfirm": "Disconnect?",
