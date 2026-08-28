@@ -85,6 +85,46 @@ export function usePush(): UsePushResult {
     void probe();
   }, [probe]);
 
+/**
+ * Wait for THIS registration to have an active worker.
+ *
+ * NOT `navigator.serviceWorker.ready`, which is what used to be here and is why
+ * "Turn on notifications" hung forever with no error. That promise resolves
+ * when a worker controls THE CURRENT PAGE — and it never rejects, it just waits
+ * indefinitely. The page never qualifies: `/bpm/` 308-redirects to `/bpm`, and
+ * `/bpm` is not inside a `/bpm/` scope (prefix match, same trailing-slash trap
+ * as the manifest scope and the OAuth landing).
+ *
+ * Push does not need page control at all — it needs an ACTIVE worker in the
+ * registration we just made. `pushManager` lives on the registration, and
+ * `notificationclick` opens a URL rather than touching the page. So wait for
+ * the thing we actually depend on.
+ *
+ * Times out rather than hanging: a stuck install must surface as an error the
+ * sheet can render, never as a spinner with no way out.
+ */
+async function activeWorker(reg: ServiceWorkerRegistration, timeoutMs = 10_000): Promise<void> {
+  if (reg.active) return;
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('sw_activation_timeout')), timeoutMs);
+    const check = () => {
+      if (reg.active) {
+        clearTimeout(timer);
+        resolve();
+      }
+    };
+    // `installing` and `waiting` are the two states an activation passes
+    // through; either can be the one present when we arrive.
+    for (const worker of [reg.installing, reg.waiting]) {
+      worker?.addEventListener('statechange', check);
+    }
+    reg.addEventListener('updatefound', () => {
+      reg.installing?.addEventListener('statechange', check);
+    });
+    check();
+  });
+}
+
   const enable = useCallback(async () => {
     setError(null);
     setBusy(true);
@@ -95,7 +135,7 @@ export function usePush(): UsePushResult {
         scope: `${BASE}/`,
         updateViaCache: 'none',
       });
-      await navigator.serviceWorker.ready;
+      await activeWorker(registration);
 
       const permission = await Notification.requestPermission();
       if (permission === 'denied') {

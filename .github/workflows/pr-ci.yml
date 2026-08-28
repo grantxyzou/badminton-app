@@ -77,3 +77,21 @@ jobs:
           NEXT_PUBLIC_FLAG_SETTLE: 'true'
           NEXT_PUBLIC_FLAG_LEDGER: 'true'
           NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE: 'true'
+          # Mirrors deploy-next.yml. CI must BUILD what production builds:
+          # 13 flags and the VAPID key were missing here on 2026-08-28, so every
+          # PR was compiled as a materially different app than the one that
+          # ships. scripts/check-flag-sync.mjs now checks BOTH workflows.
+          NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: 'true'
+          NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: 'true'
+          NEXT_PUBLIC_FLAG_INSIGHT_CARDS: 'true'
+          NEXT_PUBLIC_FLAG_KUDOS: 'true'
+          NEXT_PUBLIC_FLAG_NAV_RAIL: 'true'
+          NEXT_PUBLIC_FLAG_PUSH_NOTIFY: 'true'
+          NEXT_PUBLIC_FLAG_SKILL_ASSESS: 'true'
+          NEXT_PUBLIC_FLAG_SKILL_CALIBRATION: 'true'
+          NEXT_PUBLIC_FLAG_SKILL_DRILLS: 'true'
+          NEXT_PUBLIC_FLAG_SKILL_LEVEL: 'true'
+          NEXT_PUBLIC_FLAG_SKILL_SMOOTHING: 'true'
+          NEXT_PUBLIC_FLAG_STRINGING: 'true'
+          NEXT_PUBLIC_FLAG_VISUAL_FIELDS: 'true'
+          NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.VAPID_PUBLIC_KEY }}
