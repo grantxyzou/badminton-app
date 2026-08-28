@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import StatusBanner from '@/components/primitives/StatusBanner';
 import CardHeader from '@/components/primitives/CardHeader';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import { useOnline } from '@/lib/useOnline';
@@ -211,6 +212,27 @@ export default function StringingCard({ hasIdentity }: Props) {
           </button>
         ) : (
           header
+        )}
+
+        {/* THE ONE STAGE WORTH ANNOUNCING.
+            `ready_for_you` is the only player stage that asks for an action —
+            come and collect it — and until now it was a two-word line inside a
+            card that is COLLAPSED by default, so a finished racket looked
+            exactly like one still on the bench. This is the in-app half of the
+            notification seam (lib/stringingNotify.ts): the email interrupts
+            people who have an address, and this is what reaches everyone else,
+            in their own locale, without any delivery at all.
+
+            Deliberately NOT dismissible. It is not an alert about an event, it
+            is the current state of the racket — it should stay until the job
+            leaves `ready_for_you`, which happens when they pick it up. */}
+        {active?.stage === 'ready_for_you' && (
+          <StatusBanner
+            tone="success"
+            icon="check_circle"
+            title={t('ready.title')}
+            body={t('ready.body', { racket: active.racketLabel, jobNo: active.jobNo })}
+          />
         )}
 
         {/* THE RAIL WAITS UNTIL THERE IS A JOB, and then it is what the
