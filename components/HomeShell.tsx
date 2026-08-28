@@ -268,8 +268,9 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onVisible);
     };
-    // sessionIdRef is a ref; setters are stable. Mount-once is intended.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // sessionIdRef is a ref and the setters are stable, so the empty dep array
+    // is complete rather than suppressed — mount-once is intended and the rule
+    // agrees. (A disable directive sat here and was doing nothing.)
   }, []);
 
   useEffect(() => {

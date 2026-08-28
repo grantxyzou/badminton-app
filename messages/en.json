@@ -79,8 +79,8 @@
       "networkError": "Can't reach the server — check your connection and try again.",
       "offline": "You're offline — reconnect to sign up.",
       "nameRequired": "Add your name to sign up",
-      "pinRequired": "Set a 4-digit PIN to sign up",
-      "pinTooCommon": "Try a less common PIN",
+      "pinRequired": "This name has a PIN. Sign in instead.",
+      "pinTooCommon": "Pick a different PIN — try something less common.",
       "pinLabel": "PIN",
       "pinHint": "Required. Use this PIN to recover access if you change phones.",
       "genericFailure": "That didn't go through — give it another try.",
@@ -96,13 +96,10 @@
       "closesOn": "Sign up closes on {date}",
       "closedPreviously": "Sign-ups closed on {date}",
       "alreadyPlayer": "Already a player? Sign in.",
-      "pinRequired": "This name has a PIN. Sign in instead.",
-      "pinLabel": "PIN",
       "pinCreateLabel": "Create a PIN",
       "pinConfirmLabel": "Confirm PIN",
       "pinMismatch": "Those two don't match — give it another go.",
       "pinIncorrect": "That didn't match. Try again.",
-      "pinTooCommon": "Pick a different PIN — try something less common.",
       "forgotPin": "Forgot your PIN?",
       "pinPrompt": {
         "cardTitle": "Add a recovery PIN",
@@ -175,8 +172,12 @@
     }
   },
   "pages": {
-    "signup": { "title": "Sign-Up" },
-    "learn": { "title": "Learn" },
+    "signup": {
+      "title": "Sign-Up"
+    },
+    "learn": {
+      "title": "Learn"
+    },
     "admin": {
       "title": "Admin",
       "signInHelp": "Sign in with your name and PIN",
@@ -382,6 +383,7 @@
       "releaseNotes": "What's new",
       "logout": "Log out",
       "reportProblem": "Report a problem",
+      "notifications": "Notifications",
       "install": "Add to Home Screen"
     },
     "unpaid": {
@@ -389,6 +391,27 @@
       "total": "Total",
       "loadError": "Couldn't load — refresh to retry.",
       "signInAgain": "Sign in on Profile to see what you owe."
+    },
+    "push": {
+      "title": "Notifications",
+      "close": "Close",
+      "checking": "Checking…",
+      "offBody": "Get a notification when sign-ups open for the week. About one a week — you can turn it off any time.",
+      "onBody": "You'll get a notification when sign-ups open for the week.",
+      "turnOn": "Turn on notifications",
+      "turnOff": "Turn off notifications",
+      "working": "Just a moment…",
+      "blocked": "Notifications are blocked for BPM in your browser settings. You'll need to allow them there — the app can't ask again.",
+      "iosNeedsInstall": "On iPhone, notifications only work once BPM is on your Home Screen. Add it, reopen from the Home Screen, then come back here.",
+      "iosInstallCta": "Show me how",
+      "unsupported": "This browser can't do notifications. Try Chrome on Android, or add BPM to your Home Screen on iPhone.",
+      "notConfigured": "Notifications aren't set up on this server yet. Nothing to do on your end.",
+      "offlineHint": "You're offline — reconnect to change this.",
+      "errorAuth": "Sign in first, then turn notifications on.",
+      "errorGeneric": "That didn't save. Give it another go in a moment.",
+      "metaOn": "On",
+      "metaOff": "Off",
+      "metaBlocked": "Blocked"
     }
   },
   "report": {

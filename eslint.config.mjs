@@ -57,6 +57,13 @@ const config = [
       '.remember/**',
       'next-env.d.ts',
       'coverage/**',
+      // Linked git worktrees are separate CHECKOUTS of this repo, at whatever
+      // commit that branch sits on. Linting them reports another branch's code
+      // as errors in this one — 6114 of them on 2026-08-28, which buries the
+      // real count and makes `npm run lint` useless as a gate. CI never saw it
+      // (the directory is gitignored, so it is not in the repo), which is
+      // exactly why it went unnoticed locally for so long.
+      '.worktrees/**',
     ],
   },
   ...coreWebVitals,

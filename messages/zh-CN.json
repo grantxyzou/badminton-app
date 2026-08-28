@@ -79,8 +79,8 @@
       "networkError": "连不上服务器 — 检查下网络再试一次。",
       "offline": "您已离线 — 重新连接后即可报名。",
       "nameRequired": "填上你的名字就能报名",
-      "pinRequired": "请设置 4 位 PIN 后报名",
-      "pinTooCommon": "换一个不那么常见的 PIN 吧",
+      "pinRequired": "该名字已设置 PIN，请登录。",
+      "pinTooCommon": "请换一个 PIN——选一个不那么常见的。",
       "pinLabel": "PIN",
       "pinHint": "必填。换设备时用此 PIN 恢复账户。",
       "genericFailure": "没报上 — 再试一次吧。",
@@ -96,13 +96,10 @@
       "closesOn": "报名截止于 {date}",
       "closedPreviously": "报名已于 {date} 截止",
       "alreadyPlayer": "已注册？登录账号。",
-      "pinRequired": "该名字已设置 PIN，请登录。",
-      "pinLabel": "PIN",
       "pinCreateLabel": "设置 PIN",
       "pinConfirmLabel": "确认 PIN",
       "pinMismatch": "两次输入不一样，再试一次吧。",
       "pinIncorrect": "信息不匹配，请重试。",
-      "pinTooCommon": "请换一个 PIN——选一个不那么常见的。",
       "forgotPin": "忘记 PIN？",
       "pinPrompt": {
         "cardTitle": "添加恢复 PIN",
@@ -175,8 +172,12 @@
     }
   },
   "pages": {
-    "signup": { "title": "报名" },
-    "learn": { "title": "进阶技能" },
+    "signup": {
+      "title": "报名"
+    },
+    "learn": {
+      "title": "进阶技能"
+    },
     "admin": {
       "title": "管理",
       "signInHelp": "用你的名字和 PIN 登录",
@@ -382,6 +383,7 @@
       "releaseNotes": "更新日志",
       "logout": "退出登录",
       "reportProblem": "报告问题",
+      "notifications": "通知",
       "install": "添加到主屏幕"
     },
     "unpaid": {
@@ -389,6 +391,27 @@
       "total": "合计",
       "loadError": "加载失败——请刷新重试。",
       "signInAgain": "请在“我的”页面登录以查看欠款。"
+    },
+    "push": {
+      "title": "通知",
+      "close": "关闭",
+      "checking": "检查中…",
+      "offBody": "本周报名开放时接收通知。大约每周一次 — 随时可以关闭。",
+      "onBody": "本周报名开放时，你会收到通知。",
+      "turnOn": "开启通知",
+      "turnOff": "关闭通知",
+      "working": "稍等片刻…",
+      "blocked": "浏览器设置中已禁用 BPM 的通知。需要在那里手动允许 — 应用无法再次请求。",
+      "iosNeedsInstall": "在 iPhone 上，需要先将 BPM 添加到主屏幕才能接收通知。添加后从主屏幕打开，再回到这里。",
+      "iosInstallCta": "查看方法",
+      "unsupported": "此浏览器不支持通知。安卓请用 Chrome，iPhone 请将 BPM 添加到主屏幕。",
+      "notConfigured": "服务器尚未配置通知功能。你无需做任何操作。",
+      "offlineHint": "当前离线 — 连接后才能修改。",
+      "errorAuth": "请先登录，再开启通知。",
+      "errorGeneric": "保存失败。稍后再试一次。",
+      "metaOn": "已开启",
+      "metaOff": "已关闭",
+      "metaBlocked": "已禁用"
     }
   },
   "report": {
