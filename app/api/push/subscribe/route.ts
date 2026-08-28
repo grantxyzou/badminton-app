@@ -51,10 +51,20 @@ function parseSubscription(
   return { endpoint, keys: { p256dh, auth } };
 }
 
+/* REAL COSMOS DOES NOT AUTO-CREATE CONTAINERS; the mock store does. That gap
+   is why this shipped broken with every test green: `pushSubscriptions` did not
+   exist in production, so the first query threw and the opt-in sheet hung on
+   "working" with nothing to show for it.
+
+   `lib/push.ts` already owned and exported the guard for its own reads — this
+   route just never called it. Reusing it rather than adding a second memo, so
+   there is one owner of "does the container exist yet". */
+
 /** Every doc for this member. The mock ignores a @memberId WHERE and returns
  *  the whole container, so we JS-filter for mock/real parity (same convention
  *  as app/api/kudos/route.ts). */
 async function loadForMember(memberId: string): Promise<PushSubscriptionDoc[]> {
+  await ensurePushContainer();
   const { resources } = await getContainer('pushSubscriptions')
     .items.query({ query: 'SELECT * FROM c' })
     .fetchAll();
