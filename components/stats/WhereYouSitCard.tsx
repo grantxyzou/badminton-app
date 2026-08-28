@@ -139,7 +139,12 @@ export default function WhereYouSitCard({ activeName, promptOpen = false }: Wher
        "disabled" rather than "private". Inert is the honest signal here, and it
        matches the lock pill and unfilled bands already in this branch.
        No-op unless NEXT_PUBLIC_FLAG_VISUAL_FIELDS is on. */
-    <div className={`glass-card p-5 space-y-3${revealed ? '' : ' is-locked'}`}>
+    /* flex+gap, not space-y-3: every <p> in here carries an inline
+       `margin: '0'` to kill the UA paragraph margin, and an inline style beats
+       the utility's `> * + * { margin-top }` -- so the card's rhythm was being
+       cancelled by its own children and the footnote sat 0px under the bands.
+       A flex `gap` cannot be overridden by a child's margin. */
+    <div className={`glass-card p-5 flex flex-col gap-3${revealed ? '' : ' is-locked'}`}>
       <CardHeader
         icon="groups"
         title={t('title')}
