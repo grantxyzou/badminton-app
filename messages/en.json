@@ -33,6 +33,10 @@
           "ready_for_you": "Ready for you",
           "done": "Picked up"
         },
+        "ready": {
+          "title": "Your racket is ready",
+          "body": "{racket} ({jobNo}) is strung and waiting — grab it at the next session."
+        },
         "requestBody": "Tell Grant what you'd like. Hand him the racket at the session.",
         "sendCta": "Send the request",
         "requestSending": "Sending…",

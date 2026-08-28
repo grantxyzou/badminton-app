@@ -13,6 +13,7 @@
  * append-only `history`, not a refusal.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { notifyPlayerOfStage } from '@/lib/stringingNotifyDispatch';
 import { getContainer } from '@/lib/cosmos';
 import { isAdminAuthedWithMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
@@ -116,6 +117,22 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     }
 
     await container.item(id, memberId).replace(next);
+
+    /* THE NOTIFICATION SEAM'S ONLY CALLER.
+       `lib/stringingNotify.ts` and its adapter shipped with nothing on either
+       side of them, which meant no player was ever told their racket was ready
+       — the biggest half-finished piece in the app. This is that wiring.
+
+       Fired only when the status ACTUALLY moved (the same test the history
+       append uses), so re-tapping the current step does not re-send.
+
+       AWAITED but never allowed to fail the request: the admin's action is
+       about the racket, not the email. `notifyPlayerOfStage` swallows and logs
+       everything, so a dead mail server cannot 503 the bench. */
+    if (next.status !== job.status) {
+      await notifyPlayerOfStage(next);
+    }
+
     return NextResponse.json({ job: next });
   } catch (err) {
     console.error(`PATCH /api/stringing/jobs/${id} failed:`, err);

@@ -33,6 +33,10 @@
           "ready_for_you": "可以取了",
           "done": "已取走"
         },
+        "ready": {
+          "title": "你的球拍好了",
+          "body": "{racket}（{jobNo}）已经穿好线，下次球局来拿吧。"
+        },
         "requestBody": "告诉 Grant 你的要求，球局上把拍子交给他。",
         "sendCta": "发送申请",
         "requestSending": "发送中…",
