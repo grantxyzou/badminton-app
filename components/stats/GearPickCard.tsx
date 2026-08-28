@@ -177,7 +177,7 @@ export default function GearPickCard({ category, pick, owned, status, onOpen }: 
           opacity: 0.72,
         }}
       >
-        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minHeight: 'var(--card-header-row-h)' }}>
           <span
             className="fs-2xs"
             style={{ color: meta.color, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}
@@ -193,7 +193,10 @@ export default function GearPickCard({ category, pick, owned, status, onOpen }: 
             {meta.icon}
           </span>
         </span>
-        <span className="fs-base" style={{ marginTop: 'var(--space-2)', lineHeight: 'var(--lh-normal)', color: 'var(--text-secondary)' }}>
+        {/* No marginTop: the column already carries a --space-2 gap, and adding
+            one here double-spaced this card's first body line against the
+            RACKET card sitting beside it in the same rail. */}
+        <span className="fs-base" style={{ lineHeight: 'var(--lh-normal)', color: 'var(--text-secondary)' }}>
           {t(meta.soonKey ?? 'railComingSoon')}
         </span>
       </div>
@@ -223,7 +226,7 @@ export default function GearPickCard({ category, pick, owned, status, onOpen }: 
         minHeight: 44,
       }}
     >
-      <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minHeight: 'var(--card-header-row-h)' }}>
         <span
           className="fs-2xs"
           style={{ color: meta.color, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}

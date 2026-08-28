@@ -6,6 +6,7 @@ import ResetAccessSheet from '../ResetAccessSheet';
 import CoverSheet, { type CoverSheetMode } from '../CoverSheet';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import CardHeader from '@/components/primitives/CardHeader';
+import EmptyState from '@/components/primitives/EmptyState';
 import { fmtSessionLabel } from '@/lib/fmt';
 import { isFlagOn } from '@/lib/flags';
 import { useReportFetchFailure } from '@/lib/useOnline';
@@ -495,11 +496,16 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
 
       {/* Empty state — kept distinct from loadError (lying-empty-state
           rule). The "X of Y paid" count was removed by design; this is
-          the no-roster case, not the count. */}
+          the no-roster case, not the count.
+
+          STANDING, not inline: with no roster, emptiness is the whole of what
+          this card is currently saying, which is the condition <EmptyState>'s
+          own docstring names for the icon shape. Left-aligned under the header
+          it read as a caption someone forgot to finish. The glyph is
+          `group_add` because the way out of this state is the add-player field
+          directly below it. */}
       {!loadError && !playersError && total === 0 && (
-        <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0' }}>
-          No active players
-        </p>
+        <EmptyState icon="group_add">No active players yet</EmptyState>
       )}
 
       {toggleError && (
@@ -522,7 +528,12 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       {/* Per-session summary header — mirrors the Past sessions row for the
           viewed chip. Line 1 is cost-independent; line 2 (amount + Share)
           is gated on settleFlagOn like the other dollar surfaces below. */}
-      {!loadError && !playersError && viewedSession && (
+      {/* `total > 0`: with nobody signed up this block said "Sat, Aug 29 ·
+          0 players" (which the empty state above already says) over "$—
+          each" and a disabled Share receipt -- an action offered with nothing
+          behind it. Same rule as the stringing rail: a summary waits until
+          there is something to summarise. */}
+      {!loadError && !playersError && viewedSession && total > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
           <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0' }}>
             {[
