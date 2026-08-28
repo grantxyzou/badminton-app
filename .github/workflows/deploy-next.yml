@@ -108,11 +108,15 @@ jobs:
           # zero callers, so nobody is told their racket is ready. Taking a real
           # racket before that is wired means remembering to tell them yourself.
           NEXT_PUBLIC_FLAG_STRINGING: 'true'
-          # Revived from PR #241 on 2026-08-28. Ships OFF: the client reads
-          # NEXT_PUBLIC_VAPID_PUBLIC_KEY at BUILD time, and subscribe() throws
-          # when it is undefined -- so this cannot go 'true' until the VAPID
-          # pair exists as a repo variable + App Settings.
-          NEXT_PUBLIC_FLAG_PUSH_NOTIFY: 'false'
+          # ON as of 2026-08-28. Revived from PR #241; the VAPID pair now
+          # exists (public key in the repo variable below, private key +
+          # VAPID_SUBJECT in vnext App Settings), which is the precondition --
+          # the client reads the public key at BUILD time and subscribe()
+          # throws when it is undefined.
+          #
+          # Nobody is notified until they OPT IN on Profile -> Notifications,
+          # and only one trigger is wired: sign-ups opening.
+          NEXT_PUBLIC_FLAG_PUSH_NOTIFY: 'true'
           # NOT a secret: the browser needs it for
           # pushManager.subscribe({ applicationServerKey }). It must live HERE
           # and not only in Azure App Settings, because NEXT_PUBLIC_* is inlined
