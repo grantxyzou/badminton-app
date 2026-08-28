@@ -521,6 +521,14 @@ body {
      area, a hero's inset. They exist because 24/32/48 were being hand-typed
      at those sites with no rung to reach for, not because the micro scale
      was short. */
+  /* A rail of peer cards shares a baseline. One card carrying a badge and its
+     neighbour carrying none otherwise start their body copy at different
+     heights -- the Gear rail was 13px out of line, because a --fs-2xs pill is
+     taller than the bare label beside it. A card header in a rail is therefore
+     a fixed box sized to the tallest thing it can hold, not to its own
+     content. Sized to the pill: 2x --space-1 padding + its border + the
+     --fs-2xs line box. */
+  --card-header-row-h: 26px;
   --space-7: 24px;
   --space-8: 32px;
   --space-9: 48px;
@@ -3727,7 +3735,11 @@ html[data-visual="field"][data-theme="light"] {
   gap: var(--space-3);
 }
 .cc-dcard {
-  padding: var(--space-4);
+  /* 16px, not the 12px inner-row rung. .cc-dcard is a TIER 1 page-level
+     surface (see the tier note above) carrying a 26px stat number -- the
+     spacing audit snapped its old 13px down to 12 mechanically, which read as
+     cramped because a page-level card is not an inner row. Compact card = 16. */
+  padding: var(--space-5);
   border-radius: 16px;
   background: linear-gradient(160deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
   border: 1px solid rgba(255, 255, 255, 0.12);
