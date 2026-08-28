@@ -1,23 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import ProviderButtons from './ProviderButtons';
+import { useSignInMethods, type Provider, type UseSignInMethods } from './useSignInMethods';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-
-type Provider = 'google' | 'apple';
-
-interface Methods {
-  available: Provider[] | null;
-  linked: Provider[] | null;
-  hasPassword?: boolean;
-  hasPin?: boolean;
-  email?: string | null;
-  nudge?: boolean;
-}
 
 /**
  * The single place a signed-in member manages how they get back in.
@@ -38,30 +28,31 @@ interface Methods {
  * explicit error, never a confident "you have no sign-in methods", which would
  * be the lying-empty-state failure applied to the scariest possible subject.
  */
-export default function SignInMethodsCard() {
+export interface SignInMethodsCardProps {
+  /**
+   * A shared `useSignInMethods()` instance. Pass it when the caller already
+   * reads this endpoint (Profile does, for the row's summary) so the row and
+   * this body cannot disagree about what is connected. Omitted, the card opens
+   * its own — which is what the tests and any standalone use do.
+   */
+  state?: UseSignInMethods;
+  /**
+   * Rendered inside a sheet that already carries the title and the surface.
+   * Drops the glass-card chrome and the CardHeader so there is one title, not
+   * two, and one card edge, not a card inside a sheet.
+   */
+  embedded?: boolean;
+}
+
+export default function SignInMethodsCard({ state, embedded = false }: SignInMethodsCardProps = {}) {
   const t = useTranslations('profile.auth');
-  const [methods, setMethods] = useState<Methods | null>(null);
-  const [loadError, setLoadError] = useState(false);
+  // Always called; `enabled: false` stops it opening a second fetch when the
+  // caller handed us theirs.
+  const fallback = useSignInMethods(!state);
+  const { methods, loadError, reload: load } = state ?? fallback;
   const [dismissed, setDismissed] = useState(false);
   const [confirming, setConfirming] = useState<Provider | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch(`${BASE}/api/auth/methods`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(String(res.status));
-      const d = (await res.json()) as Methods;
-      if (d.linked === null) throw new Error('unknown');
-      setMethods(d);
-      setLoadError(false);
-    } catch {
-      setLoadError(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   async function dismissNudge() {
     setDismissed(true);
@@ -94,7 +85,9 @@ export default function SignInMethodsCard() {
   }
 
   if (loadError) {
-    return (
+    return embedded ? (
+      <ErrorState message={t('methodsLoadError')} />
+    ) : (
       <div className="glass-card p-5 space-y-3">
         <CardHeader icon="lock" title={t('methodsTitle')} />
         <ErrorState message={t('methodsLoadError')} />
@@ -107,12 +100,17 @@ export default function SignInMethodsCard() {
   const showNudge = methods.nudge === true && !dismissed;
 
   return (
-    <div className="glass-card p-5 animate-fadeIn" style={{ display: 'grid', gap: 'var(--space-4)' }}>
-      <CardHeader
-        icon="lock"
-        title={showNudge ? t('nudgeTitle') : t('methodsTitle')}
-        subtitle={showNudge ? t('nudgeSubtitle') : t('methodsSubtitle')}
-      />
+    <div
+      className={embedded ? '' : 'glass-card p-5 animate-fadeIn'}
+      style={{ display: 'grid', gap: 'var(--space-4)' }}
+    >
+      {!embedded && (
+        <CardHeader
+          icon="lock"
+          title={showNudge ? t('nudgeTitle') : t('methodsTitle')}
+          subtitle={showNudge ? t('nudgeSubtitle') : t('methodsSubtitle')}
+        />
+      )}
 
       {/* What they already have. Rendered as facts, not actions — the PIN and
           password are managed elsewhere on Profile. */}
