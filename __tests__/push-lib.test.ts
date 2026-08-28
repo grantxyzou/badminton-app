@@ -242,3 +242,34 @@ describe('lib/push', () => {
     });
   });
 });
+
+/**
+ * THE HANG. `usePush.enable()` awaited `navigator.serviceWorker.ready`, which
+ * resolves only when a worker controls THE CURRENT PAGE — and which never
+ * rejects. It just waits.
+ *
+ * The page never qualifies: `/bpm/` 308-redirects to `/bpm`, and `/bpm` is not
+ * inside a `/bpm/` scope. So "Turn on notifications" span forever with no error
+ * to show, which is exactly how it was reported.
+ *
+ * Push needs an ACTIVE WORKER IN THE REGISTRATION, not page control:
+ * `pushManager` hangs off the registration and `notificationclick` opens a URL.
+ * A source scan, because reproducing it needs a real service worker.
+ */
+describe('usePush does not wait on page control', () => {
+  it('never awaits navigator.serviceWorker.ready', async () => {
+    const { readFileSync } = await import('fs');
+    const src = readFileSync(new URL('../lib/usePush.ts', import.meta.url), 'utf8');
+    // Strip comments — the explanation above is allowed to name it.
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    expect(code).not.toContain('serviceWorker.ready');
+  });
+
+  it('waits for the registration it just created instead', async () => {
+    const { readFileSync } = await import('fs');
+    const src = readFileSync(new URL('../lib/usePush.ts', import.meta.url), 'utf8');
+    expect(src).toContain('activeWorker(registration)');
+    // And that wait is bounded — a stuck install must surface, not spin.
+    expect(src).toMatch(/timeoutMs|setTimeout/);
+  });
+});

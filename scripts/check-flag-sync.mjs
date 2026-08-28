@@ -29,6 +29,14 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FLAGS_FILE = join(ROOT, 'lib/flags.ts');
 const SETTINGS_FILE = join(ROOT, '.claude/flag-sync.local.md');
 const DEFAULT_WORKFLOW = '.github/workflows/deploy-next.yml';
+/**
+ * CI must BUILD what production builds. This script only ever read the deploy
+ * workflow, so pr-ci.yml drifted unnoticed until 2026-08-28 — by then it was
+ * missing THIRTEEN flags, meaning every PR compiled a materially different app
+ * than the one that ships, and a flag-gated build break could pass CI and fail
+ * on deploy.
+ */
+const CI_WORKFLOW = '.github/workflows/pr-ci.yml';
 
 /**
  * Plugin-settings pattern: read `.claude/flag-sync.local.md` for per-project
@@ -90,10 +98,21 @@ function main() {
     process.exit(0);
   }
 
+  // The CI workflow is compared against the DEPLOY workflow, not against
+  // flags.ts: its job is to mirror what ships, and a flag deliberately absent
+  // from deploy should be absent here too.
+  let ciDrift = [];
+  try {
+    const ci = extractFromWorkflow(readFileSync(join(ROOT, CI_WORKFLOW), 'utf8'));
+    ciDrift = [...deployed].filter((f) => !ci.has(f)).sort();
+  } catch {
+    // No CI workflow is not an error — this hook must never block on absence.
+  }
+
   const missingFromDeploy = [...registered].filter((f) => !deployed.has(f)).sort();
   const staleInDeploy = [...deployed].filter((f) => !registered.has(f)).sort();
 
-  if (missingFromDeploy.length === 0 && staleInDeploy.length === 0) {
+  if (missingFromDeploy.length === 0 && staleInDeploy.length === 0 && ciDrift.length === 0) {
     process.exit(0);
   }
 
@@ -115,6 +134,15 @@ function main() {
     console.error('');
     console.error('  → These flags were retired in code but the workflow still');
     console.error('    references them. Remove from deploy-next.yml.');
+    console.error('');
+  }
+  if (ciDrift.length > 0) {
+    console.error('  In deploy-next.yml but MISSING from pr-ci.yml:');
+    for (const flag of ciDrift) console.error(`    - ${flag}`);
+    console.error('');
+    console.error('  → PR builds are compiling a DIFFERENT app than the one that');
+    console.error('    ships, so a flag-gated build break can pass CI and fail on');
+    console.error('    deploy. Mirror them into .github/workflows/pr-ci.yml.');
     console.error('');
   }
   process.exit(1);
