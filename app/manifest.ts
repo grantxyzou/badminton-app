@@ -9,10 +9,18 @@ import type { MetadataRoute } from 'next';
  * and every icon `src` must be `/bpm`-prefixed by hand — mirror the client-side
  * `BASE = process.env.NEXT_PUBLIC_BASE_PATH || ''` convention (see HomeShell).
  *
- * No service worker by design (CLAUDE.md: offline posture is "legible-fail").
- * iOS installs fully standalone from this alone; Android supports manual
- * "Add to Home screen" (the automatic install prompt would need a SW + fetch
- * handler, which we deliberately don't ship).
+ * The only service worker we ship is push-only (`public/sw.js`) and has no
+ * `fetch` handler, so the "legible-fail" offline posture is unchanged — nothing
+ * is ever served from cache (CLAUDE.md: Push Notifications). It is registered
+ * lazily, only when a user opts into notifications.
+ *
+ * iOS installs fully standalone from this manifest alone; Android supports
+ * manual "Add to Home screen". The automatic install prompt still requires a
+ * SW *with a fetch handler*, which we deliberately don't ship — so that prompt
+ * remains unavailable, by choice.
+ *
+ * `display: 'standalone'` here is also load-bearing for notifications: iOS
+ * 16.4+ only permits Web Push from a home-screen-installed PWA.
  */
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 

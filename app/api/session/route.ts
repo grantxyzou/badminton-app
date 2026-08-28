@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId, POINTER_ID, DEFAULT_SESSION } from '@/lib/cosmos';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { resolveBirdUsages } from '@/lib/birdWrite';
+import { isFlagOn } from '@/lib/flags';
+import { sendPushToAll } from '@/lib/push';
+import { buildSignupOpenPayload } from '@/lib/pushMessages';
 import type { BirdUsage, ETransferRecipient } from '@/lib/types';
 
 function isValidETransferRecipient(value: unknown): value is ETransferRecipient {
@@ -125,7 +128,43 @@ export async function PUT(req: NextRequest) {
     // `birdUsage` field (the old full-doc replace dropped it implicitly; the
     // read-spread would otherwise let it linger alongside the array).
     if (birdUsages !== undefined) delete sessionData.birdUsage;
+
+    // Sign-ups just opened? `existing` is already in hand for the merge above,
+    // so the edge costs no extra read.
+    //
+    // Strict `=== false` is deliberate: CLAUDE.md documents that an ABSENT
+    // signupOpen means OPEN, so an absent -> true transition is not an edge and
+    // must not notify. Sessions created by /advance always set signupOpen:false
+    // explicitly, so the real flow is always an explicit false -> true.
+    const wasClosed = existing.signupOpen === false;
+    const willOpen = sessionData.signupOpen === true;
+    const notYetNotified = typeof existing.signupOpenNotifiedAt !== 'string';
+    const shouldNotify =
+      wasClosed && willOpen && notYetNotified && isFlagOn('NEXT_PUBLIC_FLAG_PUSH_NOTIFY');
+
+    const now = new Date().toISOString();
+    // Record the first open regardless of the flag — it's plain session
+    // history, and it's the value calculateSignupOpensOffset (advance route)
+    // currently hardcodes to 0 for want of it.
+    if (wasClosed && willOpen && typeof existing.signupOpenedAt !== 'string') {
+      sessionData.signupOpenedAt = now;
+    }
+    // Stamp in the SAME upsert as the flip: a second write would race the
+    // optimistic client toggle in NextSessionCard and could double-send.
+    if (shouldNotify) sessionData.signupOpenNotifiedAt = now;
+
     const { resource } = await container.items.upsert(sessionData);
+
+    // Persist first, notify best-effort — a push failure must never fail the
+    // admin's toggle (same posture as app/api/report/route.ts).
+    if (shouldNotify) {
+      try {
+        await sendPushToAll(buildSignupOpenPayload(sessionData as Parameters<typeof buildSignupOpenPayload>[0]));
+      } catch (err) {
+        console.error('[session] signup-open push failed (session still saved):', err);
+      }
+    }
+
     return NextResponse.json(resource);
   } catch (error) {
     console.error('PUT session error:', error);

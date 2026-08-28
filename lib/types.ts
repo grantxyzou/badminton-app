@@ -56,6 +56,16 @@ export interface Session {
    *  When present, ReceiptSheet and PaymentsCard prefer these values over live compute,
    *  so retro edits to courts/birds don't redefine what already-paid players paid for. */
   settled?: SettledSnapshot;
+  /** ISO timestamp of the first time signupOpen flipped false -> true. Written
+   *  by PUT /api/session alongside the flip. This is the value
+   *  `calculateSignupOpensOffset` in the advance route wants (it currently
+   *  hardcodes 0 for want of it) — wiring that up is deliberately left for a
+   *  follow-up so this stays a notification change. */
+  signupOpenedAt?: string;
+  /** ISO timestamp of the sign-up-open push send. Presence means "already
+   *  notified for this session" — toggling sign-ups closed and open again does
+   *  NOT re-notify. Session-scoped, so the next session starts clean. */
+  signupOpenNotifiedAt?: string;
 }
 
 export interface SettledSnapshot {
@@ -465,4 +475,39 @@ export interface PlayerStringingJob {
   paid: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * One Web Push subscription = one browser on one device. A member who uses a
+ * phone and a laptop has two docs.
+ *
+ * Deliberately its OWN container (`pushSubscriptions`, PK `/memberId`) rather
+ * than an array on `Member`: `Member` is read on hot paths by both deployments,
+ * and a per-device array would turn it into a write-contention hot doc. A new
+ * container also cannot break bpm-stable, which satisfies the additive-only
+ * schema rule for the shared DB.
+ */
+export interface PushSubscriptionDoc {
+  id: string;
+  /** Partition key. Always taken from the member_session cookie, NEVER from
+   *  the request body — member names are enumerable (security rule 12). */
+  memberId: string;
+  /** Denormalized for legibility in admin/debug reads, same as kudos.recipientName. */
+  memberName: string;
+  /** The push service URL. Treated as a credential: never returned to a client. */
+  endpoint: string;
+  /** sha256(endpoint), hex. The dedup/lookup key — safe to log, unlike the endpoint. */
+  endpointHash: string;
+  keys: { p256dh: string; auth: string };
+  /** Truncated user-agent, so "which device is this?" is answerable when revoking. */
+  ua?: string;
+  createdAt: string;
+  /** Bumped on re-subscribe. Also the eviction order when a member exceeds the device cap. */
+  lastSeenAt: string;
+  lastSuccessAt?: string;
+  /** Incremented on transient send failures (429/5xx). A 404/410 deletes the
+   *  doc outright instead — that status means the subscription is truly gone. */
+  failureCount?: number;
+  /** Phase 2 per-type opt-out. Absent = subscribed to everything. */
+  topics?: string[];
 }

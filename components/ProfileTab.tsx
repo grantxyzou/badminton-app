@@ -15,6 +15,8 @@ import SignInMethodsCard from './auth/SignInMethodsCard';
 import EmailSignInForm from './auth/EmailSignInForm';
 import EmailSignUpSheet from './auth/EmailSignUpSheet';
 import ForgotPasswordSheet from './auth/ForgotPasswordSheet';
+import PushSheet from './PushSheet';
+import { usePush } from '@/lib/usePush';
 import { isStandalone } from '@/lib/standalone';
 import PageHeader from './primitives/PageHeader';
 import ProfileEyebrow from './primitives/ProfileEyebrow';
@@ -91,6 +93,7 @@ export default function ProfileTab({
   const adminSignals = useAdminNeedsYou(showAdminRow);
   const [reportOpen, setReportOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
+  const [pushOpen, setPushOpen] = useState(false);
   // Only offer "Add to Home Screen" when NOT already installed. Resolved
   // post-mount (display-mode/navigator.standalone are client-only); defaults
   // to false so the row shows in the browser, which is exactly when it helps.
@@ -98,6 +101,11 @@ export default function ProfileTab({
   const [releases, setReleases] = useState<Release[] | null>([]);
   const tSettings = useTranslations('profile.settings');
   const tNav = useTranslations('nav');
+  const tPush = useTranslations('profile.push');
+  // Owned here (not in PushSheet) so the row's On/Off label and the sheet's
+  // button share one state and can't disagree after a toggle.
+  const push = usePush();
+  const pushEnabled = isFlagOn('NEXT_PUBLIC_FLAG_PUSH_NOTIFY');
 
   useEffect(() => {
     setInstalled(isStandalone());
@@ -554,6 +562,24 @@ export default function ProfileTab({
               : undefined,
             onClick: () => setView('stats-privacy'),
           },
+          /* Hidden while the probe is unresolved: rendering "Off" before we
+             know would be a confirmed negative from an unknown state
+             (CLAUDE.md, "Unknown ≠ known-false"). */
+          ...(pushEnabled && push.state.status !== 'loading'
+            ? [{
+                icon: 'notifications',
+                label: tSettings('notifications'),
+                meta:
+                  push.state.status === 'on'
+                    ? tPush('metaOn')
+                    : push.state.status === 'denied'
+                      ? tPush('metaBlocked')
+                      : push.state.status === 'unsupported'
+                        ? undefined
+                        : tPush('metaOff'),
+                onClick: () => setPushOpen(true),
+              }]
+            : []),
           ...(!installed
             ? [{ icon: 'install_mobile', label: tSettings('install'), onClick: () => setInstallOpen(true) }]
             : []),
@@ -609,6 +635,24 @@ export default function ProfileTab({
       />
 
       <InstallSheet open={installOpen} onClose={() => setInstallOpen(false)} />
+      <PushSheet
+        open={pushOpen}
+        onClose={() => setPushOpen(false)}
+        onOpenInstall={() => {
+          setPushOpen(false);
+          setInstallOpen(true);
+        }}
+        push={push}
+      />
+      <PushSheet
+        open={pushOpen}
+        onClose={() => setPushOpen(false)}
+        onOpenInstall={() => {
+          setPushOpen(false);
+          setInstallOpen(true);
+        }}
+        push={push}
+      />
     </div>
   );
 }
