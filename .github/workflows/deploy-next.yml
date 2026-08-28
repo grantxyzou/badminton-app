@@ -96,10 +96,18 @@ jobs:
           # sign-in is still broken in the PWA; this exposes a button that
           # fails for exactly the users being diagnosed.
           NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: 'true'
-          # Stage 1 (bench) only. Admin-only surface, so shipping it on would be
-          # low-risk -- but it stays off until the intake form has been used on a
-          # real Thursday, because a half-trusted bench is worse than none.
-          NEXT_PUBLIC_FLAG_STRINGING: 'false'
+          # ON as of 2026-08-27. This lights up the admin bench (job list, job
+          # detail, intake form) and un-404s /api/stringing/*.
+          #
+          # It does NOT show players anything yet: the shop carries its own
+          # admin-controlled `open` flag (PATCH /api/stringing/shop), and
+          # StringingCard renders "Coming soon" until that is set. Two gates,
+          # and this is only the first.
+          #
+          # KNOWN GAP once the shop DOES open: lib/stringingNotify.ts still has
+          # zero callers, so nobody is told their racket is ready. Taking a real
+          # racket before that is wired means remembering to tell them yourself.
+          NEXT_PUBLIC_FLAG_STRINGING: 'true'
 
       - name: Package standalone build
         run: |
