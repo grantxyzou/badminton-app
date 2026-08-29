@@ -8,7 +8,6 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import CardHeader from '@/components/primitives/CardHeader';
 import EmptyState from '@/components/primitives/EmptyState';
 import { fmtSessionLabel } from '@/lib/fmt';
-import { isFlagOn } from '@/lib/flags';
 import { useReportFetchFailure } from '@/lib/useOnline';
 import { buildReceiptInput } from '@/lib/buildReceiptInput';
 import ReceiptSheet from './ReceiptSheet';
@@ -37,8 +36,8 @@ interface Player {
  * Used by BOTH the "Cover their $X" ActionRow and the remove-intercept so the
  * two surfaces can't drift — they previously did (the ActionRow omitted `!paid`
  * and offered to write off a debt the player had already settled). Does not
- * include the `NEXT_PUBLIC_FLAG_LEDGER` gate — that's a feature flag, not a
- * property of the player — so callers keep gating on `ledgerFlagOn` themselves.
+ * answers whether covering is OFFERED anywhere — that was a feature-flag
+ * question until the flag retired on 2026-08-29, and is now simply always.
  */
 export function canCover(
   p: Pick<Player, 'owedAmount' | 'paid' | 'writtenOff'> | null | undefined,
@@ -90,7 +89,6 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
   // cover-only = "Cover their $X" ActionRow (v1.5/A). cover-and-remove =
   // intercepting a remove that would orphan a settled, unpaid debt (v1.5/C).
   const [coverMode, setCoverMode] = useState<CoverSheetMode>('cover-only');
-  const ledgerFlagOn = isFlagOn('NEXT_PUBLIC_FLAG_LEDGER');
 
   // Reset-access display
   const [resetSheet, setResetSheet] = useState<{ open: boolean; playerName: string; code: string; expiresAt: number }>({
@@ -107,7 +105,6 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
 
   const isCurrentSession = activeSessionId === viewedSessionId;
   const viewedSession = sessions.find((s) => s.id === viewedSessionId);
-  const settleFlagOn = isFlagOn('NEXT_PUBLIC_FLAG_SETTLE');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -339,7 +336,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
     // an orphan debt on the ledger. Offer "Cover & remove" first instead of a
     // plain confirm — same predicate as the "Cover their $X" ActionRow so the
     // two surfaces agree on what counts as an outstanding debt (v1.5/C).
-    if (ledgerFlagOn && canCover(actionTarget)) {
+    if (canCover(actionTarget)) {
       setCoverMode('cover-and-remove');
       setCoverTarget(actionTarget);
       setActionTarget(null);
@@ -381,7 +378,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       }
       // If the bill is already frozen, re-settle so the split reverts (a
       // re-split cover that's undone must give the others their money back).
-      if (settleFlagOn && viewedSession?.settled) {
+      if (viewedSession?.settled) {
         const q = viewedSessionId ? `?sessionId=${encodeURIComponent(viewedSessionId)}` : '';
         await fetch(`${BASE}/api/session/settle${q}`, { method: 'DELETE' }).catch(() => {});
         await fetch(`${BASE}/api/session/settle${q}`, { method: 'POST' }).catch(() => {});
@@ -463,7 +460,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           {sessions.map((s) => {
             const selected = s.id === viewedSessionId;
             const isActive = s.id === activeSessionId;
-            const sent = settleFlagOn && !!s.settled;
+            const sent = !!s.settled;
             return (
               <button
                 key={s.id}
@@ -527,7 +524,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
 
       {/* Per-session summary header — mirrors the Past sessions row for the
           viewed chip. Line 1 is cost-independent; line 2 (amount + Share)
-          is gated on settleFlagOn like the other dollar surfaces below. */}
+          appears once the session is settled, like the dollar surfaces below. */}
       {/* `total > 0`: with nobody signed up this block said "Sat, Aug 29 ·
           0 players" (which the empty state above already says) over "$—
           each" and a disabled Share receipt -- an action offered with nothing
@@ -542,34 +539,32 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
               total > 0 ? `${paidPercent}% paid` : '',
             ].filter(Boolean).join(' · ')}
           </p>
-          {settleFlagOn && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
-              <span
-                className="fs-md"
-                style={{
-                  color: 'var(--text-primary)',
-                  fontFamily: 'var(--font-mono), ui-monospace, monospace',
-                  fontWeight: 600,
-                }}
-              >
-                {receiptBuild?.costPerPerson != null ? `$${receiptBuild.costPerPerson} each` : '—'}
-              </span>
-              <button
-                type="button"
-                onClick={() => openReceiptSheet('group')}
-                disabled={receiptBuild?.costPerPerson == null}
-                className="cc-btn cc-btn-secondary"
-                style={{ fontSize: 'var(--fs-sm)', padding: 'var(--space-1) var(--space-4)' }}
-              >
-                Share receipt
-              </button>
-            </div>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
+            <span
+              className="fs-md"
+              style={{
+                color: 'var(--text-primary)',
+                fontFamily: 'var(--font-mono), ui-monospace, monospace',
+                fontWeight: 600,
+              }}
+            >
+              {receiptBuild?.costPerPerson != null ? `$${receiptBuild.costPerPerson} each` : '—'}
+            </span>
+            <button
+              type="button"
+              onClick={() => openReceiptSheet('group')}
+              disabled={receiptBuild?.costPerPerson == null}
+              className="cc-btn cc-btn-secondary"
+              style={{ fontSize: 'var(--fs-sm)', padding: 'var(--space-1) var(--space-4)' }}
+            >
+              Share receipt
+            </button>
+          </div>
         </div>
       )}
 
       {/* What the admin absorbed by covering players this session. */}
-      {ledgerFlagOn && settleFlagOn && !!viewedSession?.settled?.coveredTotal && (
+      {!!viewedSession?.settled?.coveredTotal && (
         <p
           className="fs-sm"
           style={{ color: '#d8b4fe', margin: '0', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
@@ -601,7 +596,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                 )}
               </span>
               <div className="flex items-center gap-1 flex-shrink-0">
-                {settleFlagOn && !!viewedSession?.settled && typeof player.owedAmount === 'number' && !player.writtenOff && (
+                {!!viewedSession?.settled && typeof player.owedAmount === 'number' && !player.writtenOff && (
                   <span
                     className="fs-sm font-medium px-2"
                     style={{
@@ -613,7 +608,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                     ${player.owedAmount}
                   </span>
                 )}
-                {ledgerFlagOn && player.writtenOff ? (
+                {player.writtenOff ? (
                   <span
                     className="fs-sm font-medium px-3 py-1.5 rounded-full inline-flex items-center gap-1"
                     style={{ background: 'rgba(216,180,254,0.12)', color: '#d8b4fe' }}
@@ -648,7 +643,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                     )}
                   </button>
                 )}
-                {settleFlagOn && receiptBuild?.costPerPerson != null && (
+                {receiptBuild?.costPerPerson != null && (
                   <button
                     type="button"
                     onClick={() => openReceiptSheet('individual', player.name)}
@@ -797,7 +792,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                 {actionError}
               </p>
             )}
-            {ledgerFlagOn && actionTarget && canCover(actionTarget) && (
+            {actionTarget && canCover(actionTarget) && (
               <ActionRow
                 icon="paid"
                 label={`Cover their $${actionTarget.owedAmount}`}
@@ -809,7 +804,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                 }}
               />
             )}
-            {ledgerFlagOn && actionTarget?.writtenOff && (
+            {actionTarget?.writtenOff && (
               <ActionRow
                 icon="volunteer_activism"
                 label="Undo cover"
@@ -842,7 +837,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           amount={coverTarget.owedAmount ?? 0}
           sessionId={viewedSessionId ?? ''}
           sessionLabel={fmtSessionLabel(viewedSession?.datetime)}
-          wasSettled={settleFlagOn && !!viewedSession?.settled}
+          wasSettled={!!viewedSession?.settled}
           onClose={() => setCoverTarget(null)}
           onCovered={() => {
             setCoverTarget(null);

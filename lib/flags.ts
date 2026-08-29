@@ -18,10 +18,7 @@
 export type FlagName =
   | 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW'
   | 'NEXT_PUBLIC_FLAG_COMMAND_CENTER'
-  | 'NEXT_PUBLIC_FLAG_SETTLE'
-  | 'NEXT_PUBLIC_FLAG_LEDGER'
   | 'NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE'
-  | 'NEXT_PUBLIC_FLAG_NAV_RAIL'
   | 'NEXT_PUBLIC_FLAG_SKILL_ASSESS'
   | 'NEXT_PUBLIC_FLAG_SKILL_LEVEL'
   | 'NEXT_PUBLIC_FLAG_SKILL_CALIBRATION'
@@ -67,16 +64,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: '2026-05-19',
   },
-  NEXT_PUBLIC_FLAG_SETTLE: {
-    description: 'Surfaces the admin Settle action (lock cost) on Command Center. Backend POST/DELETE /api/session/settle is always available; this flag only gates the button + the read paths in ReceiptSheet/PaymentsCard that prefer session.settled over live recompute. On for bpm-next + dev; off on bpm-stable until promoted.',
-    owner: 'grant',
-    plannedRemoval: '2026-05-28',
-  },
-  NEXT_PUBLIC_FLAG_LEDGER: {
-    description: 'Surfaces the v1.5 ledger page + "Cover their $X" action on PaymentsCard. Backend PATCH writtenOff is always available; this flag only gates the UI entry points. On for bpm-next + dev once landed; off on bpm-stable until promoted.',
-    owner: 'grant',
-    plannedRemoval: '2026-05-28',
-  },
   NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE: {
     description: 'Slice-0 of the Value-Hub plan (`docs/plans/value-hub-slice-0.md`): a thin end-to-end vertical of equipment catalog (rackets only, seeded ~15 models), one-tap "What\'s your racket?" on Profile, a 30s post-session game-result logger, a single deterministic recommendation card, and the partner-frequency Stats card. Gates the player-facing UI surfaces; the backend containers (`equipmentCatalog`, `playerGear`, `gameResults`) are bootstrapped lazily via `ensureContainer` regardless, so they exist before the flag flips on. On for bpm-next + dev once landed; off on bpm-stable until the 4-week kill-criterion gate clears.',
     owner: 'grant',
@@ -105,12 +92,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     description: 'The "fields and card materials" visual direction (design "Visual Colours", Aug 2026). Replaces the shared aurora with a per-tab FIELD — a coloured radial-gradient ground — and swaps .glass-card for a heavier frosted material at --radius-3xl (30px). Purely presentational: no routing, i18n, aria or API shape changes. Read server-side in app/layout.tsx and stamped as html[data-visual="field"], because CSS cannot call isFlagOn() and a useEffect would flash on the LCP frame. Turning it off restores the current look with zero component changes.',
     owner: 'grant',
     plannedRemoval: '2026-09-22',
-  },
-  NEXT_PUBLIC_FLAG_NAV_RAIL: {
-    description: 'Replaces the floating glass-pill bottom nav with the full-width "Labeled Rail" (spec May 2026): edge-attached, capped to the max-w-lg content column, triple-signal active state, theme-aware. Purely presentational — same Tab ids / routing / i18n / aria. On for bpm-next + dev; off on bpm-stable (legacy .nav-glass) until promoted.',
-    owner: 'grant',
-    plannedRemoval: '2026-06-02',
-    note: 'Also delete the legacy `.nav-glass` branch and its classes.',
   },
   NEXT_PUBLIC_FLAG_SKILL_ASSESS: {
     description: 'Self-assessment skill trend on Stats (docs/badminton-spec-md.md P0): a periodic anchor-card check-in across 14 skills / 3 dimensions, a then-vs-now radar trend, phase placement (incl. "The Switch"), and top strengths / work-on. Gates the player-facing check-in + trend UI and the /api/assessments routes. On for bpm-next + dev; off on bpm-stable until promoted.',
@@ -166,16 +147,10 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
     case 'NEXT_PUBLIC_FLAG_COMMAND_CENTER':
       return process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER;
-    case 'NEXT_PUBLIC_FLAG_SETTLE':
-      return process.env.NEXT_PUBLIC_FLAG_SETTLE;
-    case 'NEXT_PUBLIC_FLAG_LEDGER':
-      return process.env.NEXT_PUBLIC_FLAG_LEDGER;
     case 'NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE':
       return process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
     case 'NEXT_PUBLIC_FLAG_VISUAL_FIELDS':
       return process.env.NEXT_PUBLIC_FLAG_VISUAL_FIELDS;
-    case 'NEXT_PUBLIC_FLAG_NAV_RAIL':
-      return process.env.NEXT_PUBLIC_FLAG_NAV_RAIL;
     case 'NEXT_PUBLIC_FLAG_SKILL_ASSESS':
       return process.env.NEXT_PUBLIC_FLAG_SKILL_ASSESS;
     case 'NEXT_PUBLIC_FLAG_SKILL_LEVEL':

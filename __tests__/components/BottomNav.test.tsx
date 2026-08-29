@@ -1,13 +1,11 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, afterAll, beforeEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import BottomNav from '../../components/BottomNav';
 import enMessages from '../../messages/en.json';
 import zhMessages from '../../messages/zh-CN.json';
 
-const FLAG = 'NEXT_PUBLIC_FLAG_NAV_RAIL';
-const originalEnv = { ...process.env };
 
 function renderWithLocale(locale: 'en' | 'zh-CN') {
   const messages = locale === 'en' ? enMessages : zhMessages;
@@ -19,13 +17,12 @@ function renderWithLocale(locale: 'en' | 'zh-CN') {
 }
 
 afterEach(cleanup);
-afterAll(() => {
-  process.env = originalEnv;
-});
 
-// ── Shared contract — must hold in BOTH flag branches ──
-function sharedContract(setFlag: () => void) {
-  beforeEach(setFlag);
+/* Was "must hold in BOTH flag branches". There is one nav now — the rail — so
+   this is simply the nav's contract. Kept as a function rather than inlined
+   because it is the list of promises the nav makes, and naming it that way is
+   what stopped the two branches drifting while there were two. */
+function sharedContract() {
 
   it('renders four tabs: Home, Sign-Ups, Stats, Profile (English)', () => {
     renderWithLocale('en');
@@ -63,10 +60,8 @@ function sharedContract(setFlag: () => void) {
 }
 
 // ── Flag ON → Labeled Rail (bpm-next + dev) ──
-describe('BottomNav — Labeled Rail (NEXT_PUBLIC_FLAG_NAV_RAIL on)', () => {
-  sharedContract(() => {
-    process.env[FLAG] = 'true';
-  });
+describe('BottomNav — Labeled Rail', () => {
+  sharedContract();
 
   it('renders the rail container, not the legacy glass pill', () => {
     const { container } = renderWithLocale('en');
@@ -95,31 +90,5 @@ describe('BottomNav — Labeled Rail (NEXT_PUBLIC_FLAG_NAV_RAIL on)', () => {
     expect(homeIcon?.textContent).toContain('home');
     expect(playersIcon?.textContent).toContain('group');
     expect(homeIcon?.className).toBe(playersIcon?.className);
-  });
-});
-
-// ── Flag OFF → legacy glass pill (bpm-stable rollback target) ──
-describe('BottomNav — legacy glass nav (NEXT_PUBLIC_FLAG_NAV_RAIL off)', () => {
-  sharedContract(() => {
-    delete process.env[FLAG];
-  });
-
-  it('renders the legacy .nav-glass pill, not the rail', () => {
-    const { container } = renderWithLocale('en');
-    expect(container.querySelector('.nav-glass')).toBeTruthy();
-    expect(container.querySelector('nav.rail-bar')).toBeNull();
-  });
-
-  it('active tab gets nav-tab-active and the active icon flips FILL via nav-tab-icon-active', () => {
-    renderWithLocale('en');
-    const home = screen.getByRole('button', { name: 'Home' });
-    const players = screen.getByRole('button', { name: 'Sign-Ups' });
-    expect(home.classList.contains('nav-tab')).toBe(true);
-    expect(home.classList.contains('nav-tab-active')).toBe(true);
-    expect(players.classList.contains('nav-tab-active')).toBe(false);
-    const homeIcon = home.querySelector('.material-icons');
-    const playersIcon = players.querySelector('.material-icons');
-    expect(homeIcon?.classList.contains('nav-tab-icon-active')).toBe(true);
-    expect(playersIcon?.classList.contains('nav-tab-icon-active')).toBe(false);
   });
 });
