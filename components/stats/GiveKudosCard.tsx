@@ -1,210 +1,113 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { useActiveName } from '@/lib/useActiveName';
-import { useOnline } from '@/lib/useOnline';
-import { KUDOS_TAGS, TAG_ICON, type KudosTag } from '@/lib/kudos';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
+import GiveKudosSheet from '@/components/stats/GiveKudosSheet';
+import { useOnline } from '@/lib/useOnline';
+import { useActiveName } from '@/lib/useActiveName';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-const LOG_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 /**
- * One row of GET /api/players. That route returns a BARE ARRAY (no wrapper),
- * and strips `deleteToken`/`pinHash` before it does.
- */
-interface RosterEntry { name?: string; removed?: boolean; waitlisted?: boolean }
-
-/** A read that either produced a body or did not. `{ ok: false }` is UNKNOWN —
- *  never a stand-in value, which is how the old `r.ok ? r.json() : { games: [] }`
- *  rewrote an HTTP failure into success-with-no-games before any `.catch` could
- *  see it. */
-type Read<T> = { ok: true; value: T } | { ok: false };
-
-async function readJson<T>(url: string): Promise<Read<T>> {
-  try {
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) return { ok: false };
-    return { ok: true, value: (await res.json()) as T };
-  } catch {
-    return { ok: false };
-  }
-}
-
-/**
- * Post-session "send kudos" card. Appears only within 48h of the session.
- * Positive-only: a fixed set of tags, one tap each, no scores.
+ * The Stats-side door to giving kudos.
  *
- * CO-PLAYERS COME FROM THE SESSION ROSTER, NOT THE GAME LOG.
- * `playedTogether` in app/api/kudos/route.ts is roster-first: if both names are
- * on the session's `players` roster (removed !== true) it accepts, and only
- * falls back to a games check if that lookup throws. This card used to build its
- * list from `/api/games` alone — strictly narrower than what the server allows.
- * With `games.loggers: 0` in the Slice-0 readout (2026-08-25, cohort of 12 over
- * six weeks) that meant `coPlayers` was always empty and the card returned null
- * for every member: a live, flag-on feature nobody could reach, dark because of
- * a DIFFERENT feature's breakage rather than any failure of its own.
+ * THIS CARD MUST NEVER RETURN null, and that is the whole point of the rewrite.
  *
- * Offer exactly what the server accepts — a stricter client re-creates the same
- * class of mismatch in the other direction.
+ * It used to render only within 48h of the ACTIVE session and only for people
+ * on that session's roster — then return `null` when neither held. Both keyed
+ * off the ACTIVE session, which the owner advances minutes after play, so in
+ * practice the card was invisible almost always. A real player asked "how do I
+ * give kudos to other people?" and could not find it; the owner's own answer
+ * ("log a game with them first") was wrong, because eligibility was roster-based
+ * the whole time. Nobody could see the rule, so everyone invented one.
+ *
+ * An absent card is indistinguishable from a feature that does not exist. So
+ * the card always renders and always says which of the three states it is in:
+ * loading, broken, or "here is who you can thank" — including the honest empty
+ * one, which explains itself rather than vanishing.
+ *
+ * Eligibility is NOT computed here. `GET /api/kudos/eligible` owns it, shared
+ * with the POST that enforces it — the previous split is how the list and the
+ * rule drifted apart.
  */
 export default function GiveKudosCard() {
-  const t = useTranslations('stats');
+  const t = useTranslations('stats.kudos');
   const online = useOnline();
-  // Subscribed, not resolved-once — see the note in SkillTrendCard.
-  const { name: you } = useActiveName();
-  const [coPlayers, setCoPlayers] = useState<string[]>([]);
+  /* Eligibility is resolved from the member COOKIE server-side, so this name is
+     not sent anywhere — it is here as the SUBSCRIPTION. Without it the card
+     fetches once on mount and then never again, so signing in while sitting on
+     Stats leaves it stuck on the signed-out empty state until a reload.
+     `__tests__/active-name-canary.test.ts` pins this. */
+  const { name: activeName, resolved } = useActiveName();
+  const [names, setNames] = useState<string[]>([]);
   const [load, setLoad] = useState<'loading' | 'ready' | 'error'>('loading');
-  // Key `${name}:${tag}` → 'sending' | 'sent'.
-  const [status, setStatus] = useState<Record<string, 'sending' | 'sent'>>({});
-  // A POST that did not land. Same shape as LearnRegister's `saveError`:
-  // cleared at the start of every attempt, so it never outlives its cause.
-  const [sendError, setSendError] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
-  useEffect(() => {
-    let live = true;
-    if (!you) return;
-    Promise.all([
-      readJson<{ datetime?: string }>(`${BASE}/api/session`),
-      // The ROSTER, not the game log — see the note above `coPlayers`.
-      // NB: this endpoint returns a bare array, not `{ players: [...] }`.
-      readJson<RosterEntry[]>(`${BASE}/api/players`),
-    ])
-      .then(([sessionRead, rosterRead]) => {
-        if (!live) return;
-        // The session read decides whether the 48h window is even open. If it
-        // failed, the window is UNKNOWN — and "unknown" must not render as the
-        // card's designed absence, which is a claim that there is nothing to
-        // do here.
-        if (!sessionRead.ok) { setLoad('error'); return; }
-
-        const datetime = sessionRead.value?.datetime;
-        const start = datetime ? new Date(datetime).getTime() : NaN;
-        const now = Date.now();
-        const withinWindow = !!datetime && now >= start && now < start + LOG_WINDOW_MS;
-
-        // Known-outside-the-window: no card belongs here at all, and a games
-        // failure is irrelevant because we would not have read it. This is the
-        // legitimate emptiness the error state must stay distinct from.
-        if (!withinWindow) { setCoPlayers([]); setLoad('ready'); return; }
-
-        // In the window, so the roster IS the card's content. An unknown roster
-        // is not an empty one — the same rule as the session read above.
-        if (!rosterRead.ok) { setLoad('error'); return; }
-
-        const youLower = you.toLowerCase();
-        const others = (rosterRead.value ?? [])
-          .filter((p) => typeof p?.name === 'string' && p.removed !== true)
-          .map((p) => p.name as string)
-          .filter((n) => n.trim().toLowerCase() !== youLower);
-        setCoPlayers([...new Set(others)].sort());
-        setLoad('ready');
-      });
-    return () => { live = false; };
-  }, [you]);
-
-  const send = useCallback(async (recipientName: string, tag: KudosTag) => {
-    const key = `${recipientName}:${tag}`;
-    setSendError(false);
-    setStatus((s) => ({ ...s, [key]: 'sending' }));
-    // A failed send drops the 'sending' key, which re-enables the button — and
-    // on its own that looks exactly like a button nobody ever pressed. The
-    // member walks away believing they sent recognition that was never
-    // written, so the failure has to say so.
-    const failed = () => {
-      setStatus((s) => { const n = { ...s }; delete n[key]; return n; });
-      setSendError(true);
-    };
+  const refresh = useCallback(async () => {
+    // Unknown is not known-absent. Until the identity lookup has actually run,
+    // this is still loading — rendering "play a session and people will show
+    // up here" at a signed-in member on the first paint is the same class of
+    // lie as an empty state built from a failed read.
+    if (!resolved) { setLoad('loading'); return; }
+    // Signed out: the honest empty state, without spending a 401 to learn it.
+    if (!activeName) { setNames([]); setLoad('ready'); return; }
+    setLoad('loading');
     try {
-      const res = await fetch(`${BASE}/api/kudos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipientName, tag }),
-      });
-      // 201 (sent) and 409 (already sent) both end at "sent".
-      if (res.ok || res.status === 409) {
-        setStatus((s) => ({ ...s, [key]: 'sent' }));
-      } else {
-        failed();
-      }
+      const res = await fetch(`${BASE}/api/kudos/eligible`, { cache: 'no-store' });
+      // A 401 means signed out, which is a legitimate "nothing for you here"
+      // rather than a fault; anything else unknown is a real failure and must
+      // not render as an empty list (CLAUDE.md, lying empty state).
+      if (res.status === 401) { setNames([]); setLoad('ready'); return; }
+      if (!res.ok) { setLoad('error'); return; }
+      const data = (await res.json()) as { names?: unknown };
+      setNames(Array.isArray(data.names) ? data.names.filter((n): n is string => typeof n === 'string') : []);
+      setLoad('ready');
     } catch {
-      failed();
+      setLoad('error');
     }
-  }, []);
+  }, [activeName, resolved]);
 
-  if (!you || load === 'loading') return null;
-
-  if (load === 'error') {
-    return (
-      <div className="glass-card p-5 space-y-3">
-        <CardHeader icon="volunteer_activism" title={t('kudos.giveTitle')} subtitle={t('kudos.giveHint')} />
-        <ErrorState message={t('kudos.error')} />
-      </div>
-    );
-  }
-
-  // Loaded, and there is genuinely nobody to thank (outside the window, or no
-  // logged games with anyone else). Renders nothing, as designed.
-  if (coPlayers.length === 0) return null;
+  useEffect(() => { void refresh(); }, [refresh]);
 
   return (
     <div className="glass-card p-5 space-y-3">
-      <CardHeader icon="volunteer_activism" title={t('kudos.giveTitle')} subtitle={t('kudos.giveHint')} />
-      {!online && (
-        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>{t('kudos.offline')}</p>
+      <CardHeader icon="volunteer_activism" title={t('giveTitle')} subtitle={t('giveHint')} />
+
+      {load === 'error' ? (
+        <ErrorState message={t('error')} />
+      ) : load === 'loading' ? (
+        <p className="fs-sm m-0" style={{ color: 'var(--text-muted)' }}>{t('loading')}</p>
+      ) : names.length === 0 ? (
+        /* The honest empty state. Says WHY there is nobody rather than
+           disappearing, which is what made this unfindable. */
+        <p className="fs-sm m-0" style={{ color: 'var(--text-muted)' }}>{t('emptyHint')}</p>
+      ) : (
+        <>
+          <p className="fs-sm m-0" style={{ color: 'var(--text-muted)' }}>
+            {t('candidateCount', { count: names.length })}
+          </p>
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            disabled={!online}
+            className="cc-btn cc-btn-primary cc-btn-lg"
+            style={{ width: '100%', ...(online ? null : { opacity: 0.5 }) }}
+          >
+            {t('giveCta')}
+          </button>
+          {!online && (
+            <p className="fs-sm m-0" style={{ color: 'var(--text-muted)' }}>{t('offline')}</p>
+          )}
+        </>
       )}
-      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {coPlayers.map((name) => (
-          <li key={name} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ fontSize: 'var(--fs-md)', fontWeight: 600, color: 'var(--text-primary)' }}>{name}</span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {KUDOS_TAGS.map((tag) => {
-                const st = status[`${name}:${tag}`];
-                const sent = st === 'sent';
-                return (
-                  <button
-                    key={tag}
-                    type="button"
-                    disabled={!online || st === 'sending' || sent}
-                    onClick={() => send(name, tag)}
-                    aria-pressed={sent}
-                    className="cc-btn cc-btn-ghost"
-                    style={{
-                      fontSize: 'var(--fs-sm)', padding: '4px 10px',
-                      opacity: sent ? 0.55 : 1,
-                      borderColor: sent ? 'var(--accent)' : undefined,
-                      color: sent ? 'var(--accent)' : undefined,
-                    }}
-                  >
-                    {/* Inherits the button's colour, so the glyph turns accent
-                        along with the pill once sent. */}
-                    <span
-                      className="material-icons"
-                      aria-hidden="true"
-                      style={{ marginRight: 4, fontSize: 'var(--icon-sm)', verticalAlign: 'text-bottom' }}
-                    >
-                      {TAG_ICON[tag]}
-                    </span>
-                    {t(`kudos.tag.${tag}`)}
-                    {sent && (
-                      <span
-                        className="material-icons"
-                        aria-hidden="true"
-                        style={{ marginLeft: 4, fontSize: 'var(--icon-sm)', verticalAlign: 'text-bottom' }}
-                      >
-                        check_circle
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </li>
-        ))}
-      </ul>
-      {sendError && <ErrorState message={t('kudos.sendError')} />}
+
+      <GiveKudosSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        candidates={names}
+      />
     </div>
   );
 }
