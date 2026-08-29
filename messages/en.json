@@ -837,7 +837,7 @@
           "title": "Your prices",
           "hint": "Players read these behind “View pricing” on Home.",
           "empty": "No prices posted yet.",
-          "labelPlaceholder": "Service, e.g. Labour + string",
+          "labelPlaceholder": "e.g. Labour + string",
           "pricePlaceholder": "30",
           "add": "Add",
           "ask": "Ask",

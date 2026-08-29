@@ -97,7 +97,10 @@ export default function OfferedStringsCard() {
       {saveError && <ErrorState message={t('strings.saveError')} />}
 
       {strings !== null && strings.length === 0 && !loadError && (
-        <EmptyState>{t('strings.empty')}</EmptyState>
+        /* Standing — see the note in PricingCard. `inventory_2` rather than
+            the header's own glyph: repeating it would read as a rendering
+            glitch rather than a state. */
+        <EmptyState icon="inventory_2">{t('strings.empty')}</EmptyState>
       )}
 
       {strings !== null && strings.length > 0 && (

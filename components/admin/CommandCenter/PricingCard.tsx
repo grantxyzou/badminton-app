@@ -102,7 +102,15 @@ export default function PricingCard() {
       {saveError && <ErrorState message={t('pricing.saveError')} />}
 
       {services !== null && services.length === 0 && !loadError && (
-        <EmptyState>{t('pricing.empty')}</EmptyState>
+        /* Standing, not inline. The card's whole current report IS the
+            emptiness — the add row below is an affordance, not content — and
+            EmptyState's own rule is that a bare sentence left-aligned under a
+            header reads as a caption someone forgot to finish. It also fixes
+            the stair-step: CardHeader nests its subtitle beside the icon, so
+            an inline line at the card's padding sits to the LEFT of the
+            subtitle above it. Centred copy sidesteps the mismatch instead of
+            hand-tuning an indent that would drift. */
+        <EmptyState icon="request_quote">{t('pricing.empty')}</EmptyState>
       )}
 
       {services !== null && services.length > 0 && (
@@ -141,7 +149,7 @@ export default function PricingCard() {
           placeholder={t('pricing.labelPlaceholder')}
           aria-label={t('pricing.labelPlaceholder')}
           maxLength={60}
-          style={{ flex: 2, minWidth: 0 }}
+          style={{ flex: 1, minWidth: 0 }}
           disabled={services === null}
         />
         <input
@@ -152,7 +160,13 @@ export default function PricingCard() {
           placeholder={t('pricing.pricePlaceholder')}
           aria-label={t('pricing.pricePlaceholder')}
           maxLength={8}
-          style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-mono)' }}
+          /* FIXED, not a share of a proportional split. A price is 4-6
+             characters ("30", "28.50") with a known maximum, so giving it
+             `flex: 1` beside the label spent width it could never use — at a
+             430px phone the label truncated mid-placeholder to
+             "Service, e.g. Labour +", which reads as a broken field rather
+             than a hint. The label now takes everything left over. */
+          style={{ width: 84, flex: 'none', fontFamily: 'var(--font-mono)' }}
           disabled={services === null}
         />
         <button type="button" onClick={add} disabled={!canAdd} className="cc-btn cc-btn-secondary">
@@ -160,7 +174,13 @@ export default function PricingCard() {
         </button>
       </div>
       {parsed === undefined && <p className="field-error">{t('pricing.badPrice')}</p>}
-      <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+      {/* `margin: 0` here was CANCELLING the card's `space-y-3`. Tailwind
+          implements that class as a margin-top on each sibling after the
+          first, and an inline style beats a class — so this note was not
+          under-spaced, its spacing was being deleted, and it sat flush against
+          the input row. It is a caption ON that row rather than a sibling of
+          it, so it takes a deliberate 8px rather than the card's 12px rhythm. */}
+      <p className="fs-sm" style={{ margin: 'var(--space-3) 0 0', color: 'var(--text-muted)' }}>
         {t('pricing.blankMeansAsk')}
       </p>
     </div>
