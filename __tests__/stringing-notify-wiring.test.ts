@@ -115,7 +115,7 @@ describe('notifyPlayerOfStage — the dispatcher', () => {
 
   it('skips a quiet stage before touching the database at all', async () => {
     const out = await notifyPlayerOfStage(job({ status: 'picked_up' as StringingStatus }));
-    expect(out).toEqual({ attempted: false, emailSent: false, reason: 'quiet_stage' });
+    expect(out).toEqual({ attempted: false, emailSent: false, pushSent: 0, reason: 'quiet_stage' });
   });
 
   /**
@@ -126,12 +126,12 @@ describe('notifyPlayerOfStage — the dispatcher', () => {
   it('reports no_email for a PIN-only member rather than failing', async () => {
     await seedMember();
     const out = await notifyPlayerOfStage(job());
-    expect(out).toEqual({ attempted: true, emailSent: false, reason: 'no_email' });
+    expect(out).toEqual({ attempted: true, emailSent: false, pushSent: 0, reason: 'no_email' });
   });
 
   it('reports no_member when the job points at nobody', async () => {
     const out = await notifyPlayerOfStage(job({ memberId: 'ghost' }));
-    expect(out).toEqual({ attempted: true, emailSent: false, reason: 'no_member' });
+    expect(out).toEqual({ attempted: true, emailSent: false, pushSent: 0, reason: 'no_member' });
   });
 
   /**
