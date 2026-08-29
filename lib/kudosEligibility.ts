@@ -22,7 +22,9 @@ import { getContainer, ensureContainer } from '@/lib/cosmos';
  * NOT "ever": `players` is partitioned by `/sessionId`, so an unbounded search
  * is a cross-partition scan of every session the club has held — the shape
  * CLAUDE.md flags for the `club/bands` query. Eight keeps anyone you would
- * plausibly recognise reachable while the worst case stays eight small reads.
+ * plausibly recognise reachable while the cost stays bounded: one bounded
+ * `sessions` read, then at most eight `players` reads (plus, on the enforcement
+ * path only, up to eight `gameResults` reads before the first match).
  */
 export const CO_PLAY_LOOKBACK_SESSIONS = 8;
 
@@ -45,7 +47,13 @@ export async function recentSessionIds(
   const ids: string[] = activeSessionId ? [activeSessionId] : [];
   try {
     const { resources } = await getContainer('sessions').items
-      .query({ query: 'SELECT c.id FROM c' })
+      // Bounded IN THE QUERY, not only in JS. `sessions` is partitioned by
+      // /sessionId, so an unbounded SELECT is a cross-partition scan of every
+      // session the club has ever held, on every card mount and every send.
+      // The JS sort/slice below stays as the real filter because the mock
+      // store ignores SQL entirely; ORDER BY here is what stops real Cosmos
+      // reading the whole container. +1 covers the active id being in range.
+      .query({ query: `SELECT c.id FROM c ORDER BY c.id DESC OFFSET 0 LIMIT ${limit + 1}` })
       .fetchAll();
     const dated = (resources as { id?: string }[])
       .map((r) => r?.id)
