@@ -44,6 +44,10 @@ branch-non-admin.png
 live-admin.png
 live-non-admin.png
 favicon.png
+# Root-anchored so it can never swallow a real asset under public/ or app/.
+# This block grows one filename at a time; prefer a `/prefix-*.png` pattern
+# over another literal name when the next batch appears.
+/gear-*.png
 
 # Design playgrounds (one-off explorations, not shipped)
 *-playground.html
