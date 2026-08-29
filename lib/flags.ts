@@ -38,34 +38,50 @@ export type FlagName =
 interface FlagMeta {
   description: string;
   owner: string;
+  /**
+   * ISO `YYYY-MM-DD`, or one of the documented exemptions in
+   * `__tests__/flags.test.ts`.
+   *
+   * IT MUST BE A DATE, and that is not pedantry. Eleven flags used to say
+   * "after X is promoted to stable + lived-in for 2 weeks" — a condition that
+   * became impossible on 2026-08-25 when the second deployment was deleted and
+   * there stopped being a promotion event. They sat un-retireable for months
+   * because nobody can notice that a sentence has quietly become false, whereas
+   * anybody can notice a date in the past.
+   */
   plannedRemoval: string;
+  /** Anything the removal needs that a date cannot carry — a follow-up to do
+   *  at the same time, or the reasoning behind the decision. */
+  note?: string;
 }
 
 export const FLAGS: Record<FlagName, FlagMeta> = {
   NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: {
     description: 'Exposes the /design preview route with the formalized BPM design-system specimen cards, logo candidates, font pairings, and background variants. Off on bpm-stable; on for bpm-next + dev.',
     owner: 'grant',
-    plannedRemoval: 'after design system decisions (logo / fonts / background) finalize',
+    plannedRemoval: 'never',
+    note: 'Deliberately dateless. This gates the /design preview route — developer tooling, not a staged feature, so there is no ship moment to count two weeks from. It retires when the route does.',
   },
   NEXT_PUBLIC_FLAG_COMMAND_CENTER: {
     description: 'Replaces the AdminDashboard landing screen with the new card-based Command Center (anomaly feed, payment grid, recent sessions, etc.). On for bpm-next + dev once cards are populated; off on bpm-stable until promoted.',
     owner: 'grant',
-    plannedRemoval: 'after command center is promoted to stable + lived-in for 2 weeks',
+    plannedRemoval: '2026-05-19',
   },
   NEXT_PUBLIC_FLAG_SETTLE: {
     description: 'Surfaces the admin Settle action (lock cost) on Command Center. Backend POST/DELETE /api/session/settle is always available; this flag only gates the button + the read paths in ReceiptSheet/PaymentsCard that prefer session.settled over live recompute. On for bpm-next + dev; off on bpm-stable until promoted.',
     owner: 'grant',
-    plannedRemoval: 'after settle is promoted to stable + lived-in for 2 weeks',
+    plannedRemoval: '2026-05-28',
   },
   NEXT_PUBLIC_FLAG_LEDGER: {
     description: 'Surfaces the v1.5 ledger page + "Cover their $X" action on PaymentsCard. Backend PATCH writtenOff is always available; this flag only gates the UI entry points. On for bpm-next + dev once landed; off on bpm-stable until promoted.',
     owner: 'grant',
-    plannedRemoval: 'after v1.5 is promoted to stable + lived-in for 2 weeks',
+    plannedRemoval: '2026-05-28',
   },
   NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE: {
     description: 'Slice-0 of the Value-Hub plan (`docs/plans/value-hub-slice-0.md`): a thin end-to-end vertical of equipment catalog (rackets only, seeded ~15 models), one-tap "What\'s your racket?" on Profile, a 30s post-session game-result logger, a single deterministic recommendation card, and the partner-frequency Stats card. Gates the player-facing UI surfaces; the backend containers (`equipmentCatalog`, `playerGear`, `gameResults`) are bootstrapped lazily via `ensureContainer` regardless, so they exist before the flag flips on. On for bpm-next + dev once landed; off on bpm-stable until the 4-week kill-criterion gate clears.',
     owner: 'grant',
-    plannedRemoval: 'RETIRE. The gate was READ on 2026-08-25 (since=2026-08-16, the restarted clock) and it returned verdict: kill — recCard 3/12 repeat-tappers (0.25 vs 0.40), games 0/12 loggers (0.00 vs 0.30), racketSavers 3, cohort 12. BUT the criterion is no longer executable and must not be run as written: it says "revert everything else", and three of the four tracks it was meant to gate had ALREADY shipped (Insight: partner card, game logger, skill trend; Equipment: expanded past racket-only to strings, 71 rackets vs the planned ~15; Learning: drill library + AI coach). Only Track 4 (Reach) was never built. The fan-out decision was therefore made by SHIPPING, not by this gate — a written criterion with no scheduled read date is a note, not a gate. Reverting now would tear out months of merged, tested, live work on the strength of a tap rate. Read the numbers as product feedback instead: the rec card fails on REACH, not value (only 4 of 12 ever tapped it, but 3 of those 4 tapped more than once) — it is buried on the Gear register inside the Stats tab. CORRECTION (same day): the games 0/12 was NOT non-use. SteppedGameLoggerSheet read the roster as `d?.players`, but GET /api/players returns a BARE ARRAY, so the partner/opponent picker was EMPTY for every member, permanently — nobody could log a game even if they wanted to. Its own test mocked the same wrong shape, so the suite could never catch it. Fixed 2026-08-25. Treat games 0/12 as NO DATA, not as evidence, and re-read the criterion after the fix has been live for a few sessions — GET /api/admin/slice0 with NO ?since is now correct, since its default is the 2026-08-16 clock restart rather than the v1.7 date. The rec-card 0.25 stands (that surface worked; anyTappers:4 with 3 repeating).',
+    plannedRemoval: '2026-09-17',
+    note: 'RETIRE. The gate was READ on 2026-08-25 (since=2026-08-16, the restarted clock) and it returned verdict: kill — recCard 3/12 repeat-tappers (0.25 vs 0.40), games 0/12 loggers (0.00 vs 0.30), racketSavers 3, cohort 12. BUT the criterion is no longer executable and must not be run as written: it says "revert everything else", and three of the four tracks it was meant to gate had ALREADY shipped (Insight: partner card, game logger, skill trend; Equipment: expanded past racket-only to strings, 71 rackets vs the planned ~15; Learning: drill library + AI coach). Only Track 4 (Reach) was never built. The fan-out decision was therefore made by SHIPPING, not by this gate — a written criterion with no scheduled read date is a note, not a gate. Reverting now would tear out months of merged, tested, live work on the strength of a tap rate. Read the numbers as product feedback instead: the rec card fails on REACH, not value (only 4 of 12 ever tapped it, but 3 of those 4 tapped more than once) — it is buried on the Gear register inside the Stats tab. CORRECTION (same day): the games 0/12 was NOT non-use. SteppedGameLoggerSheet read the roster as `d?.players`, but GET /api/players returns a BARE ARRAY, so the partner/opponent picker was EMPTY for every member, permanently — nobody could log a game even if they wanted to. Its own test mocked the same wrong shape, so the suite could never catch it. Fixed 2026-08-25. Treat games 0/12 as NO DATA, not as evidence, and re-read the criterion after the fix has been live for a few sessions — GET /api/admin/slice0 with NO ?since is now correct, since its default is the 2026-08-16 clock restart rather than the v1.7 date. The rec-card 0.25 stands (that surface worked; anyTappers:4 with 3 repeating).',
   },
   NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: {
     description:
@@ -77,7 +93,7 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     description:
       'Web Push notifications (docs/plans/push-notifications.md). Ships a push-only service worker (public/sw.js -- NO fetch handler, so the "legible-fail" offline posture is untouched), a `pushSubscriptions` container (PK /memberId), member-cookie-bound subscribe/unsubscribe, and an opt-in row on Profile. Phase 1 wires ONE trigger: the sign-up-open notification, from the signupOpen false->true edge in PUT /api/session, de-duped by session.signupOpenNotifiedAt. Announcement, sign-up reminder and payment reminder are Phase 2 (the last two need a scheduler, which this repo does not have yet). Payloads are English-only until Member.locale lands. Revived from PR #241 on 2026-08-28; ships OFF until VAPID keys are set, because subscribe() throws without NEXT_PUBLIC_VAPID_PUBLIC_KEY.',
     owner: 'grant',
-    plannedRemoval: 'after push has been lived-in for 2 weeks',
+    plannedRemoval: '2026-09-11',
   },
   NEXT_PUBLIC_FLAG_STRINGING: {
     description:
@@ -93,32 +109,33 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
   NEXT_PUBLIC_FLAG_NAV_RAIL: {
     description: 'Replaces the floating glass-pill bottom nav with the full-width "Labeled Rail" (spec May 2026): edge-attached, capped to the max-w-lg content column, triple-signal active state, theme-aware. Purely presentational — same Tab ids / routing / i18n / aria. On for bpm-next + dev; off on bpm-stable (legacy .nav-glass) until promoted.',
     owner: 'grant',
-    plannedRemoval: 'after the nav rail is promoted to stable + lived-in for 2 weeks (then delete the legacy .nav-glass branch + classes)',
+    plannedRemoval: '2026-06-02',
+    note: 'Also delete the legacy `.nav-glass` branch and its classes.',
   },
   NEXT_PUBLIC_FLAG_SKILL_ASSESS: {
     description: 'Self-assessment skill trend on Stats (docs/badminton-spec-md.md P0): a periodic anchor-card check-in across 14 skills / 3 dimensions, a then-vs-now radar trend, phase placement (incl. "The Switch"), and top strengths / work-on. Gates the player-facing check-in + trend UI and the /api/assessments routes. On for bpm-next + dev; off on bpm-stable until promoted.',
     owner: 'grant',
-    plannedRemoval: 'after skill-assessment P0 is promoted to stable + lived-in for 2 weeks',
+    plannedRemoval: '2026-06-16',
   },
   NEXT_PUBLIC_FLAG_SKILL_LEVEL: {
     description: 'Canonical skill level (Phase 1 of the skill-accuracy spine): one derived 1–5 level per member, computed on read by folding self-assessment snapshots (+ legacy Member.stage fallback). Surfaces a private "Your level" card on Stats and prepends the level to the AI insight. Read API is privacy-gated (member cookie / admin). On for bpm-next + dev; off on bpm-stable until promoted.',
     owner: 'grant',
-    plannedRemoval: 'after the skill-level spine is promoted to stable + lived-in for 2 weeks',
+    plannedRemoval: '2026-06-27',
   },
   NEXT_PUBLIC_FLAG_SKILL_CALIBRATION: {
     description: 'Game calibration (Phase 2 of the skill-accuracy spine): folds logged game results (Elo-lite, seeded by each player\'s self-assessment) into an observed level that silently sharpens the canonical level, and surfaces an opt-in, asymmetric "how your games compare" note on the level card. Requires the value-hub game logger to produce data. On for bpm-next + dev; off on bpm-stable until promoted.',
     owner: 'grant',
-    plannedRemoval: 'after the calibration phase is promoted to stable + lived-in for 2 weeks',
+    plannedRemoval: '2026-06-27',
   },
   NEXT_PUBLIC_FLAG_SKILL_SMOOTHING: {
     description: 'Progression stability (Phase 3 of the skill-accuracy spine): the canonical level\'s self component becomes a time-decayed EWMA (90-day half-life) of all check-ins instead of just the latest, and the phase is hysteresis-confirmed (promotion needs two consecutive qualifying check-ins or game corroboration; demotion has a sticky margin) so it stops swinging on one check-in. Surfaces an "on track for X — confirm next check-in" hint. On for bpm-next + dev; off on bpm-stable until promoted.',
     owner: 'grant',
-    plannedRemoval: 'after the skill-accuracy spine is promoted to stable + lived-in for 2 weeks',
+    plannedRemoval: '2026-06-27',
   },
   NEXT_PUBLIC_FLAG_SKILL_DRILLS: {
     description: 'Drill recommendations (skill-followups plan, Phase B): a deterministic engine maps the member\'s lowest-rated skills to concrete practice drills from a static library (band = the skill\'s own rating, rotated weekly by session). Surfaces a private DrillsCard on Stats and lets the AI insight name a real drill. Gated read API (member cookie / admin). On for bpm-next + dev; off on bpm-stable until promoted.',
     owner: 'grant',
-    plannedRemoval: 'after drills are promoted to stable + lived-in for 2 weeks',
+    plannedRemoval: '2026-07-01',
   },
   NEXT_PUBLIC_FLAG_KUDOS: {
     description: 'Kudos: positive-only peer recognition that replaces the cut numeric peer rating. A small fixed set of tags, member-cookie-bound writes (rule 12), and a private aggregate (member/admin) of per-tag counts PLUS signed notes. Eligibility is co-play across the last 8 sessions, owned by lib/kudosEligibility.ts. No level coupling — purely social. `kudos` container (PK /recipientMemberId). Live in prod (true in both workflows).',
@@ -134,7 +151,7 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
   NEXT_PUBLIC_FLAG_INSIGHT_CARDS: {
     description: 'Distributed AI insights: dissolves the standalone "Your read" card into a one-line plain-language greeting at the top of the Stats Summary plus a short, NON-OBVIOUS insight chip attached to each card (level, skill trend). Server-side the /api/stats/insight route switches from {recap, focus} to structured {greeting, level, trend} slices, grounded in deterministically-computed signals (lib/insightSignals.ts) and nullable per card. On for bpm-next + dev; off on bpm-stable (legacy StreakSummaryCard) until promoted.',
     owner: 'grant',
-    plannedRemoval: 'after distributed insights are promoted to stable + lived-in for 2 weeks',
+    plannedRemoval: '2026-07-01',
   },
   NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: {
     description: 'Skill-scored equipment recommendations: the racket engine (lib/racketRecommend.ts) AND the string pairing engine (lib/stringPair.ts), both reached through GET /api/recommend. On for bpm-next, off on bpm-stable, which falls back to the coarse stage-derived racket pick. Renamed from NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER when string pairing landed and the old name stopped describing what it gates.',
