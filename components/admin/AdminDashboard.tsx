@@ -107,34 +107,26 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     return <div className="animate-slideInRight"><StringingPage onBack={goBack} /></div>;
   }
   if (view === 'ledger') {
-    // Flag gates the UI entry point; the GET endpoint is always available
-    // (admin-auth is its own gate). If the flag is off, fall through to the
-    // dashboard rather than rendering an orphan page.
-    if (isFlagOn('NEXT_PUBLIC_FLAG_LEDGER')) {
-      return (
-        <div className="animate-slideInRight">
-          <LedgerPage
-            onBack={goBack}
-            onOpenSession={(sessionId) => {
-              setPaymentsSessionId(sessionId);
-              setView('payments');
-            }}
-          />
-        </div>
-      );
-    }
+    return (
+      <div className="animate-slideInRight">
+        <LedgerPage
+          onBack={goBack}
+          onOpenSession={(sessionId) => {
+            setPaymentsSessionId(sessionId);
+            setView('payments');
+          }}
+        />
+      </div>
+    );
   }
   if (view === 'payments') {
-    // Only reachable via the flag-gated Ledger drill-in; mirror its gate so
-    // a stale view state can't orphan this page.
-    if (isFlagOn('NEXT_PUBLIC_FLAG_LEDGER')) {
-      return (
-        <div className="animate-slideInRight space-y-3">
-          <AdminBackHeader onBack={goBackToLedger} title="Payments" />
-          <PaymentsCard refreshKey={refreshKey} initialSessionId={paymentsSessionId} />
-        </div>
-      );
-    }
+    // Reached via the Ledger drill-in.
+    return (
+      <div className="animate-slideInRight space-y-3">
+        <AdminBackHeader onBack={goBackToLedger} title="Payments" />
+        <PaymentsCard refreshKey={refreshKey} initialSessionId={paymentsSessionId} />
+      </div>
+    );
   }
   if (view === 'announcements') {
     return (

@@ -54,13 +54,6 @@ describe('feature flags', () => {
     expect(isFlagOn('NEXT_PUBLIC_FLAG_DESIGN_PREVIEW')).toBe(true);
   });
 
-  it('recognizes NEXT_PUBLIC_FLAG_LEDGER', () => {
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_LEDGER')).toBe(false);
-    process.env.NEXT_PUBLIC_FLAG_LEDGER = 'true';
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_LEDGER')).toBe(true);
-    process.env.NEXT_PUBLIC_FLAG_LEDGER = '1';
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_LEDGER')).toBe(false);
-  });
 
   it('recognizes NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE', () => {
     expect(isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')).toBe(false);

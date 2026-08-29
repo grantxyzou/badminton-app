@@ -155,7 +155,7 @@ describe('<NextSessionCard />', () => {
     });
   });
 
-  describe('settle UI (NEXT_PUBLIC_FLAG_SETTLE)', () => {
+  describe('settle UI', () => {
     const session = {
       id: 's', title: 'Sunday', datetime: new Date(Date.now() + 86_400_000).toISOString(),
       deadline: new Date(Date.now() + 3_600_000).toISOString(),
@@ -177,54 +177,25 @@ describe('<NextSessionCard />', () => {
       },
     };
 
-    it('hides Send the bill and Sent badge when flag is off (stable users keep "Share cost")', async () => {
-      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
-      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'false';
-      try {
-        mockFetch(makeFetcher(settledSession, []));
-        render(<NextSessionCard onShareCost={() => {}} />);
-        await waitFor(() => expect(screen.getByText(/Sunday/)).toBeTruthy());
-        expect(screen.queryByText(/Send the bill/)).toBeNull();
-        expect(screen.queryByText(/Sent ·/)).toBeNull();
-        // Legacy button stays for unflagged users.
-        expect(screen.getByText(/Share cost/)).toBeTruthy();
-      } finally {
-        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
-      }
-    });
 
     it('shows "Finalize cost" when flag on and session not yet settled', async () => {
-      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
-      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
-      try {
-        mockFetch(makeFetcher(session, []));
-        render(<NextSessionCard onShareCost={() => {}} />);
-        await waitFor(() => expect(screen.getByText(/Finalize cost/)).toBeTruthy());
-        expect(screen.queryByText(/Sent ·/)).toBeNull();
-        expect(screen.queryByText(/Share cost/)).toBeNull();
-      } finally {
-        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
-      }
+      mockFetch(makeFetcher(session, []));
+      render(<NextSessionCard onShareCost={() => {}} />);
+      await waitFor(() => expect(screen.getByText(/Finalize cost/)).toBeTruthy());
+      expect(screen.queryByText(/Sent ·/)).toBeNull();
+      expect(screen.queryByText(/Share cost/)).toBeNull();
     });
 
     it('shows "Sent · $X" badge and "Share again" + "Edit bill" when flag on and session settled', async () => {
-      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
-      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
-      try {
-        mockFetch(makeFetcher(settledSession, []));
-        render(<NextSessionCard onShareCost={() => {}} />);
-        await waitFor(() => expect(screen.getByText(/Sent · \$15/)).toBeTruthy());
-        expect(screen.getByText(/Share again — \$15 each/)).toBeTruthy();
-        expect(screen.getByText(/Edit bill/)).toBeTruthy();
-        expect(screen.queryByText(/Send the bill/)).toBeNull();
-      } finally {
-        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
-      }
+      mockFetch(makeFetcher(settledSession, []));
+      render(<NextSessionCard onShareCost={() => {}} />);
+      await waitFor(() => expect(screen.getByText(/Sent · \$15/)).toBeTruthy());
+      expect(screen.getByText(/Share again — \$15 each/)).toBeTruthy();
+      expect(screen.getByText(/Edit bill/)).toBeTruthy();
+      expect(screen.queryByText(/Send the bill/)).toBeNull();
     });
 
     it('warns before finalizing while sign-ups are open, and aborts if declined', async () => {
-      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
-      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
       let settlePosted = false;
       global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -246,13 +217,10 @@ describe('<NextSessionCard />', () => {
         expect(settlePosted).toBe(false);
       } finally {
         confirmSpy.mockRestore();
-        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
       }
     });
 
     it('finalizes when the open-signups warning is accepted', async () => {
-      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
-      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
       let settlePosted = false;
       global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -272,63 +240,42 @@ describe('<NextSessionCard />', () => {
         await waitFor(() => expect(settlePosted).toBe(true));
       } finally {
         confirmSpy.mockRestore();
-        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
       }
     });
 
     it('flags a stale split when the roster changed since finalizing', async () => {
-      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
-      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
-      try {
-        // Frozen at 6 players; 3 active now → stale.
-        mockFetch(makeFetcher(settledSession, [{ id: 'p1' }, { id: 'p2' }, { id: 'p3' }]));
-        render(<NextSessionCard onShareCost={() => {}} />);
-        await waitFor(() => expect(screen.getByText(/Roster changed since you finalized/)).toBeTruthy());
-        expect(screen.getByText(/3 now vs 6 when sent/)).toBeTruthy();
-      } finally {
-        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
-      }
+      // Frozen at 6 players; 3 active now → stale.
+      mockFetch(makeFetcher(settledSession, [{ id: 'p1' }, { id: 'p2' }, { id: 'p3' }]));
+      render(<NextSessionCard onShareCost={() => {}} />);
+      await waitFor(() => expect(screen.getByText(/Roster changed since you finalized/)).toBeTruthy());
+      expect(screen.getByText(/3 now vs 6 when sent/)).toBeTruthy();
     });
 
     it('does NOT flag a stale split when the roster and cost still match', async () => {
-      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
-      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
-      try {
-        // 6 frozen, 6 active now + live cost == frozen cost → no nudge at all.
-        mockFetch(makeFetcher(settledSession, [
-          { id: 'p1' }, { id: 'p2' }, { id: 'p3' }, { id: 'p4' }, { id: 'p5' }, { id: 'p6' },
-        ]));
-        render(<NextSessionCard onShareCost={() => {}} />);
-        await waitFor(() => expect(screen.getByText(/Sent · \$15/)).toBeTruthy());
-        expect(screen.queryByText(/Roster changed since you finalized/)).toBeNull();
-        expect(screen.queryByText(/cost changed since you finalized/i)).toBeNull();
-      } finally {
-        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
-      }
+      // 6 frozen, 6 active now + live cost == frozen cost → no nudge at all.
+      mockFetch(makeFetcher(settledSession, [
+        { id: 'p1' }, { id: 'p2' }, { id: 'p3' }, { id: 'p4' }, { id: 'p5' }, { id: 'p6' },
+      ]));
+      render(<NextSessionCard onShareCost={() => {}} />);
+      await waitFor(() => expect(screen.getByText(/Sent · \$15/)).toBeTruthy());
+      expect(screen.queryByText(/Roster changed since you finalized/)).toBeNull();
+      expect(screen.queryByText(/cost changed since you finalized/i)).toBeNull();
     });
 
     it('flags a stale bill when the cost changed after finalizing (Edit-bill footgun)', async () => {
-      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
-      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
-      try {
-        // Frozen at $90 total, but the court cost was edited down (30 × 2 = 60
-        // live) after finalizing → the bill is stale until unsettled.
-        const costEdited = { ...settledSession, costPerCourt: 30 };
-        mockFetch(makeFetcher(costEdited, [
-          { id: 'p1' }, { id: 'p2' }, { id: 'p3' }, { id: 'p4' }, { id: 'p5' }, { id: 'p6' },
-        ]));
-        render(<NextSessionCard onShareCost={() => {}} />);
-        await waitFor(() => expect(screen.getByText(/cost changed since you finalized/i)).toBeTruthy());
-        // Names the frozen vs live totals and points at Edit bill.
-        expect(screen.getByText(/\$60\.00 now vs \$90\.00 when sent/)).toBeTruthy();
-      } finally {
-        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
-      }
+      // Frozen at $90 total, but the court cost was edited down (30 × 2 = 60
+      // live) after finalizing → the bill is stale until unsettled.
+      const costEdited = { ...settledSession, costPerCourt: 30 };
+      mockFetch(makeFetcher(costEdited, [
+        { id: 'p1' }, { id: 'p2' }, { id: 'p3' }, { id: 'p4' }, { id: 'p5' }, { id: 'p6' },
+      ]));
+      render(<NextSessionCard onShareCost={() => {}} />);
+      await waitFor(() => expect(screen.getByText(/cost changed since you finalized/i)).toBeTruthy());
+      // Names the frozen vs live totals and points at Edit bill.
+      expect(screen.getByText(/\$60\.00 now vs \$90\.00 when sent/)).toBeTruthy();
     });
 
     it('fires onChanged after a successful finalize (so sibling cards reload)', async () => {
-      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
-      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
       let changed = 0;
       global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === 'string' ? input : (input as Request).url;
@@ -341,18 +288,12 @@ describe('<NextSessionCard />', () => {
         ), { status: 200 });
         return new Response('nf', { status: 404 });
       }) as typeof fetch;
-      try {
-        render(<NextSessionCard onShareCost={() => {}} onChanged={() => { changed += 1; }} />);
-        fireEvent.click(await screen.findByRole('button', { name: /Finalize cost/ }));
-        await waitFor(() => expect(changed).toBe(1));
-      } finally {
-        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
-      }
+      render(<NextSessionCard onShareCost={() => {}} onChanged={() => { changed += 1; }} />);
+      fireEvent.click(await screen.findByRole('button', { name: /Finalize cost/ }));
+      await waitFor(() => expect(changed).toBe(1));
     });
 
     it('fires onChanged after a successful unsettle (Edit bill)', async () => {
-      const prev = process.env.NEXT_PUBLIC_FLAG_SETTLE;
-      process.env.NEXT_PUBLIC_FLAG_SETTLE = 'true';
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
       let changed = 0;
       global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -369,7 +310,6 @@ describe('<NextSessionCard />', () => {
         await waitFor(() => expect(changed).toBe(1));
       } finally {
         confirmSpy.mockRestore();
-        process.env.NEXT_PUBLIC_FLAG_SETTLE = prev;
       }
     });
   });

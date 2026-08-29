@@ -72,9 +72,6 @@
   --btn-ghost-hover: linear-gradient(160deg, rgba(var(--glass-tint), 0.12) 0%, rgba(var(--glass-tint), 0.06) 100%);
 
   /* ── Nav ── */
-  --nav-bg: linear-gradient(160deg, rgba(var(--glass-tint), 0.10) 0%, rgba(var(--glass-tint), 0.04) 100%);
-  --nav-shadow: 0 8px 40px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.18);
-  --nav-tab-active-bg: linear-gradient(160deg, rgba(74, 222, 128, 0.12) 0%, rgba(74, 222, 128, 0.05) 100%);
   --nav-active-color: #4ade80;
   --nav-inactive-color: rgba(255, 255, 255, 0.5);
 
@@ -209,10 +206,6 @@
   --btn-ghost-border: rgba(0, 0, 0, 0.1);
   --btn-ghost-text: rgba(0, 0, 0, 0.7);
   --btn-ghost-hover: linear-gradient(160deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.6) 100%);
-
-  --nav-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.65) 100%);
-  --nav-shadow: 0 -1px 0 rgba(0, 0, 0, 0.04), 0 8px 40px rgba(0, 0, 0, 0.08);
-  --nav-tab-active-bg: linear-gradient(160deg, rgba(22, 163, 74, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%);
   --nav-active-color: #16a34a;
   --nav-inactive-color: rgba(0, 0, 0, 0.4);
 
@@ -1770,15 +1763,12 @@ html[data-visual="field"][data-tab="skills"] .court-bg::before {
    the border goes to .34 (3.06:1, clearing the 3:1 WCAG 1.4.11 asks of a
    non-text boundary that conveys structure) and an upward shadow lifts the
    rail onto its own plane. Both revert with the flag. */
-html[data-visual="field"] .rail-bar,
-html[data-visual="field"] .nav-glass {
+html[data-visual="field"] .rail-bar {
   --rail-border: rgba(255, 255, 255, 0.34);
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
 }
 [data-theme="light"] html[data-visual="field"] .rail-bar,
-html[data-visual="field"][data-theme="light"] .rail-bar,
-[data-theme="light"] html[data-visual="field"] .nav-glass,
-html[data-visual="field"][data-theme="light"] .nav-glass {
+html[data-visual="field"][data-theme="light"] .rail-bar {
   /* Light does not reach 3:1 the way dark does, and chasing it would be the
      wrong call: a hairline dark enough to clear 3:1 on cream is rgba(0,0,0,.43),
      which reads as a heavy rule rather than an edge. It is also not the same
@@ -2113,19 +2103,6 @@ html[data-visual="field"] .ink-button {
 }
 
 /* ── Liquid Glass nav bar ── */
-.nav-glass {
-  /* Canonical per docs/design-system/preview/19-bottom-nav.html:
-     radius 16 (corner-ladder compliant), 1px rim border, inline-flex so the
-     pill hugs its tabs instead of stretching to the container edges. */
-  background: var(--nav-bg);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  box-shadow: var(--nav-shadow);
-  display: inline-flex;
-  padding: var(--space-1) var(--space-2) var(--space-2);
-}
 
 /* ── Safe area bottom padding for nav ── */
 .nav-safe-area {
@@ -2137,45 +2114,9 @@ html[data-visual="field"] .ink-button {
    color; .nav-tab-active overrides on the same element. Border-radius is
    declared here (not just on .nav-tab-active) so the active background and
    rim animate in with rounded corners on tab change. */
-.nav-tab {
-  flex: 0 0 auto;
-  min-width: 58px;
-  padding: var(--space-2) var(--space-3) var(--space-1);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-05);
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-family: inherit;
-  color: var(--nav-inactive-color);
-  border-radius: var(--radius-lg);
-  transition:
-    color 150ms var(--ease-glass),
-    background 150ms var(--ease-glass),
-    box-shadow 150ms var(--ease-glass);
-}
 
-.nav-tab-icon {
-  font-size: 20px;
-  line-height: 1;
-  opacity: 1;
-  /* Material Symbols variable-font outline by default */
-  font-variation-settings: 'opsz' 24, 'wght' 400, 'FILL' 0, 'GRAD' 0;
-}
 
-.nav-tab-icon-active {
-  /* Flip FILL axis to 1 so the glyph reads as filled vs. outlined */
-  font-variation-settings: 'opsz' 24, 'wght' 500, 'FILL' 1, 'GRAD' 0;
-}
 
-.nav-tab-label {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  line-height: 1.1;
-}
 
 /* ── Active nav tab ──
    Tinted pill background + 1px green rim + color swap. The rim is what
@@ -2183,22 +2124,11 @@ html[data-visual="field"] .ink-button {
    alone can wash out, but a hairline inner stroke survives. Active label
    bumps to weight 600 so the active signal isn't carried by color alone
    (sunlight + colorblind cases). */
-.nav-tab-active {
-  color: var(--nav-active-color);
-  background: var(--nav-tab-active-bg);
-  box-shadow: inset 0 0 0 1px rgba(74, 222, 128, 0.18);
-}
-.nav-tab-active .nav-tab-label {
-  font-weight: 600;
-}
-[data-theme="light"] .nav-tab-active {
-  box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.22);
-}
 
 /* ── Bottom nav · Labeled Rail (spec May 2026) ──
    Full-width, edge-attached, theme-independent dark surface. The LIVE
-   app's bottom nav. The old .nav-glass pill family above is retained
-   only for the frozen /design preview route. Triple-signal active
+   app's bottom nav. The legacy .nav-glass pill family it replaced was
+   deleted on 2026-08-29 with its flag. Triple-signal active
    state: color + tonal pill + bold weight — never color alone. No
    border-radius / box-shadow: this is a surface, not a floating object. */
 .rail-bar {
