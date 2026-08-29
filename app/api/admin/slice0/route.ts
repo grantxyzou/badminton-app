@@ -82,6 +82,14 @@ export async function GET(req: NextRequest) {
     // --- Half 1: rec-card repeat engagement. --------------------------------
     // "More than once" is why `events` stores one doc per interaction instead
     // of upserting a latest-state row.
+    //
+    // THIS NUMBER UNDERCOUNTS IF ANYONE HAS DELETED THEIR ACCOUNT.
+    // `DELETE /api/members/me` purges a member's `events` outright (see the
+    // note on the `events` entry in lib/memberPurge.ts), so their taps leave
+    // with them and this reads lower than what actually happened. That is the
+    // intended trade — a smaller true number beats a larger false one — but
+    // read a disappointing result here as "engagement, minus anyone who left"
+    // before concluding the feature failed.
     let repeatTappers = 0;
     let anyTappers = 0;
     try {

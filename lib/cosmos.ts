@@ -434,6 +434,21 @@ function getMockContainer(name: string) {
             if ('@memberId' in params) {
               results = results.filter((r) => r.memberId === params['@memberId']);
             }
+            // Kudos are queried in BOTH directions — `@recipientMemberId` for
+            // what someone received, `@raterMemberId` for what they gave — and
+            // account deletion treats those oppositely (received is deleted,
+            // given is anonymized so the recipient keeps their count). Without
+            // these two the mock returned every kudos row for either query, so
+            // the purge deleted both and the test could not tell the two
+            // directions apart. Same naming convention as @memberId above.
+            if ('@recipientMemberId' in params) {
+              results = results.filter(
+                (r) => r.recipientMemberId === params['@recipientMemberId'],
+              );
+            }
+            if ('@raterMemberId' in params) {
+              results = results.filter((r) => r.raterMemberId === params['@raterMemberId']);
+            }
             // The bench's Mine filter (`WHERE c.stringerId = @stringerId`).
             // Same convention as @memberId above: the parameter is named for
             // the field so the mock can honour the clause instead of silently
