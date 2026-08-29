@@ -737,6 +737,7 @@
       "loading": "Loading\u2026",
       "candidateCount": "{count} {count, plural, one {person} other {people}} you\u2019ve played with",
       "giveCta": "Give kudos",
+      "needsSignIn": "Your session expired \u2014 sign in again from Profile to send kudos.",
       "emptyHint": "Play a session and the people you played with will show up here.",
       "notesTitle": "What people said",
       "sendError": "That didn't send — tap the tag to try again.",

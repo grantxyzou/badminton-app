@@ -42,7 +42,7 @@ export default function GiveKudosCard() {
      `__tests__/active-name-canary.test.ts` pins this. */
   const { name: activeName, resolved } = useActiveName();
   const [names, setNames] = useState<string[]>([]);
-  const [load, setLoad] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [load, setLoad] = useState<'loading' | 'ready' | 'error' | 'needsSignIn'>('loading');
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -56,10 +56,13 @@ export default function GiveKudosCard() {
     setLoad('loading');
     try {
       const res = await fetch(`${BASE}/api/kudos/eligible`, { cache: 'no-store' });
-      // A 401 means signed out, which is a legitimate "nothing for you here"
-      // rather than a fault; anything else unknown is a real failure and must
-      // not render as an empty list (CLAUDE.md, lying empty state).
-      if (res.status === 401) { setNames([]); setLoad('ready'); return; }
+      // A 401 here is NOT "signed out" — that case returned above without
+      // fetching. The only way to reach this line is a `member_session` cookie
+      // that expired past its 30-day TTL while `badminton_identity` persisted,
+      // which is a state CLAUDE.md documents as live. Rendering the empty
+      // state would tell someone who looks signed in that they have played
+      // with nobody — the lying empty state again. Say what is actually wrong.
+      if (res.status === 401) { setNames([]); setLoad('needsSignIn'); return; }
       if (!res.ok) { setLoad('error'); return; }
       const data = (await res.json()) as { names?: unknown };
       setNames(Array.isArray(data.names) ? data.names.filter((n): n is string => typeof n === 'string') : []);
@@ -77,6 +80,8 @@ export default function GiveKudosCard() {
 
       {load === 'error' ? (
         <ErrorState message={t('error')} />
+      ) : load === 'needsSignIn' ? (
+        <p className="fs-sm m-0" style={{ color: 'var(--text-muted)' }}>{t('needsSignIn')}</p>
       ) : load === 'loading' ? (
         <p className="fs-sm m-0" style={{ color: 'var(--text-muted)' }}>{t('loading')}</p>
       ) : names.length === 0 ? (

@@ -107,13 +107,19 @@ describe('GiveKudosCard — always present', () => {
   });
 
   /**
-   * Signed out is a legitimate "nothing here", not a fault — the card should
-   * not shout an error at someone who simply has not signed in.
+   * A 401 here is NEVER "signed out" — that case returns before the fetch (see
+   * the test below). The only way to receive one is a `member_session` cookie
+   * that expired past its 30-day TTL while `badminton_identity` persisted,
+   * which CLAUDE.md documents as a live state. Rendering `emptyHint` there
+   * tells a member who looks signed in that they have played with nobody:
+   * the same lying-empty-state that made this feature unfindable in the first
+   * place, just wearing a different hat. Say what is actually wrong.
    */
-  it('treats 401 as the empty state, not an error', async () => {
+  it('asks a session-expired member to sign in, rather than claiming nobody', async () => {
     mockEligible(() => json({ error: 'auth_required' }, 401));
     wrap();
-    expect(await screen.findByText(K.emptyHint)).toBeTruthy();
+    expect(await screen.findByText(K.needsSignIn)).toBeTruthy();
+    expect(screen.queryByText(K.emptyHint)).toBeNull();
     expect(screen.queryByText(K.error)).toBeNull();
   });
 
