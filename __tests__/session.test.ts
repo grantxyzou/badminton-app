@@ -363,6 +363,70 @@ describe('POST /api/session/advance', () => {
     expect(data.signupOpen).toBe(false);
   });
 
+  /**
+   * THE PRODUCTION CASE, 2026-08-28.
+   *
+   * The Sep 3 session closed sign-ups on a Tuesday when every prior week
+   * closed on a Wednesday — a full day less notice — and the only anomaly
+   * recorded against it was `max_players_changed`. Two causes, and this test
+   * covers the one that matters: THIS route had its own copy of the drift
+   * comparisons, so a check added to `detectSettingsDrift` would not have
+   * reached the path that actually stamps `anomaliesAtAdvance`.
+   */
+  it('flags a deadline that moves a day earlier than last week', async () => {
+    /* Re-seed from scratch: `seedSession` PUSHES rather than replaces, and the
+       beforeEach already seeded this id — a second call leaves two rows and
+       the route reads the first, so the overrides here would be silently
+       ignored and the snapshot built from defaults. */
+    resetMockStore();
+    seedAdminMember();
+    seedPointer('session-2026-04-05');
+    seedSession('session-2026-04-05', {
+      datetime: '2026-04-05T20:00:00-07:00',
+      deadline: '2026-04-04T21:00:00-07:00',
+      maxPlayers: 12,
+      courts: 2,
+      costPerCourt: 63,
+    });
+
+    const req = makeAdminRequest('POST', 'http://localhost:3000/api/session/advance', {
+      datetime: '2026-04-12T20:00:00-07:00',
+      deadline: '2026-04-10T21:00:00-07:00',
+      maxPlayers: 12,
+      courts: 2,
+      costPerCourt: 63,
+    });
+    const data = await (await ADVANCE(req)).json();
+
+    expect(data.anomaliesAtAdvance).toContain('deadline_changed');
+    // And nothing else drifted, so the warning is specific rather than noise.
+    expect(data.anomaliesAtAdvance).not.toContain('max_players_changed');
+  });
+
+  it('does not flag a deadline that keeps its usual distance', async () => {
+    resetMockStore();
+    seedAdminMember();
+    seedPointer('session-2026-04-05');
+    seedSession('session-2026-04-05', {
+      datetime: '2026-04-05T20:00:00-07:00',
+      deadline: '2026-04-04T21:00:00-07:00',
+      maxPlayers: 12,
+      courts: 2,
+      costPerCourt: 63,
+    });
+
+    const req = makeAdminRequest('POST', 'http://localhost:3000/api/session/advance', {
+      datetime: '2026-04-12T20:00:00-07:00',
+      deadline: '2026-04-11T21:00:00-07:00', // same 23h before
+      maxPlayers: 12,
+      courts: 2,
+      costPerCourt: 63,
+    });
+    const data = await (await ADVANCE(req)).json();
+
+    expect(data.anomaliesAtAdvance ?? []).not.toContain('deadline_changed');
+  });
+
   it('missing datetime → 400', async () => {
     // ARRANGE: body with no datetime
     const req = makeAdminRequest('POST', 'http://localhost:3000/api/session/advance', {});

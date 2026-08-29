@@ -4,7 +4,8 @@ import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { toValidIso } from '@/app/api/session/route';
 import { resolveBirdUsages } from '@/lib/birdWrite';
 import { sessionCostTotals } from '@/lib/sessionCost';
-import type { BirdUsage } from '@/lib/types';
+import { detectSettingsDrift } from '@/lib/anomalies';
+import type { BirdUsage, Session } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -112,15 +113,28 @@ export async function POST(req: NextRequest) {
       const newCourts = Math.max(1, Math.min(20, parseInt(body.courts, 10) || 2));
       const newMaxPlayers = Math.max(1, Math.min(100, parseInt(body.maxPlayers, 10) || 12));
 
-      if (newCostPerCourt !== prevSnapshot.costPerCourt) {
-        anomaliesAtAdvance.push('cost_changed');
-      }
-      if (newCourts !== prevSnapshot.courtCount) {
-        anomaliesAtAdvance.push('courts_changed');
-      }
-      if (newMaxPlayers !== prevSnapshot.maxPlayers) {
-        anomaliesAtAdvance.push('max_players_changed');
-      }
+      /* ONE IMPLEMENTATION OF DRIFT, NOT TWO.
+         These three comparisons used to be written out here, duplicating
+         `detectSettingsDrift` — and the copies drifted apart exactly as you
+         would expect. When the deadline check was added to the shared
+         function, THIS path would still have missed it, which is the path that
+         actually stamps `anomaliesAtAdvance` on the new session. That is how
+         the 2026-09-03 session came to close sign-ups a day early with only
+         `max_players_changed` recorded against it. Same family as the ten
+         copy-pasted member resolvers that `lib/memberResolve.ts` exists to
+         prevent. */
+      anomaliesAtAdvance.push(
+        ...detectSettingsDrift(
+          {
+            costPerCourt: newCostPerCourt,
+            courts: newCourts,
+            maxPlayers: newMaxPlayers,
+            datetime,
+            deadline: toValidIso(body.deadline),
+          } as Session,
+          prevSnapshot,
+        ),
+      );
 
       // long_break: gap between previous session start and new session start > 21 days
       if (currentSession.datetime) {
