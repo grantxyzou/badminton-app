@@ -42,6 +42,54 @@ describe('detectSettingsDrift', () => {
       .toContain('max_players_changed');
   });
 
+  /**
+   * THE ONE THIS SET WAS MISSING, found in production on 2026-08-28.
+   *
+   * The Sep 3 session closed sign-ups on Tuesday when every prior week closed
+   * on Wednesday — a full day less to sign up — and nothing said a word,
+   * because the snapshot RECORDED `deadlineOffsetHours` and `SetupPage`
+   * DISPLAYED it while no code ever compared it. maxPlayers going 11 -> 12
+   * raised a warning in the same doc; a deadline moving a day did not.
+   */
+  it('returns deadline_changed when sign-ups close a day earlier than last week', () => {
+    // Session Thu 20:00; last week closed 23h before (Wed 21:00). This one
+    // closes Tue 21:00 — 47h before.
+    const session = makeSession({
+      datetime: '2026-09-03T20:00:00-07:00',
+      deadline: '2026-09-01T21:00:00-07:00',
+    });
+    expect(detectSettingsDrift(session, makeSnapshot({ deadlineOffsetHours: -23 })))
+      .toContain('deadline_changed');
+  });
+
+  it('ignores a small shift, so a DST hour or a tidied time is not an alarm', () => {
+    // A weekly session crossing a DST boundary moves the wall-clock offset by
+    // exactly an hour through nobody's decision. Flagging that would teach
+    // someone to dismiss this warning without reading it.
+    const session = makeSession({
+      datetime: '2026-09-03T20:00:00-07:00',
+      deadline: '2026-09-02T20:00:00-07:00', // 24h before
+    });
+    expect(detectSettingsDrift(session, makeSnapshot({ deadlineOffsetHours: -23 })))
+      .not.toContain('deadline_changed');
+  });
+
+  it('says nothing when the deadline keeps its usual distance', () => {
+    const session = makeSession({
+      datetime: '2026-09-03T20:00:00-07:00',
+      deadline: '2026-09-02T21:00:00-07:00', // exactly 23h before
+    });
+    expect(detectSettingsDrift(session, makeSnapshot({ deadlineOffsetHours: -23 }))).toEqual([]);
+  });
+
+  it('does not flag a session with no deadline set', () => {
+    // Absent is not "moved" — a session that never had one has nothing to
+    // compare, and inventing a drift would be a lying warning.
+    const session = makeSession({ deadline: undefined });
+    expect(detectSettingsDrift(session, makeSnapshot({ deadlineOffsetHours: -23 })))
+      .not.toContain('deadline_changed');
+  });
+
   it('handles missing snapshot gracefully (returns [])', () => {
     expect(detectSettingsDrift(makeSession(), undefined)).toEqual([]);
   });

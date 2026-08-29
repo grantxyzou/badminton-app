@@ -8,6 +8,7 @@ export type AnomalyCode =
   | 'cost_changed'
   | 'courts_changed'
   | 'max_players_changed'
+  | 'deadline_changed'
   | 'long_break'
   | 'skip_date';
 
@@ -22,6 +23,32 @@ export type Anomaly =
 
 const LONG_BREAK_THRESHOLD_DAYS = 21;
 const MS_PER_DAY = 86_400_000;
+const MS_PER_HOUR = 3_600_000;
+
+/**
+ * How far the sign-up deadline may drift before it is worth mentioning.
+ *
+ * Not zero, and the reason is DST. A weekly session that crosses a boundary
+ * moves its wall-clock offset by exactly one hour through nobody's decision,
+ * and a warning that fires twice a year for something no one did is a warning
+ * people learn to dismiss without reading — which costs you the one that
+ * matters. Six hours ignores that and any hand-tidying of the time, while
+ * still catching the half-day and full-day moves that change whether someone
+ * gets a chance to sign up.
+ */
+const DEADLINE_DRIFT_TOLERANCE_HOURS = 6;
+
+/** Hours from session start to deadline. Negative when the deadline is
+ *  before the session, which is the normal case. Mirrors
+ *  `calculateOffsetHours` in app/api/session/advance/route.ts, which is what
+ *  wrote the snapshot value this is compared against. */
+function deadlineOffsetHours(session: Session): number | null {
+  if (!session.datetime || !session.deadline) return null;
+  const start = new Date(session.datetime).getTime();
+  const deadline = new Date(session.deadline).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(deadline)) return null;
+  return (deadline - start) / MS_PER_HOUR;
+}
 
 export function detectSettingsDrift(
   session: Session,
@@ -32,6 +59,22 @@ export function detectSettingsDrift(
   if ((session.costPerCourt ?? 0) !== snapshot.costPerCourt) codes.push('cost_changed');
   if (session.courts !== snapshot.courtCount) codes.push('courts_changed');
   if (session.maxPlayers !== snapshot.maxPlayers) codes.push('max_players_changed');
+
+  /* The snapshot has RECORDED `deadlineOffsetHours` since it was introduced
+     and SetupPage has displayed it, but nothing ever compared it — so the
+     2026-09-03 session closed sign-ups on a Tuesday when every prior week
+     closed on a Wednesday, and the only anomaly raised was maxPlayers going
+     11 -> 12. A day less to sign up is a bigger deal to a player than one
+     extra spot. */
+  const offset = deadlineOffsetHours(session);
+  if (
+    offset !== null &&
+    Number.isFinite(snapshot.deadlineOffsetHours) &&
+    Math.abs(offset - snapshot.deadlineOffsetHours) >= DEADLINE_DRIFT_TOLERANCE_HOURS
+  ) {
+    codes.push('deadline_changed');
+  }
+
   return codes;
 }
 
@@ -141,6 +184,16 @@ function messageFor(code: AnomalyCode, session: Session, snapshot: PrevSessionSn
       return `Courts changed from ${snapshot.courtCount} to ${session.courts}.`;
     case 'max_players_changed':
       return `Max players changed from ${snapshot.maxPlayers} to ${session.maxPlayers}.`;
+    case 'deadline_changed': {
+      /* Said in hours-before, not as a signed offset: "-47" is a number an
+         admin has to decode, and the thing they need to judge is how much
+         notice their friends get. */
+      const now = deadlineOffsetHours(session);
+      const before = now === null ? null : Math.round(-now);
+      const was = Math.round(-snapshot.deadlineOffsetHours);
+      if (before === null) return 'Sign-ups now close at a different time than last week.';
+      return `Sign-ups close ${before}h before this session, was ${was}h last week.`;
+    }
     default:
       return code;
   }
