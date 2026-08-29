@@ -2,7 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
-import { verifyMemberAuth, isAdminAuthedWithMember, setMemberCookie } from '@/lib/auth';
+import {
+  verifyMemberAuth,
+  isAdminAuthedWithMember,
+  setMemberCookie,
+  clearMemberCookie,
+  clearAdminCookie,
+} from '@/lib/auth';
+import {
+  purgeMember,
+  anonymizePlayerRows,
+  anonymizeGameResults,
+  anonymizeFeedback,
+} from '@/lib/memberPurge';
 import {
   normalizeStatsPrivacy,
   parseStatsPrivacyPatch,
@@ -280,4 +292,104 @@ async function handlePatch(req: NextRequest) {
     setMemberCookie(out, String(member.id), String(member.name));
   }
   return out;
+}
+
+/**
+ * Delete your own account.
+ *
+ * Required by App Store Guideline 5.1.1(v) — an app that lets you create an
+ * account must let you delete it from inside the app — and it is the PIPEDA /
+ * GDPR answer independently of that. The existing admin `DELETE /api/members`
+ * is not this: it is admin-gated, and it only sets `active: false` on the
+ * member row, leaving every other trace in place.
+ *
+ * WHAT IT DOES NOT DO: cancel money you owe. Deleting the account removes the
+ * person, not the debt, and the confirm sheet says so. It also cannot be
+ * blocked on an unpaid balance — Apple requires the path to be available.
+ *
+ * BOUND TO THE COOKIE, never to a name. Member names are enumerable via
+ * GET /api/members, so a name-keyed delete would let anyone erase anyone
+ * (security rule 12). There is deliberately NO admin-on-behalf branch: an admin
+ * removing someone else already has `DELETE /api/members`, and giving this
+ * route a second door would make "who asked for this deletion?" unanswerable.
+ */
+export async function DELETE(req: NextRequest) {
+  // Rate limit BEFORE auth (rule 4) so the limiter can't be bypassed.
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`member-delete:${ip}`, 5, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
+  }
+
+  const caller = verifyMemberAuth(req);
+  if (!caller) {
+    return NextResponse.json({ error: 'Sign in on this device first' }, { status: 401 });
+  }
+
+  // An explicit flag, so a stray DELETE cannot erase an account by accident.
+  // The real confirmation is the sheet; this is the seatbelt behind it.
+  let body: Record<string, unknown> = {};
+  try {
+    body = (await req.json()) as Record<string, unknown>;
+  } catch {
+    /* no body — falls through to the check below */
+  }
+  if (body.confirm !== true) {
+    return NextResponse.json({ error: 'Confirmation required' }, { status: 400 });
+  }
+
+  try {
+    const members = getContainer('members');
+    const { resource: member } = await members.item(caller.memberId, caller.memberId).read();
+    if (!member) {
+      return NextResponse.json({ error: 'Account not found' }, { status: 404 });
+    }
+    const name = String(member.name ?? caller.name);
+
+    // Shared history first: if a later step fails, the rows that OTHER members
+    // depend on have already been made safe, and the owned rows can be retried.
+    const activeSessionId = await getActiveSessionId();
+    const players = await anonymizePlayerRows(caller.memberId, name, activeSessionId);
+    const games = await anonymizeGameResults(name);
+    const reports = await anonymizeFeedback(name);
+
+    const summary = await purgeMember(caller.memberId, name);
+
+    /* BEST-EFFORT, NOT TRANSACTIONAL — and deliberately not resumable.
+       Cosmos has no cross-container transaction, so a container that fails
+       leaves its rows behind. The member row is still deleted when that
+       happens: the person asked to be gone and Apple requires the path to
+       work, so refusing would trap them in an account they cannot leave over a
+       cleanup problem they cannot see or fix. What is left is orphaned rows
+       nothing points at, which is an admin chore, not a live account.
+
+       An earlier draft of this comment claimed the purge was "resumable"
+       because the member row went last. Nothing resumes it. The failed
+       container names go back to the caller AND to the log, which is the
+       actual recovery path: someone reads it and clears them by hand. */
+    if (summary.failed.length > 0) {
+      console.error(
+        `[account-delete] member ${caller.memberId} deleted with orphaned rows in: ` +
+          `${summary.failed.join(', ')} — these need clearing by hand.`,
+      );
+    }
+    await members.item(caller.memberId, caller.memberId).delete();
+
+    const out = NextResponse.json({
+      success: true,
+      deleted: summary.deleted,
+      anonymized: summary.anonymized + players.anonymized + games + reports,
+      spotsFreed: players.removed,
+      // Surfaced rather than swallowed: a partial delete the user is not told
+      // about is the lying-empty-state rule wearing a different hat.
+      failed: summary.failed,
+    });
+    // Sign the device out. Member cookie first, then admin — never a `set*`
+    // after a `clear*` on the same response (see lib/authSession.ts).
+    clearMemberCookie(out);
+    clearAdminCookie(out);
+    return out;
+  } catch (error) {
+    console.error('DELETE /api/members/me error:', error);
+    return NextResponse.json({ error: 'Failed to delete account' }, { status: 500 });
+  }
 }
