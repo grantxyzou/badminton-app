@@ -111,7 +111,12 @@ export default function KudosReceivedCard() {
                 style={{
                   padding: 'var(--space-3)',
                   borderRadius: 'var(--radius-lg)',
-                  background: 'var(--bg-surface)',
+                  /* Tier 2 inner surface, same material as every other row
+                     nested in a card (globals.css). `--bg-surface` is the
+                     opaque compat token and reads as a white slab inside a
+                     translucent card in light mode. */
+                  background: 'var(--inner-card-bg)',
+                  border: '1px solid var(--inner-card-border)',
                 }}
               >
                 <p className="fs-md m-0" style={{ color: 'var(--text-primary)' }}>{n.note}</p>
