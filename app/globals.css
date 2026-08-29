@@ -3992,3 +3992,83 @@ html[data-visual="field"][data-theme="light"] {
   border-radius: var(--radius-sm);
 }
 
+
+/* ── Toasts ─────────────────────────────────────────────────────────
+   Transient notices that float over the page instead of occupying a
+   card in it. Used by the admin anomaly feed.
+
+   WHY THE STACK IS pointer-events: none. It spans the full content
+   column across the bottom of the screen, so as a normal fixed element
+   it would swallow taps on whatever sits underneath — including the
+   primary action on the card it is floating above. The stack is
+   transparent to the pointer and each `.toast` re-enables it, so only
+   the pills themselves are hit-testable.
+
+   z-index 55 is deliberate: above `.rail-bar` (50) so a toast is never
+   hidden behind the nav, below `.bottom-sheet` (60) so an open sheet
+   always wins. */
+.toast-stack {
+  position: fixed;
+  left: 0;
+  right: 0;
+  /* Clears the nav rail, which is content-height plus its own safe-area
+     padding. 96px measured to only 5px of clearance at a 430px phone —
+     technically clear, visually touching — so this is the rail plus a
+     deliberate gap. */
+  bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+  z-index: 55;
+  /* Same column as `.rail-bar` and <main data-page-shell>, so a toast
+     lines up with the content it refers to on a wide viewport. */
+  max-width: 32rem;
+  margin-inline: auto;
+  padding-inline: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  backdrop-filter: blur(18px) saturate(180%);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.32);
+  animation: toast-in 200ms var(--ease-out-quart) both;
+}
+
+/* Severity is carried by a tinted left edge and the icon, not by
+   flooding the whole surface: a full amber fill at this size reads as a
+   button, and red as a failure that already happened. */
+.toast-warning { border-left: 3px solid var(--sev-warn); }
+.toast-blocking { border-left: 3px solid var(--color-red); }
+
+.toast-dismiss {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.toast-dismiss:hover { color: var(--text-primary); }
+.toast-dismiss:disabled { opacity: 0.5; pointer-events: none; }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+}

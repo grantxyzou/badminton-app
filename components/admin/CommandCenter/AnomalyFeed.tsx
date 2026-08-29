@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+
+/** How long a dismissable notice stays on screen before it hides itself. */
+const AUTO_HIDE_MS = 6000;
 
 interface Anomaly {
   code: string;
@@ -16,12 +19,38 @@ interface AnomalyFeedProps {
   refreshKey?: number;
 }
 
+/**
+ * Admin notices, as toasts.
+ *
+ * These used to be a "Heads up" glass-card sitting in the page. They are now
+ * pills floating over it, because a notice is not content — it is something
+ * that happened, and a permanent card for it made the admin screen look like
+ * it always had a problem.
+ *
+ * AUTO-HIDE IS NOT ACKNOWLEDGEMENT, and that distinction is the whole design.
+ * The timer removes a toast from the SCREEN. It deliberately does NOT call
+ * `POST /api/session/dismiss-anomaly`, because that flag means "an admin saw
+ * this and accepted it" and six seconds of being rendered cannot claim that —
+ * the phone may have been in a pocket. So an un-actioned notice comes back the
+ * next time the admin screen loads, and only the × retires it for good.
+ *
+ * TWO THINGS STOP THE TIMER SWALLOWING A REAL WARNING:
+ *   - A NON-DISMISSABLE anomaly never auto-hides. `skip_date` is
+ *     `dismissable: false` in the data model precisely because it exists to
+ *     stop you advancing onto a date you said to skip; there is nothing to
+ *     dismiss, so there is nothing for a timer to do.
+ *   - Hovering or focusing PAUSES the countdown, so a toast cannot vanish
+ *     mid-sentence while it is being read.
+ */
 export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
   const [items, setItems] = useState<Anomaly[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [dismissing, setDismissing] = useState<Set<string>>(new Set());
   const [dismissError, setDismissError] = useState<string | null>(null);
+  /** Hidden by the timer but still live on the server — see the docblock. */
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [paused, setPaused] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -37,6 +66,7 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
       }
       const data = (await res.json()) as Anomaly[];
       setItems(Array.isArray(data) ? data : []);
+      setHidden(new Set());
     } catch {
       setLoadError(true);
       setItems([]);
@@ -46,6 +76,25 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
   }, []);
 
   useEffect(() => { void load(); }, [load, refreshKey]);
+
+  /* One timer per visible dismissable toast. Reset whenever the visible set
+     changes or the pointer leaves, which is what makes hover actually pause
+     rather than merely delay. */
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  useEffect(() => {
+    if (paused) return;
+    const pending = items.filter((a) => a.dismissable && !hidden.has(a.code));
+    if (pending.length === 0) return;
+    const timer = setTimeout(() => {
+      setHidden((prev) => {
+        const next = new Set(prev);
+        for (const a of itemsRef.current) if (a.dismissable) next.add(a.code);
+        return next;
+      });
+    }, AUTO_HIDE_MS);
+    return () => clearTimeout(timer);
+  }, [items, hidden, paused]);
 
   async function dismiss(code: string) {
     if (dismissing.has(code)) return;
@@ -75,85 +124,67 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
   }
 
   if (loading) return null;
-  if (items.length === 0 && !loadError) return null;
 
-  if (loadError && items.length === 0) {
-    return (
-      <section
-        className="glass-card p-3"
-        aria-label="Anomalies"
-        style={{
-          background: 'rgba(239,68,68,0.06)',
-          border: '1px solid rgba(239,68,68,0.2)',
-        }}
-      >
-        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: 0 }}>
-          Couldn&apos;t load anomalies — try refreshing.
-        </p>
-      </section>
-    );
-  }
+  const visible = items.filter((a) => !hidden.has(a.code));
+  if (visible.length === 0 && !loadError) return null;
 
   return (
-    <section className="glass-card p-4 space-y-3" aria-label="Anomalies">
-      <header className="flex items-center justify-between">
-        <h3 className="bpm-h3">Heads up</h3>
-        <span className="fs-sm text-gray-400">{items.length}</span>
-      </header>
-      <ul className="space-y-2" role="list">
-        {items.map((anomaly) => (
-          <li
-            key={anomaly.code}
-            className="flex items-start gap-3 rounded-lg p-3"
+    <section
+      className="toast-stack"
+      aria-label="Notices"
+      /* Announced but not focus-stealing: an admin mid-task should not be
+         yanked to a warning about last week's settings. */
+      aria-live="polite"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+    >
+      {loadError && visible.length === 0 && (
+        <div className="toast toast-blocking" role="alert">
+          <span className="material-icons fs-lg" aria-hidden="true" style={{ color: 'var(--color-red)' }}>
+            error
+          </span>
+          <p className="flex-1 fs-md m-0">Couldn&apos;t load notices — try refreshing.</p>
+        </div>
+      )}
+
+      {visible.map((anomaly) => (
+        <div
+          key={anomaly.code}
+          className={`toast ${anomaly.severity === 'blocking' ? 'toast-blocking' : 'toast-warning'}`}
+          role={anomaly.severity === 'blocking' ? 'alert' : 'status'}
+        >
+          <span
+            className="material-icons fs-lg"
+            aria-hidden="true"
             style={{
-              background:
-                anomaly.severity === 'blocking'
-                  ? 'rgba(239, 68, 68, 0.12)'
-                  : anomaly.severity === 'warning'
-                    ? 'rgba(245, 158, 11, 0.10)'
-                    : 'rgba(var(--glass-tint), 0.04)',
-              border:
-                anomaly.severity === 'blocking'
-                  ? '1px solid rgba(239, 68, 68, 0.3)'
-                  : '1px solid rgba(var(--glass-tint), 0.08)',
+              color: anomaly.severity === 'blocking' ? 'var(--color-red)' : 'var(--sev-warn)',
             }}
           >
-            <span
-              className="material-icons fs-lg"
-              aria-hidden="true"
-              style={{
-                color:
-                  anomaly.severity === 'blocking'
-                    ? '#fca5a5'
-                    : anomaly.severity === 'warning'
-                      ? '#fcd34d'
-                      : '#9ca3af',
-              }}
-            >
-              {anomaly.severity === 'blocking' ? 'error' : 'warning'}
-            </span>
-            <p className="flex-1 fs-md leading-relaxed">{anomaly.message}</p>
-            {anomaly.dismissable && (
-              <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                <button
-                  type="button"
-                  onClick={() => dismiss(anomaly.code)}
-                  disabled={dismissing.has(anomaly.code)}
-                  className="fs-sm text-gray-400 hover:text-gray-200 px-2 py-1 disabled:opacity-50"
-                  aria-label={`Dismiss ${anomaly.code}`}
-                >
-                  Dismiss
-                </button>
-                {dismissError === anomaly.code && (
-                  <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--color-red)' }}>
-                    Failed — retry
-                  </span>
-                )}
+            {anomaly.severity === 'blocking' ? 'error' : 'warning'}
+          </span>
+          <p className="flex-1 fs-md m-0" style={{ lineHeight: 'var(--lh-snug)' }}>
+            {anomaly.message}
+            {dismissError === anomaly.code && (
+              <span className="field-error" style={{ display: 'block', marginTop: 2 }}>
+                Couldn&apos;t dismiss — try again.
               </span>
             )}
-          </li>
-        ))}
-      </ul>
+          </p>
+          {anomaly.dismissable && (
+            <button
+              type="button"
+              onClick={() => dismiss(anomaly.code)}
+              disabled={dismissing.has(anomaly.code)}
+              className="toast-dismiss"
+              aria-label={`Dismiss ${anomaly.code}`}
+            >
+              <span className="material-icons icon-sm" aria-hidden="true">close</span>
+            </button>
+          )}
+        </div>
+      ))}
     </section>
   );
 }
