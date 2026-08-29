@@ -4,8 +4,10 @@ import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos'
 import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { aggregateKudos, isKudosTag, type KudosDoc } from '@/lib/kudos';
+import { aggregateKudos, isKudosTag, normalizeNote, isoWeekKey, visibleNotes, type KudosDoc } from '@/lib/kudos';
+import { SKILLS } from '@/lib/assessment';
 import { resolveActiveSubject } from '@/lib/memberResolve';
+import { playedTogetherRecently } from '@/lib/kudosEligibility';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +30,13 @@ function ensureKudos(): Promise<void> {
  * are non-removed in the session's roster, OR they appear together in any game.
  * Reuses existing co-attendance data — no new tracking.
  */
+/** A skill key must name a real assessment skill. Anything else is dropped
+ *  rather than stored, so a structured field never holds free text. */
+const SKILL_KEYS = new Set(SKILLS.map((sk) => sk.key));
+function isSkillKey(x: unknown): x is string {
+  return typeof x === 'string' && SKILL_KEYS.has(x);
+}
+
 async function playedTogether(aName: string, bName: string, sessionId: string): Promise<boolean> {
   const a = aName.trim().toLowerCase();
   const b = bName.trim().toLowerCase();
@@ -99,31 +108,52 @@ export async function POST(req: NextRequest) {
       ? body.sessionId
       : await getActiveSessionId();
 
-    // Co-play proof: you can only kudos someone you actually played with.
-    if (!(await playedTogether(rater.name, recipientName, sessionId))) {
+    /* Co-play proof: you can only kudos someone you actually played with —
+       now across the recent sessions rather than only the active one. An admin
+       may still pin a specific session (rule 7), in which case that one is
+       checked on its own. */
+    const eligible = typeof body.sessionId === 'string' && body.sessionId && isAdminAuthed(req)
+      ? await playedTogether(rater.name, recipientName, sessionId)
+      : await playedTogetherRecently(rater.name, recipientName, sessionId);
+    if (!eligible) {
       return NextResponse.json({ error: 'not_co_player' }, { status: 403 });
     }
 
     const recipient = await resolveActiveSubject(recipientName);
     const container = getContainer('kudos');
+    const createdAt = new Date().toISOString();
 
-    // One of each tag per (rater, recipient, session). The mock store ignores
-    // the WHERE, so JS-filter the four keys (mock/real parity).
+    /* ONE OF EACH TAG PER (rater, recipient, ISO WEEK).
+       It used to be per SESSION, which stopped being a limit at all once
+       eligibility left the session behind: "per session" then meant "per
+       whichever session happens to be active", so advancing reset it. A week
+       is the club's natural cadence and cannot be reset by an admin action.
+
+       The mock store ignores the WHERE (it filters by PARAMETER NAME, not
+       SQL), so the keys are JS-filtered for mock/real parity. */
+    const week = isoWeekKey(createdAt);
     const { resources: existing } = await container.items
       .query({
-        query: 'SELECT c.recipientMemberId, c.raterMemberId, c.sessionId, c.tag FROM c WHERE c.recipientMemberId = @rid AND c.raterMemberId = @raterId AND c.sessionId = @sid AND c.tag = @tag',
+        query: 'SELECT c.recipientMemberId, c.raterMemberId, c.tag, c.createdAt FROM c WHERE c.recipientMemberId = @rid AND c.raterMemberId = @raterId AND c.tag = @tag',
         parameters: [
           { name: '@rid', value: recipient.memberId },
           { name: '@raterId', value: rater.memberId },
-          { name: '@sid', value: sessionId },
           { name: '@tag', value: body.tag },
         ],
       })
       .fetchAll();
-    const dupe = (existing as { recipientMemberId?: string; raterMemberId?: string; sessionId?: string; tag?: string }[])
+    const dupe = (existing as { recipientMemberId?: string; raterMemberId?: string; tag?: string; createdAt?: string }[])
       .some((d) => d.recipientMemberId === recipient.memberId && d.raterMemberId === rater.memberId
-        && d.sessionId === sessionId && d.tag === body.tag);
+        && d.tag === body.tag && typeof d.createdAt === 'string' && isoWeekKey(d.createdAt) === week);
     if (dupe) return NextResponse.json({ error: 'already_sent' }, { status: 409 });
+
+    /* The note is OPTIONAL and, when present, SIGNED — see the exception
+       documented on KudosDoc. `normalizeNote` returns undefined for blank, so
+       an empty box never becomes a signed empty line. The skill is only kept
+       when it names a real assessment skill; anything else is dropped rather
+       than stored as free text under a structured field. */
+    const note = normalizeNote(body.note);
+    const skillKey = note && isSkillKey(body.skillKey) ? body.skillKey : undefined;
 
     const doc: KudosDoc = {
       id: randomBytes(16).toString('hex'),
@@ -133,7 +163,9 @@ export async function POST(req: NextRequest) {
       raterName: rater.name,
       sessionId,
       tag: body.tag,
-      createdAt: new Date().toISOString(),
+      ...(note ? { note } : {}),
+      ...(skillKey ? { skillKey } : {}),
+      createdAt,
     };
     await container.items.create(doc);
     // Echo back only non-sensitive fields (never the rater identity).
@@ -166,17 +198,20 @@ export async function GET(req: NextRequest) {
   try {
     await ensureKudos();
     const subject = await resolveActiveSubject(name);
+    /* `raterName` is selected here, which is a DELIBERATE change and the only
+       place it is read back. `visibleNotes` is what makes it safe: it drops
+       every kudos without a note, so a bare tag can never become attributable
+       — see the exception documented on KudosDoc. `raterMemberId` is still
+       never selected at all. */
     const { resources } = await getContainer('kudos').items
       .query({
-        query: 'SELECT c.tag, c.recipientMemberId FROM c WHERE c.recipientMemberId = @rid',
+        query: 'SELECT c.tag, c.recipientMemberId, c.note, c.skillKey, c.raterName, c.createdAt FROM c WHERE c.recipientMemberId = @rid',
         parameters: [{ name: '@rid', value: subject.memberId }],
       })
       .fetchAll();
-    // Mock store ignores the WHERE → JS-filter by recipient. Counts only —
-    // rater identities never leave the server.
-    const mine = (resources as { tag: string; recipientMemberId?: string }[])
-      .filter((d) => d.recipientMemberId === subject.memberId);
-    return NextResponse.json({ kudos: aggregateKudos(mine) });
+    // Mock store ignores the WHERE → JS-filter by recipient.
+    const mine = (resources as KudosDoc[]).filter((d) => d.recipientMemberId === subject.memberId);
+    return NextResponse.json({ kudos: aggregateKudos(mine), notes: visibleNotes(mine) });
   } catch (error) {
     console.error('GET kudos error:', error);
     return NextResponse.json({ error: 'load_failed' }, { status: 500 });

@@ -12,6 +12,8 @@ import EmptyState from '@/components/primitives/EmptyState';
 import PageHeader from '@/components/primitives/PageHeader';
 import { BottomSheet, BottomSheetBody } from '@/components/BottomSheet';
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
+import GiveKudosSheet from '@/components/stats/GiveKudosSheet';
+import { isFlagOn } from '@/lib/flags';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
@@ -28,6 +30,11 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
   const [loadError, setLoadError] = useState(false);
   const [cancelError, setCancelError] = useState('');
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  /* The SECOND door to kudos. The Stats card is the first; this one exists
+     because the roster is where you are already looking at the names of the
+     people you just played with, and 'how do I give kudos to other people?'
+     was asked by someone standing on exactly this screen. */
+  const [kudosFor, setKudosFor] = useState<string | null>(null);
   const reportFetchFailure = useReportFetchFailure();
 
   const loadPlayers = useCallback(async () => {
@@ -102,6 +109,12 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
   }
 
   const activePlayers = players.filter(p => !p.waitlisted);
+  const kudosEnabled = isFlagOn('NEXT_PUBLIC_FLAG_KUDOS');
+  /* Only someone who was on this roster can have played with anyone on it.
+     Checking it here keeps the button off rows the server would refuse. */
+  const iAmOnRoster =
+    !!currentUser &&
+    activePlayers.some((p) => p.name.toLowerCase() === currentUser.toLowerCase());
   const waitlistPlayers = players.filter(p => p.waitlisted);
   /* Which list the viewer is in decides the sheet's wording: coming off a
      waitlist is not the same event as giving up a confirmed spot, and one
@@ -181,6 +194,22 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
                       </span>
                     )}
                   </span>
+                  {/* Not on my own row, and only for someone I actually shared
+                      this roster with — which is the same rule the server
+                      enforces, so the button can never open a sheet whose send
+                      is refused. Neutral, not accent: Sign-Ups spends its accent
+                      on signing up. */}
+                  {!isMe && kudosEnabled && iAmOnRoster && (
+                    <button
+                      type="button"
+                      onClick={() => setKudosFor(player.name)}
+                      className="cc-btn cc-btn-ghost"
+                      aria-label={t('kudosAction', { name: player.name })}
+                      style={{ padding: '4px 8px', color: 'var(--text-muted)' }}
+                    >
+                      <span className="material-icons icon-sm" aria-hidden="true">volunteer_activism</span>
+                    </button>
+                  )}
                   {isMe && (
                     <div className="flex flex-col items-end gap-0.5">
                       <button
@@ -313,6 +342,14 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
           </div>
         </BottomSheetBody>
       </BottomSheet>
+
+      {/* Opened on a specific person, so the sheet skips its picker entirely.
+          Same sheet as Stats — one flow, two entry points. */}
+      <GiveKudosSheet
+        open={kudosFor !== null}
+        onClose={() => setKudosFor(null)}
+        recipient={kudosFor}
+      />
     </div>
   );
 }
