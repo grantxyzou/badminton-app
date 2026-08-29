@@ -76,6 +76,17 @@ const OWNED: readonly PurgeTarget[] = [
   { container: 'kudos', pk: '/recipientMemberId', by: 'recipientMemberId', pkField: 'recipientMemberId' },
   // Skill scores are keyed by roster NAME, not memberId (PK is /sessionId).
   { container: 'skills', pk: '/sessionId', by: 'name', pkField: 'sessionId', ci: true },
+  /* SHORT-LIVED IS NOT THE SAME AS HARMLESS. This parks a `memberId` against a
+     hashed ref for ten minutes while an OAuth handoff is in flight. It expires
+     on its own, so purging it changes little in practice — but "it would have
+     expired anyway" is not an answer to "is this member's id still in your
+     database after they asked you to delete it".
+
+     It was INVISIBLE to the coverage canary until 2026-08-28 because it
+     references its container through `const CONTAINER = '…'` rather than a
+     literal, and the canary only matched quoted arguments — so it survived a
+     deletion request in the first cut of this file. */
+  { container: 'authhandoff', pk: '/id', by: 'memberId', pkField: 'id' },
 ];
 
 /** Names only — for the coverage canary, which must not import the table shape. */

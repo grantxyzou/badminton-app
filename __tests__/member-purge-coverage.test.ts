@@ -31,14 +31,37 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
+/**
+ * A literal-only scan is not enough, and that is not hypothetical.
+ *
+ * `lib/authHandoff.ts` and `lib/authMigration.ts` both write
+ * `const CONTAINER = 'authhandoff'` and then call `getContainer(CONTAINER)`.
+ * The first version of this canary matched only a quoted argument, so BOTH were
+ * invisible — and `authhandoff` holds a `memberId`, so account deletion shipped
+ * missing it while this test sat green. The canary was wrong in exactly the way
+ * it exists to prevent.
+ *
+ * So resolve single-level const aliases too: collect `const X = '…'` per file,
+ * then map `(get|ensure)Container(X)` back through it.
+ */
 function containersReferencedInSource(): Set<string> {
   const root = join(__dirname, '..');
   const files = [...walk(join(root, 'app')), ...walk(join(root, 'lib'))];
   const found = new Set<string>();
   for (const file of files) {
     const src = readFileSync(file, 'utf8');
+
     for (const m of src.matchAll(/(?:get|ensure)Container\(\s*'([a-zA-Z]+)'/g)) {
       found.add(m[1]);
+    }
+
+    const aliases = new Map<string, string>();
+    for (const m of src.matchAll(/\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*'([a-zA-Z]+)'/g)) {
+      aliases.set(m[1], m[2]);
+    }
+    for (const m of src.matchAll(/(?:get|ensure)Container\(\s*([A-Za-z_$][\w$]*)\s*[,)]/g)) {
+      const resolved = aliases.get(m[1]);
+      if (resolved) found.add(resolved);
     }
   }
   return found;

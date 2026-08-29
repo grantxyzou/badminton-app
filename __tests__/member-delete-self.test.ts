@@ -115,6 +115,11 @@ beforeEach(async () => {
     name: 'Wei',
     scores: {},
   });
+  // References its container through `const CONTAINER = '…'`, which the
+  // coverage canary could not see until it learned to resolve const aliases —
+  // so this survived a deletion request in the first cut.
+  await getContainer('authhandoff').items.upsert({ id: 'ref-h', memberId: MEMBER_ID });
+
   await getContainer('feedback').items.create({
     id: 'r1',
     message: 'button is broken',
@@ -204,6 +209,7 @@ describe('what is destroyed', () => {
     ['identities'],
     ['aliases'],
     ['skills'],
+    ['authhandoff'],
   ])('purges %s outright', async (container) => {
     await del();
     expect(rows(container)).toHaveLength(0);
