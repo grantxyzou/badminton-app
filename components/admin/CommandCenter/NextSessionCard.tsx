@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { fmtSessionLabel as fmtDate, fmtDeadline } from '@/lib/fmt';
-import { isFlagOn } from '@/lib/flags';
 import type { SettledSnapshot, BirdUsage } from '@/lib/types';
 import { sessionCostTotals } from '@/lib/sessionCost';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
@@ -71,7 +70,6 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const [confirmingAdvance, setConfirmingAdvance] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [togglingSignup, setTogglingSignup] = useState(false);
-  const settleFlagOn = isFlagOn('NEXT_PUBLIC_FLAG_SETTLE');
 
   // Build a ready-to-paste sign-up invite and share it (native share sheet on
   // mobile, clipboard fallback elsewhere). Lets the admin blast "sign-up is
@@ -218,7 +216,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const capacityPct = cap > 0 ? Math.min(100, Math.round((activeCount / cap) * 100)) : 0;
   const countdown = fmtCountdown(session.deadline);
   const open = session.signupOpen === true;
-  const isSettled = settleFlagOn && !!session.settled;
+  const isSettled = !!session.settled;
   // The active roster no longer matches what was frozen at finalize time — the
   // per-person split is now stale. Gated on activeCount > 0 so a failed player
   // load (0) can't false-alarm. `playerNames.length` is the raw active count
@@ -300,10 +298,9 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       )}
 
       <div className="flex flex-wrap gap-2 pt-1">
-        {settleFlagOn ? (
-          // Post-settle: re-share the frozen bill. Settling itself moved to
-          // the footer "Finalize cost" action, beside Advance.
-          isSettled && onShareCost ? (
+        {/* Post-settle: re-share the frozen bill. Settling itself moved to
+            the footer "Finalize cost" action, beside Advance. */}
+        {isSettled && onShareCost ? (
             <button
               type="button"
               onClick={onShareCost}
@@ -312,16 +309,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
               <span className="material-icons fs-lg align-middle">share</span>
               Share again — ${session.settled?.costPerPerson} each
             </button>
-          ) : null
-        ) : (
-          // Pre-flag stable users keep the simple "Share cost" affordance.
-          onShareCost && (
-            <button type="button" onClick={onShareCost} className="cc-btn cc-btn-primary">
-              <span className="material-icons fs-lg align-middle">request_quote</span>
-              Share cost
-            </button>
-          )
-        )}
+        ) : null}
         {onEdit && (
           <button type="button" onClick={onEdit} className="cc-btn cc-btn-secondary">
             Edit details
@@ -352,12 +340,12 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
       {/* End-of-night actions live apart from the action row: finalize the
           cost, then start next week. Advance is ghost-weight + a confirm sheet
           since it's hard to reverse (a stray tap must not archive the week). */}
-      {((settleFlagOn && !isSettled) || onAdvance) && (
+      {(!isSettled || onAdvance) && (
         <div
           className="flex justify-end items-center gap-2 pt-3 mt-1"
           style={{ borderTop: '1px solid var(--divider)' }}
         >
-          {settleFlagOn && !isSettled && (
+          {!isSettled && (
             <button
               type="button"
               onClick={sendBill}
