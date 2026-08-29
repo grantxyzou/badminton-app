@@ -83,6 +83,34 @@ function extractFromWorkflow(src) {
   return out;
 }
 
+/**
+ * Flags whose removal date has passed.
+ *
+ * Reported, never blocking. Being late to delete a flag is a backlog item, not
+ * a broken build — and a hook that failed on it would be muted within a week,
+ * which is how the previous system died: eleven flags said "after X is promoted
+ * to stable", that promotion stopped existing on 2026-08-25, and nothing
+ * anywhere could tell.
+ */
+function overdueFlags(src, today) {
+  /* Split on entry headers FIRST, then read each block in isolation.
+     A single `NEXT_PUBLIC_FLAG_X: {[\s\S]*?plannedRemoval: '<date>'` regex is
+     wrong and looked right: non-greedy bounds how far it searches, not where it
+     stops, so an entry whose own value is not a date (DESIGN_PREVIEW: 'never')
+     let the scan run on into the NEXT entry and pair one flag's name with
+     another flag's date. It reported DESIGN_PREVIEW as due on COMMAND_CENTER's
+     date and dropped COMMAND_CENTER entirely — with a plausible-looking count. */
+  const out = [];
+  const blocks = src.split(/^  (?=NEXT_PUBLIC_FLAG_[A-Z_]+: \{)/m);
+  for (const block of blocks) {
+    const name = block.match(/^(NEXT_PUBLIC_FLAG_[A-Z_]+): \{/);
+    if (!name) continue;
+    const due = block.match(/plannedRemoval:\s*'(\d{4}-\d{2}-\d{2})'/);
+    if (due && due[1] < today) out.push({ flag: name[1], due: due[1] });
+  }
+  return out.sort((a, b) => (a.due < b.due ? -1 : 1));
+}
+
 function main() {
   const settings = readSettings() ?? {};
   if (settings.enabled === false) process.exit(0);
@@ -111,6 +139,20 @@ function main() {
 
   const missingFromDeploy = [...registered].filter((f) => !deployed.has(f)).sort();
   const staleInDeploy = [...deployed].filter((f) => !registered.has(f)).sort();
+
+  const overdue = overdueFlags(
+    readFileSync(FLAGS_FILE, 'utf8'),
+    new Date().toISOString().slice(0, 10),
+  );
+  if (overdue.length > 0) {
+    console.error('');
+    console.error(`\u2139\ufe0f  ${overdue.length} feature flag(s) are past their removal date:`);
+    for (const { flag, due } of overdue) console.error(`    - ${flag}  (due ${due})`);
+    console.error('');
+    console.error('  \u2192 Not a failure. Retiring one means deleting the flag from');
+    console.error('    lib/flags.ts, both workflows, and its `off` branch in the code.');
+    console.error('');
+  }
 
   if (missingFromDeploy.length === 0 && staleInDeploy.length === 0 && ciDrift.length === 0) {
     process.exit(0);
