@@ -392,6 +392,18 @@
       "loadError": "加载失败——请刷新重试。",
       "signInAgain": "请在“我的”页面登录以查看欠款。"
     },
+    "deleteAccount": {
+      "link": "删除账户",
+      "title": "确定删除账户吗？",
+      "body": "这会删除你的 PIN、装备、数据和通知设置，无法恢复。",
+      "keepsNote": "过往场次会保留一条匿名记录，这样其他人的分摊金额依然对得上。",
+      "debtWarning": "但这不会免除你尚未支付的费用。",
+      "confirm": "删除我的账户",
+      "cancel": "再想想",
+      "working": "正在删除…",
+      "error": "没有成功，请稍后再试。",
+      "offlineHint": "你当前离线 — 请连接后再操作。"
+    },
     "push": {
       "title": "通知",
       "close": "关闭",
