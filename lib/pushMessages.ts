@@ -14,6 +14,8 @@
  */
 import type { Session } from './types';
 import { safeTag, type PushPayload } from './push';
+import { shouldNotify, type PlayerNotice } from './stringingNotify';
+import { formatReadyBy } from './stringingDue';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
@@ -106,6 +108,51 @@ export function flattenMarkdown(raw: string): string {
  * generic fallback, because the whole content is the news. Truncation is
  * `lib/push.ts`'s job (MAX_BODY), so this does not second-guess the length.
  */
+/**
+ * A stringing job moved to a stage worth interrupting someone for.
+ *
+ * CARRIES NO MONEY AT ALL — not the exact figure, and not the band either.
+ *
+ * That is a stricter rule than the one `toPlayerJob` follows, and deliberately
+ * so. The band exists to hide a PROVISIONAL price from the player; `amountDue`
+ * exists because a bill they owe has to be a number they can pay. A push
+ * notification is neither situation: it renders on a LOCKED phone, in a gym, in
+ * front of whoever is standing next to them. There is no version of a price
+ * that belongs on that surface, and "your racket is ready" is a complete
+ * message without one. Pinned by `__tests__/stringing-push.test.ts`.
+ *
+ * Returns null for the quiet stages rather than empty copy, so the caller has
+ * one thing to check instead of two.
+ */
+export function buildStringingPayload(notice: PlayerNotice): PushPayload | null {
+  if (!shouldNotify(notice.key)) return null;
+
+  const racket = notice.racketLabel?.trim() || 'Your racket';
+  // Null for the legacy free-text rows ("Sunday"), which are not dates and are
+  // shown back verbatim elsewhere. A banner just omits the line instead.
+  const by = formatReadyBy(notice.readyBy);
+
+  const ready = notice.key === 'ready_for_you';
+  const title = ready ? 'Your racket is ready' : 'On the machine';
+  let body: string;
+  if (ready) {
+    body = `${racket} — ready to pick up.`;
+  } else {
+    body = by ? `${racket} is being strung. Ready by ${by}.` : `${racket} is being strung.`;
+  }
+
+  return {
+    title,
+    body,
+    url: `${BASE}/`,
+    /* Job FIRST, stage last. `safeTag` caps at 32 chars, and if a long job
+       number ever forced a truncation this way collapses the two stages of ONE
+       racket — where stage-first would collapse two DIFFERENT rackets at the
+       same stage, which is the worse of the two failures. */
+    tag: safeTag(`str-${notice.jobNo}-${notice.key}`),
+  };
+}
+
 export function buildAnnouncementPayload(announcement: { id?: string; text?: string }): PushPayload {
   const body = flattenMarkdown(typeof announcement.text === 'string' ? announcement.text : '');
   return {
