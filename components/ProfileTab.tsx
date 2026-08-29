@@ -5,6 +5,7 @@ import { getIdentity, clearIdentity, IDENTITY_EVENT, type Identity } from '@/lib
 import type { Release } from '@/lib/types';
 import EnterCodeSheet from './EnterCodeSheet';
 import CreateAccountSheet from './CreateAccountSheet';
+import DeleteAccountSheet from '@/components/auth/DeleteAccountSheet';
 import RecoveryPinSheet from './RecoveryPinSheet';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
 import ReportProblemSheet from './ReportProblemSheet';
@@ -75,6 +76,7 @@ export default function ProfileTab({
   const [isSignedUp, setIsSignedUp] = useState<boolean>(false);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
   const [createAccountOpen, setCreateAccountOpen] = useState(false);
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   // Signed-in state PIN management: tap the Settings "Recovery PIN" row to
   // open RecoveryPinSheet (set / change / remove + forgot-it handoff).
   const [recoveryPinOpen, setRecoveryPinOpen] = useState(false);
@@ -102,6 +104,7 @@ export default function ProfileTab({
   const tSettings = useTranslations('profile.settings');
   const tNav = useTranslations('nav');
   const tPush = useTranslations('profile.push');
+  const tDelete = useTranslations('profile.deleteAccount');
   // Owned here (not in PushSheet) so the row's On/Off label and the sheet's
   // button share one state and can't disagree after a toggle.
   const push = usePush();
@@ -606,6 +609,40 @@ export default function ProfileTab({
       >
         {tSettings('logout')}
       </button>
+
+      {/* Below log out, quiet, and NOT red. Two red controls stacked would make
+          the rarer, heavier one compete with the everyday one, and accent is
+          currency — a permanently loud row you scroll past every visit spends
+          it on something you do at most once. The danger belongs inside the
+          sheet, on the button that actually does it. Still a real, findable
+          control: App Store 5.1.1(v) requires account deletion to be reachable
+          from inside the app, and a reviewer has to be able to find it. */}
+      <button
+        type="button"
+        onClick={() => setDeleteAccountOpen(true)}
+        style={{
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: 8,
+          fontSize: 'var(--fs-sm)',
+          color: 'var(--text-muted)',
+          fontFamily: 'inherit',
+        }}
+      >
+        {tDelete('link')}
+      </button>
+
+      <DeleteAccountSheet
+        open={deleteAccountOpen}
+        onClose={() => setDeleteAccountOpen(false)}
+        onDeleted={() => {
+          // The sheet already cleared identity and the server cleared the
+          // cookies; this is the local mirror, same as handleLogout's.
+          setLocalIdentity(null);
+          setPinIsSet(null);
+        }}
+      />
 
       <RecoveryPinSheet
         open={recoveryPinOpen}

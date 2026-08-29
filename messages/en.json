@@ -392,6 +392,18 @@
       "loadError": "Couldn't load — refresh to retry.",
       "signInAgain": "Sign in on Profile to see what you owe."
     },
+    "deleteAccount": {
+      "link": "Delete account",
+      "title": "Delete your account?",
+      "body": "This removes your PIN, your gear, your stats and your notifications. It can't be undone.",
+      "keepsNote": "Past sessions keep an unnamed line, so everyone else's split still adds up.",
+      "debtWarning": "It doesn't cancel anything you still owe.",
+      "confirm": "Delete my account",
+      "cancel": "Never mind",
+      "working": "Deleting…",
+      "error": "That didn't go through. Give it another go in a moment.",
+      "offlineHint": "You're offline — reconnect to do this."
+    },
     "push": {
       "title": "Notifications",
       "close": "Close",
