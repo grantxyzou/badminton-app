@@ -205,7 +205,15 @@ describe('values carry their units', () => {
   });
 
   it('shows urgency on the bench row rather than a bare date', async () => {
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    /* LOCAL date, not `toISOString().slice(0,10)`, which is UTC.
+       `readyBy` is a bare calendar date and the component measures lateness in
+       LOCAL time, so a UTC-built fixture is off by one for the whole evening
+       west of Greenwich — this asserted "1 day late" against a row that was
+       due today. It passed in CI forever because CI runs in UTC, and failed
+       every evening in PDT. */
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const yesterday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     respondJobs([{ ...job, readyBy: yesterday, status: 'received' }]);
     wrap(<StringingPage onBack={() => {}} />);
     expect(await screen.findByText('1 day late')).toBeDefined();
