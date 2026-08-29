@@ -837,7 +837,7 @@
           "title": "你的价格",
           "hint": "球友会在首页的“查看价格”里看到。",
           "empty": "还没有公布价格。",
-          "labelPlaceholder": "服务，例如 人工 + 拍线",
+          "labelPlaceholder": "例如 人工 + 拍线",
           "pricePlaceholder": "30",
           "add": "添加",
           "ask": "面议",

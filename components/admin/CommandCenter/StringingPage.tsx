@@ -230,7 +230,11 @@ export default function StringingPage({ onBack }: Props) {
         {loadError && <ErrorState message={t('loadError')} />}
         {!loadError && jobs === null && <AdminPageSkeleton />}
         {!loadError && jobs !== null && jobs.length === 0 && (
-          <EmptyState>{mine ? t('emptyMine') : t('empty')}</EmptyState>
+          /* The bench list IS this page's content; the segment control and
+             Add job are chrome around it. A 13px muted line wedged between two
+             chunky controls at 16px each read as a layout gap rather than an
+             answer. */
+          <EmptyState icon="sports_tennis">{mine ? t('emptyMine') : t('empty')}</EmptyState>
         )}
 
         {jobs?.map((job) => {
