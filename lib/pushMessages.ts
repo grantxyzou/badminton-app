@@ -67,3 +67,53 @@ export function buildTestPayload(): PushPayload {
     tag: 'bpm-test',
   };
 }
+
+/**
+ * Strip markdown to plain text for a notification body.
+ *
+ * Announcements are stored as RAW MARKDOWN (CLAUDE.md) and rendered in-app by
+ * `renderMarkdown`. A push banner has no renderer, so sending the stored string
+ * verbatim would put literal `**bold**` and `[text](url)` on a lock screen.
+ *
+ * Deliberately a flattener and not a parser: it removes the tokens the app's
+ * own mini-markdown supports and leaves everything else alone. It never has to
+ * be correct about nested or exotic syntax, because the worst case is a
+ * stray character in a banner, not a rendering fault.
+ */
+export function flattenMarkdown(raw: string): string {
+  return raw
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')          // images — nothing to show
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')       // links → their text
+    .replace(/(\*\*|__)(.*?)\1/g, '$2')            // bold
+    .replace(/(\*|_)(.*?)\1/g, '$2')               // italic
+    .replace(/`([^`]*)`/g, '$1')                   // inline code
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')            // headings
+    .replace(/^\s{0,3}[-*+]\s+/gm, '• ')           // bullets — readable inline
+    .replace(/^\s{0,3}>\s?/gm, '')                 // quotes
+    .replace(/\s*\n\s*/g, ' ')                     // collapse to one line
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+/**
+ * A new announcement was posted.
+ *
+ * Fires on CREATE only — `PATCH /api/announcements` upserts an edit, and
+ * re-notifying everyone because a typo was fixed is exactly the kind of empty
+ * interruption that teaches people to swipe these away.
+ *
+ * The announcement text IS the body: unlike sign-ups-open there is no useful
+ * generic fallback, because the whole content is the news. Truncation is
+ * `lib/push.ts`'s job (MAX_BODY), so this does not second-guess the length.
+ */
+export function buildAnnouncementPayload(announcement: { id?: string; text?: string }): PushPayload {
+  const body = flattenMarkdown(typeof announcement.text === 'string' ? announcement.text : '');
+  return {
+    title: 'New announcement',
+    body: body || 'Tap to read it in the app.',
+    url: `${BASE}/`,
+    // Per-announcement, so two different notices both show rather than the
+    // second silently replacing the first.
+    tag: safeTag(`announcement-${announcement.id ?? 'latest'}`),
+  };
+}

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { readActiveAnnouncements } from '@/lib/announcements';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
+import { isFlagOn } from '@/lib/flags';
+import { sendPushToAll } from '@/lib/push';
+import { buildAnnouncementPayload } from '@/lib/pushMessages';
 import { randomBytes } from 'crypto';
 
 export async function GET() {
@@ -111,6 +114,22 @@ export async function POST(req: NextRequest) {
 
     const container = getContainer('announcements');
     const { resource } = await container.items.create(announcement);
+
+    /* Persist first, notify best-effort — a push failure must never fail the
+       admin's post (same posture as the signup-open trigger in
+       app/api/session/route.ts and app/api/report/route.ts).
+
+       CREATE only. PATCH upserts an edit, and re-notifying everyone because a
+       typo was fixed is exactly the empty interruption that teaches people to
+       swipe these away. */
+    if (isFlagOn('NEXT_PUBLIC_FLAG_PUSH_NOTIFY')) {
+      try {
+        await sendPushToAll(buildAnnouncementPayload(announcement));
+      } catch (err) {
+        console.error('[announcements] push failed (announcement still saved):', err);
+      }
+    }
+
     return NextResponse.json(resource, { status: 201 });
   } catch (error) {
     console.error('POST announcement error:', error);
