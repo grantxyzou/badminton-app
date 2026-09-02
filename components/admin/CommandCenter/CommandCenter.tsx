@@ -153,11 +153,9 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
             { icon: 'receipt_long', label: 'Ledger', onClick: () => setView('ledger') },
             { icon: 'restore', label: 'Past sessions', onClick: () => setView('past-sessions') },
             { icon: 'bolt', label: 'Release notes', onClick: () => setView('releases') },
-            // The stringing bench. Lives here rather than in the btn-ghost row
-            // further down AdminDashboard, because that row belongs to the
-            // pre-Command-Center layout and is not rendered at all once
-            // NEXT_PUBLIC_FLAG_COMMAND_CENTER is on -- which it is everywhere
-            // this flag will be.
+            // The stringing bench. It was first added to a btn-ghost row in the
+            // pre-Command-Center AdminDashboard layout, which nobody could see
+            // (see AdminBenchEntry.test.tsx). That layout is gone now.
             ...(isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')
               ? [{ icon: 'sports_tennis', label: 'Stringing bench', onClick: () => setView('stringing') }]
               : []),

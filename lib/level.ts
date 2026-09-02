@@ -35,8 +35,8 @@ export interface LevelInputs {
   legacyStage?: number | null;
   /** Phase 3 — when true, the self component is a time-decayed EWMA of all
    *  snapshots (not just the latest) and the phase is the hysteresis-confirmed
-   *  trajectory phase rather than a raw band lookup. Gated by
-   *  `NEXT_PUBLIC_FLAG_SKILL_SMOOTHING` at the store. */
+   *  trajectory phase rather than a raw band lookup. The store always passes
+   *  true (the flag that gated it retired 2026-09); false is kept for tests. */
   smoothing?: boolean;
   /** Injected for deterministic staleness math. ISO 8601. */
   now: string;

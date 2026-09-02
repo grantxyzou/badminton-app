@@ -41,8 +41,6 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: 'home' 
   // the signed-out state at a signed-in member — unknown is not known-absent.
   const { name: activeName, resolved: identResolved } = useActiveName();
 
-  // Distributed AI insights: a plain-language greeting leads the You register.
-  const insightCardsOn = isFlagOn('NEXT_PUBLIC_FLAG_INSIGHT_CARDS');
   // Kudos — positive-only peer recognition (received in You; give in Play).
   const kudosOn = isFlagOn('NEXT_PUBLIC_FLAG_KUDOS');
   // Equipment register follows the Value-Hub flag; its kill-criterion gate is
@@ -65,7 +63,8 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: 'home' 
       // same number twice on one screen reads as two different facts.
       youSlot={
         <>
-          {insightCardsOn && <SummaryGreeting />}
+          {/* Distributed AI insight: a plain-language greeting leads You. */}
+          <SummaryGreeting />
           {/* Both comparison-dependent cards are keyed on the answer, so
               saying yes remounts them and they re-read the bands endpoint
               — which only returns bands once the prompt is answered.

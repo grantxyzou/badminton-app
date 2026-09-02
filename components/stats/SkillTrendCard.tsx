@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl';
 import { useActiveName } from '@/lib/useActiveName';
 import DimensionBars from './DimensionBars';
 import { SKILLS, topStrengths, workOnNext, type Rating, type Dimension, type Phase } from '@/lib/assessment';
-import { isFlagOn } from '@/lib/flags';
 import { useInsight } from '@/lib/useInsight';
 import InsightChip from '@/components/stats/InsightChip';
 import StatCard, { type StatTone } from '@/components/stats/StatCard';
@@ -80,8 +79,7 @@ export default function SkillTrendCard() {
   const [sheetSkill, setSheetSkill] = useState<string | null>(null);
   const [checkInOpen, setCheckInOpen] = useState(false);
   // Distributed AI insight — a short, non-obvious chip about the skill trend.
-  const insightsOn = isFlagOn('NEXT_PUBLIC_FLAG_INSIGHT_CARDS');
-  const { data: insight } = useInsight(insightsOn);
+  const { data: insight } = useInsight();
 
   const load = useCallback(() => {
     if (!activeName) return;
@@ -222,7 +220,7 @@ export default function SkillTrendCard() {
         <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '0', textAlign: 'center' }}>{t('assess.baseline')}</p>
       )}
 
-      {insightsOn && insight?.trend && <InsightChip {...insight.trend} />}
+      {insight?.trend && <InsightChip {...insight.trend} />}
 
       {/* Actions — Update (re-rate) + All skills toggle share one row, same level. */}
       <div className="space-y-3">

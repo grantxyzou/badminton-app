@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ownsNameOrAdmin } from '@/lib/auth';
 import { getCanonicalLevel } from '@/lib/levelStore';
@@ -28,10 +27,6 @@ export async function GET(req: NextRequest) {
   const ip = getClientIp(req);
   if (!checkRateLimit(`stats-level:${ip}`, 60, 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-  }
-
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_SKILL_LEVEL')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   const name = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50) ?? '';

@@ -33,17 +33,8 @@ describe('/api/stats/level', () => {
     resetMockStore();
     setupAdminPin();
     _resetCalibrationCache();
-    process.env.NEXT_PUBLIC_FLAG_SKILL_LEVEL = 'true';
   });
   afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_SKILL_LEVEL;
-    delete process.env.NEXT_PUBLIC_FLAG_SKILL_CALIBRATION;
-  });
-
-  it('404s when the flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_SKILL_LEVEL = 'false';
-    const res = await GET(getAs('Lin'));
-    expect(res.status).toBe(404);
   });
 
   it('400s when no name is supplied', async () => {
@@ -99,11 +90,7 @@ describe('/api/stats/level', () => {
     expect(body.level.level).toBeNull();
   });
 
-  describe('with game calibration on (Phase 2)', () => {
-    beforeEach(() => {
-      process.env.NEXT_PUBLIC_FLAG_SKILL_CALIBRATION = 'true';
-    });
-
+  describe('with game calibration (Phase 2)', () => {
     it('lights up basis.game and an "above" blind spot when games outrun the self-rating', async () => {
       const m = seedMember('Lin');
       seedAssessment(m.id, 'Lin', 3.0, '2026-06-01T00:00:00.000Z');
@@ -181,14 +168,5 @@ describe('/api/stats/level', () => {
       expect(body.level.basis.game).toBeGreaterThan(4.0);
     });
 
-    it('leaves basis.game null when the calibration flag is off', async () => {
-      process.env.NEXT_PUBLIC_FLAG_SKILL_CALIBRATION = 'false';
-      const m = seedMember('Lin');
-      seedAssessment(m.id, 'Lin', 3.0, '2026-06-01T00:00:00.000Z');
-      seedGame(['Lin'], ['Bob'], 21, 5, '2026-06-05T00:00:00.000Z');
-      const body = await (await GET(getAs('Lin'))).json();
-      expect(body.level.basis.game).toBeNull();
-      expect(body.level.level).toBe(3.0);
-    });
   });
 });

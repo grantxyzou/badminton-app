@@ -74,7 +74,7 @@ export async function PUT(req: NextRequest) {
     const sessionId = await getActiveSessionId();
 
     // Build updates from ONLY the keys the body actually supplied. A field the
-    // editing client doesn't send (e.g. DateTimeEditor sends only datetimes)
+    // editing client doesn't send (e.g. a date-only editor sends only datetimes)
     // must be left untouched, not reset to a default — see the read-spread below.
     const updates: Record<string, unknown> = {};
     if (body.title !== undefined) updates.title = String(body.title ?? '').trim().slice(0, 100);

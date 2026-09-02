@@ -3,7 +3,6 @@ import Anthropic from '@anthropic-ai/sdk';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer, getActiveSessionId, ensureContainer } from '@/lib/cosmos';
 import { topPartners } from '@/lib/recommend';
-import { isFlagOn } from '@/lib/flags';
 import { ownsNameOrAdmin } from '@/lib/auth';
 import { summarizeAssessmentTrend, type AssessmentTrend, type StoredAssessment } from '@/lib/assessment';
 import { getCanonicalLevel } from '@/lib/levelStore';
@@ -16,14 +15,16 @@ import { VOICE_PERSONA } from '@/lib/aiPersona';
  * Account-gated, passively-generated player insight. Replaces the old
  * button-driven /api/stats/summary.
  *
- * Two sections per call: a `recap` of the last completed session / recent
- * stretch, and a forward-looking `focus` for the current session. Generated
+ * Two slices per call: a plain-language `greeting` for the top of the Stats
+ * tab and a short, non-obvious `trend` chip for the skill-trend card (the
+ * "distributed insights" shape; the earlier recap+focus "Your read" blob
+ * retired with the INSIGHT_CARDS flag in 2026-09). Generated
  * once per (member, active session) and cached server-side in the `insights`
  * container — so output is CONSISTENT for the whole session-cycle and we make
  * at most one Claude call per member per session (no client CTA, no per-view
  * regeneration).
  *
- * "Memory": each generation is fed the member's PREVIOUS recap+focus so the
+ * "Memory": each generation is fed the member's PREVIOUS slices so the
  * read builds a narrative ("you stuck with last week's plan...") rather than
  * starting cold.
  *
@@ -41,8 +42,8 @@ export const dynamic = 'force-dynamic';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const MODEL = 'claude-sonnet-4-6';
-const MAX_OUTPUT_TOKENS = 400;
-// Structured card insights are several short fields rather than one blob.
+// Structured card insights are several short fields rather than one blob
+// (the retired recap+focus blob ran at 400).
 const MAX_OUTPUT_TOKENS_CARDS = 600;
 const ATTENDANCE_WEEKS = 52;
 
@@ -73,11 +74,11 @@ interface InsightDoc {
   memberId: string;
   name: string;
   sessionId: string;
-  /** Legacy "Your read" shape (flag off). Optional now — structured docs omit it. */
+  /** The retired "Your read" shape. Nothing writes these since 2026-09, but
+   *  cached docs from before still carry them (additive schema rule); a doc
+   *  with only these misses the cache below and regenerates once. */
   recap?: string;
   focus?: string;
-  /** Distributed-insight shape (NEXT_PUBLIC_FLAG_INSIGHT_CARDS on). Additive —
-   *  legacy recap/focus docs simply lack these and regenerate once on a flag flip. */
   greeting?: string | null;
   /* `level` sat here until 2026-08-27. Cached docs written before then still
      carry it; nothing reads it, and Cosmos ignores the extra field. */
@@ -96,7 +97,6 @@ interface InsightDoc {
  * returned for failures too. Remaining callers, classified:
  *   - not a member / no name        → correct: the account gate, nothing to say
  *   - model returned all-null cards → correct: silence beat an obvious remark
- *   - no recap and no focus         → correct: same
  *   - container setup failed (~:153), no API key (~:223), generation threw
  *     (~:262, ~:288) → these are FAILURES still wearing an empty payload. They
  *     degrade to "no insight" rather than saying the read broke. Lower priority
@@ -105,18 +105,17 @@ interface InsightDoc {
  * The rate-limit trip was the reachable one and now returns a real 429.
  */
 function emptyPayload(account: boolean) {
-  return NextResponse.json({ account, recap: null, focus: null, greeting: null, trend: null, generatedAt: null });
+  return NextResponse.json({ account, greeting: null, trend: null, generatedAt: null });
 }
 
 /**
- * Latest self-assessment trend for a member, or null. Flag-gated: the
+ * Latest self-assessment trend for a member, or null. The
  * `assessments` store only exists when the skill-assessment spine is on, so off
  * deployments skip the query entirely. JS-filters by memberId because the mock
  * store ignores `@memberId` (same reason the assessments GET does). Failures are
  * non-fatal — the insight still generates from attendance/games alone.
  */
 async function fetchAssessmentDocs(memberId: string): Promise<StoredAssessment[]> {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS')) return [];
   try {
     await ensureContainer('assessments', '/memberId');
     const { resources } = await getContainer('assessments').items
@@ -203,9 +202,7 @@ export async function GET(req: NextRequest) {
 
   const activeSessionId = await getActiveSessionId();
 
-  const cardsOn = isFlagOn('NEXT_PUBLIC_FLAG_INSIGHT_CARDS');
-
-  // ── Latest self-assessment (flag-gated). Fetched before the cache check so a
+  // ── Latest self-assessment. Fetched before the cache check so a
   //    fresh check-in invalidates the session-cached read. Raw docs are kept so
   //    the signal engine can fold the full history (sticky-weak, streaks). ──
   const assessmentDocs = await fetchAssessmentDocs(member.id);
@@ -225,32 +222,24 @@ export async function GET(req: NextRequest) {
   // new assessment present (a string) mismatches → regenerate to fold it in.
   const assessmentMatches = (existing?.lastAssessmentAt ?? null) === latestAssessmentAt;
   const cacheFresh = !!existing && existing.sessionId === activeSessionId && assessmentMatches;
-  // The cache is keyed by the shape the current flag wants: a flag flip leaves a
-  // doc with the wrong field set, which misses here and regenerates once.
   // A persisted cards-doc always has at least one non-null slice (the generator
   // bails without writing when both are null), so "any slice present" is the
   // correct freshness test. Keying on `greeting` alone made a legitimately
   // null greeting (with a trend chip) miss the cache on every view and
   // re-call Claude — breaking the one-call-per-member-per-session guarantee.
-  if (cacheFresh && cardsOn && (existing!.greeting || existing!.trend)) {
+  if (cacheFresh && (existing!.greeting || existing!.trend)) {
     return NextResponse.json({ account: true, greeting: existing!.greeting ?? null, trend: existing!.trend ?? null, generatedAt: existing!.generatedAt, cached: true });
-  }
-  if (cacheFresh && !cardsOn && existing!.recap) {
-    return NextResponse.json({ account: true, recap: existing!.recap, focus: existing!.focus, generatedAt: existing!.generatedAt, cached: true });
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    // No key — serve any stale insight of the right shape rather than nothing.
-    if (cardsOn && existing?.greeting) {
+    // No key — serve any stale insight rather than nothing.
+    if (existing?.greeting) {
       return NextResponse.json({ account: true, greeting: existing.greeting, trend: existing.trend ?? null, generatedAt: existing.generatedAt, stale: true });
-    }
-    if (!cardsOn && existing?.recap) {
-      return NextResponse.json({ account: true, recap: existing.recap, focus: existing.focus, generatedAt: existing.generatedAt, stale: true });
     }
     return emptyPayload(true);
   }
 
-  // Canonical level (flag-gated). Same memberId-resolve as the trend; folds the
+  // Canonical level. Same memberId-resolve as the trend; folds the
   // self-assessments into one private headline number. Non-fatal — the insight
   // still generates without it.
   //
@@ -260,23 +249,21 @@ export async function GET(req: NextRequest) {
   // above the cache read, under a comment claiming it "only runs on miss",
   // which was simply false: every cached load paid for both scans and threw
   // the result away. Moving a read above the cache is not free here.
-  const canonicalLevel = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_LEVEL')
-    ? await getCanonicalLevel({ memberId: member.id, name: member.name }).catch((err) => {
-        console.error('insight level read failed:', err);
-        return null;
-      })
-    : null;
+  const canonicalLevel = await getCanonicalLevel({ memberId: member.id, name: member.name }).catch((err) => {
+    console.error('insight level read failed:', err);
+    return null;
+  });
 
-  // Drills for the work-on skills (flag-gated). Deterministic; rotates by session.
-  const drills = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_DRILLS') && trend
+  // Drills for the work-on skills. Deterministic; rotates by session.
+  const drills = trend
     ? recommendDrills({ workOn: trend.workOn, level: canonicalLevel?.level ?? null, rotationSeed: activeSessionId })
     : [];
 
   // ── Gather the data snapshot (deterministic — fed verbatim to Claude). ──
   const snapshot = await buildSnapshot({ name: member.name, playersContainer, sessionsContainer, trend, canonicalLevel, drills });
 
-  // ── Distributed insights (flag on): structured, signal-grounded slices. ──
-  if (cardsOn) {
+  // ── Distributed insights: structured, signal-grounded slices. ──
+  {
     const signals = signalsByCard(computeInsightSignals({ snapshots: assessmentDocs, canonicalLevel, now: new Date().toISOString() }));
     let cards: { greeting: string | null; trend: CardInsight | null };
     try {
@@ -299,32 +286,6 @@ export async function GET(req: NextRequest) {
     }
     return NextResponse.json({ account: true, greeting: cards.greeting, trend: cards.trend, generatedAt, cached: false });
   }
-
-  // ── Legacy "Your read" (flag off): recap + focus blob. ──
-  let recap = '';
-  let focus = '';
-  try {
-    const result = await generate(member.name, snapshot, existing);
-    recap = result.recap;
-    focus = result.focus;
-  } catch (err) {
-    console.error('insight generation failed:', err);
-    if (existing?.recap) {
-      return NextResponse.json({ account: true, recap: existing.recap, focus: existing.focus, generatedAt: existing.generatedAt, stale: true });
-    }
-    return emptyPayload(true);
-  }
-  if (!recap && !focus) return emptyPayload(true);
-
-  const generatedAt = new Date().toISOString();
-  const doc: InsightDoc = { id: member.id, memberId: member.id, name: member.name, sessionId: activeSessionId, recap, focus, generatedAt, lastAssessmentAt: latestAssessmentAt };
-  try {
-    await insightsContainer.items.upsert(doc);
-  } catch (err) {
-    console.warn('insight cache write failed (non-fatal):', err);
-  }
-
-  return NextResponse.json({ account: true, recap, focus, generatedAt, cached: false });
 }
 
 interface Snapshot {
@@ -446,44 +407,6 @@ async function buildSnapshot({
   }
 
   return { lastPlayed, regularPartners, assessment: trend, canonicalLevel, skills, drills };
-}
-
-async function generate(name: string, s: Snapshot, prev: InsightDoc | null): Promise<{ recap: string; focus: string }> {
-  const lastLine = s.lastPlayed
-    ? `Last session ${name} played (${s.lastPlayed.date.slice(0, 10)})${
-        s.lastPlayed.partners.length ? `, alongside ${s.lastPlayed.partners.join(', ')}` : ''
-      }.`
-    : 'No sessions played on record yet.';
-  const partnerLine = s.regularPartners.length
-    ? `Regular partners: ${s.regularPartners.map((p) => `${p.name} (${p.count})`).join(', ')}.`
-    : 'No regular partners yet.';
-  // Skill source is EXCLUSIVE: a self-assessment trend (1-5) when present, else
-  // the legacy admin skills (0-6). Never both — two scales confuse the model.
-  const skillLine = buildSkillLine(s);
-  const memoryLine = prev?.recap
-    ? `\n\nYour previous note to ${name} (one session ago):\n- Recap: ${prev.recap}\n- Focus: ${prev.focus}`
-    : '';
-
-  const prompt = `${VOICE_PERSONA}
-
-You're writing for ${name}, a casual weekly player. Use ONLY the facts below — never invent numbers, names, or events.
-
-${lastLine}
-${partnerLine}${skillLine ? `\n${skillLine}` : ''}${memoryLine}
-
-Return ONLY a JSON object, no markdown fences:
-{"recap": "...", "focus": "..."}
-- "recap": 1-2 sentences on how the last session / recent stretch went. If a self-assessment is present, weave in how their skill rating moved (up, down, or holding). If a previous note exists, acknowledge progress against it. NEVER mention attendance, how many sessions they made, or any kind of streak — you are not given those facts and must not infer them.
-- "focus": 1-2 sentences naming ONE concrete thing to work on for the upcoming session. If a self-assessment lists "working on" skills, anchor the focus on one of them. If "Suggested drills" are listed, name ONE of them verbatim as the concrete action (don't invent a different drill). Build on the previous focus if there was one (did they act on it?). Specific, encouraging, no jargon, no emoji.
-- If the notes mention a gap between recent games and the self-rating, you MAY reference it gently and only as encouragement — never as criticism, and never with a number.`;
-
-  const message = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: MAX_OUTPUT_TOKENS,
-    messages: [{ role: 'user', content: prompt }],
-  });
-  const text = message.content[0]?.type === 'text' ? message.content[0].text.trim() : '';
-  return parseInsight(text);
 }
 
 /**
@@ -638,23 +561,5 @@ function parseCards(text: string): {
     };
   } catch {
     return { greeting: null, trend: null };
-  }
-}
-
-/** Tolerant JSON extraction — strips code fences, pulls the first {...} block. */
-function parseInsight(text: string): { recap: string; focus: string } {
-  const cleaned = text.replace(/```json/gi, '').replace(/```/g, '').trim();
-  const start = cleaned.indexOf('{');
-  const end = cleaned.lastIndexOf('}');
-  const slice = start >= 0 && end > start ? cleaned.slice(start, end + 1) : cleaned;
-  try {
-    const obj = JSON.parse(slice) as { recap?: unknown; focus?: unknown };
-    return {
-      recap: typeof obj.recap === 'string' ? obj.recap.trim() : '',
-      focus: typeof obj.focus === 'string' ? obj.focus.trim() : '',
-    };
-  } catch {
-    // Last resort: the whole thing is the recap, no focus.
-    return { recap: cleaned.slice(0, 400), focus: '' };
   }
 }

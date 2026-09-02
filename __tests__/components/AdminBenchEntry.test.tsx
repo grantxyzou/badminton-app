@@ -12,8 +12,9 @@ import enMessages from '../../messages/en.json';
  * This file exists because of a bug that every other test missed. The bench
  * entry point was first added to the `btn-ghost` row in AdminDashboard that
  * holds Members / Birds / Releases — a row belonging to the pre-Command-Center
- * layout, which is not rendered at all once NEXT_PUBLIC_FLAG_COMMAND_CENTER is
- * on. It is on in dev and in production. So the button existed, compiled,
+ * layout, which was not rendered at all with NEXT_PUBLIC_FLAG_COMMAND_CENTER
+ * on — and it was on everywhere (the flag, and that layout, were retired in
+ * 2026-09). So the button existed, compiled,
  * passed 2199 tests, and could not be tapped by anybody.
  *
  * Route tests, unit tests and the bench's own component tests all still passed,

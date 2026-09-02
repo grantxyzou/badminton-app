@@ -33,16 +33,8 @@ describe('/api/stats/drills', () => {
     resetMockStore();
     setupAdminPin();
     _resetCalibrationCache();
-    process.env.NEXT_PUBLIC_FLAG_SKILL_DRILLS = 'true';
   });
   afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_SKILL_DRILLS;
-  });
-
-  it('404s when the flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_SKILL_DRILLS = 'false';
-    const res = await GET(getAs('Lin'));
-    expect(res.status).toBe(404);
   });
 
   it('400s when no name is supplied', async () => {
