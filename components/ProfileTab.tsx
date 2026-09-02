@@ -650,7 +650,7 @@ export default function ProfileTab({
           background: 'none',
           border: 'none',
           cursor: 'pointer',
-          padding: 8,
+          padding: 'var(--space-3)',
           fontSize: 'var(--fs-sm)',
           color: 'var(--text-muted)',
           fontFamily: 'inherit',
