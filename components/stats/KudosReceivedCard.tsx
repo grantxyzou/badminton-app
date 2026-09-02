@@ -59,7 +59,12 @@ export default function KudosReceivedCard() {
   if (state.kind === 'needsAuth') return null; // read-only nicety; no nag
 
   const Frame = ({ children }: { children: React.ReactNode }) => (
-    <div className="glass-card p-5 space-y-3">
+    // flex+gap, not space-y-3: the <ul> passed in as `children` carries an
+    // inline `margin: '0'` to kill the UA list margin, and an inline style
+    // beats the utility's `> * + * { margin-top }` -- so the tag pills sat
+    // flush against the header. A flex gap cannot be overridden by a child's
+    // margin. Same fix as WhereYouSitCard.
+    <div className="glass-card p-5 flex flex-col gap-3">
       <CardHeader icon="volunteer_activism" title={t('kudos.receivedTitle')} />
       {children}
     </div>
