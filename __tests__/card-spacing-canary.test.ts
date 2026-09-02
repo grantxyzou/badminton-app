@@ -36,8 +36,15 @@ function tsxFiles(dir: string): string[] {
  * `space-y-*` is the convention. An inline `gap` on a flex/grid card is the
  * sanctioned alternative — several cards predate the utility and use it — so
  * both count. What does not count is nothing at all.
+ *
+ * A Tailwind `gap-*` class counts too, and has to: `space-y-*` compiles to
+ * `> * + * { margin-top }`, which a child's inline `margin: '0'` silently
+ * overrides, so `flex flex-col gap-*` is the prescribed fix for that bug (see
+ * CLAUDE.md). Without this branch the documented remedy fails the very test
+ * that polices the defect — which is exactly what happened when
+ * KudosReceivedCard was fixed.
  */
-const SPACED = /space-y-\d/;
+const SPACED = /space-y-\d|gap-\d/;
 
 describe('cards with a header own the gap under it', () => {
   const offenders: string[] = [];
