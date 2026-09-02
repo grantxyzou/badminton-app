@@ -372,6 +372,12 @@ One deployment, trunk-based: every push to `main` deploys to production. Full de
 
 **Schema rule**: still additive-and-optional only. The reason changed — a rollback redeploys older code against the same live database, so a removed or renamed field breaks the build you roll back *to*.
 
+**`main` is PR-only, with `verify` (pr-ci.yml) required and NO bypass — the owner included** (ruleset `BPM protect`, fixed 2026-09-02). Every change, docs included, goes branch → PR → green check → merge. Zero approvals required: the check is the gate, not a reviewer. The ruleset had existed since April with `conditions.ref_name.include: []`, which targets **no branch** — it read as protected and enforced nothing. When checking a gate, check what it *targets*, not whether it exists.
+
+**The PR review bot** (`claude-code-review.yml`) applies `REVIEW.md` — the review policy: what to check, how to rank it, what not to flag. Two things about it are not obvious:
+- **It silently skips any PR that modifies its own workflow file** — the action requires the file to match `main`. The job still shows green, in ~12s. Reviews resume on the next PR.
+- **It posts nothing when it has no findings**, so silence is not evidence it ran. A run that actually reviewed takes ~10 minutes; one that skipped takes seconds. Check the duration.
+
 ## Testing
 
 Tests use the in-memory mock store — no DB needed. Helpers in `__tests__/helpers.ts`. Each test gets a unique IP via `X-Client-IP` to avoid rate limiter collisions.
