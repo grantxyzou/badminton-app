@@ -16,6 +16,11 @@ out/
 # match a .bak sibling (e.g. a `sed -i.bak` backup). Catch the whole class:
 *.bak
 
+# Local-only real attendance data (never tracked). The backfill script reads
+# this path by default; keep real member names + dates out of the public repo.
+# See scripts/data/attendance.example.csv for the format.
+scripts/data/attendance.csv
+
 # debug
 npm-debug.log*
 yarn-debug.log*

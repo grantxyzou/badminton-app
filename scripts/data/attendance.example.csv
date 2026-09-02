@@ -1,0 +1,16 @@
+# Example attendance file for scripts/backfill-attendance.mjs.
+# Copy this to your own local CSV (e.g. scripts/data/attendance.csv, which is
+# gitignored), fill in real session dates + who attended, then run the script.
+# Keep real member names out of this tracked example.
+#
+# Format:
+#   date,names
+#   YYYY-MM-DD,SpaceSeparatedNames
+#
+# Names must match member records in Cosmos exactly (case-insensitive).
+# Lines starting with `#` and blank lines are ignored.
+
+date,names
+2026-02-19,Lin Viktor Carolina Akane Kento
+2026-02-26,Lin Carolina Sindhu Kento
+2026-03-05,Viktor Akane Sindhu Lin

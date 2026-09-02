@@ -22,7 +22,7 @@ function doc(over: Partial<KudosDoc> = {}): KudosDoc {
   return {
     id: 'k1',
     recipientMemberId: 'm-recipient',
-    recipientName: '[name-redacted]',
+    recipientName: 'Viktor',
     raterMemberId: 'm-rater',
     raterName: 'Lin',
     sessionId: 'session-2026-08-27',

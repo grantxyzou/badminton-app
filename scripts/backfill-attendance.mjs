@@ -7,12 +7,14 @@
  * Usage:
  *   node scripts/backfill-attendance.mjs [csvPath]
  *
- * Defaults to scripts/data/attendance.csv. CSV format (header required):
+ * Defaults to scripts/data/attendance.csv — gitignored, so real member names
+ * stay out of the public repo. See scripts/data/attendance.example.csv for the
+ * format. CSV format (header required):
  *
  *   date,names
- *   2026-02-19,Grant Bruce Chris David
- *   2026-02-26,Grant Chris David Ethan
- *   2026-03-05,Grant Bruce
+ *   2026-02-19,Lin Viktor Carolina Akane
+ *   2026-02-26,Lin Carolina Akane Kento
+ *   2026-03-05,Lin Viktor
  *
  * Notes:
  * - Names are SPACE-separated within the names column (commas reserved for
