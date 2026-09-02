@@ -2,7 +2,7 @@
 
 All notable changes to the BPM Badminton app are tracked here.
 
-This changelog tracks what ships to the **stable** friend-facing deployment. The `bpm-next` preview environment auto-deploys `main` and may contain in-progress work gated behind feature flags; those changes only appear below once promoted to stable via tag.
+This changelog tracks what ships to production. There is **one deployment**: every push to `main` auto-deploys to https://bpm.grantzou.com/bpm. (Until 2026-08-25 there were two, and this paragraph described promoting from a preview to a `stable` deployment; that second deployment has been deleted.) Work in progress lives behind feature flags rather than behind a separate environment, so `Unreleased` below means *shipped but not yet tagged*, not *not yet live*.
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag convention: `bpm-stable-vX.Y`.
 
@@ -46,9 +46,9 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ---
 
-## Unreleased — `bpm-next` only
+## Unreleased
 
-*Items here live on `main`. They ship to stable when the next tag is cut.*
+*Items here are already live on production. A tag just marks the release.*
 
 <!-- Add bullets under the matching subheading as you ship user-facing changes.
      Format: `- **Short title** — one-sentence what + why.` See v1.3 below for examples.
@@ -59,6 +59,7 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **Kudos is easier to find, and you can say why** — giving kudos lives in two places now: the Stats tab under **Play**, and next to any name on the Sign-Ups list. You can add a short note and point at the skill you noticed. The tag on its own stays anonymous; a note is signed with your name, so people know who spotted it.
 - **Your rackets live on the Equipment tab now** — the tab shows the racket you're using today, then every racket you own, with "Add a racket" underneath. Picking one used to mean opening a sheet that tried to be both your bag and a 50-racket catalogue at once; adding is now the only thing that opens a sheet, and one tap adds a racket instead of tap-then-save.
 - **Finding your racket got easier** — the picker is full-height, searches every brand at once, and shows the brand above each model, so a search that crosses brands no longer gives you a list of bare model names. Rackets already in your bag don't show up in the list.
+- **Sign-in options are a row, not a block** — "How you sign in" now sits with Update PIN and Have a recovery code? in Account, and tells you what you've got (PIN · Google) without opening it. It used to be a panel wedged between those rows, taking up half the screen to say the same thing.
 
 ### Fixed
 
@@ -66,6 +67,8 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **You can remove your racket when it's the only one you have** — the bag hid itself entirely if you owned just one racket, so there was no way to remove or replace it.
 - **"Add a racket" reads like a button now** — it was smaller and quieter than the rows above it, and below the minimum tap size.
 - **The empty state answers the question it's under** — "What is the racket you are using today?" now gets "Haven't picked one yet." instead of a label telling you to look below at a button you can't miss.
+- **Payments says nothing's there instead of showing you a blank bill** — with nobody signed up it was printing "0 players", a dash where the amount goes, and a Share receipt button that did nothing. Now it just says no one's signed up yet, above the box for adding someone.
+- **Cards line up again** — on Gear, a card with a "Coming soon" tag started its text lower than the card beside it. On Stats, the note under the comparison bars was pressed flat against them. Admin's Birds and Roster tiles had their numbers too close to the edges.
 
 ### Security
 
