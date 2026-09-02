@@ -388,5 +388,16 @@ the first place. "Not blocked by auth" was reported as "not blocked".
   roster-first. Zero logged games therefore meant zero co-players and the card
   returned `null` for everyone. Now roster-based, matching the server.
 
+  **Follow-up, 2026-08-29: that fix was real but incomplete, and the card stayed
+  effectively invisible for another two months.** Matching the server meant
+  matching `playedTogether`, which was scoped to the ACTIVE session — and the
+  owner advances the session minutes after play, so the roster the card read was
+  empty again by the time anyone opened the app, and it went back to returning
+  `null`. A player eventually asked how to give kudos at all. Eligibility now
+  spans the last 8 sessions and the card never returns `null`. The lesson for
+  this readout stands and sharpens: **agreement between client and server is not
+  the same as the feature being reachable** — both agreed on a rule that was
+  almost never true.
+
 So two live features were invisible to the whole club for six weeks, and the
 metric built to judge them reported their silence as a verdict.

@@ -121,9 +121,15 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     plannedRemoval: 'after drills are promoted to stable + lived-in for 2 weeks',
   },
   NEXT_PUBLIC_FLAG_KUDOS: {
-    description: 'Kudos (skill-followups plan, Phase C): positive-only, post-game peer recognition that replaces the cut numeric peer rating. A small fixed set of tags, member-cookie-bound writes (rule 12) gated on co-play, and a private counts-only aggregate (member/admin). No level coupling in v1 — purely social. New `kudos` container (PK /recipientMemberId). On for bpm-next + dev; off on bpm-stable until promoted.',
+    description: 'Kudos: positive-only peer recognition that replaces the cut numeric peer rating. A small fixed set of tags, member-cookie-bound writes (rule 12), and a private aggregate (member/admin) of per-tag counts PLUS signed notes. Eligibility is co-play across the last 8 sessions, owned by lib/kudosEligibility.ts. No level coupling — purely social. `kudos` container (PK /recipientMemberId). Live in prod (true in both workflows).',
     owner: 'grant',
-    plannedRemoval: 'after kudos is promoted to stable + lived-in for 2 weeks',
+    // Was the prose form ("after kudos is promoted to stable + lived-in for 2
+    // weeks") — a condition that became impossible on 2026-08-25 when the
+    // second deployment was deleted and there stopped being a promotion event.
+    // Dated from the 2026-08-29 redesign, which is the change worth soaking.
+    // NOTE: `chore/retire-three-flags` is dating every flag in parallel; expect
+    // a one-line conflict here on whichever merges second.
+    plannedRemoval: '2026-09-12',
   },
   NEXT_PUBLIC_FLAG_INSIGHT_CARDS: {
     description: 'Distributed AI insights: dissolves the standalone "Your read" card into a one-line plain-language greeting at the top of the Stats Summary plus a short, NON-OBVIOUS insight chip attached to each card (level, skill trend). Server-side the /api/stats/insight route switches from {recap, focus} to structured {greeting, level, trend} slices, grounded in deterministically-computed signals (lib/insightSignals.ts) and nullable per card. On for bpm-next + dev; off on bpm-stable (legacy StreakSummaryCard) until promoted.',

@@ -56,11 +56,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ### Changed
 
+- **Kudos is easier to find, and you can say why** — giving kudos lives in two places now: the Stats tab under **Play**, and next to any name on the Sign-Ups list. You can add a short note and point at the skill you noticed. The tag on its own stays anonymous; a note is signed with your name, so people know who spotted it.
 - **Your rackets live on the Equipment tab now** — the tab shows the racket you're using today, then every racket you own, with "Add a racket" underneath. Picking one used to mean opening a sheet that tried to be both your bag and a 50-racket catalogue at once; adding is now the only thing that opens a sheet, and one tap adds a racket instead of tap-then-save.
 - **Finding your racket got easier** — the picker is full-height, searches every brand at once, and shows the brand above each model, so a search that crosses brands no longer gives you a list of bare model names. Rackets already in your bag don't show up in the list.
 
 ### Fixed
 
+- **Kudos no longer disappears the moment the session rolls over** — you can now thank anyone you've played with in the last couple of months, instead of only the people on this week's list. Previously the sign-up list resets as soon as the next session is posted, so the card quietly vanished and there was no way to tell it existed at all.
 - **You can remove your racket when it's the only one you have** — the bag hid itself entirely if you owned just one racket, so there was no way to remove or replace it.
 - **"Add a racket" reads like a button now** — it was smaller and quieter than the rows above it, and below the minimum tap size.
 - **The empty state answers the question it's under** — "What is the racket you are using today?" now gets "Haven't picked one yet." instead of a label telling you to look below at a button you can't miss.
