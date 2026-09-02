@@ -47,17 +47,13 @@ describe('/api/stats/insight — distributed insight cards', () => {
     setupAdminPin();
     mockCreate.mockReset();
     process.env.ANTHROPIC_API_KEY = 'test-key';
-    process.env.NEXT_PUBLIC_FLAG_SKILL_ASSESS = 'true';
-    process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS = 'true';
     seedPointer('session-2026-06-17');
   });
   afterAll(() => {
     delete process.env.ANTHROPIC_API_KEY;
-    delete process.env.NEXT_PUBLIC_FLAG_SKILL_ASSESS;
-    delete process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS;
   });
 
-  it('returns structured slices with server-set kinds when the flag is on', async () => {
+  it('returns structured slices with server-set kinds', async () => {
     const m = seedMember('Lin');
     // net_play sticky across two check-ins → trend signal.
     seedAssessment(m.id, '2026-04-01', 3.1, ['net_play']);
@@ -117,22 +113,6 @@ describe('/api/stats/insight — distributed insight cards', () => {
     expect(secondJson.cached).toBe(true);
     expect(secondJson.greeting).toBe('Hi Viktor.');
     expect(mockCreate).toHaveBeenCalledTimes(1);
-  });
-
-  it('regenerates when the flag flips off (cached cards doc lacks recap)', async () => {
-    const m = seedMember('Kento');
-    seedAssessment(m.id, '2026-05-01', 3.2, ['net_play']);
-    mockCreate.mockResolvedValue(textResponse({ greeting: 'Hi Kento.', level: null, trend: null }));
-    await GET(getAs('Kento')); // caches a cards-shaped doc
-
-    process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS = 'false';
-    mockCreate.mockResolvedValue(textResponse({ recap: 'Last week was solid.', focus: 'Work on net play.' }));
-    const res = await GET(getAs('Kento'));
-    const json = await res.json();
-    expect(json.recap).toBe('Last week was solid.');
-    expect(json.focus).toBe('Work on net play.');
-    expect(json.greeting).toBeUndefined();
-    expect(mockCreate).toHaveBeenCalledTimes(2);
   });
 
   it('gates on account: an unknown name gets no insight and never calls the model', async () => {

@@ -65,7 +65,6 @@ function mockAdminFetch(opts: { fail?: boolean } = {}) {
 describe('ProfileTab — hierarchy pass', () => {
   beforeEach(() => {
     localStorage.clear();
-    delete process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER;
     mockAdminFetch();
   });
   afterEach(() => {
@@ -102,7 +101,6 @@ describe('ProfileTab — hierarchy pass', () => {
   // the console row were two doors to one place.
   it('groups settings under ACCOUNT and APP, with no Admin access row', async () => {
     signedIn();
-    process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER = 'true';
     renderWith({ isAdmin: true });
     await screen.findByText('Michael');
     expect(screen.getByText(enMessages.profile.settings.title)).toBeDefined();
@@ -126,7 +124,6 @@ describe('ProfileTab — hierarchy pass', () => {
   // full-width CTA do not.
   it('renders the admin console as one row carrying the count, not a hero', async () => {
     signedIn();
-    process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER = 'true';
     renderWith({ isAdmin: true });
     expect(await screen.findByText('Admin console')).toBeDefined();
     expect(await screen.findByText('1 need you')).toBeDefined();
@@ -138,7 +135,6 @@ describe('ProfileTab — hierarchy pass', () => {
 
   it('hides the admin row entirely for a non-admin', async () => {
     signedIn();
-    process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER = 'true';
     renderWith({ isAdmin: false });
     await screen.findByText('Michael');
     expect(screen.queryByText('Admin console')).toBeNull();
@@ -148,7 +144,6 @@ describe('ProfileTab — hierarchy pass', () => {
   // the lying-empty-state pattern. The row still opens admin.
   it('shows no count when the signal fetch fails, never a zero', async () => {
     signedIn();
-    process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER = 'true';
     mockAdminFetch({ fail: true });
     renderWith({ isAdmin: true });
     expect(await screen.findByText('Admin console')).toBeDefined();

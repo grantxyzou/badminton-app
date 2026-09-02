@@ -93,7 +93,7 @@ As of **v1.7 every feature flag was on for everyone** (the two deployments reach
 2. ✅ ~~Fix #238~~ — landed in v1.8 via `lib/shareImage.ts` (share-or-save with legible outcomes); awaiting reporter confirmation on the issue.
 3. **Slice-0 kill-criteria readout** — clock restarted with the v1.8 ship; decide on/after **~2026-09-13** via `GET /api/admin/slice0` (see §4).
 4. **PR hygiene** — #208/#215 closed (superseded). Remaining: dependabot #240 (owner must comment `@dependabot recreate` — bot commands from agent comments are defanged), then #239/#237.
-5. **Flag debt** — with one deployment, the two-week clock starts when work ships to production. Three retired on `chore/retire-three-flags` (SETTLE / NAV_RAIL / LEDGER, unpushed as of 2026-09-02); eight remain overdue — `check-flag-sync.mjs` lists them on any registry edit.
+5. **Flag debt** — with one deployment, the two-week clock starts when work ships to production. Ten retired in September 2026 (SETTLE / NAV_RAIL / LEDGER in #295; COMMAND_CENTER, the five SKILL_* and INSIGHT_CARDS after). `check-flag-sync.mjs` lists anything overdue at session start and on any registry edit; KUDOS (09-12), VALUE_HUB_SLICE (09-17) and VISUAL_FIELDS (09-22) are next.
 6. **Dead code** — `mergeBirdUsageEdit` (`lib/birdUsages.ts`) lost its only production consumer in #232; only tests reference it now. Fold into the flag sweep.
 
 ## 6. Branch hygiene

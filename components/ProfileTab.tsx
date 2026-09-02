@@ -101,7 +101,7 @@ export default function ProfileTab({
   // Called unconditionally, and gated by its own argument, because the two
   // early returns below (anonymous, and the Stats & privacy sub-screen) sit
   // between here and the row that renders the count.
-  const showAdminRow = isAdmin && isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER');
+  const showAdminRow = isAdmin;
   const adminSignals = useAdminNeedsYou(showAdminRow);
   const [reportOpen, setReportOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);

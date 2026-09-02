@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
-import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { verifyMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
 import { SKILLS, scoreAssessment, placePhase, type Rating } from '@/lib/assessment';
@@ -55,9 +54,6 @@ function validateRatings(raw: unknown): Rating[] | null {
  */
 
 export async function POST(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
   const ip = getClientIp(req);
   if (!checkRateLimit(`assessments:${ip}`, 20, 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
@@ -113,9 +109,6 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
   const name = new URL(req.url).searchParams.get('name');
   if (!name || !name.trim()) return NextResponse.json({ assessments: [] });
   try {

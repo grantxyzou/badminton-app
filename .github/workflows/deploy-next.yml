@@ -52,16 +52,9 @@ jobs:
           NEXT_PUBLIC_ENV: stable
           NEXT_PUBLIC_GIT_SHA: ${{ github.sha }}
           NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: 'true'
-          NEXT_PUBLIC_FLAG_COMMAND_CENTER: 'true'
           NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE: 'true'
           NEXT_PUBLIC_FLAG_VISUAL_FIELDS: 'true'
-          NEXT_PUBLIC_FLAG_SKILL_ASSESS: 'true'
-          NEXT_PUBLIC_FLAG_SKILL_LEVEL: 'true'
-          NEXT_PUBLIC_FLAG_SKILL_CALIBRATION: 'true'
-          NEXT_PUBLIC_FLAG_SKILL_SMOOTHING: 'true'
-          NEXT_PUBLIC_FLAG_SKILL_DRILLS: 'true'
           NEXT_PUBLIC_FLAG_KUDOS: 'true'
-          NEXT_PUBLIC_FLAG_INSIGHT_CARDS: 'true'
           NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: 'true'
           # NEXT_PUBLIC_* is baked at build time, so this must live here -- an
           # Azure App Setting cannot turn it on.

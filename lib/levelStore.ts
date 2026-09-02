@@ -19,7 +19,6 @@
  */
 
 import { getContainer, ensureContainer } from './cosmos';
-import { isFlagOn } from './flags';
 import { deriveLevel, type CanonicalLevel } from './level';
 import { calibrateRatings, type CalGame, type CalSeed, type PlayerCalibration } from './calibration';
 
@@ -161,21 +160,23 @@ export async function getCanonicalLevel(subject: LevelSubject): Promise<Canonica
   ]);
 
   let gameCalibration: { observedLevel: number; games: number; lastGameAt: string | null } | null = null;
-  if (isFlagOn('NEXT_PUBLIC_FLAG_SKILL_CALIBRATION')) {
-    try {
-      const group = await getGroupCalibration(now);
-      const cal = group.get(subject.name.trim().toLowerCase());
-      if (cal) gameCalibration = { observedLevel: cal.observedLevel, games: cal.games, lastGameAt: cal.lastGameAt };
-    } catch (err) {
-      console.error('level: calibration failed:', err);
-    }
+  try {
+    const group = await getGroupCalibration(now);
+    const cal = group.get(subject.name.trim().toLowerCase());
+    if (cal) gameCalibration = { observedLevel: cal.observedLevel, games: cal.games, lastGameAt: cal.lastGameAt };
+  } catch (err) {
+    console.error('level: calibration failed:', err);
   }
 
   return deriveLevel({
     selfSnapshots,
     gameCalibration,
     legacyStage,
-    smoothing: isFlagOn('NEXT_PUBLIC_FLAG_SKILL_SMOOTHING'),
+    // Always on since the SKILL_SMOOTHING flag retired (2026-09). The option
+    // stays on `deriveLevel` because the pure function's tests exercise both
+    // paths, and the un-smoothed math is the reference the EWMA is checked
+    // against — not a dead branch.
+    smoothing: true,
     now,
   });
 }

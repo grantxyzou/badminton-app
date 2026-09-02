@@ -31,20 +31,12 @@ describe('/api/assessments', () => {
   beforeEach(() => {
     resetMockStore();
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_SKILL_ASSESS = 'true';
   });
 
   afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_SKILL_ASSESS;
   });
 
   describe('POST', () => {
-    it('404s when the flag is off', async () => {
-      process.env.NEXT_PUBLIC_FLAG_SKILL_ASSESS = 'false';
-      const res = await POST(makeRequest('POST', BASE, { name: 'Lin', ratings: validRatings() }));
-      expect(res.status).toBe(404);
-    });
-
     it('saves a snapshot with server-computed overall + phase and source:self', async () => {
       const member = seedMember('Lin');
       const res = await POST(
@@ -183,12 +175,6 @@ describe('/api/assessments', () => {
   });
 
   describe('GET', () => {
-    it('404s when the flag is off', async () => {
-      process.env.NEXT_PUBLIC_FLAG_SKILL_ASSESS = 'false';
-      const res = await GET(makeGetRequest(`${BASE}?name=Lin`));
-      expect(res.status).toBe(404);
-    });
-
     it('returns only the requested player snapshots, oldest first', async () => {
       const store = getStore();
       store['assessments'] = [
