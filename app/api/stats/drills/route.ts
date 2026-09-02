@@ -60,9 +60,12 @@ export async function GET(req: NextRequest) {
 
   try {
     const subject = await resolveActiveSubject(name);
+    // Let the client pin the rotation to a specific session so the picks it
+    // shows match the week it is looking at.
+    const sessionOverride = new URL(req.url).searchParams.get('sessionId');
     const [drills, rotationSeed] = await Promise.all([
       drillPicksFor(subject),
-      getActiveSessionId(),
+      sessionOverride ?? getActiveSessionId(),
     ]);
     // `done` ships with the picks so the "n of 2" counter is right on the
     // FIRST paint. A second round-trip would render 0 of 2 for a beat and then
