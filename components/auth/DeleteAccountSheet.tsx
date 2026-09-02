@@ -80,7 +80,7 @@ export default function DeleteAccountSheet({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           <div>
             <h2 className="bpm-h3 m-0">{t('title')}</h2>
-            <p className="fs-base m-0" style={{ marginTop: 6, color: 'var(--text-secondary)' }}>
+            <p className="fs-base m-0" style={{ marginTop: 'var(--space-2)', color: 'var(--text-secondary)' }}>
               {t('body')}
             </p>
             <p className="fs-sm m-0" style={{ marginTop: 'var(--space-3)', color: 'var(--text-muted)' }}>
