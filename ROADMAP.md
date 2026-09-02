@@ -15,7 +15,7 @@
 
 **Change Rule (the gate):** every new work item must name the track or critical-path step it serves. **Names none → it's drift → GitHub issue in a `later`/parking milestone, NOT started.**
 
-**WIP cap:** one active workstream carried to *shipped-on-stable* before the next starts. Unmerged branches are where drift hides (this is enforced by observation: >2 in-flight branches = stop and converge).
+**WIP cap:** one active workstream carried to *shipped-and-live-in-production* before the next starts. Unmerged branches are where drift hides (this is enforced by observation: >2 in-flight branches = stop and converge).
 
 **Kill-criteria honored:** do NOT fan out value-hub tracks 1–4 until Slice-0 passes its written kill-criterion in `docs/plans/value-hub-slice-0.md`. No speculative multi-track building.
 
@@ -23,10 +23,9 @@
 
 ---
 
-> **Stable:** https://badminton-app-gzendxb6fzefafgm.canadacentral-01.azurewebsites.net/bpm
-> **Next (preview):** https://vnext-badminton-app-enhcave5djcvafe9.canadacentral-01.azurewebsites.net/bpm
-> **Stack:** Next.js 16 · Azure App Service (dual) · Cosmos DB · Anthropic Claude API
-> **Last updated:** 2026-08-16
+> **Production:** https://bpm.grantzou.com/bpm (app service `vnext-badminton-app` — the name is inverted; verify by DNS, never by name)
+> **Stack:** Next.js 16 · Azure App Service (single, B1) · Cosmos DB · Anthropic Claude API
+> **Last updated:** 2026-09-02
 >
 > **This file is the index.** Detail lives elsewhere — don't duplicate it here:
 > - **What shipped** → `CHANGELOG.md` (per-version, not chronological by design)
@@ -36,37 +35,27 @@
 
 ---
 
-## Deployments
+## Deployment
 
-| Env | URL audience | Current | Notes |
-|---|---|---|---|
-| **bpm-stable** | regular friends | **v1.8** (2026-08-16) | Full flag parity with `bpm-next` (incl. `INSIGHT_CARDS`); only `NEXT_PUBLIC_ENV` differs |
-| **bpm-next** | beta friends | `main` | auto-deploys every push to `main` |
+**One deployment, trunk-based.** Every push to `main` deploys to production via `deploy-next.yml`. The second app service (`bpm-stable` / `badminton-app`) and its B1 plan were **deleted 2026-08-25**; `deploy-stable.yml` went with them. There is no promotion step, no soak period, and no stable tag to cut — feature flags now gate unfinished work *inside* the one deployment, and their `plannedRemoval` dates are the only thing keeping them from becoming permanent.
 
-Tag `bpm-stable-v1.8` → the 2026-08-16 release commit (the commit introducing
-this line). Two things are resolved by this promotion: the v1.7-era
-pooled-shuttle incompatibility (stable showing $0 shuttles and 404ing on Save),
-and a working Equipment tab — v1.8 was **re-cut** to include the racket-catalog
-seed and the recognition-first picker, because promoting the earlier cut would
-have shipped friends an Equipment tab with an empty racket list.
-
-Promotion = tag a **specific commit** + dispatch `deploy-stable.yml` (never blindly tag `main` — it carries post-soak work; see CLAUDE.md "stable-tag footgun").
-
-Tag `bpm-stable-v1.7` → `d4cdf7b` (the release commit; backfilled 2026-06-18 — v1.7 shipped 2026-06-13 but the promotion tag had been missed). Rollback/promotion targets are valid through v1.7.
+- **Rollback** = re-dispatch `deploy-next.yml` at an older SHA. Runbook: the `deploy-promotion` skill.
+- **Schema rule** is still additive-and-optional only — a rollback runs older code against the same live database.
+- The last stable tag, `bpm-stable-v1.8` (2026-08-16), is historical. Its story (the pooled-shuttle incompatibility, the re-cut for the racket catalog) is in `CHANGELOG.md` under v1.8.
 
 ---
 
-## 1. Shipped (stable)
+## 1. Shipped (through v1.8)
 
 Through **v1.7** — see `CHANGELOG.md` for the full per-version record (v1.0 → v1.7: sign-ups/waitlist, admin, skills, i18n, stats, bird inventory, Command Center, unified Home auth, Send-the-bill/Settle, Ledger + cover-and-remove, Labeled Rail nav + trusted-device sign-up, **skill-accuracy spine + Value-Hub Slice-0**, full app-code audit remediation + a11y + security hardening). History ladder (old P0–P1.8) retired — CHANGELOG is authoritative.
 
-As of **v1.7, stable and `bpm-next` are at full flag parity** — every feature flag is on for everyone. Offline legible-fail, the skill-assessment spine (`SKILL_ASSESS`), accurate skill level (`SKILL_LEVEL`/`CALIBRATION`/`SMOOTHING`), and Value-Hub Slice-0 (`VALUE_HUB_SLICE`) are all **live**, no longer flag-gated or soaking.
+As of **v1.7 every feature flag was on for everyone** (the two deployments reached parity, and since 2026-08-25 there is only one). Offline legible-fail, the skill-assessment spine (`SKILL_ASSESS`), accurate skill level (`SKILL_LEVEL`/`CALIBRATION`/`SMOOTHING`), and Value-Hub Slice-0 (`VALUE_HUB_SLICE`) are all **live**, no longer flag-gated or soaking.
 
-## 2. In-flight (on bpm-next, ahead of stable)
+## 2. The v1.8 cut (record)
 
-**All of the below shipped to stable in v1.8 (2026-08-16)** — kept here as the record of what that cut carried. Full user-facing list is in `CHANGELOG.md` under v1.8. The load-bearing ones:
+**All of the below shipped in v1.8 (2026-08-16)** — kept here as the record of what that cut carried. Since 2026-08-25 there is no "in-flight ahead of stable" state: what's on `main` is what's live. Full user-facing list is in `CHANGELOG.md` under v1.8. The load-bearing ones:
 
-- **Shuttle Model B — pooled cost** (#230–#234) — a session logs one "tubes × price" number instead of per-batch selection. **This is the change that breaks stable**; see the deployments warning above.
+- **Shuttle Model B — pooled cost** (#230–#234) — a session logs one "tubes × price" number instead of per-batch selection. This was the change that broke the old stable deployment (historical — see `CHANGELOG.md` v1.8).
 - **Cost/settle correctness run** (#225–#229) — settle guarded while sign-ups are open, stale owed amounts cleared on unsettle, Payments reload after settle, "0 of us" preview, stale-bill warning, cost form totals all purchases.
 - **Sign-up capacity race closed** (#222) — deterministic reconciliation; the documented "can exceed maxPlayers by 1–2" gotcha is fixed.
 - **Birds hardening stack** (#205–#214) — honest failures, clamped stock, referential delete guard, one validation contract.
@@ -104,7 +93,7 @@ As of **v1.7, stable and `bpm-next` are at full flag parity** — every feature 
 2. ✅ ~~Fix #238~~ — landed in v1.8 via `lib/shareImage.ts` (share-or-save with legible outcomes); awaiting reporter confirmation on the issue.
 3. **Slice-0 kill-criteria readout** — clock restarted with the v1.8 ship; decide on/after **~2026-09-13** via `GET /api/admin/slice0` (see §4).
 4. **PR hygiene** — #208/#215 closed (superseded). Remaining: dependabot #240 (owner must comment `@dependabot recreate` — bot commands from agent comments are defanged), then #239/#237.
-5. **Flag debt** — now effectively 13 of 13 flags past or at their removal condition once v1.8 has lived on stable 2 weeks (~2026-08-30). A dedicated retirement sweep is the natural next code task.
+5. **Flag debt** — with one deployment, the two-week clock starts when work ships to production. Three retired on `chore/retire-three-flags` (SETTLE / NAV_RAIL / LEDGER, unpushed as of 2026-09-02); eight remain overdue — `check-flag-sync.mjs` lists them on any registry edit.
 6. **Dead code** — `mergeBirdUsageEdit` (`lib/birdUsages.ts`) lost its only production consumer in #232; only tests reference it now. Fold into the flag sweep.
 
 ## 6. Branch hygiene
@@ -122,5 +111,5 @@ As of **v1.7, stable and `bpm-next` are at full flag parity** — every feature 
 | Offline architecture | `docs/plans/offline-legible-fail.md` |
 | Value-hub strategy | `docs/plans/value-hub-slice-0.md` |
 | How the code works / gotchas | `CLAUDE.md` |
-| Deploy/promote/rollback | `docs/deployment-model.md` |
+| Deploy/rollback | `deploy-promotion` skill + `CLAUDE.md` "Deployment" (`docs/deployment-model.md` predates the single-deployment topology) |
 | Live tasks | GitHub milestones/issues |

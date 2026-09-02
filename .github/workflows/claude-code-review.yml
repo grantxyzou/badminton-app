@@ -40,7 +40,13 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+          # REVIEW.md is the review policy: what to check, how to rank it, what
+          # not to flag. Without it the reviewer knows nothing about strip
+          # canaries, lying empty states or the additive-schema rule.
+          prompt: |
+            /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}
+
+            Before reporting, read REVIEW.md at the repository root and apply it: rank findings the way it ranks them, and do not report anything it lists under "Do not flag".
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
