@@ -466,7 +466,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                 fontFamily: 'var(--font-display, "Space Grotesk")',
                 fontSize: 'var(--fs-sm)',
                 fontWeight: 500,
-                color: on ? '#c5f5d3' : 'var(--text-secondary)',
+                color: on ? 'var(--accent)' : 'var(--text-secondary)',
                 cursor: 'pointer',
               }}
             >
@@ -476,7 +476,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                   fontFamily: 'var(--font-mono, "JetBrains Mono")',
                   fontSize: 'var(--fs-2xs)',
                   marginLeft: 'var(--space-05)',
-                  color: on ? '#86efac' : 'var(--ink-faint)',
+                  color: on ? 'var(--accent)' : 'var(--ink-faint)',
                 }}
               >
                 {count}
@@ -503,7 +503,9 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                 gap: 'var(--space-3)',
                 position: 'sticky',
                 top: 0,
-                background: 'rgba(16,15,15,0.85)',
+                // Was a dark-theme literal (rgba(16,15,15,.85)) — in light mode the
+                // headers rendered as near-black bars with invisible text.
+                background: 'color-mix(in srgb, var(--page-bg) 85%, transparent)',
                 backdropFilter: 'blur(10px)',
                 zIndex: 1,
               }}
@@ -547,7 +549,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                       <span
                         style={{
                           background: 'rgba(74,222,128,0.13)',
-                          color: '#86efac',
+                          color: 'var(--accent)',
                           border: '1px solid rgba(74,222,128,0.25)',
                           padding: 'var(--space-1) var(--space-3)',
                           borderRadius: 'var(--radius-pill)',
