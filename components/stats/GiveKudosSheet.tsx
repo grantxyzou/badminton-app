@@ -140,7 +140,7 @@ export default function GiveKudosSheet({
                         className="cc-btn cc-btn-ghost"
                         style={{
                           fontSize: 'var(--fs-sm)',
-                          padding: '6px 12px',
+                          padding: 'var(--space-2) var(--space-4)',
                           ...(who === name
                             ? { borderColor: 'var(--accent)', color: 'var(--accent)' }
                             : null),
@@ -167,7 +167,7 @@ export default function GiveKudosSheet({
                     className="cc-btn cc-btn-ghost"
                     style={{
                       fontSize: 'var(--fs-sm)',
-                      padding: '6px 12px',
+                      padding: 'var(--space-2) var(--space-4)',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 'var(--space-2)',
@@ -203,7 +203,7 @@ export default function GiveKudosSheet({
                   fontFamily: 'inherit',
                 }}
               />
-              <p className="fs-sm m-0" style={{ color: 'var(--text-muted)', marginTop: 4 }}>
+              <p className="fs-sm m-0" style={{ color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>
                 {t('noteSigned')}
               </p>
 
@@ -220,7 +220,7 @@ export default function GiveKudosSheet({
                     className="fs-base"
                     style={{
                       width: '100%',
-                      marginTop: 4,
+                      marginTop: 'var(--space-1)',
                       padding: 'var(--space-3)',
                       borderRadius: 'var(--radius-lg)',
                       background: 'var(--input-bg)',

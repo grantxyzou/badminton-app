@@ -208,7 +208,7 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
                       onClick={() => setKudosFor(player.name)}
                       className="cc-btn cc-btn-ghost"
                       aria-label={t('kudosAction', { name: player.name })}
-                      style={{ padding: '4px 8px', color: 'var(--text-muted)' }}
+                      style={{ padding: 'var(--space-1) var(--space-3)', color: 'var(--text-muted)' }}
                     >
                       <span className="material-icons icon-sm" aria-hidden="true">volunteer_activism</span>
                     </button>
