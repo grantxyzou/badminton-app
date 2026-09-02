@@ -43,10 +43,19 @@ jobs:
           # REVIEW.md is the review policy: what to check, how to rank it, what
           # not to flag. Without it the reviewer knows nothing about strip
           # canaries, lying empty states or the additive-schema rule.
+          #
+          # `--comment` is NOT optional. Without it the plugin writes its review
+          # to the runner's terminal and exits 0 — which this job did on every
+          # PR from #285 to #301, including a canary with two planted defects,
+          # while showing a green check. The allowlist is the other half: the
+          # SDK denies `gh pr comment` unless it is named here (the #301 run
+          # logged `permission_denials_count: 4`).
           prompt: |
-            /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}
+            /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }} --comment
 
             Before reporting, read REVIEW.md at the repository root and apply it: rank findings the way it ranks them, and do not report anything it lists under "Do not flag".
+          claude_args: |
+            --allowedTools "Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*)"
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
