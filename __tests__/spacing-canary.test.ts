@@ -29,14 +29,17 @@ function tsx(dir: string, skip: string[] = []): string[] {
 }
 
 /** The real values, straight out of the stylesheet that ships. */
-function ladderFromCss(): Record<string, string> {
+function tokensFromCss(prefix: string): Record<string, string> {
   const css = readFileSync(join(ROOT, 'app/globals.css'), 'utf8');
   const out: Record<string, string> = {};
-  for (const m of css.matchAll(/^\s*(--space-[a-z0-9]+):\s*([^;]+);/gm)) {
+  const re = new RegExp(`^\\s*(--${prefix}-[a-z0-9-]+):\\s*([^;]+);`, 'gm');
+  for (const m of css.matchAll(re)) {
     if (!(m[1] in out)) out[m[1]] = m[2].trim(); // first (:root) wins
   }
   return out;
 }
+
+const ladderFromCss = () => tokensFromCss('space');
 
 describe('the design reference documents the ladder that actually ships', () => {
   it('/design/tokens matches app/globals.css rung for rung', () => {
@@ -52,6 +55,24 @@ describe('the design reference documents the ladder that actually ships', () => 
 
     // If this fails, the page is lying to whoever reads it to pick a token —
     // which is how --space-3 came to be used as if it were 12px when it is 8px.
+    expect(documented).toEqual(real);
+  });
+
+  it('/design/tokens documents the TYPE scale that actually ships', () => {
+    // Same defect, same page: --fs-xs was published as 14px when it is 11px,
+    // --fs-sm as 16px when it is 12px, and three of the seven rows named
+    // tokens that do not exist (--fs-xl, --fs-2xl, --fs-3xl). The spacing half
+    // got a canary in the audit and the type half did not, so it kept drifting.
+    const real = tokensFromCss('fs');
+    const page = readFileSync(join(ROOT, 'app/design/tokens/page.tsx'), 'utf8');
+    const block = page.match(/const TYPE = \[([\s\S]*?)\];/);
+    expect(block, 'TYPE table not found in the tokens page').toBeTruthy();
+
+    const documented: Record<string, string> = {};
+    for (const m of block![1].matchAll(/tok:\s*'(--fs-[a-z0-9-]+)\s*\/\s*([0-9]+px)'/g)) {
+      documented[m[1]] = m[2];
+    }
+
     expect(documented).toEqual(real);
   });
 });
