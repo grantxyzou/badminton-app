@@ -243,6 +243,93 @@ describe('check-i18n-keys.mjs (PostToolUse on Edit|Write)', () => {
 });
 
 // ---------------------------------------------------------------------------
+describe('block-secret-commit.mjs (PreToolUse on Bash)', () => {
+  const SCRIPT = join(SCRIPTS, 'block-secret-commit.mjs');
+
+  /** A throwaway git repo with one empty commit, so `--cached` has a base. */
+  function repo(): string {
+    const dir = tmp('secret-');
+    const git = (...args: string[]) =>
+      spawnSync(
+        'git',
+        ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...args],
+        { cwd: dir, encoding: 'utf8' },
+      );
+    git('init', '-q', '-b', 'main');
+    git('commit', '-q', '--allow-empty', '-m', 'base');
+    return dir;
+  }
+  function stage(dir: string, name: string, content: string) {
+    writeFileSync(join(dir, name), content);
+    spawnSync('git', ['add', '-f', name], { cwd: dir });
+  }
+  const commit = (dir: string, command = 'git commit -m x') =>
+    run(SCRIPT, { input: JSON.stringify({ tool_input: { command }, cwd: dir }) });
+
+  it('ignores commands that are not a git commit', () => {
+    const dir = repo();
+    stage(dir, '.env.local', 'X=1\n');
+    const r = run(SCRIPT, { input: JSON.stringify({ tool_input: { command: 'git status' }, cwd: dir }) });
+    expect(r.status).toBe(0);
+  });
+
+  it('allows a clean commit', () => {
+    const dir = repo();
+    stage(dir, 'ok.ts', 'export const x = 1;\n');
+    const r = commit(dir);
+    expect(r.status).toBe(0);
+    expect(r.stderr).toBe('');
+  });
+
+  it('blocks a staged env file, naming it', () => {
+    const dir = repo();
+    stage(dir, '.env.local', 'X=1\n');
+    const r = commit(dir);
+    expect(r.status).toBe(2);
+    expect(r.stderr).toMatch(/must never be committed: \.env\.local/);
+  });
+
+  it('blocks a sed backup (the .env.bak leak)', () => {
+    const dir = repo();
+    stage(dir, 'notes.bak', 'COSMOS=real\n');
+    const r = commit(dir, 'git add -A && git commit -m x');
+    expect(r.status).toBe(2);
+    expect(r.stderr).toMatch(/notes\.bak/);
+  });
+
+  it('allows the documented template .env.local.example', () => {
+    const dir = repo();
+    stage(dir, '.env.local.example', 'SESSION_SECRET=\n');
+    expect(commit(dir).status).toBe(0);
+  });
+
+  it('blocks a Cosmos AccountKey on an added line, in any file', () => {
+    const dir = repo();
+    stage(dir, 'leak.ts', "const c = 'AccountEndpoint=https://x.documents.azure.com;AccountKey=abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ==';\n");
+    const r = commit(dir, 'git commit -F -');
+    expect(r.status).toBe(2);
+    expect(r.stderr).toMatch(/leak\.ts: a Cosmos DB account key/);
+    expect(r.stderr).toMatch(/rotate it/);
+  });
+
+  it('blocks an Anthropic key and a private-key header', () => {
+    const dir = repo();
+    stage(dir, 'a.ts', "const k = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123';\n");
+    stage(dir, 'b.pem', '-----BEGIN RSA PRIVATE KEY-----\nMIIE\n');
+    const r = commit(dir);
+    expect(r.status).toBe(2);
+    expect(r.stderr).toMatch(/a\.ts: an Anthropic API key/);
+    expect(r.stderr).toMatch(/b\.pem: a private key/);
+  });
+
+  it('does not flare on an ordinary hash-looking line', () => {
+    const dir = repo();
+    stage(dir, 'package-lock.json', '{"integrity":"sha512-abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ=="}\n');
+    expect(commit(dir).status).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 describe('check-flag-sync.mjs (PostToolUse on Edit|Write, and SessionStart)', () => {
   type Flag = { name: string; due: string };
 
