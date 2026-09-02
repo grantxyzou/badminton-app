@@ -49,6 +49,48 @@ Bottom-nav "Stats" (formerly "Skills"; `nav.skills` i18n key kept for backcompat
 - **Active-name chain** — real identity (`badminton_identity`) → `badminton_stats_preview_name` → signed-out state. **`lib/useActiveName.ts` is the single owner**; every consumer calls `useActiveName()` and `__tests__/active-name-canary.test.ts` fails the build if the chain is re-derived anywhere else (it had been copy-pasted into five modules, four of which had stopped subscribing to identity changes). **The preview-name step is DORMANT: nothing in the app writes that key** — the picker that did left in Stage 8, so today the chain is effectively identity → signed-out. The mechanism and its tests are kept for the day admin-browses-someone-else's-stats returns; don't document it as a live path, and don't assume a preview name can occur.
 - **Club comparison is consent-gated.** `useStatsPrivacy` + `ClubConsentSheet` ask once on first run; `isComparisonRevealed()` requires BOTH a stored `clubComparison` preference AND a non-null `promptedAt` — the stored preference alone is not consent. Both comparison-dependent cards are keyed on the answer so saying yes remounts them and they re-read the bands endpoint without a reload.
 
+### Kudos
+
+Positive-only peer recognition (`NEXT_PUBLIC_FLAG_KUDOS`, live in prod). Two
+entry points, one sheet: `GiveKudosCard` on Stats → **Play**, and a per-name
+button on the Sign-Ups roster. Both open `GiveKudosSheet`; passing `recipient`
+fixes the person and hides the picker.
+
+- **Eligibility is anyone you shared a roster with in the last
+  `CO_PLAY_LOOKBACK_SESSIONS` (8) sessions**, not the active one. `lib/
+  kudosEligibility.ts` is the SINGLE owner, shared by the POST that enforces it
+  and `GET /api/kudos/eligible` that lists it — when those were separate, the
+  card built its list one way and the server refused it another. Rebuilt from
+  real feedback: the old rule was "both on the ACTIVE roster", and the owner
+  advances the session minutes after play, so the people you had just played
+  with stopped being eligible almost immediately. Reported as "kudos goes away
+  with the session too fast"; it was actually instantly.
+- **`recentSessionIds` puts the ACTIVE id FIRST.** That is the only way the
+  legacy `'current-session'` id is reachable — it does not match
+  `session-YYYY-MM-DD`, so a prefix filter alone silently excludes the session
+  most people just played. Its `sessions` query is bounded with `ORDER BY ...
+  LIMIT` in SQL, not only by the JS slice: that container is partitioned by
+  `/sessionId`, so an unbounded `SELECT` is a cross-partition scan on every card
+  mount and every send.
+- **`GiveKudosCard` must never return `null`.** It renders loading / expired /
+  error / honest-empty / ready, always. Returning null when there was nobody to
+  thank is what made the feature unfindable — a player asked "how do I give
+  kudos to other people?" and the owner's own answer was wrong, because nobody
+  could see the rule. **A 401 is NOT "signed out"** (that returns before the
+  fetch): it can only mean a `member_session` expired past its 30-day TTL while
+  `badminton_identity` persisted, so it renders a re-auth line, never the empty
+  state.
+- **`raterName` is a DOCUMENTED EXCEPTION to the strip-canary rule, and only
+  alongside a note.** `raterMemberId` remains strip-only. A bare tag stays
+  anonymous; a NOTE is signed, because "someone noticed" is worth much less
+  than "Lin noticed" and praise nobody can ask about is not much of a gift.
+  `visibleNotes()` is the only path that carries it and drops every kudos
+  without a note, so an unsigned tag can never become attributable by sitting
+  next to one that is. The `KudosNote` type has no `raterMemberId` field at
+  all — it is structurally impossible to leak one through it.
+- **Dedupe is per ISO WEEK** (`isoWeekKey`), not per session. Per-session
+  stopped meaning anything once eligibility left the session behind.
+
 ### Equipment Tab
 
 See `components/stats/CLAUDE.md` — loads automatically when working in that directory.

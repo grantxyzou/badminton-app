@@ -125,6 +125,30 @@ route flag/cookie/admin/name-fallback branches.
 
 ## Phase C — Kudos (`NEXT_PUBLIC_FLAG_KUDOS`) — replaces numeric peer rating
 
+> **SUPERSEDED IN PART, 2026-08-29 — read this before treating anything below
+> as current.** Phase C shipped as written, and then real users hit it. Four
+> statements below are now FALSE; the rest still holds. See the "Kudos" section
+> in the root `CLAUDE.md` for the live rules.
+>
+> 1. **`raterName` is no longer a strip-canary.** It is a documented exception,
+>    returned ONLY on a kudos that carries a note, via `visibleNotes()`. A bare
+>    tag is still anonymous. `raterMemberId` IS still strip-only and the
+>    `KudosNote` type has no field for it. If you are auditing strip sites, this
+>    is deliberate — do not "fix" it back.
+> 2. **Co-play is no longer scoped to one session.** It spans the last 8
+>    sessions (`lib/kudosEligibility.ts`, the single owner shared by the POST
+>    and `GET /api/kudos/eligible`). The single-session rule made kudos
+>    unreachable in practice: the owner advances the session minutes after play.
+> 3. **Dedupe is per ISO WEEK**, not per (rater, recipient, session).
+> 4. **The UI moved.** `GameLoggerSheet` was deleted in Stats Stage 8, so the
+>    "optional skippable kudos step" never survived; and the received card is on
+>    Stats, not `ProfileTab`. Giving kudos now has two doors — the Stats **Play**
+>    register and the Sign-Ups roster — both opening one `GiveKudosSheet`.
+>
+> The v1 decision that kudos stays **socially uncoupled from level**
+> (`kudosLevelNudge` → 0) is UNCHANGED and still correct.
+
+
 **Goal:** positive-only, post-game peer recognition. Largest (one container, one
 flag, write-path anti-abuse) — ship last; it's the only one with social risk +
 schema change.
