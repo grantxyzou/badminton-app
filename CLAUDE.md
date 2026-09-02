@@ -374,9 +374,10 @@ One deployment, trunk-based: every push to `main` deploys to production. Full de
 
 **`main` is PR-only, with `verify` (pr-ci.yml) required and NO bypass — the owner included** (ruleset `BPM protect`, fixed 2026-09-02). Every change, docs included, goes branch → PR → green check → merge. Zero approvals required: the check is the gate, not a reviewer. The ruleset had existed since April with `conditions.ref_name.include: []`, which targets **no branch** — it read as protected and enforced nothing. When checking a gate, check what it *targets*, not whether it exists.
 
-**The PR review bot** (`claude-code-review.yml`) applies `REVIEW.md` — the review policy: what to check, how to rank it, what not to flag. Two things about it are not obvious:
+**The PR review bot** (`claude-code-review.yml`) applies `REVIEW.md` — the review policy: what to check, how to rank it, what not to flag. It posts **inline comments** on the diff (not a PR-level review). Three things about it are not obvious:
 - **It silently skips any PR that modifies its own workflow file** — the action requires the file to match `main`. The job still shows green, in ~12s. Reviews resume on the next PR.
-- **It posts nothing when it has no findings**, so silence is not evidence it ran. A run that actually reviewed takes ~10 minutes; one that skipped takes seconds. Check the duration.
+- **It reviewed into `/dev/null` from #285 to #301 with a green check every time.** The plugin's `/code-review` writes to the runner terminal unless passed `--comment`, and the SDK denied `gh pr comment` because it wasn't in `claude_args --allowedTools`. The #301 canary run logged 19 turns, $0.84 and `permission_denials_count: 4` — it found things and was refused the tool to say them. Both fixed in #302; proven by canary #303 (3 inline findings, one a real bug). **Don't remove `--comment` or the allowlist.**
+- **Silence is never proof.** A run's duration, cost and turn count all looked healthy while it produced nothing. If you change the workflow, prove it with a throwaway PR that plants a `REVIEW.md`-named defect, and check `permission_denials_count` in the run log's result block.
 
 ## Testing
 
