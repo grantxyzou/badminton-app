@@ -469,7 +469,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                 fontFamily: 'var(--font-display, "Space Grotesk")',
                 letterSpacing: '0.02em',
                 background: reorderPill.tone === 'green' ? 'rgba(74,222,128,0.13)' : reorderPill.tone === 'amber' ? 'rgba(251,191,36,0.12)' : 'rgba(251,146,60,0.13)',
-                color: reorderPill.tone === 'green' ? '#86efac' : reorderPill.tone === 'amber' ? 'var(--amber)' : 'var(--orange)',
+                color: reorderPill.tone === 'green' ? 'var(--accent)' : reorderPill.tone === 'amber' ? 'var(--amber)' : 'var(--orange)',
                 border: `1px solid ${reorderPill.tone === 'green' ? 'rgba(74,222,128,0.25)' : reorderPill.tone === 'amber' ? 'rgba(251,191,36,0.25)' : 'rgba(251,146,60,0.28)'}`,
               }}
             >
