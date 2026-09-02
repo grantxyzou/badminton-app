@@ -11,16 +11,20 @@ here. Copy each template to `.claude/` and customize.
 
 | Template | Copy to | Read by |
 |----------|---------|---------|
-| `flag-sync.local.md` | `.claude/flag-sync.local.md` | `scripts/check-flag-sync.mjs` (PostToolUse hook) |
-| `soak.local.md` | `.claude/soak.local.md` | `.claude/hooks/session-start.sh` |
-| `bpm-confirm.local.md` | `.claude/bpm-confirm.local.md` | `.claude/hooks/session-start.sh` |
+| `flag-sync.local.md` | `.claude/flag-sync.local.md` | `scripts/check-flag-sync.mjs` (PostToolUse hook, and once at SessionStart via `.claude/hooks/session-start.sh`) |
+
+Two templates used to live here — `soak.local.md` ("what's soaking on
+bpm-next") and `bpm-confirm.local.md` (the high-risk-ops confirmation list).
+Both concepts were retired in August 2026 (one deployment since 2026-08-25; the
+confirm gate removed 2026-08-21) and were deleted rather than kept as
+`enabled: false` stubs, because the SessionStart hook had gone on announcing an
+expired soak for ~68 days after the thing it tracked stopped existing. A
+reminder for a retired process trains you to ignore reminders.
 
 ## Quickstart
 
 ```bash
 cp docs/automation/flag-sync.local.md .claude/flag-sync.local.md
-cp docs/automation/soak.local.md .claude/soak.local.md
-cp docs/automation/bpm-confirm.local.md .claude/bpm-confirm.local.md
 ```
 
 Then restart Claude Code so hooks pick up the new state.
