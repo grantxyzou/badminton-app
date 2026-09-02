@@ -37,8 +37,6 @@ describe('GET /api/recommend (flag-off / legacy stage-derived pick)', () => {
     _resetCalibrationCache();
     process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
     delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
-    delete process.env.NEXT_PUBLIC_FLAG_SKILL_CALIBRATION;
-    delete process.env.NEXT_PUBLIC_FLAG_SKILL_SMOOTHING;
     const catalog = getContainer('equipmentCatalog');
     await catalog.items.upsert({ id: 'wide', category: 'racket', brand: 'Y', model: 'All-Round', skillRange: [1, 6], msrp: 120 });
     await catalog.items.upsert({ id: 'beg', category: 'racket', brand: 'Y', model: 'Starter', skillRange: [1, 2], msrp: 80 });
@@ -71,7 +69,7 @@ describe('GET /api/recommend (flag-off / legacy stage-derived pick)', () => {
     expect(body.item.id).toBe('adv');
   });
 
-  it('lets game calibration lift the recommended stage when the flag is on', async () => {
+  it('lets game calibration lift the recommended stage', async () => {
     await getContainer('members').items.upsert({ id: 'm-climb', name: 'Climber', active: true });
     await seedAssessment('m-climb', 'Climber', 2.0); // self-only → stage 2 → the Starter
     await ensureContainer('gameResults', '/sessionId');
@@ -83,13 +81,7 @@ describe('GET /api/recommend (flag-off / legacy stage-derived pick)', () => {
       });
     }
 
-    // Flag OFF → self-only stage 2 → Starter.
-    _resetCalibrationCache();
-    const off = await (await GET(get('/api/recommend?name=Climber'))).json();
-    expect(off.item.id).toBe('beg');
-
-    // Flag ON → decisive wins lift the observed level → stage 3 → no longer the Starter.
-    process.env.NEXT_PUBLIC_FLAG_SKILL_CALIBRATION = 'true';
+    // Decisive wins lift the observed level → stage 3 → no longer the Starter.
     _resetCalibrationCache();
     const on = await (await GET(get('/api/recommend?name=Climber'))).json();
     expect(on.item.id).not.toBe('beg');

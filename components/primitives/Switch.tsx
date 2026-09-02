@@ -3,7 +3,7 @@
  *
  * Built for the Stats & privacy screen's club-comparison control, but shaped
  * as a primitive because the app had grown four hand-rolled copies of this
- * (SetupPage, SessionDetailsEditor ×2, NextSessionCard, DevPanel) that had
+ * (SetupPage, the since-retired SessionDetailsEditor ×2, NextSessionCard, DevPanel) that had
  * already drifted on size and colour. New settings toggles should use this.
  *
  * It is a `<button role="switch">` with `aria-checked` — never a checkbox, and

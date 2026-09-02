@@ -47,10 +47,8 @@ describe('POST /api/stats/drills/done', () => {
     resetMockStore();
     setupAdminPin();
     seedPointer('session-2026-08-20');
-    process.env.NEXT_PUBLIC_FLAG_SKILL_DRILLS = 'true';
   });
   afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_SKILL_DRILLS;
   });
 
   // ── The writer is the cookie, never a name in the body ──────────────────
@@ -130,10 +128,8 @@ describe('GET /api/stats/drills — done field', () => {
     resetMockStore();
     setupAdminPin();
     seedPointer('session-2026-08-20');
-    process.env.NEXT_PUBLIC_FLAG_SKILL_DRILLS = 'true';
   });
   afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_SKILL_DRILLS;
   });
 
   it('ships completions with the picks so the counter is right on first paint', async () => {

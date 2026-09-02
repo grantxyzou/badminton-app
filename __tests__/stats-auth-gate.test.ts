@@ -61,13 +61,11 @@ describe('Stats privacy gate — /insight, /partners, /attendance', () => {
     setupAdminPin();
     mockCreate.mockReset();
     process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
-    process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS = 'true';
     process.env.ANTHROPIC_API_KEY = 'test-key';
     seedPointer('session-2026-06-17');
   });
   afterAll(() => {
     delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
-    delete process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS;
     delete process.env.ANTHROPIC_API_KEY;
   });
 

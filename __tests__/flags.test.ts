@@ -6,9 +6,7 @@ const originalEnv = { ...process.env };
 describe('feature flags', () => {
   beforeEach(() => {
     delete process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
-    delete process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER;
     delete process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
-    delete process.env.NEXT_PUBLIC_FLAG_SKILL_ASSESS;
     delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
     delete process.env.NEXT_PUBLIC_ENV;
   });
@@ -40,14 +38,6 @@ describe('feature flags', () => {
     expect(isFlagOn('NEXT_PUBLIC_FLAG_DESIGN_PREVIEW')).toBe(false);
   });
 
-  it('recognizes NEXT_PUBLIC_FLAG_COMMAND_CENTER', () => {
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER')).toBe(false);
-    process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER = 'true';
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER')).toBe(true);
-    process.env.NEXT_PUBLIC_FLAG_COMMAND_CENTER = '1';
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_COMMAND_CENTER')).toBe(false);
-  });
-
   it('recognizes NEXT_PUBLIC_FLAG_DESIGN_PREVIEW', () => {
     expect(isFlagOn('NEXT_PUBLIC_FLAG_DESIGN_PREVIEW')).toBe(false);
     process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW = 'true';
@@ -63,25 +53,8 @@ describe('feature flags', () => {
     expect(isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')).toBe(false);
   });
 
-  it('recognizes NEXT_PUBLIC_FLAG_SKILL_ASSESS', () => {
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS')).toBe(false);
-    process.env.NEXT_PUBLIC_FLAG_SKILL_ASSESS = 'true';
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS')).toBe(true);
-    process.env.NEXT_PUBLIC_FLAG_SKILL_ASSESS = '1';
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS')).toBe(false);
-  });
-
-  it('recognizes NEXT_PUBLIC_FLAG_INSIGHT_CARDS', () => {
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_INSIGHT_CARDS')).toBe(false);
-    process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS = 'true';
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_INSIGHT_CARDS')).toBe(true);
-    process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS = '1';
-    expect(isFlagOn('NEXT_PUBLIC_FLAG_INSIGHT_CARDS')).toBe(false);
-    delete process.env.NEXT_PUBLIC_FLAG_INSIGHT_CARDS;
-  });
-
   // Sets and deletes explicitly rather than relying on the `beforeEach` reset,
-  // which only clears 5 of the registered flags — env otherwise leaks between
+  // which only clears some of the registered flags — env otherwise leaks between
   // cases in this file.
 
   describe('NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER', () => {

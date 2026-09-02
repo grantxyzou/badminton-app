@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { isFlagOn } from '@/lib/flags';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DISMISS_KEY = 'badminton_skill_discovery_dismissed';
@@ -10,7 +9,7 @@ const DISMISS_KEY = 'badminton_skill_discovery_dismissed';
 /**
  * Home discovery hook for the skill-assessment feature. Surfaces at the
  * sign-up touchpoint (the one entry moment we can rely on) to introduce skill
- * rating. Self-retiring: shows only to a flag-on, identified player who hasn't
+ * rating. Self-retiring: shows only to an identified player who hasn't
  * rated yet and hasn't dismissed it — so it never nags. Warmer copy right
  * after a sign-up.
  */
@@ -22,32 +21,31 @@ export default function SkillDiscoveryCard({
   onOpen: () => void;
 }) {
   const t = useTranslations('home');
-  const on = isFlagOn('NEXT_PUBLIC_FLAG_SKILL_ASSESS');
   const [dismissed, setDismissed] = useState(true); // hidden until checked — no flash
   const [hasRated, setHasRated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!on || !name) return;
+    if (!name) return;
     try {
       setDismissed(localStorage.getItem(DISMISS_KEY) === '1');
     } catch {
       setDismissed(false);
     }
-  }, [on, name]);
+  }, [name]);
 
   // Self-retire once the player has rated at least once.
   useEffect(() => {
-    if (!on || !name) return;
+    if (!name) return;
     let cancelled = false;
     fetch(`${BASE}/api/assessments?name=${encodeURIComponent(name)}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => { if (!cancelled) setHasRated(((d.assessments ?? []).length) > 0); })
       .catch(() => { if (!cancelled) setHasRated(false); });
     return () => { cancelled = true; };
-  }, [on, name]);
+  }, [name]);
 
   // Show only once we know the player hasn't rated; null = still loading.
-  if (!on || !name || dismissed || hasRated !== false) return null;
+  if (!name || dismissed || hasRated !== false) return null;
 
   const dismiss = () => {
     try { localStorage.setItem(DISMISS_KEY, '1'); } catch { /* ignore */ }
