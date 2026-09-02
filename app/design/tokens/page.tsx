@@ -50,14 +50,23 @@ const SPACING = [
   ['--space-9', '48px', 'Page-level fallback padding'],
 ] as const;
 
+// Kept honest by __tests__/spacing-canary.test.ts, which parses the real
+// values out of app/globals.css and fails if this table disagrees. It had
+// drifted the same way the SPACING table did, only further: --fs-xs was listed
+// as 14px when it is 11px, --fs-sm as 16px when it is 12px, and three of the
+// seven rows named tokens that do not exist at all (--fs-xl, --fs-2xl,
+// --fs-3xl). Roles below are the ones globals.css states.
 const TYPE = [
-  { tok: '--fs-xs / 14px',   sample: 'Caption · meta — bumped from 12px for 50+ readability', size: '14px', weight: 400 },
-  { tok: '--fs-sm / 16px',   sample: 'Body copy — bumped from 14px for the same reason',       size: '16px', weight: 400 },
-  { tok: '--fs-base / 16px', sample: 'Base body',                                              size: '16px', weight: 400 },
-  { tok: '--fs-lg / 18px',   sample: 'Prominent body — inline announcements',                  size: '18px', weight: 500 },
-  { tok: '--fs-xl / 20px',   sample: 'Card headings — UPCOMING SESSION · WAITLIST',            size: '20px', weight: 700 },
-  { tok: '--fs-2xl / 24px',  sample: 'Section header',                                         size: '24px', weight: 700 },
-  { tok: '--fs-3xl / 30px',  sample: 'Page title — "Sign up" / "Learn" / "Admin"',             size: '30px', weight: 700 },
+  { tok: '--fs-2xs / 10px', sample: 'SECTION LABELS \u00b7 MICRO BADGES', size: 'var(--fs-2xs)', weight: 700 },
+  { tok: '--fs-xs / 11px', sample: 'Tile labels \u00b7 meta', size: 'var(--fs-xs)', weight: 400 },
+  { tok: '--fs-sm / 12px', sample: 'Card subtitle \u00b7 secondary copy', size: 'var(--fs-sm)', weight: 400 },
+  { tok: '--fs-base / 13px', sample: 'Body \u00b7 hints \u00b7 empty states', size: 'var(--fs-base)', weight: 400 },
+  { tok: '--fs-md / 14px', sample: 'Emphasis values \u2014 a card main reading payload', size: 'var(--fs-md)', weight: 400 },
+  { tok: '--fs-lg / 16px', sample: 'Stat values', size: 'var(--fs-lg)', weight: 500 },
+  { tok: '--fs-stat / 20px', sample: '3.1', size: 'var(--fs-stat)', weight: 700 },
+  { tok: '--fs-stat-lg / 22px', sample: '3.8', size: 'var(--fs-stat-lg)', weight: 700 },
+  { tok: '--fs-count / 34px', sample: '12', size: 'var(--fs-count)', weight: 700 },
+  { tok: '--fs-stat-xl / 38px', sample: '21', size: 'var(--fs-stat-xl)', weight: 700 },
 ];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
