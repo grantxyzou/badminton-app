@@ -159,7 +159,9 @@ describe('/api/push/subscribe', () => {
       }
       expect(subs()).toHaveLength(10);
       // The very first device is the one that should have been dropped.
-      const endpoints = subs().map((s) => s.endpoint);
+      // `endpoint` is optional on the doc since native tokens landed; every
+      // doc here is web, so an empty string is the right "absent".
+      const endpoints = subs().map((s) => s.endpoint ?? '');
       expect(endpoints.some((e) => e.endsWith('device-0'))).toBe(false);
       expect(endpoints.some((e) => e.endsWith('device-10'))).toBe(true);
     });

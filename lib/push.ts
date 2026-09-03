@@ -1,5 +1,14 @@
 /**
- * Web Push send path.
+ * Push send path — TWO transports behind one function.
+ *
+ *  - Web Push (the PWA and browsers): VAPID, via `web-push`.
+ *  - FCM HTTP v1 (the native shell, iOS and Android alike): `lib/fcm.ts`.
+ *
+ * A subscription doc says which it is (`platform`; absent = web). `deliver`
+ * partitions by platform and runs each arm only if that arm is configured —
+ * an unconfigured arm is SKIPPED and logged once, never counted as failed,
+ * so a deployment with VAPID but no Firebase keeps working for the web while
+ * native devices simply wait.
  *
  * Mirrors the posture of `lib/reportEmail.ts`:
  *  - env-gated no-op FIRST, so an unconfigured environment (local dev, CI, any
@@ -14,19 +23,23 @@
  *  - NEXT_PUBLIC_VAPID_PUBLIC_KEY — also read by the client; baked at build time.
  *  - VAPID_PRIVATE_KEY           — server-only secret.
  *  - VAPID_SUBJECT               — mailto:/https: contact required by the protocol.
+ *  - FCM_SERVICE_ACCOUNT_JSON    — server-only secret; see lib/fcm.ts.
  *
- * Rotating the key pair invalidates every existing subscription with no 410 to
- * clean them up, so treat rotation as "purge the container, everyone re-opts-in".
+ * Rotating the VAPID pair invalidates every existing web subscription with no
+ * 410 to clean them up, so treat rotation as "purge the container, everyone
+ * re-opts-in". FCM tokens are bound to the Firebase project, not to a key you
+ * hold, so a rotated service account keeps sending.
  */
 import { createHash } from 'crypto';
 import { getContainer, ensureContainer } from './cosmos';
+import { isFcmConfigured, sendFcm } from './fcm';
 import type { PushSubscriptionDoc } from './types';
 
 export interface PushPayload {
   title: string;
   body: string;
-  /** Where the notification opens. Must be basePath-prefixed; the SW rejects
-   *  anything that doesn't start with /bpm. */
+  /** Where the notification opens. Must be basePath-prefixed; the SW and the
+   *  native tap handler both reject anything that doesn't start with /bpm. */
   url?: string;
   /** Collapse key — a phone that was offline gets ONE banner per tag, not one
    *  per missed send. Kept short and base64url-safe (push services cap it). */
@@ -34,8 +47,8 @@ export interface PushPayload {
 }
 
 export interface PushResult {
-  /** False means the env is unconfigured and nothing was attempted. Distinct
-   *  from `sent: 0`, which means we tried and nobody was subscribed. */
+  /** False means NO transport is configured and nothing was attempted.
+   *  Distinct from `sent: 0`, which means we tried and nobody was subscribed. */
   configured: boolean;
   sent: number;
   failed: number;
@@ -57,7 +70,7 @@ const TTL_SECONDS = 60 * 60 * 6;
  *  exists so a larger roster doesn't open every socket at once. */
 const CHUNK_SIZE = 20;
 
-export function isPushConfigured(): boolean {
+export function isWebPushConfigured(): boolean {
   return Boolean(
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY &&
       process.env.VAPID_PRIVATE_KEY &&
@@ -65,8 +78,14 @@ export function isPushConfigured(): boolean {
   );
 }
 
-export function hashEndpoint(endpoint: string): string {
-  return createHash('sha256').update(endpoint).digest('hex');
+/** Either transport. Callers that only need "will anything go out?" use this. */
+export function isPushConfigured(): boolean {
+  return isWebPushConfigured() || isFcmConfigured();
+}
+
+/** sha256 of a send credential — a web endpoint or an FCM token. */
+export function hashEndpoint(credential: string): string {
+  return createHash('sha256').update(credential).digest('hex');
 }
 
 function truncate(value: string, max: number): string {
@@ -108,6 +127,22 @@ async function loadWebPush(): Promise<any> {
   return webpush;
 }
 
+type WebSub = PushSubscriptionDoc & { endpoint: string; keys: { p256dh: string; auth: string } };
+type NativeSub = PushSubscriptionDoc & { platform: 'ios' | 'android'; token: string };
+
+export function isWebSub(d: PushSubscriptionDoc): d is WebSub {
+  return (
+    (d.platform === undefined || d.platform === 'web') &&
+    typeof d.endpoint === 'string' &&
+    !!d.keys?.p256dh &&
+    !!d.keys?.auth
+  );
+}
+
+export function isNativeSub(d: PushSubscriptionDoc): d is NativeSub {
+  return (d.platform === 'ios' || d.platform === 'android') && typeof d.token === 'string' && d.token.length > 0;
+}
+
 /** All subscription docs, optionally narrowed to a set of members. */
 async function loadSubscriptions(memberIds?: string[]): Promise<PushSubscriptionDoc[]> {
   await ensurePushContainer();
@@ -119,98 +154,156 @@ async function loadSubscriptions(memberIds?: string[]): Promise<PushSubscription
     .fetchAll();
 
   const all = (resources as PushSubscriptionDoc[]).filter(
-    (d) => d && typeof d.endpoint === 'string' && d.keys?.p256dh && d.keys?.auth,
+    (d) => d && (isWebSub(d) || isNativeSub(d)),
   );
   if (!memberIds) return all;
   const wanted = new Set(memberIds);
   return all.filter((d) => wanted.has(d.memberId));
 }
 
-async function deliver(subs: PushSubscriptionDoc[], payload: PushPayload): Promise<PushResult> {
-  if (!isPushConfigured()) return { ...NOT_CONFIGURED };
-  if (subs.length === 0) return { configured: true, sent: 0, failed: 0, removed: 0 };
-
-  const webpush = await loadWebPush();
-  const container = getContainer('pushSubscriptions');
-
-  const body = JSON.stringify({
+/** One place for the truncated message every transport sends. */
+function shape(payload: PushPayload) {
+  return {
     title: truncate(payload.title, MAX_TITLE),
     body: truncate(payload.body, MAX_BODY),
     url: payload.url,
     tag: payload.tag,
-  });
+  };
+}
+
+interface Tally {
+  sent: number;
+  failed: number;
+  removed: number;
+}
+
+/** A send resolved; a `gone` deletes the doc, anything else keeps it. */
+async function record(
+  sub: PushSubscriptionDoc,
+  outcome: { ok: true } | { ok: false; gone: boolean; detail: unknown },
+  tally: Tally,
+  now: string,
+): Promise<void> {
+  const container = getContainer('pushSubscriptions');
+  if (outcome.ok) {
+    tally.sent++;
+    try {
+      await container.items.upsert({ ...sub, lastSuccessAt: now, failureCount: 0 });
+    } catch {
+      /* bookkeeping only — a failed stamp must not affect the reported result */
+    }
+    return;
+  }
+  if (outcome.gone) {
+    // The subscription is definitively gone (uninstalled app, cleared site
+    // data, expired). Delete it — this is the only self-healing path.
+    tally.removed++;
+    try {
+      // Partition key must be the memberId; the mock ignores it, so a wrong
+      // value here would only surface in real Cosmos.
+      await container.item(sub.id, sub.memberId).delete();
+    } catch (err) {
+      console.error('[push] failed to delete dead subscription', sub.id, err);
+    }
+    return;
+  }
+  // Transient (429, 5xx, network). Count it, but KEEP the subscription —
+  // evicting on a temporary error would silently unsubscribe live users.
+  tally.failed++;
+  console.error('[push] send failed', { id: sub.id, platform: sub.platform ?? 'web' }, outcome.detail);
+  try {
+    await container.items.upsert({ ...sub, failureCount: (sub.failureCount ?? 0) + 1 });
+  } catch {
+    /* bookkeeping only */
+  }
+}
+
+async function deliverWeb(subs: WebSub[], payload: PushPayload, tally: Tally, now: string) {
+  const webpush = await loadWebPush();
+  const body = JSON.stringify(shape(payload));
   const options = {
     TTL: TTL_SECONDS,
     urgency: 'normal' as const,
     ...(payload.tag ? { topic: payload.tag } : {}),
   };
 
-  let sent = 0;
-  let failed = 0;
-  let removed = 0;
-  const now = new Date().toISOString();
-
   for (let i = 0; i < subs.length; i += CHUNK_SIZE) {
     const chunk = subs.slice(i, i + CHUNK_SIZE);
     const outcomes = await Promise.allSettled(
       chunk.map((sub) =>
-        webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: sub.keys },
-          body,
-          options,
-        ),
+        webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, body, options),
       ),
     );
-
     for (let j = 0; j < outcomes.length; j++) {
-      const outcome = outcomes[j];
-      const sub = chunk[j];
-
-      if (outcome.status === 'fulfilled') {
-        sent++;
-        try {
-          await container.items.upsert({ ...sub, lastSuccessAt: now, failureCount: 0 });
-        } catch {
-          /* bookkeeping only — a failed stamp must not affect the reported result */
-        }
+      const o = outcomes[j];
+      if (o.status === 'fulfilled') {
+        await record(chunk[j], { ok: true }, tally, now);
         continue;
       }
-
-      const status = (outcome.reason as { statusCode?: number } | undefined)?.statusCode;
-      if (status === 404 || status === 410) {
-        // The subscription is definitively gone (uninstalled PWA, cleared site
-        // data, expired). Delete it — this is the only self-healing path.
-        removed++;
-        try {
-          // Partition key must be the memberId; the mock ignores it, so a wrong
-          // value here would only surface in real Cosmos.
-          await container.item(sub.id, sub.memberId).delete();
-        } catch (err) {
-          console.error('[push] failed to delete dead subscription', sub.id, err);
-        }
-        continue;
-      }
-
-      // Transient (429, 5xx, network). Count it, but KEEP the subscription —
-      // evicting on a temporary error would silently unsubscribe live users.
-      failed++;
-      console.error(
-        '[push] send failed',
-        { id: sub.id, status: status ?? 'unknown' },
-        outcome.reason,
+      const status = (o.reason as { statusCode?: number } | undefined)?.statusCode;
+      await record(
+        chunk[j],
+        { ok: false, gone: status === 404 || status === 410, detail: o.reason },
+        tally,
+        now,
       );
-      try {
-        await container.items.upsert({
-          ...sub,
-          failureCount: (sub.failureCount ?? 0) + 1,
-        });
-      } catch {
-        /* bookkeeping only */
+    }
+  }
+}
+
+async function deliverNative(subs: NativeSub[], payload: PushPayload, tally: Tally, now: string) {
+  const msg = shape(payload);
+  for (let i = 0; i < subs.length; i += CHUNK_SIZE) {
+    const chunk = subs.slice(i, i + CHUNK_SIZE);
+    // sendFcm never throws, so allSettled is belt-and-braces.
+    const outcomes = await Promise.allSettled(chunk.map((sub) => sendFcm({ ...msg, token: sub.token })));
+    for (let j = 0; j < outcomes.length; j++) {
+      const o = outcomes[j];
+      if (o.status === 'fulfilled' && o.value.ok) {
+        await record(chunk[j], { ok: true }, tally, now);
+        continue;
       }
+      const value = o.status === 'fulfilled' ? o.value : null;
+      await record(
+        chunk[j],
+        { ok: false, gone: value?.ok === false && value.gone, detail: value ?? (o as PromiseRejectedResult).reason },
+        tally,
+        now,
+      );
+    }
+  }
+}
+
+let warnedWeb = false;
+let warnedNative = false;
+
+async function deliver(subs: PushSubscriptionDoc[], payload: PushPayload): Promise<PushResult> {
+  if (!isPushConfigured()) return { ...NOT_CONFIGURED };
+  if (subs.length === 0) return { configured: true, sent: 0, failed: 0, removed: 0 };
+
+  const tally: Tally = { sent: 0, failed: 0, removed: 0 };
+  const now = new Date().toISOString();
+  const web = subs.filter(isWebSub);
+  const native = subs.filter(isNativeSub);
+
+  if (web.length > 0) {
+    if (isWebPushConfigured()) {
+      await deliverWeb(web, payload, tally, now);
+    } else if (!warnedWeb) {
+      warnedWeb = true;
+      console.warn(`[push] ${web.length} web subscription(s) skipped: VAPID not configured`);
+    }
+  }
+  if (native.length > 0) {
+    if (isFcmConfigured()) {
+      await deliverNative(native, payload, tally, now);
+    } else if (!warnedNative) {
+      warnedNative = true;
+      console.warn(`[push] ${native.length} native subscription(s) skipped: FCM_SERVICE_ACCOUNT_JSON not configured`);
     }
   }
 
-  return { configured: true, sent, failed, removed };
+  return { configured: true, ...tally };
 }
 
 /** Send to specific members (payment reminders, admin self-test). */
