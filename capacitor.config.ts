@@ -14,7 +14,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
  * its own. See docs/plans/native-shell.md.
  */
 const config: CapacitorConfig = {
-  appId: 'com.grantzou.bpm',
+  appId: 'com.motioncraft.bpm',
   appName: 'BPM Badminton',
   webDir: 'native/www',
   server: {

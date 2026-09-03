@@ -310,7 +310,7 @@
 				MARKETING_VERSION = 1.0.0;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
-				PRODUCT_BUNDLE_IDENTIFIER = com.grantzou.bpm;
+				PRODUCT_BUNDLE_IDENTIFIER = com.motioncraft.bpm;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_VERSION = 5.0;
@@ -332,7 +332,7 @@
 				);
 				MARKETING_VERSION = 1.0.0;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
-				PRODUCT_BUNDLE_IDENTIFIER = com.grantzou.bpm;
+				PRODUCT_BUNDLE_IDENTIFIER = com.motioncraft.bpm;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
 				SWIFT_VERSION = 5.0;

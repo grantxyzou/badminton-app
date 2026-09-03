@@ -15,7 +15,7 @@ describe('capacitor.config.ts', () => {
   });
 
   it('has the store identity', () => {
-    expect(config.appId).toBe('com.grantzou.bpm');
+    expect(config.appId).toBe('com.motioncraft.bpm');
     expect(config.appName).toBe('BPM Badminton');
   });
 

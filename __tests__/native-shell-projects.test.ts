@@ -87,7 +87,7 @@ describe('android/', () => {
     const fcm = read('lib', 'fcm.ts');
     const channel = fcm.match(/channel_id:\s*'([^']+)'/)![1];
     expect(manifest).toContain(`android:value="${channel}"`);
-    const activity = read('android', 'app', 'src', 'main', 'java', 'com', 'grantzou', 'bpm', 'MainActivity.java');
+    const activity = read('android', 'app', 'src', 'main', 'java', 'com', 'motioncraft', 'bpm', 'MainActivity.java');
     expect(activity).toContain(`CHANNEL_ID = "${channel}"`);
     expect(activity).toContain('createNotificationChannel');
   });

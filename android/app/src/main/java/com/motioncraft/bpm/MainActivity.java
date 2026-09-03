@@ -1,4 +1,4 @@
-package com.grantzou.bpm;
+package com.motioncraft.bpm;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;

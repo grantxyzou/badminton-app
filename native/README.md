@@ -39,7 +39,7 @@ no cleartext), `MainActivity.java` (notification channel), `strings.xml`.
 ## One-time setup
 
 1. **Firebase project** (push on both platforms). Add an iOS app
-   (`com.grantzou.bpm`) → download `GoogleService-Info.plist` →
+   (`com.motioncraft.bpm`) → download `GoogleService-Info.plist` →
    `ios/App/App/`, then in Xcode add it to the App target. Add an Android app →
    `google-services.json` → `android/app/` (Gradle applies the plugin only when
    the file exists). Upload the **APNs auth key (.p8)** from the Apple developer
