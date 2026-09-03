@@ -494,11 +494,23 @@ export interface PushSubscriptionDoc {
   memberId: string;
   /** Denormalized for legibility in admin/debug reads, same as kudos.recipientName. */
   memberName: string;
-  /** The push service URL. Treated as a credential: never returned to a client. */
-  endpoint: string;
-  /** sha256(endpoint), hex. The dedup/lookup key — safe to log, unlike the endpoint. */
+  /**
+   * Which transport this device speaks. ABSENT MEANS WEB — every doc written
+   * before the native shell has no platform and carries endpoint+keys. `ios`
+   * and `android` docs carry `token` (an FCM registration token; Firebase
+   * relays to APNs for iOS) and no endpoint. Additive, so a rollback to code
+   * that only knows web-push simply skips the native docs.
+   */
+  platform?: 'web' | 'ios' | 'android';
+  /** The push service URL (web only). Treated as a credential: never returned to a client. */
+  endpoint?: string;
+  /** FCM registration token (native only). A send credential, like `endpoint`. */
+  token?: string;
+  /** sha256 of the credential — `endpoint` for web, `token` for native — hex.
+   *  The dedup/lookup key for BOTH, so eviction and DELETE are one path. Safe
+   *  to log, unlike the credential itself. The name predates native. */
   endpointHash: string;
-  keys: { p256dh: string; auth: string };
+  keys?: { p256dh: string; auth: string };
   /** Truncated user-agent, so "which device is this?" is answerable when revoking. */
   ua?: string;
   createdAt: string;

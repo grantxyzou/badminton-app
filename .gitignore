@@ -86,3 +86,24 @@ public/changelog-unreleased.json
 # Screenshot/debugging artifacts (numbered prefix or dated)
 /[0-9][0-9]-*.png
 /[0-9][0-9][a-z]-*.png
+
+# Native shell (Capacitor). The projects are committed; their build output,
+# dependency caches and signing material are not.
+ios/App/build/
+ios/App/Pods/
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
+ios/DerivedData/
+android/.gradle/
+android/.idea/
+android/build/
+android/app/build/
+android/app/release/
+android/local.properties
+android/capacitor-cordova-android-plugins/
+*.keystore
+*.jks
+*.p8
+*.p12
+*.mobileprovision

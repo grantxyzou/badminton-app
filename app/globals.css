@@ -796,6 +796,15 @@ h1, h2, h3, h4 {
   --topbar-border-scrolled: rgba(20, 30, 50, 0.08);
 }
 
+/* The page shell's top padding, plus the status-bar inset. The native shell
+   draws under the status bar (StatusBar.setOverlaysWebView) and the PWA's
+   status bar is black-translucent, so both need the inset; the browser reports
+   0 and nothing changes. 24px = the old `pt-6`. Bottom insets are handled by
+   .nav-safe-area / .rail-bar / .toast-stack. */
+.page-shell-top {
+  padding-top: calc(var(--space-7) + env(safe-area-inset-top, 0px));
+}
+
 .bpm-topbar {
   position: sticky;
   /* Stick BELOW the fixed PreviewBanner (vnext), not under it. The banner
@@ -803,7 +812,7 @@ h1, h2, h3, h4 {
      the banner is absent. Without this the frosted bar tucks under the orange
      banner on scroll (banner z 9999 ≫ header z 10). Mirrors the .theme-toggle
      pattern below. */
-  top: var(--banner-offset, 0px);
+  top: calc(var(--banner-offset, 0px) + env(safe-area-inset-top, 0px));
   z-index: 10;
   display: flex;
   align-items: center;
@@ -899,7 +908,7 @@ h1, h2, h3, h4 {
 .bpm-page-header {
   position: sticky;
   /* Stick below the fixed PreviewBanner — see .bpm-topbar note above. */
-  top: var(--banner-offset, 0px);
+  top: calc(var(--banner-offset, 0px) + env(safe-area-inset-top, 0px));
   z-index: 10;
   display: flex;
   align-items: baseline;
@@ -2806,7 +2815,7 @@ textarea {
 .theme-toggle,
 .lang-toggle {
   position: fixed;
-  top: calc(16px + var(--banner-offset, 0px));
+  top: calc(16px + var(--banner-offset, 0px) + env(safe-area-inset-top, 0px));
   z-index: 60;
   width: 36px;
   height: 36px;

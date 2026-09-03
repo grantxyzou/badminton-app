@@ -23,7 +23,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_VISUAL_FIELDS'
   | 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS'
   | 'NEXT_PUBLIC_FLAG_STRINGING'
-  | 'NEXT_PUBLIC_FLAG_PUSH_NOTIFY';
+  | 'NEXT_PUBLIC_FLAG_PUSH_NOTIFY'
+  | 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE';
 
 interface FlagMeta {
   description: string;
@@ -69,6 +70,13 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
       'Web Push notifications (docs/plans/push-notifications.md). Ships a push-only service worker (public/sw.js -- NO fetch handler, so the "legible-fail" offline posture is untouched), a `pushSubscriptions` container (PK /memberId), member-cookie-bound subscribe/unsubscribe, and an opt-in row on Profile. Phase 1 wires ONE trigger: the sign-up-open notification, from the signupOpen false->true edge in PUT /api/session, de-duped by session.signupOpenNotifiedAt. Announcement, sign-up reminder and payment reminder are Phase 2 (the last two need a scheduler, which this repo does not have yet). Payloads are English-only until Member.locale lands. Revived from PR #241 on 2026-08-28; ships OFF until VAPID keys are set, because subscribe() throws without NEXT_PUBLIC_VAPID_PUBLIC_KEY.',
     owner: 'grant',
     plannedRemoval: '2026-09-11',
+  },
+  NEXT_PUBLIC_FLAG_NATIVE_MIGRATE: {
+    description:
+      'The one-time link that carries a signed-in PWA identity into the native (App Store / Play) shell — docs/plans/native-shell.md WP5. Gates two SERVER-side credential-minting routes (POST /api/auth/migrate/{start,claim}), the "Move to the app" Profile row and the native "Enter code" row. lib/authMigration.ts: link code + 6-digit short code as sibling docs in `authmigration` (PK /id), TTL 5 min, single use, point reads only. The claim re-mints deleteToken because DELETE /api/players never accepts member_session. Ships OFF until the store listing exists — the sheet shows store badges and there is nothing to badge yet.',
+    owner: 'grant',
+    plannedRemoval: '2026-12-01',
+    note: 'Dated ~8 weeks after the intended store launch. Retire once the installed-PWA base has moved: the row and both routes go, the container is dropped.',
   },
   NEXT_PUBLIC_FLAG_STRINGING: {
     description:
@@ -117,6 +125,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_STRINGING;
     case 'NEXT_PUBLIC_FLAG_PUSH_NOTIFY':
       return process.env.NEXT_PUBLIC_FLAG_PUSH_NOTIFY;
+    case 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE':
+      return process.env.NEXT_PUBLIC_FLAG_NATIVE_MIGRATE;
     default: {
       // Exhaustiveness guard. Adding a flag to `FlagName` without adding its
       // `case` above used to be silently legal — `readFlag` just returned

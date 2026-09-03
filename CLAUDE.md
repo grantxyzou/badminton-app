@@ -142,6 +142,88 @@ Web Push, gated by `NEXT_PUBLIC_FLAG_PUSH_NOTIFY`. Phase 1 wires exactly one tri
 - **Rotating the VAPID pair is destructive** — every subscription is bound to the key it was created with, and regenerating breaks them all with no 410 to clean up. Use one pair across next + stable; treat rotation as "purge the container, everyone re-opts-in."
 - **Payloads are English-only.** The SW has no next-intl access, so language is decided server-side, and there's no per-member locale to decide from (locale lives in the `NEXT_LOCALE` cookie, which a broadcast doesn't have for other members). Fix is an additive optional `Member.locale`; deferred.
 
+### Native Shell (App Store / Google Play)
+
+A **Capacitor 8 WebView that loads the LIVE URL** (`capacitor.config.ts` →
+`server.url`). There is no native build of the web app: a web deploy is already
+a native update, and no `cap sync` or native build runs in CI — the shell is
+archived locally a few times a year (`native/README.md` is the runbook; intent
+and decisions in `docs/plans/native-shell.md`). Built 2026-09-03 on
+`feat/native-shell`; store submission is Grant's, on device.
+
+- **`lib/native.ts` `isNative()` is the seam.** It imports nothing and reads
+  `window.Capacitor` at runtime — this build has no env of its own, so no
+  `NEXT_PUBLIC_FLAG_*` can tell it apart. `false` means unknown (the
+  `lib/standalone.ts` contract). **Every `@capacitor/*` package is a dynamic
+  `import()` inside an `isNative()` branch**; `__tests__/native-imports.test.ts`
+  fails the build on a static one, so the web bundle gains only unloaded chunks.
+- **Branch points**: `InstallBanner` + the Profile install row (native counts as
+  installed); `lib/shareImage.ts` (Filesystem → Share — Android's WebView has no
+  `navigator.share` and `a.download` no-ops there); `lib/shareText.ts` (the
+  sign-up link); `components/auth/ProviderButtons.tsx`; `lib/usePush.ts`;
+  `components/NativeBridge.tsx` (renders nothing; `appUrlOpen`, `bpm:resume`,
+  the Android back button, status-bar style, push-tap routing);
+  `lib/sheetStack.ts` (which sheets are open, for the back button).
+- **OAuth runs in the SYSTEM browser sheet** — Google answers
+  `disallowed_useragent` in an embedded WebView. That is a separate cookie jar,
+  the exact split `lib/authHandoff.ts` already bridges. `/start?native=1`
+  records `HandoffDoc.native` (read from the STASH, never the callback URL), the
+  landing carries `?native=1`, and `HomeShell` renders "Back to the BPM app" →
+  `bpm://auth/return` — a **custom scheme, not a universal link**, because a
+  same-domain link opens in place. The bridge closes the sheet and dispatches
+  `bpm:resume`; the handoff claim listens for it (a modal sheet inside the app
+  fires neither `visibilitychange` nor `focus`). **Apple's routes gained the
+  same handoff Google had** the same day — `apple/start` never parked `?hr=`,
+  so an installed-PWA Apple sign-in came back signed out.
+- **Push is one server transport for both platforms**: `@capacitor-firebase/messaging`
+  hands back an FCM token on iOS and Android (Firebase relays to APNs), and
+  `lib/fcm.ts` sends via FCM HTTP v1 with zero dependencies. `PushSubscriptionDoc`
+  gained additive `platform`/`token` (absent = web); `endpointHash` is the sha256
+  of whichever credential the doc holds. **Only a dead token reports `gone`**
+  (404/`UNREGISTERED`, or a 400 naming the token); 429/5xx keep it, asserted both
+  ways. An unconfigured arm is skipped and logged once, never counted failed.
+  Env `FCM_SERVICE_ACCOUNT_JSON` (App Settings; carries a `private_key`).
+  `MainActivity` creates the `bpm` channel every message names — a push to a
+  missing channel is dropped silently on Android 8+.
+- **The migration link** (`lib/authMigration.ts`, `POST /api/auth/migrate/{start,claim}`,
+  `MigrateSheet` / `MigrateCodeSheet` / `app/migrate`) carries a signed-in PWA
+  identity into the shell. Flag `NEXT_PUBLIC_FLAG_NATIVE_MIGRATE`, **OFF until a
+  store listing exists**. Direction inversion from the OAuth handoff: the link
+  IS a bearer credential, so it is contained by a live `member_session` to mint,
+  a 5-minute TTL, single use (both sibling docs deleted first) and per-IP rate
+  limits; point reads only. **The claim re-mints `deleteToken`** — `DELETE
+  /api/players` never accepts `member_session`, so "signed in" is not "can
+  cancel", and the route test asserts the returned token is the one on the doc.
+- **`.well-known` at the domain root** (universal links, App Links): `proxy.ts`
+  answers from a `WELL_KNOWN` table with env bodies (`APPLE_APP_SITE_ASSOCIATION`,
+  `ANDROID_ASSET_LINKS`) after the `next.config.js` rewrite gets the root path
+  inside `/bpm` — both mechanisms, neither alone. JSON bodies are parsed first;
+  invalid → 404, not a 200 that verifies nothing. The assetlinks SHA is the
+  **Play App Signing** key, not the upload keystore — wrong is silent.
+- **Legal pages** `app/legal/{privacy,terms,support,delete-account}` are async
+  server components (no client state, no fetch, indexable) — the URLs both
+  consoles require and a PIPEDA obligation on their own. Copy is arrays under
+  the `legal` namespace read with `t.raw` (which `check-i18n-keys.mjs` cannot
+  see; `__tests__/legal-pages.test.ts` pins the shape). **`deepMerge` replaces
+  arrays** — it used to spread them into index-keyed objects and the Chinese
+  page would have thrown. The delete-account CTA is `?tab=profile&intent=delete`;
+  `HomeShell` keeps the intent until an identity exists and then opens the
+  existing `DeleteAccountSheet`, so there is still one deletion path.
+- **`?tab=` deep links survive React StrictMode now** — the URL-param effect
+  strips what it reads, so dev's second run found nothing and fell through to
+  `sessionStorage`. A ref guard; production never double-ran.
+- **Safe-area top**: `viewportFit: 'cover'` (without it WKWebView reports 0),
+  `.page-shell-top` on the shell's `<main>`, and `env(safe-area-inset-top)`
+  folded into `.bpm-topbar`, `.bpm-page-header` and the fixed toggles.
+- **`ios/` and `android/` are committed**; the hand edits on Capacitor's
+  templates are pinned by `__tests__/native-shell-projects.test.ts`, because
+  `cap add` would regenerate without them and nothing else would notice.
+  **Firebase is optional at build time** (guarded `FirebaseApp.configure()`,
+  Gradle applies the services plugin only if the JSON exists), so a shell AAB
+  can start the Play closed-testing clock before the Firebase project exists.
+  Never committed: `GoogleService-Info.plist`, `google-services.json`, keystores,
+  `.p8`, profiles.
+
 ### Design System
 Canonical bundle mirrored at `docs/design-system/` (43 files — tokens, 28 specimen HTMLs, UI-kit JSX refs, self-hosted fonts). `app/globals.css` is the **single source of truth** for tokens in the running app; the docs folder is pristine reference only (never imported).
 
@@ -388,14 +470,16 @@ npm test              # run all tests (vitest)
 npm run test:watch    # watch mode
 ```
 
-**264 test files / 2530 tests** (2026-09-01). Covering API routes (admin auth,
+**279 test files / 2712 tests** (2026-09-03). Covering API routes (admin auth,
 player CRUD + self-pay, account-only signup + hijack guards, members, sessions,
 session costs, birds + pooled bird usage, skills, releases, announcements,
 stats, recovery PIN, push subscribe/unsubscribe, **self-service account deletion
-+ its container-coverage canary**, **native-migration mint/claim**), feature
-flags and their date shape, i18n parity, component rendering, the push send
-library (410-deletes vs 5xx-keeps), the service-worker no-fetch-handler policy,
-and the reorder arithmetic.
++ its container-coverage canary**, **native-migration mint/claim + routes**,
+**both OAuth handoff routes**), feature flags and their date shape, i18n parity
+(and `deepMerge`'s array rule), component rendering, the push send library
+(410-deletes vs 5xx-keeps, and the FCM twin), the service-worker
+no-fetch-handler policy, the `.well-known` table, the legal pages' shape, the
+native-import canary, the shell's hand edits, and the reorder arithmetic.
 
 **Read the COUNT, not the colour.** A DROP in file count means files failed to
 LOAD, which reports as an absence rather than a failure — see the Node floor in

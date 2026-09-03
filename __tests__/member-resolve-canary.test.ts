@@ -39,6 +39,8 @@ const ALLOWED: ReadonlyArray<readonly [string, string]> = [
   [join('app', 'api', 'players', 'recover', 'route.ts'), 'PIN sign-in'],
   [join('app', 'api', 'players', 'reset-access', 'route.ts'), 'recovery-code path'],
   [join('app', 'api', 'admin', 'route.ts'), 'admin login'],
+  [join('app', 'api', 'auth', 'migrate', 'claim', 'route.ts'),
+   'the LOWER(c.name) is against the PLAYERS container (the deleteToken re-mint, same query as recover); the member is a point read by id'],
 ];
 
 function walk(dir: string, out: string[] = []): string[] {

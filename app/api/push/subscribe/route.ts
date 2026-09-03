@@ -14,17 +14,35 @@ export const dynamic = 'force-dynamic';
  *  clear themselves. */
 const MAX_DEVICES_PER_MEMBER = 10;
 const MAX_ENDPOINT_LEN = 1000;
+/** FCM registration tokens are ~160 chars of base64url plus `:` and `-`. */
+const MIN_TOKEN_LEN = 20;
+const MAX_TOKEN_LEN = 4096;
+
+type Parsed =
+  | { kind: 'web'; endpoint: string; keys: { p256dh: string; auth: string } }
+  | { kind: 'native'; platform: 'ios' | 'android'; token: string };
 
 /**
- * A PushSubscription as the browser serializes it. Validated structurally
- * because it comes straight from client JSON — a malformed doc here would fail
- * at send time, far from the cause.
+ * Either a PushSubscription as the browser serializes it, or the native
+ * shell's `{ platform, token }`. Validated structurally because it comes
+ * straight from client JSON — a malformed doc here would fail at send time,
+ * far from the cause. The two shapes are disjoint on purpose: a body with
+ * both a token and an endpoint is rejected rather than guessed at.
  */
-function parseSubscription(
-  body: unknown,
-): { endpoint: string; keys: { p256dh: string; auth: string } } | null {
+function parseSubscription(body: unknown): Parsed | null {
   if (!body || typeof body !== 'object') return null;
-  const b = body as { endpoint?: unknown; keys?: unknown };
+  const b = body as { endpoint?: unknown; keys?: unknown; platform?: unknown; token?: unknown };
+
+  if (b.platform === 'ios' || b.platform === 'android') {
+    if (b.endpoint !== undefined || b.keys !== undefined) return null;
+    if (typeof b.token !== 'string') return null;
+    const token = b.token.trim();
+    if (token.length < MIN_TOKEN_LEN || token.length > MAX_TOKEN_LEN) return null;
+    if (!/^[A-Za-z0-9_:\-]+$/.test(token)) return null;
+    return { kind: 'native', platform: b.platform, token };
+  }
+  if (b.platform !== undefined && b.platform !== 'web') return null;
+  if (b.token !== undefined) return null;
 
   if (typeof b.endpoint !== 'string') return null;
   const endpoint = b.endpoint.trim();
@@ -48,7 +66,16 @@ function parseSubscription(
   if (auth.length < 10 || auth.length > 100) return null;
   if (!/^[A-Za-z0-9_-]+=*$/.test(p256dh) || !/^[A-Za-z0-9_-]+=*$/.test(auth)) return null;
 
-  return { endpoint, keys: { p256dh, auth } };
+  return { kind: 'web', endpoint, keys: { p256dh, auth } };
+}
+
+/** The credential a DELETE names — an endpoint or a token, never both. */
+function parseCredential(body: unknown): string | null {
+  if (!body || typeof body !== 'object') return null;
+  const b = body as { endpoint?: unknown; token?: unknown };
+  if (typeof b.endpoint === 'string' && b.token === undefined) return b.endpoint.trim() || null;
+  if (typeof b.token === 'string' && b.endpoint === undefined) return b.token.trim() || null;
+  return null;
 }
 
 /* REAL COSMOS DOES NOT AUTO-CREATE CONTAINERS; the mock store does. That gap
@@ -104,18 +131,24 @@ export async function POST(req: NextRequest) {
     }
 
     const container = getContainer('pushSubscriptions');
-    const endpointHash = hashEndpoint(parsed.endpoint);
+    // One hash for both shapes, so dedup, eviction and DELETE are one path.
+    const endpointHash = hashEndpoint(parsed.kind === 'web' ? parsed.endpoint : parsed.token);
     const now = new Date().toISOString();
     const mine = await loadForMember(member.memberId);
     const existing = mine.find((d) => d.endpointHash === endpointHash);
 
+    const credential =
+      parsed.kind === 'web'
+        ? { endpoint: parsed.endpoint, keys: parsed.keys }
+        : { platform: parsed.platform, token: parsed.token };
+
     if (existing) {
       // Same device re-subscribing (permission re-grant, key rotation on the
-      // browser side). Refresh rather than duplicate.
+      // browser side, a fresh FCM token that happens to match). Refresh rather
+      // than duplicate.
       await container.items.upsert({
         ...existing,
-        keys: parsed.keys,
-        endpoint: parsed.endpoint,
+        ...credential,
         memberName: member.name,
         lastSeenAt: now,
         failureCount: 0,
@@ -128,9 +161,8 @@ export async function POST(req: NextRequest) {
       id: randomBytes(16).toString('hex'),
       memberId: member.memberId,
       memberName: member.name,
-      endpoint: parsed.endpoint,
+      ...credential,
       endpointHash,
-      keys: parsed.keys,
       ua,
       createdAt: now,
       lastSeenAt: now,
@@ -150,7 +182,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Never echo the subscription back — the endpoint is a send credential.
+    // Never echo the subscription back — the endpoint/token is a send credential.
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (error) {
     console.error('POST push/subscribe error:', error);
@@ -179,18 +211,15 @@ export async function DELETE(req: NextRequest) {
     } catch {
       return NextResponse.json({ error: 'invalid_subscription' }, { status: 400 });
     }
-    const endpoint =
-      body && typeof body === 'object' && typeof (body as { endpoint?: unknown }).endpoint === 'string'
-        ? (body as { endpoint: string }).endpoint.trim()
-        : '';
-    if (!endpoint) {
+    const credential = parseCredential(body);
+    if (!credential) {
       return NextResponse.json({ error: 'invalid_subscription' }, { status: 400 });
     }
 
     const container = getContainer('pushSubscriptions');
-    const endpointHash = hashEndpoint(endpoint);
-    // Scoped to THIS member's docs. Matching on endpoint alone would let anyone
-    // holding an endpoint string unsubscribe someone else's device.
+    const endpointHash = hashEndpoint(credential);
+    // Scoped to THIS member's docs. Matching on the credential alone would let
+    // anyone holding an endpoint or token string unsubscribe someone else's device.
     const mine = await loadForMember(member.memberId);
     const targets = mine.filter((d) => d.endpointHash === endpointHash);
 

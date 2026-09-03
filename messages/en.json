@@ -297,6 +297,7 @@
       "claimDifferentName": "Use a different name",
           "continueGoogle": "Continue with Google",
           "continueApple": "Continue with Apple",
+          "backToApp": "Back to the BPM app",
           "connectGoogle": "Connect Google",
           "connectApple": "Connect Apple",
           "googleConnected": "Google connected",
@@ -385,13 +386,47 @@
       "logout": "Log out",
       "reportProblem": "Report a problem",
       "notifications": "Notifications",
-      "install": "Add to Home Screen"
+      "install": "Add to Home Screen",
+      "privacyPolicy": "Privacy policy"
     },
     "unpaid": {
       "title": "Outstanding payments",
       "total": "Total",
       "loadError": "Couldn't load — refresh to retry.",
       "signInAgain": "Sign in on Profile to see what you owe."
+    },
+    "migrate": {
+      "row": "Move to the app",
+      "rowEnterCode": "Have a code from the web app?",
+      "title": "Move to the BPM app",
+      "help": "Sign in to the new app as yourself, without a PIN. Open the link on this phone, or type the code into the app.",
+      "openInApp": "Open in the BPM app",
+      "orCode": "Or type this code in the app",
+      "codeLabel": "Migration code",
+      "codeHelp": "One use only",
+      "expiresIn": "expires in {time}",
+      "expiredNewCode": "That code expired — get a new one",
+      "tryAgain": "Try again",
+      "storesNote": "Don't have the app yet? It's coming to the App Store and Google Play. Your account stays exactly as it is here.",
+      "offline": "You're offline — reconnect to get a code.",
+      "errorAuth": "Sign in first, then come back to this.",
+      "errorRateLimited": "Too many codes in the last hour — give it a bit.",
+      "errorServer": "Couldn't get a code — try again in a moment.",
+      "close": "Close",
+      "claimTitle": "Enter your code",
+      "claimHelp": "In the web app, go to Profile → Move to the app. Type the six digits here, with the name you use there.",
+      "nameLabel": "Your name",
+      "submit": "Sign me in",
+      "welcome": "Welcome back, {name}!",
+      "errorInvalid": "That code didn't match. Check the name and the digits — codes only last five minutes.",
+      "pageTitle": "Moving you over",
+      "pageWorking": "Signing you in…",
+      "pageDone": "Done — taking you home.",
+      "pageNoApp": "This link is for the BPM app, and it looks like you opened it in a browser.",
+      "pageNoAppBody": "If the app is installed, go back to the web app and type the six-digit code instead. If it isn't, your account is right here on the web — nothing has changed.",
+      "pageNoCode": "There's no code in this link.",
+      "pageFailed": "That link didn't work — it may have expired or already been used. Get a fresh one from the web app.",
+      "pageHome": "Back to BPM"
     },
     "deleteAccount": {
       "link": "Delete account",
@@ -1045,5 +1080,185 @@
     "budget_350": "$200–350",
     "budget_none": "No limit",
     "needsCheckIn": "Do the check-in and we'll suggest a racket."
+  },
+  "legal": {
+    "common": {
+      "back": "Back to BPM",
+      "updated": "Last updated {date}"
+    },
+    "privacy": {
+      "title": "Privacy policy",
+      "updated": "3 September 2026",
+      "sections": [
+        {
+          "h": "Who we are",
+          "p": [
+            "BPM Badminton is a sign-up sheet for one casual badminton group in Vancouver, BC. It is run by the group's organiser, Grant Zou, as an individual — not a company. The privacy law that applies is Canada's PIPEDA and BC's Personal Information Protection Act."
+          ]
+        },
+        {
+          "h": "What we hold about you",
+          "p": [
+            "Your name — the one you sign up with. Other members see it on the roster.",
+            "Your PIN, if you set one, stored only as a salted hash. If you sign in with Google or Apple we hold the identifier they give us; for email sign-in, your email address.",
+            "Session records: which sessions you signed up for, whether you were on the waitlist, and your share of the court and shuttle cost — including whether it has been marked paid.",
+            "E-transfer names: if the name on your e-transfer differs from your sign-up name, the organiser records that pairing so payments can be matched. Only admins see it.",
+            "Things you add yourself: skill self-assessments, kudos you give or receive (including notes), games you log, and rackets or strings you save.",
+            "If you turn on notifications, a push token for that device. It identifies the device to Apple, Google or your browser — not you.",
+            "A short technical note when something breaks (the page you were on and the error), sent only when you tap Report a problem."
+          ]
+        },
+        {
+          "h": "What we don't do",
+          "p": [
+            "No ads. No analytics trackers. No selling or sharing with anyone for their own purposes. No location, contacts, photos or camera access. We don't build a profile of you for anything beyond running the sessions."
+          ]
+        },
+        {
+          "h": "Who can see what",
+          "p": [
+            "Members see the roster: names and whether each spot is confirmed or waitlisted, and the per-person cost for a session. Payment status and e-transfer names are visible to admins only. A kudos note is shown to the person who received it, signed by the giver."
+          ]
+        },
+        {
+          "h": "Where it lives",
+          "p": [
+            "Data is stored in Microsoft Azure (Cosmos DB) and reached only over HTTPS. Sign-in with Google or Apple is handled by those providers under their own policies; we receive only the identifier and, if you allow it, your name and email."
+          ]
+        },
+        {
+          "h": "How long we keep it",
+          "p": [
+            "Session and payment records are kept so the group's books add up. Push tokens are removed when you turn notifications off or when the device stops accepting them."
+          ]
+        },
+        {
+          "h": "Deleting your account",
+          "p": [
+            "You can delete your account from inside the app — Profile → Delete account — or by following the steps on our account-deletion page. Deletion removes your PIN, provider sign-ins, gear, stats, kudos and notifications. Past sessions keep one unnamed line so everyone else's cost split still adds up; that line no longer identifies you."
+          ]
+        },
+        {
+          "h": "Your rights",
+          "p": [
+            "You can ask what we hold about you, ask for it to be corrected, or withdraw consent, using the contact on the support page. If you're not satisfied, you can complain to the Office of the Privacy Commissioner of Canada."
+          ]
+        },
+        {
+          "h": "Changes",
+          "p": [
+            "If this policy changes in a way that matters, the date above changes and the app will say so on its Home tab."
+          ]
+        }
+      ]
+    },
+    "terms": {
+      "title": "Terms of use",
+      "updated": "3 September 2026",
+      "sections": [
+        {
+          "h": "What this is",
+          "p": [
+            "BPM Badminton is a free tool one group uses to organise weekly badminton. Using it means you're a member of that group, or were invited by one. It's provided as-is, by a volunteer, and can go down or change without notice."
+          ]
+        },
+        {
+          "h": "Signing up",
+          "p": [
+            "A sign-up is a commitment to show up, or to cancel before the deadline shown. The organiser may remove or waitlist sign-ups to keep a session playable, and may limit sign-ups to an invite list."
+          ]
+        },
+        {
+          "h": "Money",
+          "p": [
+            "The app records each person's share of a session and whether it has been paid. It does not take payments. Paying is arranged between you and the organiser, usually by e-transfer. Nothing in the app is a bill from anyone but the organiser, and none of it is financial advice or a financial service."
+          ]
+        },
+        {
+          "h": "Your account",
+          "p": [
+            "Keep your PIN to yourself; you're responsible for what's done with your account. Don't sign other people up without asking them, and don't use someone else's name."
+          ]
+        },
+        {
+          "h": "Content",
+          "p": [
+            "Kudos, notes and announcements are for the group. Keep them kind. The organiser can remove anything that isn't."
+          ]
+        },
+        {
+          "h": "Liability",
+          "p": [
+            "Badminton is a sport; you play at your own risk. The app organises sessions and takes no responsibility for what happens on court, for a venue, or for another member's conduct. To the extent the law allows, the organiser isn't liable for losses arising from use of the app."
+          ]
+        },
+        {
+          "h": "Ending",
+          "p": [
+            "You can delete your account at any time. The organiser can deactivate accounts that break these terms or that belong to people no longer in the group."
+          ]
+        },
+        {
+          "h": "Law",
+          "p": [
+            "These terms are governed by the laws of British Columbia and Canada."
+          ]
+        }
+      ]
+    },
+    "support": {
+      "title": "Support",
+      "updated": "3 September 2026",
+      "sections": [
+        {
+          "h": "Something not working?",
+          "p": [
+            "The fastest route is inside the app: Profile → Report a problem. It sends the organiser the page you were on and what went wrong, so there's nothing to describe."
+          ]
+        },
+        {
+          "h": "Lost your PIN?",
+          "p": [
+            "On the Profile tab, tap “Forgot your PIN?”. If you've set up Google, Apple or email sign-in, those work too. Otherwise ask the organiser for a one-time code."
+          ]
+        },
+        {
+          "h": "Questions about money",
+          "p": [
+            "Your balance on the Home tab shows what you owe and for which sessions. If something looks wrong, tell the organiser — the app records payments, it doesn't take them."
+          ]
+        }
+      ],
+      "emailLabel": "Or email the organiser:",
+      "deleteLink": "Deleting your account",
+      "privacyLink": "Privacy policy"
+    },
+    "deleteAccount": {
+      "title": "Delete your account",
+      "updated": "3 September 2026",
+      "intro": "You can delete your BPM Badminton account yourself, from inside the app. It takes about ten seconds and can't be undone.",
+      "stepsTitle": "In the app",
+      "steps": [
+        "Open BPM and go to the Profile tab.",
+        "Sign in if you aren't already.",
+        "Scroll to the bottom and tap “Delete account”.",
+        "Confirm."
+      ],
+      "cta": "Open Profile in BPM",
+      "whatTitle": "What gets deleted",
+      "what": [
+        "Your PIN and any Google, Apple or email sign-in.",
+        "Your gear, skill self-assessments, logged games and notification settings.",
+        "Kudos you've given and received, including notes."
+      ],
+      "keepsTitle": "What stays",
+      "keeps": [
+        "Past sessions keep one unnamed line so everyone else's cost split still adds up. It no longer identifies you.",
+        "Deleting your account doesn't cancel anything you still owe for sessions you played."
+      ],
+      "noAppTitle": "Can't get into the app?",
+      "noApp": "Email the organiser with the name you signed up under, from an address we can reply to, and the account will be deleted for you.",
+      "emailLabel": "Email:"
+    }
   }
 }

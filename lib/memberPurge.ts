@@ -87,6 +87,10 @@ const OWNED: readonly PurgeTarget[] = [
      literal, and the canary only matched quoted arguments — so it survived a
      deletion request in the first cut of this file. */
   { container: 'authhandoff', pk: '/id', by: 'memberId', pkField: 'id' },
+  /* Same family: a five-minute stash holding a memberId while a PWA→native
+     migration link is in flight (lib/authMigration.ts). Also a `const
+     CONTAINER` alias, which is why the canary resolves those now. */
+  { container: 'authmigration', pk: '/id', by: 'memberId', pkField: 'id' },
 ];
 
 /** Names only — for the coverage canary, which must not import the table shape. */

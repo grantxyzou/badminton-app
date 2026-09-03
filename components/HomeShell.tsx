@@ -10,6 +10,7 @@ import HomeTab from '@/components/HomeTab';
 import PlayersTab from '@/components/PlayersTab';
 import SkillsTab from '@/components/SkillsTab';
 import ProfileTab from '@/components/ProfileTab';
+import NativeBridge from '@/components/NativeBridge';
 import type { Provider as AuthProvider } from '@/components/auth/ProviderButtons';
 import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -76,6 +77,12 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
   // facts live in a signed, HttpOnly cookie the client cannot read; all this
   // flag does is decide whether to show the name prompt.
   const [chooseNameOpen, setChooseNameOpen] = useState(false);
+  // `?intent=delete` from the public delete-account page; consumed by
+  // ProfileTab once an identity exists. See the param effect below.
+  const [deleteIntent, setDeleteIntent] = useState(false);
+  // `?native=1` — this page is the landing of a sign-in the NATIVE shell
+  // started, rendering inside its browser sheet. See the param effect.
+  const [nativeReturn, setNativeReturn] = useState(false);
   /**
    * What to say after an auth redirect. One notice at a time: our own redirects
    * only ever carry one result, so last-write-wins is fine and simpler than a
@@ -113,8 +120,17 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
   const t = useTranslations('stats');
   const tAuth = useTranslations('profile.auth');
 
+  // The URL-param effect below strips what it reads, so it must run ONCE.
+  // Under React StrictMode (dev) effects mount twice: the second run found no
+  // `?tab=`, fell through to sessionStorage — which the persistence effect had
+  // just written as 'home' — and overrode the deep link. Production never
+  // double-runs, which is why `?tab=admin` worked there and not on localhost.
+  const urlParamsConsumed = useRef(false);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (urlParamsConsumed.current) return;
+    urlParamsConsumed.current = true;
     const params = new URLSearchParams(window.location.search);
     if (params.has('dev')) setDevMode(true);
 
@@ -168,6 +184,24 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
       setResetRequest({ token: resetToken, email: params.get('email') ?? '' });
       cleaned.searchParams.delete('reset');
       cleaned.searchParams.delete('email');
+      dirty = true;
+    }
+
+    // The flow began in the native shell and is landing in its system-browser
+    // sheet, which never hands back on its own. Keep the fact in state (the
+    // param is stripped like the others) so the page can render a way home.
+    if (params.get('native') === '1') {
+      setNativeReturn(true);
+      cleaned.searchParams.delete('native');
+      dirty = true;
+    }
+
+    // From /legal/delete-account: land on Profile and open the delete sheet
+    // once an identity resolves. Kept as INTENT, not an immediate open — the
+    // person may be signed out, and the sheet needs a member to delete.
+    if (params.get('intent') === 'delete') {
+      setDeleteIntent(true);
+      cleaned.searchParams.delete('intent');
       dirty = true;
     }
 
@@ -261,12 +295,19 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
     const onVisible = () => {
       if (document.visibilityState === 'visible') void collect();
     };
+    // The native shell's browser sheet is a modal INSIDE the app, so closing
+    // it fires neither visibilitychange nor focus on this document. The
+    // NativeBridge dispatches `bpm:resume` on browserFinished / appUrlOpen /
+    // appStateChange instead. No-op on the web: nothing dispatches it.
+    const onResume = () => void collect();
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', onVisible);
+    window.addEventListener('bpm:resume', onResume);
     return () => {
       cancelled = true;
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onVisible);
+      window.removeEventListener('bpm:resume', onResume);
     };
     // sessionIdRef is a ref and the setters are stable, so the empty dep array
     // is complete rather than suppressed — mount-once is intended and the rule
@@ -475,7 +516,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
         <GlassPhysics />
         <ThemeToggle />
         <LanguageToggle />
-        <main data-page-shell className="max-w-lg mx-auto px-4 pt-6">
+        <main data-page-shell className="max-w-lg mx-auto px-4 page-shell-top">
           {!online && (
             <div className="mb-3">
               <StatusBanner
@@ -507,6 +548,17 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
               />
             </div>
           )}
+          {nativeReturn && (
+            /* This page is inside the native app's browser sheet. iOS will not
+               hand back by itself; the custom scheme opens the app, which
+               closes the sheet and claims the parked sign-in. A universal link
+               would NOT work here — same-domain links open in place. */
+            <div className="mb-3">
+              <a href="bpm://auth/return" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+                {tAuth('backToApp')}
+              </a>
+            </div>
+          )}
           {activeTab === 'home' && <div key={`home-${refreshNonce}`} className="animate-fadeIn"><HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} /></div>}
           {activeTab === 'players' && <div key={`players-${refreshNonce}`} className="animate-fadeIn"><PlayersTab onTabChange={setActiveTab} /></div>}
           {activeTab === 'skills' && <div key={`skills-${refreshNonce}`} className="animate-fadeIn"><SkillsTab onTabChange={setActiveTab} /></div>}
@@ -519,11 +571,15 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
                 isAdmin={showAdmin}
                 onAdminTools={() => setActiveTab('admin')}
                 authProviders={authProviders}
+                deleteIntent={deleteIntent}
+                onDeleteIntentConsumed={() => setDeleteIntent(false)}
               />
             </div>
           )}
         </main>
         {devMode && <DevPanel overrides={devOverrides} onChange={setDevOverrides} />}
+        {/* No-op on the web (returns before importing anything). */}
+        <NativeBridge activeTab={activeTab} onGoHome={() => setActiveTab('home')} />
         <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
       {demoMode && <DemoMode onClose={() => setDemoMode(false)} />}

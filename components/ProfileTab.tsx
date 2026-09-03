@@ -4,6 +4,8 @@ import { useTranslations } from 'next-intl';
 import { getIdentity, clearIdentity, IDENTITY_EVENT, type Identity } from '@/lib/identity';
 import type { Release } from '@/lib/types';
 import EnterCodeSheet from './EnterCodeSheet';
+import MigrateSheet from './MigrateSheet';
+import MigrateCodeSheet from './MigrateCodeSheet';
 import CreateAccountSheet from './CreateAccountSheet';
 import DeleteAccountSheet from '@/components/auth/DeleteAccountSheet';
 import RecoveryPinSheet from './RecoveryPinSheet';
@@ -20,6 +22,7 @@ import ForgotPasswordSheet from './auth/ForgotPasswordSheet';
 import PushSheet from './PushSheet';
 import { usePush } from '@/lib/usePush';
 import { isStandalone } from '@/lib/standalone';
+import { isNative } from '@/lib/native';
 import PageHeader from './primitives/PageHeader';
 import ProfileEyebrow from './primitives/ProfileEyebrow';
 import StatsPrivacyScreen from './StatsPrivacyScreen';
@@ -40,6 +43,15 @@ interface Props {
    * here: these buttons lead the anonymous card, and a probe would reflow it.
    */
   authProviders?: AuthProvider[];
+  /**
+   * Set by HomeShell when the page was opened from the public
+   * /legal/delete-account page (`?tab=profile&intent=delete`). The delete
+   * sheet opens as soon as an identity exists — immediately if signed in,
+   * after sign-in otherwise — and the intent is consumed so a later reload
+   * doesn't reopen it.
+   */
+  deleteIntent?: boolean;
+  onDeleteIntentConsumed?: () => void;
 }
 
 export default function ProfileTab({
@@ -47,6 +59,8 @@ export default function ProfileTab({
   isAdmin,
   onAdminTools,
   authProviders = [],
+  deleteIntent = false,
+  onDeleteIntentConsumed,
 }: Props) {
   const t = useTranslations('profile');
   const [identity, setLocalIdentity] = useState<Identity | null>(null);
@@ -78,6 +92,11 @@ export default function ProfileTab({
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
   const [createAccountOpen, setCreateAccountOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  // "Move to the app" (PWA/web → native). The row shows on the web only; the
+  // native shell shows the code-entry sheet on its signed-out card instead.
+  const [migrateOpen, setMigrateOpen] = useState(false);
+  const [migrateCodeOpen, setMigrateCodeOpen] = useState(false);
+  const migrateOn = isFlagOn('NEXT_PUBLIC_FLAG_NATIVE_MIGRATE');
   // Signed-in state PIN management: tap the Settings "Recovery PIN" row to
   // open RecoveryPinSheet (set / change / remove + forgot-it handoff).
   const [recoveryPinOpen, setRecoveryPinOpen] = useState(false);
@@ -122,7 +141,9 @@ export default function ProfileTab({
   const pushEnabled = isFlagOn('NEXT_PUBLIC_FLAG_PUSH_NOTIFY');
 
   useEffect(() => {
-    setInstalled(isStandalone());
+    // The native shell IS the installed app; the "Add to Home Screen" row
+    // would be telling it to install itself.
+    setInstalled(isStandalone() || isNative());
   }, []);
 
   useEffect(() => {
@@ -148,6 +169,14 @@ export default function ProfileTab({
     window.addEventListener(IDENTITY_EVENT, refresh);
     return () => window.removeEventListener(IDENTITY_EVENT, refresh);
   }, []);
+
+  // Deep link from the public delete-account page. Waits for an identity so a
+  // signed-out person sees the ordinary sign-in card first, then the sheet.
+  useEffect(() => {
+    if (!deleteIntent || !identity) return;
+    setDeleteAccountOpen(true);
+    onDeleteIntentConsumed?.();
+  }, [deleteIntent, identity, onDeleteIntentConsumed]);
 
   // Reflect server-side pin status whenever identity changes (mount, sign-in,
   // logout). Source of truth is `members.pinHash` mirrored from the player
@@ -334,6 +363,11 @@ export default function ProfileTab({
         >
           {credMode === 'pin' ? t('auth.rowUseEmail') : t('auth.rowUsePin')}
         </button>
+        {migrateOn && isNative() && (
+          <button type="button" onClick={() => setMigrateCodeOpen(true)} className="link-quiet">
+            {t('migrate.rowEnterCode')}
+          </button>
+        )}
       </div>
     );
     const switchCredentialLink = authProvidersOn ? (
@@ -431,6 +465,9 @@ export default function ProfileTab({
           sessionId={sessionId}
           onRecovered={handleRecovered}
         />
+        {migrateOn && isNative() && (
+          <MigrateCodeSheet open={migrateCodeOpen} onClose={() => setMigrateCodeOpen(false)} />
+        )}
         <EmailSignUpSheet
           open={emailSignUpOpen}
           onClose={() => {
@@ -614,6 +651,14 @@ export default function ProfileTab({
             : []),
           { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
           { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setReportOpen(true) },
+          // Web only: the native shell IS the destination.
+          ...(migrateOn && !isNative()
+            ? [{ icon: 'install_mobile', label: t('migrate.row'), onClick: () => setMigrateOpen(true) }]
+            : []),
+          // A full navigation, not a sheet: the policy is a public server-
+          // rendered page (also the URL in both store listings), and Apple
+          // 5.1.1(i) wants it reachable from inside the app.
+          { icon: 'shield', label: tSettings('privacyPolicy'), onClick: () => window.location.assign(`${BASE}/legal/privacy`) },
         ]}
       />
 
@@ -658,6 +703,8 @@ export default function ProfileTab({
       >
         {tDelete('link')}
       </button>
+
+      {migrateOn && !isNative() && <MigrateSheet open={migrateOpen} onClose={() => setMigrateOpen(false)} />}
 
       <DeleteAccountSheet
         open={deleteAccountOpen}

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { Session, BirdPurchase } from '@/lib/types';
 import { normalizeBirdUsages, totalTubes, totalBirdCost, currentPricePerTube } from '@/lib/birdUsages';
-import { markExternalExcursion } from '@/lib/excursion';
+import { shareTextOrCopy } from '@/lib/shareText';
 import AdminBackHeader from './AdminBackHeader';
 import DatePicker from '../DatePicker';
 import StatusBanner from '../primitives/StatusBanner';
@@ -153,23 +153,13 @@ export default function AdvanceSessionForm({ onBack }: Props) {
       } catch { /* ignore */ }
     }
     const text = `🏸 BPM Badminton — next session sign-up is open${dateLabel}! Tap to sign up: ${url}`;
-    const navAny = navigator as Navigator & { share?: (d: { text: string; url: string; title?: string }) => Promise<void> };
-    try {
-      if (navAny.share) {
-        // iOS may evict the PWA while the share sheet is open — mark so the
-        // return restores the Admin tab instead of bouncing to Home.
-        markExternalExcursion();
-        await navAny.share({ title: 'BPM Badminton', text, url });
-        return;
-      }
-    } catch {
-      // User dismissed the native sheet, or it failed — fall through to copy.
-    }
-    try {
-      await navigator.clipboard.writeText(text);
+    // One share path for the browser, the PWA and the native shell — it marks
+    // the excursion itself (iOS may evict the PWA while the sheet is open).
+    const outcome = await shareTextOrCopy({ title: 'BPM Badminton', text, url });
+    if (outcome === 'copied') {
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 1500);
-    } catch {
+    } else if (outcome === 'error') {
       setAdvanceError('Couldn’t copy the link — copy it manually from the address bar.');
     }
   }

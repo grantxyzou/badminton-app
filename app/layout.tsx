@@ -112,6 +112,10 @@ export const viewport: Viewport = {
   // double-tap zoom + 300ms tap delay; the scale cap stops pinch + input zoom.
   maximumScale: 1,
   userScalable: false,
+  // Required for env(safe-area-inset-top) to be non-zero: without `cover`
+  // WKWebView reports 0 and the native shell's status bar overlaps the top
+  // bar. Correct for the installed PWA too (black-translucent status bar).
+  viewportFit: 'cover',
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

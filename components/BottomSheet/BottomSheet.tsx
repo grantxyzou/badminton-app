@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useBodyScrollLock } from './useBodyScrollLock';
 import { useFocusTrap } from './useFocusTrap';
+import { registerOpenSheet } from '@/lib/sheetStack';
 
 export interface BottomSheetProps {
   open: boolean;
@@ -63,6 +64,13 @@ export default function BottomSheet({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // While open, be closable by the Android back button (lib/sheetStack.ts).
+  // The cleanup unregisters on close and on unmount alike.
+  useEffect(() => {
+    if (!open) return;
+    return registerOpenSheet(onClose);
+  }, [open, onClose]);
 
   // Drive the state machine off the open prop: request opening/closing.
   useEffect(() => {

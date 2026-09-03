@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BPM Badminton</string>
+    <string name="title_activity_main">BPM Badminton</string>
+    <string name="package_name">com.grantzou.bpm</string>
+    <string name="custom_url_scheme">bpm</string>
+</resources>

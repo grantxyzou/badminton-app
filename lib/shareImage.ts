@@ -1,5 +1,6 @@
 import { markExternalExcursion } from './excursion';
 import { isIOS } from './standalone';
+import { isNative } from './native';
 
 /**
  * The one share-or-save path for a rendered canvas image (receipts today).
@@ -64,6 +65,33 @@ export async function shareOrSaveImage(
   }
   if (!blob) return { kind: 'error', message: 'Couldn’t generate the image — try again.' };
 
+  /* The native shell: Android's WebView has no `navigator.share` at all and
+     `a.download` is a silent no-op there, so this branch is required rather
+     than polish. Write the PNG to the app's cache and hand the URI to the
+     real share sheet. */
+  if (isNative()) {
+    markExternalExcursion();
+    try {
+      const [{ Filesystem, Directory }, { Share }] = await Promise.all([
+        import('@capacitor/filesystem'),
+        import('@capacitor/share'),
+      ]);
+      const written = await Filesystem.writeFile({
+        path: filename,
+        data: await blobToBase64(blob),
+        directory: Directory.Cache,
+      });
+      await Share.share({ files: [written.uri] });
+      return { kind: 'shared' };
+    } catch (err) {
+      if (err instanceof Error && (err.name === 'AbortError' || /cancel/i.test(err.message))) {
+        return { kind: 'dismissed' };
+      }
+      console.warn('shareOrSaveImage: native share failed', err);
+      return { kind: 'error', message: 'Couldn’t share the image — try again.' };
+    }
+  }
+
   const file = new File([blob], filename, { type: 'image/png' });
   const nav = navigator as Navigator & {
     canShare?: (data: { files: File[] }) => boolean;
@@ -96,6 +124,19 @@ export async function shareOrSaveImage(
   if (isIOS()) return { kind: 'manual-save' };
 
   return downloadBlob(blob, filename);
+}
+
+/** Capacitor's Filesystem takes base64 (no data: prefix) for binary writes. */
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error ?? new Error('read failed'));
+    reader.onload = () => {
+      const result = String(reader.result ?? '');
+      resolve(result.slice(result.indexOf(',') + 1));
+    };
+    reader.readAsDataURL(blob);
+  });
 }
 
 /**

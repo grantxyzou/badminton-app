@@ -99,8 +99,17 @@ export interface HandoffDoc {
   id: string;
   /** What the absent `bpm_oauth_state` cookie would have carried. */
   state: string;
-  /** What the absent `bpm_oauth_verifier` cookie would have carried. */
+  /** What the absent `bpm_oauth_verifier` cookie would have carried. Apple
+   *  has no PKCE verifier, so its stash carries an empty string here. */
   codeVerifier: string;
+  /**
+   * The flow began in the NATIVE shell (`/start?native=1`). The excursion runs
+   * in the system browser sheet, and nothing on iOS hands back to the app when
+   * it lands — so the landing page has to render a "back to the app" link.
+   * This is how the callback learns to add `?native=1` to that landing.
+   * Additive: absent means a PWA or browser flow.
+   */
+  native?: boolean;
   /** Set by `completeHandoff` once the provider handshake resolves a member. */
   memberId?: string;
   createdAt: string;
@@ -130,7 +139,7 @@ async function readDoc(ref: string): Promise<HandoffDoc | null> {
  */
 export async function beginHandoff(
   ref: string,
-  values: { state: string; codeVerifier: string },
+  values: { state: string; codeVerifier: string; native?: boolean },
   now: number = Date.now(),
 ): Promise<boolean> {
   if (!isHandoffRef(ref)) return false;
@@ -143,6 +152,7 @@ export async function beginHandoff(
     id: ref,
     state: values.state,
     codeVerifier: values.codeVerifier,
+    ...(values.native ? { native: true } : {}),
     createdAt: new Date(now).toISOString(),
     expiresAt: new Date(now + HANDOFF_TTL_MS).toISOString(),
   };
