@@ -1,0 +1,71 @@
+<!doctype html>
+<!--
+  The ONE page the native shell serves from its own bundle: what a person
+  sees when https://bpm.grantzou.com/bpm cannot load — airplane mode on first
+  launch, a dead Wi-Fi, the server down. App Review tests the first of these.
+
+  It is NOT an offline cache and must never become one. The web app's posture
+  is legible-fail (CLAUDE.md): the only service worker has no fetch handler,
+  nothing is ever served stale. This page says "can't reach BPM" and offers a
+  retry; it does not pretend to be the app. No fetch, no storage, no script
+  beyond the retry.
+
+  Self-contained on purpose (inline CSS, no font, no image): it is displayed
+  precisely when nothing else can be fetched. Colours are the brand ground
+  (#100F0F) and accent (#4ade80) from app/globals.css, hand-copied because a
+  CSS custom property has nowhere to come from here.
+
+  Bilingual inline rather than i18n'd: the WebView has no next-intl and no
+  cookie to pick a language from before the site has ever loaded.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>BPM Badminton</title>
+    <style>
+      html, body { height: 100%; margin: 0; }
+      body {
+        background: #100F0F;
+        color: #e2e8f0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+        box-sizing: border-box;
+        text-align: center;
+      }
+      main { max-width: 360px; }
+      .mark { font-size: 44px; line-height: 1; margin-bottom: 20px; }
+      h1 { font-size: 22px; margin: 0 0 8px; font-weight: 700; }
+      p { margin: 0 0 8px; color: #a1a1aa; font-size: 15px; line-height: 1.5; }
+      .zh { margin-top: 20px; }
+      button {
+        margin-top: 24px;
+        background: linear-gradient(135deg, #4ade80, #16a34a);
+        color: #0b1a10;
+        border: none;
+        border-radius: 100px;
+        padding: 14px 28px;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        min-height: 48px;
+      }
+      button:active { opacity: 0.85; }
+    </style>
+  </head>
+  <body>
+    <main role="main">
+      <div class="mark" aria-hidden="true">🏸</div>
+      <h1>Can't reach BPM</h1>
+      <p>Check your connection and try again. Nothing here is saved offline, so you'll need a signal to see this week's session.</p>
+      <div class="zh" lang="zh-CN">
+        <h1>无法连接 BPM</h1>
+        <p>请检查网络后重试。应用不会离线保存内容，需要有信号才能查看本周场次。</p>
+      </div>
+      <button type="button" onclick="window.location.replace('https://bpm.grantzou.com/bpm')">Try again · 重试</button>
+    </main>
+  </body>
+</html>

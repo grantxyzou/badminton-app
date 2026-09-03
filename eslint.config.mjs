@@ -72,6 +72,10 @@ const config = [
     ignores: [
       '.next/**',
       'node_modules/**',
+      // The native shell's generated projects and its bundled error page.
+      'ios/**',
+      'android/**',
+      'native/**',
       'docs/design-system/**',
       '.claude/**',
       '.remember/**',

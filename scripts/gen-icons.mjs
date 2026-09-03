@@ -79,3 +79,40 @@ await make(192, 0.7, 'icon-192.png');
 await make(512, 0.7, 'icon-512.png');
 await make(512, 0.6, 'icon-maskable-512.png');
 console.log('[gen-icons] done →', OUT);
+
+/**
+ * Native store assets → native/assets/, the input `@capacitor/assets` expects:
+ *   icon.png          1024  App Store icon (opaque — the tile has no alpha) +
+ *                           the source for every iOS/Android size
+ *   icon-foreground   1024  Android adaptive foreground (mark only, transparent)
+ *   icon-background   1024  Android adaptive background (tile only)
+ *   splash.png        2732  launch screen, mark centred on the tile
+ *   splash-dark.png   2732  same — the brand ground is dark in both themes
+ * Then: npx @capacitor/assets generate --assetPath native/assets
+ */
+const NATIVE = join(ROOT, 'native/assets');
+mkdirSync(NATIVE, { recursive: true });
+
+async function makeNative(size, contentRatio, outFile) {
+  const inner = Math.round(size * contentRatio);
+  const fg = await sharp(SRC)
+    .resize(inner, inner, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .png()
+    .toBuffer();
+  await sharp(tileSvg(size)).composite([{ input: fg, gravity: 'center' }]).png().toFile(join(NATIVE, outFile));
+  console.log(`[gen-icons] wrote native/${outFile} (${size}px)`);
+}
+
+await makeNative(1024, 0.7, 'icon.png');
+await sharp(tileSvg(1024)).png().toFile(join(NATIVE, 'icon-background.png'));
+await sharp(SRC)
+  .resize(Math.round(1024 * 0.55), Math.round(1024 * 0.55), { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+  .extend({ top: 230, bottom: 230, left: 230, right: 230, background: { r: 0, g: 0, b: 0, alpha: 0 } })
+  .resize(1024, 1024)
+  .png()
+  .toFile(join(NATIVE, 'icon-foreground.png'));
+// A launch screen is mostly ground: the mark is small so it does not read as
+// a second, bigger icon.
+await makeNative(2732, 0.18, 'splash.png');
+await makeNative(2732, 0.18, 'splash-dark.png');
+console.log('[gen-icons] native done →', NATIVE);

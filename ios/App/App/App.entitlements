@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- APNs. Xcode flips this to `production` in an App Store archive. -->
+	<key>aps-environment</key>
+	<string>development</string>
+	<!-- Universal links for /bpm/migrate (the migration link) and password
+	     autofill on the email form. Both need the AASA served at the domain
+	     root — proxy.ts, env APPLE_APP_SITE_ASSOCIATION. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:bpm.grantzou.com</string>
+		<string>webcredentials:bpm.grantzou.com</string>
+	</array>
+</dict>
+</plist>

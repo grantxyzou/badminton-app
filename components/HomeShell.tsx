@@ -10,6 +10,7 @@ import HomeTab from '@/components/HomeTab';
 import PlayersTab from '@/components/PlayersTab';
 import SkillsTab from '@/components/SkillsTab';
 import ProfileTab from '@/components/ProfileTab';
+import NativeBridge from '@/components/NativeBridge';
 import type { Provider as AuthProvider } from '@/components/auth/ProviderButtons';
 import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -515,7 +516,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
         <GlassPhysics />
         <ThemeToggle />
         <LanguageToggle />
-        <main data-page-shell className="max-w-lg mx-auto px-4 pt-6">
+        <main data-page-shell className="max-w-lg mx-auto px-4 page-shell-top">
           {!online && (
             <div className="mb-3">
               <StatusBanner
@@ -577,6 +578,8 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
           )}
         </main>
         {devMode && <DevPanel overrides={devOverrides} onChange={setDevOverrides} />}
+        {/* No-op on the web (returns before importing anything). */}
+        <NativeBridge activeTab={activeTab} onGoHome={() => setActiveTab('home')} />
         <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
       {demoMode && <DemoMode onClose={() => setDemoMode(false)} />}
