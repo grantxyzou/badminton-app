@@ -35,7 +35,13 @@ export default async function LegalLayout({ children }: { children: React.ReactN
           gap: 'var(--space-4)',
         }}
       >
-        <Link href="/" className="bpm-row-link" style={{ textDecoration: 'none' }}>
+        {/* `.bpm-row-link` is a full-width space-between row by design; as a
+            header link that pushes the label under the theme toggle. */}
+        <Link
+          href="/"
+          className="bpm-row-link"
+          style={{ width: 'auto', justifyContent: 'flex-start', minHeight: 'auto', textDecoration: 'none' }}
+        >
           <span className="material-icons icon-sm" aria-hidden="true">arrow_back</span>
           {t('back')}
         </Link>

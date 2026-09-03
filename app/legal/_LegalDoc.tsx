@@ -54,7 +54,7 @@ export default async function LegalDoc({ doc, children }: { doc: LegalDocKey; ch
 /** A bulleted list of strings from `t.raw`, in the same body style as a paragraph. */
 export function LegalList({ items }: { items: string[] }) {
   return (
-    <ul style={{ margin: 'var(--space-3) 0 0', paddingLeft: 'var(--space-6)' }}>
+    <ul style={{ margin: 'var(--space-3) 0 0', paddingLeft: 'var(--space-6)', listStyle: 'disc' }}>
       {items.map((s, i) => (
         <li
           key={i}

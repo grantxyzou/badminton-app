@@ -37,7 +37,8 @@ export default async function DeleteAccountPage() {
 
       <section style={{ marginTop: 'var(--space-7)' }}>
         <h2 className="bpm-h3">{t('stepsTitle')}</h2>
-        <ol style={{ margin: 'var(--space-3) 0 0', paddingLeft: 'var(--space-6)' }}>
+        {/* The preflight resets list markers; steps without numbers read as prose. */}
+        <ol style={{ margin: 'var(--space-3) 0 0', paddingLeft: 'var(--space-6)', listStyle: 'decimal' }}>
           {steps.map((s, i) => (
             <li key={i} className="fs-md" style={{ ...body, marginTop: 'var(--space-2)' }}>{s}</li>
           ))}

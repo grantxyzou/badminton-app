@@ -116,8 +116,17 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
   const t = useTranslations('stats');
   const tAuth = useTranslations('profile.auth');
 
+  // The URL-param effect below strips what it reads, so it must run ONCE.
+  // Under React StrictMode (dev) effects mount twice: the second run found no
+  // `?tab=`, fell through to sessionStorage — which the persistence effect had
+  // just written as 'home' — and overrode the deep link. Production never
+  // double-runs, which is why `?tab=admin` worked there and not on localhost.
+  const urlParamsConsumed = useRef(false);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (urlParamsConsumed.current) return;
+    urlParamsConsumed.current = true;
     const params = new URLSearchParams(window.location.search);
     if (params.has('dev')) setDevMode(true);
 
