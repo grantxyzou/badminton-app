@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.grantzou.bpm"
+    namespace = "com.motioncraft.bpm"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.grantzou.bpm"
+        applicationId "com.motioncraft.bpm"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

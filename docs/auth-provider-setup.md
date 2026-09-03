@@ -9,7 +9,7 @@ At the end you will have:
 ```
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-APPLE_CLIENT_ID=          # the Services ID, e.g. com.grantzou.bpm.web
+APPLE_CLIENT_ID=          # the Services ID, e.g. com.motioncraft.bpm.web
 APPLE_TEAM_ID=            # 10 characters
 APPLE_KEY_ID=             # 10 characters
 APPLE_PRIVATE_KEY=        # the contents of the .p8 file
@@ -107,7 +107,7 @@ in production behind the flag. This is expected, not a misconfiguration.
 **Identifiers → + → App IDs → App**
 
 - Description: `BPM Badminton`
-- Bundle ID (explicit): `com.grantzou.bpm`
+- Bundle ID (explicit): `com.motioncraft.bpm`
 - Capabilities: tick **Sign In with Apple**
 - Continue → Register
 
@@ -116,9 +116,9 @@ in production behind the flag. This is expected, not a misconfiguration.
 **Identifiers → + → Services IDs**
 
 - Description: `BPM Badminton Web`
-- Identifier: `com.grantzou.bpm.web`  ← **this exact string is `APPLE_CLIENT_ID`**
+- Identifier: `com.motioncraft.bpm.web`  ← **this exact string is `APPLE_CLIENT_ID`**
 - Register, then click back into it and tick **Sign In with Apple → Configure**:
-  - Primary App ID: `com.grantzou.bpm`
+  - Primary App ID: `com.motioncraft.bpm`
   - **Domains and Subdomains**: `bpm.grantzou.com`
   - **Return URLs**: `https://bpm.grantzou.com/bpm/api/auth/apple/callback`
 
@@ -165,7 +165,7 @@ Apple's console — the console fetches it live:
 ### 4. Key — this is the one you cannot re-download
 
 **Keys → + →** name it `BPM Sign In with Apple` → tick **Sign in with Apple** →
-Configure → Primary App ID `com.grantzou.bpm` → Save → Continue → Register.
+Configure → Primary App ID `com.motioncraft.bpm` → Save → Continue → Register.
 
 **Download the `.p8` now.** Apple lets you download it exactly once. Losing it
 means revoking the key and making a new one.

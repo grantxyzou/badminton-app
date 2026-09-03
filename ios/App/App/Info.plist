@@ -29,7 +29,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.grantzou.bpm</string>
+			<string>com.motioncraft.bpm</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>bpm</string>

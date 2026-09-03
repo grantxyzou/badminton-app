@@ -36,12 +36,12 @@ const ASSETLINKS = '/.well-known/assetlinks.json';
 
 const TOKEN = 'apple-domain-association-token-value';
 const AASA_BODY = JSON.stringify({
-  applinks: { details: [{ appIDs: ['TEAM.com.grantzou.bpm'], components: [{ '/': '/bpm/migrate' }] }] },
+  applinks: { details: [{ appIDs: ['TEAM.com.motioncraft.bpm'], components: [{ '/': '/bpm/migrate' }] }] },
 });
 const ASSETLINKS_BODY = JSON.stringify([
   {
     relation: ['delegate_permission/common.handle_all_urls'],
-    target: { namespace: 'android_app', package_name: 'com.grantzou.bpm', sha256_cert_fingerprints: ['AA:BB'] },
+    target: { namespace: 'android_app', package_name: 'com.motioncraft.bpm', sha256_cert_fingerprints: ['AA:BB'] },
   },
 ]);
 
