@@ -20,6 +20,9 @@ const CANARY_KEYS = [
   'pages.signup.title',
   'pages.learn.title',
   'pages.admin.title',
+  'legal.privacy.title',
+  'legal.deleteAccount.cta',
+  'profile.settings.privacyPolicy',
 ] as const;
 
 function getByPath(obj: unknown, path: string): unknown {

@@ -40,6 +40,15 @@ interface Props {
    * here: these buttons lead the anonymous card, and a probe would reflow it.
    */
   authProviders?: AuthProvider[];
+  /**
+   * Set by HomeShell when the page was opened from the public
+   * /legal/delete-account page (`?tab=profile&intent=delete`). The delete
+   * sheet opens as soon as an identity exists — immediately if signed in,
+   * after sign-in otherwise — and the intent is consumed so a later reload
+   * doesn't reopen it.
+   */
+  deleteIntent?: boolean;
+  onDeleteIntentConsumed?: () => void;
 }
 
 export default function ProfileTab({
@@ -47,6 +56,8 @@ export default function ProfileTab({
   isAdmin,
   onAdminTools,
   authProviders = [],
+  deleteIntent = false,
+  onDeleteIntentConsumed,
 }: Props) {
   const t = useTranslations('profile');
   const [identity, setLocalIdentity] = useState<Identity | null>(null);
@@ -148,6 +159,14 @@ export default function ProfileTab({
     window.addEventListener(IDENTITY_EVENT, refresh);
     return () => window.removeEventListener(IDENTITY_EVENT, refresh);
   }, []);
+
+  // Deep link from the public delete-account page. Waits for an identity so a
+  // signed-out person sees the ordinary sign-in card first, then the sheet.
+  useEffect(() => {
+    if (!deleteIntent || !identity) return;
+    setDeleteAccountOpen(true);
+    onDeleteIntentConsumed?.();
+  }, [deleteIntent, identity, onDeleteIntentConsumed]);
 
   // Reflect server-side pin status whenever identity changes (mount, sign-in,
   // logout). Source of truth is `members.pinHash` mirrored from the player
@@ -614,6 +633,10 @@ export default function ProfileTab({
             : []),
           { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
           { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setReportOpen(true) },
+          // A full navigation, not a sheet: the policy is a public server-
+          // rendered page (also the URL in both store listings), and Apple
+          // 5.1.1(i) wants it reachable from inside the app.
+          { icon: 'shield', label: tSettings('privacyPolicy'), onClick: () => window.location.assign(`${BASE}/legal/privacy`) },
         ]}
       />
 

@@ -76,6 +76,9 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
   // facts live in a signed, HttpOnly cookie the client cannot read; all this
   // flag does is decide whether to show the name prompt.
   const [chooseNameOpen, setChooseNameOpen] = useState(false);
+  // `?intent=delete` from the public delete-account page; consumed by
+  // ProfileTab once an identity exists. See the param effect below.
+  const [deleteIntent, setDeleteIntent] = useState(false);
   /**
    * What to say after an auth redirect. One notice at a time: our own redirects
    * only ever carry one result, so last-write-wins is fine and simpler than a
@@ -168,6 +171,15 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
       setResetRequest({ token: resetToken, email: params.get('email') ?? '' });
       cleaned.searchParams.delete('reset');
       cleaned.searchParams.delete('email');
+      dirty = true;
+    }
+
+    // From /legal/delete-account: land on Profile and open the delete sheet
+    // once an identity resolves. Kept as INTENT, not an immediate open — the
+    // person may be signed out, and the sheet needs a member to delete.
+    if (params.get('intent') === 'delete') {
+      setDeleteIntent(true);
+      cleaned.searchParams.delete('intent');
       dirty = true;
     }
 
@@ -519,6 +531,8 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
                 isAdmin={showAdmin}
                 onAdminTools={() => setActiveTab('admin')}
                 authProviders={authProviders}
+                deleteIntent={deleteIntent}
+                onDeleteIntentConsumed={() => setDeleteIntent(false)}
               />
             </div>
           )}

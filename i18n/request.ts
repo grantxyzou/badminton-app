@@ -43,9 +43,21 @@ export function resolveLocale(
   return DEFAULT_LOCALE;
 }
 
-type MessageTree = { [key: string]: string | MessageTree };
+type MessageNode = string | MessageNode[] | MessageTree;
+type MessageTree = { [key: string]: MessageNode };
 
-function deepMerge(base: MessageTree, override: MessageTree): MessageTree {
+/**
+ * Overlay a locale's messages on English so a missing key falls back to the
+ * English string instead of throwing.
+ *
+ * ARRAYS REPLACE, THEY DO NOT MERGE. The legal pages keep their copy as
+ * arrays (`legal.*.sections`, read with `t.raw`), and spreading an array into
+ * `{ ...base }` turns it into an index-keyed OBJECT — `.map` then throws on
+ * the Chinese page while the English one renders fine. A locale authors an
+ * array whole; if it is absent the English one is used, and if it is present
+ * it wins outright.
+ */
+export function deepMerge(base: MessageTree, override: MessageTree): MessageTree {
   const out: MessageTree = { ...base };
   for (const k of Object.keys(override)) {
     const ov = override[k];
@@ -53,8 +65,10 @@ function deepMerge(base: MessageTree, override: MessageTree): MessageTree {
     if (
       ov !== null &&
       typeof ov === 'object' &&
+      !Array.isArray(ov) &&
       bv !== null &&
-      typeof bv === 'object'
+      typeof bv === 'object' &&
+      !Array.isArray(bv)
     ) {
       out[k] = deepMerge(bv as MessageTree, ov as MessageTree);
     } else {
