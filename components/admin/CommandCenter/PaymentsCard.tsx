@@ -567,7 +567,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       {!!viewedSession?.settled?.coveredTotal && (
         <p
           className="fs-sm"
-          style={{ color: '#d8b4fe', margin: '0', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
+          style={{ color: 'var(--violet)', margin: '0', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
         >
           <span className="material-icons" style={{ fontSize: 'var(--icon-sm)' }} aria-hidden="true">volunteer_activism</span>
           You&apos;ve covered ${viewedSession.settled.coveredTotal} this session
@@ -592,7 +592,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                   <span className="truncate">{player.name}</span>
                 )}
                 {player.selfReportedPaid && !player.paid && (
-                  <span className="fs-sm flex-shrink-0" style={{ color: '#fcd34d' }}>self-reported</span>
+                  <span className="fs-sm flex-shrink-0" style={{ color: 'var(--sev-med-text)' }}>self-reported</span>
                 )}
               </span>
               <div className="flex items-center gap-1 flex-shrink-0">
@@ -600,7 +600,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                   <span
                     className="fs-sm font-medium px-2"
                     style={{
-                      color: '#d8b4fe',
+                      color: 'var(--violet)',
                       fontFamily: 'var(--font-mono), ui-monospace, monospace',
                     }}
                     title="What they owe — frozen when the bill went out."
@@ -611,7 +611,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                 {player.writtenOff ? (
                   <span
                     className="fs-sm font-medium px-3 py-1.5 rounded-full inline-flex items-center gap-1"
-                    style={{ background: 'rgba(216,180,254,0.12)', color: '#d8b4fe' }}
+                    style={{ background: 'rgba(216,180,254,0.12)', color: 'var(--violet)' }}
                     title={player.coverMode === 'resplit'
                       ? "You're covering this — split across the others"
                       : "You're covering this — it's on you"}

@@ -105,7 +105,7 @@ function RosterStat({
 }) {
   return (
     <div className="rounded-lg p-3" style={{ background: 'rgba(var(--glass-tint), 0.04)' }}>
-      <p className="bpm-h2" style={{ color: tone === 'warning' ? '#fcd34d' : 'inherit' }}>
+      <p className="bpm-h2" style={{ color: tone === 'warning' ? 'var(--sev-med-text)' : 'inherit' }}>
         {value}
       </p>
       <p className="fs-sm text-gray-400 mt-0.5">{label}</p>

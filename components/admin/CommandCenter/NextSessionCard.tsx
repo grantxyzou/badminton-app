@@ -283,7 +283,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
             className="h-full transition-all"
             style={{
               width: `${capacityPct}%`,
-              background: capacityPct >= 100 ? '#fca5a5' : capacityPct >= 80 ? '#fcd34d' : '#86efac',
+              background: capacityPct >= 100 ? 'var(--sev-crit-text)' : capacityPct >= 80 ? 'var(--sev-med-text)' : 'var(--sev-good-text)',
             }}
           />
         </div>

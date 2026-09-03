@@ -3374,6 +3374,14 @@ button.sheet-row:hover { background: var(--glass-soft-bg); }
   --amber: #fbbf24;
   --orange: #fb923c;
   --red-soft: #f87171;
+  /* Violet marks money the admin absorbed (cover), the AI-polished draft and
+     the admin badge. Three near-identical shades were hardcoded across four cards
+     (#d8b4fe, #c4b5fd, #a78bfa); one token, one hue. Light value is the one
+     .cc-pill-purple already established below. */
+  --violet: #d8b4fe;
+  /* Text/icon ON an --accent fill (the roster FAB). Near-black reads well on
+     dark mode's bright #4ade80 and badly on light mode's darker #16a34a. */
+  --on-accent: #0a1f10;
   --ink-faint: rgba(255, 255, 255, 0.42);
 }
 [data-theme="light"] {
@@ -3389,6 +3397,8 @@ button.sheet-row:hover { background: var(--glass-soft-bg); }
   --amber: #92400e;
   --orange: #9a3412;
   --red-soft: #b91c1c;
+  --violet: #6b21a8;
+  --on-accent: #ffffff;
   --ink-faint: rgba(0, 0, 0, 0.42);
 }
 
