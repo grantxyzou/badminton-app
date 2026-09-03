@@ -9,20 +9,24 @@ const nextConfig = {
   // framework out of it. Flip to true (or delete this line) to take the block.
   agentRules: false,
   async rewrites() {
-    // Apple fetches its domain-association token from the DOMAIN ROOT, which
-    // basePath '/bpm' otherwise 404s. A relative destination is rejected at
-    // boot ("use a destination that starts with http:// or https://") because
-    // escaping the basePath makes the destination external too, so this proxies
-    // to the app's own /bpm path by absolute URL.
+    // Apple and Google fetch their association files from the DOMAIN ROOT,
+    // which basePath '/bpm' otherwise 404s. A relative destination is rejected
+    // at boot ("use a destination that starts with http:// or https://")
+    // because escaping the basePath makes the destination external too, so
+    // this proxies to the app's own /bpm path by absolute URL, where proxy.ts
+    // answers it. Three EXPLICIT entries, not a `:file` wildcard — a wildcard
+    // would proxy any `.well-known/*` path a stranger cares to request.
     const origin = process.env.APP_ORIGIN;
     if (!origin) return [];
     return [
-      {
-        source: '/.well-known/apple-developer-domain-association.txt',
-        destination: `${origin}/bpm/.well-known/apple-developer-domain-association.txt`,
-        basePath: false,
-      },
-    ];
+      '/.well-known/apple-developer-domain-association.txt',
+      '/.well-known/apple-app-site-association',
+      '/.well-known/assetlinks.json',
+    ].map((source) => ({
+      source,
+      destination: `${origin}/bpm${source}`,
+      basePath: false,
+    }));
   },
   async headers() {
     const isDev = process.env.NODE_ENV === 'development';
