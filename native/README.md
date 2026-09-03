@@ -62,13 +62,43 @@ no cleartext), `MainActivity.java` (notification channel), `strings.xml`.
 
 ```
 npm run native:assets   # only when the mark or splash changes
-npm run native:sync     # copies native/www + plugin config into both projects
+npm run native:sync     # REQUIRED before the first build: generates the
+                        # gitignored android/capacitor-cordova-android-plugins/
 npm run native:ios      # Xcode → Product → Archive → TestFlight
-npm run native:android  # Android Studio → Build → Generate Signed Bundle (AAB)
+npm run native:android  # opens android/ in Android Studio
 ```
 
 Version: `MARKETING_VERSION` / `versionName` are the store version (1.0.0);
 bump `CURRENT_PROJECT_VERSION` / `versionCode` on every upload.
+
+### Android: the signed bundle, from the shell
+
+Android Studio Quail's "Generate App Bundles" builds whichever variant is
+selected and signs release only if Gradle knows a signing config — it built a
+debug bundle the first time, which Play rejects. The reliable path keeps the
+keystore out of Gradle entirely and signs the bundle afterwards (this is what
+the old wizard did under the hood):
+
+```
+export JAVA_HOME=~/Library/Java/JavaVirtualMachines/jbr-21.0.11/Contents/Home
+cd android && ./gradlew :app:bundleRelease
+cp app/build/outputs/bundle/release/app-release.aab app/release/bpm-<version>-<code>.aab
+"$JAVA_HOME/bin/jarsigner" -keystore ~/Keys/bpm-upload.jks \
+  -sigalg SHA256withRSA -digestalg SHA-256 app/release/bpm-<version>-<code>.aab upload
+"$JAVA_HOME/bin/jarsigner" -verify app/release/bpm-<version>-<code>.aab   # "jar verified."
+```
+
+The upload keystore is `~/Keys/bpm-upload.jks` (alias `upload`, created
+2026-09-03 with `keytool -genkeypair -keyalg RSA -keysize 2048 -validity 10000`);
+its password lives in Grant's password manager, nowhere on disk. It is the
+UPLOAD key — Play App Signing re-signs with its own key, and THAT key's SHA-256
+(Play Console → App integrity) is what `ANDROID_ASSET_LINKS` needs.
+
+Java: Gradle 8.14.3 runs on Java 17–24, and Studio's bundled runtime is 25.
+`android/gradle/gradle-daemon-jvm.properties` pins the daemon to JetBrains
+Runtime 21 (Studio's "Migrate to Gradle Daemon toolchain"), and the foojay
+resolver in `settings.gradle` downloads it on a machine that lacks one. Decline
+Studio's AGP 9 / Gradle 9 "Upgrade Assistant" — Capacitor 8 targets AGP 8.13.
 
 ## Before submitting — on a real iPhone and a real Pixel
 
