@@ -67,6 +67,8 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_BASE_PATH: /bpm
+          # Build-time input to next.config.js rewrites(); see deploy-next.yml.
+          APP_ORIGIN: https://bpm.grantzou.com
           NEXT_PUBLIC_BASE_URL: https://vnext-badminton-app-enhcave5djcvafe9.canadacentral-01.azurewebsites.net/bpm
           NEXT_PUBLIC_MAX_PLAYERS: '12'
           NEXT_PUBLIC_ETRANSFER_EMAIL: grantxyzou@gmail.com
