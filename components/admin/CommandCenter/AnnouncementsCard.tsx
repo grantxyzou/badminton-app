@@ -185,12 +185,12 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
           {polished && (
             <div className="rounded-lg p-3 fs-md" style={{ background: 'rgba(124,58,237,0.10)', border: '1px solid rgba(124,58,237,0.3)' }}>
               <div className="flex items-center justify-between mb-2">
-                <span className="fs-sm font-medium" style={{ color: '#c4b5fd' }}>AI polished version</span>
+                <span className="fs-sm font-medium" style={{ color: 'var(--violet)' }}>AI polished version</span>
                 <button
                   type="button"
                   onClick={() => setDraft(polished)}
                   className="fs-sm underline-offset-2 hover:underline"
-                  style={{ color: '#c4b5fd' }}
+                  style={{ color: 'var(--violet)' }}
                 >
                   Use this
                 </button>

@@ -565,7 +565,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                       <span
                         style={{
                           background: 'rgba(167,139,250,0.13)',
-                          color: '#a78bfa',
+                          color: 'var(--violet)',
                           border: '1px solid rgba(167,139,250,0.28)',
                           padding: 'var(--space-1) var(--space-3)',
                           borderRadius: 'var(--radius-pill)',
@@ -629,7 +629,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
             height: 56,
             borderRadius: '50%',
             background: 'var(--accent)',
-            color: '#0a1f10',
+            color: 'var(--on-accent)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

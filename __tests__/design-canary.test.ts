@@ -32,6 +32,10 @@ const REQUIRED_TOKENS = [
   '--lh-tight', '--lh-snug', '--lh-normal',
   // inline spacing scale (Phase 0)
   '--space-1', '--space-2', '--space-3', '--space-4', '--space-5', '--space-6',
+  // admin tone tokens. Every one of these replaced a bare hex that had no
+  // light value, so deleting one silently reintroduces the light-mode
+  // invisibility bug the Roster letter-headers shipped with.
+  '--violet', '--on-accent',
 ];
 
 // Utility/surface classes the primitives + cards rely on.
