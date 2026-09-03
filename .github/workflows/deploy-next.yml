@@ -107,6 +107,12 @@ jobs:
           # Nobody is notified until they OPT IN on Profile -> Notifications,
           # and only one trigger is wired: sign-ups opening.
           NEXT_PUBLIC_FLAG_PUSH_NOTIFY: 'true'
+          # The one-time link that carries a signed-in PWA identity into the
+          # native shell (docs/plans/native-shell.md, WP5). Gates two
+          # credential-minting routes SERVER-side and the "Move to the app"
+          # row. OFF until the store listing exists: the sheet offers store
+          # badges, and there is nothing to badge yet.
+          NEXT_PUBLIC_FLAG_NATIVE_MIGRATE: 'false'
           # NOT a secret: the browser needs it for
           # pushManager.subscribe({ applicationServerKey }). It must live HERE
           # and not only in Azure App Settings, because NEXT_PUBLIC_* is inlined

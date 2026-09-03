@@ -38,7 +38,9 @@ describe('auth route hygiene', () => {
   it.each(AUTH_ROUTES)('%s is gated on the feature flag', (file) => {
     const src = readFileSync(file, 'utf8');
     const handlers = (src.match(/export async function (GET|POST|DELETE|PATCH|PUT)/g) ?? []).length;
-    const gates = (src.match(/isFlagOn\('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS'\)/g) ?? []).length;
+    // The migrate routes gate on their own flag — it is still a server-side
+    // gate on a credential-minting path, which is the property this pins.
+    const gates = (src.match(/isFlagOn\('NEXT_PUBLIC_FLAG_(AUTH_PROVIDERS|NATIVE_MIGRATE)'\)/g) ?? []).length;
     // Read SERVER-side: a client flag cannot protect the database.
     expect(gates, `${file}: ${handlers} handler(s) but ${gates} flag gate(s)`).toBe(handlers);
   });

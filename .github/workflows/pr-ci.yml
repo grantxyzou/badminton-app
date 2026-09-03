@@ -82,6 +82,7 @@ jobs:
           NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: 'true'
           NEXT_PUBLIC_FLAG_KUDOS: 'true'
           NEXT_PUBLIC_FLAG_PUSH_NOTIFY: 'true'
+          NEXT_PUBLIC_FLAG_NATIVE_MIGRATE: 'false'
           NEXT_PUBLIC_FLAG_STRINGING: 'true'
           NEXT_PUBLIC_FLAG_VISUAL_FIELDS: 'true'
           NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.VAPID_PUBLIC_KEY }}
