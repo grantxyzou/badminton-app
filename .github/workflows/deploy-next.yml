@@ -76,15 +76,19 @@ jobs:
           # GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET stay set in the App Service
           # -- they are inert while this is off, and re-flipping is one line.
           #
-          # TEMPORARILY ON to run that diagnostic (2026-08-27). The callback
-          # 404s behind this flag, so the handshake cannot be measured with it
-          # off. `classifyState` + `describeCallbackContext` now emit one
-          # `[oauth-diag]` line per failed callback; read it with
-          # `az webapp log tail`, during a tap on the installed iOS PWA.
+          # Turned on 2026-08-27 to run that diagnostic, and the diagnostic
+          # found the cause: the installed PWA's WKWebView and Safari are
+          # SEPARATE cookie jars (`state=cookie_absent cookies=[NEXT_LOCALE]`).
+          # Fixed the same day by lib/authHandoff.ts -- a hashed handoff that
+          # parks the state server-side and lets the app claim the session in
+          # its own jar -- and verified on device. ON since, and it stays on.
           #
-          # TURN THIS BACK TO 'false' THE MOMENT THE LINE IS CAPTURED. Google
-          # sign-in is still broken in the PWA; this exposes a button that
-          # fails for exactly the users being diagnosed.
+          # (This comment used to say "TURN THIS BACK TO 'false' THE MOMENT THE
+          # LINE IS CAPTURED" and outlived the fix by a week. A comment that
+          # asks for an action nobody takes is worse than none.)
+          #
+          # 2026-09-03: apple/start and apple/callback gained the same handoff
+          # Google had -- Apple sign-in from the PWA was still hitting the split.
           NEXT_PUBLIC_FLAG_AUTH_PROVIDERS: 'true'
           # ON as of 2026-08-27. This lights up the admin bench (job list, job
           # detail, intake form) and un-404s /api/stringing/*.

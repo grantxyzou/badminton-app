@@ -59,6 +59,24 @@ don't copy.
   and Apple team id never enter git.
 - **Distribute in Canada (+US) only** — sidesteps the EU DSA trader question
   for a single local group.
+- **Apple handoff parity is a bug fix, shipped with the seam** (2026-09-03).
+  `apple/start` never parked `?hr=`; found by reading both start routes side by
+  side while planning the native OAuth return. Fixed for the PWA regardless of
+  whether the shell ever ships.
+- **`?tab=` deep links now survive React StrictMode** (2026-09-03). The
+  URL-param effect strips what it reads, so dev's double-run found nothing and
+  fell through to `sessionStorage`. Production never double-runs, which is why
+  `?tab=admin` worked there and not on localhost. A ref guard; needed because the
+  delete-account page's CTA is a deep link and the owner verifies on localhost.
+- **`deepMerge` replaces arrays** (2026-09-03). It used to recurse into anything
+  `typeof 'object'`, and `{ ...array }` is an index-keyed object — invisible
+  until the legal pages stored their copy as arrays read with `.map`.
+- **Back-button policy: close sheet → Home → back → exit** — proposed default,
+  Grant's call. The alternative is exiting immediately from Home.
+- **Firebase is optional at build time**: `FirebaseApp.configure()` is guarded on
+  its plist and Gradle applies the services plugin only if the JSON exists, so
+  a shell AAB can be uploaded to start the Play clock before the Firebase
+  project exists. Push is then the one feature that does nothing.
 
 ## Shape
 

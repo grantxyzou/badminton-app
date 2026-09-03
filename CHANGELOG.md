@@ -54,6 +54,15 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
      Format: `- **Short title** — one-sentence what + why.` See v1.3 below for examples.
      Empty subheadings are fine; delete a section if you don't end up using it. -->
 
+### Added
+
+- **A privacy policy, terms, support and account-deletion page** — at `/bpm/legal/privacy`, `/terms`, `/support` and `/delete-account`, readable without signing in, in both languages. The delete-account page walks you into the in-app flow; if you can't get in, it tells you how to ask instead. (These are also the URLs the App Store and Google Play listings need.)
+- **Groundwork for the BPM app on the App Store and Google Play** — not visible yet. The native shell, its push transport and the "Move to the app" link are built and tested; the store side (listing, review, Firebase) is still to come, so nothing changes for you today.
+
+### Fixed
+
+- **Sign in with Apple from the installed app** — picking Apple on the home-screen app used to sign Safari in and leave the app signed out. It now comes back signed in, the same way Google has since late August.
+
 ### Changed
 
 - **Kudos is easier to find, and you can say why** — giving kudos lives in two places now: the Stats tab under **Play**, and next to any name on the Sign-Ups list. You can add a short note and point at the skill you noticed. The tag on its own stays anonymous; a note is signed with your name, so people know who spotted it.
