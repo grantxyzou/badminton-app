@@ -8,6 +8,16 @@ const nextConfig = {
   // project documentation, not a generated artifact, so opt out and keep the
   // framework out of it. Flip to true (or delete this line) to take the block.
   agentRules: false,
+  turbopack: {
+    resolveAlias: {
+      // The native push plugin's WEB implementation imports the Firebase JS
+      // SDK, which is not a dependency here: on the web push is VAPID, and on
+      // native the plugin uses the bridge, not its web file. The bundler still
+      // has to resolve the import, so point it at a throwing stub rather than
+      // ship the SDK for code that never runs. See lib/stubs/firebase-messaging.js.
+      'firebase/messaging': './lib/stubs/firebase-messaging.js',
+    },
+  },
   async rewrites() {
     // Apple and Google fetch their association files from the DOMAIN ROOT,
     // which basePath '/bpm' otherwise 404s. A relative destination is rejected
