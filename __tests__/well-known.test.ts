@@ -155,3 +155,49 @@ describe('well-known: isolation', () => {
     expect(res.headers.getSetCookie()).toEqual([]);
   });
 });
+
+/**
+ * Half 2 — the root-path rewrite — DOES have a testable surface after all:
+ * `rewrites()` is a plain async function, and the input it depends on is a
+ * BUILD-time env var. Production ran for a month with every root-path
+ * association file 404ing because `APP_ORIGIN` was only an App Setting, which
+ * `next build` never sees. So: the function's shape, and that both workflows
+ * feed it.
+ */
+describe('well-known: the root-path rewrite and its build-time input', () => {
+  const savedOrigin = process.env.APP_ORIGIN;
+  afterEach(() => {
+    if (savedOrigin === undefined) delete process.env.APP_ORIGIN;
+    else process.env.APP_ORIGIN = savedOrigin;
+  });
+
+  async function rewrites(): Promise<Array<{ source: string; destination: string; basePath?: boolean }>> {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const cfg = require('../next.config.js') as { rewrites: () => Promise<Array<{ source: string; destination: string; basePath?: boolean }>> };
+    return cfg.rewrites();
+  }
+
+  it('maps all three root paths to absolute /bpm destinations when APP_ORIGIN is set', async () => {
+    process.env.APP_ORIGIN = 'https://bpm.grantzou.com';
+    const rules = await rewrites();
+    expect(rules.map((r) => r.source).sort()).toEqual([APPLE_TXT, AASA, ASSETLINKS].sort());
+    for (const r of rules) {
+      expect(r.destination).toBe(`https://bpm.grantzou.com/bpm${r.source}`);
+      expect(r.basePath).toBe(false);
+    }
+  });
+
+  it('is empty without APP_ORIGIN — which is why the workflows must set it', async () => {
+    delete process.env.APP_ORIGIN;
+    expect(await rewrites()).toEqual([]);
+  });
+
+  it.each(['.github/workflows/deploy-next.yml', '.github/workflows/pr-ci.yml'])(
+    '%s sets APP_ORIGIN in the build env',
+    async (file) => {
+      const { readFileSync } = await import('node:fs');
+      const src = readFileSync(file, 'utf8');
+      expect(src).toMatch(/^\s+APP_ORIGIN:\s*https:\/\/bpm\.grantzou\.com\s*$/m);
+    },
+  );
+});

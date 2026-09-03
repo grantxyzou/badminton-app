@@ -26,6 +26,13 @@ const nextConfig = {
     // this proxies to the app's own /bpm path by absolute URL, where proxy.ts
     // answers it. Three EXPLICIT entries, not a `:file` wildcard — a wildcard
     // would proxy any `.well-known/*` path a stranger cares to request.
+    //
+    // THIS RUNS AT BUILD TIME. `APP_ORIGIN` must be in the workflow's build
+    // `env:` (both deploy-next.yml and pr-ci.yml) — the runtime App Setting of
+    // the same name is invisible here, and with it unset the rewrites are
+    // simply absent from the build. That is how every root-path association
+    // file 404'd in production until 2026-09-03 while `/bpm/.well-known/*`
+    // answered fine. __tests__/well-known.test.ts pins both workflows.
     const origin = process.env.APP_ORIGIN;
     if (!origin) return [];
     return [

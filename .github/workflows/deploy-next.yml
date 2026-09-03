@@ -35,6 +35,13 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_BASE_PATH: /bpm
+          # next.config.js `rewrites()` runs at BUILD time and returns [] when
+          # this is unset - so the root-path rewrites for /.well-known/* (Sign
+          # in with Apple domain verification, the AASA, assetlinks.json) did
+          # not exist in any production build until 2026-09-03: the runtime App
+          # Setting of the same name never reached `next build`. Not a secret.
+          # The runtime copy (outbound email links) stays in App Settings.
+          APP_ORIGIN: https://bpm.grantzou.com
           # Canonical URL for SEO + social-share metadata. The custom domain is
           # wired up and is how everyone reaches the app, so this is it — the
           # azurewebsites.net host made every shared link preview the wrong
