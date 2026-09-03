@@ -102,6 +102,10 @@ android/app/build/
 android/app/release/
 android/local.properties
 android/capacitor-cordova-android-plugins/
+# Firebase per-project config. Bundle-restricted rather than secret, but
+# per-Firebase-project and per-machine: drop them in locally (native/README.md).
+android/app/google-services.json
+ios/App/App/GoogleService-Info.plist
 *.keystore
 *.jks
 *.p8
