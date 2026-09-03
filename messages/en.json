@@ -297,6 +297,7 @@
       "claimDifferentName": "Use a different name",
           "continueGoogle": "Continue with Google",
           "continueApple": "Continue with Apple",
+          "backToApp": "Back to the BPM app",
           "connectGoogle": "Connect Google",
           "connectApple": "Connect Apple",
           "googleConnected": "Google connected",

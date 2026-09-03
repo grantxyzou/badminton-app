@@ -97,7 +97,7 @@ describe('noticeBanner', () => {
 describe('AUTH_PARAMS', () => {
   it('lists every param the server writes on an auth redirect', () => {
     expect([...AUTH_PARAMS].sort()).toEqual(
-      ['authError', 'provider', 'reset', 'signedIn', 'verified'].sort(),
+      ['authError', 'provider', 'reset', 'signedIn', 'verified', 'native'].sort(),
     );
   });
 });

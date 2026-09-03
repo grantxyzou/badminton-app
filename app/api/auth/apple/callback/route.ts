@@ -21,7 +21,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isFlagOn } from '@/lib/flags';
 import { appOrigin, appleClient, decodeIdTokenClaims } from '@/lib/oauthProviders';
-import { readOAuthCookies, verifyState } from '@/lib/oauthState';
+import { readOAuthCookies, classifyState, describeCallbackContext } from '@/lib/oauthState';
+import { readHandoff, handoffStateMatches, isHandoffRef } from '@/lib/authHandoff';
 import { finishOAuthCallback, oauthFailure } from '@/lib/oauthCallback';
 
 export const dynamic = 'force-dynamic';
@@ -86,13 +87,35 @@ export async function POST(req: NextRequest) {
   const suggestedName = readOneShotName(str('user'));
 
   const code = str('code');
-  const state = str('state');
+  const rawState = str('state');
   const cookies = readOAuthCookies(req);
 
-  // If this fails in production, the usual cause is the state cookie not
-  // surviving the cross-site POST — i.e. it was not written SameSite=None;
-  // Secure. See lib/oauthState.ts.
-  if (!verifyState(cookies.state, state)) return oauthFailure(origin, 'state_mismatch');
+  /* `/start` appends `~<ref>` when the caller may come back in a different
+     storage context. Split it off before any comparison: the cookie holds
+     only the random half. Same shape as google/callback. */
+  const sep = rawState?.indexOf('~') ?? -1;
+  const state = sep >= 0 ? rawState!.slice(0, sep) : rawState;
+  const handoffCandidate = sep >= 0 ? rawState!.slice(sep + 1) : null;
+  const handoff = isHandoffRef(handoffCandidate) ? handoffCandidate : null;
+
+  // If this fails in production with cookies PRESENT, the usual cause is the
+  // state cookie not surviving the cross-site POST — i.e. it was not written
+  // SameSite=None; Secure. See lib/oauthState.ts.
+  //
+  // With cookies ABSENT it is the jar split (installed PWA, or the native
+  // shell's browser sheet), and only then does the parked copy stand in. A
+  // `differs` is still a hard failure: the jars match and the value is wrong.
+  const stateCheck = classifyState(cookies.state, state);
+  if (stateCheck !== 'ok') {
+    const parked = stateCheck === 'cookie_absent' && handoff ? await readHandoff(handoff) : null;
+    if (!parked || !handoffStateMatches(parked.state, state)) {
+      console.error(
+        `[oauth-diag] apple callback state=${stateCheck} handoff=${handoff ? (parked ? 'state-mismatch' : 'absent') : 'none'} ${describeCallbackContext(req)}`,
+      );
+      return oauthFailure(origin, 'state_mismatch');
+    }
+    // Apple has no verifier to recover; the matched state is the whole check.
+  }
   if (!code) return oauthFailure(origin, 'invalid_callback');
 
   const client = appleClient(origin);
@@ -104,6 +127,7 @@ export async function POST(req: NextRequest) {
     if (!claims.sub) return oauthFailure(origin, 'invalid_callback');
 
     return await finishOAuthCallback(req, origin, {
+      handoff,
       provider: 'apple',
       sub: claims.sub,
       email: claims.email,

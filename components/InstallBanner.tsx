@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import InstallSheet from './InstallSheet';
 import { isStandalone } from '@/lib/standalone';
+import { isNative } from '@/lib/native';
 
 const DISMISS_KEY = 'bpm_install_hint_dismissed';
 
@@ -20,7 +21,7 @@ export default function InstallBanner() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (isStandalone()) return; // already installed
+    if (isStandalone() || isNative()) return; // already installed, or IS the app
     try {
       if (localStorage.getItem(DISMISS_KEY) === '1') return; // dismissed before
     } catch {

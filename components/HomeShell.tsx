@@ -79,6 +79,9 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
   // `?intent=delete` from the public delete-account page; consumed by
   // ProfileTab once an identity exists. See the param effect below.
   const [deleteIntent, setDeleteIntent] = useState(false);
+  // `?native=1` — this page is the landing of a sign-in the NATIVE shell
+  // started, rendering inside its browser sheet. See the param effect.
+  const [nativeReturn, setNativeReturn] = useState(false);
   /**
    * What to say after an auth redirect. One notice at a time: our own redirects
    * only ever carry one result, so last-write-wins is fine and simpler than a
@@ -183,6 +186,15 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
       dirty = true;
     }
 
+    // The flow began in the native shell and is landing in its system-browser
+    // sheet, which never hands back on its own. Keep the fact in state (the
+    // param is stripped like the others) so the page can render a way home.
+    if (params.get('native') === '1') {
+      setNativeReturn(true);
+      cleaned.searchParams.delete('native');
+      dirty = true;
+    }
+
     // From /legal/delete-account: land on Profile and open the delete sheet
     // once an identity resolves. Kept as INTENT, not an immediate open — the
     // person may be signed out, and the sheet needs a member to delete.
@@ -282,12 +294,19 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
     const onVisible = () => {
       if (document.visibilityState === 'visible') void collect();
     };
+    // The native shell's browser sheet is a modal INSIDE the app, so closing
+    // it fires neither visibilitychange nor focus on this document. The
+    // NativeBridge dispatches `bpm:resume` on browserFinished / appUrlOpen /
+    // appStateChange instead. No-op on the web: nothing dispatches it.
+    const onResume = () => void collect();
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', onVisible);
+    window.addEventListener('bpm:resume', onResume);
     return () => {
       cancelled = true;
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onVisible);
+      window.removeEventListener('bpm:resume', onResume);
     };
     // sessionIdRef is a ref and the setters are stable, so the empty dep array
     // is complete rather than suppressed — mount-once is intended and the rule
@@ -526,6 +545,17 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
                 body={tAuth(noticeBanner(authNotice).bodyKey)}
                 celebrate={noticeBanner(authNotice).celebrate}
               />
+            </div>
+          )}
+          {nativeReturn && (
+            /* This page is inside the native app's browser sheet. iOS will not
+               hand back by itself; the custom scheme opens the app, which
+               closes the sheet and claims the parked sign-in. A universal link
+               would NOT work here — same-domain links open in place. */
+            <div className="mb-3">
+              <a href="bpm://auth/return" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+                {tAuth('backToApp')}
+              </a>
             </div>
           )}
           {activeTab === 'home' && <div key={`home-${refreshNonce}`} className="animate-fadeIn"><HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} /></div>}

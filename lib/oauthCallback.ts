@@ -20,7 +20,7 @@ import {
 } from '@/lib/authIdentity';
 import { setPendingSignup } from '@/lib/pendingSignup';
 import { clearOAuthCookies } from '@/lib/oauthState';
-import { completeHandoff } from '@/lib/authHandoff';
+import { completeHandoff, readHandoff } from '@/lib/authHandoff';
 import type { Member } from '@/lib/types';
 
 export interface ProviderClaims {
@@ -104,6 +104,14 @@ export async function finishOAuthCallback(
   const container = getContainer('members');
   const email = claims.email ? normalizeEmail(claims.email) : null;
 
+  /* A flow the NATIVE shell started lands in a system-browser sheet that never
+     hands back on its own, so every landing below carries `native=1` and the
+     page renders a "back to the app" link. Read from the STASH, not the URL:
+     the callback URL is provider-controlled. One extra point-read, only on
+     handoff flows. */
+  const stash = claims.handoff ? await readHandoff(claims.handoff) : null;
+  const nativeParam: Record<string, string> = stash?.native ? { native: '1' } : {};
+
   const existing = await lookupIdentity(claims.provider, claims.sub);
 
   // Only a VERIFIED address on our side may be used to link. An unverified
@@ -134,7 +142,7 @@ export async function finishOAuthCallback(
     // Needs a display name from the user, and must refuse names already taken —
     // so it cannot finish here. Park the verified facts in a SIGNED cookie and
     // let /api/auth/complete-signup finish once a name is chosen.
-    const res = seeOther(landing(origin, { authFlow: 'name' }));
+    const res = seeOther(landing(origin, { authFlow: 'name', ...nativeParam }));
     setPendingSignup(res, {
       provider: claims.provider,
       sub: claims.sub,
@@ -183,7 +191,9 @@ export async function finishOAuthCallback(
   if (claims.handoff) {
     const parked = await completeHandoff(claims.handoff, member.id);
     if (parked) {
-      const res = seeOther(landing(origin, { signedIn: '1', provider: claims.provider }));
+      const res = seeOther(
+        landing(origin, { signedIn: '1', provider: claims.provider, ...nativeParam }),
+      );
       clearOAuthCookies(res);
       completeSignIn(res, member);
       return res;

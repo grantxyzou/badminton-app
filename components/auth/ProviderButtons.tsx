@@ -3,9 +3,23 @@
 import { useEffect, useState } from 'react';
 import { mintHandoff, stageHandoff } from '@/lib/handoffClient';
 import { markExternalExcursion } from '@/lib/excursion';
+import { isNative } from '@/lib/native';
 import { useTranslations } from 'next-intl';
 import { useOnline } from '@/lib/useOnline';
 import GoogleMark from './GoogleMark';
+
+/**
+ * The native shell cannot navigate its WebView to the provider: Google answers
+ * `disallowed_useragent` inside an embedded WebView, and Apple's form_post
+ * would land in a view with no way home. So the flow runs in the SYSTEM
+ * browser sheet (SFSafariViewController / Custom Tabs) — which is a separate
+ * cookie jar, the exact split `lib/authHandoff.ts` already bridges. `native=1`
+ * makes the landing page render a "back to the app" link.
+ */
+async function openInSystemBrowser(url: string): Promise<void> {
+  const { Browser } = await import('@capacitor/browser');
+  await Browser.open({ url, presentationStyle: 'popover' });
+}
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -146,14 +160,49 @@ export default function ProviderButtons({
         // dressed as a Google button would breach it. It needs the same
         // treatment before the Apple provider is ever switched on.
         const branded = p === 'google';
+        const startHref = `${BASE}/api/auth/${p}/start${handoffRef ? `?hr=${handoffRef}` : ''}`;
+        const className = branded ? 'cc-btn btn-google' : 'cc-btn cc-btn-secondary';
+        const style = {
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textDecoration: 'none',
+          ...(branded ? {} : { width: '100%', gap: 'var(--space-3)' }),
+          // Matches .cc-btn:disabled rather than inventing a new disabled
+          // look — the design system's rule for a not-currently-actionable
+          // control.
+          ...(online ? {} : { opacity: 0.5, pointerEvents: 'none' as const }),
+        };
+
+        if (isNative()) {
+          // A button, not a link: the navigation happens in the system
+          // browser, and a same-document <a> would take the WebView there.
+          // The handoff is REQUIRED here (no ref = no way to collect the
+          // session), so the button waits for the mint rather than degrading.
+          return (
+            <button
+              key={p}
+              type="button"
+              disabled={!online || !handoff}
+              onClick={() => {
+                if (!handoff) return;
+                stageHandoff(handoff.id);
+                markExternalExcursion();
+                void openInSystemBrowser(`${window.location.origin}${startHref}&native=1`);
+              }}
+              className={className}
+              style={style}
+            >
+              {branded && <GoogleMark />}
+              {label}
+            </button>
+          );
+        }
+
         return (
           <a
             key={p}
-            href={
-              online
-                ? `${BASE}/api/auth/${p}/start${handoffRef ? `?hr=${handoffRef}` : ''}`
-                : undefined
-            }
+            href={online ? startHref : undefined}
             /* iOS evicts the PWA while a system browser is in front, so the
                return looks like a cold start and lands on Home. Same hand-off
                marker ReceiptSheet uses — see lib/excursion.ts. */
@@ -165,18 +214,8 @@ export default function ProviderButtons({
               markExternalExcursion();
             }}
             aria-disabled={!online}
-            className={branded ? 'cc-btn btn-google' : 'cc-btn cc-btn-secondary'}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textDecoration: 'none',
-              ...(branded ? {} : { width: '100%', gap: 'var(--space-3)' }),
-              // Matches .cc-btn:disabled rather than inventing a new disabled
-              // look — the design system's rule for a not-currently-actionable
-              // control.
-              ...(online ? {} : { opacity: 0.5, pointerEvents: 'none' as const }),
-            }}
+            className={className}
+            style={style}
           >
             {branded && <GoogleMark />}
             {label}

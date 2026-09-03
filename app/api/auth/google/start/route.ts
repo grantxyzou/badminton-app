@@ -55,11 +55,16 @@ export async function GET(req: NextRequest) {
      A refused begin (a live stash already holds this ref) is NOT fatal: the
      cookies below still work for every browser that keeps one jar, so the
      flow degrades to exactly today's behaviour rather than dead-ending. */
-  const hr = new URL(req.url).searchParams.get('hr');
+  const search = new URL(req.url).searchParams;
+  const hr = search.get('hr');
   const handoff = isHandoffRef(hr) ? hr : null;
+  // `native=1` marks the Capacitor shell: the excursion is a system-browser
+  // sheet that never hands back, so the landing must offer a way home.
+  // Recorded on the stash, never trusted from the callback URL.
+  const native = search.get('native') === '1';
   if (handoff) {
     try {
-      await beginHandoff(handoff, { state, codeVerifier });
+      await beginHandoff(handoff, { state, codeVerifier, native });
     } catch (err) {
       console.error('handoff begin failed:', err);
     }

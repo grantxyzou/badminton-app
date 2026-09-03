@@ -56,6 +56,8 @@ export const AUTH_PARAMS = [
   'authError',
   'verified',
   'reset',
+  /** The flow began in the native shell; the landing offers a way back. */
+  'native',
 ] as const;
 
 function isKnownReason(reason: string): reason is AuthErrorReason {

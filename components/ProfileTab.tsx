@@ -20,6 +20,7 @@ import ForgotPasswordSheet from './auth/ForgotPasswordSheet';
 import PushSheet from './PushSheet';
 import { usePush } from '@/lib/usePush';
 import { isStandalone } from '@/lib/standalone';
+import { isNative } from '@/lib/native';
 import PageHeader from './primitives/PageHeader';
 import ProfileEyebrow from './primitives/ProfileEyebrow';
 import StatsPrivacyScreen from './StatsPrivacyScreen';
@@ -133,7 +134,9 @@ export default function ProfileTab({
   const pushEnabled = isFlagOn('NEXT_PUBLIC_FLAG_PUSH_NOTIFY');
 
   useEffect(() => {
-    setInstalled(isStandalone());
+    // The native shell IS the installed app; the "Add to Home Screen" row
+    // would be telling it to install itself.
+    setInstalled(isStandalone() || isNative());
   }, []);
 
   useEffect(() => {

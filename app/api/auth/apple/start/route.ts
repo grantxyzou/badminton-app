@@ -12,12 +12,20 @@
  *
  * Because the state cookie must be Secure, **this flow cannot run over
  * http://localhost** — see docs/auth-provider-setup.md.
+ *
+ * THE HANDOFF IS THE SAME AS GOOGLE'S. It was not, for the first two weeks:
+ * this route never read `?hr=`, so an installed iOS PWA that picked Apple
+ * signed Safari in and came back to the app signed out — the exact symptom
+ * `lib/authHandoff.ts` was written to fix, on the one provider it skipped.
+ * Found on 2026-09-03 while planning the native shell, where the system
+ * browser sheet makes the jar split unconditional.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isFlagOn } from '@/lib/flags';
 import { appOrigin, appleClient } from '@/lib/oauthProviders';
 import { createState, setOAuthCookies } from '@/lib/oauthState';
+import { beginHandoff, isHandoffRef } from '@/lib/authHandoff';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +55,27 @@ export async function GET(req: NextRequest) {
   }
 
   const state = createState();
-  const url = client.createAuthorizationURL(state, ['name', 'email']);
+
+  /* Mirrors google/start exactly — see the comment there. Apple has no PKCE
+     verifier, so the stash carries an empty one; the state is the only thing
+     the absent cookie would have held. */
+  const search = new URL(req.url).searchParams;
+  const hr = search.get('hr');
+  const handoff = isHandoffRef(hr) ? hr : null;
+  const native = search.get('native') === '1';
+  if (handoff) {
+    try {
+      await beginHandoff(handoff, { state, codeVerifier: '', native });
+    } catch (err) {
+      console.error('handoff begin failed:', err);
+    }
+  }
+
+  // The ref rides in `state` so it survives the round trip through Apple
+  // without needing a cookie. `~` is unreserved and cannot appear in either
+  // hex half. Apple echoes `state` verbatim in the form post.
+  const outboundState = handoff ? `${state}~${handoff}` : state;
+  const url = client.createAuthorizationURL(outboundState, ['name', 'email']);
   // Requesting any scope obliges form_post; Apple rejects the request otherwise.
   url.searchParams.set('response_mode', 'form_post');
 

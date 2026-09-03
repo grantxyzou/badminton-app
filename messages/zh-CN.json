@@ -297,6 +297,7 @@
       "claimDifferentName": "换一个名字",
           "continueGoogle": "使用 Google 继续",
           "continueApple": "使用 Apple 继续",
+          "backToApp": "返回 BPM 应用",
           "connectGoogle": "连接 Google",
           "connectApple": "连接 Apple",
           "googleConnected": "已连接 Google",
