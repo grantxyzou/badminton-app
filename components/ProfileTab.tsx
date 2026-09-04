@@ -758,6 +758,7 @@ export default function ProfileTab({
           setInstallOpen(true);
         }}
         push={push}
+        isAdmin={isAdmin}
       />
       <PushSheet
         open={pushOpen}
@@ -767,6 +768,7 @@ export default function ProfileTab({
           setInstallOpen(true);
         }}
         push={push}
+        isAdmin={isAdmin}
       />
     </div>
   );

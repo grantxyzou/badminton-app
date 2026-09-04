@@ -298,6 +298,7 @@
           "continueGoogle": "使用 Google 继续",
           "continueApple": "使用 Apple 继续",
           "backToApp": "返回 BPM 应用",
+          "nativeReturnBody": "已登录。请返回应用 — 如果没有自动打开，点击下方按钮，然后关闭此窗口。",
           "connectGoogle": "连接 Google",
           "connectApple": "连接 Apple",
           "googleConnected": "已连接 Google",
@@ -459,7 +460,13 @@
       "errorGeneric": "保存失败。稍后再试一次。",
       "metaOn": "已开启",
       "metaOff": "已关闭",
-      "metaBlocked": "已禁用"
+      "metaBlocked": "已禁用",
+      "testSend": "发送测试通知",
+      "testSending": "发送中…",
+      "testSent": "已发送到你的 {count} 台设备 — 请查看锁屏。",
+      "testNone": "你还没有注册任何设备。请先开启通知。",
+      "testNotConfigured": "服务器未配置推送密钥。",
+      "testFailed": "发送失败 — 请稍后再试。"
     }
   },
   "report": {

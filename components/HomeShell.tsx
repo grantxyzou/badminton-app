@@ -194,6 +194,17 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
       setNativeReturn(true);
       cleaned.searchParams.delete('native');
       dirty = true;
+      // Try to hand back without a tap. From a Safari sheet a custom-scheme
+      // navigation prompts "Open in BPM?"; if the person declines or it is
+      // swallowed, the button rendered below is the fallback. Short delay so
+      // the page paints first — the prompt over a blank sheet reads as a bug.
+      window.setTimeout(() => {
+        try {
+          window.location.assign('bpm://auth/return');
+        } catch {
+          /* the button remains */
+        }
+      }, 800);
     }
 
     // From /legal/delete-account: land on Profile and open the delete sheet
@@ -548,17 +559,25 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
               />
             </div>
           )}
-          {nativeReturn && (
+          {nativeReturn ? (
             /* This page is inside the native app's browser sheet. iOS will not
                hand back by itself; the custom scheme opens the app, which
                closes the sheet and claims the parked sign-in. A universal link
-               would NOT work here — same-domain links open in place. */
-            <div className="mb-3">
+               would NOT work here — same-domain links open in place.
+
+               The tabs are NOT rendered behind it: this sheet's only job is to
+               hand back, and Home's welcome card + "Add to Home Screen" banner
+               are browser-context noise here (the person is already in the app). */
+            <div className="glass-card p-5" style={{ marginTop: 'var(--space-8)' }}>
+              <p className="fs-md" style={{ color: 'var(--text-primary)', lineHeight: 'var(--lh-normal)', margin: '0 0 var(--space-5)' }}>
+                {tAuth('nativeReturnBody')}
+              </p>
               <a href="bpm://auth/return" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
                 {tAuth('backToApp')}
               </a>
             </div>
-          )}
+          ) : (
+          <>
           {activeTab === 'home' && <div key={`home-${refreshNonce}`} className="animate-fadeIn"><HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} /></div>}
           {activeTab === 'players' && <div key={`players-${refreshNonce}`} className="animate-fadeIn"><PlayersTab onTabChange={setActiveTab} /></div>}
           {activeTab === 'skills' && <div key={`skills-${refreshNonce}`} className="animate-fadeIn"><SkillsTab onTabChange={setActiveTab} /></div>}
@@ -575,6 +594,8 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
                 onDeleteIntentConsumed={() => setDeleteIntent(false)}
               />
             </div>
+          )}
+          </>
           )}
         </main>
         {devMode && <DevPanel overrides={devOverrides} onChange={setDevOverrides} />}
