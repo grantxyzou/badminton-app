@@ -298,6 +298,7 @@
           "continueGoogle": "Continue with Google",
           "continueApple": "Continue with Apple",
           "backToApp": "Back to the BPM app",
+          "nativeReturnBody": "You're signed in. Head back to the app — if it didn't open by itself, tap below, then close this window.",
           "connectGoogle": "Connect Google",
           "connectApple": "Connect Apple",
           "googleConnected": "Google connected",
@@ -459,7 +460,13 @@
       "errorGeneric": "That didn't save. Give it another go in a moment.",
       "metaOn": "On",
       "metaOff": "Off",
-      "metaBlocked": "Blocked"
+      "metaBlocked": "Blocked",
+      "testSend": "Send a test notification",
+      "testSending": "Sending…",
+      "testSent": "Sent to {count} of your devices — check the lock screen.",
+      "testNone": "No device of yours is registered yet. Turn notifications on first.",
+      "testNotConfigured": "The server has no push keys configured.",
+      "testFailed": "Couldn't send — try again in a moment."
     }
   },
   "report": {
