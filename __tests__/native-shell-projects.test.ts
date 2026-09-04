@@ -31,6 +31,35 @@ describe('ios/', () => {
     expect(block).toContain('UIInterfaceOrientationPortrait');
   });
 
+  it('has GoogleService-Info.plist and PrivacyInfo.xcprivacy in the app target', () => {
+    /* Both are RESOURCES, and both fail silently when they are only on disk:
+       an unwired GoogleService-Info means FirebaseApp.configure() finds no
+       plist and push is dead with no error, and an unwired PrivacyInfo is an
+       App Store rejection at upload time. Wired by hand in Xcode on
+       2026-09-03; nothing else would notice if a regenerated project dropped
+       them. The FILES stay out of git (see .gitignore) — this pins the
+       reference and the Resources build phase. */
+    const pbx = read('ios', 'App', 'App.xcodeproj', 'project.pbxproj');
+    for (const name of ['GoogleService-Info.plist', 'PrivacyInfo.xcprivacy']) {
+      expect(pbx, `${name} file reference`).toContain(`/* ${name} */ = {isa = PBXFileReference`);
+      expect(pbx, `${name} in Resources`).toContain(`/* ${name} in Resources */`);
+    }
+  });
+
+  it('records the signing team so an archive is reproducible', () => {
+    // Not a secret — a Team ID is public in every app's receipt. Committed so
+    // "Archive" works on a fresh clone without re-picking the team.
+    expect(read('ios', 'App', 'App.xcodeproj', 'project.pbxproj')).toContain('DEVELOPMENT_TEAM = T4JGTBUTYM;');
+  });
+
+  it('pins Swift package versions with a committed Package.resolved', () => {
+    // Capacitor + Firebase resolve through SPM; without this file two machines
+    // can build against different Firebase versions.
+    const resolved = read('ios', 'App', 'App.xcodeproj', 'project.xcworkspace', 'xcshareddata', 'swiftpm', 'Package.resolved');
+    expect(resolved).toContain('firebase-ios-sdk');
+    expect(resolved).toContain('capacitor-swift-pm');
+  });
+
   it('has the entitlements wired into the project', () => {
     const ent = read('ios', 'App', 'App', 'App.entitlements');
     expect(ent).toContain('applinks:bpm.grantzou.com');
