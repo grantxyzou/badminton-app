@@ -430,9 +430,15 @@ describe('check-flag-sync.mjs (PostToolUse on Edit|Write, and SessionStart)', ()
 describe('smoke-prod.mjs (post-deploy / pre-merge)', () => {
   const CHUNK = '/bpm/_next/static/chunks/main-abc123.js';
 
+  // Shaped like the real SSR payload: the build meta the SHA gate reads, plus
+  // the two HomeShell markers assertAlive looks for. Both matter — a fixture
+  // that only carried the meta would let a layout-only check pass.
   const page = (sha: string) =>
     `<!DOCTYPE html><html><head><meta name="bpm-build" content="${sha}"/>` +
-    `<script src="${CHUNK}"></script></head><body><div id="app"></div></body></html>`;
+    `<script src="${CHUNK}"></script></head><body>` +
+    `<main data-page-shell class="page-shell-top"><div id="app"></div></main>` +
+    `<nav class="rail-bar" aria-label="Primary navigation"></nav>` +
+    `</body></html>`;
 
   /** Minimal stand-in for a deployment. `sha` is what the served page claims. */
   async function withServer(
@@ -525,7 +531,27 @@ describe('smoke-prod.mjs (post-deploy / pre-merge)', () => {
     await withServer('abc', azurePage, async (base) => {
       const r = await smoke(['--base', base, '--skip-well-known', '--mock']);
       expect(r.status).toBe(1);
-      expect(r.stderr).toContain('not our document');
+      expect(r.stderr).toContain('no page shell');
+    });
+  });
+
+  it('fails when the LAYOUT rendered but Home did not', { timeout: 30_000 }, async () => {
+    // The failure a layout-level marker cannot see: app/error.tsx has replaced
+    // the page, so the document is genuinely ours and carries a correct build
+    // meta — while the screen is an error. Only a HomeShell marker catches it.
+    const errorBoundaryPage = (url: string) =>
+      url === '/bpm' || url === '/bpm/'
+        ? {
+            status: 200,
+            body:
+              `<!DOCTYPE html><html><head><meta name="bpm-build" content="abc"/></head>` +
+              `<body><div role="alert">Something went wrong</div></body></html>`,
+          }
+        : null;
+    await withServer('abc', errorBoundaryPage, async (base) => {
+      const r = await smoke(['--base', base, '--skip-well-known', '--mock']);
+      expect(r.status).toBe(1);
+      expect(r.stderr).toContain('no page shell');
     });
   });
 
