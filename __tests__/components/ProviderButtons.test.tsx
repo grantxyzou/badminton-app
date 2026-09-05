@@ -217,3 +217,47 @@ describe('ProviderButtons Google branding', () => {
     expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
   });
 });
+
+/**
+ * Version skew: the shell loads the LIVE web bundle, so this component can be
+ * newer than the binary running it. These cases pin the two halves of that —
+ * a plugin the binary genuinely lacks must EXPLAIN itself, and a binary that
+ * cannot answer the question must be left alone.
+ */
+describe('ProviderButtons in the native shell', () => {
+  const setCapacitor = (cap: Record<string, unknown> | null) => {
+    if (cap === null) delete (window as unknown as { Capacitor?: unknown }).Capacitor;
+    else (window as unknown as { Capacitor?: unknown }).Capacitor = cap;
+  };
+
+  afterEach(() => setCapacitor(null));
+
+  it('explains itself when the binary has no Browser plugin', async () => {
+    setCapacitor({ isNativePlatform: () => true, isPluginAvailable: () => false });
+    renderButtons({ available: ['google'] });
+
+    // The remedy names an update, because no reload can add a plugin to an
+    // already-installed binary.
+    expect(
+      await screen.findByText(/needs an update to sign in that way/i),
+    ).toBeTruthy();
+  });
+
+  it('stays silent when the binary cannot answer — unknown is not absent', async () => {
+    // An older Capacitor with no isPluginAvailable. Treating that as "absent"
+    // would disable a working sign-in button on exactly the oldest builds.
+    setCapacitor({ isNativePlatform: () => true });
+    renderButtons({ available: ['google'] });
+
+    await screen.findByText('Continue with Google');
+    expect(screen.queryByText(/needs an update/i)).toBeNull();
+  });
+
+  it('says nothing about updating on the plain web', async () => {
+    setCapacitor(null);
+    renderButtons({ available: ['google'] });
+
+    await screen.findByText('Continue with Google');
+    expect(screen.queryByText(/needs an update/i)).toBeNull();
+  });
+});

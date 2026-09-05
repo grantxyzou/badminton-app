@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { mintHandoff, stageHandoff } from '@/lib/handoffClient';
 import { markExternalExcursion } from '@/lib/excursion';
-import { isNative } from '@/lib/native';
+import { isNative, hasNativePlugin } from '@/lib/native';
 import { useTranslations } from 'next-intl';
 import { useOnline } from '@/lib/useOnline';
 import GoogleMark from './GoogleMark';
@@ -19,6 +19,27 @@ import GoogleMark from './GoogleMark';
 async function openInSystemBrowser(url: string): Promise<void> {
   const { Browser } = await import('@capacitor/browser');
   await Browser.open({ url, presentationStyle: 'popover' });
+}
+
+/**
+ * Why this can fail, and why the two causes need different words.
+ *
+ * The shell loads the LIVE web bundle, so BOTH halves of the line above can
+ * be older or newer than the phone:
+ *  - the `import()` fetches one of OUR chunks, which a deploy has just
+ *    replaced — a WebView left open across a deploy 404s. Reloading fixes it.
+ *  - `Browser.open` reaches the BINARY, which is as old as the last store
+ *    release. If that build predates the plugin, no reload ever helps; only
+ *    an app update does.
+ *
+ * Telling someone to visit the App Store when a reload would have done is a
+ * dead end an hour long, so the remedy is chosen from the failure, not
+ * guessed. `UNIMPLEMENTED` is Capacitor's code for "this binary has no such
+ * plugin" (@capacitor/core's CapacitorException).
+ */
+function isPluginMissingError(err: unknown): boolean {
+  const e = err as { code?: unknown; message?: unknown } | null;
+  return e?.code === 'UNIMPLEMENTED' || /unimplemented|not implemented/i.test(String(e?.message ?? ''));
 }
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -79,6 +100,19 @@ export default function ProviderButtons({
      digest before navigating. `null` degrades to the cookie flow, which is the
      right answer for every browser that keeps one jar. */
   const [handoff, setHandoff] = useState<{ id: string; ref: string } | null>(null);
+  /**
+   * `false` until proven otherwise, and never derived during render: this is a
+   * client component that server-renders, and `hasNativePlugin` reads a global
+   * injected only in the shell, so resolving it inline would be a hydration
+   * mismatch. Defaulting to "present" is also the safe direction — an unknown
+   * answer must not disable a working button (see `hasNativePlugin`'s
+   * tri-state contract).
+   */
+  const [pluginMissing, setPluginMissing] = useState(false);
+  const [openFailed, setOpenFailed] = useState(false);
+  useEffect(() => {
+    setPluginMissing(hasNativePlugin('Browser') === false);
+  }, []);
   useEffect(() => {
     let cancelled = false;
     void mintHandoff().then((pair) => {
@@ -183,12 +217,24 @@ export default function ProviderButtons({
             <button
               key={p}
               type="button"
-              disabled={!online || !handoff}
+              disabled={!online || !handoff || pluginMissing}
               onClick={() => {
                 if (!handoff) return;
+                // Both of these must stay SYNCHRONOUS and ahead of the open:
+                // the excursion marker is what survives iOS evicting the PWA
+                // while the sheet is up (CLAUDE.md), and it cannot be moved
+                // after an await. If the open then fails, the staged handoff
+                // simply expires and a stale excursion marker only restores
+                // the last tab for three minutes — both harmless.
                 stageHandoff(handoff.id);
                 markExternalExcursion();
-                void openInSystemBrowser(`${window.location.origin}${startHref}&native=1`);
+                void openInSystemBrowser(`${window.location.origin}${startHref}&native=1`).catch(
+                  (err: unknown) => {
+                    console.error('[ProviderButtons] system browser failed:', err);
+                    if (isPluginMissingError(err)) setPluginMissing(true);
+                    else setOpenFailed(true);
+                  },
+                );
               }}
               className={className}
               style={style}
@@ -224,6 +270,16 @@ export default function ProviderButtons({
       })}
       {!online && (
         <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{t('offline')}</p>
+      )}
+      {online && pluginMissing && (
+        <p className="field-error" role="alert">
+          {t('appOutdated')}
+        </p>
+      )}
+      {online && !pluginMissing && openFailed && (
+        <p className="field-error" role="alert">
+          {t('openFailed')}
+        </p>
       )}
     </div>
   );

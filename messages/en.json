@@ -304,6 +304,8 @@
           "googleConnected": "Google connected",
           "appleConnected": "Apple connected",
           "offline": "You're offline — reconnect to sign in this way.",
+          "appOutdated": "This app needs an update to sign in that way — or use your PIN below.",
+          "openFailed": "Couldn't open sign-in. Reload and try again.",
           "nudgeTitle": "Make getting back in easier",
           "nudgeSubtitle": "Right now a PIN is the only way into your account.",
           "nudgeDismiss": "Not now",
