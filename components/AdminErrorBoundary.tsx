@@ -1,6 +1,7 @@
 'use client';
 
 import { Component, type ReactNode } from 'react';
+import { looksLikeChunkError } from '@/lib/chunkError';
 
 interface Props {
   children: ReactNode;
@@ -9,16 +10,6 @@ interface State {
   hasError: boolean;
   isChunkError: boolean;
   isOffline: boolean;
-}
-
-function looksLikeChunkError(error: unknown): boolean {
-  const e = error as { name?: string; message?: string } | null;
-  const name = e?.name ?? '';
-  const msg = e?.message ?? '';
-  return (
-    name === 'ChunkLoadError' ||
-    /ChunkLoadError|Loading chunk|Failed to load chunk|dynamically imported module/i.test(msg)
-  );
 }
 
 /**
