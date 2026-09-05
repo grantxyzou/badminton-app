@@ -152,3 +152,21 @@ jobs:
           slot-name: 'Production'
           package: standalone-deploy.zip
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_C63C5B445B514543BFF5CFA2959ABBD0 }}
+
+      # Did production actually come back, and is it THIS build?
+      #
+      # `webapps-deploy` returns before the swap and warm-up finish, so without
+      # the --sha gate every check below can pass against the PREVIOUS instance
+      # — green precisely because the last deploy was fine. The script polls
+      # the `bpm-build` meta tag until it matches this commit before asserting
+      # anything.
+      #
+      # Read-only by construction: GETs only, no sign-in, no POST, no browser.
+      # A headless browser here would fire `recordEngagement()` and inflate the
+      # Value-Hub Slice-0 metric, which asks whether a member interacted more
+      # than once.
+      #
+      # This does not roll anything back — the red X is the alert. Rollback is
+      # re-dispatching this workflow at an older SHA.
+      - name: Smoke production (read-only)
+        run: node scripts/smoke-prod.mjs --sha "$GITHUB_SHA"

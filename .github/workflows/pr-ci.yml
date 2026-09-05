@@ -88,3 +88,27 @@ jobs:
           NEXT_PUBLIC_FLAG_STRINGING: 'true'
           NEXT_PUBLIC_FLAG_VISUAL_FIELDS: 'true'
           NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.VAPID_PUBLIC_KEY }}
+
+      # Boot the STANDALONE bundle and check it answers — pre-merge, so the
+      # render and packaging failures below never reach a phone.
+      #
+      # Standalone specifically, not `next start`: `output: 'standalone'` drops
+      # .next/static and public/, and deploy-next.yml copies both in by hand.
+      # That copy has broken before and nothing could see it until users could.
+      # Running the same two lines here means the bundle this gate approves is
+      # shaped like the one that ships.
+      #
+      # No Cosmos in CI, so the app runs on the in-memory mock store: --mock
+      # relaxes the `_rid` assertion (which exists to catch a mock store in
+      # PRODUCTION) while still requiring the endpoint to answer. --skip-well-known
+      # because those files come from App Settings, not the bundle.
+      - name: Smoke the standalone bundle (read-only)
+        run: |
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+          PORT=3100 node .next/standalone/server.js &
+          echo $! > "$RUNNER_TEMP/next.pid"
+          node scripts/smoke-prod.mjs --base http://localhost:3100/bpm --skip-well-known --mock
+          kill "$(cat "$RUNNER_TEMP/next.pid")" 2>/dev/null || true
+        env:
+          NEXT_PUBLIC_BASE_PATH: /bpm

@@ -65,6 +65,15 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_URL),
+  // Which build answered? The deploy smoke check has no other way to tell,
+  // and without it the whole check is a placebo: `webapps-deploy` returns
+  // before the swap finishes, so four green assertions against the PREVIOUS
+  // (healthy) instance look exactly like a successful deploy. The SHA was
+  // already baked in at build time and, until now, read only by
+  // PreviewBanner — which production deliberately never renders.
+  //
+  // Not a secret: it names a commit in a public repo.
+  other: { 'bpm-build': process.env.NEXT_PUBLIC_GIT_SHA ?? 'dev' },
   title: 'BPM Badminton',
   description: 'Sign up for weekly badminton sessions',
   // PWA: installable standalone home-screen app. The manifest link is

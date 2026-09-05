@@ -12,7 +12,7 @@
  * naming the file or the flag has lost most of its value.
  */
 import { describe, it, expect, afterAll } from 'vitest';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import {
   cpSync,
   existsSync,
@@ -413,5 +413,140 @@ describe('check-flag-sync.mjs (PostToolUse on Edit|Write, and SessionStart)', ()
     expect(r.status).toBe(0);
     expect(r.stderr).toMatch(/NEXT_PUBLIC_FLAG_OLD\s+\(due 2020-01-01\)/);
     expect(r.stderr).not.toMatch(/NEXT_PUBLIC_FLAG_NEVER/);
+  });
+});
+
+/**
+ * `smoke-prod.mjs` is the only script here that runs against a LIVE
+ * deployment, which makes it the one whose bugs are least visible: a check
+ * that silently passes looks exactly like a healthy deploy. It is exercised
+ * against a fixture HTTP server standing in for the app.
+ *
+ * The two cases worth pinning are the ones that make it a real gate rather
+ * than a formality — that it refuses to accept the WRONG BUILD (the swap race
+ * that would otherwise let it grade the previous, healthy instance), and that
+ * a 200 carrying an Azure error page is a failure rather than a pass.
+ */
+describe('smoke-prod.mjs (post-deploy / pre-merge)', () => {
+  const CHUNK = '/bpm/_next/static/chunks/main-abc123.js';
+
+  const page = (sha: string) =>
+    `<!DOCTYPE html><html><head><meta name="bpm-build" content="${sha}"/>` +
+    `<script src="${CHUNK}"></script></head><body><div id="app"></div></body></html>`;
+
+  /** Minimal stand-in for a deployment. `sha` is what the served page claims. */
+  async function withServer(
+    sha: string,
+    handler: ((url: string) => { status: number; body: string; type?: string } | null) | null,
+    run: (base: string) => Promise<void>,
+  ) {
+    const { createServer } = await import('node:http');
+    const server = createServer((req, res) => {
+      const url = req.url ?? '/';
+      const custom = handler?.(url);
+      const send = (status: number, body: string, type = 'text/html') => {
+        res.writeHead(status, { 'content-type': type });
+        res.end(body);
+      };
+      if (custom) return send(custom.status, custom.body, custom.type);
+      if (url === '/bpm' || url === '/bpm/') return send(200, page(sha));
+      if (url === CHUNK) return send(200, 'console.log(1)', 'application/javascript');
+      if (url === '/bpm/sw.js') return send(200, '// sw', 'application/javascript');
+      if (url === '/bpm/api/session')
+        return send(200, JSON.stringify({ sessionId: 'session-2026-09-04' }), 'application/json');
+      return send(404, 'Not Found');
+    });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    const port = (server.address() as { port: number }).port;
+    try {
+      await run(`http://127.0.0.1:${port}/bpm`);
+    } finally {
+      // `close()` alone waits for idle KEEP-ALIVE sockets, which Node's fetch
+      // leaves open — the suite hangs rather than fails, which is the worst
+      // shape a test failure can take.
+      server.closeAllConnections();
+      await new Promise<void>((r) => server.close(() => r()));
+    }
+  }
+
+  /**
+   * ASYNC spawn, deliberately. `spawnSync` blocks the event loop, so the
+   * fixture server living in this same process could never answer the child —
+   * the test deadlocked itself rather than failing. Every other script in this
+   * file is a pure function of its input and can use spawnSync; this is the
+   * only one that talks to something.
+   *
+   * The short deadline keeps a broken fixture a fast FAILURE instead of a
+   * three-minute hang; production always uses the default.
+   */
+  const smoke = (args: string[]) =>
+    new Promise<{ status: number | null; stdout: string; stderr: string }>((resolve) => {
+      const child = spawn(
+        'node',
+        [join(SCRIPTS, 'smoke-prod.mjs'), '--deadline', '4000', '--poll', '300', ...args],
+        { cwd: ROOT },
+      );
+      let stdout = '';
+      let stderr = '';
+      child.stdout.on('data', (d) => (stdout += String(d)));
+      child.stderr.on('data', (d) => (stderr += String(d)));
+      child.on('close', (status) => resolve({ status, stdout, stderr }));
+    });
+
+  it('passes a healthy deployment', { timeout: 30_000 }, async () => {
+    await withServer('abc', null, async (base) => {
+      const r = await smoke(['--base', base, '--skip-well-known', '--mock']);
+      expect(r.stdout).toContain('SMOKE OK');
+      expect(r.status).toBe(0);
+    });
+  });
+
+  it('refuses the WRONG build rather than grading the old instance', { timeout: 30_000 }, async () => {
+    // The swap race: webapps-deploy returns before warm-up, so the previous
+    // (healthy) instance answers and every other check would go green.
+    await withServer('oldsha', null, async (base) => {
+      const r = await smoke([
+        '--base', base, '--skip-well-known', '--mock',
+        '--sha', 'newsha',
+      ]);
+      expect(r.status).toBe(1);
+      expect(r.stderr).toContain('serving the expected build');
+      expect(r.stderr).toContain('oldsha');
+    });
+  });
+
+  it('treats a 200 that is not our document as a failure', { timeout: 30_000 }, async () => {
+    // Azure serves its own error and warm-up pages with a 200. A status-only
+    // check passes here while users see nothing — the v1.3 shape.
+    const azurePage = (url: string) =>
+      url.startsWith('/bpm/api') || url === CHUNK || url === '/bpm/sw.js'
+        ? null
+        : { status: 200, body: '<html><body>Azure is warming up</body></html>' };
+    await withServer('abc', azurePage, async (base) => {
+      const r = await smoke(['--base', base, '--skip-well-known', '--mock']);
+      expect(r.status).toBe(1);
+      expect(r.stderr).toContain('not our document');
+    });
+  });
+
+  it('fails when the session endpoint returns a 200 that is not JSON', { timeout: 30_000 }, async () => {
+    const badJson = (url: string) =>
+      url === '/bpm/api/session' ? { status: 200, body: '<html>error</html>' } : null;
+    await withServer('abc', badJson, async (base) => {
+      const r = await smoke(['--base', base, '--skip-well-known', '--mock']);
+      expect(r.status).toBe(1);
+      expect(r.stderr).toContain('not valid JSON');
+    });
+  });
+
+  it('demands _rid when NOT in mock mode — the production misconfig check', { timeout: 30_000 }, async () => {
+    // Without --mock the same fixture (which never writes _rid, exactly like
+    // the in-memory store) must fail. This is the assertion that catches an
+    // unset COSMOS_CONNECTION_STRING silently serving the mock in production.
+    await withServer('abc', null, async (base) => {
+      const r = await smoke(['--base', base, '--skip-well-known']);
+      expect(r.status).toBe(1);
+      expect(r.stderr).toContain('_rid');
+    });
   });
 });
