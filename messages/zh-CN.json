@@ -304,6 +304,8 @@
           "googleConnected": "已连接 Google",
           "appleConnected": "已连接 Apple",
           "offline": "当前离线——重新连接后才能用这种方式登录。",
+          "appOutdated": "应用需要更新后才能用这种方式登录——或在下方用 PIN 登录。",
+          "openFailed": "无法打开登录页面。请重新加载后再试。",
           "nudgeTitle": "让回到账号更容易",
           "nudgeSubtitle": "目前 PIN 码是进入你账号的唯一方式。",
           "nudgeDismiss": "暂不",

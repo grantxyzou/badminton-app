@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 /**
  * The hand edits on top of Capacitor's generated projects. `cap add` would
@@ -12,6 +13,22 @@ import { join } from 'node:path';
  */
 const R = (...p: string[]) => join(process.cwd(), ...p);
 const read = (...p: string[]) => readFileSync(R(...p), 'utf8');
+
+/**
+ * Is this path TRACKED by git? The secrets below must never be COMMITTED,
+ * which is not the same as never being on disk — and conflating the two is how
+ * this canary started crying wolf. Both files legitimately exist on the
+ * maintainer's machine (a device build needs the real Firebase config) and are
+ * gitignored, which is the actual invariant. Asserting absence-on-disk passed
+ * in CI, where nothing checks them out, and failed only for the one person who
+ * could act on it — training exactly the wrong reflex about a red
+ * `native-shell-projects`.
+ */
+const isTracked = (...p: string[]) =>
+  execFileSync('git', ['ls-files', '--', join(...p)], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+  }).trim() !== '';
 
 describe('ios/', () => {
   const plist = read('ios', 'App', 'App', 'Info.plist');
@@ -87,7 +104,7 @@ describe('ios/', () => {
   });
 
   it('does not commit Firebase config or signing material', () => {
-    expect(existsSync(R('ios', 'App', 'App', 'GoogleService-Info.plist'))).toBe(false);
+    expect(isTracked('ios', 'App', 'App', 'GoogleService-Info.plist')).toBe(false);
     const gi = read('.gitignore');
     for (const p of ['*.p8', '*.keystore', '*.mobileprovision']) expect(gi).toContain(p);
   });
@@ -128,6 +145,6 @@ describe('android/', () => {
   });
 
   it('does not commit google-services.json', () => {
-    expect(existsSync(R('android', 'app', 'google-services.json'))).toBe(false);
+    expect(isTracked('android', 'app', 'google-services.json')).toBe(false);
   });
 });
