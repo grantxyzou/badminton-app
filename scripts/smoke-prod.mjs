@@ -85,11 +85,9 @@ async function get(url, accept = '*/*') {
 }
 
 /* ────────────────────────────────────────────────────────────────────────────
- * TODO(Grant): this one is yours — it is a product judgement, not boilerplate.
- *
- * Everything else in this file asks a question with an objectively correct
- * answer (did it 200, is it JSON, does the SHA match). This one asks what YOU
- * mean by "the app is up", and only you can set that line.
+ * What "the app is up" means here. Every other check in this file has an
+ * objectively correct answer (did it 200, is it JSON, does the SHA match);
+ * this one is a judgement, so it is written down rather than assumed.
  *
  * The trap it exists to close: Azure serves its own error and warm-up pages
  * with HTTP 200. A status check alone therefore passes while users see
@@ -104,22 +102,31 @@ async function get(url, accept = '*/*') {
  *     page sails through, which is exactly the failure we are buying this to
  *     catch.
  *
- * Something structural that only YOUR page emits is the sweet spot. Worth
- * considering: the pre-hydration splash in `app/layout.tsx`, the `bpm-topbar`
- * shell, `data-visual`/`data-theme` on `<html>`, the `bpm-build` meta tag, or
- * the server-rendered announcement. Note the layout renders even when the PAGE
- * throws (that is what `app/error.tsx` is for now) — so if you want this to
- * catch a broken Home rather than just a broken Next, reach for something
- * HomeShell emits, not something the layout does.
+ * Both markers below are emitted by `HomeShell` — `<main data-page-shell>` at
+ * HomeShell.tsx:530 and `<BottomNav>` at :604 — and by NOTHING in
+ * `app/layout.tsx`. That is the whole reason they were chosen. When Home
+ * throws, `app/error.tsx` replaces the page while the layout keeps rendering,
+ * so a layout-level marker (the splash, `data-visual`, the `bpm-build` meta)
+ * stays present and reports healthy through a completely broken screen.
+ *
+ * Deliberately NOT asserted:
+ *   - the nav's LABEL text ("Home", "Sign-Ups") — locale comes from the
+ *     NEXT_LOCALE cookie via proxy.ts and this script sends none, so that
+ *     would hang on header negotiation and break the day it resolves to zh-CN;
+ *   - the tab COUNT — it would go red on a deliberate nav change, which is
+ *     maintenance for a failure the two markers below already catch;
+ *   - anything from the loaded page. The SSR payload is SKELETONS: Home's data
+ *     is client-fetched, so no GET can prove it arrived. This check proves the
+ *     app RENDERED; `_rid` below is what covers the data layer.
  *
  * @param {string} html  the full body of GET {BASE}
  * @returns {string|null}  null = healthy; a short reason = failed
  * ──────────────────────────────────────────────────────────────────────────── */
 function assertAlive(html) {
-  // PROVISIONAL — deliberately weak, so the check is honest about what it
-  // currently proves (Next rendered our document, not Azure's) rather than
-  // pretending to more. Replace with your own line.
-  if (!html.includes('<meta name="bpm-build"')) return 'no bpm-build meta — not our document';
+  if (!html.includes('data-page-shell')) return 'no page shell — HomeShell did not render';
+  if (!html.includes('aria-label="Primary navigation"')) {
+    return 'no nav — the shell rendered incomplete';
+  }
   return null;
 }
 
