@@ -104,11 +104,25 @@ jobs:
       # because those files come from App Settings, not the bundle.
       - name: Smoke the standalone bundle (read-only)
         run: |
+          set -euo pipefail
           cp -r .next/static .next/standalone/.next/static
           cp -r public .next/standalone/public
-          PORT=3100 node .next/standalone/server.js &
-          echo $! > "$RUNNER_TEMP/next.pid"
-          node scripts/smoke-prod.mjs --base http://localhost:3100/bpm --skip-well-known --mock
-          kill "$(cat "$RUNNER_TEMP/next.pid")" 2>/dev/null || true
+
+          PORT=3100 HOSTNAME=127.0.0.1 node .next/standalone/server.js &
+          SERVER_PID=$!
+          # `trap`, not a trailing `kill`: the smoke script exits 1 on failure,
+          # which aborts the step and would skip a cleanup line placed after it.
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          # If the server died on boot, say THAT rather than reporting a smoke
+          # failure — the two have completely different fixes.
+          sleep 3
+          kill -0 "$SERVER_PID" 2>/dev/null || { echo "standalone server exited on boot"; exit 1; }
+
+          # 60s, not the 180s production default: there is no Azure cold start
+          # here, so a long wait can only be a hang.
+          node scripts/smoke-prod.mjs \
+            --base http://127.0.0.1:3100/bpm \
+            --skip-well-known --mock --deadline 60000
         env:
           NEXT_PUBLIC_BASE_PATH: /bpm
