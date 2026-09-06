@@ -4043,3 +4043,94 @@ html[data-visual="field"][data-theme="light"] {
 @media (prefers-reduced-motion: reduce) {
   .toast { animation: none; }
 }
+
+/* ============================================================================
+   SWIPE ROW — a row REVEALS its actions; it never performs them.
+   ============================================================================
+   The principle, stated before use because this is a new pattern and CLAUDE.md
+   requires that: a horizontal drag on a list row uncovers a button, and a TAP
+   on that button does the work. Swipe-to-commit is rejected — an accidental
+   drag would archive somebody's job, and the gesture has no hover state to warn
+   with and no undo cheap enough to make that acceptable.
+
+   It is also never the ONLY affordance. Every action revealed here also appears
+   in the row's `more_vert` sheet. A gesture nobody discovers is how kudos
+   became unfindable.
+
+   The clipping wrapper carries the radius of the card it wraps, which is 16 by
+   the corner ladder and 30 in field mode — mirroring the scoped
+   `html[data-visual="field"] .glass-card` exception rather than inventing a
+   second one.
+*/
+.swipe-row {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+}
+
+html[data-visual="field"] .swipe-row {
+  border-radius: var(--fcard-radius);
+}
+
+/* The action tray sits UNDER the content and is uncovered by it, rather than
+   sliding in over the top. That is what makes the drag feel like moving a
+   physical card off something. */
+.swipe-row__actions {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+}
+
+.swipe-row__action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 88px;
+  flex: 0 0 88px;
+  border: none;
+  cursor: pointer;
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.swipe-row__action--accent { background: var(--accent); }
+.swipe-row__action--danger { background: var(--sev-crit-text, var(--color-red)); }
+
+/* Archive is NOT destructive — it takes a job off the bench and leaves the
+   money exactly where it was. A red button would say otherwise, so the neutral
+   tone is a subdued surface with normal text rather than a filled colour. */
+.swipe-row__action--neutral {
+  background: var(--inner-card-bg);
+  color: var(--text-primary);
+}
+
+/* No `transform` at rest — not even translateX(0).
+   A transform establishes a containing block, and `position: fixed`
+   descendants then resolve against THIS element instead of the viewport. That
+   is the project's documented containing-block trap, and it is why TopBar's
+   swipe-back gates its transform on an attribute too. */
+.swipe-row__track {
+  position: relative;
+  will-change: auto;
+}
+
+.swipe-row__track[data-swiping='active'] {
+  will-change: transform;
+}
+
+.swipe-row__track[data-swiping='release'] {
+  transition: transform 180ms var(--ease-out-quart);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swipe-row__track[data-swiping='release'] {
+    transition: none;
+  }
+}

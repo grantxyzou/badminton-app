@@ -952,6 +952,32 @@
           "closeCta": "Close"
       },
         "benchTitle": "Bench",
+        "actions": {
+          "title": "Job actions",
+          "close": "Close",
+          "more": "More actions for {name}",
+          "open": "Open this job",
+          "pin": "Pin to the top",
+          "pinHint": "Keeps it first on the bench",
+          "unpin": "Unpin",
+          "archive": "Archive",
+          "archiveHint": "Off the bench. They still owe what they owe.",
+          "unarchive": "Put back on the bench",
+          "error": "That didn't save — try again."
+        },
+        "swipe": {
+          "pin": "Pin",
+          "unpin": "Unpin",
+          "archive": "Archive"
+        },
+        "archive": {
+          "open": "Archived ({count})",
+          "openUnknown": "Archived",
+          "title": "Archived",
+          "empty": "Nothing archived yet.",
+          "loadError": "Couldn't load the archive — pull to refresh.",
+          "stillOwed": "Still owed ${amount}"
+        },
         "mine": "Mine",
         "all": "All",
         "loadError": "Couldn't load the bench — pull to refresh.",

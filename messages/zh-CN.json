@@ -952,6 +952,32 @@
           "closeCta": "休息"
       },
         "benchTitle": "工作台",
+        "actions": {
+          "title": "工单操作",
+          "close": "关闭",
+          "more": "{name} 的更多操作",
+          "open": "打开工单",
+          "pin": "置顶",
+          "pinHint": "始终排在工作台最前",
+          "unpin": "取消置顶",
+          "archive": "归档",
+          "archiveHint": "移出工作台。欠款不受影响。",
+          "unarchive": "放回工作台",
+          "error": "没能保存 — 再试一次。"
+        },
+        "swipe": {
+          "pin": "置顶",
+          "unpin": "取消",
+          "archive": "归档"
+        },
+        "archive": {
+          "open": "已归档（{count}）",
+          "openUnknown": "已归档",
+          "title": "已归档",
+          "empty": "还没有归档的工单。",
+          "loadError": "归档加载失败 — 下拉刷新试试。",
+          "stillOwed": "仍欠 ${amount}"
+        },
         "mine": "我的",
         "all": "全部",
         "loadError": "工作台加载失败 — 下拉刷新试试。",

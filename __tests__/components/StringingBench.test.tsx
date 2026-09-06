@@ -279,3 +279,105 @@ describe('intake shows the stringer what the player will read', () => {
     expect(screen.getByText(/doesn't look like a price/i)).toBeDefined();
   });
 });
+
+/**
+ * ARCHIVE AND THE ROW MENU
+ *
+ * The archive's whole risk is money going out of sight: archiving does not
+ * forgive a debt, so the screen that hides a job has to say what it is hiding.
+ */
+function respondBenchAndArchive(bench: StringingJob[], archived: StringingJob[], archiveOk = true) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes('/shop')) return Promise.resolve({ ok: true, json: async () => ({ open: false }) } as Response);
+      if (u.includes('/strings')) return Promise.resolve({ ok: true, json: async () => ({ strings: [] }) } as Response);
+      if (u.includes('archived=true')) {
+        if (!archiveOk) return Promise.resolve({ ok: false, status: 503 } as Response);
+        return Promise.resolve({ ok: true, json: async () => ({ jobs: archived, view: 'bench' }) } as Response);
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ jobs: bench, view: 'bench' }) } as Response);
+    }),
+  );
+}
+
+describe('the archive', () => {
+  it('offers a way in, carrying an honest count', async () => {
+    respondBenchAndArchive([job], [{ ...job, id: 'job-2', archivedAt: '2026-09-01T00:00:00.000Z' }]);
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Archived (1)')).toBeDefined());
+  });
+
+  it('still offers a way in when the count is unknown', async () => {
+    // A failed archive load must not hide the door to the archive. That is the
+    // lying-empty-state rule, and here it would make archived work unreachable.
+    respondBenchAndArchive([job], [], false);
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Archived')).toBeDefined());
+  });
+
+  it('lists archived jobs once opened', async () => {
+    respondBenchAndArchive(
+      [],
+      [{ ...job, id: 'job-2', jobNo: 'J-0099', archivedAt: '2026-09-01T00:00:00.000Z' }],
+    );
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Archived (1)')).toBeDefined());
+    fireEvent.click(screen.getByText('Archived (1)'));
+    await waitFor(() => expect(screen.getByText('J-0099')).toBeDefined());
+  });
+
+  it('says what money is still owed on an archived job', async () => {
+    // `ready` + priced + unpaid is exactly isBillable. The figure appears HERE
+    // and nowhere else on a list screen, because this is the one list that can
+    // hide a bill.
+    respondBenchAndArchive(
+      [],
+      [
+        {
+          ...job,
+          id: 'job-2',
+          status: 'ready',
+          priceCents: 3200,
+          paidAt: null,
+          archivedAt: '2026-09-01T00:00:00.000Z',
+        },
+      ],
+    );
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Archived (1)')).toBeDefined());
+    fireEvent.click(screen.getByText('Archived (1)'));
+    await waitFor(() => expect(screen.getByText('Still owed $32.00')).toBeDefined());
+  });
+
+  it('shows an error rather than an empty archive when the load fails', async () => {
+    respondBenchAndArchive([job], [], false);
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Archived')).toBeDefined());
+    fireEvent.click(screen.getByText('Archived'));
+    await waitFor(() =>
+      expect(screen.getByText("Couldn't load the archive — pull to refresh.")).toBeDefined(),
+    );
+    expect(screen.queryByText('Nothing archived yet.')).toBeNull();
+  });
+});
+
+describe('the row menu is the findable path', () => {
+  it('opens a sheet offering pin and archive', async () => {
+    // The swipe is the fast path; this is the one a stringer can discover.
+    respondBenchAndArchive([job], []);
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('J-0042')).toBeDefined());
+
+    fireEvent.click(screen.getByLabelText('More actions for Wei'));
+    await waitFor(() => expect(screen.getByText('Pin to the top')).toBeDefined());
+    // Two of them, and that is right: the swipe tray and the menu name the
+    // same action the same way. Asserting on the unique hint below is what
+    // pins the MENU one specifically.
+    expect(screen.getAllByText('Archive').length).toBeGreaterThan(0);
+    // Archiving is not destructive and the hint has to say so, or a stringer
+    // reasonably assumes it writes the debt off.
+    expect(screen.getByText('Off the bench. They still owe what they owe.')).toBeDefined();
+  });
+});
