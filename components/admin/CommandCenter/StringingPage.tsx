@@ -144,7 +144,13 @@ export default function StringingPage({ onBack }: Props) {
   const loadArchive = useCallback(async () => {
     setArchiveError(false);
     try {
-      const res = await fetch(`${BASE}/api/stringing/jobs?archived=true`, { cache: 'no-store' });
+      // Honours Mine/All like the bench does. An admin filtered to "Mine"
+      // reading a global archive count underneath it is the two halves of one
+      // screen answering different questions.
+      const res = await fetch(
+        `${BASE}/api/stringing/jobs?archived=true${mine ? '&mine=true' : ''}`,
+        { cache: 'no-store' },
+      );
       if (!res.ok) throw new Error(`stringing archive ${res.status}`);
       const data = await res.json();
       setArchivedJobs(Array.isArray(data.jobs) ? data.jobs : []);
@@ -154,7 +160,7 @@ export default function StringingPage({ onBack }: Props) {
       setArchivedJobs(null);
       setArchiveError(true);
     }
-  }, []);
+  }, [mine]);
 
   // Fetched up front so the "Archived (N)" entry can carry an honest number.
   // One extra request on a low-traffic admin screen buys a row that says how
@@ -177,7 +183,11 @@ export default function StringingPage({ onBack }: Props) {
       });
       if (!res.ok) throw new Error(`patch ${res.status}`);
       setActionTarget(null);
-      await Promise.all([load(), view === 'archive' ? loadArchive() : Promise.resolve()]);
+      /* BOTH lists, always. Archiving happens mostly FROM the bench, and
+         skipping the archive reload there left the "Archived (N)" count stale
+         and the job missing from the archive the admin taps into a second
+         later — which is precisely the honest count this row was added for. */
+      await Promise.all([load(), loadArchive()]);
     } catch {
       // The sheet STAYS OPEN saying so. Closing on failure would look like it
       // worked, which is the lying-empty-state rule wearing a different hat.

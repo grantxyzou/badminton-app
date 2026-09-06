@@ -152,6 +152,23 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         return NextResponse.json({ error: 'confirm_required' }, { status: 409 });
       }
       next.priceCents = p;
+      /**
+       * A forced write INVALIDATES any outstanding proposal.
+       *
+       * Otherwise the two price mechanisms drift apart and the older one wins:
+       * propose $34, then force $35, and the player is shown "$35 → $34" — a
+       * diff that reads as coherent while describing a price the admin has
+       * already moved past. Accepting it would then silently revert the $35
+       * with no signal to anybody.
+       *
+       * Not reachable from the UI today (nothing sends `force`), but the route
+       * accepts it, and a feature whose entire point is that a price cannot
+       * change without agreement should not leave a live proposal pointing at
+       * a number that no longer exists.
+       */
+      if (p !== job.priceCents) {
+        next.pendingEdit = null;
+      }
     }
 
     if (body.propose !== undefined) {

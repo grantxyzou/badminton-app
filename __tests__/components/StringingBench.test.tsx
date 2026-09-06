@@ -448,3 +448,88 @@ describe('deleting says what it destroys', () => {
     expect(screen.queryByText('Keep it')).toBeNull();
   });
 });
+
+describe('the archive count stays honest after archiving from the bench', () => {
+  it('reloads the archive when a job is archived from the BENCH', async () => {
+    // Archiving happens mostly from the bench, and the reload used to be
+    // skipped there — leaving the "Archived (N)" count stale and the job
+    // missing from the archive the admin taps into a second later. Which is
+    // exactly the honest count this row was added for.
+    const archived = { ...job, id: 'job-2', jobNo: 'J-0002', archivedAt: '2026-09-01T00:00:00.000Z' };
+    let archivedList: StringingJob[] = [];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        const u = String(url);
+        if (u.includes('/shop')) return Promise.resolve({ ok: true, json: async () => ({ open: false }) } as Response);
+        if (u.includes('/strings')) return Promise.resolve({ ok: true, json: async () => ({ strings: [] }) } as Response);
+        if (init?.method === 'PATCH') {
+          // The archive now contains it — the next archive GET must see that.
+          archivedList = [archived];
+          return Promise.resolve({ ok: true, json: async () => ({ job: archived }) } as Response);
+        }
+        if (u.includes('archived=true')) {
+          return Promise.resolve({ ok: true, json: async () => ({ jobs: archivedList, view: 'bench' }) } as Response);
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ jobs: [job], view: 'bench' }) } as Response);
+      }),
+    );
+
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Archived (0)')).toBeDefined());
+
+    fireEvent.click(screen.getByLabelText('More actions for Wei'));
+    await waitFor(() =>
+      expect(screen.getByText('Off the bench. They still owe what they owe.')).toBeDefined(),
+    );
+    fireEvent.click(screen.getByText('Off the bench. They still owe what they owe.'));
+
+    await waitFor(() => expect(screen.getByText('Archived (1)')).toBeDefined());
+  });
+});
+
+describe('a proposal is not re-sent by a second tap', () => {
+  it('disables Send once the draft matches what is already proposed', async () => {
+    // Sending changes `pendingEdit`, not the job's base fields, so a dirty
+    // check against the job alone stays true forever and the button goes back
+    // to live. A second tap builds an identical diff with a fresh proposedAt,
+    // which the route reads as NEW and pushes again — a duplicate notification
+    // for a question already open in front of the player. Every other push
+    // trigger here is de-duped; this is the same rule.
+    const pendingJob: StringingJob = {
+      ...job,
+      priceCents: 3000,
+      pendingEdit: {
+        priceCents: 3400,
+        proposedAt: '2026-09-01T00:00:00.000Z',
+        proposedBy: 'member-grant',
+      },
+    };
+    wrap(<StringingJobDetail job={pendingJob} onBack={() => {}} onChanged={() => {}} />);
+
+    // The form is seeded from the JOB, so it reads $30 — different from the
+    // job only once the admin retypes the proposed figure.
+    const price = screen.getByLabelText('Price') as HTMLInputElement;
+    fireEvent.change(price, { target: { value: '34.00' } });
+
+    const send = screen.getByText('Send to Wei').closest('button') as HTMLButtonElement;
+    expect(send.disabled).toBe(true);
+  });
+
+  it('enables Send for a genuinely different figure', async () => {
+    const pendingJob: StringingJob = {
+      ...job,
+      priceCents: 3000,
+      pendingEdit: {
+        priceCents: 3400,
+        proposedAt: '2026-09-01T00:00:00.000Z',
+        proposedBy: 'member-grant',
+      },
+    };
+    wrap(<StringingJobDetail job={pendingJob} onBack={() => {}} onChanged={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Price'), { target: { value: '36.00' } });
+    const send = screen.getByText('Send to Wei').closest('button') as HTMLButtonElement;
+    expect(send.disabled).toBe(false);
+  });
+});

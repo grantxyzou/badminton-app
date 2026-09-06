@@ -79,7 +79,22 @@ export function isArchived(job: Pick<StringingJob, 'archivedAt'>): boolean {
 }
 
 const LIVE_SQL = '(NOT IS_DEFINED(c.archivedAt) OR c.archivedAt = null)';
-const ARCHIVED_SQL = '(IS_DEFINED(c.archivedAt) AND c.archivedAt != null)';
+/**
+ * `NOT IS_NULL(...)`, never `!= null`.
+ *
+ * Cosmos evaluates a comparison between two different JSON types to Undefined,
+ * and a WHERE clause excludes Undefined rows — so `c.archivedAt != null` on a
+ * String compares String-vs-Null, yields Undefined, and matches ZERO archived
+ * jobs in production. It looked correct and passed every test, because the mock
+ * store ignores the WHERE clause entirely and this predicate binds no parameter
+ * for it to recognise. The JS re-check below cannot save it either: that guards
+ * against too MANY rows coming back, not too few.
+ *
+ * `LIVE_SQL` above is fine for the same reason stated in reverse — its
+ * `c.archivedAt = null` is a Null-vs-Null comparison on the only rows where it
+ * is reached, which is well-defined.
+ */
+const ARCHIVED_SQL = '(IS_DEFINED(c.archivedAt) AND NOT IS_NULL(c.archivedAt))';
 
 /**
  * Bench order: pinned first (most recently pinned wins), then newest.

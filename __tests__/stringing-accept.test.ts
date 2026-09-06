@@ -344,3 +344,42 @@ describe('archiving and a pending question cannot combine into a dead end', () =
     expect(stored(job.id).priceCents).toBe(3400);
   });
 });
+
+describe('the two price mechanisms cannot drift apart', () => {
+  it('a forced direct write invalidates an outstanding proposal', async () => {
+    // Otherwise the older one wins: propose $34, force $35, and the player is
+    // shown "$35 → $34" — a diff that reads as coherent while describing a
+    // price the admin already moved past. Accepting it would silently revert
+    // the $35 with no signal to anybody.
+    const job = await seedJob({ priceCents: 3000 });
+    await propose(job, { priceCents: 3400 });
+    expect(stored(job.id).pendingEdit).toBeTruthy();
+
+    await PATCH(
+      makeAdminRequest('PATCH', `http://x/api/stringing/jobs/${job.id}`, {
+        memberId: job.memberId,
+        priceCents: 3500,
+        force: true,
+      }),
+      { params: Promise.resolve({ id: job.id }) },
+    );
+
+    const after = stored(job.id);
+    expect(after.priceCents).toBe(3500);
+    expect(after.pendingEdit ?? null).toBeNull();
+  });
+
+  it('leaves a proposal alone when the forced write changes nothing', async () => {
+    const job = await seedJob({ priceCents: 3000 });
+    await propose(job, { priceCents: 3400 });
+    await PATCH(
+      makeAdminRequest('PATCH', `http://x/api/stringing/jobs/${job.id}`, {
+        memberId: job.memberId,
+        priceCents: 3000,
+        status: 'picked_up',
+      }),
+      { params: Promise.resolve({ id: job.id }) },
+    );
+    expect(stored(job.id).pendingEdit?.priceCents).toBe(3400);
+  });
+});

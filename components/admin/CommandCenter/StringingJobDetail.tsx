@@ -81,11 +81,31 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
     return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : undefined;
   })();
 
-  const proposalDirty =
+  const differsFromJob =
     (parsedCents !== undefined && parsedCents !== local.priceCents) ||
     proposeString.trim() !== local.stringLabel ||
     Number(proposeMains) !== local.tensionMains ||
     Number(proposeCrosses) !== local.tensionCrosses;
+
+  /**
+   * Already asked, and asked for exactly this.
+   *
+   * Sending does not change the job's base fields — only `pendingEdit` — so a
+   * comparison against the job alone stays dirty forever after a send, leaving
+   * the button live. A second tap then builds an identical diff with a fresh
+   * `proposedAt`, which the route reads as a NEW proposal and pushes again.
+   * The player gets a duplicate notification for a question already open in
+   * front of them. Every other push trigger in this app is de-duped
+   * (`signupOpenNotifiedAt` is the precedent); this is the same rule.
+   */
+  const alreadyProposed =
+    pending !== null &&
+    (pending.priceCents ?? local.priceCents) === parsedCents &&
+    (pending.stringLabel ?? local.stringLabel) === proposeString.trim() &&
+    (pending.tensionMains ?? local.tensionMains) === Number(proposeMains) &&
+    (pending.tensionCrosses ?? local.tensionCrosses) === Number(proposeCrosses);
+
+  const proposalDirty = differsFromJob && !alreadyProposed;
 
   async function sendProposal() {
     if (proposeBusy || !online || !proposalDirty || parsedCents === undefined) return;
