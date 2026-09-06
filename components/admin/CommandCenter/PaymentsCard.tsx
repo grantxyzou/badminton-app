@@ -7,6 +7,7 @@ import CoverSheet, { type CoverSheetMode } from '../CoverSheet';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import CardHeader from '@/components/primitives/CardHeader';
 import EmptyState from '@/components/primitives/EmptyState';
+import ActionRow from '@/components/primitives/ActionRow';
 import { fmtSessionLabel } from '@/lib/fmt';
 import { useReportFetchFailure } from '@/lib/useOnline';
 import { buildReceiptInput } from '@/lib/buildReceiptInput';
@@ -868,57 +869,5 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
         initialPlayerName={receiptPlayer ?? undefined}
       />
     </section>
-  );
-}
-
-function ActionRow({
-  icon,
-  label,
-  hint,
-  onClick,
-  disabled,
-  destructive,
-}: {
-  icon: string;
-  label: string;
-  hint?: string;
-  onClick: () => void;
-  disabled?: boolean;
-  destructive?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--space-4)',
-        padding: 'var(--space-4) var(--space-5)',
-        borderRadius: 'var(--radius-lg)',
-        background: 'rgba(var(--glass-tint), 0.04)',
-        border: '1px solid rgba(var(--glass-tint), 0.10)',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        textAlign: 'left',
-        opacity: disabled ? 0.5 : 1,
-        color: 'var(--text-primary)',
-      }}
-    >
-      <span
-        className="material-icons"
-        style={{ fontSize: 'var(--fs-stat)', color: destructive ? 'var(--red-soft)' : 'var(--text-secondary)' }}
-      >
-        {icon}
-      </span>
-      <span style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-        <span style={{ fontSize: 'var(--fs-md)', fontWeight: 500, color: destructive ? 'var(--red-soft)' : 'var(--text-primary)' }}>
-          {label}
-        </span>
-        {hint && (
-          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-05)' }}>{hint}</span>
-        )}
-      </span>
-    </button>
   );
 }

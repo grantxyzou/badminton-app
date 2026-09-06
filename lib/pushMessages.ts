@@ -164,3 +164,31 @@ export function buildAnnouncementPayload(announcement: { id?: string; text?: str
     tag: safeTag(`announcement-${announcement.id ?? 'latest'}`),
   };
 }
+
+/**
+ * "The stringer changed something about your racket — come and look."
+ *
+ * CARRIES NO MONEY AT ALL, and this is the place the rule is most tempting to
+ * break: the whole point of the notification is a price change, so
+ * "Grant changed your quote to $34" writes itself. It is still wrong. A banner
+ * renders on a locked phone, in a gym, in front of whoever is standing there,
+ * and this one is worse than the ready-notice — a price is a negotiation, not
+ * a status. It does not name the proposer either: the club changed something,
+ * not which volunteer typed it.
+ *
+ * The number lives behind auth, one tap away, where only the person being
+ * asked can read it.
+ */
+export function buildPendingEditPayload(job: {
+  jobNo: string;
+  racketLabel?: string | null;
+}): PushPayload {
+  const racket = job.racketLabel?.trim() || 'your racket';
+  return {
+    title: 'A change to confirm',
+    body: `Something changed on ${racket}. Open BPM to have a look.`,
+    url: `${BASE}/`,
+    // Job first, same reasoning as the stage payload above.
+    tag: safeTag(`str-${job.jobNo}-edit`),
+  };
+}

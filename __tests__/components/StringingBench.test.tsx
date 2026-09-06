@@ -279,3 +279,257 @@ describe('intake shows the stringer what the player will read', () => {
     expect(screen.getByText(/doesn't look like a price/i)).toBeDefined();
   });
 });
+
+/**
+ * ARCHIVE AND THE ROW MENU
+ *
+ * The archive's whole risk is money going out of sight: archiving does not
+ * forgive a debt, so the screen that hides a job has to say what it is hiding.
+ */
+function respondBenchAndArchive(bench: StringingJob[], archived: StringingJob[], archiveOk = true) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes('/shop')) return Promise.resolve({ ok: true, json: async () => ({ open: false }) } as Response);
+      if (u.includes('/strings')) return Promise.resolve({ ok: true, json: async () => ({ strings: [] }) } as Response);
+      if (u.includes('archived=true')) {
+        if (!archiveOk) return Promise.resolve({ ok: false, status: 503 } as Response);
+        return Promise.resolve({ ok: true, json: async () => ({ jobs: archived, view: 'bench' }) } as Response);
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ jobs: bench, view: 'bench' }) } as Response);
+    }),
+  );
+}
+
+describe('the archive', () => {
+  it('offers a way in, carrying an honest count', async () => {
+    respondBenchAndArchive([job], [{ ...job, id: 'job-2', archivedAt: '2026-09-01T00:00:00.000Z' }]);
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Archived (1)')).toBeDefined());
+  });
+
+  it('still offers a way in when the count is unknown', async () => {
+    // A failed archive load must not hide the door to the archive. That is the
+    // lying-empty-state rule, and here it would make archived work unreachable.
+    respondBenchAndArchive([job], [], false);
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Archived')).toBeDefined());
+  });
+
+  it('lists archived jobs once opened', async () => {
+    respondBenchAndArchive(
+      [],
+      [{ ...job, id: 'job-2', jobNo: 'J-0099', archivedAt: '2026-09-01T00:00:00.000Z' }],
+    );
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Archived (1)')).toBeDefined());
+    fireEvent.click(screen.getByText('Archived (1)'));
+    await waitFor(() => expect(screen.getByText('J-0099')).toBeDefined());
+  });
+
+  it('says what money is still owed on an archived job', async () => {
+    // `ready` + priced + unpaid is exactly isBillable. The figure appears HERE
+    // and nowhere else on a list screen, because this is the one list that can
+    // hide a bill.
+    respondBenchAndArchive(
+      [],
+      [
+        {
+          ...job,
+          id: 'job-2',
+          status: 'ready',
+          priceCents: 3200,
+          paidAt: null,
+          archivedAt: '2026-09-01T00:00:00.000Z',
+        },
+      ],
+    );
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Archived (1)')).toBeDefined());
+    fireEvent.click(screen.getByText('Archived (1)'));
+    await waitFor(() => expect(screen.getByText('Still owed $32.00')).toBeDefined());
+  });
+
+  it('shows an error rather than an empty archive when the load fails', async () => {
+    respondBenchAndArchive([job], [], false);
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Archived')).toBeDefined());
+    fireEvent.click(screen.getByText('Archived'));
+    await waitFor(() =>
+      expect(screen.getByText("Couldn't load the archive — pull to refresh.")).toBeDefined(),
+    );
+    expect(screen.queryByText('Nothing archived yet.')).toBeNull();
+  });
+});
+
+describe('the row menu is the findable path', () => {
+  it('opens a sheet offering pin and archive', async () => {
+    // The swipe is the fast path; this is the one a stringer can discover.
+    respondBenchAndArchive([job], []);
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('J-0042')).toBeDefined());
+
+    fireEvent.click(screen.getByLabelText('More actions for Wei'));
+    await waitFor(() => expect(screen.getByText('Pin to the top')).toBeDefined());
+    // Two of them, and that is right: the swipe tray and the menu name the
+    // same action the same way. Asserting on the unique hint below is what
+    // pins the MENU one specifically.
+    expect(screen.getAllByText('Archive').length).toBeGreaterThan(0);
+    // Archiving is not destructive and the hint has to say so, or a stringer
+    // reasonably assumes it writes the debt off.
+    expect(screen.getByText('Off the bench. They still owe what they owe.')).toBeDefined();
+  });
+});
+
+describe('deleting says what it destroys', () => {
+  const archived = {
+    ...job,
+    id: 'job-2',
+    status: 'ready' as const,
+    priceCents: 3200,
+    paidAt: null,
+    archivedAt: '2026-09-01T00:00:00.000Z',
+  };
+
+  async function openArchivedMenu(j: StringingJob) {
+    respondBenchAndArchive([], [j]);
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Archived (1)')).toBeDefined());
+    fireEvent.click(screen.getByText('Archived (1)'));
+    await waitFor(() => expect(screen.getByLabelText('More actions for Wei')).toBeDefined());
+    fireEvent.click(screen.getByLabelText('More actions for Wei'));
+    await waitFor(() => expect(screen.getByText('Delete permanently')).toBeDefined());
+  }
+
+  it('is offered only on an archived job', async () => {
+    // Archive is the undo step. Offering delete on the bench would remove it.
+    respondBenchAndArchive([job], []);
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('J-0042')).toBeDefined());
+    fireEvent.click(screen.getByLabelText('More actions for Wei'));
+    // Wait on the menu's unique hint, not on "Archive" — the swipe tray uses
+    // that word too, deliberately, so it is not a selector.
+    await waitFor(() =>
+      expect(screen.getByText('Off the bench. They still owe what they owe.')).toBeDefined(),
+    );
+    expect(screen.queryByText('Delete permanently')).toBeNull();
+  });
+
+  it('names the money that disappears from their balance', async () => {
+    // Vague destructive copy tells someone it is serious without telling them
+    // what they lose — and here what they lose is somebody else's money,
+    // because archiving never touched the debt and this does.
+    await openArchivedMenu(archived);
+    fireEvent.click(screen.getByText('Delete permanently'));
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          "Delete Wei's Astrox 99 Pro? The $32.00 they still owe disappears from their balance, and this cannot be undone.",
+        ),
+      ).toBeDefined(),
+    );
+  });
+
+  it('does not invent a debt when nothing is owed', async () => {
+    await openArchivedMenu({ ...archived, paidAt: '2026-09-02T00:00:00.000Z' });
+    fireEvent.click(screen.getByText('Delete permanently'));
+    await waitFor(() =>
+      expect(screen.getByText("Delete Wei's Astrox 99 Pro? This cannot be undone.")).toBeDefined(),
+    );
+  });
+
+  it('takes two taps, and the first one is escapable', async () => {
+    await openArchivedMenu(archived);
+    fireEvent.click(screen.getByText('Delete permanently'));
+    await waitFor(() => expect(screen.getByText('Keep it')).toBeDefined());
+    fireEvent.click(screen.getByText('Keep it'));
+    await waitFor(() => expect(screen.getByText('Delete permanently')).toBeDefined());
+    expect(screen.queryByText('Keep it')).toBeNull();
+  });
+});
+
+describe('the archive count stays honest after archiving from the bench', () => {
+  it('reloads the archive when a job is archived from the BENCH', async () => {
+    // Archiving happens mostly from the bench, and the reload used to be
+    // skipped there — leaving the "Archived (N)" count stale and the job
+    // missing from the archive the admin taps into a second later. Which is
+    // exactly the honest count this row was added for.
+    const archived = { ...job, id: 'job-2', jobNo: 'J-0002', archivedAt: '2026-09-01T00:00:00.000Z' };
+    let archivedList: StringingJob[] = [];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        const u = String(url);
+        if (u.includes('/shop')) return Promise.resolve({ ok: true, json: async () => ({ open: false }) } as Response);
+        if (u.includes('/strings')) return Promise.resolve({ ok: true, json: async () => ({ strings: [] }) } as Response);
+        if (init?.method === 'PATCH') {
+          // The archive now contains it — the next archive GET must see that.
+          archivedList = [archived];
+          return Promise.resolve({ ok: true, json: async () => ({ job: archived }) } as Response);
+        }
+        if (u.includes('archived=true')) {
+          return Promise.resolve({ ok: true, json: async () => ({ jobs: archivedList, view: 'bench' }) } as Response);
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ jobs: [job], view: 'bench' }) } as Response);
+      }),
+    );
+
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Archived (0)')).toBeDefined());
+
+    fireEvent.click(screen.getByLabelText('More actions for Wei'));
+    await waitFor(() =>
+      expect(screen.getByText('Off the bench. They still owe what they owe.')).toBeDefined(),
+    );
+    fireEvent.click(screen.getByText('Off the bench. They still owe what they owe.'));
+
+    await waitFor(() => expect(screen.getByText('Archived (1)')).toBeDefined());
+  });
+});
+
+describe('a proposal is not re-sent by a second tap', () => {
+  it('disables Send once the draft matches what is already proposed', async () => {
+    // Sending changes `pendingEdit`, not the job's base fields, so a dirty
+    // check against the job alone stays true forever and the button goes back
+    // to live. A second tap builds an identical diff with a fresh proposedAt,
+    // which the route reads as NEW and pushes again — a duplicate notification
+    // for a question already open in front of the player. Every other push
+    // trigger here is de-duped; this is the same rule.
+    const pendingJob: StringingJob = {
+      ...job,
+      priceCents: 3000,
+      pendingEdit: {
+        priceCents: 3400,
+        proposedAt: '2026-09-01T00:00:00.000Z',
+        proposedBy: 'member-grant',
+      },
+    };
+    wrap(<StringingJobDetail job={pendingJob} onBack={() => {}} onChanged={() => {}} />);
+
+    // The form is seeded from the JOB, so it reads $30 — different from the
+    // job only once the admin retypes the proposed figure.
+    const price = screen.getByLabelText('Price') as HTMLInputElement;
+    fireEvent.change(price, { target: { value: '34.00' } });
+
+    const send = screen.getByText('Send to Wei').closest('button') as HTMLButtonElement;
+    expect(send.disabled).toBe(true);
+  });
+
+  it('enables Send for a genuinely different figure', async () => {
+    const pendingJob: StringingJob = {
+      ...job,
+      priceCents: 3000,
+      pendingEdit: {
+        priceCents: 3400,
+        proposedAt: '2026-09-01T00:00:00.000Z',
+        proposedBy: 'member-grant',
+      },
+    };
+    wrap(<StringingJobDetail job={pendingJob} onBack={() => {}} onChanged={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Price'), { target: { value: '36.00' } });
+    const send = screen.getByText('Send to Wei').closest('button') as HTMLButtonElement;
+    expect(send.disabled).toBe(false);
+  });
+});

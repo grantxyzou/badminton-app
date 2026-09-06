@@ -29,7 +29,7 @@ import {
   formatJobNo,
 } from '@/lib/stringing';
 import { isBillable } from '@/lib/stringingBilling';
-import type { StringingJob, PlayerStringingJob } from '@/lib/types';
+import type { StringingJob, PlayerStringingJob, PlayerPendingEdit } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,6 +63,90 @@ function ensureJobs(): Promise<void> {
   return ready;
 }
 
+/**
+ * Archived means "off the bench", and it is checked in TWO places on purpose.
+ *
+ * The SQL predicate keeps real Cosmos from shipping rows nobody will render.
+ * The JS check is the one that actually works everywhere: the mock store does
+ * not parse SQL at all — it applies one filter per PARAMETER NAME it
+ * recognises and ignores the WHERE clause — so a parameterless predicate like
+ * `NOT IS_DEFINED(c.archivedAt)` matches every row in the container under test
+ * while looking correct in production. Belt and braces, and the braces are the
+ * JS.
+ */
+export function isArchived(job: Pick<StringingJob, 'archivedAt'>): boolean {
+  return typeof job.archivedAt === 'string' && job.archivedAt.length > 0;
+}
+
+const LIVE_SQL = '(NOT IS_DEFINED(c.archivedAt) OR c.archivedAt = null)';
+/**
+ * `NOT IS_NULL(...)`, never `!= null`.
+ *
+ * Cosmos evaluates a comparison between two different JSON types to Undefined,
+ * and a WHERE clause excludes Undefined rows — so `c.archivedAt != null` on a
+ * String compares String-vs-Null, yields Undefined, and matches ZERO archived
+ * jobs in production. It looked correct and passed every test, because the mock
+ * store ignores the WHERE clause entirely and this predicate binds no parameter
+ * for it to recognise. The JS re-check below cannot save it either: that guards
+ * against too MANY rows coming back, not too few.
+ *
+ * `LIVE_SQL` above is fine for the same reason stated in reverse — its
+ * `c.archivedAt = null` is a Null-vs-Null comparison on the only rows where it
+ * is reached, which is well-defined.
+ */
+const ARCHIVED_SQL = '(IS_DEFINED(c.archivedAt) AND NOT IS_NULL(c.archivedAt))';
+
+/**
+ * Bench order: pinned first (most recently pinned wins), then newest.
+ *
+ * Sorted in JS, NOT with `ORDER BY c.prioritizedAt`. Cosmos omits documents
+ * that lack the ordered field rather than sorting them last, so an ORDER BY
+ * here would silently hide every job nobody had pinned — which is most of them,
+ * and which would look like a data-loss bug rather than a sort bug. The route
+ * already sorted in JS before this; this only adds a key.
+ */
+export function benchOrder(a: StringingJob, b: StringingJob): number {
+  const ap = a.prioritizedAt ?? '';
+  const bp = b.prioritizedAt ?? '';
+  if (ap !== bp) return bp.localeCompare(ap);
+  return b.createdAt.localeCompare(a.createdAt);
+}
+
+/**
+ * The proposed-change diff a player is shown, or null.
+ *
+ * THE PRICE WALL'S ONE DOCUMENTED EXCEPTION. Both figures are exact dollars,
+ * because you cannot ask somebody to agree to "$28–32" — the whole point of
+ * asking is that they know the number. It is narrow by construction: nothing is
+ * emitted unless a proposal is outstanding, and each field appears only if that
+ * field is actually changing. Every other path still gets the band.
+ *
+ * Note what is NOT here: `proposedBy`. A player is told the club changed
+ * something, not which volunteer typed it.
+ */
+export function toPlayerPendingEdit(job: StringingJob): PlayerPendingEdit | null {
+  const p = job.pendingEdit;
+  if (!p) return null;
+  const out: PlayerPendingEdit = { proposedAt: p.proposedAt };
+  if (p.racketLabel !== undefined) {
+    out.racketFrom = job.racketLabel;
+    out.racketTo = p.racketLabel;
+  }
+  if (p.stringLabel !== undefined) {
+    out.stringFrom = job.stringLabel;
+    out.stringTo = p.stringLabel;
+  }
+  if (p.tensionMains !== undefined || p.tensionCrosses !== undefined) {
+    out.tensionFrom = `${job.tensionMains}/${job.tensionCrosses}`;
+    out.tensionTo = `${p.tensionMains ?? job.tensionMains}/${p.tensionCrosses ?? job.tensionCrosses}`;
+  }
+  if (p.priceCents !== undefined) {
+    out.priceFrom = job.priceCents === null ? null : job.priceCents / 100;
+    out.priceTo = p.priceCents === null ? null : p.priceCents / 100;
+  }
+  return out;
+}
+
 /** The ONLY way a job reaches a non-admin. See the file docblock. */
 export function toPlayerJob(job: StringingJob): PlayerStringingJob {
   return {
@@ -91,6 +175,7 @@ export function toPlayerJob(job: StringingJob): PlayerStringingJob {
     amountDue: isBillable(job) ? Math.round(job.priceCents!) / 100 : null,
     readyBy: job.readyBy,
     paid: job.paidAt !== null,
+    pendingEdit: toPlayerPendingEdit(job),
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
   };
@@ -143,14 +228,26 @@ export async function GET(req: NextRequest) {
       // The bench. `?mine=true` filters to the caller's own claimed jobs —
       // the design's Mine / All segment.
       const mine = req.nextUrl.searchParams.get('mine') === 'true';
+      /**
+       * `?archived=true` returns ONLY archived jobs — an inclusion, not a
+       * merge, because the archive is its own screen. Admin-only, and safe to
+       * gate on `admin.authed` alone: this whole branch is already behind it.
+       *
+       * It returns full `StringingJob` docs like the bench does, so the archive
+       * row can flag "still owed" from `isBillable` without a second fetch.
+       */
+      const wantArchived = req.nextUrl.searchParams.get('archived') === 'true';
+      const scope = wantArchived ? ARCHIVED_SQL : LIVE_SQL;
       const query = mine
         ? {
-            query: 'SELECT * FROM c WHERE c.stringerId = @stringerId',
+            query: `SELECT * FROM c WHERE c.stringerId = @stringerId AND ${scope}`,
             parameters: [{ name: '@stringerId', value: admin.memberId }],
           }
-        : { query: 'SELECT * FROM c', parameters: [] };
+        : { query: `SELECT * FROM c WHERE ${scope}`, parameters: [] };
       const { resources } = await container.items.query<StringingJob>(query).fetchAll();
-      const jobs = resources.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      const jobs = resources
+        .filter((j) => isArchived(j) === wantArchived)
+        .sort(benchOrder);
       return NextResponse.json({ jobs, view: 'bench' });
     }
 
@@ -167,12 +264,16 @@ export async function GET(req: NextRequest) {
     }
     const { resources } = await container.items
       .query<StringingJob>({
-        query: 'SELECT * FROM c WHERE c.memberId = @memberId',
+        query: `SELECT * FROM c WHERE c.memberId = @memberId AND ${LIVE_SQL}`,
         parameters: [{ name: '@memberId', value: memberId }],
       })
       .fetchAll();
+    // A player never sees an archived job. Archiving is how a stringer says
+    // "this is done with"; leaving it on someone's Home card afterwards would
+    // make the two screens disagree about the same racket.
     const jobs = resources
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .filter((j) => !isArchived(j))
+      .sort(benchOrder)
       .map(toPlayerJob);
     return NextResponse.json({ jobs, view: 'player' });
   } catch (err) {

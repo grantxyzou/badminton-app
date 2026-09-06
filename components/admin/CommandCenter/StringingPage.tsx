@@ -10,6 +10,10 @@ import { useOnline } from '@/lib/useOnline';
 import { dueFor, todayIso, formatReadyBy, type DueTone } from '@/lib/stringingDue';
 import type { StringingStatus } from '@/lib/stringing';
 import type { StringingJob } from '@/lib/types';
+import SwipeRow from '@/components/primitives/SwipeRow';
+import ActionRow from '@/components/primitives/ActionRow';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import { isBillable } from '@/lib/stringingBilling';
 import StringingJobDetail from './StringingJobDetail';
 import StringingIntake from './StringingIntake';
 import OfferedStringsCard from './OfferedStringsCard';
@@ -64,7 +68,22 @@ export default function StringingPage({ onBack }: Props) {
   // mean a stringer believing they have no rackets to string.
   const [loadError, setLoadError] = useState(false);
   const [mine, setMine] = useState(false);
-  const [view, setView] = useState<'bench' | 'detail' | 'new'>('bench');
+  const [view, setView] = useState<'bench' | 'detail' | 'new' | 'archive'>('bench');
+  /* The archive is its OWN list with its own loader, rather than a flag folded
+     into `load`. Folding it in would put `view` in load's dependency array, and
+     coming back from a detail screen would then refetch — the exact thing this
+     page is structured to avoid. */
+  const [archivedJobs, setArchivedJobs] = useState<StringingJob[] | null>(null);
+  const [archiveError, setArchiveError] = useState(false);
+  /* One target at a time, so only one sheet can ever be open — same shape as
+     PaymentsCard's per-row menu. */
+  const [actionTarget, setActionTarget] = useState<StringingJob | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState(false);
+  /* Two-step, in-sheet. Reset every time the sheet opens, so a confirm armed
+     against one job can never be fired at the next one. */
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // null = UNKNOWN (throttled or failed), not closed. Rendering a CLOSED sign
   // on a shop that is open is the confident-wrong answer, so unknown says so.
@@ -122,10 +141,227 @@ export default function StringingPage({ onBack }: Props) {
     }
   }
 
-  const selected = jobs?.find((j) => j.id === selectedId) ?? null;
+  const loadArchive = useCallback(async () => {
+    setArchiveError(false);
+    try {
+      // Honours Mine/All like the bench does. An admin filtered to "Mine"
+      // reading a global archive count underneath it is the two halves of one
+      // screen answering different questions.
+      const res = await fetch(
+        `${BASE}/api/stringing/jobs?archived=true${mine ? '&mine=true' : ''}`,
+        { cache: 'no-store' },
+      );
+      if (!res.ok) throw new Error(`stringing archive ${res.status}`);
+      const data = await res.json();
+      setArchivedJobs(Array.isArray(data.jobs) ? data.jobs : []);
+    } catch {
+      // Same tri-state as the bench: null + error, never `[]`. An empty
+      // archive and an unreachable one must not look identical.
+      setArchivedJobs(null);
+      setArchiveError(true);
+    }
+  }, [mine]);
+
+  // Fetched up front so the "Archived (N)" entry can carry an honest number.
+  // One extra request on a low-traffic admin screen buys a row that says how
+  // much is behind it instead of making the stringer open it to find out.
+  useEffect(() => {
+    void loadArchive();
+  }, [loadArchive]);
+
+  /** Archive / pin. Both are plain PATCH fields — neither moves the job along
+   *  the bench, so neither notifies the player. */
+  async function patchJob(job: StringingJob, body: Record<string, unknown>) {
+    if (actionBusy || !online) return;
+    setActionBusy(true);
+    setActionError(false);
+    try {
+      const res = await fetch(`${BASE}/api/stringing/jobs/${job.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId: job.memberId, ...body }),
+      });
+      if (!res.ok) throw new Error(`patch ${res.status}`);
+      setActionTarget(null);
+      /* BOTH lists, always. Archiving happens mostly FROM the bench, and
+         skipping the archive reload there left the "Archived (N)" count stale
+         and the job missing from the archive the admin taps into a second
+         later — which is precisely the honest count this row was added for. */
+      await Promise.all([load(), loadArchive()]);
+    } catch {
+      // The sheet STAYS OPEN saying so. Closing on failure would look like it
+      // worked, which is the lying-empty-state rule wearing a different hat.
+      setActionError(true);
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  // Either list: a job opened FROM the archive is not in `jobs`, and looking
+  // only there would land on a blank detail screen.
+  /** Destroy the record. Only reachable from the archive, and only after the
+   *  second tap — see the confirm row in the sheet. */
+  async function deleteJob(job: StringingJob) {
+    if (actionBusy || !online) return;
+    setActionBusy(true);
+    setDeleteError(false);
+    try {
+      const res = await fetch(`${BASE}/api/stringing/jobs/${job.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId: job.memberId, confirm: true }),
+      });
+      if (!res.ok) throw new Error(`delete ${res.status}`);
+      setActionTarget(null);
+      setConfirmingDelete(false);
+      await Promise.all([load(), loadArchive()]);
+    } catch {
+      setDeleteError(true);
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  const selected =
+    jobs?.find((j) => j.id === selectedId) ??
+    archivedJobs?.find((j) => j.id === selectedId) ??
+    null;
   // Resolved once per render rather than per row, so every row on the screen
   // agrees about what day it is even if the render straddles midnight.
   const today = todayIso();
+
+  /**
+   * One bench row, used by BOTH the bench and the archive.
+   *
+   * The card is a `div` rather than a `button` now: it has to contain the
+   * menu button, and a button inside a button is invalid HTML. Full-row tap is
+   * kept by an absolutely-positioned overlay button, with the content layer
+   * `pointer-events: none` above it and the menu button opting back in. That is
+   * the same shape `PaymentsCard` arrived at.
+   */
+  function renderJob(job: StringingJob, inArchive: boolean) {
+    const tone = TONE[job.status] ?? TONE.requested;
+    const due = dueFor(job, today);
+    const pinned = typeof job.prioritizedAt === 'string';
+    // Exactly `isBillable`: finished, priced and unpaid. Shown only in the
+    // archive, where the whole risk is money quietly going out of sight.
+    const owed = isBillable(job) ? (job.priceCents ?? 0) / 100 : null;
+
+    return (
+      <SwipeRow
+        key={job.id}
+        enabled={online}
+        leadingAction={
+          inArchive
+            ? undefined
+            : {
+                icon: pinned ? 'star_border' : 'star',
+                label: t(pinned ? 'swipe.unpin' : 'swipe.pin'),
+                tone: 'accent',
+                onAction: () => void patchJob(job, { prioritized: !pinned }),
+              }
+        }
+        trailingAction={{
+          icon: inArchive ? 'unarchive' : 'archive',
+          label: t(inArchive ? 'swipe.unarchive' : 'swipe.archive'),
+          tone: 'neutral',
+          onAction: () => void patchJob(job, { archived: !inArchive }),
+        }}
+      >
+        <div className="glass-card p-4" style={{ position: 'relative' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedId(job.id);
+              setView('detail');
+            }}
+            aria-label={t('actions.open')}
+            style={{ position: 'absolute', inset: 0 }}
+          />
+          <div
+            style={{
+              position: 'relative',
+              pointerEvents: 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--space-2)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', minWidth: 0 }}>
+                {pinned && (
+                  <span className="material-icons icon-xs" style={{ color: 'var(--accent)' }}>
+                    star
+                  </span>
+                )}
+                <span className="fs-lg" style={{ fontWeight: 600 }}>{job.memberName}</span>
+                <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+                  {job.jobNo}
+                </span>
+              </span>
+              <span
+                className="fs-2xs"
+                style={{
+                  flex: '0 0 auto',
+                  fontWeight: 600,
+                  padding: 'var(--space-2) var(--space-4)',
+                  borderRadius: 'var(--radius-pill)',
+                  background: tone.bg,
+                  color: tone.fg,
+                }}
+              >
+                {t(`status.${job.status}`)}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setActionTarget(job);
+                  setActionError(false);
+                  setConfirmingDelete(false);
+                  setDeleteError(false);
+                }}
+                aria-label={t('actions.more', { name: job.memberName })}
+                style={{ pointerEvents: 'auto', flex: '0 0 auto', color: 'var(--ink-faint)' }}
+              >
+                <span className="material-icons icon-md">more_vert</span>
+              </button>
+            </div>
+            <div className="fs-md" style={{ color: 'var(--text-secondary)' }}>{job.racketLabel}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-3)' }}>
+              <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-faint)' }}>
+                {job.stringLabel} · {job.tensionMains}/{job.tensionCrosses}{t('lb')}
+              </span>
+              {/* URGENCY, not price. A bench is scanned for what is late, and
+                  the exact figure lives one tap away on the detail screen —
+                  where it is also the only place it belongs.
+
+                  The archive is the one exception, and only for money still
+                  outstanding: archiving does not forgive a debt, so the row
+                  that hides the job has to say what it is hiding. */}
+              {inArchive && owed !== null ? (
+                <span className="fs-sm" style={{ fontWeight: 600, color: 'var(--sev-warn)' }}>
+                  {t('archive.stillOwed', { amount: owed.toFixed(2) })}
+                </span>
+              ) : (
+                <span className="fs-sm" style={{ fontWeight: 600, color: DUE_FG[due.tone] }}>
+                  {/* Suppressed for a picked-up job: the status chip on the row
+                      above already says "Picked up", and printing it twice in
+                      one row is noise on a screen whose whole job is scanning. */}
+                  {due.key === 'pickedUp'
+                    ? ''
+                    : due.key === 'overdue'
+                      ? t('due.overdue', { days: due.days ?? 0 })
+                      : due.key === 'onDate'
+                        ? (formatReadyBy(due.date) ?? t('due.noDate'))
+                        : t(`due.${due.key}`)}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </SwipeRow>
+    );
+  }
 
   if (view === 'detail' && selected) {
     return (
@@ -135,6 +371,159 @@ export default function StringingPage({ onBack }: Props) {
           onBack={() => setView('bench')}
           onChanged={() => void load()}
         />
+      </div>
+    );
+  }
+
+  const targetPinned = typeof actionTarget?.prioritizedAt === 'string';
+  const targetArchived = typeof actionTarget?.archivedAt === 'string';
+  // What deleting this would take off the player's balance, if anything.
+  const targetOwed =
+    actionTarget && isBillable(actionTarget) ? (actionTarget.priceCents ?? 0) / 100 : null;
+
+  /* One sheet, rendered by whichever screen is up. The gesture is the fast
+     path; this is the findable one. A swipe nobody discovers is how kudos
+     became unfindable — a player asked how to give one and the owner's own
+     answer was wrong. */
+  const actionSheet = (
+    <BottomSheet
+      open={actionTarget !== null}
+      onClose={() => {
+        setActionTarget(null);
+        setActionError(false);
+        setConfirmingDelete(false);
+        setDeleteError(false);
+      }}
+      ariaLabel={t('actions.title')}
+      maxHeight="50vh"
+      width="narrow"
+    >
+      <BottomSheetHeader>
+        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>
+          {actionTarget?.memberName ?? ''}
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            setActionTarget(null);
+            setActionError(false);
+            setConfirmingDelete(false);
+            setDeleteError(false);
+          }}
+          aria-label={t('actions.close')}
+          style={{ minWidth: 44, minHeight: 44 }}
+        >
+          <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
+        </button>
+      </BottomSheetHeader>
+      <BottomSheetBody>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          {actionError && <p className="field-error" role="alert">{t('actions.error')}</p>}
+          {actionTarget && !targetArchived && (
+            <ActionRow
+              icon={targetPinned ? 'star_border' : 'star'}
+              label={t(targetPinned ? 'actions.unpin' : 'actions.pin')}
+              hint={targetPinned ? undefined : t('actions.pinHint')}
+              disabled={actionBusy || !online}
+              onClick={() => void patchJob(actionTarget, { prioritized: !targetPinned })}
+            />
+          )}
+          {actionTarget && (
+            <ActionRow
+              icon={targetArchived ? 'unarchive' : 'archive'}
+              label={t(targetArchived ? 'actions.unarchive' : 'actions.archive')}
+              hint={targetArchived ? undefined : t('actions.archiveHint')}
+              disabled={actionBusy || !online}
+              onClick={() => void patchJob(actionTarget, { archived: !targetArchived })}
+            />
+          )}
+          {actionTarget && (
+            <ActionRow
+              icon="open_in_new"
+              label={t('actions.open')}
+              onClick={() => {
+                setSelectedId(actionTarget.id);
+                setActionTarget(null);
+                setView('detail');
+              }}
+            />
+          )}
+
+          {/* Deleting is offered ONLY on an archived job, which is what makes
+              archive the undo step. Two-step and in-sheet — not a stacked
+              sheet and not window.confirm(). */}
+          {actionTarget && targetArchived && !confirmingDelete && (
+            <ActionRow
+              icon="delete_forever"
+              label={t('actions.delete')}
+              hint={t('actions.deleteHint')}
+              disabled={actionBusy || !online}
+              destructive
+              onClick={() => {
+                setConfirmingDelete(true);
+                setDeleteError(false);
+              }}
+            />
+          )}
+          {actionTarget && targetArchived && confirmingDelete && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              {deleteError && <p className="field-error" role="alert">{t('actions.deleteError')}</p>}
+              {/* Name what goes. "This cannot be undone" tells someone it is
+                  serious without telling them what they lose — and the thing
+                  they can actually lose here is somebody else's money, because
+                  archiving never touched the debt and this does. */}
+              <p className="fs-sm" style={{ color: 'var(--text-secondary)', margin: 0 }}>
+                {targetOwed !== null
+                  ? t('actions.deleteConfirmOwed', {
+                      name: actionTarget.memberName,
+                      racket: actionTarget.racketLabel,
+                      amount: targetOwed.toFixed(2),
+                    })
+                  : t('actions.deleteConfirm', {
+                      name: actionTarget.memberName,
+                      racket: actionTarget.racketLabel,
+                    })}
+              </p>
+              <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                <button
+                  type="button"
+                  className="cc-btn cc-btn-ghost"
+                  disabled={actionBusy}
+                  onClick={() => setConfirmingDelete(false)}
+                  style={{ flex: 1 }}
+                >
+                  {t('actions.deleteKeep')}
+                </button>
+                <button
+                  type="button"
+                  className="cc-btn cc-btn-danger"
+                  disabled={actionBusy || !online}
+                  onClick={() => void deleteJob(actionTarget)}
+                  style={{ flex: 1 }}
+                >
+                  {actionBusy ? t('actions.deleting') : t('actions.deleteGo')}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </BottomSheetBody>
+    </BottomSheet>
+  );
+
+  if (view === 'archive') {
+    return (
+      <div className="animate-slideInRight">
+        <AdminBackHeader onBack={() => setView('bench')} title={t('archive.title')} />
+        <div className="flex flex-col gap-4 px-4 pb-6">
+          {archiveError && <ErrorState message={t('archive.loadError')} />}
+          {!archiveError && archivedJobs === null && <AdminPageSkeleton />}
+          {!archiveError && archivedJobs !== null && archivedJobs.length === 0 && (
+            <EmptyState icon="inventory_2">{t('archive.empty')}</EmptyState>
+          )}
+          {archivedJobs?.map((job) => renderJob(job, true))}
+        </div>
+        {actionSheet}
       </div>
     );
   }
@@ -237,65 +626,7 @@ export default function StringingPage({ onBack }: Props) {
           <EmptyState icon="sports_tennis">{mine ? t('emptyMine') : t('empty')}</EmptyState>
         )}
 
-        {jobs?.map((job) => {
-          const tone = TONE[job.status] ?? TONE.requested;
-          const due = dueFor(job, today);
-          return (
-            <button
-              key={job.id}
-              type="button"
-              onClick={() => {
-                setSelectedId(job.id);
-                setView('detail');
-              }}
-              className="glass-card p-4 text-left"
-              style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-3)' }}>
-                <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', minWidth: 0 }}>
-                  <span className="fs-lg" style={{ fontWeight: 600 }}>{job.memberName}</span>
-                  <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-                    {job.jobNo}
-                  </span>
-                </span>
-                <span
-                  className="fs-2xs"
-                  style={{
-                    flex: '0 0 auto',
-                    fontWeight: 600,
-                    padding: 'var(--space-2) var(--space-4)',
-                    borderRadius: 'var(--radius-pill)',
-                    background: tone.bg,
-                    color: tone.fg,
-                  }}
-                >
-                  {t(`status.${job.status}`)}
-                </span>
-              </div>
-              <div className="fs-md" style={{ color: 'var(--text-secondary)' }}>{job.racketLabel}</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-3)' }}>
-                <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--ink-faint)' }}>
-                  {job.stringLabel} · {job.tensionMains}/{job.tensionCrosses}{t('lb')}
-                </span>
-                {/* URGENCY, not price. A bench is scanned for what is late, and
-                    the exact figure lives one tap away on the detail screen —
-                    where it is also the only place it belongs. */}
-                <span className="fs-sm" style={{ fontWeight: 600, color: DUE_FG[due.tone] }}>
-                  {/* Suppressed for a picked-up job: the status chip on the row
-                      above already says "Picked up", and printing it twice in
-                      one row is noise on a screen whose whole job is scanning. */}
-                  {due.key === 'pickedUp'
-                    ? ''
-                    : due.key === 'overdue'
-                      ? t('due.overdue', { days: due.days ?? 0 })
-                      : due.key === 'onDate'
-                        ? (formatReadyBy(due.date) ?? t('due.noDate'))
-                        : t(`due.${due.key}`)}
-                </span>
-              </div>
-            </button>
-          );
-        })}
+        {jobs?.map((job) => renderJob(job, false))}
 
         <button
           type="button"
@@ -306,7 +637,23 @@ export default function StringingPage({ onBack }: Props) {
         >
           {t('addJob')}
         </button>
+
+        {/* Always rendered, even at zero and even when the count is unknown.
+            Hiding the way back to archived work when the archive fails to load
+            would be the lying-empty-state rule again — and the one thing an
+            archive must never do is become unreachable. */}
+        <button
+          type="button"
+          onClick={() => setView('archive')}
+          className="cc-btn cc-btn-ghost"
+          style={{ width: '100%' }}
+        >
+          {archivedJobs === null
+            ? t('archive.openUnknown')
+            : t('archive.open', { count: archivedJobs.length })}
+        </button>
       </div>
+      {actionSheet}
     </div>
   );
 }

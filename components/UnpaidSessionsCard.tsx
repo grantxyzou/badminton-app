@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { BALANCE_EVENT } from '@/lib/balanceRefresh';
 import { useTranslations, useFormatter } from 'next-intl';
 import ErrorState from './primitives/ErrorState';
 import EmptyState from './primitives/EmptyState';
@@ -74,6 +75,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
   // badminton_identity persists gets a 403. "Couldn't load — refresh to retry"
   // would be a false instruction; refreshing never fixes it.
   const [forbidden, setForbidden] = useState(false);
+  const [refreshNonce, setRefreshNonce] = useState(0);
   const isHome = variant === 'home';
 
   const etransferEmail = process.env.NEXT_PUBLIC_ETRANSFER_EMAIL || null;
@@ -112,7 +114,17 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
     return () => {
       cancelled = true;
     };
-  }, [name]);
+  }, [name, refreshNonce]);
+
+  /* Re-read when something else in the app has changed what is owed — today
+     that is a player accepting a stringing price. Without it, accepting $34
+     leaves this card showing $30 until a manual refresh, and the two halves of
+     the same screen disagree about the same racket. */
+  useEffect(() => {
+    const onChanged = () => setRefreshNonce((n) => n + 1);
+    window.addEventListener(BALANCE_EVENT, onChanged);
+    return () => window.removeEventListener(BALANCE_EVENT, onChanged);
+  }, []);
 
   const owesNothing = !loadError && !forbidden && (!data || data.totalOwed <= 0);
 

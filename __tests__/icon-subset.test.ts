@@ -98,6 +98,57 @@ describe('Material Symbols icon subset', () => {
     expect(missing, message).toEqual([]);
   });
 
+  /**
+   * The two shapes the three checks above still miss, both of which shipped
+   * broken on the stringing bench: a JSX PROP holding an expression
+   * — `icon={pinned ? 'star_border' : 'star'}` — and an object property whose
+   * value is a ternary rather than a bare literal
+   * — `icon: inArchive ? 'unarchive' : 'archive'`.
+   *
+   * The span-expression check above only looks INSIDE a material-icons span,
+   * and the `icon:` check only accepts a literal immediately after the colon.
+   * A primitive that takes the glyph as a prop and renders it through
+   * `{props.icon}` defeats both, which is how `archive` and `open_in_new`
+   * reached a screenshot rendering as the words ARCHIVE and OPEN_IN_NEW.
+   *
+   * Both arms again: the branch you only see after a tap is the one nobody
+   * notices is broken.
+   */
+  it('every glyph named in an icon prop or ternary is in the subset URL', () => {
+    const subset = extractSubset();
+    const files = SCAN_DIRS.flatMap(walk);
+    const missing: { file: string; glyph: string }[] = [];
+
+    for (const file of files) {
+      const src = readFileSync(file, 'utf8');
+      const patterns = [
+        /\bicon=\{([^}]*)\}/g, // JSX prop holding an expression
+        /\bicon:\s*([^,\n]+)/g, // object property value, ternary included
+      ];
+      for (const re of patterns) {
+        let m: RegExpExecArray | null;
+        while ((m = re.exec(src))) {
+          // Same reason as the span-expression check: in `x === 'ready' ? …`
+          // the operand is what is being TESTED, not a glyph.
+          const branches = m[1].replace(/[!=]==?\s*'[a-z0-9_]+'/g, '');
+          for (const lit of branches.matchAll(/'([a-z0-9_]+)'/g)) {
+            if (!subset.has(lit[1])) {
+              missing.push({ file: file.replace(ROOT + '/', ''), glyph: lit[1] });
+            }
+          }
+        }
+      }
+    }
+
+    const message =
+      missing.length === 0
+        ? ''
+        : 'Missing icon-prop glyphs in app/layout.tsx icon_names URL:\n' +
+          missing.map((x) => '  - "' + x.glyph + '" used in ' + x.file).join('\n') +
+          '\nAdd the glyph names to the URL or they will render as raw text.';
+    expect(missing, message).toEqual([]);
+  });
+
   // Data-driven icons (`icon: 'flag'` in a SettingsList/rows array) don't match
   // the literal-span regex above, so a missing glyph there renders as raw text
   // with no test failure — exactly how the "Report a problem" flag icon shipped

@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GET } from '@/app/api/players/unpaid/route';
 import {
   resetMockStore,
+  getStore,
   seedPointer,
   seedSession,
   seedPlayer,
@@ -226,5 +227,78 @@ describe('GET /api/players/unpaid', () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.sessions.find((x: { sessionId: string }) => x.sessionId === BAD)).toBeUndefined();
+  });
+});
+
+/**
+ * ARCHIVING A STRINGING JOB DOES NOT FORGIVE THE DEBT.
+ *
+ * That was a deliberate decision — archive is bench tidying, and only deleting
+ * takes a line off somebody's balance — but until now the only thing checking
+ * it was the archive row's own display. This pins it at the endpoint the
+ * balance card actually reads, so that "tidying" this route to skip archived
+ * jobs deletes money from a player's balance LOUDLY rather than silently.
+ */
+describe('archived stringing jobs still count as owed', () => {
+  // The route reads stringing only when the flag is on — without this the
+  // assertions below pass against an empty list and prove nothing.
+  const FLAG = 'NEXT_PUBLIC_FLAG_STRINGING';
+  const flagBefore = process.env[FLAG];
+  beforeEach(() => {
+    process.env[FLAG] = 'true';
+  });
+  afterEach(() => {
+    if (flagBefore === undefined) delete process.env[FLAG];
+    else process.env[FLAG] = flagBefore;
+  });
+
+  function seedStringingJob(memberId: string, over: Record<string, unknown> = {}) {
+    const store = getStore();
+    if (!store['stringingJobs']) store['stringingJobs'] = [];
+    store['stringingJobs'].push({
+      id: `job-${Math.random().toString(16).slice(2, 10)}`,
+      memberId,
+      jobNo: 'J-0001',
+      memberName: 'Lin',
+      stringerId: null,
+      stringerName: null,
+      status: 'ready',
+      racketLabel: 'Astrox 99 Pro',
+      stringLabel: 'BG80',
+      tensionMains: 26,
+      tensionCrosses: 28,
+      method: 'Zach · 2 strings, 4 knots',
+      priceCents: 3200,
+      readyBy: null,
+      acceptedAt: null,
+      paidAt: null,
+      sessionId: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      history: [],
+      ...over,
+    });
+  }
+
+  it('keeps an archived, unpaid job in the total', async () => {
+    const member = seedMember('Lin');
+    seedStringingJob(member.id, { archivedAt: '2026-09-01T00:00:00.000Z' });
+
+    const res = await get('Lin');
+    const body = await res.json();
+    expect(body.totalOwed).toBe(32);
+    expect(body.stringing).toHaveLength(1);
+  });
+
+  it('still excludes a PAID archived job, for the ordinary reason', async () => {
+    // Guards against "fixing" the above by making isBillable ignore paidAt.
+    const member = seedMember('Lin');
+    seedStringingJob(member.id, {
+      archivedAt: '2026-09-01T00:00:00.000Z',
+      paidAt: '2026-09-02T00:00:00.000Z',
+    });
+
+    const res = await get('Lin');
+    expect((await res.json()).totalOwed).toBe(0);
   });
 });

@@ -120,3 +120,39 @@ describe('<UnpaidSessionsCard />', () => {
     await waitFor(() => expect(screen.getByText(/all paid up/i)).toBeTruthy());
   });
 });
+
+describe('it re-reads when something else changes what is owed', () => {
+  it('refetches on BALANCE_EVENT', async () => {
+    // Accepting a stringing price change moves the bill, and this card is a
+    // separate component with its own fetch. Without this the player agreed to
+    // $34 and the total above it kept saying $30 — the app contradicting itself
+    // about the same racket on the same screen, which is the failure
+    // `toPlayerJob`'s amountDue comment exists to prevent.
+    const { BALANCE_EVENT } = await import('@/lib/balanceRefresh');
+    const body = (total: number) =>
+      new Response(
+        JSON.stringify({
+          totalOwed: total,
+          sessionCount: 0,
+          sessions: [],
+          stringing: [
+            { jobId: 'j1', jobNo: 'J-0001', racketLabel: 'Astrox 99 Pro', amount: total, at: '2026-09-01T00:00:00.000Z' },
+          ],
+        }),
+        { status: 200 },
+      );
+
+    const fetchSpy = vi
+      .spyOn(global, 'fetch')
+      .mockResolvedValueOnce(body(30))
+      .mockResolvedValueOnce(body(34));
+
+    wrap(<UnpaidSessionsCard name="Lin" variant="home" />);
+    // Twice over: the stringing line and the total. Both must move.
+    await waitFor(() => expect(screen.getAllByText('$30')).toHaveLength(2));
+
+    fireEvent(window, new CustomEvent(BALANCE_EVENT));
+    await waitFor(() => expect(screen.getAllByText('$34')).toHaveLength(2));
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+});

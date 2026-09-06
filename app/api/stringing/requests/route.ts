@@ -24,7 +24,7 @@ import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { isValidTension, formatJobNo } from '@/lib/stringing';
 import { readShopOpen } from '@/lib/stringingShop';
-import { toPlayerJob } from '../jobs/route';
+import { toPlayerJob, isArchived } from '../jobs/route';
 import type { StringingJob } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -111,7 +111,14 @@ export async function POST(req: NextRequest) {
         parameters: [{ name: '@memberId', value: caller.memberId }],
       })
       .fetchAll();
-    const openCount = existing.filter((j) => OPEN_STATUSES.includes(j.status)).length;
+    // Archived jobs do not count. The cap bounds the SHELF, and an archived
+    // job is off the shelf by definition — without this, archiving a job that
+    // was abandoned mid-process (still `received`, racket long since collected)
+    // would leave that member permanently at their limit with no way to see
+    // why, because the job they are being blocked by is hidden from them.
+    const openCount = existing.filter(
+      (j) => OPEN_STATUSES.includes(j.status) && !isArchived(j),
+    ).length;
     if (openCount >= MAX_OPEN_PER_MEMBER) {
       return NextResponse.json({ error: 'too_many_open' }, { status: 409 });
     }

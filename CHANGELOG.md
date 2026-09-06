@@ -58,6 +58,8 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 - **A privacy policy, terms, support and account-deletion page** — at `/bpm/legal/privacy`, `/terms`, `/support` and `/delete-account`, readable without signing in, in both languages. The delete-account page walks you into the in-app flow; if you can't get in, it tells you how to ask instead. (These are also the URLs the App Store and Google Play listings need.)
 - **Groundwork for the BPM app on the App Store and Google Play** — not visible yet. The native shell, its push transport and the "Move to the app" link are built and tested; the store side (listing, review, Firebase) is still to come, so nothing changes for you today.
+- **Grant can ask you before a stringing price changes** — if the price or spec on your racket changes after he's quoted it, you get a prompt showing exactly what's changing, from what to what. Your balance doesn't move until you say yes. Declining leaves the original standing.
+- **The stringing bench can be tidied** — Grant can pin an urgent job to the top, archive finished ones off the list, and permanently delete an archived job. Archiving never changes what anyone owes; only deleting does, and it says so with the amount first.
 
 ### Fixed
 

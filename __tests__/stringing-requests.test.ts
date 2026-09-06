@@ -162,6 +162,21 @@ describe('one player cannot bury the bench', () => {
     expect((await POST(playerReq('wei', VALID))).status).toBe(201);
   });
 
+  it('does not count ARCHIVED jobs, so tidying the bench cannot lock someone out', async () => {
+    // An abandoned job sits at an unfinished status forever — the racket was
+    // collected in person, nobody moved it along. Archiving is how a stringer
+    // clears that. If the cap still counted it, the member would be blocked by
+    // a job they cannot see and cannot act on.
+    await openShop();
+    for (let i = 0; i < 3; i++) await POST(playerReq('wei', VALID));
+    expect((await POST(playerReq('wei', VALID))).status).toBe(409);
+
+    for (const j of (getStore()['stringingJobs'] ?? []) as StringingJob[]) {
+      j.archivedAt = '2026-09-01T00:00:00.000Z';
+    }
+    expect((await POST(playerReq('wei', VALID))).status).toBe(201);
+  });
+
   it('counts per member, not globally', async () => {
     await openShop();
     for (let i = 0; i < 3; i++) await POST(playerReq('wei', VALID));

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GET, POST } from '../app/api/stringing/jobs/route';
-import { PATCH } from '../app/api/stringing/jobs/[id]/route';
+import { PATCH, DELETE } from '../app/api/stringing/jobs/[id]/route';
 import {
   resetMockStore,
   getStore,
@@ -424,5 +424,253 @@ describe('the flag gates the server, not just the UI', () => {
       { params: Promise.resolve({ id: job.id }) },
     );
     expect([get.status, post.status, patch.status]).toEqual([404, 404, 404]);
+  });
+});
+
+/**
+ * ARCHIVE AND PRIORITY
+ *
+ * Both are orthogonal to `status` on purpose, so the tests that matter most
+ * here are the negative ones: archiving must not move a job along the bench,
+ * and pinning must not drop the jobs nobody pinned.
+ */
+describe('archive takes a job off the bench without changing what it is', () => {
+  it('hides archived jobs from the bench by default', async () => {
+    await seedJob({ jobNo: 'J-0001' });
+    await seedJob({ jobNo: 'J-0002', archivedAt: '2026-09-01T00:00:00.000Z' });
+    const res = await GET(makeAdminRequest('GET', 'http://x/api/stringing/jobs'));
+    const body = await res.json();
+    expect(body.jobs.map((j: StringingJob) => j.jobNo)).toEqual(['J-0001']);
+  });
+
+  it('?archived=true returns only the archived ones', async () => {
+    await seedJob({ jobNo: 'J-0001' });
+    await seedJob({ jobNo: 'J-0002', archivedAt: '2026-09-01T00:00:00.000Z' });
+    const res = await GET(
+      makeAdminRequest('GET', 'http://x/api/stringing/jobs?archived=true'),
+    );
+    const body = await res.json();
+    expect(body.jobs.map((j: StringingJob) => j.jobNo)).toEqual(['J-0002']);
+  });
+
+  it('still returns the full doc in the archive, so "still owed" is answerable', async () => {
+    // `ready` + priced + unpaid is exactly `isBillable`. The archive view needs
+    // to say so, and it must not need a second fetch to find out.
+    await seedJob({
+      jobNo: 'J-0009',
+      status: 'ready',
+      priceCents: 3200,
+      paidAt: null,
+      archivedAt: '2026-09-01T00:00:00.000Z',
+    });
+    const res = await GET(
+      makeAdminRequest('GET', 'http://x/api/stringing/jobs?archived=true'),
+    );
+    const body = await res.json();
+    expect(body.jobs[0].priceCents).toBe(3200);
+    expect(body.jobs[0].paidAt).toBeNull();
+  });
+
+  it('hides an archived job from its own player', async () => {
+    await seedJob({ jobNo: 'J-0001' });
+    await seedJob({ jobNo: 'J-0002', archivedAt: '2026-09-01T00:00:00.000Z' });
+    const res = await GET(memberReq('GET', 'http://x/api/stringing/jobs', 'wei'));
+    const body = await res.json();
+    expect(body.view).toBe('player');
+    expect(body.jobs.map((j: { jobNo: string }) => j.jobNo)).toEqual(['J-0001']);
+  });
+
+  it('archives and un-archives through PATCH', async () => {
+    const job = await seedJob();
+    const on = await PATCH(
+      makeAdminRequest('PATCH', `http://x/api/stringing/jobs/${job.id}`, {
+        memberId: job.memberId,
+        archived: true,
+      }),
+      { params: Promise.resolve({ id: job.id }) },
+    );
+    expect(on.status).toBe(200);
+    expect(typeof (await on.json()).job.archivedAt).toBe('string');
+
+    const off = await PATCH(
+      makeAdminRequest('PATCH', `http://x/api/stringing/jobs/${job.id}`, {
+        memberId: job.memberId,
+        archived: false,
+      }),
+      { params: Promise.resolve({ id: job.id }) },
+    );
+    expect((await off.json()).job.archivedAt).toBeNull();
+  });
+
+  it('keeps the original stamp when archived twice', async () => {
+    const first = '2026-08-01T00:00:00.000Z';
+    const job = await seedJob({ archivedAt: first });
+    const res = await PATCH(
+      makeAdminRequest('PATCH', `http://x/api/stringing/jobs/${job.id}`, {
+        memberId: job.memberId,
+        archived: true,
+      }),
+      { params: Promise.resolve({ id: job.id }) },
+    );
+    expect((await res.json()).job.archivedAt).toBe(first);
+  });
+
+  it('does not touch status or history', async () => {
+    // The whole reason archive is a field and not a status. If this ever fails,
+    // an archived job has silently moved along the bench.
+    const job = await seedJob({ status: 'strung' });
+    const res = await PATCH(
+      makeAdminRequest('PATCH', `http://x/api/stringing/jobs/${job.id}`, {
+        memberId: job.memberId,
+        archived: true,
+      }),
+      { params: Promise.resolve({ id: job.id }) },
+    );
+    const patched = (await res.json()).job as StringingJob;
+    expect(patched.status).toBe('strung');
+    expect(patched.history).toHaveLength(job.history.length);
+  });
+});
+
+describe('priority pins a job without hiding the rest', () => {
+  it('sets and clears prioritizedAt', async () => {
+    const job = await seedJob();
+    const on = await PATCH(
+      makeAdminRequest('PATCH', `http://x/api/stringing/jobs/${job.id}`, {
+        memberId: job.memberId,
+        prioritized: true,
+      }),
+      { params: Promise.resolve({ id: job.id }) },
+    );
+    expect(typeof (await on.json()).job.prioritizedAt).toBe('string');
+
+    const off = await PATCH(
+      makeAdminRequest('PATCH', `http://x/api/stringing/jobs/${job.id}`, {
+        memberId: job.memberId,
+        prioritized: false,
+      }),
+      { params: Promise.resolve({ id: job.id }) },
+    );
+    expect((await off.json()).job.prioritizedAt).toBeNull();
+  });
+
+  it('sorts pinned first, then newest, and DROPS NOTHING', async () => {
+    // The load-bearing assertion is the length. Sorting this with
+    // `ORDER BY c.prioritizedAt` in Cosmos would omit every document lacking
+    // the field — i.e. every un-pinned job — which reads as data loss rather
+    // than as a sort bug. Hence a JS comparator, hence this test.
+    await seedJob({ jobNo: 'J-OLD', createdAt: '2026-01-01T00:00:00.000Z' });
+    await seedJob({ jobNo: 'J-NEW', createdAt: '2026-03-01T00:00:00.000Z' });
+    await seedJob({
+      jobNo: 'J-PIN',
+      createdAt: '2026-02-01T00:00:00.000Z',
+      prioritizedAt: '2026-09-01T00:00:00.000Z',
+    });
+    const res = await GET(makeAdminRequest('GET', 'http://x/api/stringing/jobs'));
+    const body = await res.json();
+    expect(body.jobs).toHaveLength(3);
+    expect(body.jobs.map((j: StringingJob) => j.jobNo)).toEqual(['J-PIN', 'J-NEW', 'J-OLD']);
+  });
+
+  it('orders two pinned jobs by when they were pinned', async () => {
+    await seedJob({
+      jobNo: 'J-FIRST',
+      createdAt: '2026-03-01T00:00:00.000Z',
+      prioritizedAt: '2026-09-01T00:00:00.000Z',
+    });
+    await seedJob({
+      jobNo: 'J-LATEST',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      prioritizedAt: '2026-09-05T00:00:00.000Z',
+    });
+    const res = await GET(makeAdminRequest('GET', 'http://x/api/stringing/jobs'));
+    const body = await res.json();
+    expect(body.jobs.map((j: StringingJob) => j.jobNo)).toEqual(['J-LATEST', 'J-FIRST']);
+  });
+});
+
+/**
+ * PERMANENT DELETE
+ *
+ * The only destructive path in the service. Every test here is about a refusal,
+ * because the interesting failures are all "it deleted something it shouldn't
+ * have" rather than "it failed to delete".
+ */
+describe('deleting is reachable only from the archive', () => {
+  const del = (job: StringingJob, body: Record<string, unknown>) =>
+    DELETE(
+      makeAdminRequest('DELETE', `http://x/api/stringing/jobs/${job.id}`, body),
+      { params: Promise.resolve({ id: job.id }) },
+    );
+
+  it('refuses a job that is still on the bench', async () => {
+    // Archive is the undo step: to destroy something you must first have taken
+    // it off the bench and looked at it there.
+    const job = await seedJob();
+    const res = await del(job, { memberId: job.memberId, confirm: true });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe('not_archived');
+    expect(getStore()['stringingJobs']).toHaveLength(1);
+  });
+
+  it('deletes an archived job', async () => {
+    const job = await seedJob({ archivedAt: '2026-09-01T00:00:00.000Z' });
+    const res = await del(job, { memberId: job.memberId, confirm: true });
+    expect(res.status).toBe(200);
+    expect(getStore()['stringingJobs']).toHaveLength(0);
+  });
+
+  it('refuses without the explicit confirm flag', async () => {
+    // The seatbelt behind the sheet's two-step, so a stray DELETE cannot
+    // destroy a record on its own.
+    const job = await seedJob({ archivedAt: '2026-09-01T00:00:00.000Z' });
+    const res = await del(job, { memberId: job.memberId });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('confirmation_required');
+    expect(getStore()['stringingJobs']).toHaveLength(1);
+  });
+
+  it('deletes ONLY the job asked for', async () => {
+    // The mock store ignores partition keys and filters by parameter name
+    // rather than by SQL, so a predicate that looks right can match far more
+    // than it should and still pass. On a delete that is the whole ballgame.
+    const keep = await seedJob({ jobNo: 'J-KEEP', archivedAt: '2026-09-01T00:00:00.000Z' });
+    const go = await seedJob({ jobNo: 'J-GO', archivedAt: '2026-09-01T00:00:00.000Z' });
+    await del(go, { memberId: go.memberId, confirm: true });
+    const left = getStore()['stringingJobs'] as StringingJob[];
+    expect(left).toHaveLength(1);
+    expect(left[0].jobNo).toBe(keep.jobNo);
+  });
+
+  it('does NOT refuse over money — that is the admin’s call', async () => {
+    // `ready` + priced + unpaid is billable, so this deletion really does take
+    // a line off somebody's balance. The route carries the seatbelt; the sheet
+    // names the figure. A veto here would be the app overruling the person who
+    // knows whether the racket was ever collected.
+    const job = await seedJob({
+      status: 'ready',
+      priceCents: 3200,
+      paidAt: null,
+      archivedAt: '2026-09-01T00:00:00.000Z',
+    });
+    const res = await del(job, { memberId: job.memberId, confirm: true });
+    expect(res.status).toBe(200);
+  });
+
+  it('needs admin, and 404s behind the flag', async () => {
+    const job = await seedJob({ archivedAt: '2026-09-01T00:00:00.000Z' });
+    const anon = await DELETE(
+      memberReq('DELETE', `http://x/api/stringing/jobs/${job.id}`, 'wei', {
+        memberId: job.memberId,
+        confirm: true,
+      }),
+      { params: Promise.resolve({ id: job.id }) },
+    );
+    expect(anon.status).toBe(401);
+
+    process.env[FLAG] = 'false';
+    const off = await del(job, { memberId: job.memberId, confirm: true });
+    expect(off.status).toBe(404);
+    expect(getStore()['stringingJobs']).toHaveLength(1);
   });
 });
