@@ -474,6 +474,40 @@ export interface StringingJob {
    * between them — and so "when did this become urgent" is answerable later.
    */
   prioritizedAt?: string | null;
+  /**
+   * A change the stringer has proposed and the player has not answered yet.
+   *
+   * Held HERE rather than applied, which is the whole mechanism: `isBillable`
+   * reads `priceCents`, so while a new price lives only in this field the
+   * balance card cannot show a figure nobody agreed to. Cleared on both
+   * answers — accepting applies it, declining discards it.
+   */
+  pendingEdit?: PendingEdit | null;
+  /** Set when the player said no. Kept after `pendingEdit` is cleared so the
+   *  bench can show that the old price stands BECAUSE someone refused, rather
+   *  than because nothing was ever asked. */
+  pendingEditDeclinedAt?: string | null;
+}
+
+/**
+ * The fields of a proposed change. Only what actually differs is present —
+ * absent means unchanged, which is what lets the player's prompt render a diff
+ * rather than a form.
+ *
+ * Price and spec travel together in ONE proposal on purpose. Restringing at a
+ * different tension usually costs something different, and asking twice about
+ * one racket teaches people to dismiss the asking.
+ */
+export interface PendingEdit {
+  racketLabel?: string;
+  stringLabel?: string;
+  tensionMains?: number;
+  tensionCrosses?: number;
+  priceCents?: number | null;
+  proposedAt: string;
+  /** The admin who proposed it. Never sent to the player — they are told the
+   *  club changed something, not which volunteer typed it. */
+  proposedBy: string | null;
 }
 
 /** What a PLAYER is allowed to see of their own job. Note what is missing:
@@ -496,8 +530,36 @@ export interface PlayerStringingJob {
   amountDue: number | null;
   readyBy: string | null;
   paid: boolean;
+  /**
+   * A change waiting on this player's answer, or null.
+   *
+   * THE ONE DOCUMENTED EXCEPTION TO THE PRICE WALL, and it is only safe
+   * because it is named. `priceFrom` / `priceTo` are EXACT dollars, not a
+   * band — you cannot ask somebody to agree to a range, and a bill they have
+   * agreed to is a number by definition. It appears only while a proposal is
+   * outstanding, and only for the fields actually being changed.
+   *
+   * `raterName` on kudos is the precedent: an exception that exists, is
+   * written down, and is structurally impossible to widen by accident.
+   */
+  pendingEdit: PlayerPendingEdit | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** The diff a player is asked to agree to. No stringer, no memberId, no
+ *  proposer — just what changes, from what, to what. */
+export interface PlayerPendingEdit {
+  proposedAt: string;
+  racketFrom?: string;
+  racketTo?: string;
+  stringFrom?: string;
+  stringTo?: string;
+  tensionFrom?: string;
+  tensionTo?: string;
+  /** Exact dollars. See the note above. */
+  priceFrom?: number | null;
+  priceTo?: number | null;
 }
 
 /**

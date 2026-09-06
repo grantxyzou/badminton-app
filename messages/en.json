@@ -6,6 +6,22 @@
       },
     "stringing": {
         "viewPricing": "View pricing",
+        "confirm": {
+          "banner": "Grant changed something — please confirm",
+          "title": "A change to confirm",
+          "intro": "Grant has updated your {racket}. Nothing changes on your bill until you say yes.",
+          "price": "Price",
+          "string": "String",
+          "tension": "Tension",
+          "racket": "Racket",
+          "unpriced": "Not priced",
+          "accept": "That's fine",
+          "decline": "No thanks",
+          "working": "Saving…",
+          "error": "That didn't save — try again.",
+          "gone": "That change is no longer waiting. Pull to refresh.",
+          "close": "Close"
+        },
         "pricingEmpty": "Grant hasn't posted prices yet — he'll confirm when he takes the racket.",
         "pricingUnavailable": "Couldn't load prices just now.",
         "pricingAsk": "Ask",
@@ -952,6 +968,21 @@
           "closeCta": "Close"
       },
         "benchTitle": "Bench",
+        "propose": {
+          "title": "Change this job",
+          "hint": "Anything you change here is sent to {name} to confirm. The bill stays as it is until they do.",
+          "price": "Price",
+          "string": "String",
+          "tension": "Tension",
+          "send": "Send to {name}",
+          "sending": "Sending…",
+          "noChange": "Nothing changed yet.",
+          "error": "That didn't send — try again.",
+          "waiting": "Waiting on {name} to confirm a change.",
+          "waitingHint": "They still owe the old amount until they do.",
+          "declined": "{name} declined the change, so the original stands.",
+          "withdraw": "Withdraw"
+        },
         "actions": {
           "title": "Job actions",
           "close": "Close",
@@ -1040,6 +1071,8 @@
         "decrease": "Less {field}",
         "increase": "More {field}",
         "yourPrice": "Your price",
+        "rateCard": "From your rate card",
+        "rateCardAsk": "Ask",
         "priceOptional": "Leave it blank and price it later.",
         "pricePlaceholder": "30.00",
         "readyByPlaceholder": "Ready by, e.g. Sunday",

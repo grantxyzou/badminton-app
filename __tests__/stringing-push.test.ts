@@ -207,3 +207,47 @@ describe('notifyPlayerOfStage — the push arm', () => {
     expect(out.reason).toBe('send_failed');
   });
 });
+
+/**
+ * The pending-edit banner.
+ *
+ * This is the MOST tempting place in the app to put a number on a lock screen:
+ * the whole notification exists because a price changed, so "Grant changed your
+ * quote to $34" writes itself. It is still wrong for the same reason as the
+ * ready-notice, only more so — a price is a negotiation, not a status, and the
+ * banner renders in a gym in front of whoever is standing there.
+ */
+describe('the pending-edit push carries no money and no proposer', () => {
+  it('names neither the figure nor a band', async () => {
+    const { buildPendingEditPayload } = await import('@/lib/pushMessages');
+    // A racket with no digits in its name, deliberately: "Astrox 99 Pro" would
+    // make a no-digits assertion fail on the RACKET, which is legitimate copy,
+    // and the weaker assertion that survived would prove nothing.
+    const payload = buildPendingEditPayload({ jobNo: 'J-0042', racketLabel: 'Arcsaber Pro' });
+    const all = `${payload.title} ${payload.body}`;
+
+    expect(all).not.toContain('$');
+    expect(all).not.toMatch(/\d/);
+    // Not the volunteer who typed it either — the club changed something.
+    expect(all).not.toContain('Grant');
+    expect(all).not.toContain('stringer');
+  });
+
+  it('still says which racket, because that is what makes it worth opening', async () => {
+    const { buildPendingEditPayload } = await import('@/lib/pushMessages');
+    const payload = buildPendingEditPayload({ jobNo: 'J-0042', racketLabel: 'Astrox 99 Pro' });
+    expect(payload.body).toContain('Astrox 99 Pro');
+  });
+
+  it('falls back rather than rendering an empty racket name', async () => {
+    const { buildPendingEditPayload } = await import('@/lib/pushMessages');
+    const payload = buildPendingEditPayload({ jobNo: 'J-0042', racketLabel: '  ' });
+    expect(payload.body).toContain('your racket');
+  });
+
+  it('tags job-first, so a truncation collapses one racket and not two', async () => {
+    const { buildPendingEditPayload } = await import('@/lib/pushMessages');
+    const payload = buildPendingEditPayload({ jobNo: 'J-0042', racketLabel: 'Astrox' });
+    expect(payload.tag?.startsWith('str-J-0042')).toBe(true);
+  });
+});

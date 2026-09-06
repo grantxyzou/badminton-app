@@ -29,7 +29,7 @@ import {
   formatJobNo,
 } from '@/lib/stringing';
 import { isBillable } from '@/lib/stringingBilling';
-import type { StringingJob, PlayerStringingJob } from '@/lib/types';
+import type { StringingJob, PlayerStringingJob, PlayerPendingEdit } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,6 +97,41 @@ export function benchOrder(a: StringingJob, b: StringingJob): number {
   return b.createdAt.localeCompare(a.createdAt);
 }
 
+/**
+ * The proposed-change diff a player is shown, or null.
+ *
+ * THE PRICE WALL'S ONE DOCUMENTED EXCEPTION. Both figures are exact dollars,
+ * because you cannot ask somebody to agree to "$28–32" — the whole point of
+ * asking is that they know the number. It is narrow by construction: nothing is
+ * emitted unless a proposal is outstanding, and each field appears only if that
+ * field is actually changing. Every other path still gets the band.
+ *
+ * Note what is NOT here: `proposedBy`. A player is told the club changed
+ * something, not which volunteer typed it.
+ */
+export function toPlayerPendingEdit(job: StringingJob): PlayerPendingEdit | null {
+  const p = job.pendingEdit;
+  if (!p) return null;
+  const out: PlayerPendingEdit = { proposedAt: p.proposedAt };
+  if (p.racketLabel !== undefined) {
+    out.racketFrom = job.racketLabel;
+    out.racketTo = p.racketLabel;
+  }
+  if (p.stringLabel !== undefined) {
+    out.stringFrom = job.stringLabel;
+    out.stringTo = p.stringLabel;
+  }
+  if (p.tensionMains !== undefined || p.tensionCrosses !== undefined) {
+    out.tensionFrom = `${job.tensionMains}/${job.tensionCrosses}`;
+    out.tensionTo = `${p.tensionMains ?? job.tensionMains}/${p.tensionCrosses ?? job.tensionCrosses}`;
+  }
+  if (p.priceCents !== undefined) {
+    out.priceFrom = job.priceCents === null ? null : job.priceCents / 100;
+    out.priceTo = p.priceCents === null ? null : p.priceCents / 100;
+  }
+  return out;
+}
+
 /** The ONLY way a job reaches a non-admin. See the file docblock. */
 export function toPlayerJob(job: StringingJob): PlayerStringingJob {
   return {
@@ -125,6 +160,7 @@ export function toPlayerJob(job: StringingJob): PlayerStringingJob {
     amountDue: isBillable(job) ? Math.round(job.priceCents!) / 100 : null,
     readyBy: job.readyBy,
     paid: job.paidAt !== null,
+    pendingEdit: toPlayerPendingEdit(job),
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
   };

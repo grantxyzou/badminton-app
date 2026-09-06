@@ -13,13 +13,13 @@
  * append-only `history`, not a refusal.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { notifyPlayerOfStage } from '@/lib/stringingNotifyDispatch';
+import { notifyPlayerOfStage, notifyPlayerOfPendingEdit } from '@/lib/stringingNotifyDispatch';
 import { getContainer } from '@/lib/cosmos';
 import { isAdminAuthedWithMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { isStringingStatus, isValidTension, canTransition } from '@/lib/stringing';
-import type { StringingJob } from '@/lib/types';
+import type { StringingJob, PendingEdit } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +28,53 @@ const WRITES_PER_HOUR = 120;
 /* Its own, much smaller bucket. Deleting is not something anyone does in bulk,
    and a budget shared with PATCH would let ordinary bench work exhaust it. */
 const DELETES_PER_HOUR = 20;
+
+/**
+ * Validate a proposed change into a `PendingEdit`, keeping only fields that
+ * actually DIFFER from the job as it stands.
+ *
+ * Dropping no-op fields is what keeps the player's prompt honest: a diff
+ * listing "BG65 → BG65" alongside a real price change reads as three changes
+ * and teaches people to skim. If nothing differs there is nothing to ask.
+ */
+function parseProposal(
+  raw: unknown,
+  job: StringingJob,
+  now: string,
+  by: string | null,
+): { value: PendingEdit } | { error: string } {
+  if (!raw || typeof raw !== 'object') return { error: 'invalid_request' };
+  const b = raw as Record<string, unknown>;
+  const out: PendingEdit = { proposedAt: now, proposedBy: by };
+
+  for (const key of ['racketLabel', 'stringLabel'] as const) {
+    if (b[key] === undefined) continue;
+    const v = typeof b[key] === 'string' ? (b[key] as string).trim() : '';
+    if (!v || v.length > 80) return { error: 'invalid_request' };
+    if (v !== job[key]) out[key] = v;
+  }
+
+  if (b.tensionMains !== undefined || b.tensionCrosses !== undefined) {
+    const mains = (b.tensionMains ?? job.tensionMains) as number;
+    const crosses = (b.tensionCrosses ?? job.tensionCrosses) as number;
+    if (!isValidTension(mains) || !isValidTension(crosses)) {
+      return { error: 'invalid_tension' };
+    }
+    if (mains !== job.tensionMains) out.tensionMains = mains;
+    if (crosses !== job.tensionCrosses) out.tensionCrosses = crosses;
+  }
+
+  if (b.priceCents !== undefined) {
+    const p = b.priceCents;
+    const ok = p === null || (Number.isInteger(p) && (p as number) >= 0 && (p as number) <= 100000);
+    if (!ok) return { error: 'invalid_price' };
+    if (p !== job.priceCents) out.priceCents = p as number | null;
+  }
+
+  const changed = Object.keys(out).some((k) => k !== 'proposedAt' && k !== 'proposedBy');
+  if (!changed) return { error: 'no_change' };
+  return { value: out };
+}
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   if (!isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) {
@@ -81,7 +128,36 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       const p = body.priceCents;
       const valid = p === null || (Number.isInteger(p) && p >= 0 && p <= 100000);
       if (!valid) return NextResponse.json({ error: 'invalid_price' }, { status: 400 });
+      /**
+       * Changing a price the player has ALREADY been told needs their answer,
+       * so it goes through `propose` instead — 409 here, with `force` as the
+       * escape hatch for a genuine typo. Setting the FIRST price is a direct
+       * write: there is nobody to confirm with yet.
+       *
+       * Gated on an actual CHANGE, not on the key being present. This route has
+       * already been bitten by over-eager validation — the "does not invalidate
+       * a legacy row on an unrelated PATCH" test exists because of it — and
+       * `StringingJobDetail` spreads its whole body, so a status tap must not
+       * trip a price guard.
+       *
+       * Same guard-then-escape shape as settle's "unsettle first": money that
+       * somebody has been quoted does not change quietly.
+       */
+      if (job.priceCents !== null && p !== job.priceCents && body.force !== true) {
+        return NextResponse.json({ error: 'confirm_required' }, { status: 409 });
+      }
       next.priceCents = p;
+    }
+
+    if (body.propose !== undefined) {
+      const proposal = parseProposal(body.propose, job, now, admin.memberId);
+      if ('error' in proposal) {
+        return NextResponse.json({ error: proposal.error }, { status: 400 });
+      }
+      next.pendingEdit = proposal.value;
+      // A fresh ask clears the last refusal: the bench should say "waiting on
+      // Lin", not go on reporting a no she has already been asked past.
+      next.pendingEditDeclinedAt = null;
     }
 
     if (body.tensionMains !== undefined || body.tensionCrosses !== undefined) {
@@ -150,6 +226,13 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
        everything, so a dead mail server cannot 503 the bench. */
     if (next.status !== job.status) {
       await notifyPlayerOfStage(next);
+    }
+
+    /* Same posture as the stage notice: awaited, best-effort, never able to
+       fail the admin's action. Fired only when a proposal is genuinely NEW —
+       re-saving a job with an unchanged pending edit must not re-ask. */
+    if (next.pendingEdit && next.pendingEdit.proposedAt !== job.pendingEdit?.proposedAt) {
+      await notifyPlayerOfPendingEdit(next);
     }
 
     return NextResponse.json({ job: next });

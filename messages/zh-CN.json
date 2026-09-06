@@ -6,6 +6,22 @@
       },
     "stringing": {
         "viewPricing": "查看价格",
+        "confirm": {
+          "banner": "Grant 修改了内容 — 请确认",
+          "title": "待确认的修改",
+          "intro": "Grant 更新了你的 {racket}。在你同意之前，账单不会有任何变化。",
+          "price": "价格",
+          "string": "线",
+          "tension": "磅数",
+          "racket": "球拍",
+          "unpriced": "未定价",
+          "accept": "可以",
+          "decline": "不用了",
+          "working": "保存中…",
+          "error": "没能保存 — 再试一次。",
+          "gone": "该修改已不在等待中。下拉刷新。",
+          "close": "关闭"
+        },
         "pricingEmpty": "Grant 还没公布价格 — 收到拍子时他会确认。",
         "pricingUnavailable": "暂时没能读取价格。",
         "pricingAsk": "面议",
@@ -952,6 +968,21 @@
           "closeCta": "休息"
       },
         "benchTitle": "工作台",
+        "propose": {
+          "title": "修改此工单",
+          "hint": "这里的任何修改都会发给 {name} 确认。在确认之前账单保持不变。",
+          "price": "价格",
+          "string": "线",
+          "tension": "磅数",
+          "send": "发送给 {name}",
+          "sending": "发送中…",
+          "noChange": "还没有任何修改。",
+          "error": "没能发送 — 再试一次。",
+          "waiting": "等待 {name} 确认修改。",
+          "waitingHint": "在确认之前，他们仍欠原来的金额。",
+          "declined": "{name} 拒绝了修改，保持原样。",
+          "withdraw": "撤回"
+        },
         "actions": {
           "title": "工单操作",
           "close": "关闭",
@@ -1040,6 +1071,8 @@
         "decrease": "减少{field}",
         "increase": "增加{field}",
         "yourPrice": "你的价格",
+        "rateCard": "来自你的价目表",
+        "rateCardAsk": "面议",
         "priceOptional": "可以先留空，之后再定价。",
         "pricePlaceholder": "30.00",
         "readyByPlaceholder": "完成时间，例如 周日",

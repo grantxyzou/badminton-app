@@ -27,7 +27,7 @@ import { getContainer } from '@/lib/cosmos';
 import { buildPlayerNotice, shouldNotify, type PlayerNotice } from '@/lib/stringingNotify';
 import { sendStringingNotice } from '@/lib/stringingNotifyEmail';
 import { sendPushToMembers } from '@/lib/push';
-import { buildStringingPayload } from '@/lib/pushMessages';
+import { buildStringingPayload, buildPendingEditPayload } from '@/lib/pushMessages';
 import { isFlagOn } from '@/lib/flags';
 import type { StringingJob, Member } from '@/lib/types';
 
@@ -103,6 +103,40 @@ export async function notifyPlayerOfStage(job: StringingJob): Promise<NotifyOutc
   } catch (err) {
     // Deliberately swallowed. The bench keeps working.
     console.error('stringing notify dispatch failed:', err);
+    return { attempted: true, emailSent: false, pushSent: 0, reason: 'send_failed' };
+  }
+}
+
+/**
+ * Tell a player that a change is waiting on their answer.
+ *
+ * A sibling of `notifyPlayerOfStage` rather than a new `PlayerStage`, because a
+ * pending edit is not a position on the bench — the racket has not moved. Same
+ * three contracts as its sibling, and they are the load-bearing part:
+ *
+ *  - it NEVER throws, so a dead mail server cannot 503 the bench;
+ *  - push runs ABOVE the email gate, because `Member.email` is populated only
+ *    by the email/password and Google paths and most members are PIN-only;
+ *  - the push body carries no money — see `buildPendingEditPayload`.
+ *
+ * Email is deliberately not wired here. `sendStringingNotice` composes from a
+ * `PlayerNotice`, which is keyed on a `PlayerStage` this has none of; inventing
+ * a fake stage to reuse the adapter would put a price-change notice through
+ * copy written for "your racket is ready". In-app plus push is the honest set
+ * until there is an email template that means this.
+ */
+export async function notifyPlayerOfPendingEdit(job: StringingJob): Promise<NotifyOutcome> {
+  try {
+    if (!isFlagOn('NEXT_PUBLIC_FLAG_PUSH_NOTIFY')) {
+      return { attempted: false, emailSent: false, pushSent: 0, reason: 'quiet_stage' };
+    }
+    const payload = buildPendingEditPayload(job);
+    // To this member's devices ONLY. A broadcast here would tell the whole club
+    // about one person's racket.
+    const { sent } = await sendPushToMembers([job.memberId], payload);
+    return { attempted: true, emailSent: false, pushSent: sent };
+  } catch (err) {
+    console.error('stringing pending-edit notify failed:', err);
     return { attempted: true, emailSent: false, pushSent: 0, reason: 'send_failed' };
   }
 }

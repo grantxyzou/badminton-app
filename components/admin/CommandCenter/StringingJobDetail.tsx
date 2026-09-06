@@ -60,6 +60,61 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
     }
   }
 
+  /* The proposal form. Draft state is separate from `local` so nothing on this
+     screen changes until the player agrees — which is the whole feature. */
+  const [proposePrice, setProposePrice] = useState(
+    local.priceCents === null ? '' : (local.priceCents / 100).toFixed(2),
+  );
+  const [proposeString, setProposeString] = useState(local.stringLabel);
+  const [proposeMains, setProposeMains] = useState(String(local.tensionMains));
+  const [proposeCrosses, setProposeCrosses] = useState(String(local.tensionCrosses));
+  const [proposeBusy, setProposeBusy] = useState(false);
+  const [proposeError, setProposeError] = useState(false);
+
+  const pending = local.pendingEdit ?? null;
+  const declined = !pending && typeof local.pendingEditDeclinedAt === 'string';
+
+  const parsedCents = (() => {
+    const raw = proposePrice.trim();
+    if (raw === '') return null;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : undefined;
+  })();
+
+  const proposalDirty =
+    (parsedCents !== undefined && parsedCents !== local.priceCents) ||
+    proposeString.trim() !== local.stringLabel ||
+    Number(proposeMains) !== local.tensionMains ||
+    Number(proposeCrosses) !== local.tensionCrosses;
+
+  async function sendProposal() {
+    if (proposeBusy || !online || !proposalDirty || parsedCents === undefined) return;
+    setProposeBusy(true);
+    setProposeError(false);
+    try {
+      const res = await fetch(`${BASE}/api/stringing/jobs/${local.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          memberId: local.memberId,
+          propose: {
+            priceCents: parsedCents,
+            stringLabel: proposeString.trim(),
+            tensionMains: Number(proposeMains),
+            tensionCrosses: Number(proposeCrosses),
+          },
+        }),
+      });
+      if (!res.ok) throw new Error(`propose ${res.status}`);
+      setLocal((await res.json()).job);
+      onChanged();
+    } catch {
+      setProposeError(true);
+    } finally {
+      setProposeBusy(false);
+    }
+  }
+
   const specRows: [string, string][] = [
     [t('spec.racket'), local.racketLabel],
     [t('spec.string'), local.stringLabel],
@@ -76,6 +131,34 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
         </p>
 
         {error && <ErrorState message={t('saveError')} />}
+
+        {/* What the player has been asked, and has not answered. Sits above
+            everything because it changes what every number below it means:
+            the price card still shows the OLD figure, and that is correct. */}
+        {pending && (
+          <div
+            className="glass-card p-5"
+            style={{
+              background: 'var(--pill-waitlist-bg)',
+              borderColor: 'var(--banner-green-border)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--space-2)',
+            }}
+          >
+            <div className="fs-md" style={{ fontWeight: 600 }}>
+              {t('propose.waiting', { name: local.memberName })}
+            </div>
+            <div className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
+              {t('propose.waitingHint')}
+            </div>
+          </div>
+        )}
+        {declined && (
+          <div className="fs-sm" style={{ color: 'var(--text-secondary)', margin: 0 }}>
+            {t('propose.declined', { name: local.memberName })}
+          </div>
+        )}
 
         <div className="glass-card p-5 space-y-3">
           <CardHeader icon="sports_tennis" title={t('spec.title')} />
@@ -123,6 +206,74 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
               {t(`playerStage.${playerStageFor(local.status)}`)}
             </span>
           </div>
+        </div>
+
+        <div className="glass-card p-5 space-y-3">
+          <CardHeader
+            icon="edit"
+            title={t('propose.title')}
+            subtitle={t('propose.hint', { name: local.memberName })}
+          />
+          {proposeError && <p className="field-error" role="alert">{t('propose.error')}</p>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+              <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('propose.price')}</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={proposePrice}
+                onChange={(e) => setProposePrice(e.target.value)}
+                aria-label={t('propose.price')}
+                placeholder={t('pricePlaceholder')}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+              <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('propose.string')}</span>
+              <input
+                type="text"
+                value={proposeString}
+                onChange={(e) => setProposeString(e.target.value)}
+                aria-label={t('propose.string')}
+                maxLength={80}
+              />
+            </label>
+            <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', flex: 1 }}>
+                <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('mains')}</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={proposeMains}
+                  onChange={(e) => setProposeMains(e.target.value)}
+                  aria-label={t('mains')}
+                />
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', flex: 1 }}>
+                <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('crosses')}</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={proposeCrosses}
+                  onChange={(e) => setProposeCrosses(e.target.value)}
+                  aria-label={t('crosses')}
+                />
+              </label>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="cc-btn cc-btn-primary cc-btn-lg"
+            style={{ width: '100%' }}
+            disabled={proposeBusy || !online || !proposalDirty || parsedCents === undefined}
+            onClick={() => void sendProposal()}
+          >
+            {proposeBusy ? t('propose.sending') : t('propose.send', { name: local.memberName })}
+          </button>
+          {!proposalDirty && (
+            <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
+              {t('propose.noChange')}
+            </p>
+          )}
         </div>
 
         <div className="glass-card p-5 space-y-3">

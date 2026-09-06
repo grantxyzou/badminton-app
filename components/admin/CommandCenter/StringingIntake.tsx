@@ -7,6 +7,7 @@ import DatePicker from '@/components/DatePicker';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
+import { formatServicePrice, type ServicePrice } from '@/lib/stringingPricing';
 import {
   TENSION_MIN_LB,
   TENSION_MAX_LB,
@@ -56,9 +57,28 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
   const [mains, setMains] = useState(26);
   const [crosses, setCrosses] = useState(28);
   const [priceDollars, setPriceDollars] = useState('');
+  /* The rate card, for prefilling. null = not loaded or unreachable; the rail
+     simply does not render, because a price you have to type is the status quo
+     and not a failure worth a message. */
+  const [services, setServices] = useState<ServicePrice[] | null>(null);
   const [readyBy, setReadyBy] = useState('');
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${BASE}/api/stringing/pricing`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d && Array.isArray(d.services)) setServices(d.services);
+      })
+      .catch(() => {
+        /* stays null — the rail just does not appear */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -272,6 +292,34 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
               court"). A placeholder disappears the moment you type, so the
               unit is gone exactly when you are entering the number and most
               want to know what it means. */}
+          {/* Tap a service, the price fills — still editable. The rate card is
+              already maintained on the bench, so the common job should not need
+              typing twice. A null-priced ("Ask") service deliberately CLEARS the
+              field rather than writing 0: "I'll tell you later" is a real answer
+              and free is not. */}
+          {services && services.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              <span className="section-label-muted">{t('rateCard')}</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+                {services.map((svc) => (
+                  <button
+                    key={svc.label}
+                    type="button"
+                    className="bpm-chip"
+                    onClick={() =>
+                      setPriceDollars(
+                        svc.priceCents === null ? '' : (svc.priceCents / 100).toFixed(2),
+                      )
+                    }
+                  >
+                    <span className="fs-sm">
+                      {svc.label} · {formatServicePrice(svc.priceCents) ?? t('rateCardAsk')}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div style={{ position: 'relative' }}>
             <span
               aria-hidden="true"

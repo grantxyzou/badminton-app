@@ -7,6 +7,7 @@ import CardHeader from '@/components/primitives/CardHeader';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import { useOnline } from '@/lib/useOnline';
 import RequestStringingSheet from './RequestStringingSheet';
+import ConfirmChangeSheet from './ConfirmChangeSheet';
 import StringingSteps, { stepForStage } from './StringingSteps';
 import { formatServicePrice, type ServicePrice } from '@/lib/stringingPricing';
 import type { PlayerStage } from '@/lib/stringing';
@@ -54,6 +55,10 @@ export default function StringingCard({ hasIdentity }: Props) {
   const [open, setOpen] = useState<boolean | null>(null);
   const [jobs, setJobs] = useState<PlayerStringingJob[] | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Above every early return — this component has several, and a hook
+  // after one of them is a Rules-of-Hooks violation that only shows up when
+  // the branch flips (here: the shop opening).
+  const [confirming, setConfirming] = useState(false);
   const [pricingOpen, setPricingOpen] = useState(false);
   /**
    * Collapsed/expanded, and null means "the player has not chosen".
@@ -226,6 +231,27 @@ export default function StringingCard({ hasIdentity }: Props) {
             Deliberately NOT dismissible. It is not an alert about an event, it
             is the current state of the racket — it should stay until the job
             leaves `ready_for_you`, which happens when they pick it up. */}
+        {/* A change the stringer has asked about and this player has not
+            answered. Sits ABOVE the ready banner because it is a question
+            rather than a status, and an unanswered question outranks news.
+
+            Tapping opens the sheet; the banner alone never accepts anything —
+            agreeing to a price is exactly the wrong thing to do by mis-tap. */}
+        {active?.pendingEdit && (
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            style={{ width: '100%', textAlign: 'left' }}
+          >
+            <StatusBanner
+              tone="warn"
+              icon="request_quote"
+              title={t('confirm.banner')}
+              body={t('confirm.intro', { racket: active.racketLabel })}
+            />
+          </button>
+        )}
+
         {active?.stage === 'ready_for_you' && (
           <StatusBanner
             tone="success"
@@ -359,6 +385,15 @@ export default function StringingCard({ hasIdentity }: Props) {
         onClose={() => setSheetOpen(false)}
         onRequested={loadJobs}
       />
+
+      {active?.pendingEdit && (
+        <ConfirmChangeSheet
+          job={active}
+          open={confirming}
+          onClose={() => setConfirming(false)}
+          onAnswered={loadJobs}
+        />
+      )}
     </>
   );
 }
