@@ -142,6 +142,11 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
        *
        * Same guard-then-escape shape as settle's "unsettle first": money that
        * somebody has been quoted does not change quietly.
+       *
+       * NOTE: `force` currently has NO UI PATH. The detail screen's only price
+       * input goes through `propose`, so in practice every change to a quoted
+       * price asks the player. It is reserved for a correction flow, not an
+       * escape hatch anyone can reach today — do not describe it as one.
        */
       if (job.priceCents !== null && p !== job.priceCents && body.force !== true) {
         return NextResponse.json({ error: 'confirm_required' }, { status: 409 });
@@ -186,6 +191,24 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       // re-archive of an already-archived job keeps the original stamp so
       // "when did this leave the bench" survives a stray double-tap.
       next.archivedAt = body.archived === true ? (job.archivedAt ?? now) : null;
+
+      /**
+       * ARCHIVING WITHDRAWS AN UNANSWERED PROPOSAL.
+       *
+       * Without this the two features combine into a dead state: a player
+       * never sees an archived job, so archiving one with a question
+       * outstanding removes the only way to answer it — while the bench goes
+       * on displaying "Waiting on Lin to confirm", which is then simply false.
+       * Nobody would guess that un-archiving is the way out.
+       *
+       * Withdrawing is the honest reading of the gesture. Archiving a job says
+       * "I am done with this"; you cannot be done with it and still be waiting
+       * on somebody. Re-proposing after un-archiving costs one tap, and no
+       * price moves in the meantime — a withdrawn proposal was never applied.
+       */
+      if (body.archived === true) {
+        next.pendingEdit = null;
+      }
     }
 
     if (body.prioritized !== undefined) {

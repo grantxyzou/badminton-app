@@ -304,3 +304,43 @@ describe('a pending change does not stop the racket moving', () => {
     expect(stored(job.id).pendingEdit?.priceCents).toBe(3400);
   });
 });
+
+describe('archiving and a pending question cannot combine into a dead end', () => {
+  it('withdraws an unanswered proposal when the job is archived', async () => {
+    // A player never sees an archived job. Archiving one with a question
+    // outstanding would remove the only way to answer it while the bench went
+    // on claiming to be waiting — a state recoverable only by un-archiving,
+    // which nobody would guess.
+    const job = await seedJob({ priceCents: 3000 });
+    await propose(job, { priceCents: 3400 });
+    expect(stored(job.id).pendingEdit).toBeTruthy();
+
+    await PATCH(
+      makeAdminRequest('PATCH', `http://x/api/stringing/jobs/${job.id}`, {
+        memberId: job.memberId,
+        archived: true,
+      }),
+      { params: Promise.resolve({ id: job.id }) },
+    );
+
+    const after = stored(job.id);
+    expect(after.pendingEdit ?? null).toBeNull();
+    // Withdrawn, not applied. A price nobody agreed to must not survive.
+    expect(after.priceCents).toBe(3000);
+  });
+
+  it('leaves an already-answered job alone when archived', async () => {
+    const job = await seedJob({ priceCents: 3000 });
+    await propose(job, { priceCents: 3400 });
+    await answer(job, 'wei', 'accept');
+    await PATCH(
+      makeAdminRequest('PATCH', `http://x/api/stringing/jobs/${job.id}`, {
+        memberId: job.memberId,
+        archived: true,
+      }),
+      { params: Promise.resolve({ id: job.id }) },
+    );
+    // The accepted price stands; archiving is not an undo.
+    expect(stored(job.id).priceCents).toBe(3400);
+  });
+});
