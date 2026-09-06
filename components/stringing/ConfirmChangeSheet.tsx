@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { useOnline } from '@/lib/useOnline';
+import { announceBalanceChanged } from '@/lib/balanceRefresh';
 import type { PlayerStringingJob } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -60,6 +61,10 @@ export default function ConfirmChangeSheet({
         return;
       }
       if (!res.ok) throw new Error(`answer ${res.status}`);
+      // Accepting a price change moves what they owe, and the balance card is
+      // a separate component with its own fetch — without this it keeps showing
+      // the old total right next to the racket they just agreed a new price for.
+      announceBalanceChanged();
       onAnswered();
       onClose();
     } catch {
