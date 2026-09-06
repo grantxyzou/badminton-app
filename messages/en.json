@@ -968,7 +968,8 @@
         "swipe": {
           "pin": "Pin",
           "unpin": "Unpin",
-          "archive": "Archive"
+          "archive": "Archive",
+          "unarchive": "Restore"
         },
         "archive": {
           "open": "Archived ({count})",

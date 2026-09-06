@@ -226,7 +226,7 @@ export default function StringingPage({ onBack }: Props) {
         }
         trailingAction={{
           icon: inArchive ? 'unarchive' : 'archive',
-          label: t(inArchive ? 'actions.unarchive' : 'swipe.archive'),
+          label: t(inArchive ? 'swipe.unarchive' : 'swipe.archive'),
           tone: 'neutral',
           onAction: () => void patchJob(job, { archived: !inArchive }),
         }}

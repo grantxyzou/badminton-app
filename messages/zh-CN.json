@@ -968,7 +968,8 @@
         "swipe": {
           "pin": "置顶",
           "unpin": "取消",
-          "archive": "归档"
+          "archive": "归档",
+          "unarchive": "恢复"
         },
         "archive": {
           "open": "已归档（{count}）",

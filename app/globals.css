@@ -4107,7 +4107,10 @@ html[data-visual="field"] .swipe-row {
    money exactly where it was. A red button would say otherwise, so the neutral
    tone is a subdued surface with normal text rather than a filled colour. */
 .swipe-row__action--neutral {
-  background: var(--inner-card-bg);
+  /* Not --inner-card-bg (3%): the tray sits UNDER the card, so at that alpha
+     the page shows through and the button reads as a hole rather than a
+     control. Still subdued — it must not compete with the accent Pin. */
+  background: rgba(var(--glass-tint), 0.10);
   color: var(--text-primary);
 }
 
