@@ -510,6 +510,7 @@ describe('a proposal is not re-sent by a second tap', () => {
 
     // The form is seeded from the JOB, so it reads $30 — different from the
     // job only once the admin retypes the proposed figure.
+    openChangeForm();
     const price = screen.getByLabelText('Price') as HTMLInputElement;
     fireEvent.change(price, { target: { value: '34.00' } });
 
@@ -528,11 +529,18 @@ describe('a proposal is not re-sent by a second tap', () => {
       },
     };
     wrap(<StringingJobDetail job={pendingJob} onBack={() => {}} onChanged={() => {}} />);
+    openChangeForm();
     fireEvent.change(screen.getByLabelText('Price'), { target: { value: '36.00' } });
     const send = screen.getByText('Send to Wei').closest('button') as HTMLButtonElement;
     expect(send.disabled).toBe(false);
   });
 });
+
+/** The change form is collapsed on every mount, so a test that touches it has
+ *  to open it first — same as a stringer would. */
+function openChangeForm() {
+  fireEvent.click(screen.getByText('Change this job'));
+}
 
 describe('the price card and the change form are one card', () => {
   it('shows the drafted price as a from → to diff in the headline', async () => {
@@ -543,6 +551,7 @@ describe('the price card and the change form are one card', () => {
     wrap(<StringingJobDetail job={{ ...job, priceCents: 3000 }} onBack={() => {}} onChanged={() => {}} />);
 
     expect(screen.getByText('$30.00')).toBeDefined();
+    openChangeForm();
     fireEvent.change(screen.getByLabelText('Price'), { target: { value: '34.00' } });
 
     expect(screen.getByText('$30.00')).toBeDefined();
@@ -553,6 +562,7 @@ describe('the price card and the change form are one card', () => {
     // A string or tension edit changes the job without changing the number.
     // Rendering "$30.00 → $30.00" for those would be noise.
     wrap(<StringingJobDetail job={{ ...job, priceCents: 3000 }} onBack={() => {}} onChanged={() => {}} />);
+    openChangeForm();
     fireEvent.change(screen.getByLabelText('String'), { target: { value: 'Aerobite' } });
 
     expect(screen.getAllByText('$30.00')).toHaveLength(1);
@@ -566,9 +576,46 @@ describe('the price card and the change form are one card', () => {
       /Your price/.test(c.textContent ?? ''),
     );
     expect(card).toBeDefined();
-    // One container holding the price, the footnote, and the send button.
+    // One container holding the price, the footnote, and the change control.
     expect(card!.textContent).toContain('Wei sees');
     expect(card!.textContent).toContain('Change this job');
+    openChangeForm();
     expect(card!.querySelector('input[aria-label="Price"]')).not.toBeNull();
+  });
+});
+
+describe('the change form never opens by default', () => {
+  it('is collapsed on mount', async () => {
+    // This screen's job is to say where a racket is. Changing what you charge
+    // for it is a deliberate act, and a form standing open invites a stray tap
+    // on the one control that asks somebody to agree to a new price.
+    wrap(<StringingJobDetail job={job} onBack={() => {}} onChanged={() => {}} />);
+    expect(screen.getByText('Change this job')).toBeDefined();
+    expect(screen.queryByLabelText('Price')).toBeNull();
+    expect(screen.queryByText('Send to Wei')).toBeNull();
+  });
+
+  it('is still collapsed when a proposal is already pending', async () => {
+    // "There is an unanswered question" is a reason to SHOW the pending
+    // banner, not to open the editor.
+    const pendingJob: StringingJob = {
+      ...job,
+      pendingEdit: { priceCents: 3400, proposedAt: '2026-09-01T00:00:00.000Z', proposedBy: 'g' },
+    };
+    wrap(<StringingJobDetail job={pendingJob} onBack={() => {}} onChanged={() => {}} />);
+    expect(screen.queryByLabelText('Price')).toBeNull();
+  });
+
+  it('opens on tap and discards the draft on close', async () => {
+    wrap(<StringingJobDetail job={{ ...job, priceCents: 3000 }} onBack={() => {}} onChanged={() => {}} />);
+    openChangeForm();
+    fireEvent.change(screen.getByLabelText('Price'), { target: { value: '34.00' } });
+    expect(screen.getByText('$34.00')).toBeDefined();
+
+    // Closing means "never mind" — otherwise the headline keeps reading
+    // "$30.00 → $34.00" with nothing on screen to explain or undo it.
+    fireEvent.click(screen.getByText('Change this job'));
+    expect(screen.queryByText('$34.00')).toBeNull();
+    expect(screen.getAllByText('$30.00')).toHaveLength(1);
   });
 });

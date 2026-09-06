@@ -68,8 +68,23 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
   const [proposeString, setProposeString] = useState(local.stringLabel);
   const [proposeMains, setProposeMains] = useState(String(local.tensionMains));
   const [proposeCrosses, setProposeCrosses] = useState(String(local.tensionCrosses));
+  /* CLOSED ON EVERY MOUNT, including when a proposal is already pending.
+     This screen's job is to tell you where a racket is; changing what you
+     charge for it is a deliberate act, and a form standing open invites a
+     stray tap on the one control that asks somebody to agree to a new price.
+     Never seeded from props — "it was open last time" is not a reason. */
+  const [changeOpen, setChangeOpen] = useState(false);
   const [proposeBusy, setProposeBusy] = useState(false);
   const [proposeError, setProposeError] = useState(false);
+
+  /** Put the form back to what the job actually says. */
+  function resetDraft() {
+    setProposePrice(local.priceCents === null ? '' : (local.priceCents / 100).toFixed(2));
+    setProposeString(local.stringLabel);
+    setProposeMains(String(local.tensionMains));
+    setProposeCrosses(String(local.tensionCrosses));
+    setProposeError(false);
+  }
 
   const pending = local.pendingEdit ?? null;
   const declined = !pending && typeof local.pendingEditDeclinedAt === 'string';
@@ -151,7 +166,7 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
   return (
     <div>
       <AdminBackHeader onBack={onBack} title={local.memberName} />
-      <div className="flex flex-col gap-4 px-4 pb-6">
+      <div className="flex flex-col gap-4 pb-6">
         <p className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', margin: '0' }}>
           {local.jobNo} · {t(`status.${local.status}`)}
         </p>
@@ -290,15 +305,43 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
               gap: 'var(--space-3)',
             }}
           >
-            <div>
-              <div className="section-label">{t('propose.title')}</div>
-              <p
-                className="fs-sm"
-                style={{ color: 'var(--text-secondary)', margin: 'var(--space-05) 0 0' }}
+            <button
+              type="button"
+              onClick={() => {
+                // Closing DISCARDS the draft. Otherwise a typed-then-collapsed
+                // change leaves the headline reading "$30.00 → $34.00" with
+                // nothing on screen that explains it or can undo it.
+                if (changeOpen) resetDraft();
+                setChangeOpen((v) => !v);
+              }}
+              aria-expanded={changeOpen}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 'var(--space-3)',
+                width: '100%',
+                textAlign: 'left',
+              }}
+            >
+              <span className="section-label">{t('propose.title')}</span>
+              <span
+                className="material-icons icon-sm"
+                aria-hidden="true"
+                style={{ color: 'var(--text-muted)' }}
               >
-                {t('propose.hint', { name: local.memberName })}
-              </p>
-            </div>
+                {changeOpen ? 'expand_less' : 'expand_more'}
+              </span>
+            </button>
+
+            {changeOpen && (
+              <>
+            <p
+              className="fs-sm"
+              style={{ color: 'var(--text-secondary)', margin: 0 }}
+            >
+              {t('propose.hint', { name: local.memberName })}
+            </p>
 
             {proposeError && <p className="field-error" role="alert">{t('propose.error')}</p>}
 
@@ -359,6 +402,8 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
               <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
                 {t('propose.noChange')}
               </p>
+            )}
+              </>
             )}
           </div>
         </div>

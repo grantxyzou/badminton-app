@@ -157,7 +157,7 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
   return (
     <div>
       <AdminBackHeader onBack={onBack} title={t('newJob')} />
-      <div className="flex flex-col gap-4 px-4 pb-6">
+      <div className="flex flex-col gap-4 pb-6">
         {/* Who */}
         <div className="glass-card p-5 space-y-3">
           <CardHeader icon="person" title={t('who')} subtitle={t('whoHint')} />
