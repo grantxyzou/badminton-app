@@ -619,3 +619,38 @@ describe('the change form never opens by default', () => {
     expect(screen.getAllByText('$30.00')).toHaveLength(1);
   });
 });
+
+describe('status is the first thing on the screen, and one row until asked', () => {
+  it('shows the current status without expanding anything', async () => {
+    wrap(<StringingJobDetail job={{ ...job, status: 'ready' }} onBack={() => {}} onChanged={() => {}} />);
+    // Named in the collapsed row...
+    expect(screen.getByText('Ready')).toBeDefined();
+    // ...but the other four steps are not tap targets yet.
+    expect(screen.queryByText('Strung')).toBeNull();
+    expect(screen.queryByText('Picked up')).toBeNull();
+  });
+
+  it('comes before the spec and the price on the page', async () => {
+    // Where the racket is, is the reason to open this screen. It used to be
+    // five stacked rows at the BOTTOM, so the one fact you came for was the
+    // one you had to scroll for.
+    const { container } = wrap(<StringingJobDetail job={job} onBack={() => {}} onChanged={() => {}} />);
+    const text = container.textContent ?? '';
+    expect(text.indexOf('Progress')).toBeLessThan(text.indexOf('Spec'));
+    expect(text.indexOf('Progress')).toBeLessThan(text.indexOf('Your price'));
+  });
+
+  it('reveals the steps on tap', async () => {
+    wrap(<StringingJobDetail job={{ ...job, status: 'received' }} onBack={() => {}} onChanged={() => {}} />);
+    fireEvent.click(screen.getByLabelText('Progress'));
+    expect(screen.getByText('Strung')).toBeDefined();
+    expect(screen.getByText('Picked up')).toBeDefined();
+  });
+
+  it('does not print the status twice', async () => {
+    // The job-number line used to repeat it, and the smaller greyer copy read
+    // as the authoritative one.
+    wrap(<StringingJobDetail job={{ ...job, status: 'ready' }} onBack={() => {}} onChanged={() => {}} />);
+    expect(screen.getAllByText('Ready')).toHaveLength(1);
+  });
+});

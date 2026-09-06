@@ -73,6 +73,11 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
      charge for it is a deliberate act, and a form standing open invites a
      stray tap on the one control that asks somebody to agree to a new price.
      Never seeded from props — "it was open last time" is not a reason. */
+  /* Also closed by default. Tapping a step is a claim about the physical
+     world ("I have the racket", "it is strung"), and five live targets under a
+     thumb on first paint is how a racket gets marked picked-up by accident.
+     The collapsed row still SAYS the status — only changing it is behind a tap. */
+  const [statusOpen, setStatusOpen] = useState(false);
   const [changeOpen, setChangeOpen] = useState(false);
   const [proposeBusy, setProposeBusy] = useState(false);
   const [proposeError, setProposeError] = useState(false);
@@ -168,7 +173,10 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
       <AdminBackHeader onBack={onBack} title={local.memberName} />
       <div className="flex flex-col gap-4 pb-6">
         <p className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', margin: '0' }}>
-          {local.jobNo} · {t(`status.${local.status}`)}
+          {/* Just the number now. The status has a card of its own directly
+              below, and printing it twice on one screen made the smaller,
+              greyer copy look like the authoritative one. */}
+          {local.jobNo}
         </p>
 
         {error && <ErrorState message={t('saveError')} />}
@@ -200,6 +208,105 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
             {t('propose.declined', { name: local.memberName })}
           </div>
         )}
+
+        {/* STATUS FIRST, AND ONE ROW UNTIL YOU ASK.
+            Where the racket is, is the reason to open this screen — it used to
+            be five stacked 44px rows at the BOTTOM, so the one fact you came
+            for was the one you had to scroll for. Collapsed it reads
+            "Progress … Ready"; expanded it is the same stepper as before.
+
+            The rows stay 44px when open. That is the minimum comfortable tap
+            target, so the space is won by not showing them until they are
+            wanted, not by shrinking them below what a thumb can hit. */}
+        <div className="glass-card p-5 space-y-3">
+          {/* The whole header row is the target, not just the chevron. This is
+              the control reached for most often on the screen, and `CardHeader`
+              renders nothing interactive, so wrapping it is valid and costs no
+              drift from the primitive. */}
+          <button
+            type="button"
+            onClick={() => setStatusOpen((v) => !v)}
+            aria-expanded={statusOpen}
+            aria-label={t('statusTitle')}
+            /* minHeight 44 because a CardHeader row is 26px, and a
+               358x26 target is wide but not tall enough to hit reliably —
+               the height is the dimension a thumb misses. */
+            style={{
+              width: '100%',
+              textAlign: 'left',
+              minHeight: 44,
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+            <CardHeader
+              icon="fact_check"
+              title={t('statusTitle')}
+              action={
+                <span
+                  style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
+                >
+                  <span className="fs-md" style={{ fontWeight: 600, color: 'var(--accent)' }}>
+                    {t(`status.${local.status}`)}
+                  </span>
+                  <span
+                    className="material-icons icon-sm"
+                    aria-hidden="true"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    {statusOpen ? 'expand_less' : 'expand_more'}
+                  </span>
+                </span>
+              }
+            />
+            </div>
+          </button>
+          {statusOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              {STRINGING_FLOW.map((step: StringingStatus) => {
+                const idx = STRINGING_FLOW.indexOf(step);
+                const current = STRINGING_FLOW.indexOf(local.status);
+                const on = idx <= current;
+                return (
+                  <button
+                    key={step}
+                    type="button"
+                    disabled={busy || !online}
+                    onClick={() => patch({ status: step })}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 'var(--space-3)',
+                      padding: 'var(--space-4)',
+                      borderRadius: 'var(--radius-lg)',
+                      textAlign: 'left',
+                      background: on ? 'var(--banner-green-bg)' : 'var(--inner-card-bg)',
+                      border: `1px solid ${on ? 'var(--banner-green-border)' : 'var(--inner-card-border)'}`,
+                      ...(busy || !online ? { opacity: 0.5, pointerEvents: 'none' as const } : {}),
+                    }}
+                  >
+                    <span
+                      className="material-icons icon-sm"
+                      style={{ color: on ? 'var(--accent)' : 'var(--text-muted)' }}
+                    >
+                      {on ? 'check_circle' : 'radio_button_unchecked'}
+                    </span>
+                    <span
+                      className="fs-md"
+                      style={{ flex: 1, fontWeight: 600, color: on ? 'var(--accent)' : 'var(--text-muted)' }}
+                    >
+                      {t(`status.${step}`)}
+                    </span>
+                    {idx === current && (
+                      <span className="fs-2xs" style={{ color: 'var(--text-muted)' }}>{t('now')}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         <div className="glass-card p-5 space-y-3">
           <CardHeader icon="sports_tennis" title={t('spec.title')} />
@@ -408,51 +515,6 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
           </div>
         </div>
 
-        <div className="glass-card p-5 space-y-3">
-          <CardHeader icon="fact_check" title={t('statusTitle')} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-            {STRINGING_FLOW.map((step: StringingStatus) => {
-              const idx = STRINGING_FLOW.indexOf(step);
-              const current = STRINGING_FLOW.indexOf(local.status);
-              const on = idx <= current;
-              return (
-                <button
-                  key={step}
-                  type="button"
-                  disabled={busy || !online}
-                  onClick={() => patch({ status: step })}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--space-3)',
-                    padding: 'var(--space-4)',
-                    borderRadius: 'var(--radius-lg)',
-                    textAlign: 'left',
-                    background: on ? 'var(--banner-green-bg)' : 'var(--inner-card-bg)',
-                    border: `1px solid ${on ? 'var(--banner-green-border)' : 'var(--inner-card-border)'}`,
-                    ...(busy || !online ? { opacity: 0.5, pointerEvents: 'none' as const } : {}),
-                  }}
-                >
-                  <span
-                    className="material-icons icon-sm"
-                    style={{ color: on ? 'var(--accent)' : 'var(--text-muted)' }}
-                  >
-                    {on ? 'check_circle' : 'radio_button_unchecked'}
-                  </span>
-                  <span
-                    className="fs-md"
-                    style={{ flex: 1, fontWeight: 600, color: on ? 'var(--accent)' : 'var(--text-muted)' }}
-                  >
-                    {t(`status.${step}`)}
-                  </span>
-                  {idx === current && (
-                    <span className="fs-2xs" style={{ color: 'var(--text-muted)' }}>{t('now')}</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
 
         <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0' }}>
           {local.stringerName ? t('heldBy', { name: local.stringerName }) : t('unclaimed')}
