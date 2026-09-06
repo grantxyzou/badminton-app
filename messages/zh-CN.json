@@ -963,6 +963,14 @@
           "archive": "归档",
           "archiveHint": "移出工作台。欠款不受影响。",
           "unarchive": "放回工作台",
+          "delete": "永久删除",
+          "deleteHint": "彻底删除。整条记录，不只是这一行。",
+          "deleteConfirm": "删除 {name} 的 {racket}？此操作无法撤销。",
+          "deleteConfirmOwed": "删除 {name} 的 {racket}？他们仍欠的 ${amount} 会从余额中消失，且无法撤销。",
+          "deleteKeep": "保留",
+          "deleteGo": "删除",
+          "deleting": "删除中…",
+          "deleteError": "没能删除 — 再试一次。",
           "error": "没能保存 — 再试一次。"
         },
         "swipe": {

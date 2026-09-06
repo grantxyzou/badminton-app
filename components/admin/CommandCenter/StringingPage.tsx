@@ -80,6 +80,10 @@ export default function StringingPage({ onBack }: Props) {
   const [actionTarget, setActionTarget] = useState<StringingJob | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState(false);
+  /* Two-step, in-sheet. Reset every time the sheet opens, so a confirm armed
+     against one job can never be fired at the next one. */
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // null = UNKNOWN (throttled or failed), not closed. Rendering a CLOSED sign
   // on a shop that is open is the confident-wrong answer, so unknown says so.
@@ -185,6 +189,29 @@ export default function StringingPage({ onBack }: Props) {
 
   // Either list: a job opened FROM the archive is not in `jobs`, and looking
   // only there would land on a blank detail screen.
+  /** Destroy the record. Only reachable from the archive, and only after the
+   *  second tap — see the confirm row in the sheet. */
+  async function deleteJob(job: StringingJob) {
+    if (actionBusy || !online) return;
+    setActionBusy(true);
+    setDeleteError(false);
+    try {
+      const res = await fetch(`${BASE}/api/stringing/jobs/${job.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId: job.memberId, confirm: true }),
+      });
+      if (!res.ok) throw new Error(`delete ${res.status}`);
+      setActionTarget(null);
+      setConfirmingDelete(false);
+      await Promise.all([load(), loadArchive()]);
+    } catch {
+      setDeleteError(true);
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
   const selected =
     jobs?.find((j) => j.id === selectedId) ??
     archivedJobs?.find((j) => j.id === selectedId) ??
@@ -280,6 +307,8 @@ export default function StringingPage({ onBack }: Props) {
                 onClick={() => {
                   setActionTarget(job);
                   setActionError(false);
+                  setConfirmingDelete(false);
+                  setDeleteError(false);
                 }}
                 aria-label={t('actions.more', { name: job.memberName })}
                 style={{ pointerEvents: 'auto', flex: '0 0 auto', color: 'var(--ink-faint)' }}
@@ -338,6 +367,9 @@ export default function StringingPage({ onBack }: Props) {
 
   const targetPinned = typeof actionTarget?.prioritizedAt === 'string';
   const targetArchived = typeof actionTarget?.archivedAt === 'string';
+  // What deleting this would take off the player's balance, if anything.
+  const targetOwed =
+    actionTarget && isBillable(actionTarget) ? (actionTarget.priceCents ?? 0) / 100 : null;
 
   /* One sheet, rendered by whichever screen is up. The gesture is the fast
      path; this is the findable one. A swipe nobody discovers is how kudos
@@ -349,6 +381,8 @@ export default function StringingPage({ onBack }: Props) {
       onClose={() => {
         setActionTarget(null);
         setActionError(false);
+        setConfirmingDelete(false);
+        setDeleteError(false);
       }}
       ariaLabel={t('actions.title')}
       maxHeight="50vh"
@@ -363,6 +397,8 @@ export default function StringingPage({ onBack }: Props) {
           onClick={() => {
             setActionTarget(null);
             setActionError(false);
+            setConfirmingDelete(false);
+            setDeleteError(false);
           }}
           aria-label={t('actions.close')}
           style={{ minWidth: 44, minHeight: 44 }}
@@ -401,6 +437,64 @@ export default function StringingPage({ onBack }: Props) {
                 setView('detail');
               }}
             />
+          )}
+
+          {/* Deleting is offered ONLY on an archived job, which is what makes
+              archive the undo step. Two-step and in-sheet — not a stacked
+              sheet and not window.confirm(). */}
+          {actionTarget && targetArchived && !confirmingDelete && (
+            <ActionRow
+              icon="delete_forever"
+              label={t('actions.delete')}
+              hint={t('actions.deleteHint')}
+              disabled={actionBusy || !online}
+              destructive
+              onClick={() => {
+                setConfirmingDelete(true);
+                setDeleteError(false);
+              }}
+            />
+          )}
+          {actionTarget && targetArchived && confirmingDelete && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              {deleteError && <p className="field-error" role="alert">{t('actions.deleteError')}</p>}
+              {/* Name what goes. "This cannot be undone" tells someone it is
+                  serious without telling them what they lose — and the thing
+                  they can actually lose here is somebody else's money, because
+                  archiving never touched the debt and this does. */}
+              <p className="fs-sm" style={{ color: 'var(--text-secondary)', margin: 0 }}>
+                {targetOwed !== null
+                  ? t('actions.deleteConfirmOwed', {
+                      name: actionTarget.memberName,
+                      racket: actionTarget.racketLabel,
+                      amount: targetOwed.toFixed(2),
+                    })
+                  : t('actions.deleteConfirm', {
+                      name: actionTarget.memberName,
+                      racket: actionTarget.racketLabel,
+                    })}
+              </p>
+              <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                <button
+                  type="button"
+                  className="cc-btn cc-btn-ghost"
+                  disabled={actionBusy}
+                  onClick={() => setConfirmingDelete(false)}
+                  style={{ flex: 1 }}
+                >
+                  {t('actions.deleteKeep')}
+                </button>
+                <button
+                  type="button"
+                  className="cc-btn cc-btn-danger"
+                  disabled={actionBusy || !online}
+                  onClick={() => void deleteJob(actionTarget)}
+                  style={{ flex: 1 }}
+                >
+                  {actionBusy ? t('actions.deleting') : t('actions.deleteGo')}
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </BottomSheetBody>

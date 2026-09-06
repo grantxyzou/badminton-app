@@ -25,6 +25,9 @@ export const dynamic = 'force-dynamic';
 
 const HOUR_MS = 60 * 60 * 1000;
 const WRITES_PER_HOUR = 120;
+/* Its own, much smaller bucket. Deleting is not something anyone does in bulk,
+   and a budget shared with PATCH would let ordinary bench work exhaust it. */
+const DELETES_PER_HOUR = 20;
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   if (!isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) {
@@ -153,5 +156,83 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   } catch (err) {
     console.error(`PATCH /api/stringing/jobs/${id} failed:`, err);
     return NextResponse.json({ error: 'write_failed' }, { status: 503 });
+  }
+}
+
+/**
+ * DELETE /api/stringing/jobs/[id] — destroy the record. Admin only.
+ *
+ * The FIRST destructive path in the stringing service, and the only one. Every
+ * other write here is a correction; this is not recoverable.
+ *
+ * REACHABLE ONLY FROM THE ARCHIVE. A job that is not archived is refused with
+ * 409 `not_archived`, which makes archiving the undo step: to delete something
+ * you must first have taken it off the bench and looked at it there. That is
+ * cheaper than a confirmation dialog and harder to do by accident.
+ *
+ * It does NOT refuse over money. Deleting a job with an outstanding balance
+ * removes that line from the player's balance card, which is a real
+ * consequence — but it is the admin's to make, so the UI names the figure that
+ * will disappear and this route carries the seatbelt rather than the veto.
+ */
+export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  if (!isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`stringing-delete:${ip}`, DELETES_PER_HOUR, HOUR_MS)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+  const admin = await isAdminAuthedWithMember(req);
+  if (!admin.authed) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
+  const { id } = await ctx.params;
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== 'object') {
+    return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+  }
+  // An explicit flag, so a stray DELETE cannot destroy a record by accident.
+  // The real confirmation is the two-step in the sheet; this is the seatbelt
+  // behind it. Same shape as `DELETE /api/members/me`.
+  if (body.confirm !== true) {
+    return NextResponse.json({ error: 'confirmation_required' }, { status: 400 });
+  }
+  const memberId = typeof body.memberId === 'string' ? body.memberId.trim() : '';
+  if (!memberId) {
+    return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+  }
+
+  try {
+    const container = getContainer('stringingJobs');
+    const { resource: job } = await container.item(id, memberId).read<StringingJob>();
+    if (!job) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+
+    /**
+     * RE-CHECK THE PREDICATE IN JS BEFORE DESTROYING ANYTHING.
+     *
+     * Both conditions are re-read off the document that actually came back,
+     * rather than trusted from the request. The mock store ignores partition
+     * keys and filters queries by parameter NAME rather than by SQL, so a
+     * predicate that looks right can match far more than it should and still
+     * pass every test — that is the `purgeMember` burn, which was type-clean
+     * and deleted a row it had no business touching. On a delete, cheap
+     * paranoia is the correct amount of paranoia.
+     */
+    if (job.id !== id || job.memberId !== memberId) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+    if (typeof job.archivedAt !== 'string' || job.archivedAt.length === 0) {
+      return NextResponse.json({ error: 'not_archived' }, { status: 409 });
+    }
+
+    await container.item(id, memberId).delete();
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error(`DELETE /api/stringing/jobs/${id} failed:`, err);
+    return NextResponse.json({ error: 'delete_failed' }, { status: 503 });
   }
 }

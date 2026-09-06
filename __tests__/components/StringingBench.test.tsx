@@ -381,3 +381,70 @@ describe('the row menu is the findable path', () => {
     expect(screen.getByText('Off the bench. They still owe what they owe.')).toBeDefined();
   });
 });
+
+describe('deleting says what it destroys', () => {
+  const archived = {
+    ...job,
+    id: 'job-2',
+    status: 'ready' as const,
+    priceCents: 3200,
+    paidAt: null,
+    archivedAt: '2026-09-01T00:00:00.000Z',
+  };
+
+  async function openArchivedMenu(j: StringingJob) {
+    respondBenchAndArchive([], [j]);
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Archived (1)')).toBeDefined());
+    fireEvent.click(screen.getByText('Archived (1)'));
+    await waitFor(() => expect(screen.getByLabelText('More actions for Wei')).toBeDefined());
+    fireEvent.click(screen.getByLabelText('More actions for Wei'));
+    await waitFor(() => expect(screen.getByText('Delete permanently')).toBeDefined());
+  }
+
+  it('is offered only on an archived job', async () => {
+    // Archive is the undo step. Offering delete on the bench would remove it.
+    respondBenchAndArchive([job], []);
+    wrap(<StringingPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getByText('J-0042')).toBeDefined());
+    fireEvent.click(screen.getByLabelText('More actions for Wei'));
+    // Wait on the menu's unique hint, not on "Archive" — the swipe tray uses
+    // that word too, deliberately, so it is not a selector.
+    await waitFor(() =>
+      expect(screen.getByText('Off the bench. They still owe what they owe.')).toBeDefined(),
+    );
+    expect(screen.queryByText('Delete permanently')).toBeNull();
+  });
+
+  it('names the money that disappears from their balance', async () => {
+    // Vague destructive copy tells someone it is serious without telling them
+    // what they lose — and here what they lose is somebody else's money,
+    // because archiving never touched the debt and this does.
+    await openArchivedMenu(archived);
+    fireEvent.click(screen.getByText('Delete permanently'));
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          "Delete Wei's Astrox 99 Pro? The $32.00 they still owe disappears from their balance, and this cannot be undone.",
+        ),
+      ).toBeDefined(),
+    );
+  });
+
+  it('does not invent a debt when nothing is owed', async () => {
+    await openArchivedMenu({ ...archived, paidAt: '2026-09-02T00:00:00.000Z' });
+    fireEvent.click(screen.getByText('Delete permanently'));
+    await waitFor(() =>
+      expect(screen.getByText("Delete Wei's Astrox 99 Pro? This cannot be undone.")).toBeDefined(),
+    );
+  });
+
+  it('takes two taps, and the first one is escapable', async () => {
+    await openArchivedMenu(archived);
+    fireEvent.click(screen.getByText('Delete permanently'));
+    await waitFor(() => expect(screen.getByText('Keep it')).toBeDefined());
+    fireEvent.click(screen.getByText('Keep it'));
+    await waitFor(() => expect(screen.getByText('Delete permanently')).toBeDefined());
+    expect(screen.queryByText('Keep it')).toBeNull();
+  });
+});

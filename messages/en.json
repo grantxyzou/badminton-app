@@ -963,6 +963,14 @@
           "archive": "Archive",
           "archiveHint": "Off the bench. They still owe what they owe.",
           "unarchive": "Put back on the bench",
+          "delete": "Delete permanently",
+          "deleteHint": "Gone for good. The record, not just the row.",
+          "deleteConfirm": "Delete {name}'s {racket}? This cannot be undone.",
+          "deleteConfirmOwed": "Delete {name}'s {racket}? The ${amount} they still owe disappears from their balance, and this cannot be undone.",
+          "deleteKeep": "Keep it",
+          "deleteGo": "Delete",
+          "deleting": "Deleting…",
+          "deleteError": "That didn't delete — try again.",
           "error": "That didn't save — try again."
         },
         "swipe": {

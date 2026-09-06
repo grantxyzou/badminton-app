@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GET, POST } from '../app/api/stringing/jobs/route';
-import { PATCH } from '../app/api/stringing/jobs/[id]/route';
+import { PATCH, DELETE } from '../app/api/stringing/jobs/[id]/route';
 import {
   resetMockStore,
   getStore,
@@ -586,5 +586,91 @@ describe('priority pins a job without hiding the rest', () => {
     const res = await GET(makeAdminRequest('GET', 'http://x/api/stringing/jobs'));
     const body = await res.json();
     expect(body.jobs.map((j: StringingJob) => j.jobNo)).toEqual(['J-LATEST', 'J-FIRST']);
+  });
+});
+
+/**
+ * PERMANENT DELETE
+ *
+ * The only destructive path in the service. Every test here is about a refusal,
+ * because the interesting failures are all "it deleted something it shouldn't
+ * have" rather than "it failed to delete".
+ */
+describe('deleting is reachable only from the archive', () => {
+  const del = (job: StringingJob, body: Record<string, unknown>) =>
+    DELETE(
+      makeAdminRequest('DELETE', `http://x/api/stringing/jobs/${job.id}`, body),
+      { params: Promise.resolve({ id: job.id }) },
+    );
+
+  it('refuses a job that is still on the bench', async () => {
+    // Archive is the undo step: to destroy something you must first have taken
+    // it off the bench and looked at it there.
+    const job = await seedJob();
+    const res = await del(job, { memberId: job.memberId, confirm: true });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe('not_archived');
+    expect(getStore()['stringingJobs']).toHaveLength(1);
+  });
+
+  it('deletes an archived job', async () => {
+    const job = await seedJob({ archivedAt: '2026-09-01T00:00:00.000Z' });
+    const res = await del(job, { memberId: job.memberId, confirm: true });
+    expect(res.status).toBe(200);
+    expect(getStore()['stringingJobs']).toHaveLength(0);
+  });
+
+  it('refuses without the explicit confirm flag', async () => {
+    // The seatbelt behind the sheet's two-step, so a stray DELETE cannot
+    // destroy a record on its own.
+    const job = await seedJob({ archivedAt: '2026-09-01T00:00:00.000Z' });
+    const res = await del(job, { memberId: job.memberId });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe('confirmation_required');
+    expect(getStore()['stringingJobs']).toHaveLength(1);
+  });
+
+  it('deletes ONLY the job asked for', async () => {
+    // The mock store ignores partition keys and filters by parameter name
+    // rather than by SQL, so a predicate that looks right can match far more
+    // than it should and still pass. On a delete that is the whole ballgame.
+    const keep = await seedJob({ jobNo: 'J-KEEP', archivedAt: '2026-09-01T00:00:00.000Z' });
+    const go = await seedJob({ jobNo: 'J-GO', archivedAt: '2026-09-01T00:00:00.000Z' });
+    await del(go, { memberId: go.memberId, confirm: true });
+    const left = getStore()['stringingJobs'] as StringingJob[];
+    expect(left).toHaveLength(1);
+    expect(left[0].jobNo).toBe(keep.jobNo);
+  });
+
+  it('does NOT refuse over money — that is the admin’s call', async () => {
+    // `ready` + priced + unpaid is billable, so this deletion really does take
+    // a line off somebody's balance. The route carries the seatbelt; the sheet
+    // names the figure. A veto here would be the app overruling the person who
+    // knows whether the racket was ever collected.
+    const job = await seedJob({
+      status: 'ready',
+      priceCents: 3200,
+      paidAt: null,
+      archivedAt: '2026-09-01T00:00:00.000Z',
+    });
+    const res = await del(job, { memberId: job.memberId, confirm: true });
+    expect(res.status).toBe(200);
+  });
+
+  it('needs admin, and 404s behind the flag', async () => {
+    const job = await seedJob({ archivedAt: '2026-09-01T00:00:00.000Z' });
+    const anon = await DELETE(
+      memberReq('DELETE', `http://x/api/stringing/jobs/${job.id}`, 'wei', {
+        memberId: job.memberId,
+        confirm: true,
+      }),
+      { params: Promise.resolve({ id: job.id }) },
+    );
+    expect(anon.status).toBe(401);
+
+    process.env[FLAG] = 'false';
+    const off = await del(job, { memberId: job.memberId, confirm: true });
+    expect(off.status).toBe(404);
+    expect(getStore()['stringingJobs']).toHaveLength(1);
   });
 });
