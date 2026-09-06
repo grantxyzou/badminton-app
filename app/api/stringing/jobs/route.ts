@@ -63,6 +63,40 @@ function ensureJobs(): Promise<void> {
   return ready;
 }
 
+/**
+ * Archived means "off the bench", and it is checked in TWO places on purpose.
+ *
+ * The SQL predicate keeps real Cosmos from shipping rows nobody will render.
+ * The JS check is the one that actually works everywhere: the mock store does
+ * not parse SQL at all — it applies one filter per PARAMETER NAME it
+ * recognises and ignores the WHERE clause — so a parameterless predicate like
+ * `NOT IS_DEFINED(c.archivedAt)` matches every row in the container under test
+ * while looking correct in production. Belt and braces, and the braces are the
+ * JS.
+ */
+export function isArchived(job: Pick<StringingJob, 'archivedAt'>): boolean {
+  return typeof job.archivedAt === 'string' && job.archivedAt.length > 0;
+}
+
+const LIVE_SQL = '(NOT IS_DEFINED(c.archivedAt) OR c.archivedAt = null)';
+const ARCHIVED_SQL = '(IS_DEFINED(c.archivedAt) AND c.archivedAt != null)';
+
+/**
+ * Bench order: pinned first (most recently pinned wins), then newest.
+ *
+ * Sorted in JS, NOT with `ORDER BY c.prioritizedAt`. Cosmos omits documents
+ * that lack the ordered field rather than sorting them last, so an ORDER BY
+ * here would silently hide every job nobody had pinned — which is most of them,
+ * and which would look like a data-loss bug rather than a sort bug. The route
+ * already sorted in JS before this; this only adds a key.
+ */
+export function benchOrder(a: StringingJob, b: StringingJob): number {
+  const ap = a.prioritizedAt ?? '';
+  const bp = b.prioritizedAt ?? '';
+  if (ap !== bp) return bp.localeCompare(ap);
+  return b.createdAt.localeCompare(a.createdAt);
+}
+
 /** The ONLY way a job reaches a non-admin. See the file docblock. */
 export function toPlayerJob(job: StringingJob): PlayerStringingJob {
   return {
@@ -143,14 +177,26 @@ export async function GET(req: NextRequest) {
       // The bench. `?mine=true` filters to the caller's own claimed jobs —
       // the design's Mine / All segment.
       const mine = req.nextUrl.searchParams.get('mine') === 'true';
+      /**
+       * `?archived=true` returns ONLY archived jobs — an inclusion, not a
+       * merge, because the archive is its own screen. Admin-only, and safe to
+       * gate on `admin.authed` alone: this whole branch is already behind it.
+       *
+       * It returns full `StringingJob` docs like the bench does, so the archive
+       * row can flag "still owed" from `isBillable` without a second fetch.
+       */
+      const wantArchived = req.nextUrl.searchParams.get('archived') === 'true';
+      const scope = wantArchived ? ARCHIVED_SQL : LIVE_SQL;
       const query = mine
         ? {
-            query: 'SELECT * FROM c WHERE c.stringerId = @stringerId',
+            query: `SELECT * FROM c WHERE c.stringerId = @stringerId AND ${scope}`,
             parameters: [{ name: '@stringerId', value: admin.memberId }],
           }
-        : { query: 'SELECT * FROM c', parameters: [] };
+        : { query: `SELECT * FROM c WHERE ${scope}`, parameters: [] };
       const { resources } = await container.items.query<StringingJob>(query).fetchAll();
-      const jobs = resources.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      const jobs = resources
+        .filter((j) => isArchived(j) === wantArchived)
+        .sort(benchOrder);
       return NextResponse.json({ jobs, view: 'bench' });
     }
 
@@ -167,12 +213,16 @@ export async function GET(req: NextRequest) {
     }
     const { resources } = await container.items
       .query<StringingJob>({
-        query: 'SELECT * FROM c WHERE c.memberId = @memberId',
+        query: `SELECT * FROM c WHERE c.memberId = @memberId AND ${LIVE_SQL}`,
         parameters: [{ name: '@memberId', value: memberId }],
       })
       .fetchAll();
+    // A player never sees an archived job. Archiving is how a stringer says
+    // "this is done with"; leaving it on someone's Home card afterwards would
+    // make the two screens disagree about the same racket.
     const jobs = resources
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .filter((j) => !isArchived(j))
+      .sort(benchOrder)
       .map(toPlayerJob);
     return NextResponse.json({ jobs, view: 'player' });
   } catch (err) {

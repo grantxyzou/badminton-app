@@ -451,6 +451,29 @@ export interface StringingJob {
   /** Append-only audit of every status change, so a correction is visible
    *  rather than silent — this is what lets `canTransition` stay permissive. */
   history: { status: StringingStatus; at: string; by: string | null }[];
+  /**
+   * Off the bench, not gone. Absent or null means live.
+   *
+   * Deliberately NOT a `StringingStatus`. Adding an `'archived'` member to
+   * `STRINGING_FLOW` would have to be handled in seven places — the flow array,
+   * `playerStageFor`, `OPEN_STATUSES`, `BILLABLE_STATUSES`, the bench's `TONE`
+   * table, `dueFor` and `INTERRUPTING_STAGES` — and four of those are plain
+   * arrays that fail SILENTLY on an unhandled member. Archiving is orthogonal
+   * to where a racket is in the process, so it gets its own field, mirroring
+   * `Player.removed` / `removedAt`.
+   *
+   * Money is unaffected: `isBillable` never reads this, so archiving an unpaid
+   * job does not quietly forgive it. Only deleting does that, and deleting says
+   * so.
+   */
+  archivedAt?: string | null;
+  /**
+   * Pinned to the top of the bench. Absent or null means unpinned.
+   *
+   * A timestamp rather than a boolean, so two pinned jobs still have an order
+   * between them — and so "when did this become urgent" is answerable later.
+   */
+  prioritizedAt?: string | null;
 }
 
 /** What a PLAYER is allowed to see of their own job. Note what is missing:

@@ -102,6 +102,17 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       next.stringerName = admin.name;
     }
 
+    if (body.archived !== undefined) {
+      // Boolean in, timestamp out — same shape as `paid` above, and the
+      // re-archive of an already-archived job keeps the original stamp so
+      // "when did this leave the bench" survives a stray double-tap.
+      next.archivedAt = body.archived === true ? (job.archivedAt ?? now) : null;
+    }
+
+    if (body.prioritized !== undefined) {
+      next.prioritizedAt = body.prioritized === true ? (job.prioritizedAt ?? now) : null;
+    }
+
     if (body.readyBy !== undefined) {
       // Same rule as POST: a date or nothing. Legacy rows holding free text are
       // read back unchanged — this only governs what may be WRITTEN, so
@@ -125,6 +136,11 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
        Fired only when the status ACTUALLY moved (the same test the history
        append uses), so re-tapping the current step does not re-send.
+
+       Archiving and pinning deliberately fall outside this: neither touches
+       `status`, so neither appends to `history` nor sends anything. They are
+       facts about the STRINGER'S list, not about the racket — nobody needs to
+       be told their job moved up a queue they cannot see.
 
        AWAITED but never allowed to fail the request: the admin's action is
        about the racket, not the email. `notifyPlayerOfStage` swallows and logs
