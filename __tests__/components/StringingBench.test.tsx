@@ -533,3 +533,42 @@ describe('a proposal is not re-sent by a second tap', () => {
     expect(send.disabled).toBe(false);
   });
 });
+
+describe('the price card and the change form are one card', () => {
+  it('shows the drafted price as a from → to diff in the headline', async () => {
+    // The number you look at and the number you edit used to sit in different
+    // containers, styled as different subjects. They are the same subject, and
+    // the headline now shows the change in the same shape the player will be
+    // asked to confirm.
+    wrap(<StringingJobDetail job={{ ...job, priceCents: 3000 }} onBack={() => {}} onChanged={() => {}} />);
+
+    expect(screen.getByText('$30.00')).toBeDefined();
+    fireEvent.change(screen.getByLabelText('Price'), { target: { value: '34.00' } });
+
+    expect(screen.getByText('$30.00')).toBeDefined();
+    expect(screen.getByText('$34.00')).toBeDefined();
+  });
+
+  it('leaves the headline alone for a spec-only change', async () => {
+    // A string or tension edit changes the job without changing the number.
+    // Rendering "$30.00 → $30.00" for those would be noise.
+    wrap(<StringingJobDetail job={{ ...job, priceCents: 3000 }} onBack={() => {}} onChanged={() => {}} />);
+    fireEvent.change(screen.getByLabelText('String'), { target: { value: 'Aerobite' } });
+
+    expect(screen.getAllByText('$30.00')).toHaveLength(1);
+  });
+
+  it('still shows what the player sees, and the form, in the same card', async () => {
+    const { container } = wrap(
+      <StringingJobDetail job={{ ...job, priceCents: 3000 }} onBack={() => {}} onChanged={() => {}} />,
+    );
+    const card = [...container.querySelectorAll('.glass-card')].find((c) =>
+      /Your price/.test(c.textContent ?? ''),
+    );
+    expect(card).toBeDefined();
+    // One container holding the price, the footnote, and the send button.
+    expect(card!.textContent).toContain('Wei sees');
+    expect(card!.textContent).toContain('Change this job');
+    expect(card!.querySelector('input[aria-label="Price"]')).not.toBeNull();
+  });
+});

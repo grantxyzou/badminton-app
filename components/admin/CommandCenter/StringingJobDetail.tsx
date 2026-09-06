@@ -107,6 +107,12 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
 
   const proposalDirty = differsFromJob && !alreadyProposed;
 
+  /** A drafted price that differs from the committed one — drives the headline
+   *  diff. Deliberately NOT `proposalDirty`: a string or tension edit changes
+   *  the job without changing the number, and turning the price into a
+   *  "$30 → $30" diff for those would be noise. */
+  const priceDrafted = parsedCents !== undefined && parsedCents !== local.priceCents;
+
   async function sendProposal() {
     if (proposeBusy || !online || !proposalDirty || parsedCents === undefined) return;
     setProposeBusy(true);
@@ -192,14 +198,58 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
           </div>
         </div>
 
+        {/* ONE CARD: the price, and the way to change it.
+            These were two — a green "Your price" card and a plain "Change this
+            job" form directly under it — which meant the number you were
+            editing and the number you were looking at sat in different
+            containers, styled as if they were different subjects. They are the
+            same subject. The green treatment stays because this is still the
+            card about money; the form is what you do to it.
+
+            When a change is drafted the headline becomes the diff, in the same
+            from → to shape the player is shown in `ConfirmChangeSheet`. The
+            admin sees the exact thing they are about to ask for. */}
         <div
           className="glass-card p-5 space-y-3"
           style={{ background: 'var(--banner-green-bg)', borderColor: 'var(--banner-green-border)' }}
         >
           <CardHeader icon="request_quote" title={t('quoted')} />
-          <div className="fs-stat-lg" style={{ fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-            {formatPriceExact(local.priceCents) ?? t('unpriced')}
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              flexWrap: 'wrap',
+              gap: 'var(--space-3)',
+            }}
+          >
+            <span
+              className="fs-stat-lg"
+              style={{
+                fontWeight: 700,
+                fontFamily: 'var(--font-mono)',
+                // Demoted to the "from" half once there is a "to".
+                color: priceDrafted ? 'var(--text-muted)' : 'var(--text-primary)',
+                textDecoration: priceDrafted ? 'line-through' : undefined,
+              }}
+            >
+              {formatPriceExact(local.priceCents) ?? t('unpriced')}
+            </span>
+            {priceDrafted && (
+              <>
+                <span className="material-icons icon-sm" style={{ color: 'var(--text-muted)' }}>
+                  arrow_forward
+                </span>
+                <span
+                  className="fs-stat-lg"
+                  style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}
+                >
+                  {formatPriceExact(parsedCents ?? null) ?? t('unpriced')}
+                </span>
+              </>
+            )}
           </div>
+
           {local.readyBy && (
             <div className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
               {/* Formatted when it is a date; shown verbatim when it is not.
@@ -209,7 +259,10 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
               {t('readyBy', { date: formatReadyBy(local.readyBy) ?? local.readyBy })}
             </div>
           )}
-          {/* What the other side is reading, right now. */}
+
+          {/* What the other side is reading, right now. Still attached to the
+              price above it rather than to the form below — it describes the
+              committed state, not the draft. */}
           <div
             className="fs-sm"
             style={{
@@ -226,16 +279,29 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
               {t(`playerStage.${playerStageFor(local.status)}`)}
             </span>
           </div>
-        </div>
 
-        <div className="glass-card p-5 space-y-3">
-          <CardHeader
-            icon="edit"
-            title={t('propose.title')}
-            subtitle={t('propose.hint', { name: local.memberName })}
-          />
-          {proposeError && <p className="field-error" role="alert">{t('propose.error')}</p>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          {/* The action half. A second rule rather than a second card. */}
+          <div
+            style={{
+              paddingTop: 'var(--space-4)',
+              borderTop: '1px solid var(--banner-green-border)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--space-3)',
+            }}
+          >
+            <div>
+              <div className="section-label">{t('propose.title')}</div>
+              <p
+                className="fs-sm"
+                style={{ color: 'var(--text-secondary)', margin: 'var(--space-05) 0 0' }}
+              >
+                {t('propose.hint', { name: local.memberName })}
+              </p>
+            </div>
+
+            {proposeError && <p className="field-error" role="alert">{t('propose.error')}</p>}
+
             <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
               <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('propose.price')}</span>
               <input
@@ -279,21 +345,22 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
                 />
               </label>
             </div>
+
+            <button
+              type="button"
+              className="cc-btn cc-btn-primary cc-btn-lg"
+              style={{ width: '100%' }}
+              disabled={proposeBusy || !online || !proposalDirty || parsedCents === undefined}
+              onClick={() => void sendProposal()}
+            >
+              {proposeBusy ? t('propose.sending') : t('propose.send', { name: local.memberName })}
+            </button>
+            {!proposalDirty && (
+              <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
+                {t('propose.noChange')}
+              </p>
+            )}
           </div>
-          <button
-            type="button"
-            className="cc-btn cc-btn-primary cc-btn-lg"
-            style={{ width: '100%' }}
-            disabled={proposeBusy || !online || !proposalDirty || parsedCents === undefined}
-            onClick={() => void sendProposal()}
-          >
-            {proposeBusy ? t('propose.sending') : t('propose.send', { name: local.memberName })}
-          </button>
-          {!proposalDirty && (
-            <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
-              {t('propose.noChange')}
-            </p>
-          )}
         </div>
 
         <div className="glass-card p-5 space-y-3">
