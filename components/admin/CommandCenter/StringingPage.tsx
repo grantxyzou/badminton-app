@@ -515,7 +515,7 @@ export default function StringingPage({ onBack }: Props) {
     return (
       <div className="animate-slideInRight">
         <AdminBackHeader onBack={() => setView('bench')} title={t('archive.title')} />
-        <div className="flex flex-col gap-4 px-4 pb-6">
+        <div className="flex flex-col gap-4 pb-6">
           {archiveError && <ErrorState message={t('archive.loadError')} />}
           {!archiveError && archivedJobs === null && <AdminPageSkeleton />}
           {!archiveError && archivedJobs !== null && archivedJobs.length === 0 && (
@@ -545,7 +545,11 @@ export default function StringingPage({ onBack }: Props) {
   return (
     <div>
       <AdminBackHeader onBack={onBack} title={t('benchTitle')} />
-      <div className="flex flex-col gap-4 px-4 pb-6">
+      {/* No horizontal padding here. The app shell's <main> already carries
+          `px-4`, and a second inset made every card on the three stringing
+          screens 362px wide against the app's 394 — visibly narrower than the
+          Command Center they are opened from, and than Birds next to them. */}
+      <div className="flex flex-col gap-4 pb-6">
         {/* The shop sign. Separate from NEXT_PUBLIC_FLAG_STRINGING on purpose:
             that says whether this code exists, this says whether Grant is
             taking rackets this week. Closing does NOT stop the bench — jobs in

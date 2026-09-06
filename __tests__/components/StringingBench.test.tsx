@@ -510,6 +510,7 @@ describe('a proposal is not re-sent by a second tap', () => {
 
     // The form is seeded from the JOB, so it reads $30 — different from the
     // job only once the admin retypes the proposed figure.
+    openChangeForm();
     const price = screen.getByLabelText('Price') as HTMLInputElement;
     fireEvent.change(price, { target: { value: '34.00' } });
 
@@ -528,8 +529,128 @@ describe('a proposal is not re-sent by a second tap', () => {
       },
     };
     wrap(<StringingJobDetail job={pendingJob} onBack={() => {}} onChanged={() => {}} />);
+    openChangeForm();
     fireEvent.change(screen.getByLabelText('Price'), { target: { value: '36.00' } });
     const send = screen.getByText('Send to Wei').closest('button') as HTMLButtonElement;
     expect(send.disabled).toBe(false);
+  });
+});
+
+/** The change form is collapsed on every mount, so a test that touches it has
+ *  to open it first — same as a stringer would. */
+function openChangeForm() {
+  fireEvent.click(screen.getByText('Change this job'));
+}
+
+describe('the price card and the change form are one card', () => {
+  it('shows the drafted price as a from → to diff in the headline', async () => {
+    // The number you look at and the number you edit used to sit in different
+    // containers, styled as different subjects. They are the same subject, and
+    // the headline now shows the change in the same shape the player will be
+    // asked to confirm.
+    wrap(<StringingJobDetail job={{ ...job, priceCents: 3000 }} onBack={() => {}} onChanged={() => {}} />);
+
+    expect(screen.getByText('$30.00')).toBeDefined();
+    openChangeForm();
+    fireEvent.change(screen.getByLabelText('Price'), { target: { value: '34.00' } });
+
+    expect(screen.getByText('$30.00')).toBeDefined();
+    expect(screen.getByText('$34.00')).toBeDefined();
+  });
+
+  it('leaves the headline alone for a spec-only change', async () => {
+    // A string or tension edit changes the job without changing the number.
+    // Rendering "$30.00 → $30.00" for those would be noise.
+    wrap(<StringingJobDetail job={{ ...job, priceCents: 3000 }} onBack={() => {}} onChanged={() => {}} />);
+    openChangeForm();
+    fireEvent.change(screen.getByLabelText('String'), { target: { value: 'Aerobite' } });
+
+    expect(screen.getAllByText('$30.00')).toHaveLength(1);
+  });
+
+  it('still shows what the player sees, and the form, in the same card', async () => {
+    const { container } = wrap(
+      <StringingJobDetail job={{ ...job, priceCents: 3000 }} onBack={() => {}} onChanged={() => {}} />,
+    );
+    const card = [...container.querySelectorAll('.glass-card')].find((c) =>
+      /Your price/.test(c.textContent ?? ''),
+    );
+    expect(card).toBeDefined();
+    // One container holding the price, the footnote, and the change control.
+    expect(card!.textContent).toContain('Wei sees');
+    expect(card!.textContent).toContain('Change this job');
+    openChangeForm();
+    expect(card!.querySelector('input[aria-label="Price"]')).not.toBeNull();
+  });
+});
+
+describe('the change form never opens by default', () => {
+  it('is collapsed on mount', async () => {
+    // This screen's job is to say where a racket is. Changing what you charge
+    // for it is a deliberate act, and a form standing open invites a stray tap
+    // on the one control that asks somebody to agree to a new price.
+    wrap(<StringingJobDetail job={job} onBack={() => {}} onChanged={() => {}} />);
+    expect(screen.getByText('Change this job')).toBeDefined();
+    expect(screen.queryByLabelText('Price')).toBeNull();
+    expect(screen.queryByText('Send to Wei')).toBeNull();
+  });
+
+  it('is still collapsed when a proposal is already pending', async () => {
+    // "There is an unanswered question" is a reason to SHOW the pending
+    // banner, not to open the editor.
+    const pendingJob: StringingJob = {
+      ...job,
+      pendingEdit: { priceCents: 3400, proposedAt: '2026-09-01T00:00:00.000Z', proposedBy: 'g' },
+    };
+    wrap(<StringingJobDetail job={pendingJob} onBack={() => {}} onChanged={() => {}} />);
+    expect(screen.queryByLabelText('Price')).toBeNull();
+  });
+
+  it('opens on tap and discards the draft on close', async () => {
+    wrap(<StringingJobDetail job={{ ...job, priceCents: 3000 }} onBack={() => {}} onChanged={() => {}} />);
+    openChangeForm();
+    fireEvent.change(screen.getByLabelText('Price'), { target: { value: '34.00' } });
+    expect(screen.getByText('$34.00')).toBeDefined();
+
+    // Closing means "never mind" — otherwise the headline keeps reading
+    // "$30.00 → $34.00" with nothing on screen to explain or undo it.
+    fireEvent.click(screen.getByText('Change this job'));
+    expect(screen.queryByText('$34.00')).toBeNull();
+    expect(screen.getAllByText('$30.00')).toHaveLength(1);
+  });
+});
+
+describe('status is the first thing on the screen, and one row until asked', () => {
+  it('shows the current status without expanding anything', async () => {
+    wrap(<StringingJobDetail job={{ ...job, status: 'ready' }} onBack={() => {}} onChanged={() => {}} />);
+    // Named in the collapsed row...
+    expect(screen.getByText('Ready')).toBeDefined();
+    // ...but the other four steps are not tap targets yet.
+    expect(screen.queryByText('Strung')).toBeNull();
+    expect(screen.queryByText('Picked up')).toBeNull();
+  });
+
+  it('comes before the spec and the price on the page', async () => {
+    // Where the racket is, is the reason to open this screen. It used to be
+    // five stacked rows at the BOTTOM, so the one fact you came for was the
+    // one you had to scroll for.
+    const { container } = wrap(<StringingJobDetail job={job} onBack={() => {}} onChanged={() => {}} />);
+    const text = container.textContent ?? '';
+    expect(text.indexOf('Progress')).toBeLessThan(text.indexOf('Spec'));
+    expect(text.indexOf('Progress')).toBeLessThan(text.indexOf('Your price'));
+  });
+
+  it('reveals the steps on tap', async () => {
+    wrap(<StringingJobDetail job={{ ...job, status: 'received' }} onBack={() => {}} onChanged={() => {}} />);
+    fireEvent.click(screen.getByLabelText('Progress'));
+    expect(screen.getByText('Strung')).toBeDefined();
+    expect(screen.getByText('Picked up')).toBeDefined();
+  });
+
+  it('does not print the status twice', async () => {
+    // The job-number line used to repeat it, and the smaller greyer copy read
+    // as the authoritative one.
+    wrap(<StringingJobDetail job={{ ...job, status: 'ready' }} onBack={() => {}} onChanged={() => {}} />);
+    expect(screen.getAllByText('Ready')).toHaveLength(1);
   });
 });

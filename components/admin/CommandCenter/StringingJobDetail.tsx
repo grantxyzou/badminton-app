@@ -68,8 +68,28 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
   const [proposeString, setProposeString] = useState(local.stringLabel);
   const [proposeMains, setProposeMains] = useState(String(local.tensionMains));
   const [proposeCrosses, setProposeCrosses] = useState(String(local.tensionCrosses));
+  /* CLOSED ON EVERY MOUNT, including when a proposal is already pending.
+     This screen's job is to tell you where a racket is; changing what you
+     charge for it is a deliberate act, and a form standing open invites a
+     stray tap on the one control that asks somebody to agree to a new price.
+     Never seeded from props — "it was open last time" is not a reason. */
+  /* Also closed by default. Tapping a step is a claim about the physical
+     world ("I have the racket", "it is strung"), and five live targets under a
+     thumb on first paint is how a racket gets marked picked-up by accident.
+     The collapsed row still SAYS the status — only changing it is behind a tap. */
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [changeOpen, setChangeOpen] = useState(false);
   const [proposeBusy, setProposeBusy] = useState(false);
   const [proposeError, setProposeError] = useState(false);
+
+  /** Put the form back to what the job actually says. */
+  function resetDraft() {
+    setProposePrice(local.priceCents === null ? '' : (local.priceCents / 100).toFixed(2));
+    setProposeString(local.stringLabel);
+    setProposeMains(String(local.tensionMains));
+    setProposeCrosses(String(local.tensionCrosses));
+    setProposeError(false);
+  }
 
   const pending = local.pendingEdit ?? null;
   const declined = !pending && typeof local.pendingEditDeclinedAt === 'string';
@@ -106,6 +126,12 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
     (pending.tensionCrosses ?? local.tensionCrosses) === Number(proposeCrosses);
 
   const proposalDirty = differsFromJob && !alreadyProposed;
+
+  /** A drafted price that differs from the committed one — drives the headline
+   *  diff. Deliberately NOT `proposalDirty`: a string or tension edit changes
+   *  the job without changing the number, and turning the price into a
+   *  "$30 → $30" diff for those would be noise. */
+  const priceDrafted = parsedCents !== undefined && parsedCents !== local.priceCents;
 
   async function sendProposal() {
     if (proposeBusy || !online || !proposalDirty || parsedCents === undefined) return;
@@ -145,9 +171,12 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
   return (
     <div>
       <AdminBackHeader onBack={onBack} title={local.memberName} />
-      <div className="flex flex-col gap-4 px-4 pb-6">
+      <div className="flex flex-col gap-4 pb-6">
         <p className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', margin: '0' }}>
-          {local.jobNo} · {t(`status.${local.status}`)}
+          {/* Just the number now. The status has a card of its own directly
+              below, and printing it twice on one screen made the smaller,
+              greyer copy look like the authoritative one. */}
+          {local.jobNo}
         </p>
 
         {error && <ErrorState message={t('saveError')} />}
@@ -180,6 +209,105 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
           </div>
         )}
 
+        {/* STATUS FIRST, AND ONE ROW UNTIL YOU ASK.
+            Where the racket is, is the reason to open this screen — it used to
+            be five stacked 44px rows at the BOTTOM, so the one fact you came
+            for was the one you had to scroll for. Collapsed it reads
+            "Progress … Ready"; expanded it is the same stepper as before.
+
+            The rows stay 44px when open. That is the minimum comfortable tap
+            target, so the space is won by not showing them until they are
+            wanted, not by shrinking them below what a thumb can hit. */}
+        <div className="glass-card p-5 space-y-3">
+          {/* The whole header row is the target, not just the chevron. This is
+              the control reached for most often on the screen, and `CardHeader`
+              renders nothing interactive, so wrapping it is valid and costs no
+              drift from the primitive. */}
+          <button
+            type="button"
+            onClick={() => setStatusOpen((v) => !v)}
+            aria-expanded={statusOpen}
+            aria-label={t('statusTitle')}
+            /* minHeight 44 because a CardHeader row is 26px, and a
+               358x26 target is wide but not tall enough to hit reliably —
+               the height is the dimension a thumb misses. */
+            style={{
+              width: '100%',
+              textAlign: 'left',
+              minHeight: 44,
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+            <CardHeader
+              icon="fact_check"
+              title={t('statusTitle')}
+              action={
+                <span
+                  style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
+                >
+                  <span className="fs-md" style={{ fontWeight: 600, color: 'var(--accent)' }}>
+                    {t(`status.${local.status}`)}
+                  </span>
+                  <span
+                    className="material-icons icon-sm"
+                    aria-hidden="true"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    {statusOpen ? 'expand_less' : 'expand_more'}
+                  </span>
+                </span>
+              }
+            />
+            </div>
+          </button>
+          {statusOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              {STRINGING_FLOW.map((step: StringingStatus) => {
+                const idx = STRINGING_FLOW.indexOf(step);
+                const current = STRINGING_FLOW.indexOf(local.status);
+                const on = idx <= current;
+                return (
+                  <button
+                    key={step}
+                    type="button"
+                    disabled={busy || !online}
+                    onClick={() => patch({ status: step })}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 'var(--space-3)',
+                      padding: 'var(--space-4)',
+                      borderRadius: 'var(--radius-lg)',
+                      textAlign: 'left',
+                      background: on ? 'var(--banner-green-bg)' : 'var(--inner-card-bg)',
+                      border: `1px solid ${on ? 'var(--banner-green-border)' : 'var(--inner-card-border)'}`,
+                      ...(busy || !online ? { opacity: 0.5, pointerEvents: 'none' as const } : {}),
+                    }}
+                  >
+                    <span
+                      className="material-icons icon-sm"
+                      style={{ color: on ? 'var(--accent)' : 'var(--text-muted)' }}
+                    >
+                      {on ? 'check_circle' : 'radio_button_unchecked'}
+                    </span>
+                    <span
+                      className="fs-md"
+                      style={{ flex: 1, fontWeight: 600, color: on ? 'var(--accent)' : 'var(--text-muted)' }}
+                    >
+                      {t(`status.${step}`)}
+                    </span>
+                    {idx === current && (
+                      <span className="fs-2xs" style={{ color: 'var(--text-muted)' }}>{t('now')}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <div className="glass-card p-5 space-y-3">
           <CardHeader icon="sports_tennis" title={t('spec.title')} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
@@ -192,14 +320,58 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
           </div>
         </div>
 
+        {/* ONE CARD: the price, and the way to change it.
+            These were two — a green "Your price" card and a plain "Change this
+            job" form directly under it — which meant the number you were
+            editing and the number you were looking at sat in different
+            containers, styled as if they were different subjects. They are the
+            same subject. The green treatment stays because this is still the
+            card about money; the form is what you do to it.
+
+            When a change is drafted the headline becomes the diff, in the same
+            from → to shape the player is shown in `ConfirmChangeSheet`. The
+            admin sees the exact thing they are about to ask for. */}
         <div
           className="glass-card p-5 space-y-3"
           style={{ background: 'var(--banner-green-bg)', borderColor: 'var(--banner-green-border)' }}
         >
           <CardHeader icon="request_quote" title={t('quoted')} />
-          <div className="fs-stat-lg" style={{ fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-            {formatPriceExact(local.priceCents) ?? t('unpriced')}
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              flexWrap: 'wrap',
+              gap: 'var(--space-3)',
+            }}
+          >
+            <span
+              className="fs-stat-lg"
+              style={{
+                fontWeight: 700,
+                fontFamily: 'var(--font-mono)',
+                // Demoted to the "from" half once there is a "to".
+                color: priceDrafted ? 'var(--text-muted)' : 'var(--text-primary)',
+                textDecoration: priceDrafted ? 'line-through' : undefined,
+              }}
+            >
+              {formatPriceExact(local.priceCents) ?? t('unpriced')}
+            </span>
+            {priceDrafted && (
+              <>
+                <span className="material-icons icon-sm" style={{ color: 'var(--text-muted)' }}>
+                  arrow_forward
+                </span>
+                <span
+                  className="fs-stat-lg"
+                  style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}
+                >
+                  {formatPriceExact(parsedCents ?? null) ?? t('unpriced')}
+                </span>
+              </>
+            )}
           </div>
+
           {local.readyBy && (
             <div className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
               {/* Formatted when it is a date; shown verbatim when it is not.
@@ -209,7 +381,10 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
               {t('readyBy', { date: formatReadyBy(local.readyBy) ?? local.readyBy })}
             </div>
           )}
-          {/* What the other side is reading, right now. */}
+
+          {/* What the other side is reading, right now. Still attached to the
+              price above it rather than to the form below — it describes the
+              committed state, not the draft. */}
           <div
             className="fs-sm"
             style={{
@@ -226,16 +401,57 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
               {t(`playerStage.${playerStageFor(local.status)}`)}
             </span>
           </div>
-        </div>
 
-        <div className="glass-card p-5 space-y-3">
-          <CardHeader
-            icon="edit"
-            title={t('propose.title')}
-            subtitle={t('propose.hint', { name: local.memberName })}
-          />
-          {proposeError && <p className="field-error" role="alert">{t('propose.error')}</p>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          {/* The action half. A second rule rather than a second card. */}
+          <div
+            style={{
+              paddingTop: 'var(--space-4)',
+              borderTop: '1px solid var(--banner-green-border)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--space-3)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                // Closing DISCARDS the draft. Otherwise a typed-then-collapsed
+                // change leaves the headline reading "$30.00 → $34.00" with
+                // nothing on screen that explains it or can undo it.
+                if (changeOpen) resetDraft();
+                setChangeOpen((v) => !v);
+              }}
+              aria-expanded={changeOpen}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 'var(--space-3)',
+                width: '100%',
+                textAlign: 'left',
+              }}
+            >
+              <span className="section-label">{t('propose.title')}</span>
+              <span
+                className="material-icons icon-sm"
+                aria-hidden="true"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                {changeOpen ? 'expand_less' : 'expand_more'}
+              </span>
+            </button>
+
+            {changeOpen && (
+              <>
+            <p
+              className="fs-sm"
+              style={{ color: 'var(--text-secondary)', margin: 0 }}
+            >
+              {t('propose.hint', { name: local.memberName })}
+            </p>
+
+            {proposeError && <p className="field-error" role="alert">{t('propose.error')}</p>}
+
             <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
               <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('propose.price')}</span>
               <input
@@ -279,68 +495,26 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
                 />
               </label>
             </div>
+
+            <button
+              type="button"
+              className="cc-btn cc-btn-primary cc-btn-lg"
+              style={{ width: '100%' }}
+              disabled={proposeBusy || !online || !proposalDirty || parsedCents === undefined}
+              onClick={() => void sendProposal()}
+            >
+              {proposeBusy ? t('propose.sending') : t('propose.send', { name: local.memberName })}
+            </button>
+            {!proposalDirty && (
+              <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
+                {t('propose.noChange')}
+              </p>
+            )}
+              </>
+            )}
           </div>
-          <button
-            type="button"
-            className="cc-btn cc-btn-primary cc-btn-lg"
-            style={{ width: '100%' }}
-            disabled={proposeBusy || !online || !proposalDirty || parsedCents === undefined}
-            onClick={() => void sendProposal()}
-          >
-            {proposeBusy ? t('propose.sending') : t('propose.send', { name: local.memberName })}
-          </button>
-          {!proposalDirty && (
-            <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
-              {t('propose.noChange')}
-            </p>
-          )}
         </div>
 
-        <div className="glass-card p-5 space-y-3">
-          <CardHeader icon="fact_check" title={t('statusTitle')} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-            {STRINGING_FLOW.map((step: StringingStatus) => {
-              const idx = STRINGING_FLOW.indexOf(step);
-              const current = STRINGING_FLOW.indexOf(local.status);
-              const on = idx <= current;
-              return (
-                <button
-                  key={step}
-                  type="button"
-                  disabled={busy || !online}
-                  onClick={() => patch({ status: step })}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--space-3)',
-                    padding: 'var(--space-4)',
-                    borderRadius: 'var(--radius-lg)',
-                    textAlign: 'left',
-                    background: on ? 'var(--banner-green-bg)' : 'var(--inner-card-bg)',
-                    border: `1px solid ${on ? 'var(--banner-green-border)' : 'var(--inner-card-border)'}`,
-                    ...(busy || !online ? { opacity: 0.5, pointerEvents: 'none' as const } : {}),
-                  }}
-                >
-                  <span
-                    className="material-icons icon-sm"
-                    style={{ color: on ? 'var(--accent)' : 'var(--text-muted)' }}
-                  >
-                    {on ? 'check_circle' : 'radio_button_unchecked'}
-                  </span>
-                  <span
-                    className="fs-md"
-                    style={{ flex: 1, fontWeight: 600, color: on ? 'var(--accent)' : 'var(--text-muted)' }}
-                  >
-                    {t(`status.${step}`)}
-                  </span>
-                  {idx === current && (
-                    <span className="fs-2xs" style={{ color: 'var(--text-muted)' }}>{t('now')}</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
 
         <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0' }}>
           {local.stringerName ? t('heldBy', { name: local.stringerName }) : t('unclaimed')}
