@@ -46,6 +46,30 @@ const REQUIRED_CLASSES = [
 ];
 
 describe('design-system canary: globals.css token/class contract', () => {
+  /**
+   * `.court-bg` must never regain `content-visibility` or `contain: strict`.
+   *
+   * They read as a free optimisation and are not one: the element is
+   * `position: fixed; inset: 0`, so it is never off-screen and the skip can
+   * never fire. What they actually did was promote a negatively-stacked layer
+   * that WebKit painted out of order, covering ordinary in-flow content on the
+   * iOS shell — settings rows rendered their icons and chevrons but no labels,
+   * and the Stats register switch disappeared background-and-all.
+   *
+   * This canary exists because NOTHING else can see it. jsdom has no paint,
+   * Chromium renders it correctly, and the whole suite stayed green while the
+   * app was unreadable on a real phone. The only detector is the source.
+   */
+  it('.court-bg does not use content-visibility or contain: strict', () => {
+    const block = css.slice(css.indexOf('.court-bg {'));
+    const body = block.slice(0, block.indexOf('}'));
+    expect(body).not.toContain('content-visibility');
+    expect(body).not.toContain('contain: strict');
+    expect(body).not.toContain('contain-intrinsic-size');
+    // The isolation we do want is still there.
+    expect(body).toContain('contain: layout paint');
+  });
+
   it.each(REQUIRED_TOKENS)('defines token %s', (token) => {
     expect(css).toContain(`${token}:`);
   });
@@ -202,5 +226,46 @@ describe('design-system canary: globals.css token/class contract', () => {
     // Match the *definition* (`selector {`), not any mention: the removal is
     // documented by name in a comment at the old site, which should stay.
     expect(css).not.toMatch(/\.animate-slideUp\s*\{/);
+  });
+});
+
+/**
+ * The last boundary.
+ *
+ * `app/error.tsx` renders inside the root layout and therefore cannot catch a
+ * throw FROM it — and that layout runs `getLocale()` + `getMessages()` on every
+ * request, which is a dynamic import and a recursive merge. That is the one
+ * path that yields a true white screen, and inside the Capacitor shell a white
+ * screen is the review someone leaves.
+ *
+ * Asserted on the source because there is no way to render it in jsdom: it
+ * replaces the document, and Next only mounts it for a root-layout throw.
+ */
+describe('global-error boundary', () => {
+  const globalErrorRaw = readFileSync(join(process.cwd(), 'app', 'global-error.tsx'), 'utf8');
+  // Comments stripped: the file's own docblock explains why `var(--x)` must
+  // not be used here, and a scanner that reads prose reports the explanation
+  // as the defect.
+  const globalError = globalErrorRaw
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+
+  it('exists and carries its own html/body', () => {
+    // It REPLACES the root layout, so without these it renders into nothing.
+    expect(globalErrorRaw).toContain('<html');
+    expect(globalErrorRaw).toContain('<body');
+  });
+
+  it('depends on nothing the failed layout was supposed to provide', () => {
+    // No tokens (globals.css may not have loaded), no next-intl (its provider
+    // is a plausible cause of the throw). A boundary that depends on the thing
+    // that just failed is a white screen with extra steps.
+    expect(globalError).not.toMatch(/var\(--/);
+    expect(globalError).not.toContain('next-intl');
+    expect(globalError).not.toContain('useTranslations');
+  });
+
+  it('offers the one action that helps', () => {
+    expect(globalErrorRaw).toContain('reset()');
   });
 });

@@ -1021,19 +1021,40 @@ html[data-swiping="release"] [data-page-shell] {
    mean zero filter:blur cost; no mix-blend-mode means no compositor slow-path.
    Animates only `transform` — composited, no repaint.
 
-     - `contain: strict` + `content-visibility: auto` → skipped off-screen
      - `prefers-reduced-motion` + `prefers-reduced-transparency` kill animation
        (iOS low-power mode toggles the latter)
-     - Light mode swaps to pastel green / warm-cream / soft-blue tints */
+     - Light mode swaps to pastel green / warm-cream / soft-blue tints
+
+   NO `content-visibility: auto`, NO `contain: strict`, NO
+   `contain-intrinsic-size`. They were here to "skip this when off-screen",
+   which a `position: fixed; inset: 0` element never is — it is always exactly
+   the viewport, so the optimisation could never fire and bought nothing.
+
+   What they DID do is promote a NEGATIVELY-stacked layer, and WebKit then
+   painted it out of order: on the iOS shell it covered ordinary in-flow
+   content while leaving anything positioned-with-z-index or opacity-promoted
+   on top. The result read as "the text is missing" — Profile's settings rows
+   showed their icons (`.material-icons` is `opacity: .8`, so it had its own
+   layer) and their chevrons but no labels, and the Stats register switch
+   vanished entirely, track and active pill included. That last part is what
+   rules out every font and colour theory: a blank BACKGROUND is not a text
+   problem.
+
+   Sorted by CSS positioning rather than by typography the split was exact —
+   everything visible was `sticky`/`fixed` with a z-index or opacity-promoted,
+   everything invisible was static in-flow paint.
+
+   `overflow: hidden` already clips the blobs, and `contain: layout paint`
+   keeps the compositor isolation without the size containment that only
+   existed to serve `content-visibility`. Pinned by
+   `__tests__/design-canary.test.ts`. */
 .court-bg {
   background: var(--aurora-bg, var(--page-bg));
   position: fixed;
   inset: 0;
   z-index: -1;
   overflow: hidden;
-  contain: strict;
-  content-visibility: auto;
-  contain-intrinsic-size: 100vw 100vh;
+  contain: layout paint;
   pointer-events: none;
 }
 
