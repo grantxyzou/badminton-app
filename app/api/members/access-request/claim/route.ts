@@ -19,15 +19,24 @@ import type { Member } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 const HOUR_MS = 60 * 60 * 1000;
-/** Generous: the device polls while the player waits for a human. */
-const CLAIMS_PER_HOUR = 120;
+/**
+ * Sized against the POLL, not plucked from the other routes.
+ *
+ * `AskAccessSheet` polls every 3s and the request TTL is an hour, deliberately
+ * — it is waiting on a human noticing a notification. At 120/hr the device
+ * exhausted its own budget in SIX MINUTES, after which every poll 429s; the
+ * sheet treats a non-ok response as transient and keeps waiting, so an approval
+ * at minute ten was never observed and the player sat on "you'll be signed in
+ * as soon as he approves" forever.
+ *
+ * 1200/hr covers a full hour of 3s polling with headroom, and the key is the
+ * NAME rather than the IP so several phones on one gym WiFi do not share a
+ * budget. The name is not a credential here — nothing is granted without the
+ * secret — so keying on it costs nothing and stops one device starving another.
+ */
+const CLAIMS_PER_HOUR = 1400;
 
 export async function POST(req: NextRequest) {
-  const ip = getClientIp(req);
-  if (!checkRateLimit(`access-claim:${ip}`, CLAIMS_PER_HOUR, HOUR_MS)) {
-    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-  }
-
   const body = await req.json().catch(() => null);
   const name = body && typeof body.name === 'string' ? body.name.trim() : '';
   const secret = body && typeof body.secret === 'string' ? body.secret : '';
@@ -35,17 +44,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
 
+  // Keyed per name so one device cannot starve another on the same WiFi. The
+  // IP is still in the key so a single host cannot poll for every name at once.
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`access-claim:${name.toLowerCase()}:${ip}`, CLAIMS_PER_HOUR, HOUR_MS)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+
   try {
+    /**
+     * ONE ANSWER FOR EVERY NOT-APPROVED CASE, and `none` is that answer.
+     *
+     * The first cut returned `pending` for an unknown name and `none` for a
+     * real member with no open request — which is the overwhelmingly common
+     * case — so an unauthenticated caller could ask "does member X exist?" and
+     * read it straight off the status, 120 times an hour. That inverts the
+     * anti-enumeration invariant the sibling route spells out.
+     *
+     * The legitimate device is unaffected: it always holds a genuinely pending
+     * request, so it still sees `pending` until approval.
+     */
     const memberId = await resolveActiveMemberId(name);
-    if (!memberId) {
-      // Same shape as "not approved yet" — see the enumeration note on the
-      // sibling route. A missing member is indistinguishable from a waiting one.
-      return NextResponse.json({ status: 'pending' });
-    }
+    if (!memberId) return NextResponse.json({ status: 'none' });
 
     const container = getContainer('members');
     const { resource: member } = await container.item(memberId, memberId).read<Member>();
-    if (!member) return NextResponse.json({ status: 'pending' });
+    if (!member) return NextResponse.json({ status: 'none' });
 
     const stored = member.accessRequest;
 

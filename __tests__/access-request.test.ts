@@ -150,3 +150,76 @@ describe('the admin side', () => {
     expect(body.requests).toHaveLength(0);
   });
 });
+
+/**
+ * The overwrite hole.
+ *
+ * Every test above writes ONE request per name, which is why none of them could
+ * see this: `accessRequest` is a single object, and approval is by name with no
+ * way for the admin to tell which device is behind it. So a second request
+ * silently reassigned the approval to whoever asked last.
+ */
+describe('a second request cannot steal a pending one', () => {
+  it('keeps the FIRST asker’s secret when someone else asks for the same name', async () => {
+    seedMember('Lin');
+    const first = await (await REQUEST(req({ name: 'Lin' }))).json();
+    // Anyone who knows the name — they are enumerable via GET /api/members.
+    const second = await (await REQUEST(req({ name: 'Lin' }))).json();
+    expect(second.secret).not.toBe(first.secret);
+
+    await DECIDE(makeAdminRequest('POST', 'http://x/admin', { name: 'Lin', decision: 'approve' }));
+
+    // The interloper is refused...
+    const stolen = await CLAIM(
+      makeRequest('POST', 'http://x/claim', { name: 'Lin', secret: second.secret }),
+    );
+    expect((await stolen.json()).status).not.toBe('approved');
+
+    // ...and the person who actually asked still gets in.
+    const real = await CLAIM(
+      makeRequest('POST', 'http://x/claim', { name: 'Lin', secret: first.secret }),
+    );
+    expect((await real.json()).status).toBe('approved');
+  });
+
+  it('still answers a second asker identically, so nothing leaks', async () => {
+    seedMember('Lin');
+    const first = await REQUEST(req({ name: 'Lin' }));
+    const second = await REQUEST(req({ name: 'Lin' }));
+    expect(second.status).toBe(first.status);
+    expect(Object.keys(await second.json()).sort()).toEqual(
+      Object.keys(await first.json()).sort(),
+    );
+  });
+});
+
+describe('the claim route does not say whether a name exists', () => {
+  it('answers the same for an unknown name and a real one with no request', async () => {
+    seedMember('Lin'); // real, but has not asked for anything
+    const real = await CLAIM(
+      makeRequest('POST', 'http://x/claim', { name: 'Lin', secret: 'a'.repeat(64) }),
+    );
+    const fake = await CLAIM(
+      makeRequest('POST', 'http://x/claim', { name: 'Nobody At All', secret: 'a'.repeat(64) }),
+    );
+    expect((await real.json()).status).toBe((await fake.json()).status);
+  });
+});
+
+describe('the push goes to admins only', () => {
+  it('does not treat every active member as an admin under the mock store', async () => {
+    // The query binds no parameters, so the mock ignores `c.role = 'admin'`
+    // entirely and hands back every active row. Without a JS re-filter, one
+    // person's lockout would be announced to the whole club.
+    seedMember('Lin');
+    seedMember('Viktor');
+    const res = await REQUEST(req({ name: 'Lin' }));
+    expect(res.status).toBe(200);
+    // The route must not throw or fan out; the assertion that matters is that
+    // the filter exists at all, pinned in source next to the hazard it guards.
+    const src = await import('node:fs').then((fs) =>
+      fs.readFileSync('app/api/members/access-request/route.ts', 'utf8'),
+    );
+    expect(src).toMatch(/filter\(\(a\) => a\.role === 'admin'/);
+  });
+});

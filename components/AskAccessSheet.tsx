@@ -66,8 +66,20 @@ export default function AskAccessSheet({
       stop();
       setPhase('idle');
       secret.current = null;
+      return;
     }
-  }, [open, stop]);
+    /**
+     * Re-sync the name every time the sheet OPENS.
+     *
+     * `useState(initialName)` reads the prop once, at first render — and both
+     * parents mount this permanently and only toggle `open`, so at that moment
+     * the name is still ''. The signup path that lands here has just watched
+     * someone type their name and says "straight into the ask flow with the
+     * name already filled"; without this it opened blank and asked them to
+     * type it again, on the one screen whose job is to unblock someone stuck.
+     */
+    setName(initialName);
+  }, [open, stop, initialName]);
 
   const poll = useCallback(async () => {
     if (!secret.current) return;

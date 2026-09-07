@@ -304,3 +304,26 @@ describe('picking a racket from the kit', () => {
     await waitFor(() => expect(addCustom).toHaveBeenCalledWith('Arcsaber 11'));
   });
 });
+
+describe('a kit that has not answered yet is not an empty kit', () => {
+  it('does not claim the bag is empty while the read is in flight', async () => {
+    // `useActiveName` resolves post-mount, so the gear read starts a tick
+    // after the sheet opens — and cold starts here run 10-20s. Folding
+    // `!loaded` into "unreadable" asserted "your kit is empty" before anything
+    // had answered, then swapped the control underneath whatever the player
+    // had begun typing.
+    mockApi(['BG65']);
+    wrapWithGear(fakeGear({ rackets: [], loaded: false, loadError: false }));
+    await waitFor(() => expect(screen.getByLabelText('Which racket?')).toBeDefined());
+    expect(screen.queryByText("Type the racket — we'll add it to your kit.")).toBeNull();
+    expect((screen.getByLabelText('Which racket?') as HTMLInputElement).disabled).toBe(true);
+  });
+
+  it('says the bag is empty once the read actually says so', async () => {
+    mockApi(['BG65']);
+    wrapWithGear(fakeGear({ rackets: [], loaded: true, loadError: false }));
+    await waitFor(() =>
+      expect(screen.getByText("Type the racket — we'll add it to your kit.")).toBeDefined(),
+    );
+  });
+});

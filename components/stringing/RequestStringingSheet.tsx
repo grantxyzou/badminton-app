@@ -79,11 +79,22 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
   const [busy, setBusy] = useState(false);
 
   const kit = gear?.rackets ?? [];
-  /* `loadError` is NOT an empty kit. Someone with three rackets who hits a
-     flaky fetch must not be told they own none — `useGear` keeps the two
-     apart precisely so this line can. */
-  const kitUnreadable = gear ? gear.loadError || !gear.loaded : true;
-  const mustTypeRacket = kitUnreadable || kit.length === 0;
+  /**
+   * THREE states, not two. `useGear` keeps `loaded` and `loadError` apart on
+   * purpose and the first cut folded them back together with `||`, so while
+   * the read was still in flight the sheet rendered "Type the racket — we'll
+   * add it to your kit": an affirmative claim that the bag is empty, made
+   * before anything had answered. That is the lying-empty-state rule, in code
+   * written the same day as four fixes for it.
+   *
+   * It was reachable in practice — `useActiveName` resolves post-mount, so the
+   * gear read starts a tick after the sheet opens, and cold starts here run
+   * 10-20s. The control would then swap to a select underneath whatever the
+   * player had begun typing.
+   */
+  const kitLoading = gear !== null && !gear.loaded && !gear.loadError;
+  const kitUnreadable = gear === null || gear.loadError;
+  const mustTypeRacket = !kitLoading && (kitUnreadable || kit.length === 0);
   const typingRacket = customRacket || mustTypeRacket;
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -265,61 +276,48 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
 
                 reconcile "Astrox 88D", "astrox88d" and "88d pro" for one racket. */}
 
-            {typingRacket ? (
-
+            {kitLoading ? (
+              /* Neither control yet. A disabled placeholder says "we are
+                 asking" without asserting an answer, and does not steal focus
+                 into a field that is about to be replaced. */
               <input
-
                 type="text"
-
-                value={racketLabel}
-
-                onChange={(e) => setRacketLabel(e.target.value)}
-
-                placeholder={t('racketPlaceholder')}
-
+                value=""
+                disabled
+                readOnly
+                placeholder={t('pickRacket')}
                 aria-label={t('whichRacket')}
-
-                maxLength={80}
-
-                autoFocus
-
               />
-
-            ) : (
-
-              <select
-
+            ) : typingRacket ? (
+              <input
+                type="text"
                 value={racketLabel}
-
                 onChange={(e) => setRacketLabel(e.target.value)}
-
+                placeholder={t('racketPlaceholder')}
                 aria-label={t('whichRacket')}
-
+                maxLength={80}
+                autoFocus
+              />
+            ) : (
+              <select
+                value={racketLabel}
+                onChange={(e) => setRacketLabel(e.target.value)}
+                aria-label={t('whichRacket')}
               >
-
                 <option value="">{t('pickRacket')}</option>
-
                 {kit.map((r) => (
-
                   <option key={r.id} value={r.label}>{r.label}</option>
-
                 ))}
-
               </select>
-
             )}
 
 
             {mustTypeRacket ? (
-
               <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
-
                 {kitUnreadable && gear?.loadError ? t('kitUnavailable') : t('noRacketsYet')}
 
               </p>
-
             ) : (
-
               <button
 
                 type="button"
@@ -389,7 +387,6 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
             )}
 
             {error && <p className="field-error">{error}</p>}
-
             <button
               type="button"
               onClick={submit}

@@ -99,10 +99,27 @@ export default function SwipeRow({
     else el.removeAttribute('data-swiping');
   }, []);
 
+  /**
+   * Settle to rest WITHOUT relying on a transition.
+   *
+   * `paint(0, 'release')` leaves `data-swiping="release"` on the row and waits
+   * for `transitionend` to clear it. Under `prefers-reduced-motion: reduce` the
+   * CSS sets `transition: none`, so that event never fires and the attribute
+   * sticks — which re-shows the action tray permanently and reintroduces the
+   * exact backdrop-filter glow this component was just fixed for, plus a
+   * permanent identity transform on the track (the containing-block trap).
+   *
+   * When the offset is already zero there is nothing to animate back from, so
+   * clear it outright.
+   */
+  const settle = useCallback(() => {
+    paint(0, null);
+  }, [paint]);
+
   const close = useCallback(() => {
     setRevealed('none');
-    paint(0, 'release');
-  }, [paint]);
+    settle();
+  }, [settle]);
 
   // Escape closes an open reveal, matching every other dismissible surface.
   useEffect(() => {
@@ -140,7 +157,8 @@ export default function SwipeRow({
     // flip a scroll into a reveal halfway down the page.
     if (Math.abs(dy) > V_SLOP && Math.abs(dy) > Math.abs(dx)) {
       disqualified.current = true;
-      paint(0, 'release');
+      // A vertical scroll that began on a row. Nothing to animate back from.
+      settle();
       return;
     }
 
@@ -171,7 +189,7 @@ export default function SwipeRow({
       paint(-ACTION_W, 'release');
     } else {
       setRevealed('none');
-      paint(0, 'release');
+      settle();
     }
     start.current = null;
   };

@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
-import { issueAccessRequest } from '@/lib/accessRequest';
+import { issueAccessRequest, isPending } from '@/lib/accessRequest';
 import { sendPushToMembers } from '@/lib/push';
 import { isFlagOn } from '@/lib/flags';
 import type { Member } from '@/lib/types';
@@ -48,6 +48,30 @@ export async function POST(req: NextRequest) {
       const container = getContainer('members');
       const { resource: member } = await container.item(memberId, memberId).read<Member>();
       if (member) {
+        /**
+         * FIRST ASK WINS. Do not overwrite a request that is still open.
+         *
+         * `accessRequest` is a single object, and approval is by NAME — the
+         * admin sees "Lin" and taps, with no way to tell which device is
+         * behind it. So an overwrite hands the approval to whoever asked LAST:
+         * Lin asks, anyone who knows the name (they are enumerable through
+         * GET /api/members) asks again before Grant taps, and the approval
+         * mints a session for the second device. Lin's own poll then reports
+         * `none`, indistinguishable from an expired request.
+         *
+         * That is full account takeover — the claim mints `member_session`,
+         * which `PATCH /api/members/me` accepts as proof for a first-PIN set —
+         * and it defeats the exact property this file's header calls
+         * load-bearing. Every test wrote one request per name, so none of them
+         * could see it.
+         *
+         * The response shape is unchanged: the second caller still gets a
+         * secret and a 200, it simply will never match. Refusing loudly here
+         * would leak that a request is already open for this name.
+         */
+        if (isPending(member.accessRequest)) {
+          return NextResponse.json({ ok: true, secret });
+        }
         await container.items.upsert({ ...member, accessRequest: stored });
 
         /**
@@ -67,7 +91,16 @@ export async function POST(req: NextRequest) {
                 parameters: [],
               })
               .fetchAll();
-            const adminIds = admins.map((a) => a.id).filter(Boolean);
+            /* Re-filtered in JS. The mock store matches on parameter NAMES
+               and this query binds none, so `c.role = 'admin'` is invisible to
+               it — under the mock every active member comes back, and
+               "tell the admins" would broadcast one person's lockout to the
+               whole club. Production Cosmos honours the WHERE; the test
+               environment is the one that needs this line. */
+            const adminIds = admins
+              .filter((a) => a.role === 'admin' && a.active === true)
+              .map((a) => a.id)
+              .filter(Boolean);
             if (adminIds.length > 0) {
               await sendPushToMembers(adminIds, {
                 title: 'Someone can’t sign in',

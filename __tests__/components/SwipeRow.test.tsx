@@ -167,3 +167,27 @@ describe('the tray does not paint until it is asked for', () => {
     expect(phase()).toBe('active');
   });
 });
+
+describe('the gesture always returns to rest', () => {
+  it('clears data-swiping outright when it settles at zero', () => {
+    // It used to leave `data-swiping="release"` and wait for `transitionend`
+    // to clear it — but `prefers-reduced-motion: reduce` sets
+    // `transition: none`, so that event never fires and the attribute stuck
+    // forever. A stuck attribute re-shows the action tray permanently, which
+    // is the exact backdrop-filter glow this component was fixed for, plus a
+    // permanent identity transform (the containing-block trap).
+    const { row, phase } = setup();
+    fireEvent.touchStart(row, touch(200, 100));
+    fireEvent.touchMove(row, touch(190, 100)); // short of COMMIT
+    fireEvent.touchEnd(row);
+    expect(phase()).toBeNull();
+  });
+
+  it('clears it after a vertical scroll that began on a row', () => {
+    const { row, phase } = setup();
+    fireEvent.touchStart(row, touch(200, 100));
+    fireEvent.touchMove(row, touch(198, 170));
+    fireEvent.touchEnd(row);
+    expect(phase()).toBeNull();
+  });
+});
