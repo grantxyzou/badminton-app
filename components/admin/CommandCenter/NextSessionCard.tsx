@@ -5,6 +5,7 @@ import { fmtSessionLabel as fmtDate, fmtDeadline } from '@/lib/fmt';
 import type { SettledSnapshot, BirdUsage } from '@/lib/types';
 import { sessionCostTotals } from '@/lib/sessionCost';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -63,6 +64,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   const [activeCount, setActiveCount] = useState<number>(0);
   const [waitlistCount, setWaitlistCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [settling, setSettling] = useState(false);
   const [settleError, setSettleError] = useState<string | null>(null);
   // Advancing archives the week and is hard to reverse; a single stray tap
@@ -107,13 +109,24 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
         fetch(`${BASE}/api/session`, { cache: 'no-store' }),
         fetch(`${BASE}/api/players`, { cache: 'no-store' }),
       ]);
-      const s = sessionRes.ok ? ((await sessionRes.json()) as Session) : null;
-      const players = playersRes.ok ? ((await playersRes.json()) as Player[]) : [];
+      /**
+       * A non-ok response is NOT "there is no session" and NOT "nobody signed
+       * up". Both used to be coerced to exactly that — `sessionRes.ok ? … :
+       * null` rendered a confident "No active session." on a dropped packet,
+       * and `playersRes.ok ? … : []` reported activeCount 0 / waitlist 0 as
+       * fact. An admin reading that on a Thursday would reasonably conclude
+       * nobody is coming.
+       */
+      if (!sessionRes.ok || !playersRes.ok) throw new Error('next session load failed');
+      const s = (await sessionRes.json()) as Session;
+      const players = (await playersRes.json()) as Player[];
       setSession(s);
       setActiveCount(players.filter((p) => !p.removed && !p.waitlisted).length);
       setWaitlistCount(players.filter((p) => !p.removed && p.waitlisted).length);
+      setLoadError(false);
     } catch {
       setSession(null);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -203,6 +216,17 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   useEffect(() => { void load(); }, [load, refreshKey]);
 
   if (loading) return <CardSkeleton height={180} />;
+  if (loadError) {
+    // "We could not ask" and "there is no session" look identical and mean
+    // opposite things. This is the screen where believing the wrong one costs
+    // somebody their evening.
+    return (
+      <section className="glass-card p-4 space-y-3" aria-label="Next session">
+        <h3 className="bpm-h3">Next session</h3>
+        <ErrorState message="Couldn't load this week — pull to refresh." />
+      </section>
+    );
+  }
   if (!session) {
     return (
       <section className="glass-card p-4 space-y-1 opacity-60" aria-label="Next session">

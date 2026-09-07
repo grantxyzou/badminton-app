@@ -215,7 +215,7 @@ describe('check-i18n-keys.mjs (PostToolUse on Edit|Write)', () => {
     const r = run(SCRIPT, { cwd: project("t('missing');") });
     expect(r.status).toBe(1);
     expect(r.stderr).toMatch(/components\/Card\.tsx\s+admin\.stringing\.missing\s+missing in messages\/en\.json/);
-    expect(r.stderr).toMatch(/THROWS on a missing key/);
+    expect(r.stderr).toMatch(/renders the KEY PATH/);
   });
 
   it('fails when a literal key resolves to an object', () => {

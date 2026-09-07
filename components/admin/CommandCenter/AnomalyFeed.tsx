@@ -46,6 +46,7 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
   const [items, setItems] = useState<Anomaly[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [authExpired, setAuthExpired] = useState(false);
   const [dismissing, setDismissing] = useState<Set<string>>(new Set());
   const [dismissError, setDismissError] = useState<string | null>(null);
   /** Hidden by the timer but still live on the server — see the docblock. */
@@ -55,12 +56,21 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(false);
+    setAuthExpired(false);
     try {
       const res = await fetch(`${BASE}/api/admin/anomalies`, { cache: 'no-store' });
       if (!res.ok) {
-        // 401 = not admin; render nothing (load failure is silent for the
-        // signed-out path). For 5xx surface as load error.
-        if (res.status >= 500) setLoadError(true);
+        /**
+         * A 401 HERE is not "not admin" — this card only mounts inside the
+         * admin subtree, which is already gated. It means the admin cookie
+         * expired underneath a live screen, and silently rendering zero
+         * notices made "your session died" look identical to "nothing needs
+         * you". Of the two, only one is worth an admin's evening.
+         *
+         * Anything else non-ok is an ordinary load failure.
+         */
+        if (res.status === 401 || res.status === 403) setAuthExpired(true);
+        else setLoadError(true);
         setItems([]);
         return;
       }
@@ -126,7 +136,7 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
   if (loading) return null;
 
   const visible = items.filter((a) => !hidden.has(a.code));
-  if (visible.length === 0 && !loadError) return null;
+  if (visible.length === 0 && !loadError && !authExpired) return null;
 
   return (
     <section
@@ -140,6 +150,17 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
+      {authExpired && visible.length === 0 && (
+        <div className="toast toast-blocking" role="alert">
+          <span className="material-icons fs-lg" aria-hidden="true" style={{ color: 'var(--color-red)' }}>
+            lock_clock
+          </span>
+          <p className="flex-1 fs-md m-0">
+            Your admin session expired — reload to sign back in.
+          </p>
+        </div>
+      )}
+
       {loadError && visible.length === 0 && (
         <div className="toast toast-blocking" role="alert">
           <span className="material-icons fs-lg" aria-hidden="true" style={{ color: 'var(--color-red)' }}>

@@ -1,3 +1,4 @@
+import { rawList } from '@/lib/rawList';
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { LegalList } from '../_LegalDoc';
@@ -21,9 +22,9 @@ export default async function DeleteAccountPage() {
   const t = await getTranslations('legal.deleteAccount');
   const tc = await getTranslations('legal.common');
   const email = process.env.SUPPORT_EMAIL?.trim() || null;
-  const steps = t.raw('steps') as string[];
-  const what = t.raw('what') as string[];
-  const keeps = t.raw('keeps') as string[];
+  const steps = rawList<string>(t.raw('steps'));
+  const what = rawList<string>(t.raw('what'));
+  const keeps = rawList<string>(t.raw('keeps'));
 
   const body = { color: 'var(--text-primary)', lineHeight: 'var(--lh-normal)' } as const;
 

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { rawList } from '@/lib/rawList';
 import { getTranslations } from 'next-intl/server';
 
 export type LegalDocKey = 'privacy' | 'terms' | 'support' | 'deleteAccount';
@@ -24,7 +25,7 @@ interface Section {
 export default async function LegalDoc({ doc, children }: { doc: LegalDocKey; children?: ReactNode }) {
   const t = await getTranslations(`legal.${doc}`);
   const tc = await getTranslations('legal.common');
-  const sections = t.raw('sections') as Section[];
+  const sections = rawList<Section>(t.raw('sections'));
 
   return (
     <article>
@@ -35,7 +36,7 @@ export default async function LegalDoc({ doc, children }: { doc: LegalDocKey; ch
       {sections.map((s) => (
         <section key={s.h} style={{ marginTop: 'var(--space-7)' }}>
           <h2 className="bpm-h3">{s.h}</h2>
-          {s.p.map((para, i) => (
+          {rawList<string>(s.p).map((para, i) => (
             <p
               key={i}
               className="fs-md"

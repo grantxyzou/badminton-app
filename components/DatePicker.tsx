@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { todayIso } from '@/lib/stringingDue';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -20,8 +21,14 @@ interface Props {
 }
 
 export default function DatePicker({ value, onChange, placeholder = 'Date' }: Props) {
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  /* Resolved ONCE per mount rather than on every render, and through the same
+     local-timezone helper the rest of the app uses. Azure runs UTC while the
+     app's zone is America/Vancouver, so a server render and a client render
+     disagree about what day it is for 7-8 hours out of every 24. This
+     component is client-only today; the seam is one routing change away from
+     being a hydration mismatch, and it costs nothing to close now. */
+  const [todayStr] = useState(() => todayIso());
+  const today = useMemo(() => new Date(`${todayStr}T00:00:00`), [todayStr]);
 
   const [open, setOpen] = useState(false);
   const [viewYear, setViewYear] = useState(() => value ? parseInt(value.slice(0, 4)) : today.getFullYear());

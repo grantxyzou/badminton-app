@@ -56,6 +56,20 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # next-intl resolves a missing key to its own key path rather than
+      # throwing, so a block that lands under the wrong parent renders
+      # `profile.settings.privacyPolicy` on screen and NOTHING fails. The
+      # script's own header records that shipping three times on one day with
+      # a green suite, and that `__tests__/i18n/canary-strings.test.tsx` is
+      # structurally incapable of catching a NEW key.
+      #
+      # It has been a Claude Code PostToolUse hook since it was written, which
+      # covers edits made through a tool call and nothing else — a GitHub web
+      # edit, another editor, or a merge-conflict resolution all bypassed it.
+      # Runs in ~50ms.
+      - name: i18n keys resolve
+        run: node scripts/check-i18n-keys.mjs
+
       - name: Run tests
         run: npm test
 

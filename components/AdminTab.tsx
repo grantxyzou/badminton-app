@@ -19,7 +19,13 @@ import PageHeader from './primitives/PageHeader';
 export default function AdminTab({ onExit }: { onExit: () => void }) {
   const pageT = useTranslations('pages.admin');
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null); // null = loading
-  const [name, setName] = useState(() => getIdentity()?.name ?? '');
+  /* Guarded, matching HomeTab's initializer. `getIdentity()` reads
+     localStorage, which does not exist on the server. This is safe today only
+     because routing never server-renders AdminTab — an accident of
+     `showAdmin` starting false, not a property of this file. */
+  const [name, setName] = useState(() =>
+    typeof window === 'undefined' ? '' : (getIdentity()?.name ?? ''),
+  );
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(false);
