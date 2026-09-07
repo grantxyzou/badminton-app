@@ -7,6 +7,8 @@ import CardHeader from '@/components/primitives/CardHeader';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import { useOnline } from '@/lib/useOnline';
 import RequestStringingSheet from './RequestStringingSheet';
+import { useGear } from '@/components/stats/useGear';
+import { useActiveName } from '@/lib/useActiveName';
 import ConfirmChangeSheet from './ConfirmChangeSheet';
 import StringingSteps, { stepForStage } from './StringingSteps';
 import { formatServicePrice, type ServicePrice } from '@/lib/stringingPricing';
@@ -50,6 +52,13 @@ interface Props {
  * thing, never the confident one.
  */
 export default function StringingCard({ hasIdentity }: Props) {
+  /* The kit's ONE owner in this tree, handed to the request sheet as a prop.
+     `useGear` is single-owner by rule — four components once read the gear
+     endpoint independently and raced each other's responses. `useActiveName`
+     is likewise the single owner of "who is this", so the name comes from
+     there rather than from a second read of identity. */
+  const activeName = useActiveName();
+  const gear = useGear(activeName.name ?? '');
   const t = useTranslations('home.stringing');
   const online = useOnline();
   const [open, setOpen] = useState<boolean | null>(null);
@@ -384,6 +393,7 @@ export default function StringingCard({ hasIdentity }: Props) {
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         onRequested={loadJobs}
+        gear={activeName.name ? gear : null}
       />
 
       {active?.pendingEdit && (

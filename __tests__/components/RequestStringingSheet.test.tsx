@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import RequestStringingSheet from '../../components/stringing/RequestStringingSheet';
+import type { UseGear } from '@/components/stats/useGear';
 import enMessages from '../../messages/en.json';
 
 /**
@@ -20,7 +21,7 @@ import enMessages from '../../messages/en.json';
 function wrap() {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <RequestStringingSheet open onClose={() => {}} onRequested={() => {}} />
+      <RequestStringingSheet open onClose={() => {}} onRequested={() => {}} gear={null} />
     </NextIntlClientProvider>,
   );
 }
@@ -206,7 +207,7 @@ describe('the header', () => {
     mockApi(['BG80 white']);
     render(
       <NextIntlClientProvider locale="en" messages={enMessages}>
-        <RequestStringingSheet open onClose={onClose} onRequested={() => {}} />
+        <RequestStringingSheet open onClose={onClose} onRequested={() => {}} gear={null} />
       </NextIntlClientProvider>,
     );
     fireEvent.click(await screen.findByRole('button', { name: 'Close' }));
@@ -220,5 +221,86 @@ describe('the header', () => {
     expect(await screen.findByText('Intake form')).toBeDefined();
     expect(screen.queryByText(/confirms the price/i)).toBeNull();
     expect(screen.queryByLabelText(/price/i)).toBeNull();
+  });
+});
+
+/**
+ * The player's kit.
+ *
+ * The honesty rule from the string dropdown carries over exactly: a kit that
+ * could not be READ must not render as a kit that is EMPTY. A player with three
+ * rackets on a flaky fetch being told to type one is a small annoyance; being
+ * told they own none is the app asserting something false about their bag.
+ */
+function fakeGear(over: Partial<UseGear> = {}): UseGear {
+  return {
+    gear: null,
+    rackets: [],
+    active: null,
+    loaded: true,
+    loadError: false,
+    busy: false,
+    online: true,
+    reload: async () => {},
+    add: async () => ({ ok: true as const }),
+    addCustom: async () => ({ ok: true as const }),
+    activate: async () => ({ ok: true as const }),
+    remove: async () => ({ ok: true as const }),
+    setPrefs: async () => ({ ok: true as const }),
+    setTension: async () => ({ ok: true as const }),
+    ...over,
+  } as UseGear;
+}
+
+function wrapWithGear(gear: UseGear | null) {
+  return render(
+    <NextIntlClientProvider locale="en" messages={enMessages}>
+      <RequestStringingSheet open onClose={() => {}} onRequested={() => {}} gear={gear} />
+    </NextIntlClientProvider>,
+  );
+}
+
+describe('picking a racket from the kit', () => {
+  it('offers the kit when there is one', async () => {
+    mockApi(['BG65']);
+    const racket = { id: 'r1', label: 'Astrox 99 Pro' } as UseGear['rackets'][number];
+    wrapWithGear(fakeGear({ rackets: [racket] }));
+    await waitFor(() => expect(screen.getByLabelText('Which racket?')).toBeDefined());
+    expect(screen.getByRole('option', { name: 'Astrox 99 Pro' })).toBeDefined();
+  });
+
+  it('falls back to typing when the kit is empty', async () => {
+    mockApi(['BG65']);
+    wrapWithGear(fakeGear({ rackets: [] }));
+    await waitFor(() => expect(screen.getByLabelText('Which racket?')).toBeDefined());
+    // A text box, not an empty select — an empty select is a dead end.
+    expect((screen.getByLabelText('Which racket?') as HTMLElement).tagName).toBe('INPUT');
+    expect(screen.getByText("Type the racket — we'll add it to your kit.")).toBeDefined();
+  });
+
+  it('says the kit could not be READ rather than implying it is empty', async () => {
+    mockApi(['BG65']);
+    wrapWithGear(fakeGear({ rackets: [], loadError: true }));
+    await waitFor(() =>
+      expect(screen.getByText("Couldn't load your kit. Type the racket instead.")).toBeDefined(),
+    );
+  });
+
+  it('saves a typed racket to the kit, after the request succeeds', async () => {
+    // Best-effort and deliberately after: the restring is what they came for,
+    // and a full bag must not turn a placed request into an error.
+    mockApi(['BG65']);
+    const addCustom = vi.fn(async () => ({ ok: true as const }));
+    wrapWithGear(fakeGear({ rackets: [], addCustom }));
+    await waitFor(() => expect(screen.getByLabelText('Which racket?')).toBeDefined());
+
+    fireEvent.change(screen.getByLabelText('Which racket?'), {
+      target: { value: 'Arcsaber 11' },
+    });
+    // A string is required too, or the submit stays disabled.
+    fireEvent.change(screen.getByLabelText('Which string?'), { target: { value: 'BG65' } });
+    fireEvent.click(screen.getByRole('button', { name: /send/i }));
+
+    await waitFor(() => expect(addCustom).toHaveBeenCalledWith('Arcsaber 11'));
   });
 });

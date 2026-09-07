@@ -57,6 +57,17 @@ export interface UseGear {
       makeActive?: boolean;
     },
   ) => Promise<GearResult>;
+  /**
+   * Append a racket the player TYPED rather than picked from the catalog.
+   *
+   * `add` cannot express this: it always sends `catalogId: item.id`, so a
+   * free-text entry would be stored pointing at a catalog row that does not
+   * exist. The route has always accepted `catalogId: null` for exactly this
+   * case and deduped on the normalised label instead; nothing had asked for
+   * it. Faking a CatalogItem at the call site would be a cast agreeing with an
+   * assumption nothing checks.
+   */
+  addCustom: (label: string) => Promise<GearResult>;
   activate: (itemId: string) => Promise<GearResult>;
   remove: (itemId: string) => Promise<GearResult>;
   setPrefs: (prefs: { playFormat?: 'singles' | 'doubles' | 'both'; budgetMaxCad?: number | null }) => Promise<GearResult>;
@@ -282,6 +293,22 @@ export function useGear(name: string | null): UseGear {
   // Tapping the already-active racket is a no-op in the UI (BagList renders a
   // badge, not a button, for that row). This guard is defence in depth so the
   // rule holds even if a caller changes.
+  const addCustom = useCallback(async (label: string): Promise<GearResult> => {
+    const trimmed = label.trim();
+    if (!trimmed) return { ok: false, reason: 'error' };
+    return mutate(() => fetch(`${BASE}/api/equipment/gear`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        // `catalogId: null` is the route's documented free-text shape; it
+        // dedupes on the normalised label in that case, so re-typing a racket
+        // already in the bag is a no-op rather than a duplicate.
+        item: { catalogId: null, category: 'racket', label: trimmed },
+      }),
+    }));
+  }, [mutate, name]);
+
   const activate = useCallback(async (itemId: string): Promise<GearResult> => {
     if (activeRacket(gear)?.id === itemId) return { ok: true };
     return mutate(() => fetch(`${BASE}/api/equipment/gear`, {
@@ -346,6 +373,7 @@ export function useGear(name: string | null): UseGear {
     online,
     reload,
     add,
+    addCustom,
     activate,
     remove,
     setPrefs,

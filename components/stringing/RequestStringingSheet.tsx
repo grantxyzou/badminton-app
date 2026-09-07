@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { useOnline } from '@/lib/useOnline';
+import type { UseGear } from '@/components/stats/useGear';
 import {
   TENSION_MIN_LB,
   TENSION_MAX_LB,
@@ -17,6 +18,20 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onRequested: () => void;
+  /**
+   * The player's kit, MOUNTED BY THE PARENT and handed down.
+   *
+   * `useGear` is single-owner by rule (components/stats/CLAUDE.md): four
+   * components once read `/api/equipment/gear` independently, two of them
+   * writing, each with its own op counter — an out-of-order-response race that
+   * shipped twice. Calling it here would be a second owner in this tree, so
+   * `StringingCard` owns it and passes the object, the way `GearRegister`
+   * does.
+   *
+   * `null` when there is no identity to read a kit for; the form then behaves
+   * exactly as it did before this existed.
+   */
+  gear: UseGear | null;
 }
 
 /**
@@ -44,7 +59,7 @@ interface Props {
  * back to the custom path rather than presenting an empty dropdown. An empty
  * select is a dead end; a text box is not.
  */
-export default function RequestStringingSheet({ open, onClose, onRequested }: Props) {
+export default function RequestStringingSheet({ open, onClose, onRequested, gear }: Props) {
   const t = useTranslations('home.stringing');
   // `close` lives in the shared namespace — every sheet in the app uses it.
   const tCommon = useTranslations('recovery');
@@ -52,12 +67,24 @@ export default function RequestStringingSheet({ open, onClose, onRequested }: Pr
 
   const [offered, setOffered] = useState<string[] | null>(null);
   const [racketLabel, setRacketLabel] = useState('');
+  /* Typing a racket rather than picking one from the kit. Forced when the kit
+     is empty or unreadable — an empty select is a dead end, the same reasoning
+     the string dropdown already carries. */
+  const [customRacket, setCustomRacket] = useState(false);
   const [pickedString, setPickedString] = useState('');
   const [customString, setCustomString] = useState('');
   const [tension, setTension] = useState(26);
   const [crosses, setCrosses] = useState(28);
   const [custom, setCustom] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  const kit = gear?.rackets ?? [];
+  /* `loadError` is NOT an empty kit. Someone with three rackets who hits a
+     flaky fetch must not be told they own none — `useGear` keeps the two
+     apart precisely so this line can. */
+  const kitUnreadable = gear ? gear.loadError || !gear.loaded : true;
+  const mustTypeRacket = kitUnreadable || kit.length === 0;
+  const typingRacket = customRacket || mustTypeRacket;
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
@@ -116,6 +143,27 @@ export default function RequestStringingSheet({ open, onClose, onRequested }: Pr
         setBusy(false);
         return;
       }
+      /**
+       * A racket they typed goes into their kit, so next time it is a tap.
+       *
+       * Deliberately AFTER the request has succeeded and deliberately unable to
+       * fail it: the restring is what they came for, and a full bag or an
+       * expired cookie must not turn a placed request into an error. Same
+       * best-effort posture as the stringing notifier — do the main thing, then
+       * try the nicety.
+       *
+       * `catalogId: null` is the supported shape for a free-text entry, and the
+       * endpoint dedupes on the normalised label, so re-typing a racket already
+       * in the kit is a no-op rather than a duplicate.
+       */
+      if (typingRacket && gear) {
+        try {
+          await gear.addCustom(racketLabel.trim());
+        } catch {
+          /* the request stands either way */
+        }
+      }
+
       setDone(true);
       setBusy(false);
       onRequested();
@@ -211,15 +259,82 @@ export default function RequestStringingSheet({ open, onClose, onRequested }: Pr
               {t('requestSubtitle')}
             </p>
 
-            <input
-              type="text"
-              value={racketLabel}
-              onChange={(e) => setRacketLabel(e.target.value)}
-              placeholder={t('racketPlaceholder')}
-              aria-label={t('racketPlaceholder')}
-              maxLength={80}
-              autoFocus
-            />
+            {/* The kit first, typing second — mirroring the string control right
+
+                below, and for the same reason: the stringer is the one who has to
+
+                reconcile "Astrox 88D", "astrox88d" and "88d pro" for one racket. */}
+
+            {typingRacket ? (
+
+              <input
+
+                type="text"
+
+                value={racketLabel}
+
+                onChange={(e) => setRacketLabel(e.target.value)}
+
+                placeholder={t('racketPlaceholder')}
+
+                aria-label={t('whichRacket')}
+
+                maxLength={80}
+
+                autoFocus
+
+              />
+
+            ) : (
+
+              <select
+
+                value={racketLabel}
+
+                onChange={(e) => setRacketLabel(e.target.value)}
+
+                aria-label={t('whichRacket')}
+
+              >
+
+                <option value="">{t('pickRacket')}</option>
+
+                {kit.map((r) => (
+
+                  <option key={r.id} value={r.label}>{r.label}</option>
+
+                ))}
+
+              </select>
+
+            )}
+
+
+            {mustTypeRacket ? (
+
+              <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
+
+                {kitUnreadable && gear?.loadError ? t('kitUnavailable') : t('noRacketsYet')}
+
+              </p>
+
+            ) : (
+
+              <button
+
+                type="button"
+
+                onClick={() => setCustomRacket((v) => !v)}
+
+                className="link-quiet"
+
+              >
+
+                {typingRacket ? t('backToKit') : t('otherRacket')}
+
+              </button>
+
+            )}
 
             {isCustom ? (
               <input
