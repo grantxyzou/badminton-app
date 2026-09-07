@@ -546,9 +546,28 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
               {/* Asking is the primary action and keeps the filled button.
                   Changing without asking sits behind an ellipsis because it is
                   the exception, not because it is hidden. */}
+              {/* NOT `cc-btn-lg`. That class is a full-width block button —
+                  it sets `width: 100%` — and `flex: 0 0 auto` does not undo
+                  it: `flex-basis: auto` means "use the width property", so the
+                  ellipsis claimed the whole row and, with `flex-shrink: 0`,
+                  refused to give any of it back. "Send to Lin" got squeezed to
+                  its minimum and wrapped onto two lines beside a button four
+                  times its size.
+
+                  The base `.cc-btn` is `inline-flex` with no width, so a fixed
+                  width sizes it honestly. `alignSelf: stretch` matches the
+                  primary button's height rather than guessing at it.
+
+                  Secondary rather than ghost: ghost is transparent and
+                  borderless, so at 56px it stopped reading as a control at all
+                  — three bare dots beside a filled button look like
+                  punctuation. This is the same subtle fill and border the
+                  Mark paid / Take this one buttons carry further down the same
+                  screen, which is what makes it read as their peer without
+                  competing with Send. */}
               <button
                 type="button"
-                className="cc-btn cc-btn-ghost cc-btn-lg"
+                className="cc-btn cc-btn-secondary"
                 aria-label={t('propose.forceMenu')}
                 aria-expanded={forceOpen}
                 disabled={proposeBusy || !online || parsedCents === undefined}
@@ -556,7 +575,12 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
                   setForceOpen((v) => !v);
                   setForceError(false);
                 }}
-                style={{ flex: '0 0 auto' }}
+                style={{
+                  flex: '0 0 auto',
+                  width: 56,
+                  alignSelf: 'stretch',
+                  borderRadius: 'var(--radius-xl)',
+                }}
               >
                 <span className="material-icons icon-md" aria-hidden="true">more_horiz</span>
               </button>
