@@ -6,6 +6,12 @@
       },
     "stringing": {
         "viewPricing": "View pricing",
+      "stringerTitle": "Rackets to string",
+      "stringerSubtitle": "Assigned to you.",
+      "stringerFor": "for {name}",
+      "stringerError": "Couldn't load your jobs \u2014 pull to refresh.",
+      "stringerAdvance": "Mark {status}",
+      "stringerSaveError": "That didn't save \u2014 try again.",
         "confirm": {
           "banner": "Grant changed something — please confirm",
           "title": "A change to confirm",
@@ -953,6 +959,11 @@
           "saveError": "Couldn't save that — give it another go."
         },
         "lb": "lb",
+        "assignTitle": "Who's stringing it",
+        "assignNobody": "Nobody yet",
+        "assignPick": "Assign to\u2026",
+        "assignNone": "Nobody is marked as a stringer yet. Mark someone in Roster.",
+        "assignError": "That didn't save \u2014 try again.",
         "heldBy": "With {name}",
         "unclaimed": "Nobody's taken this one yet.",
         "due": {
@@ -1064,6 +1075,8 @@
         "statusTitle": "Progress",
         "now": "now",
         "markPaid": "Mark paid",
+        "paidBadge": "Paid",
+        "paidOn": "Paid {date}",
         "markUnpaid": "Mark unpaid",
         "claim": "Take this one",
         "saveError": "Couldn't save that — give it another go.",

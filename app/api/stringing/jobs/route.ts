@@ -29,7 +29,7 @@ import {
   formatJobNo,
 } from '@/lib/stringing';
 import { isBillable } from '@/lib/stringingBilling';
-import type { StringingJob, PlayerStringingJob, PlayerPendingEdit } from '@/lib/types';
+import type { StringingJob, PlayerStringingJob, PlayerPendingEdit, StringerJob } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -147,6 +147,37 @@ export function toPlayerPendingEdit(job: StringingJob): PlayerPendingEdit | null
   return out;
 }
 
+/**
+ * What a STRINGER sees of a job assigned to them.
+ *
+ * A third projection, and it exists because the two that came before answer
+ * different questions. The bench view is "everything, you own this club"; the
+ * player view is "your racket, and a price band". A stringer needs the SPEC —
+ * what to put on, at what tension, for whom — and none of the money. What the
+ * club charges is not their business, and `priceCents` stays a strip-canary
+ * for them exactly as it is for a player.
+ *
+ * Note what IS here that a player never gets: `status`, the bench vocabulary.
+ * They are working the bench, so they get its words.
+ */
+export function toStringerJob(job: StringingJob): StringerJob {
+  return {
+    id: job.id,
+    jobNo: job.jobNo,
+    memberId: job.memberId,
+    memberName: job.memberName,
+    status: job.status,
+    racketLabel: job.racketLabel,
+    stringLabel: job.stringLabel,
+    tensionMains: job.tensionMains,
+    tensionCrosses: job.tensionCrosses,
+    method: job.method,
+    readyBy: job.readyBy,
+    createdAt: job.createdAt,
+    updatedAt: job.updatedAt,
+  };
+}
+
 /** The ONLY way a job reaches a non-admin. See the file docblock. */
 export function toPlayerJob(job: StringingJob): PlayerStringingJob {
   return {
@@ -223,6 +254,39 @@ export async function GET(req: NextRequest) {
      * screen you are on, not of who you are, so the screen says.
      */
     const asPlayer = req.nextUrl.searchParams.get('view') === 'player';
+
+    /**
+     * `?view=stringer` — the jobs assigned to the caller, for the person doing
+     * the work. Gated on `canString` AND on assignment, so it can only ever
+     * return their own queue; a member without the flag gets an empty list
+     * rather than an error, because "you are not a stringer" is not a secret
+     * worth a distinct status but is also not something to explain here.
+     */
+    if (req.nextUrl.searchParams.get('view') === 'stringer') {
+      const me = caller?.memberId ?? (admin.authed ? admin.memberId : null);
+      if (!me) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+
+      const canString = await getContainer('members')
+        .item(me, me)
+        .read<{ canString?: boolean }>()
+        .then((r) => r.resource?.canString === true)
+        .catch(() => false);
+      if (!canString) return NextResponse.json({ jobs: [], view: 'stringer' });
+
+      const { resources } = await container.items
+        .query<StringingJob>({
+          query: `SELECT * FROM c WHERE c.stringerId = @stringerId AND ${LIVE_SQL}`,
+          parameters: [{ name: '@stringerId', value: me }],
+        })
+        .fetchAll();
+      // Re-filtered: the mock recognises @stringerId but not the archive
+      // predicate, and an archived job is off the bench for everyone.
+      const jobs = resources
+        .filter((j) => j.stringerId === me && !isArchived(j))
+        .sort(benchOrder)
+        .map(toStringerJob);
+      return NextResponse.json({ jobs, view: 'stringer' });
+    }
 
     if (admin.authed && !asPlayer) {
       // The bench. `?mine=true` filters to the caller's own claimed jobs —

@@ -131,6 +131,8 @@ export async function PATCH(req: NextRequest) {
     if (body.stage === null) updates.stage = undefined;
     if (typeof body.active === 'boolean') updates.active = body.active;
     if (typeof body.role === 'string' && ['admin', 'member'].includes(body.role)) updates.role = body.role;
+    // Orthogonal to `role` on purpose — see Member.canString.
+    if (typeof body.canString === 'boolean') updates.canString = body.canString;
 
     // Admin can clear a member's PIN — deletes both the canonical
     // members.pinHash AND the legacy mirror on the active session's

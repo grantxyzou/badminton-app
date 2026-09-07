@@ -8,6 +8,7 @@ import { getIdentity, setIdentity, clearIdentity, resolveStaleIdentity } from '@
 import { TabSkeleton } from '@/components/primitives/CardSkeleton';
 import UnpaidSessionsCard from '@/components/UnpaidSessionsCard';
 import StringingCard from '@/components/stringing/StringingCard';
+import StringerJobsCard from './stringing/StringerJobsCard';
 import InstallBanner from '@/components/InstallBanner';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
@@ -735,6 +736,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           the modest version too. See StringingCard for why unknown is not
           treated as closed-but-shown. */}
       <StringingCard hasIdentity={hasIdentity} />
+      {/* Only renders for someone with work assigned — which is nobody, for
+          everyone who is not a stringer. Sits under the player's own card
+          because doing the stringing is the rarer role, and the person's own
+          racket is still the thing they came to check. */}
+      <StringerJobsCard hasIdentity={hasIdentity} />
       </section>
 
 

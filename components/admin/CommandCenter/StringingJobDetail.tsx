@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import AdminBackHeader from '../AdminBackHeader';
 import CardHeader from '@/components/primitives/CardHeader';
+import StatusBadge from '@/components/primitives/StatusBadge';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
 import { formatReadyBy } from '@/lib/stringingDue';
@@ -85,6 +86,10 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
      it is the one control that moves somebody's bill without telling them. */
   const [forceOpen, setForceOpen] = useState(false);
   const [forceError, setForceError] = useState(false);
+  /* Who can be assigned. `null` = not loaded or unreachable; the picker then
+     stays out of the way rather than rendering an empty select, the same
+     null-vs-empty rule the offered-strings control follows. */
+  const [stringers, setStringers] = useState<{ id: string; name: string }[] | null>(null);
 
   /** Put the form back to what the job actually says. */
   function resetDraft() {
@@ -94,6 +99,21 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
     setProposeCrosses(String(local.tensionCrosses));
     setProposeError(false);
   }
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${BASE}/api/stringing/stringers`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d && Array.isArray(d.stringers)) setStringers(d.stringers);
+      })
+      .catch(() => {
+        /* stays null — the picker simply does not appear */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const pending = local.pendingEdit ?? null;
   const declined = !pending && typeof local.pendingEditDeclinedAt === 'string';
@@ -372,7 +392,22 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
           className="glass-card p-5 space-y-3"
           style={{ background: 'var(--banner-green-bg)', borderColor: 'var(--banner-green-border)' }}
         >
-          <CardHeader icon="request_quote" title={t('quoted')} />
+          {/* PAID IS SHOWN HERE, not only on the button.
+              "Mark paid" used to be a toggle whose label was the ONLY thing
+              that changed when you pressed it — tap it and the sole feedback
+              is the button now reading "Mark unpaid", which is genuinely
+              ambiguous: it could mean "this is paid now" or "the button reset
+              and is asking again". Measured on the running app, nothing else
+              on the screen moved at all. Working-but-silent is
+              indistinguishable from broken, and it got reported as broken.
+
+              The badge belongs on the price card because paid-ness is a fact
+              about the money, not about the racket. */}
+          <CardHeader
+            icon="request_quote"
+            title={t('quoted')}
+            badge={local.paidAt ? <StatusBadge>{t('paidBadge')}</StatusBadge> : undefined}
+          />
 
           <div
             style={{
@@ -409,6 +444,11 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
             )}
           </div>
 
+          {local.paidAt && (
+            <div className="fs-sm" style={{ color: 'var(--accent)', fontWeight: 600 }}>
+              {t('paidOn', { date: formatReadyBy(local.paidAt.slice(0, 10)) ?? local.paidAt.slice(0, 10) })}
+            </div>
+          )}
           {local.readyBy && (
             <div className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
               {/* Formatted when it is a date; shown verbatim when it is not.
@@ -546,9 +586,28 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
               {/* Asking is the primary action and keeps the filled button.
                   Changing without asking sits behind an ellipsis because it is
                   the exception, not because it is hidden. */}
+              {/* NOT `cc-btn-lg`. That class is a full-width block button —
+                  it sets `width: 100%` — and `flex: 0 0 auto` does not undo
+                  it: `flex-basis: auto` means "use the width property", so the
+                  ellipsis claimed the whole row and, with `flex-shrink: 0`,
+                  refused to give any of it back. "Send to Lin" got squeezed to
+                  its minimum and wrapped onto two lines beside a button four
+                  times its size.
+
+                  The base `.cc-btn` is `inline-flex` with no width, so a fixed
+                  width sizes it honestly. `alignSelf: stretch` matches the
+                  primary button's height rather than guessing at it.
+
+                  Secondary rather than ghost: ghost is transparent and
+                  borderless, so at 56px it stopped reading as a control at all
+                  — three bare dots beside a filled button look like
+                  punctuation. This is the same subtle fill and border the
+                  Mark paid / Take this one buttons carry further down the same
+                  screen, which is what makes it read as their peer without
+                  competing with Send. */}
               <button
                 type="button"
-                className="cc-btn cc-btn-ghost cc-btn-lg"
+                className="cc-btn cc-btn-secondary"
                 aria-label={t('propose.forceMenu')}
                 aria-expanded={forceOpen}
                 disabled={proposeBusy || !online || parsedCents === undefined}
@@ -556,7 +615,20 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
                   setForceOpen((v) => !v);
                   setForceError(false);
                 }}
-                style={{ flex: '0 0 auto' }}
+                /* NO inline borderRadius. I added one to match the button
+                   beside it and it did the opposite: an inline style beats
+                   every selector, so 16px stuck — while "Send" is governed by
+                   `html[data-visual="field"] .glass-card .cc-btn` and renders
+                   at the concentric 12px. Fields are ON in production, so the
+                   two buttons in one row would have shipped with visibly
+                   different corners. globals.css says it directly above that
+                   rule: 16 "is not the concentric value" inside a 30px card.
+                   Inheriting is what makes them match. */
+                style={{
+                  flex: '0 0 auto',
+                  width: 56,
+                  alignSelf: 'stretch',
+                }}
               >
                 <span className="material-icons icon-md" aria-hidden="true">more_horiz</span>
               </button>
@@ -625,9 +697,62 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
         </div>
 
 
-        <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0' }}>
-          {local.stringerName ? t('heldBy', { name: local.stringerName }) : t('unclaimed')}
-        </p>
+        {/* Only when the picker is absent — otherwise the two contradict each
+            other, which is exactly what happened first: this line read "With
+            Grant" while the select underneath said "Nobody yet". The picker
+            states who holds it; a second sentence saying the same thing can
+            only ever disagree. */}
+        {stringers === null && (
+          <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0' }}>
+            {local.stringerName ? t('heldBy', { name: local.stringerName }) : t('unclaimed')}
+          </p>
+        )}
+
+        {/* Assigning to somebody who is NOT you, which the bench could never do:
+            `stringerId` was only ever set by "Take this one", so it recorded
+            which admin tapped a button rather than who is stringing the racket.
+            The list is members flagged `canString` — deliberately not admins,
+            so Zach can string without being handed payments and the roster. */}
+        {stringers !== null && (
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+            <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
+              {t('assignTitle')}
+            </span>
+            {stringers.length === 0 ? (
+              /* Honest about WHY there is nobody to pick, and where to fix it.
+                 An empty select would just look broken. */
+              <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
+                {t('assignNone')}
+              </span>
+            ) : (
+              <select
+                value={local.stringerId ?? ''}
+                disabled={busy || !online}
+                aria-label={t('assignTitle')}
+                onChange={(e) =>
+                  patch({ stringerId: e.target.value === '' ? null : e.target.value })
+                }
+              >
+                <option value="">{t('assignNobody')}</option>
+                {stringers.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+                {/* The CURRENT holder, when they are not on the list — an admin
+                    who used "Take this one" without being flagged `canString`,
+                    or someone whose flag was removed after the fact. A select
+                    that cannot represent its own value silently falls back to
+                    the empty option and reports "Nobody yet" about a job that
+                    plainly has somebody on it. */}
+                {local.stringerId &&
+                  !stringers.some((p) => p.id === local.stringerId) && (
+                    <option value={local.stringerId}>
+                      {local.stringerName ?? local.stringerId}
+                    </option>
+                  )}
+              </select>
+            )}
+          </label>
+        )}
 
         <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
           <button
@@ -641,13 +766,11 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
           </button>
           <button
             type="button"
-            // Previously `!local.stringerId`, which disabled the button on
-            // exactly the jobs worth claiming — the unclaimed ones — and left
-            // it live on the ones already yours. No ownership guard at all is
-            // the right answer rather than the inverse one: this screen cannot
-            // know which admin is looking without another round trip, taking
-            // over someone else's job is legitimate, and re-claiming your own
-            // is a harmless no-op. Who holds it is shown below instead.
+            // "Take this one" assigns to WHOEVER IS LOOKING, which is the fast
+            // path when you are the one stringing it. Assigning to somebody
+            // else is the select below — that is the part that used to be
+            // impossible, because `stringerId` could only ever be the admin
+            // who tapped this.
             disabled={busy || !online}
             onClick={() => patch({ claim: true })}
             className="cc-btn cc-btn-secondary"

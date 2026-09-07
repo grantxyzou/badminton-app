@@ -91,6 +91,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formName, setFormName] = useState('');
   const [formRole, setFormRole] = useState<'member' | 'admin'>('member');
+  const [formCanString, setFormCanString] = useState(false);
   const [formActive, setFormActive] = useState(true);
   const [formAlias, setFormAlias] = useState('');
   const [savingForm, setSavingForm] = useState(false);
@@ -248,6 +249,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
     setFormName(r.member.name);
     setFormRole(r.member.role === 'admin' ? 'admin' : 'member');
     setFormActive(r.member.active !== false);
+    setFormCanString(r.member.canString === true);
     const alias = aliases.find((a) => a.appName.toLowerCase() === r.member.name.toLowerCase());
     setFormAlias(alias?.etransferName ?? '');
     setFormError('');
@@ -266,7 +268,13 @@ export default function RosterPage({ onBack }: RosterPageProps) {
         const res = await fetch(`${BASE}/api/members`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: editingId, name, role: formRole, active: formActive }),
+          body: JSON.stringify({
+            id: editingId,
+            name,
+            role: formRole,
+            active: formActive,
+            canString: formCanString,
+          }),
         });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
@@ -722,6 +730,21 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                     onChange={(e) => setFormActive(e.target.checked)}
                   />
                   <span>Active</span>
+                </label>
+
+                {/* Separate from Role above, and that separation is the point:
+                    stringing and administering are different jobs. This used to
+                    require full admin, because `stringerId` was simply whichever
+                    admin tapped "Take this one" — so the only way to let someone
+                    restring for the club was to hand them payments, the roster
+                    and everyone's data. */}
+                <label className="cc-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={formCanString}
+                    onChange={(e) => setFormCanString(e.target.checked)}
+                  />
+                  <span>Can string rackets</span>
                 </label>
 
                 <Field label="PIN reset">

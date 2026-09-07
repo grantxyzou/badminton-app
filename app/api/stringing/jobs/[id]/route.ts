@@ -15,7 +15,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { notifyPlayerOfStage, notifyPlayerOfPendingEdit } from '@/lib/stringingNotifyDispatch';
 import { getContainer } from '@/lib/cosmos';
-import { isAdminAuthedWithMember } from '@/lib/auth';
+import { isAdminAuthedWithMember, verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { isStringingStatus, isValidTension, canTransition } from '@/lib/stringing';
@@ -85,9 +85,26 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
   const admin = await isAdminAuthedWithMember(req);
-  if (!admin.authed) {
+  /**
+   * A STRINGER MAY MOVE THEIR OWN JOB ALONG, and nothing else.
+   *
+   * The person doing the work is the one who knows it is strung, and making
+   * them message an admin to record that is the same support-burden shape the
+   * access-request flow was built to remove. But `canString` is deliberately
+   * not admin, so the write it buys is exactly one field — see the gate below,
+   * which refuses every other key outright.
+   *
+   * Null for an admin: this only resolves for a non-admin caller, so admin
+   * permissions are untouched.
+   */
+  const stringer = admin.authed ? null : verifyMemberAuth(req);
+  if (!admin.authed && !stringer) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
+  /* Who is doing this, for the audit trail. The guard above no longer narrows
+     `admin` to the authed variant on its own — two callers can reach here — so
+     the actor is resolved once rather than re-narrowed at each use. */
+  const actorId = admin.authed ? admin.memberId : (stringer?.memberId ?? null);
 
   const { id } = await ctx.params;
   const body = await req.json().catch(() => null);
@@ -108,6 +125,31 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
 
+    /**
+     * The stringer's write, narrowed at the point of use.
+     *
+     * Two conditions, both required: the job must be ASSIGNED to them (a
+     * stringer is not an admin over the whole bench), and `status` must be the
+     * only field they send. Price, paid, assignment and proposals are admin
+     * fields, and a caller sending one is refused outright rather than having
+     * it quietly dropped — a write that silently does less than it says is
+     * worse than one that fails.
+     */
+    if (stringer) {
+      const canStringMember = await getContainer('members')
+        .item(stringer.memberId, stringer.memberId)
+        .read<{ canString?: boolean }>()
+        .then((r) => r.resource?.canString === true)
+        .catch(() => false);
+      if (!canStringMember || job.stringerId !== stringer.memberId) {
+        return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+      }
+      const allowed = new Set(['memberId', 'status']);
+      if (Object.keys(body).some((k) => !allowed.has(k))) {
+        return NextResponse.json({ error: 'forbidden_field' }, { status: 403 });
+      }
+    }
+
     const now = new Date().toISOString();
     const next: StringingJob = { ...job, updatedAt: now };
 
@@ -120,7 +162,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       // stops being readable as the record of what happened.
       if (body.status !== job.status) {
         next.status = body.status;
-        next.history = [...job.history, { status: body.status, at: now, by: admin.memberId }];
+        next.history = [...job.history, { status: body.status, at: now, by: actorId }];
       }
     }
 
@@ -173,7 +215,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     }
 
     if (body.propose !== undefined) {
-      const proposal = parseProposal(body.propose, job, now, admin.memberId);
+      const proposal = parseProposal(body.propose, job, now, actorId);
       if ('error' in proposal) {
         return NextResponse.json({ error: proposal.error }, { status: 400 });
       }
@@ -199,9 +241,40 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       next.paidAt = body.paid === true ? (job.paidAt ?? now) : null;
     }
 
-    if (body.claim === true) {
+    if (body.claim === true && admin.authed) {
       next.stringerId = admin.memberId;
       next.stringerName = admin.name;
+    }
+
+    /**
+     * Assign to SOMEBODY ELSE. `claim` above only ever assigns to the caller,
+     * which is exactly why the bench conflated "who strings this" with "which
+     * admin tapped the button". `null` unassigns.
+     *
+     * The name is denormalised beside the id like every other name on this
+     * doc: the bench renders without a lookup per row, and a job stays a
+     * record of who actually strung it even if that person later leaves.
+     */
+    if (body.stringerId !== undefined) {
+      if (body.stringerId === null) {
+        next.stringerId = null;
+        next.stringerName = null;
+      } else if (typeof body.stringerId === 'string') {
+        const assignee = await getContainer('members')
+          .item(body.stringerId, body.stringerId)
+          .read<{ id: string; name: string; canString?: boolean }>()
+          .then((r) => r.resource ?? null)
+          .catch(() => null);
+        // Re-checked here rather than trusted from the picker: the list
+        // endpoint is a convenience, this is the gate.
+        if (!assignee || assignee.canString !== true) {
+          return NextResponse.json({ error: 'not_a_stringer' }, { status: 400 });
+        }
+        next.stringerId = assignee.id;
+        next.stringerName = assignee.name;
+      } else {
+        return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+      }
     }
 
     if (body.archived !== undefined) {
