@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import { getIdentity, clearIdentity, IDENTITY_EVENT, type Identity } from '@/lib/identity';
 import type { Release } from '@/lib/types';
 import EnterCodeSheet from './EnterCodeSheet';
+import AskAccessSheet from './AskAccessSheet';
 import MigrateSheet from './MigrateSheet';
 import MigrateCodeSheet from './MigrateCodeSheet';
 import CreateAccountSheet from './CreateAccountSheet';
@@ -90,6 +91,7 @@ export default function ProfileTab({
   const [memberCreatedAt, setMemberCreatedAt] = useState<string | null>(null);
   const [isSignedUp, setIsSignedUp] = useState<boolean>(false);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
+  const [askAccessOpen, setAskAccessOpen] = useState(false);
   const [createAccountOpen, setCreateAccountOpen] = useState(false);
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   // "Move to the app" (PWA/web → native). The row shows on the web only; the
@@ -348,7 +350,12 @@ export default function ProfileTab({
       >
         <button
           type="button"
-          onClick={() => (emailMode ? setForgotPasswordOpen(true) : setEnterCodeOpen(true))}
+          /* Was: open EnterCodeSheet, whose help text read "Ask the admin for
+             a 6-digit code" — the app instructing people to leave the app and
+             message someone. Now it asks for them. The code path still exists
+             for anyone Grant hands a code to in person; it is just no longer
+             the only door. */
+          onClick={() => (emailMode ? setForgotPasswordOpen(true) : setAskAccessOpen(true))}
           className="link-quiet"
         >
           {emailMode ? t('auth.rowForgotPassword') : t('auth.rowForgotPin')}
@@ -459,7 +466,19 @@ export default function ProfileTab({
           }}
           sessionId={sessionId}
         />
-        <EnterCodeSheet
+        <AskAccessSheet
+        open={askAccessOpen}
+        onClose={() => setAskAccessOpen(false)}
+        sessionId={sessionId ?? ''}
+        onSignedIn={({ hasPin }) => {
+          setAskAccessOpen(false);
+          /* Only offered to someone who never had one. A person who forgot
+             theirs already knows what a PIN is, and the recovery path they
+             just used did not remove it. */
+          if (!hasPin) setRecoveryPinOpen(true);
+        }}
+      />
+      <EnterCodeSheet
           open={enterCodeOpen}
           onClose={() => setEnterCodeOpen(false)}
           sessionId={sessionId}

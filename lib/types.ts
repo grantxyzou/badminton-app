@@ -1,5 +1,6 @@
 import type { StringingStatus, PlayerStage } from './stringing';
 import type { StatsPrivacy } from './statsPrivacy';
+import type { StoredAccessRequest } from './accessRequest';
 
 export interface PrevSessionSnapshot {
   courtCount: number;
@@ -159,6 +160,10 @@ export interface Member {
    * `pinHash`, this is a STRIP-CANARY — never send it to a client.
    */
   recoveryCode?: { hash: string; expiresAt: number };
+  /** An open "let me in" request from a device that cannot sign in. Hashed
+   *  secret + expiry, and `approvedAt` once an admin says yes — see
+   *  lib/accessRequest.ts. Cleared when claimed or declined. */
+  accessRequest?: StoredAccessRequest;
   /** Audit trail of recovery-related events (issue / redeem / fail). */
   recoveryEvents?: RecoveryEvent[];
   /** Admin-only: organizer's default e-transfer recipient, used by the receipt export. */

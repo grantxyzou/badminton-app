@@ -400,7 +400,11 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       const res = await fetch(`${BASE}/api/players/reset-access`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId: actionTarget.id }),
+        // `name`, not `playerId`. The route resolves the MEMBER by name and
+        // 400s on a missing one — so this button had never once worked, and
+        // the admin got "Failed to generate code (400)" every time. The Roster
+        // path sends the right thing, which is why only that one was usable.
+        body: JSON.stringify({ name: actionTarget.name }),
       });
       if (!res.ok) {
         setActionError(`Failed to generate code (${res.status})`);
