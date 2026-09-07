@@ -4095,13 +4095,26 @@ html[data-visual="field"] .swipe-row {
 
 /* The action tray sits UNDER the content and is uncovered by it, rather than
    sliding in over the top. That is what makes the drag feel like moving a
-   physical card off something. */
+   physical card off something.
+
+   HIDDEN AT REST, and that is not cosmetic. `.glass-card` runs
+   `backdrop-filter: blur() saturate(180%)`, which samples whatever is painted
+   behind it — so an always-painted tray meant every row's frost was blooming
+   the green Pin and the Archive button underneath it, on every row, all the
+   time. It read as a mysterious glow along the top of the list and it came
+   from the buttons nobody had revealed yet. `visibility: hidden` takes them
+   out of the paint entirely, so there is nothing left to bleed. */
 .swipe-row__actions {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: stretch;
   justify-content: space-between;
+  visibility: hidden;
+}
+
+.swipe-row[data-swiping] .swipe-row__actions {
+  visibility: visible;
 }
 
 .swipe-row__action {
@@ -4139,22 +4152,31 @@ html[data-visual="field"] .swipe-row {
    A transform establishes a containing block, and `position: fixed`
    descendants then resolve against THIS element instead of the viewport. That
    is the project's documented containing-block trap, and it is why TopBar's
-   swipe-back gates its transform on an attribute too. */
+   swipe-back gates its transform on an attribute too.
+
+   The offset arrives as `--swipe-x`, written imperatively on the row root by
+   SwipeRow's `paint()`. React is not involved during the drag: it used to set
+   state on every touchmove, re-rendering the row every frame, which is what
+   made the gesture feel sticky. Same fix TopBar already carried. */
 .swipe-row__track {
   position: relative;
   will-change: auto;
 }
 
-.swipe-row__track[data-swiping='active'] {
+.swipe-row[data-swiping] .swipe-row__track {
+  transform: translateX(var(--swipe-x, 0px));
+}
+
+.swipe-row[data-swiping='active'] .swipe-row__track {
   will-change: transform;
 }
 
-.swipe-row__track[data-swiping='release'] {
+.swipe-row[data-swiping='release'] .swipe-row__track {
   transition: transform 180ms var(--ease-out-quart);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .swipe-row__track[data-swiping='release'] {
+  .swipe-row[data-swiping='release'] .swipe-row__track {
     transition: none;
   }
 }

@@ -81,6 +81,10 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
   const [changeOpen, setChangeOpen] = useState(false);
   const [proposeBusy, setProposeBusy] = useState(false);
   const [proposeError, setProposeError] = useState(false);
+  /* The force path: an ellipsis beside Send, then a confirm. Two taps, because
+     it is the one control that moves somebody's bill without telling them. */
+  const [forceOpen, setForceOpen] = useState(false);
+  const [forceError, setForceError] = useState(false);
 
   /** Put the form back to what the job actually says. */
   function resetDraft() {
@@ -156,6 +160,39 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
       onChanged();
     } catch {
       setProposeError(true);
+    } finally {
+      setProposeBusy(false);
+    }
+  }
+
+  /**
+   * Change the price WITHOUT asking. The route has accepted `force` since the
+   * propose branch shipped and nothing could reach it — so every correction of
+   * a typo went out as a question to the player.
+   *
+   * Deliberately not a third way to edit: it sends the same drafted price the
+   * form already holds, it just skips the asking.
+   */
+  async function forceChange() {
+    if (proposeBusy || !online || parsedCents === undefined) return;
+    setProposeBusy(true);
+    setForceError(false);
+    try {
+      const res = await fetch(`${BASE}/api/stringing/jobs/${local.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          memberId: local.memberId,
+          priceCents: parsedCents,
+          force: true,
+        }),
+      });
+      if (!res.ok) throw new Error(`force ${res.status}`);
+      setLocal((await res.json()).job);
+      setForceOpen(false);
+      onChanged();
+    } catch {
+      setForceError(true);
     } finally {
       setProposeBusy(false);
     }
@@ -496,15 +533,87 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
               </label>
             </div>
 
-            <button
-              type="button"
-              className="cc-btn cc-btn-primary cc-btn-lg"
-              style={{ width: '100%' }}
-              disabled={proposeBusy || !online || !proposalDirty || parsedCents === undefined}
-              onClick={() => void sendProposal()}
-            >
-              {proposeBusy ? t('propose.sending') : t('propose.send', { name: local.memberName })}
-            </button>
+            <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'stretch' }}>
+              <button
+                type="button"
+                className="cc-btn cc-btn-primary cc-btn-lg"
+                style={{ flex: 1 }}
+                disabled={proposeBusy || !online || !proposalDirty || parsedCents === undefined}
+                onClick={() => void sendProposal()}
+              >
+                {proposeBusy ? t('propose.sending') : t('propose.send', { name: local.memberName })}
+              </button>
+              {/* Asking is the primary action and keeps the filled button.
+                  Changing without asking sits behind an ellipsis because it is
+                  the exception, not because it is hidden. */}
+              <button
+                type="button"
+                className="cc-btn cc-btn-ghost cc-btn-lg"
+                aria-label={t('propose.forceMenu')}
+                aria-expanded={forceOpen}
+                disabled={proposeBusy || !online || parsedCents === undefined}
+                onClick={() => {
+                  setForceOpen((v) => !v);
+                  setForceError(false);
+                }}
+                style={{ flex: '0 0 auto' }}
+              >
+                <span className="material-icons icon-md" aria-hidden="true">more_horiz</span>
+              </button>
+            </div>
+
+            {forceOpen && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--space-3)',
+                  padding: 'var(--space-4)',
+                  borderRadius: 'var(--radius-lg)',
+                  background: 'var(--inner-card-bg)',
+                  border: '1px solid var(--inner-card-border)',
+                }}
+              >
+                {forceError && <p className="field-error" role="alert">{t('propose.forceError')}</p>}
+                <div>
+                  <div className="fs-md" style={{ fontWeight: 600 }}>
+                    {t('propose.forceLabel')}
+                  </div>
+                  {/* Say what it does to the other person, not just to the
+                      record. "Is not asked AND is not told" is the whole
+                      difference from the button beside it. */}
+                  <p className="fs-sm" style={{ color: 'var(--text-secondary)', margin: 'var(--space-05) 0 0' }}>
+                    {t('propose.forceHint', { name: local.memberName })}
+                  </p>
+                </div>
+                <p className="fs-sm" style={{ color: 'var(--text-secondary)', margin: 0 }}>
+                  {t('propose.forceConfirm', {
+                    name: local.memberName,
+                    price: formatPriceExact(parsedCents ?? null) ?? t('unpriced'),
+                  })}
+                </p>
+                <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                  <button
+                    type="button"
+                    className="cc-btn cc-btn-ghost"
+                    style={{ flex: 1 }}
+                    disabled={proposeBusy}
+                    onClick={() => setForceOpen(false)}
+                  >
+                    {t('propose.forceKeep')}
+                  </button>
+                  <button
+                    type="button"
+                    className="cc-btn cc-btn-danger"
+                    style={{ flex: 1 }}
+                    disabled={proposeBusy || !online}
+                    onClick={() => void forceChange()}
+                  >
+                    {proposeBusy ? t('propose.sending') : t('propose.forceGo')}
+                  </button>
+                </div>
+              </div>
+            )}
             {!proposalDirty && (
               <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: 0 }}>
                 {t('propose.noChange')}

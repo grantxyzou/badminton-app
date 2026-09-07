@@ -970,6 +970,13 @@
         "benchTitle": "Bench",
         "propose": {
           "title": "Change this job",
+          "forceMenu": "More ways to change this",
+          "forceLabel": "Change without asking",
+          "forceHint": "Sets the price now. {name} is not asked and is not told.",
+          "forceConfirm": "Change to {price} without asking {name}?",
+          "forceGo": "Change it",
+          "forceKeep": "Cancel",
+          "forceError": "That didn't save — try again.",
           "hint": "Anything you change here is sent to {name} to confirm. The bill stays as it is until they do.",
           "price": "Price",
           "string": "String",

@@ -241,6 +241,22 @@ describe('design-system canary: globals.css token/class contract', () => {
  * Asserted on the source because there is no way to render it in jsdom: it
  * replaces the document, and Next only mounts it for a root-layout throw.
  */
+describe('swipe row', () => {
+  it('hides the action tray until the row is being swiped', () => {
+    // The JS sets `data-swiping`; this is the rule that makes it mean
+    // something. Without the pair, the coloured buttons paint under every card
+    // and bleed through `.glass-card`'s backdrop-filter as a glow.
+    expect(css).toMatch(/\.swipe-row__actions\s*\{[^}]*visibility:\s*hidden/);
+    expect(css).toMatch(/\.swipe-row\[data-swiping\]\s+\.swipe-row__actions\s*\{[^}]*visibility:\s*visible/);
+  });
+
+  it('applies the transform only while swiping, and reads it from a variable', () => {
+    // No transform at rest: even translateX(0) establishes a containing block
+    // and breaks `position: fixed` descendants.
+    expect(css).toMatch(/\.swipe-row\[data-swiping\]\s+\.swipe-row__track\s*\{[^}]*translateX\(var\(--swipe-x/);
+  });
+});
+
 describe('global-error boundary', () => {
   const globalErrorRaw = readFileSync(join(process.cwd(), 'app', 'global-error.tsx'), 'utf8');
   // Comments stripped: the file's own docblock explains why `var(--x)` must

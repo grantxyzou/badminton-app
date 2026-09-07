@@ -970,6 +970,13 @@
         "benchTitle": "工作台",
         "propose": {
           "title": "修改此工单",
+          "forceMenu": "其他修改方式",
+          "forceLabel": "直接修改，不询问",
+          "forceHint": "立即改价。不会询问 {name}，也不会通知。",
+          "forceConfirm": "不询问 {name}，直接改为 {price}？",
+          "forceGo": "直接修改",
+          "forceKeep": "取消",
+          "forceError": "没能保存 — 再试一次。",
           "hint": "这里的任何修改都会发给 {name} 确认。在确认之前账单保持不变。",
           "price": "价格",
           "string": "线",
