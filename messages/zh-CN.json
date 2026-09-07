@@ -6,6 +6,12 @@
       },
     "stringing": {
         "viewPricing": "查看价格",
+      "stringerTitle": "待穿线的球拍",
+      "stringerSubtitle": "指派给你的。",
+      "stringerFor": "给 {name}",
+      "stringerError": "没能读取你的工单 \u2014 下拉刷新。",
+      "stringerAdvance": "标记为{status}",
+      "stringerSaveError": "没能保存 \u2014 再试一次。",
         "confirm": {
           "banner": "Grant 修改了内容 — 请确认",
           "title": "待确认的修改",
@@ -953,6 +959,11 @@
           "saveError": "没保存成功 — 再试一次。"
         },
         "lb": "磅",
+        "assignTitle": "谁来穿线",
+        "assignNobody": "还没有人",
+        "assignPick": "指派给\u2026",
+        "assignNone": "还没有人被标记为穿线师。请在名单中标记。",
+        "assignError": "没能保存 \u2014 再试一次。",
         "heldBy": "由 {name} 负责",
         "unclaimed": "还没有人接手。",
         "due": {
@@ -1064,6 +1075,8 @@
         "statusTitle": "进度",
         "now": "当前",
         "markPaid": "标记已付",
+        "paidBadge": "已付",
+        "paidOn": "{date} 已付",
         "markUnpaid": "标记未付",
         "claim": "我来接手",
         "saveError": "没保存成功 — 再试一次。",

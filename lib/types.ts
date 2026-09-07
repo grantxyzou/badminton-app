@@ -164,6 +164,16 @@ export interface Member {
    *  secret + expiry, and `approvedAt` once an admin says yes — see
    *  lib/accessRequest.ts. Cleared when claimed or declined. */
   accessRequest?: StoredAccessRequest;
+  /**
+   * This person strings rackets. Deliberately NOT tied to `role`.
+   *
+   * Stringing and administering are different jobs: Zach can restring for the
+   * club without being handed payments, the roster and everyone's data. The
+   * bench used to conflate them — `stringerId` was simply whichever ADMIN
+   * happened to tap "Take this one", so being the person who does the work
+   * required full admin.
+   */
+  canString?: boolean;
   /** Audit trail of recovery-related events (issue / redeem / fail). */
   recoveryEvents?: RecoveryEvent[];
   /** Admin-only: organizer's default e-transfer recipient, used by the receipt export. */
@@ -513,6 +523,32 @@ export interface PendingEdit {
   /** The admin who proposed it. Never sent to the player — they are told the
    *  club changed something, not which volunteer typed it. */
   proposedBy: string | null;
+}
+
+/**
+ * What a STRINGER is allowed to see of a job assigned to them.
+ *
+ * The spec and nothing else. No `priceCents`, no `paidAt`, no `pendingEdit` —
+ * what the club charges is not the business of the person putting string on
+ * the racket, and the strip-canary rule applies to them exactly as it does to
+ * a player. It DOES carry `status`, unlike the player view: they are working
+ * the bench, so they get the bench's vocabulary.
+ */
+export interface StringerJob {
+  id: string;
+  jobNo: string;
+  /** Needed as the partition key when they PATCH their own job's status. */
+  memberId: string;
+  memberName: string;
+  status: StringingStatus;
+  racketLabel: string;
+  stringLabel: string;
+  tensionMains: number;
+  tensionCrosses: number;
+  method: string;
+  readyBy: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /** What a PLAYER is allowed to see of their own job. Note what is missing:
