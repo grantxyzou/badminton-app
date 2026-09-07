@@ -38,6 +38,7 @@ function fakeGear(doc: PlayerGear, overrides: Partial<UseGear> = {}): UseGear {
     online: true,
     reload: vi.fn(),
     add: vi.fn(async () => ({ ok: true as const })),
+    addCustom: vi.fn(async () => ({ ok: true as const })),
     activate: vi.fn(async () => ({ ok: true as const })),
     remove: vi.fn(async () => ({ ok: true as const })),
     setPrefs: vi.fn(async () => ({ ok: true as const })),

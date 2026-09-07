@@ -1,5 +1,6 @@
 'use client';
 
+import { todayIso } from '@/lib/stringingDue';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import AdminBackHeader from '../AdminBackHeader';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
@@ -145,7 +146,11 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
   const [formCost, setFormCost] = useState<number | ''>('');
   const [formSpeed, setFormSpeed] = useState<number | ''>('');
   const [formQuality, setFormQuality] = useState<number>(0);
-  const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 10));
+  /* `todayIso()`, not `toISOString().slice(0,10)`. The latter is UTC, and
+     Vancouver is 7-8 hours behind it — so every purchase logged after 5pm
+     local defaulted to TOMORROW'S date, silently, on the screen that decides
+     which week a shuttle spend lands in. */
+  const [formDate, setFormDate] = useState(() => todayIso());
   const [formNotes, setFormNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);

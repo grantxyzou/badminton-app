@@ -25,7 +25,13 @@ function setup(onAction = vi.fn(), onLeading = vi.fn()) {
   );
   const row = screen.getByText('Wei · J-0042').closest('.swipe-row') as HTMLElement;
   const track = row.querySelector('.swipe-row__track') as HTMLElement;
-  return { row, track, onAction, onLeading };
+  // The offset lives in a CSS custom property on the ROW, written imperatively
+  // — React is deliberately not involved during the drag. jsdom applies no
+  // stylesheet, so the transform itself is unobservable here; the variable and
+  // the gating attribute are the contract.
+  const offset = () => row.style.getPropertyValue('--swipe-x');
+  const phase = () => row.getAttribute('data-swiping');
+  return { row, track, offset, phase, onAction, onLeading };
 }
 
 const touch = (x: number, y: number) => ({ touches: [{ clientX: x, clientY: y }] });
@@ -36,18 +42,20 @@ describe('the left edge is not ours', () => {
   it('does not arm when the drag starts in the back-gesture gutter', () => {
     // TopBar arms swipe-back from the left 24px and WKWebView owns the edge for
     // the system back gesture. A row that also responded there would fight both.
-    const { row, track } = setup();
+    const { row, offset, phase } = setup();
     fireEvent.touchStart(row, touch(10, 100));
     fireEvent.touchMove(row, touch(120, 100));
     fireEvent.touchEnd(row);
-    expect(track.style.transform).toBe('');
+    expect(offset()).toBe('');
+    expect(phase()).toBeNull();
   });
 
   it('arms normally past the gutter', () => {
-    const { row, track } = setup();
+    const { row, offset, phase } = setup();
     fireEvent.touchStart(row, touch(200, 100));
     fireEvent.touchMove(row, touch(150, 100));
-    expect(track.style.transform).toContain('translateX');
+    expect(offset()).toBe('-50px');
+    expect(phase()).toBe('active');
   });
 });
 
@@ -56,12 +64,12 @@ describe('a scroll stays a scroll', () => {
     // Re-testing per frame would let a wobbly finger flip a scroll into a
     // reveal halfway down the page. PullToRefresh disqualifies the same way in
     // the opposite direction.
-    const { row, track } = setup();
+    const { row, offset } = setup();
     fireEvent.touchStart(row, touch(200, 100));
     fireEvent.touchMove(row, touch(198, 160));
     fireEvent.touchMove(row, touch(100, 100));
     fireEvent.touchEnd(row);
-    expect(track.style.transform).toBe('');
+    expect(offset()).toBe('0px');
   });
 });
 
@@ -98,17 +106,17 @@ describe('it stays out of the way', () => {
     // Not even translateX(0). A transform establishes a containing block and
     // `position: fixed` descendants then resolve against the row instead of the
     // viewport — the project's documented containing-block trap.
-    const { track } = setup();
-    expect(track.style.transform).toBe('');
-    expect(track.getAttribute('data-swiping')).toBeNull();
+    const { offset, phase } = setup();
+    expect(offset()).toBe('');
+    expect(phase()).toBeNull();
   });
 
   it('ignores touches entirely while a BottomSheet has locked the body', () => {
     document.body.style.position = 'fixed';
-    const { row, track } = setup();
+    const { row, offset } = setup();
     fireEvent.touchStart(row, touch(200, 100));
     fireEvent.touchMove(row, touch(60, 100));
-    expect(track.style.transform).toBe('');
+    expect(offset()).toBe('');
     document.body.style.position = '';
   });
 
@@ -130,9 +138,56 @@ describe('it stays out of the way', () => {
       </SwipeRow>,
     );
     const row = screen.getByText('Offline row').closest('.swipe-row') as HTMLElement;
-    const track = row.querySelector('.swipe-row__track') as HTMLElement;
     fireEvent.touchStart(row, touch(200, 100));
     fireEvent.touchMove(row, touch(60, 100));
-    expect(track.style.transform).toBe('');
+    expect(row.style.getPropertyValue('--swipe-x')).toBe('');
+  });
+});
+
+describe('the tray does not paint until it is asked for', () => {
+  it('leaves the actions hidden at rest', () => {
+    // Not cosmetic. `.glass-card` runs `backdrop-filter: saturate(180%)`, which
+    // samples what is painted behind it — so an always-painted tray meant every
+    // row's frost was blooming the green Pin and the Archive button underneath
+    // it, on every row, at rest. It read as a glow along the top of the list
+    // coming from buttons nobody had revealed.
+    //
+    // jsdom applies no stylesheet, so the CSS rule itself is unobservable here.
+    // What IS observable is the gate the rule keys on: no `data-swiping` on the
+    // row means `.swipe-row__actions` keeps its `visibility: hidden`.
+    const { row } = setup();
+    expect(row.getAttribute('data-swiping')).toBeNull();
+    expect(row.querySelector('.swipe-row__actions')).not.toBeNull();
+  });
+
+  it('marks the row while a gesture is live', () => {
+    const { row, phase } = setup();
+    fireEvent.touchStart(row, touch(200, 100));
+    fireEvent.touchMove(row, touch(140, 100));
+    expect(phase()).toBe('active');
+  });
+});
+
+describe('the gesture always returns to rest', () => {
+  it('clears data-swiping outright when it settles at zero', () => {
+    // It used to leave `data-swiping="release"` and wait for `transitionend`
+    // to clear it — but `prefers-reduced-motion: reduce` sets
+    // `transition: none`, so that event never fires and the attribute stuck
+    // forever. A stuck attribute re-shows the action tray permanently, which
+    // is the exact backdrop-filter glow this component was fixed for, plus a
+    // permanent identity transform (the containing-block trap).
+    const { row, phase } = setup();
+    fireEvent.touchStart(row, touch(200, 100));
+    fireEvent.touchMove(row, touch(190, 100)); // short of COMMIT
+    fireEvent.touchEnd(row);
+    expect(phase()).toBeNull();
+  });
+
+  it('clears it after a vertical scroll that began on a row', () => {
+    const { row, phase } = setup();
+    fireEvent.touchStart(row, touch(200, 100));
+    fireEvent.touchMove(row, touch(198, 170));
+    fireEvent.touchEnd(row);
+    expect(phase()).toBeNull();
   });
 });

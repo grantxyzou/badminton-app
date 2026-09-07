@@ -67,13 +67,37 @@ export default function NativeBridge({ activeTab, onGoHome }: Props) {
       const Browser = browserMod.status === 'fulfilled' ? browserMod.value.Browser : null;
       const bar = barMod.status === 'fulfilled' ? barMod.value : null;
       if (!App || !Browser || !bar) {
-        // Surface, never swallow — the AdminErrorBoundary posture. There is no
-        // telemetry sink, and nothing the user sees depends on this line.
+        const missing = [
+          !App ? 'app' : null,
+          !Browser ? 'browser' : null,
+          !bar ? 'status-bar' : null,
+        ].filter(Boolean).join(',');
+
+        /**
+         * This comment used to say "nothing the user sees depends on this
+         * line". That was wrong, and it is the reason the failure was left as
+         * a console call into a WebView with no telemetry sink.
+         *
+         * `@capacitor/app` carries the OAuth return leg (`bpm://auth/return`)
+         * and the Android back button. When it is the one that failed, signing
+         * in appears to HANG — the browser sheet never hands back — and the
+         * back button stops working, with no signal anywhere the user or Grant
+         * can see.
+         *
+         * Stamped on `<html>` so it is (a) the first thing visible in Safari
+         * Web Inspector when someone debugs a device, and (b) readable by any
+         * surface that wants to explain itself rather than just not work.
+         * `lib/native.ts` exists "to turn a dead control into one that can
+         * explain itself"; this is the input that lets it.
+         */
+        document.documentElement.setAttribute('data-native-degraded', missing);
         console.error('[NativeBridge] plugin unavailable:', {
           app: appMod.status,
           browser: browserMod.status,
           statusBar: barMod.status,
         });
+      } else {
+        document.documentElement.removeAttribute('data-native-degraded');
       }
 
       if (App) {

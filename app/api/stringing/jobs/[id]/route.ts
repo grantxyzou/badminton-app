@@ -143,10 +143,11 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
        * Same guard-then-escape shape as settle's "unsettle first": money that
        * somebody has been quoted does not change quietly.
        *
-       * NOTE: `force` currently has NO UI PATH. The detail screen's only price
-       * input goes through `propose`, so in practice every change to a quoted
-       * price asks the player. It is reserved for a correction flow, not an
-       * escape hatch anyone can reach today — do not describe it as one.
+       * `force` IS reachable now: the detail screen's ellipsis beside "Send to
+       * {name}" opens a two-tap "Change without asking". It is the exception
+       * and is shaped like one — a ghost button, a confirm that names the new
+       * price, and copy saying the player is neither asked nor told. Asking
+       * keeps the filled button.
        */
       if (job.priceCents !== null && p !== job.priceCents && body.force !== true) {
         return NextResponse.json({ error: 'confirm_required' }, { status: 409 });

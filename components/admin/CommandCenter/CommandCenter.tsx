@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import TopBar from '../../primitives/TopBar';
 import AnomalyFeed from './AnomalyFeed';
+import AccessRequestsCard from './AccessRequestsCard';
 import NextSessionCard from './NextSessionCard';
 import PaymentsCard from './PaymentsCard';
 import AdminDashTiles from './AdminDashTiles';
@@ -125,6 +126,9 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
       <TopBar title={pageT('title')} onBack={onExit} backLabel="Back to profile" />
 
       <AnomalyFeed refreshKey={composedRefresh} />
+      {/* Above the session card: somebody locked out is waiting on a human,
+          and it renders nothing at all when nobody is. */}
+      <AccessRequestsCard refreshKey={composedRefresh} />
       <NextSessionCard
         refreshKey={composedRefresh}
         onEdit={() => setView('session-details')}

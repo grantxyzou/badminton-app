@@ -15,6 +15,8 @@ import WelcomeCard from './WelcomeCard';
 import StatusBanner from '@/components/primitives/StatusBanner';
 import PageHeader from '@/components/primitives/PageHeader';
 import EnterCodeSheet from './EnterCodeSheet';
+import AskAccessSheet from './AskAccessSheet';
+import RecoveryPinSheet from './RecoveryPinSheet';
 import PinInput from './PinInput';
 import NameAutocompleteInput from './home/NameAutocompleteInput';
 import { useMemberProbe } from '@/lib/useHasPin';
@@ -85,6 +87,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const [justSignedUp, setJustSignedUp] = useState(false);
   // Forgot-PIN handoff from the inline sign-in form opens this code-entry sheet.
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
+  const [askAccessOpen, setAskAccessOpen] = useState(false);
+  /* Opened straight after a recovery-code redemption: that path deliberately
+     CLEARS the old PIN server-side, so leaving the user here without offering
+     a replacement is how they ended up PIN-less without being told. */
+  const [setPinOpen, setSetPinOpen] = useState(false);
+  const [recoveredName, setRecoveredName] = useState('');
 
   const maxPlayers = parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12');
 
@@ -296,6 +304,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         });
         const data = await res.json();
         if (!res.ok) {
+          if (data.error === 'account_claim_needs_approval') {
+            /* Someone is setting a FIRST PIN on an existing member from a
+               device that cannot prove it is theirs. Usually the real owner on
+               a new phone — so the answer is a way in, not a refusal. Straight
+               into the ask flow with the name already filled. */
+            setAskAccessOpen(true);
+            return;
+          }
           if (data.error === 'invite_list_not_found') {
             setError(t('signup.inviteError', { name: trimmed }));
           } else if (data.error === 'pin_required') {
@@ -722,6 +738,22 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       </section>
 
 
+      <AskAccessSheet
+        open={askAccessOpen}
+        onClose={() => setAskAccessOpen(false)}
+        sessionId={session?.id ?? ''}
+        initialName={name}
+        onSignedIn={({ name: signedIn, hasPin }) => {
+          setAskAccessOpen(false);
+          setHasIdentity(true);
+          setCurrentUser(signedIn);
+          if (!hasPin) {
+            setRecoveredName(signedIn);
+            setSetPinOpen(true);
+          }
+          void loadData();
+        }}
+      />
       <EnterCodeSheet
         open={enterCodeOpen}
         onClose={() => {
@@ -733,7 +765,35 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           }
         }}
         sessionId={session?.id ?? ''}
+        /* Redeeming a code CLEARS `pinHash` server-side — the whole point is
+           that they could not remember it. Without this the user was dropped
+           back on Home silently PIN-less, and only found out next time the
+           sign-up card put them in "create a PIN" mode with no explanation.
+           ProfileTab has always passed this; Home never did. */
+        onRecovered={(name) => {
+          setEnterCodeOpen(false);
+          setHasIdentity(true);
+          setCurrentUser(name);
+          setRecoveredName(name);
+          setSetPinOpen(true);
+        }}
       />
+      {/* Only mounted once we have a name — `identity` is required, and a
+          sheet that cannot say who it is setting a PIN for should not exist. */}
+      {recoveredName !== '' && (
+      <RecoveryPinSheet
+        open={setPinOpen}
+        onClose={() => setSetPinOpen(false)}
+        identity={{ name: recoveredName, sessionId: session?.id ?? '' }}
+        /* Always the two-field first-set shape: redeeming the code is what
+           removed the old PIN, so there is no current one to ask for. */
+        hasPin={false}
+        /* The redemption minted a member_session, so the first-set guard is
+           satisfied — `true`, not the tri-state unknown. */
+        authed
+        onSaved={() => setSetPinOpen(false)}
+      />
+      )}
       </div>
       <ReleaseNotesSheet
         open={releaseSheetOpen}

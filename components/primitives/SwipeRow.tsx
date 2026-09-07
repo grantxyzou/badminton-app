@@ -68,19 +68,58 @@ export default function SwipeRow({
   trailingAction,
   enabled = true,
 }: Props) {
-  const [offset, setOffset] = useState(0);
   const [revealed, setRevealed] = useState<Revealed>('none');
-  const [phase, setPhase] = useState<'idle' | 'active' | 'release'>('idle');
 
+  const rowRef = useRef<HTMLDivElement>(null);
   const start = useRef<{ x: number; y: number } | null>(null);
   const armed = useRef(false);
   const disqualified = useRef(false);
+  /* The live offset. A REF, not state — see `paint()`. */
+  const offset = useRef(0);
+
+  /**
+   * THE DRAG DOES NOT RE-RENDER.
+   *
+   * `offset` used to be React state written on every `touchmove`, so the row
+   * re-rendered every frame of the gesture — which is what made it feel
+   * sticky. `TopBar`'s swipe-back solved this before this component existed:
+   * it writes a CSS custom property and gates the transform on a
+   * `data-swiping` attribute, with no React state during the drag at all. This
+   * is that, applied to a row.
+   *
+   * The attribute earns its keep twice. It also gates the action tray's
+   * visibility — see `.swipe-row` in globals.css for why that matters.
+   */
+  const paint = useCallback((px: number, phase: 'active' | 'release' | null) => {
+    offset.current = px;
+    const el = rowRef.current;
+    if (!el) return;
+    el.style.setProperty('--swipe-x', `${px}px`);
+    if (phase) el.setAttribute('data-swiping', phase);
+    else el.removeAttribute('data-swiping');
+  }, []);
+
+  /**
+   * Settle to rest WITHOUT relying on a transition.
+   *
+   * `paint(0, 'release')` leaves `data-swiping="release"` on the row and waits
+   * for `transitionend` to clear it. Under `prefers-reduced-motion: reduce` the
+   * CSS sets `transition: none`, so that event never fires and the attribute
+   * sticks — which re-shows the action tray permanently and reintroduces the
+   * exact backdrop-filter glow this component was just fixed for, plus a
+   * permanent identity transform on the track (the containing-block trap).
+   *
+   * When the offset is already zero there is nothing to animate back from, so
+   * clear it outright.
+   */
+  const settle = useCallback(() => {
+    paint(0, null);
+  }, [paint]);
 
   const close = useCallback(() => {
     setRevealed('none');
-    setOffset(0);
-    setPhase('release');
-  }, []);
+    settle();
+  }, [settle]);
 
   // Escape closes an open reveal, matching every other dismissible surface.
   useEffect(() => {
@@ -118,8 +157,8 @@ export default function SwipeRow({
     // flip a scroll into a reveal halfway down the page.
     if (Math.abs(dy) > V_SLOP && Math.abs(dy) > Math.abs(dx)) {
       disqualified.current = true;
-      setOffset(0);
-      setPhase('release');
+      // A vertical scroll that began on a row. Nothing to animate back from.
+      settle();
       return;
     }
 
@@ -131,8 +170,7 @@ export default function SwipeRow({
     if (next < 0 && !trailingAction) next = 0;
     next = Math.max(-ACTION_W, Math.min(ACTION_W, next));
 
-    if (next !== 0) setPhase('active');
-    setOffset(next);
+    paint(next, next !== 0 ? 'active' : null);
   };
 
   const onTouchEnd = () => {
@@ -142,17 +180,17 @@ export default function SwipeRow({
       start.current = null;
       return;
     }
-    if (offset >= COMMIT && leadingAction) {
+    const settled = offset.current;
+    if (settled >= COMMIT && leadingAction) {
       setRevealed('leading');
-      setOffset(ACTION_W);
-    } else if (offset <= -COMMIT && trailingAction) {
+      paint(ACTION_W, 'release');
+    } else if (settled <= -COMMIT && trailingAction) {
       setRevealed('trailing');
-      setOffset(-ACTION_W);
+      paint(-ACTION_W, 'release');
     } else {
       setRevealed('none');
-      setOffset(0);
+      settle();
     }
-    setPhase('release');
     start.current = null;
   };
 
@@ -163,6 +201,7 @@ export default function SwipeRow({
 
   return (
     <div
+      ref={rowRef}
       className="swipe-row"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
@@ -198,13 +237,17 @@ export default function SwipeRow({
         )}
       </div>
 
+      {/* No inline transform, and no `data-swiping` of its own: both now live
+          on the row root, written imperatively by `paint()`. The CSS reads
+          `--swipe-x` and applies the transform ONLY while the attribute is
+          present, which keeps the containing-block discipline intact — a
+          `translateX(0)` at rest would establish a containing block and break
+          `position: fixed` descendants. */}
       <div
         className="swipe-row__track"
-        data-swiping={phase === 'idle' ? undefined : phase}
-        // Omitted entirely at rest — see the containing-block note in
-        // globals.css. `undefined` here, not `translateX(0)`.
-        style={offset === 0 ? undefined : { transform: `translateX(${offset}px)` }}
-        onTransitionEnd={() => setPhase('idle')}
+        onTransitionEnd={() => {
+          if (offset.current === 0) paint(0, null);
+        }}
       >
         {/* While an action is uncovered, a tap on the row closes it rather than
             opening the row. The first tap after a gesture is a dismissal — that

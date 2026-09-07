@@ -4,7 +4,10 @@
  *
  * WHY THIS EXISTS
  * ---------------
- * next-intl THROWS on a missing key — it does not fall back — so an
+ * next-intl does NOT throw on a missing key: it renders the key path via
+ * `getMessageFallback`, and i18n/request.ts deep-merges English under every
+ * locale. So the symptom is not a crash but `profile.settings.foo` printed
+ * where a label belongs — which nothing fails on and everyone scrolls past. An
  * unresolvable key is not a cosmetic problem, it is a crashed screen. And the
  * failure is invisible to the test suite: components render, assertions on
  * other text pass, and the broken string quietly displays as its own key path.
@@ -138,7 +141,7 @@ if (problems.length) {
   console.error('\ni18n keys that will not resolve at runtime:\n');
   for (const p of [...new Set(problems)].sort()) console.error('  ' + p);
   console.error(
-    `\n${problems.length} problem(s). next-intl THROWS on a missing key, so each of these is a crashed screen, not a blank string.\n` +
+    `\n${problems.length} problem(s). next-intl renders the KEY PATH for these - profile.settings.foo where a label belongs, failing nothing.\n` +
       'Most likely cause: the block was inserted into the wrong parent object. ' +
       'messages/*.json cannot be addressed safely by substring or by a naive regex — ' +
       'anchor from the parent block.\n',

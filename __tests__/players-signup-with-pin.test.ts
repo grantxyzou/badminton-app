@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   resetMockStore,
+  getStore,
   setupAdminPin,
   seedPointer,
   seedSession,
@@ -225,5 +226,62 @@ describe('POST /api/players waitlist with PIN', () => {
     const res = await POST(req);
     expect(res.status).toBe(401);
     expect((await res.json()).error).toBe('pin_incorrect');
+  });
+});
+
+/**
+ * Claiming an account by name alone.
+ *
+ * The PIN gate above only fires for a member that ALREADY has a `pinHash`. One
+ * with none used to fall straight through, so anyone could type a name they did
+ * not own, pick a PIN, and be signed in as that person from any device — the
+ * exact operation `PATCH /api/members/me` refuses, and for the reason its own
+ * comment gives: names are enumerable through `GET /api/members`.
+ */
+describe('a PIN-less member cannot be claimed by anyone who knows the name', () => {
+  it('refuses a first-PIN set from a device with no proof', async () => {
+    resetMockStore();
+    seedPointer('session-2026-06-08');
+    seedSession('session-2026-06-08');
+    const member = seedMember('Lin'); // no pinHash
+
+    const res = await POST(
+      makeRequest('POST', 'http://x/api/players', { name: 'Lin', pin: '2468' }),
+    );
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe('account_claim_needs_approval');
+
+    // And nothing was written: no PIN, no session record.
+    const stored = (getStore()['members'] as { id: string; pinHash?: string }[])
+      .find((m) => m.id === member.id)!;
+    expect(stored.pinHash ?? '').toBe('');
+  });
+
+  it('allows it from the member’s own device', async () => {
+    // The legitimate case: same person, cookie already minted at sign-up.
+    resetMockStore();
+    seedPointer('session-2026-06-08');
+    seedSession('session-2026-06-08');
+    const member = seedMember('Lin');
+
+    const res = await POST(
+      makeRequest('POST', 'http://x/api/players', { name: 'Lin', pin: '2468' }, {
+        Cookie: `member_session=${memberCookie(member.id, 'Lin')}`,
+      }),
+    );
+    expect(res.status).toBe(201);
+  });
+
+  it('still lets a brand-new name sign up freely', async () => {
+    // The gate keys on an EXISTING member. Someone nobody has ever heard of is
+    // not claiming anything, and must not be pushed into an approval queue.
+    resetMockStore();
+    seedPointer('session-2026-06-08');
+    seedSession('session-2026-06-08');
+
+    const res = await POST(
+      makeRequest('POST', 'http://x/api/players', { name: 'Brand New Person', pin: '1357' }),
+    );
+    expect(res.status).toBe(201);
   });
 });

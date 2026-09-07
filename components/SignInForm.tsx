@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import PinInput from './PinInput';
+import { useMemberProbe } from '@/lib/useHasPin';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -37,6 +38,18 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin }: SignIn
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState<'invalid' | 'rate_limited' | 'admin_logged_in' | 'network' | null>(null);
+  /**
+   * The probe already knows whether this name has a PIN, and this form used to
+   * ignore it — so a member who never set one typed four digits, got a
+   * constant-time miss against FAKE_HASH, and was told "That didn't match. Try
+   * again." about a PIN that never existed. Their only signposted escape was
+   * "Forgot your PIN?", for a PIN they had not forgotten.
+   *
+   * That is a large share of the "what was my PIN?" messages, and it is a copy
+   * bug rather than a missing feature.
+   */
+  const probe = useMemberProbe(name.trim());
+  const knownNoPin = probe?.exists === true && probe.hasPin === false;
   const [submitting, setSubmitting] = useState(false);
 
   const trimmed = name.trim();
@@ -113,7 +126,15 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin }: SignIn
           {t('forgotPinLink')}
         </button>
       )}
-      {error === 'invalid' && (
+      {/* Said BEFORE they can get it wrong, and it outranks the generic
+          mismatch below — telling someone their PIN is wrong when they never
+          set one is what sends them to WhatsApp. */}
+      {knownNoPin && (
+        <p role="status" className="fs-sm" style={{ color: 'var(--text-secondary)', margin: 0 }}>
+          {t('noPinYet')}
+        </p>
+      )}
+      {error === 'invalid' && !knownNoPin && (
         <p role="alert" style={{ color: 'var(--color-red)', fontSize: 'var(--fs-sm)', margin: '0' }}>
           {t('errorInvalid')}
         </p>

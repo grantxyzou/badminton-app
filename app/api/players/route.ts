@@ -308,6 +308,39 @@ export async function POST(req: NextRequest) {
       pinHash = undefined;
     }
 
+    /**
+     * SETTING A FIRST PIN ON AN EXISTING MEMBER NEEDS PROOF.
+     *
+     * The gate above only fires when the member ALREADY has a `pinHash`. A
+     * member with none fell straight through, so anyone could type a name they
+     * did not own, choose a PIN, and be signed in as that person from any
+     * device — no cookie, no code, nothing.
+     *
+     * That is the exact operation `PATCH /api/members/me` refuses, for the
+     * reason its own comment gives: member names are enumerable through
+     * `GET /api/members`, so the name is not a secret and cannot be treated as
+     * one. Two routes disagreed about the same rule and the laxer one was the
+     * one on the busiest screen.
+     *
+     * `account_claim_needs_approval` is a distinct code, not a 401, because the
+     * client turns it into the "ask Grant to let me in" flow — the person
+     * hitting this is usually the real owner on a new phone, and the honest
+     * answer to them is a way in, not a refusal.
+     */
+    if (
+      matchedMember &&
+      (typeof matchedMember.pinHash !== 'string' || matchedMember.pinHash.length === 0) &&
+      typeof body.pin === 'string' &&
+      body.pin.length > 0 &&
+      !isAdminAuthed(req) &&
+      !trustedAsMember
+    ) {
+      return NextResponse.json(
+        { error: 'account_claim_needs_approval' },
+        { status: 403 },
+      );
+    }
+
     const anyExisting = existingRes.resources;
     const activeRecord = anyExisting.find((p: { removed?: boolean }) => !p.removed);
     const removedRecord = anyExisting.find((p: { removed?: boolean }) => p.removed);

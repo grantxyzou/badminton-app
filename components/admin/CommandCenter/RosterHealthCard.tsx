@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import ErrorState from '@/components/primitives/ErrorState';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -30,6 +31,7 @@ interface RosterHealthCardProps {
 export default function RosterHealthCard({ onOpen }: RosterHealthCardProps = {}) {
   const [health, setHealth] = useState<RosterHealth | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -39,8 +41,12 @@ export default function RosterHealthCard({ onOpen }: RosterHealthCardProps = {})
         // Include removed records so we can count recent removals.
         fetch(`${BASE}/api/players?all=true`, { cache: 'no-store' }),
       ]);
-      const session = sessionRes.ok ? ((await sessionRes.json()) as SessionLite) : null;
-      const players = playersRes.ok ? ((await playersRes.json()) as PlayerLite[]) : [];
+      // A partial failure used to render as health: `players: []` reported
+      // "Waitlist 0 / Removed (7d) 0" as fact, which is the reassuring answer
+      // and the one you cannot check.
+      if (!sessionRes.ok || !playersRes.ok) throw new Error('roster health load failed');
+      const session = (await sessionRes.json()) as SessionLite;
+      const players = (await playersRes.json()) as PlayerLite[];
 
       const inviteListSize = Array.isArray(session?.approvedNames) ? session!.approvedNames!.length : 0;
       const waitlistCount = players.filter((p) => !p.removed && p.waitlisted).length;
@@ -54,8 +60,10 @@ export default function RosterHealthCard({ onOpen }: RosterHealthCardProps = {})
       }).length;
 
       setHealth({ inviteListSize, waitlistCount, recentRemovals });
+      setLoadError(false);
     } catch {
       setHealth(null);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -64,6 +72,16 @@ export default function RosterHealthCard({ onOpen }: RosterHealthCardProps = {})
   useEffect(() => { void load(); }, [load]);
 
   if (loading) return <CardSkeleton height={130} />;
+  if (loadError) {
+    // "No data." was the same words for an empty roster and an unreachable
+    // one. Only one of those is worth acting on.
+    return (
+      <section className="glass-card p-4 space-y-3" aria-label="Roster health">
+        <h3 className="bpm-h3">Roster health</h3>
+        <ErrorState message="Couldn't load roster health — pull to refresh." />
+      </section>
+    );
+  }
   if (!health) {
     return (
       <section className="glass-card p-4 space-y-1 opacity-60" aria-label="Roster health">

@@ -103,11 +103,19 @@ describe('no call site hand-types a spacing value', () => {
    * everything else. Their payload — the ['--space-3', '8px'] rows — is array
    * data, not a `padding:` property, so it is never matched here.
    *
-   * app/opengraph-image.tsx is the one exclusion, for a harder reason: it
-   * renders through Satori, which does not resolve CSS custom properties. A
-   * token there would silently resolve to nothing, so raw values are correct.
+   * Two exclusions, both for the same hard reason — the tokens are not
+   * available to resolve:
+   *
+   * app/opengraph-image.tsx renders through Satori, which does not resolve CSS
+   * custom properties at all.
+   *
+   * app/global-error.tsx REPLACES the root layout, so `globals.css` may never
+   * have loaded when it renders. A token there would resolve to nothing on the
+   * one screen whose entire job is to stay readable when everything else has
+   * failed — and an invisible error screen is indistinguishable from the white
+   * screen it exists to prevent.
    */
-  const SKIP = ['app/opengraph-image.tsx'];
+  const SKIP = ['app/opengraph-image.tsx', 'app/global-error.tsx'];
   const files = [...tsx(join(ROOT, 'components')), ...tsx(join(ROOT, 'app'), SKIP)];
 
   /**

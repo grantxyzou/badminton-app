@@ -48,28 +48,44 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  /**
+   * One reachability check. `/api/session` is small, always present, and
+   * `force-dynamic` with a catch that still answers 200 — so `r.ok` is a
+   * question about the NETWORK, not about Cosmos.
+   */
+  const probe = useCallback(() => {
+    fetch(`${BASE}/api/session`, { method: 'GET', cache: 'no-store' })
+      .then((r) => {
+        if (r.ok) {
+          setOnline(true);
+          stopPing();
+        }
+      })
+      .catch(() => {
+        /* still unreachable — the interval keeps trying */
+      });
+  }, [stopPing]);
+
   const startPing = useCallback(() => {
     if (pingTimer.current !== null) return; // already pinging
-    pingTimer.current = setInterval(() => {
-      // Cheap reachability check. /api/session is small and always
-      // present; we only care whether the round-trip succeeds at all.
-      fetch(`${BASE}/api/session`, { method: 'GET', cache: 'no-store' })
-        .then((r) => {
-          if (r.ok) {
-            setOnline(true);
-            stopPing();
-          }
-        })
-        .catch(() => {
-          /* still unreachable — keep pinging */
-        });
-    }, PING_MS);
-  }, [stopPing]);
+    pingTimer.current = setInterval(probe, PING_MS);
+  }, [probe]);
 
   const goOffline = useCallback(() => {
     setOnline(false);
     startPing();
-  }, [startPing]);
+    /**
+     * PROBE NOW, not in 15 seconds.
+     *
+     * `setInterval` schedules its FIRST run at +15s, so a WiFi-to-cellular
+     * handover — where the in-flight request dies at the instant the network
+     * becomes healthy again — used to disable sign-up, self-cancel, kudos and
+     * every admin action for a full 15 seconds over a working connection. The
+     * handover case is the common one, and it is precisely the case where the
+     * very next request would have succeeded.
+     */
+    probe();
+  }, [startPing, probe]);
 
   const reportFetchFailure = useCallback(() => {
     goOffline();
@@ -80,18 +96,50 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       goOffline();
     }
-    const onOnline = () => {
-      setOnline(true);
-      stopPing();
+    /**
+     * VERIFY, do not assert.
+     *
+     * This used to `setOnline(true)` and CANCEL the ping outright. WKWebView
+     * fires `online` on an interface that is up but not yet usable, so the one
+     * active recovery mechanism was being destroyed by the event least
+     * qualified to judge. Now the event only triggers a probe; the probe
+     * decides, and the interval keeps running until it says yes.
+     */
+    const onOnline = () => probe();
+
+    /**
+     * Anything that means "the user is looking at the app again" is a reason
+     * to re-check, and on iOS it is the ONLY reliable one: a backgrounded
+     * WKWebView has its timers suspended, so the 15s interval does not run
+     * while the phone is locked. Someone who flips network and pockets the
+     * phone comes back to a stale "You're offline" that the interval alone
+     * would take another 15s to clear.
+     *
+     * `bpm:resume` is already dispatched by NativeBridge on Capacitor's
+     * appStateChange — this hook was the one place in the app not listening to
+     * it. `focus` and `visibilitychange` cover the web and PWA equivalents.
+     */
+    const onWake = () => {
+      if (pingTimer.current !== null) probe();
     };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') onWake();
+    };
+
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', goOffline);
+    window.addEventListener('focus', onWake);
+    window.addEventListener('bpm:resume', onWake);
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', goOffline);
+      window.removeEventListener('focus', onWake);
+      window.removeEventListener('bpm:resume', onWake);
+      document.removeEventListener('visibilitychange', onVisible);
       stopPing();
     };
-  }, [goOffline, stopPing]);
+  }, [goOffline, stopPing, probe]);
 
   return createElement(
     OnlineContext.Provider,
