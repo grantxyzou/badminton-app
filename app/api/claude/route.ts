@@ -4,6 +4,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { describeAiFailure } from '@/lib/aiError';
 import { PROSE_MODEL } from '@/lib/aiModels';
+import { VOICE_PERSONA } from '@/lib/aiPersona';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -26,23 +27,37 @@ export async function POST(req: NextRequest) {
   // this route, and folding it into the catch below would have described a bad
   // request as an AI outage.
   let prompt: unknown;
+  let persona: unknown;
   try {
-    ({ prompt } = await req.json());
+    ({ prompt, persona } = await req.json());
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
   if (typeof prompt !== 'string' || !prompt.trim()) {
     return NextResponse.json({ error: 'Prompt required' }, { status: 400 });
   }
+  // Measures the CALLER's string, deliberately — the persona below adds ~700
+  // characters the caller did not write and cannot shorten, and `ReleaseForm`
+  // interpolates arbitrary pasted notes, so it is the caller nearest this limit.
+  // Capping the composed prompt would reject a request for being too long because
+  // of text the server added.
   if (prompt.length > 4000) {
     return NextResponse.json({ error: 'Prompt too long' }, { status: 400 });
   }
+
+  // Opt-in per caller. `lib/aiPersona.ts` is the single owner of how this app
+  // sounds, and it used to reach only the Stats greeting — the two admin drafting
+  // paths wrote their own tone wording inline while producing text every player
+  // reads. Opt-in rather than default-on because a caller may legitimately want
+  // unstyled output (a data extraction, a summary the admin will rewrite anyway),
+  // and a persona silently applied to those would be a surprise, not a standard.
+  const content = persona === true ? `${VOICE_PERSONA}\n\n${prompt}` : prompt;
 
   try {
     const message = await anthropic.messages.create({
       model: PROSE_MODEL,
       max_tokens: 1024,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content }],
     });
 
     const block = message.content[0];

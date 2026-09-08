@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { setupAdminPin, resetMockStore, seedAdminMember, makeAdminRequest, makeRequest, adminCookieValue } from './helpers';
+import { VOICE_PERSONA } from '@/lib/aiPersona';
 
 /**
  * Route-level cover for the swallowed-error fix. The unit tests in
@@ -104,6 +105,39 @@ describe('POST /api/claude — failures say why', () => {
     const res = await post({ prompt: 'polish this' }, false);
     expect(res.status).toBe(401);
     expect(create).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The persona is the app's single owner of how it sounds, and until 2026-09-07 it
+   * reached only the Stats greeting while two admin paths that publish player-facing
+   * text wrote their own tone wording. Nothing in the suite looked at the outbound
+   * prompt, so the gap was invisible — these read `create.mock.calls`, which no test
+   * here had ever done.
+   */
+  it('prepends the shared voice when a caller asks for it', async () => {
+    create.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+    await post({ prompt: 'polish this', persona: true });
+
+    const sent = create.mock.calls[0][0].messages[0].content as string;
+    expect(sent.startsWith(VOICE_PERSONA)).toBe(true);
+    expect(sent).toContain('polish this');
+  });
+
+  it('sends the prompt untouched when it does not', async () => {
+    create.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+    await post({ prompt: 'polish this' });
+
+    expect(create.mock.calls[0][0].messages[0].content).toBe('polish this');
+  });
+
+  it('measures the length cap against the caller string, not the composed one', async () => {
+    // The persona adds ~700 chars the caller did not write and cannot shorten.
+    // Capping the composed prompt would reject a request for text the server added.
+    create.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+    const res = await post({ prompt: 'x'.repeat(3900), persona: true });
+
+    expect(res.status).toBe(200);
+    expect((create.mock.calls[0][0].messages[0].content as string).length).toBeGreaterThan(4000);
   });
 
   /**

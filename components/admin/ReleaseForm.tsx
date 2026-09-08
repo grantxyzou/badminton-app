@@ -86,17 +86,22 @@ export default function ReleaseForm({ latestVersion, initialRecord, onPublished,
 Given these raw notes, produce a JSON object with:
   - title_en: short friendly title in English (max 8 words)
   - title_zh: same meaning in Simplified Chinese
-  - body_en: bullet list in English (one bullet per line, prefix each with "• "), friendly tone, player-focused (not dev jargon)
+  - body_en: bullet list in English (one bullet per line, prefix each with "• "), player-focused (not dev jargon)
   - body_zh: same meaning in Simplified Chinese
 Output ONLY valid JSON, no prose, no markdown code fences.
 
 Raw notes:
 ${rawNotes}`;
 
+      // `persona: true` — a release note is read by every player, so it speaks in
+      // the app's voice. The persona and a JSON-only instruction coexist fine;
+      // `app/api/stats/insight/route.ts` has shipped exactly that pair since the
+      // distributed-insights rewrite. The "friendly tone" wording that used to sit
+      // in body_en is the persona's job now.
       const res = await fetch(`${BASE}/api/claude`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, persona: true }),
       });
       const data = await res.json();
       if (!res.ok) {
