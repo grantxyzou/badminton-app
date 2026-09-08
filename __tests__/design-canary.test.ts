@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
@@ -283,5 +283,48 @@ describe('global-error boundary', () => {
 
   it('offers the one action that helps', () => {
     expect(globalErrorRaw).toContain('reset()');
+  });
+});
+
+describe('fonts: the build must not depend on a third party', () => {
+  const layoutRaw = readFileSync(join(process.cwd(), 'app', 'layout.tsx'), 'utf8');
+  // Strip comments — the block above the font declarations NAMES the import we
+  // are banning, in order to explain why. A literal scan would trip on the
+  // explanation and fail with the bug absent. Two earlier canaries in this repo
+  // (the Cosmos null check and the global-error boundary) shipped with exactly
+  // that defect, so it is worth the four lines to avoid a third.
+  const layout = layoutRaw
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+
+  /**
+   * `next/font/google` downloads at BUILD time. That makes fonts.googleapis.com
+   * a hard dependency of `next build`, and its failure mode is a failed
+   * production deploy rather than a degraded page:
+   *
+   *   Error: next/font: Failed to fetch JetBrains Mono from Google Fonts.
+   *
+   * There was never a benefit to trade against it — next/font/google already
+   * serves the downloaded file from our own origin at runtime, which is what
+   * `next/font/local` does without the network round trip. Found on 2026-09-07
+   * because the build could not run offline.
+   */
+  it('loads every font locally, never from Google Fonts at build time', () => {
+    expect(layout).not.toContain('next/font/google');
+    expect(layout).toContain("import localFont from 'next/font/local'");
+  });
+
+  it('ships a file on disk for each of the three faces', () => {
+    // A localFont() src pointing at a missing file fails the build, but it
+    // fails it in CI rather than here, and the message is about a module
+    // resolution rather than a font. Cheaper to say it plainly.
+    for (const file of [
+      'SpaceGrotesk-Subset.woff2',
+      'IBMPlexSans-Subset.woff2',
+      'JetBrainsMono-Subset.woff2',
+    ]) {
+      expect(existsSync(join(process.cwd(), 'app', 'fonts', file))).toBe(true);
+      expect(layout).toContain(`./fonts/${file}`);
+    }
   });
 });
