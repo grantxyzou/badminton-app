@@ -200,6 +200,42 @@ racket and never excluded what they owned).
   and member names are enumerable via `GET /api/members`, so the flag-on branch
   gates on a `member_session` cookie for that name or admin (same gate as
   `/api/stats/level`). Rate limiting stays first (security rule 4).
+- **The fit questionnaire is its own sheet — `GearFitSheet`** (racket-fit
+  Phase 1, 2026-09-08; spec `docs/superpowers/specs/2026-09-07-racket-fit-design.md`).
+  Five optional answers on `PlayerGear` — `fitGoal`, `fitSwing`,
+  `fitArmComfort`, `fitGrip`, `stringBudgetMaxCad` — plus `fitUpdatedAt`,
+  stamped by the route. Every tap is ONE `gear.setPrefs()` write (no Save
+  button: a half-answered questionnaire is a valid state) and every refusal is
+  rendered. It opens from the pick sheet's summary line ("Fit"), which CLOSES
+  the pick sheet first — one sheet at a time, never a form stacked over the
+  answer it changes. Format and budget stay in `GearPickSheet`; the fit sheet
+  shows them read-only. Four rules that are easy to break:
+  - **`fitArmComfort` is health-adjacent.** The gear GET is public by name, so
+    the route strips it for anyone but the owner or an admin (same shape as
+    the pinHash strip-canary); it is disclosed in `legal.privacy` in both
+    locales (pinned by the `'arm or shoulder'` needle in
+    `__tests__/legal-pages.test.ts`) and purged with the doc. A `Clear` link
+    renders only while an answer is stored — a Clear that clears nothing is a
+    button that lies.
+  - **`writeGearDoc` rebuilds the doc from an explicit field list.** A field
+    left off it survives the PATCH that wrote it and is dropped by the next
+    POST or DELETE. Pinned by "fit answers survive a bag write".
+  - **The rail's refetch has TWO keys.** Format/budget reach both engines;
+    the fit answers reach the racket engine, and reach the STRING pick only
+    through the frame it pairs against — which is the member's own racket
+    whenever they have one. So a fit-only change re-asks strings only for a
+    member with no racket in the bag. Refreshes are debounced
+    (`REC_REFETCH_DEBOUNCE_MS`, 500 ms; the first pass never is) because five
+    controls tapped in a row against a 10/min limit was a throttled 200
+    rendered as an error card.
+  - **Unknown answers light nothing.** A failed gear read still renders every
+    control (they are the only way to clear a stored answer) with no option
+    selected — the same unknown-≠-known-false rule as the pick sheet's
+    preference block.
+  Not yet read by any engine: the Phase 2 fit engine is what consumes these;
+  until it lands the answers are stored and shown, nothing more. (Its path is
+  deliberately not written here yet — `__tests__/docs-canary.test.ts` fails on
+  a governing doc naming a file that does not exist.)
 - **Format and budget are asked, not inferred** — the engine's author flagged
   both as not derivable from skill scores. Stored as optional
   `playFormat`/`budgetMaxCad` on `PlayerGear`, edited from inside

@@ -228,3 +228,71 @@ describe('GearPickSheet — a pick that went away is an error, not a vanishing s
     expect(screen.queryByText('Add to my equipment')).toBeNull();
   });
 });
+
+describe('GearPickRail — the fit answers re-ask the racket, and strings only when the frame can move', () => {
+  const ui = (gear: UseGear) => (
+    <NextIntlClientProvider locale="en" messages={enMessages}>
+      <GearPickRail activeName="Lin" gear={gear} />
+    </NextIntlClientProvider>
+  );
+  const owned = { id: 'i1', catalogId: 'r-owned', category: 'racket' as const, label: 'Yonex Astrox 88D Pro' };
+  const doc = (extra: object) => ({ id: 'g', memberId: 'm', updatedAt: '2026-01-01', items: [], ...extra });
+
+  function countAsks() {
+    const asks: string[] = [];
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      asks.push(url);
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ item: ITEM, reasons: [] }) });
+    }) as unknown as typeof fetch;
+    return asks;
+  }
+
+  it('a fit-only change re-asks the racket but NOT the string when the member owns a racket', async () => {
+    const asks = countAsks();
+    const { rerender } = render(ui(fakeGear({ gear: doc({ items: [owned] }), rackets: [owned] })));
+    await screen.findByLabelText('Racket — Why this?');
+    expect(asks).toHaveLength(2);
+
+    rerender(ui(fakeGear({ gear: doc({ items: [owned], fitGoal: 'more_power' }), rackets: [owned] })));
+    await waitFor(() => expect(asks.filter((u) => u.includes('category=racket'))).toHaveLength(2));
+    expect(asks.filter((u) => u.includes('category=string'))).toHaveLength(1);
+  });
+
+  it('a fit-only change re-asks BOTH when the member owns no racket — the string pairs against the recommended frame', async () => {
+    const asks = countAsks();
+    const { rerender } = render(ui(fakeGear({ gear: doc({}) })));
+    await screen.findByLabelText('Racket — Why this?');
+
+    rerender(ui(fakeGear({ gear: doc({ fitSwing: 'fast' }) })));
+    await waitFor(() => expect(asks.filter((u) => u.includes('category=string'))).toHaveLength(2));
+  });
+
+  it('a burst of changes collapses into one refetch pass', async () => {
+    const asks = countAsks();
+    const { rerender } = render(ui(fakeGear({ gear: doc({ items: [owned] }), rackets: [owned] })));
+    await screen.findByLabelText('Racket — Why this?');
+
+    rerender(ui(fakeGear({ gear: doc({ items: [owned], fitGoal: 'faster' }), rackets: [owned] })));
+    rerender(ui(fakeGear({ gear: doc({ items: [owned], fitGoal: 'faster', fitSwing: 'fast' }), rackets: [owned] })));
+    rerender(ui(fakeGear({ gear: doc({ items: [owned], fitGoal: 'faster', fitSwing: 'fast', fitGrip: 'G5' }), rackets: [owned] })));
+    await waitFor(() => expect(asks.filter((u) => u.includes('category=racket'))).toHaveLength(2));
+    // Give a second pass every chance to appear, then assert it did not.
+    await new Promise((r) => setTimeout(r, 700));
+    expect(asks.filter((u) => u.includes('category=racket'))).toHaveLength(2);
+  });
+
+  it('the pick sheet\'s Fit link swaps it for the questionnaire', async () => {
+    countAsks();
+    process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
+    try {
+      render(ui(fakeGear({ gear: doc({}) })));
+      fireEvent.click(await screen.findByLabelText('Racket — Why this?'));
+      fireEvent.click(await screen.findByRole('button', { name: 'Fit' }));
+      expect(await screen.findByText(enMessages.stats.gear.fitIntro)).toBeTruthy();
+      expect(screen.queryByText(enMessages.stats.gear.pickSheetAdd)).toBeNull();
+    } finally {
+      delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
+    }
+  });
+});

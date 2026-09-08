@@ -26,6 +26,10 @@ export interface GearPickSheetProps {
    *  every other gear surface, which is why the rail card flips to IN YOUR KIT
    *  and the kit row fills in without a reload. */
   gear: UseGear;
+  /** Opens the fit questionnaire (`GearFitSheet`). The rail owns that sheet
+   *  the same way it owns this one; this sheet only asks for it. Absent means
+   *  the link is not rendered. */
+  onOpenFit?: () => void;
 }
 
 /**
@@ -112,7 +116,7 @@ function specLine(item: CatalogItem): string {
  * precisely so it can join the muted caveat paragraph without taking real
  * warnings down with it (see `StringPairing.provenance`).
  */
-export default function GearPickSheet({ open, onClose, category, pick, owned, gear }: GearPickSheetProps) {
+export default function GearPickSheet({ open, onClose, category, pick, owned, gear, onOpenFit }: GearPickSheetProps) {
   const t = useTranslations('stats.gear');
   // The two lapsed-session lines live with the other bag-write failures in
   // `valueHub`, alongside bagFull/bagDuplicate, rather than being duplicated.
@@ -167,6 +171,10 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   const prefsKnown = gear.loaded && !gear.loadError;
   const playFormat = prefsKnown ? (gear.gear?.playFormat ?? 'both') : null;
   const budgetMaxCad = prefsKnown ? (gear.gear?.budgetMaxCad ?? null) : undefined;
+  // The fit goal joins the summary line when it has been answered, so the
+  // sentence above the pick names everything the engine was told. Absent is
+  // absent — no "happy with it" is written on the member's behalf.
+  const fitGoal = prefsKnown ? (gear.gear?.fitGoal ?? null) : null;
 
   async function setPref(prefs: { playFormat?: 'singles' | 'doubles' | 'both'; budgetMaxCad?: number | null }) {
     setPrefError(null);
@@ -319,10 +327,16 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
       {!prefsUnknown && (
         <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
-          {t('pickSheetPrefSummary', {
-            format: t(`formatLower_${playFormat}`),
-            budget: budgetWords(budgetMaxCad as number | null),
-          })}
+          {fitGoal
+            ? t('pickSheetPrefSummaryFit', {
+                format: t(`formatLower_${playFormat}`),
+                budget: budgetWords(budgetMaxCad as number | null),
+                goal: t(`fitGoalLower_${fitGoal}`),
+              })
+            : t('pickSheetPrefSummary', {
+                format: t(`formatLower_${playFormat}`),
+                budget: budgetWords(budgetMaxCad as number | null),
+              })}
         </span>
       )}
       {!prefsUnknown && (
@@ -334,6 +348,20 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
           style={{ background: 'transparent', border: 'none', padding: '0', cursor: 'pointer', color: 'var(--accent)' }}
         >
           {t('pickSheetChange')}
+        </button>
+      )}
+      {/* The questionnaire is a second door, not more controls here — see
+          GearFitSheet. Rendered even when the preferences are unknown: the
+          fit sheet handles that state itself, and it is also the only place
+          an already-stored comfort answer can be cleared. */}
+      {onOpenFit && (
+        <button
+          type="button"
+          onClick={onOpenFit}
+          className="fs-sm"
+          style={{ background: 'transparent', border: 'none', padding: '0', cursor: 'pointer', color: 'var(--accent)' }}
+        >
+          {t('pickSheetFit')}
         </button>
       )}
     </div>

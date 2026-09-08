@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { recordEngagement } from '@/lib/engagement';
 import GearPickCard, { type GearPick, type GearPickCardStatus } from './GearPickCard';
 import GearPickSheet from './GearPickSheet';
+import GearFitSheet from './GearFitSheet';
 import type { UseGear } from './useGear';
 import type { CatalogItem, EquipmentCategory } from '@/lib/types';
 
@@ -18,6 +19,16 @@ const ORDER: EquipmentCategory[] = ['racket', 'shoe', 'string', 'shuttle'];
  *  card with zero fetches — the rail issues one fetch per SOURCED category,
  *  never one per rail slot. */
 const SOURCED: EquipmentCategory[] = ['racket', 'string'];
+
+/**
+ * How long a preference change waits before re-asking `/api/recommend`. The
+ * fit sheet has five controls and a member answering it for the first time
+ * taps them in a row; every tap used to be a fetch per sourced category
+ * against a 10/min/IP limit whose throttled 200 renders as an error card.
+ * Half a second collapses a burst into one pass. The FIRST pass is never
+ * delayed — the skeletons would just sit there.
+ */
+export const REC_REFETCH_DEBOUNCE_MS = 500;
 
 interface CategoryState {
   status: GearPickCardStatus;
@@ -75,6 +86,9 @@ export default function GearPickRail({ activeName, gear, onPairTension }: GearPi
   // the sheet is opened FROM a card but belongs to the rail, which is the only
   // place that holds both the pick and the gear owner needed to add it.
   const [openCategory, setOpenCategory] = useState<EquipmentCategory | null>(null);
+  // The fit questionnaire, owned here for the same reason the pick sheet is:
+  // it writes through the rail's `gear` and its answers change the pick.
+  const [openFit, setOpenFit] = useState(false);
 
   // Mirror of each category's status, kept in step with `setState` so the fetch
   // effect can consult it without taking `state` as a dependency (which would
@@ -111,9 +125,19 @@ export default function GearPickRail({ activeName, gear, onPairTension }: GearPi
   // 10/min rate limit whose throttled response has no `unavailable` field —
   // i.e. it would render as an error card (see the ladder below).
   const gearLoaded = gear.loaded;
-  const recKey = gearLoaded
-    ? `${gear.gear?.playFormat ?? ''}|${gear.gear?.budgetMaxCad ?? ''}`
+  // Two keys, because the two engines read different fields. Format and
+  // budget reach both; the fit answers reach the racket engine only — and
+  // reach the STRING pick solely through the frame it pairs against, which is
+  // the member's own racket whenever they have one. So a fit-only change
+  // re-asks strings only for a member with no racket in the bag; with one, the
+  // frame is fixed and the answer cannot move.
+  const d = gear.gear;
+  const prefKey = gearLoaded ? `${d?.playFormat ?? ''}|${d?.budgetMaxCad ?? ''}` : null;
+  const fitKey = gearLoaded
+    ? `${d?.fitGoal ?? ''}|${d?.fitSwing ?? ''}|${d?.fitArmComfort ?? ''}|${d?.fitGrip ?? ''}`
     : null;
+  const recKey = prefKey === null ? null : `${prefKey}#${fitKey}`;
+  const fitAloneReachesStrings = gear.rackets.length === 0;
   const prevKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -130,71 +154,81 @@ export default function GearPickRail({ activeName, gear, onPairTension }: GearPi
     // run has already had its cleanup fire (`live = false`), discarding the
     // response that was going to settle it, so it would sit on CardSkeleton
     // permanently — a fifth state, and not one of the four honest ones.
-    const isRefresh = prevKeyRef.current !== null && prevKeyRef.current !== recKey;
+    const prev = prevKeyRef.current;
+    const isRefresh = prev !== null && prev !== recKey;
+    const onlyFitChanged = isRefresh && prev.split('#')[0] === recKey.split('#')[0];
     prevKeyRef.current = recKey;
 
     let live = true;
-    for (const cat of SOURCED) {
-      if (isRefresh && statusRef.current[cat] === 'parked') continue;
-      fetch(`${BASE}/api/recommend?name=${encodeURIComponent(activeName)}&category=${cat}`, { cache: 'no-store' })
-        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-        .then((d) => {
-          if (!live) return;
-          // The ladder, in order:
-          //
-          //   `unavailable`  → parked, regardless of which of the two reasons
-          //                    the route gave. The rail deliberately does not
-          //                    distinguish 'no_engine' from 'no_catalog'.
-          //   `needsCheckIn` → parked. A ready response with no item because
-          //                    the member hasn't self-assessed yet is an
-          //                    honest "nothing to recommend", not a failure.
-          //   an `item`      → ready.
-          //   none of those  → ERROR, never parked. `/api/recommend`'s
-          //                    rate-limit branch returns a bare
-          //                    `{item: null, reason: null}` with a 200 and no
-          //                    `unavailable` field, so a throttled member
-          //                    would otherwise see a confident "Coming soon"
-          //                    for a live category. A failure must never
-          //                    render as a product state.
-          if (d.unavailable || d.needsCheckIn) {
-            apply(cat, { status: 'parked', pick: null });
-            return;
-          }
-          if (!d.item) {
-            apply(cat, { status: 'error', pick: null });
-            return;
-          }
-          apply(cat, {
-            status: 'ready',
-            pick: {
-              item: d.item as CatalogItem,
-              // Two response shapes, not one. Only the engine paths return a
-              // `reasons` array; the non-recommender path (route.ts:311, the
-              // one bpm-stable always takes because deploy-stable.yml sets
-              // NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER 'false') returns a singular
-              // `reason` string. Reading only the array threw that away and
-              // left the pick sheet — whose entire job is explaining one
-              // recommendation — with a heading and an Add button and no why.
-              reasons: Array.isArray(d.reasons)
-                ? d.reasons
-                : (typeof d.reason === 'string' && d.reason ? [d.reason] : []),
-              warnings: Array.isArray(d.warnings) ? d.warnings : [],
-              pairedWith: d.pairedWith ?? undefined,
-              tensionLbs: typeof d.tensionLbs === 'number' ? d.tensionLbs : null,
-            },
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const run = () => {
+      for (const cat of SOURCED) {
+        if (isRefresh && statusRef.current[cat] === 'parked') continue;
+        if (onlyFitChanged && cat === 'string' && !fitAloneReachesStrings) continue;
+        fetch(`${BASE}/api/recommend?name=${encodeURIComponent(activeName)}&category=${cat}`, { cache: 'no-store' })
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+          .then((d) => {
+            if (!live) return;
+            // The ladder, in order:
+            //
+            //   `unavailable`  → parked, regardless of which of the two reasons
+            //                    the route gave. The rail deliberately does not
+            //                    distinguish 'no_engine' from 'no_catalog'.
+            //   `needsCheckIn` → parked. A ready response with no item because
+            //                    the member hasn't self-assessed yet is an
+            //                    honest "nothing to recommend", not a failure.
+            //   an `item`      → ready.
+            //   none of those  → ERROR, never parked. `/api/recommend`'s
+            //                    rate-limit branch returns a bare
+            //                    `{item: null, reason: null}` with a 200 and no
+            //                    `unavailable` field, so a throttled member
+            //                    would otherwise see a confident "Coming soon"
+            //                    for a live category. A failure must never
+            //                    render as a product state.
+            if (d.unavailable || d.needsCheckIn) {
+              apply(cat, { status: 'parked', pick: null });
+              return;
+            }
+            if (!d.item) {
+              apply(cat, { status: 'error', pick: null });
+              return;
+            }
+            apply(cat, {
+              status: 'ready',
+              pick: {
+                item: d.item as CatalogItem,
+                // Two response shapes, not one. Only the engine paths return a
+                // `reasons` array; the non-recommender path (route.ts:311, the
+                // one bpm-stable always takes because deploy-stable.yml sets
+                // NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER 'false') returns a singular
+                // `reason` string. Reading only the array threw that away and
+                // left the pick sheet — whose entire job is explaining one
+                // recommendation — with a heading and an Add button and no why.
+                reasons: Array.isArray(d.reasons)
+                  ? d.reasons
+                  : (typeof d.reason === 'string' && d.reason ? [d.reason] : []),
+                warnings: Array.isArray(d.warnings) ? d.warnings : [],
+                pairedWith: d.pairedWith ?? undefined,
+                tensionLbs: typeof d.tensionLbs === 'number' ? d.tensionLbs : null,
+              },
+            });
+          })
+          // A non-ok response (flag off, forbidden, load failure) is "unknown",
+          // not "known parked" — it must render the distinct error card per the
+          // legible-fail rule, never a confident coming-soon.
+          .catch(() => {
+            if (live) apply(cat, { status: 'error', pick: null });
           });
-        })
-        // A non-ok response (flag off, forbidden, load failure) is "unknown",
-        // not "known parked" — it must render the distinct error card per the
-        // legible-fail rule, never a confident coming-soon.
-        .catch(() => {
-          if (live) apply(cat, { status: 'error', pick: null });
-        });
-    }
+      }
+    };
+    // A refresh is debounced; the first pass is not (see REC_REFETCH_DEBOUNCE_MS).
+    if (isRefresh) timer = setTimeout(run, REC_REFETCH_DEBOUNCE_MS);
+    else run();
     return () => {
       live = false;
+      if (timer) clearTimeout(timer);
     };
-  }, [activeName, recKey, apply]);
+  }, [activeName, recKey, apply, fitAloneReachesStrings]);
 
   if (!activeName) return null;
 
@@ -293,7 +327,13 @@ export default function GearPickRail({ activeName, gear, onPairTension }: GearPi
       pick={openPick}
       owned={isOwned(openCategory ?? 'racket', openPick?.item ?? null)}
       gear={gear}
+      // One sheet at a time. The pick sheet closes and the questionnaire opens
+      // in its place; when that closes the member is back on the rail, whose
+      // racket card has re-asked with the new answers. Stacking the two would
+      // put a form over the answer it changes.
+      onOpenFit={() => { setOpenCategory(null); setOpenFit(true); }}
     />
+    <GearFitSheet open={openFit} onClose={() => setOpenFit(false)} gear={gear} />
     </>
   );
 }

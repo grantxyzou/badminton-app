@@ -56,6 +56,7 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ### Added
 
+- **Tell us how you play — the racket-fit questions** — from the racket pick on Equipment, tap Fit: what you'd change about your racket, your swing, grip size, string budget, and an optional note on whether your arm or shoulder is sore after play. Everything is optional and one tap each. The suggestion doesn't use them yet — that's the next release — but they are saved now so it can. The arm-or-shoulder answer is only visible to you and the organiser, is covered in the privacy policy, and can be cleared any time.
 - **A privacy policy, terms, support and account-deletion page** — at `/bpm/legal/privacy`, `/terms`, `/support` and `/delete-account`, readable without signing in, in both languages. The delete-account page walks you into the in-app flow; if you can't get in, it tells you how to ask instead. (These are also the URLs the App Store and Google Play listings need.)
 - **Groundwork for the BPM app on the App Store and Google Play** — not visible yet. The native shell, its push transport and the "Move to the app" link are built and tested; the store side (listing, review, Firebase) is still to come, so nothing changes for you today.
 - **Grant can ask you before a stringing price changes** — if the price or spec on your racket changes after he's quoted it, you get a prompt showing exactly what's changing, from what to what. Your balance doesn't move until you say yes. Declining leaves the original standing.
