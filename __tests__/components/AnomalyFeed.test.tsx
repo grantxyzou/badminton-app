@@ -61,13 +61,34 @@ describe('<AnomalyFeed />', () => {
     const warn = { code: 'cost_changed', severity: 'warning', message: 'cost drifted', dismissable: true };
     const block = { code: 'skip_date', severity: 'blocking', message: 'on your skip list', dismissable: false };
 
+    /**
+     * The disappearance is asserted through `waitFor`, not synchronously after
+     * the advance, and that is deliberate.
+     *
+     * The timer is not scheduled by the render `waitFor` observes above — it is
+     * scheduled by a SEPARATE effect keyed on `[items, hidden, paused]`, which
+     * runs after the fetch resolves and commits. When the runner is contended
+     * the advance can land before that effect has scheduled anything, so
+     * `advanceTimersByTime` fires nothing and the notice is still on screen.
+     * That is what failed the deploy of `2c5f3e8` on 2026-09-08: the assertion
+     * received the `<p>cost drifted</p>` it expected to be null.
+     *
+     * `waitFor` closes the race without weakening the test. RTL advances fake
+     * timers while it polls, so a late-scheduled timer still fires — and if the
+     * notice never hides, `waitFor` times out and this still fails. It cannot
+     * turn a real "auto-hide is broken" regression green.
+     *
+     * NOT REPRODUCED LOCALLY: 4 full-suite runs under vitest 5 and 25 isolated
+     * runs of this file all passed. It needs a slower, contended runner, which
+     * is exactly why it is worth removing by construction rather than by luck.
+     */
     it('hides a dismissable notice once its time is up', async () => {
       mockFetch(async () => new Response(JSON.stringify([warn]), { status: 200 }));
       render(<AnomalyFeed />);
       await waitFor(() => expect(screen.getByText('cost drifted')).toBeTruthy());
 
       await act(async () => { vi.advanceTimersByTime(6500); });
-      expect(screen.queryByText('cost drifted')).toBeNull();
+      await waitFor(() => expect(screen.queryByText('cost drifted')).toBeNull());
     });
 
     /**
@@ -108,8 +129,9 @@ describe('<AnomalyFeed />', () => {
       render(<AnomalyFeed />);
       await waitFor(() => expect(screen.getByText('cost drifted')).toBeTruthy());
 
+      // Same scheduling race as the first auto-hide test — see the note there.
       await act(async () => { vi.advanceTimersByTime(6500); });
-      expect(screen.queryByText('cost drifted')).toBeNull();
+      await waitFor(() => expect(screen.queryByText('cost drifted')).toBeNull());
       expect(screen.getByText('on your skip list')).toBeTruthy();
     });
 
