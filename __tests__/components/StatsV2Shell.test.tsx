@@ -37,12 +37,12 @@ describe('StatsV2Shell', () => {
 
   it('always renders exactly four registers', () => {
     renderShell();
-    for (const label of ['You', 'Play', 'Learn', 'Gear']) {
+    for (const label of ['You', 'Play', 'Learn', 'Equipment']) {
       expect(screen.getByRole('button', { name: label })).toBeTruthy();
     }
     // v1 produced two- and three-tab variants depending on flags; v2 does not.
     const tabs = screen.getAllByRole('button').filter((b) =>
-      ['You', 'Play', 'Learn', 'Gear'].includes(b.textContent ?? ''),
+      ['You', 'Play', 'Learn', 'Equipment'].includes(b.textContent ?? ''),
     );
     expect(tabs.length).toBe(4);
   });
@@ -65,7 +65,7 @@ describe('StatsV2Shell', () => {
     expect(screen.getByText('learn-content')).toBeTruthy();
     expect(screen.queryByText('you-content')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Gear' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Equipment' }));
     expect(screen.getByText('gear-content')).toBeTruthy();
     expect(screen.queryByText('learn-content')).toBeNull();
   });
@@ -73,7 +73,7 @@ describe('StatsV2Shell', () => {
   it('keeps the overview strip visible in every register', async () => {
     renderShell();
     await waitFor(() => expect(screen.getByText('Level')).toBeTruthy());
-    for (const label of ['Play', 'Learn', 'Gear']) {
+    for (const label of ['Play', 'Learn', 'Equipment']) {
       fireEvent.click(screen.getByRole('button', { name: label }));
       expect(screen.getByText('Level')).toBeTruthy();
       expect(screen.getByText('Games')).toBeTruthy();

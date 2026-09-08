@@ -2,6 +2,7 @@
 
 **Track:** Reach (ROADMAP track 4 — the one Value-Hub track never built)
 **Status:** in-flight
+**Review on:** 2026-10-07 — still parked on the same two things, and is it still wanted? A month of no movement means blocked or finished.
 
 ## Problem
 

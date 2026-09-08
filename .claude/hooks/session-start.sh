@@ -1,11 +1,18 @@
 #!/bin/bash
 # SessionStart hook for the badminton-app.
 #
-# Surfaces the one piece of per-project state still worth announcing before
-# the first edit: feature flags past their removal date, plus any flag /
-# workflow drift — by running the same check the PostToolUse hook runs,
-# `scripts/check-flag-sync.mjs`. That script prints nothing when there is
-# nothing to say, so a clean repo starts a silent session.
+# Surfaces the per-project state worth announcing before the first edit. Two
+# checks, and they are the same idea pointed at different things: something was
+# promised for a date, and the date has passed.
+#
+#   - `scripts/check-flag-sync.mjs`     — flags past their removal date, plus
+#                                         flag/workflow drift.
+#   - `scripts/check-plan-reviews.mjs`  — plan docs past their `Review on:` date.
+#
+# Both print nothing when there is nothing to say, so a clean repo starts a
+# silent session. The second exists because a kill criterion with no scheduled
+# read is a note rather than a gate — `docs/plans/value-hub-slice-0.md` carried
+# an honest one and went unread for nine weeks.
 #
 # It used to surface two other things: releases "soaking on bpm-next" and the
 # `bpm confirm` high-risk-ops list. Both concepts were retired in August 2026
@@ -19,3 +26,4 @@ set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 node "$REPO_ROOT/scripts/check-flag-sync.mjs" 2>&1 || true
+node "$REPO_ROOT/scripts/check-plan-reviews.mjs" 2>&1 || true

@@ -12,11 +12,25 @@ on:
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    # Bot-authored PRs are SKIPPED, not reviewed.
+    #
+    # The action refuses a non-human actor outright — "Workflow initiated by
+    # non-human actor: dependabot (type: Bot)" — and exits 1. That painted a
+    # permanent red X on every dependency PR (#310, #322, #323, #324 all carry
+    # one today), and a check that is always red for a whole PR class is worse
+    # than no check: it teaches you to skim past red exactly where a real
+    # failure would show up. #324's genuine `verify` failure sat next to a
+    # meaningless red `claude-review` for a day.
+    #
+    # Allowing bots through was the other option and is the wrong one: a
+    # REVIEW.md review of a 269-line package-lock.json diff has nothing to say,
+    # and it would spend tokens per dependency PR to say it. What matters on
+    # those is `verify`, which does run.
+    #
+    # NOTE: this cannot be proven on the PR that introduces it — the action
+    # skips any PR touching its own workflow file (see CLAUDE.md). Proof is the
+    # next Dependabot PR showing a grey skip instead of a red X.
+    if: github.event.pull_request.user.type != 'Bot'
 
     runs-on: ubuntu-latest
     permissions:
@@ -54,8 +68,27 @@ jobs:
             /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }} --comment
 
             Before reporting, read REVIEW.md at the repository root and apply it: rank findings the way it ranks them, and do not report anything it lists under "Do not flag".
+          # Read/Grep/Glob are what make this a REVIEW rather than a diff
+          # reader. Without them the agent can see only the lines the PR
+          # changed and cannot open the file they land in — which is this
+          # repo's own recorded blind spot ("a per-task review scoped to its
+          # own diff cannot see cross-file breakage", CLAUDE.md), wired into
+          # the gate meant to catch it.
+          #
+          # It was also being told to do something it had been denied: the
+          # prompt above says "read REVIEW.md at the repository root", and
+          # `Read` was not on this list. The review POLICY was unreadable by
+          # the reviewer. #331 logged `permission_denials_count: 12` across
+          # 3 turns and reported nothing — a green check that cannot be
+          # distinguished from "looked and found nothing".
+          #
+          # All three are read-only. They add no ability to change the repo,
+          # post, or run anything, and no new exposure to a hostile PR: the
+          # agent already ingests PR-authored text through `gh pr diff`, and
+          # the step above restores .claude/, CLAUDE.md and friends from
+          # origin/main precisely because the PR head is untrusted.
           claude_args: |
-            --allowedTools "Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*)"
+            --allowedTools "Read,Grep,Glob,Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*)"
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 

@@ -6,7 +6,7 @@ directory.
 ## Gear register (v2, 2026-08-20)
 
 `GearRegister` is the whole register, gated on `NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE`.
-It composes four surfaces — the pick rail, "Your kit", string tension, and
+It composes four surfaces — the pick rail, "Your equipment", string tension, and
 "What the club plays" — and is a pure composition component: it holds no
 state of its own except the one thing it exists to own (below).
 
@@ -24,10 +24,10 @@ state of its own except the one thing it exists to own (below).
 - **Two sheets, two jobs — "take our pick" vs. "choose your own":**
   - **`GearPickRail` + `GearPickCard` + `GearPickSheet`** are "take our
     pick" — one card per category showing what `/api/recommend` would
-    suggest, flipping to an IN YOUR KIT badge the instant the member already
+    suggest, flipping to a YOU OWN THIS badge the instant the member already
     owns it (the redesign's headline bug fix: the old surface could
     recommend back gear the member already had). `GearPickSheet` is the
-    detail behind ONE rail card and ONE action (Add to my kit); it never
+    detail behind ONE rail card and ONE action (Add to my equipment); it never
     browses the catalog. Reasons render plain-language first (the engine's
     own headline reason) and the catalog spec line second — the spec line is
     a display line here, never a "why this" reason (see `lib/pickReasons.ts`).
@@ -37,7 +37,7 @@ state of its own except the one thing it exists to own (below).
     the tapped row becomes a checked, tinted, inert owned row, and dismissing
     rendered that state for one frame to nobody. The confirmation IS the row.
     `GearPickSheet` follows the same rule — a successful add flips its action
-    to the IN YOUR KIT badge in place. Both rely on `useGear` being the single
+    to the YOU OWN THIS badge in place. Both rely on `useGear` being the single
     owner: the write updates the shared doc, so ownership re-renders with no
     refetch and neither sheet holds gear state. It opens on an **All** brand tab,
     not on the first brand: defaulting to a brand hid 46 of the 71 rackets
@@ -56,7 +56,7 @@ state of its own except the one thing it exists to own (below).
       holds and is still satisfied: a query searches all brands at once, and a
       cross-brand result set still groups, so brand stays legible exactly
       where it matters. Do not put it back on the row.
-    - **Owned rows stay IN PLACE**, checked, captioned ("In your kit · using
+    - **Owned rows stay IN PLACE**, checked, captioned ("Yours · using
       today" / "· strung at 24 lb"), and NOT tappable. They used to be deleted
       from the catalog and re-rendered in an "Already in your kit" section
       pinned above it — which is bag MANAGEMENT sitting on top of the list you
@@ -78,9 +78,9 @@ state of its own except the one thing it exists to own (below).
     ownership off the same object) with no reload. **`BagList` belongs to
     `YourKitCard` only** — neither sheet imports it any more. `GearPickSheet`
     is behind exactly one card and one action, so ownership there is a single
-    `StatusBadge` ("In your kit"); `GearSheet` marks owned rows in place. A
+    `StatusBadge` ("You own this"); `GearSheet` marks owned rows in place. A
     LIST of owned items, with controls, is the kit's own job.
-- **`YourKitCard`** — one row per equipment category ("Your kit"), showing
+- **`YourKitCard`** — one row per equipment category ("Your equipment"), showing
   what the member owns and opening `GearSheet` to change it. Unpickable
   categories (no catalog rows) render as a plain, non-interactive row rather
   than a button that does nothing. **It is also the bag's MANAGE surface**

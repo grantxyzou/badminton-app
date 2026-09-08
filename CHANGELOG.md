@@ -71,6 +71,7 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **Your rackets live on the Equipment tab now** — the tab shows the racket you're using today, then every racket you own, with "Add a racket" underneath. Picking one used to mean opening a sheet that tried to be both your bag and a 50-racket catalogue at once; adding is now the only thing that opens a sheet, and one tap adds a racket instead of tap-then-save.
 - **Finding your racket got easier** — the picker is full-height, searches every brand at once, and shows the brand above each model, so a search that crosses brands no longer gives you a list of bare model names. Rackets already in your bag don't show up in the list.
 - **Sign-in options are a row, not a block** — "How you sign in" now sits with Update PIN and Have a recovery code? in Account, and tells you what you've got (PIN · Google) without opening it. It used to be a panel wedged between those rows, taking up half the screen to say the same thing.
+- **It's "equipment" now, not "kit"** — the Stats tab, the stringing sheet and Profile all say equipment, the word Yonex uses, so what you own is called the same thing here as on the box it came in. Chinese already said 装备.
 
 ### Fixed
 

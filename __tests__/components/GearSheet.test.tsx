@@ -197,7 +197,7 @@ describe('GearSheet (catalog picker)', () => {
     mockCatalog();
     renderSheet({ ownedCatalogIds: ['racket-yonex-astrox-88d-pro'] });
     expect(await screen.findByText('Astrox 88D Pro')).toBeTruthy();
-    expect(screen.getByText('In your kit')).toBeTruthy();
+    expect(screen.getByText('You own this')).toBeTruthy();
     // Still counted in its brand group — the count describes the catalog, not
     // what is left to buy.
     expect(screen.getByText('Yonex · 2')).toBeTruthy();
@@ -218,7 +218,7 @@ describe('GearSheet (catalog picker)', () => {
       { id: 'g1', catalogId: 'racket-yonex-astrox-88d-pro', category: 'racket', label: 'Yonex Astrox 88D Pro' },
     ];
     renderSheet({ ownedCatalogIds: [owned[0].catalogId!], ownedItems: owned, activeItemId: 'g1' });
-    expect(await screen.findByText('In your kit · using today')).toBeTruthy();
+    expect(await screen.findByText('Yours · using today')).toBeTruthy();
   });
 
   it('says what tension an owned string is strung at', async () => {
@@ -227,7 +227,7 @@ describe('GearSheet (catalog picker)', () => {
       { id: 'g9', catalogId: 'string-yonex-bg65', category: 'string', label: 'Yonex BG65', tensionLbs: 24 },
     ];
     renderSheet({ category: 'string', ownedCatalogIds: ['string-yonex-bg65'], ownedItems: owned });
-    expect(await screen.findByText('In your kit · strung at 24 lb')).toBeTruthy();
+    expect(await screen.findByText('Yours · strung at 24 lb')).toBeTruthy();
   });
 
   /** Brand tabs describe the CATALOG, so owning everything of a brand no
@@ -411,7 +411,7 @@ describe('GearSheet search', () => {
     renderSheet({ ownedCatalogIds: ['racket-victor-drivex-9x'] });
     await waitFor(() => screen.getByText('Astrox 88D Pro'));
     fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: 'drivex' } });
-    expect(screen.getByText('In your kit')).toBeTruthy();
+    expect(screen.getByText('You own this')).toBeTruthy();
   });
 });
 
