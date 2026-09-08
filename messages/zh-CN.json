@@ -824,6 +824,7 @@
     },
     "offline": "你已离线——重新联网后再保存。",
     "signInAgain": "请在“我的”里登录后查看。",
+    "insightUnavailable": "无法加载你的解读 \u2014 刷新重试。",
     "signInAgainTitle": "登录后查看你的数据",
     "signInAgainBody": "此设备未登录你的账号，因此无法加载你的数据和洞察。请在“我的”里登录。",
     "summaryGreeting": {

@@ -824,6 +824,7 @@
     },
     "offline": "You're offline — reconnect to save.",
     "signInAgain": "Sign in on Profile to see this.",
+    "insightUnavailable": "Couldn't load your read \u2014 refresh to retry.",
     "signInAgainTitle": "Sign in to see your stats",
     "signInAgainBody": "This device isn't signed in to your account, so your stats and insights can't load. Sign in from Profile.",
     "summaryGreeting": {

@@ -41,8 +41,8 @@ export interface InsightData {
  * carries it so a consumer can render the actionable sign-in state instead.
  */
 export type InsightLoad =
-  | { data: InsightData; forbidden: false }
-  | { data: null; forbidden: boolean };
+  | { data: InsightData; forbidden: false; serverError: false }
+  | { data: null; forbidden: boolean; serverError: boolean };
 
 type Entry = { promise: Promise<InsightLoad> };
 const cache = new Map<string, Entry>();
@@ -53,13 +53,19 @@ function load(name: string): Promise<InsightLoad> {
   if (hit) return hit.promise;
   const promise = fetch(`${BASE}/api/stats/insight?name=${encodeURIComponent(name)}`, { cache: 'no-store' })
     .then(async (r) => {
-      if (r.ok) return { data: (await r.json()) as InsightData, forbidden: false as const };
+      if (r.ok) return { data: (await r.json()) as InsightData, forbidden: false as const, serverError: false as const };
       // Only 403 is a known "you may not read this". Every other non-ok
-      // status (429, 5xx, flag-off 404) stays a plain load failure — telling
+      // status (429, flag-off 404) stays a plain load failure — telling
       // a rate-limited member to sign in again would be its own lie.
-      return { data: null, forbidden: r.status === 403 };
+      //
+      // 5xx is separated out because it is the one failure the SERVER is
+      // asserting about itself, and it is now a real answer rather than a 200
+      // full of nulls: the route returns 503 when a read fails or generation is
+      // unavailable. A consumer can explain that honestly; it cannot explain a
+      // 429 or a 404 without guessing, which is why those stay lumped together.
+      return { data: null, forbidden: r.status === 403, serverError: r.status >= 500 };
     })
-    .catch(() => ({ data: null, forbidden: false }));
+    .catch(() => ({ data: null, forbidden: false, serverError: false }));
   cache.set(key, { promise });
   // A refusal must not be memoized past the in-flight window. The cache is
   // keyed by NAME and only cleared on a name → different-name transition, so a
@@ -85,6 +91,14 @@ export interface UseInsight {
    * refreshing.
    */
   forbidden: boolean;
+  /**
+   * The server answered 5xx — it is asserting its own failure, so a consumer can
+   * say "couldn't load" and be telling the truth. A SUBSET of `error`: every
+   * `serverError` is also an `error`, so a consumer that checks only `error`
+   * keeps its existing behaviour. Kept separate from the rest of `error`
+   * because a 429 or a flag-off 404 cannot be explained without guessing.
+   */
+  serverError: boolean;
 }
 
 /**
@@ -103,6 +117,7 @@ export function useInsight(enabled = true): UseInsight {
     loading: false,
     error: false,
     forbidden: false,
+    serverError: false,
   });
 
   // Force a refresh when the member actually CHANGES. The cache is keyed by
@@ -123,11 +138,11 @@ export function useInsight(enabled = true): UseInsight {
 
   useEffect(() => {
     if (!enabled || !activeName) {
-      setState({ data: null, loading: false, error: false, forbidden: false });
+      setState({ data: null, loading: false, error: false, forbidden: false, serverError: false });
       return;
     }
     let cancelled = false;
-    setState((s) => ({ ...s, loading: true, error: false, forbidden: false }));
+    setState((s) => ({ ...s, loading: true, error: false, forbidden: false, serverError: false }));
     load(activeName).then((res) => {
       if (cancelled) return;
       setState({
@@ -138,6 +153,7 @@ export function useInsight(enabled = true): UseInsight {
         // state that refreshing will never fix.
         error: res.data === null && !res.forbidden,
         forbidden: res.forbidden,
+        serverError: res.serverError,
       });
     });
     return () => {
