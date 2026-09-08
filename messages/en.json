@@ -1207,7 +1207,7 @@
     },
     "privacy": {
       "title": "Privacy policy",
-      "updated": "3 September 2026",
+      "updated": "7 September 2026",
       "sections": [
         {
           "h": "Who we are",
@@ -1242,7 +1242,8 @@
         {
           "h": "Where it lives",
           "p": [
-            "Data is stored in Microsoft Azure (Cosmos DB) and reached only over HTTPS. Sign-in with Google or Apple is handled by those providers under their own policies; we receive only the identifier and, if you allow it, your name and email."
+            "Data is stored in Microsoft Azure (Cosmos DB) and reached only over HTTPS. Sign-in with Google or Apple is handled by those providers under their own policies; we receive only the identifier and, if you allow it, your name and email.",
+            "Some text in the app is written with the help of an AI service (Anthropic, in the United States) — for example the summary on your Stats tab. It receives only what that text needs, which can include your name and the names of people you regularly play with. Under our agreement with them, what we send is not used to train their models."
           ]
         },
         {
