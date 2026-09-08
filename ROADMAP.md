@@ -63,8 +63,6 @@ As of **v1.7 every feature flag was on for everyone** (the two deployments reach
 - **Stats** — Summary redesign (tiles + radar), window/cache alignment (#223), i18n + offline gating (#224).
 - **Design-audit remediation** (P0–P2) — phantom tokens resolved, icon/font-size tokenization, guardrail lint→error on cleared areas. Item #6 deliberately deferred; see `docs/plans/design-audit-remediation.md`.
 
-> `.claude/soak.local.md` does not exist in this checkout, so the stale-soak nag isn't firing. Template at `docs/automation/soak.local.md` if you want it back.
-
 ## 3. Open PRs (6, as of 2026-08-16)
 
 | PR | State | Note |

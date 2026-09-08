@@ -14,7 +14,7 @@ This system was extracted from the live codebase:
   - `app/page.tsx` — tab container
   - `tailwind.config.js` — brand colors + the text-size accessibility bump
   - `DESIGN.md` — design principles (mobile-first, thumb zone, materials simplify inward, glass > flat)
-  - `components/HomeTab.tsx`, `BottomNav.tsx`, `PlayersTab.tsx`, `SkillsTab.tsx`, `ShuttleLoader.tsx`
+  - `components/HomeTab.tsx`, `BottomNav.tsx`, `PlayersTab.tsx`, `SkillsTab.tsx`
   - `messages/en.json` — copy voice + exact strings
 
 ## Product surfaces

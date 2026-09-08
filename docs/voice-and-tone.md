@@ -5,9 +5,8 @@ them — never a scold, a salesman, or a scoreboard.** This doc is the single
 source of truth. The AI persona (`lib/aiPersona.ts`) and all user-facing copy
 (`messages/*.json`, component strings) should follow it.
 
-It's grounded in the skill-acquisition and motivation research in
-`docs/research/practice-progress-loop.md` — the same evidence that shaped the
-feedback design: feedback should be *informational, not controlling* (Cognitive
+It's grounded in skill-acquisition and motivation research — the same evidence
+that shaped the feedback design: feedback should be *informational, not controlling* (Cognitive
 Evaluation Theory), *mastery-framed, not comparative* (achievement-goal climate),
 and *never manufactured-anxiety* (the dark-pattern guardrail).
 

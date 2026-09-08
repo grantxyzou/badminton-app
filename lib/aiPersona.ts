@@ -3,8 +3,8 @@
  *
  * Every Claude prompt that produces player-facing text prepends `VOICE_PERSONA`
  * so the whole app speaks as one reliable, insightful friend. Tone edits happen
- * here, once. The full charter (with examples) lives in `docs/voice-and-tone.md`;
- * the rationale is in `docs/research/practice-progress-loop.md`.
+ * here, once. The full charter (with examples), and the skill-acquisition
+ * research behind it, live in `docs/voice-and-tone.md`.
  */
 
 /** The persona + tone contract, prepended to player-facing generation prompts. */
