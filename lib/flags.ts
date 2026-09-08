@@ -24,7 +24,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS'
   | 'NEXT_PUBLIC_FLAG_STRINGING'
   | 'NEXT_PUBLIC_FLAG_PUSH_NOTIFY'
-  | 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE';
+  | 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE'
+  | 'NEXT_PUBLIC_FLAG_MULTI_GROUP';
 
 interface FlagMeta {
   description: string;
@@ -78,6 +79,13 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     plannedRemoval: '2026-12-01',
     note: 'Dated ~8 weeks after the intended store launch. Retire once the installed-PWA base has moved: the row and both routes go, the container is dropped.',
   },
+  NEXT_PUBLIC_FLAG_MULTI_GROUP: {
+    description:
+      'Several clubs in the one deployment (docs/plans/multi-group.md) — the explicit Stage-2 choice, made 2026-09-07 so strangers who install the store app have somewhere to go. Read SERVER-SIDE: off, every request resolves to groupId "bpm" and nothing observable changes; on, the cookie claim plus a membership check decide. Phase 0 ships no behaviour at all — only lib/groupScope.ts (the container classification), the mock store\'s @groupId filter, and the additive types — so the flag is registered before anything reads it.',
+    owner: 'grant',
+    plannedRemoval: '2026-12-15',
+    note: 'About two weeks after the intended Phase 5 cutover. Retiring it means deleting the "resolve to bpm" branch AND flipping TOLERATE_UNSTAMPED off in lib/groupScope.ts (only after the migrate-groups status read shows zero unstamped rows for a week), not just removing the switch.',
+  },
   NEXT_PUBLIC_FLAG_STRINGING: {
     description:
       'The stringing service (design "Stringing", Aug 2026). Stage 1 is the BENCH only: the stringingJobs container plus the admin-side job list, job detail and intake form. Gates the /api/stringing/* routes server-side as well as the UI, because the price a stringer charges is admin-only data and a client flag cannot protect it. The player side landed too: the Home card, the request sheet, and the admin-controlled shop sign. It is behind this flag TRANSITIVELY rather than directly -- StringingCard never calls isFlagOn; it reads GET /api/stringing/shop, which 404s when the flag is off, which the card treats as UNKNOWN and renders as the "Coming soon" state. That indirection is load-bearing: tidying up the 404 handling in that card would silently un-gate the feature. Turning this off hides the bench and 404s the routes; no player-visible surface changes either way.',
@@ -127,6 +135,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_PUSH_NOTIFY;
     case 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE':
       return process.env.NEXT_PUBLIC_FLAG_NATIVE_MIGRATE;
+    case 'NEXT_PUBLIC_FLAG_MULTI_GROUP':
+      return process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
     default: {
       // Exhaustiveness guard. Adding a flag to `FlagName` without adding its
       // `case` above used to be silently legal — `readFlag` just returned

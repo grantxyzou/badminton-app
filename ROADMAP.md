@@ -9,7 +9,7 @@
 **Non-Goals (drift = building these):**
 - ❌ Multi-sport / generic "sports app" (it is badminton-specific, on purpose)
 - ❌ Generic court/venue booking platform
-- ❌ Multi-tenant / SaaS — until Stage-2 (#81) is *explicitly* chosen as the active initiative
+- ❌ Multi-tenant **SaaS** — billing, a marketing site, a super-admin plane, subdomains. (**Multi-GROUP inside the one deployment was explicitly chosen on 2026-09-07** as the Stage-2 (#81) initiative, for the store launch: `docs/plans/multi-group.md`. It runs alongside the Stats racket-fit rebuild by Grant's decision, which overrides the WIP cap below for these two.)
 - ❌ Any new user-facing surface that doesn't serve a named track below
 - ❌ Real-offline/PWA, native app, payments processing, social feed
 
@@ -83,7 +83,7 @@ As of **v1.7 every feature flag was on for everyone** (the two deployments reach
   - Tracks 1–4 (#102–#105) stay blocked until that readout says otherwise.
 - **Offline backlog** (deferred, tracked) — per-card `loadError` pills for remaining CommandCenter cards (#98); PWA only if "loads while offline" becomes a real requirement (#99).
 - **P1.5/A2 — identity recovery bridge** — still pending. Plan `docs/superpowers/plans/2026-04-27-a2-identity-recovery.md`.
-- **Stage-2 / SaaS** — multi-tenant `orgId` migration. Memo `docs/saas-productization-findings.md`. Not started; the one high-risk migration.
+- **Stage-2 — multi-group** — **chosen 2026-09-07, Phase 0 landed.** Several clubs in the one deployment so strangers who install the store app have somewhere to go; the memo `docs/saas-productization-findings.md` remains the longer-range SaaS framing (billing etc. stay non-goals). Intent, kill criterion and decisions in `docs/plans/multi-group.md`; phases in `docs/superpowers/plans/2026-09-07-multi-group.md`. Sequenced AFTER the Stats racket-fit rebuild for Phase 1 onward.
 
 ## 5. Prioritized punch list
 

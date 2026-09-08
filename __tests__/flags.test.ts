@@ -45,6 +45,14 @@ describe('feature flags', () => {
   });
 
 
+  it('recognizes NEXT_PUBLIC_FLAG_MULTI_GROUP', () => {
+    delete process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')).toBe(false);
+    process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP = 'true';
+    expect(isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')).toBe(true);
+    delete process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
+  });
+
   it('recognizes NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE', () => {
     expect(isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')).toBe(false);
     process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';

@@ -2,6 +2,7 @@ import { CosmosClient, Container } from '@azure/cosmos';
 import { randomBytes, scryptSync } from 'node:crypto';
 import equipmentCatalogSeed from '../scripts/data/equipment-catalog.json';
 import { scoreAssessment, placePhase, SKILLS } from './assessment';
+import { matchesGroup } from './groupScope';
 
 // ---------------------------------------------------------------------------
 // In-memory mock — used when COSMOS_CONNECTION_STRING is not set (local dev)
@@ -421,6 +422,13 @@ function getMockContainer(name: string) {
             }
             if ('@id' in params) {
               results = results.filter((r) => r.id === params['@id']);
+            }
+            // `@groupId` — see lib/groupScope.ts. Honoured here so a group
+            // isolation test cannot pass vacuously (an unrecognised name means
+            // NO filter). Whether an UNSTAMPED row counts as BPM's is the same
+            // constant the real clause reads, so mock and Cosmos flip together.
+            if ('@groupId' in params) {
+              results = results.filter((r) => matchesGroup(r, String(params['@groupId'])));
             }
             // Seven routes query `WHERE c.memberId = @memberId`. The mock used
             // to ignore the clause and hand back EVERY row, so several of them

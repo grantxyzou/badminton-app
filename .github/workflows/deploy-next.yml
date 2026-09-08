@@ -124,6 +124,10 @@ jobs:
           # row. OFF until the store listing exists: the sheet offers store
           # badges, and there is nothing to badge yet.
           NEXT_PUBLIC_FLAG_NATIVE_MIGRATE: 'false'
+          # OFF. Multi-group (docs/plans/multi-group.md) is read server-side;
+          # off means every request resolves to group "bpm" and nothing
+          # changes. Flip in Phase 5, after the backfill status shows zeros.
+          NEXT_PUBLIC_FLAG_MULTI_GROUP: 'false'
           # NOT a secret: the browser needs it for
           # pushManager.subscribe({ applicationServerKey }). It must live HERE
           # and not only in Azure App Settings, because NEXT_PUBLIC_* is inlined
