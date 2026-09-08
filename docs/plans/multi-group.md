@@ -4,7 +4,7 @@
 block reserved for Stage-2 (#81): multi-GROUP inside the one deployment, not the
 SaaS the April memo costed — no billing, no marketing site, no super-admin plane.
 **Status:** in-flight (Phase 0 landed; phases 1–6 in `docs/superpowers/plans/2026-09-07-multi-group.md`)
-**Review on:** 2026-10-05
+**Review on:** 2026-10-05 — Has the Stats racket-fit rebuild merged and Phase 1 (the sweep) started, or is the sequencing decision stale? And is the store listing still the driver?
 
 ## Problem
 
