@@ -25,7 +25,7 @@ inputs, so the design starts by asking what a fitting asks.
 | D2 | Current racket is the ANCHOR; the goal is a delta from it | "Happy with it, want more power" is the most predictive fitting question and it uses the kit the member already logged. |
 | D3 | Comfort and swing are CEILINGS, not target moves | A sore arm is a constraint. Rows above a ceiling stay ranked, penalised and warned — a 0-score frame is legible, an excluded one is not. |
 | D4 | Skills demoted: tier from RATED skills only, fallback flex ceiling | No more fourteen 3s. `level` is `null` below 3 rated skills; the target then uses a neutral row and says so. |
-| D5 | Exclude ALL owned rackets, not the active one | The rail masked the old behaviour with an "In your kit" badge. |
+| D5 | Exclude ALL owned rackets, not the active one — by `catalogId` OR by normalised label | The rail masked the old behaviour with an "In your kit" badge. And a bag row added as free text (the stringing sheet's typed racket, and the `fresh-thursday` seed) has no `catalogId`, so id-only exclusion recommended Lin her own Astrox 88D Pro on 2026-09-07 with "Recommended based on your playing style" — the exact defect the register was built to remove, back through a side door. `canon(brand + ' ' + model)` closes it; the ownership badge in `GearPickRail` must use the same match. |
 | D6 | Budget never hard-filters (unchanged from 2026-08-19 D6) | Prices are USD-derived and stale. |
 | D7 | Reasons are i18n keys + params | English-only reasons were a defect. `FIT_REASON_KEYS` is exported and a test asserts every key exists in both locales, because `check-i18n-keys.mjs` cannot see `t(reason.key)`. |
 | D8 | Route stays cookie-gated (2026-08-19 D8) | Reasons still quote the member's data. |
@@ -77,6 +77,7 @@ export const FIT_ENGINE_VERSION = 'fit-1';
 export interface FitInput {
   anchor: CatalogItem | null;      // active racket, only if its catalogId is a scorable row
   ownedIds: ReadonlySet<string>;   // every non-retired racket catalogId — excluded
+  ownedLabels: ReadonlySet<string>; // canon(label) of every non-retired racket, for free-text rows
   goal?: FitGoal; swing?: FitSwing; armComfort?: FitArmComfort; grip?: FitGrip;
   format: 'singles' | 'doubles' | 'both';
   budgetMaxCad?: number;
