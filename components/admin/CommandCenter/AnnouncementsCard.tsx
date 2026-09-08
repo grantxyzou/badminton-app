@@ -61,8 +61,13 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
       const res = await fetch(`${BASE}/api/claude`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // `persona: true` prepends VOICE_PERSONA server-side — this text goes on
+        // Home for every player, so it speaks in the app's voice, not this call
+        // site's idea of one. The tone words that used to live in this string
+        // ("concise, friendly, and clear") are the persona's job now.
         body: JSON.stringify({
-          prompt: `Polish this badminton club announcement. Keep it concise, friendly, and clear. Return only the improved text with no explanation:\n\n${draft}`,
+          prompt: `Polish this badminton club announcement. Return only the improved text with no explanation:\n\n${draft}`,
+          persona: true,
         }),
       });
       const data = await res.json();

@@ -20,20 +20,30 @@ import ErrorState from '@/components/primitives/ErrorState';
  * competing with the sentence inside it. An ordinary `.glass-card` with a
  * marked badge says the same thing at the right volume.
  *
- * A 403 is the ONE failure that does render. `/api/stats/insight` is
- * owner-or-admin gated, so a device with no `member_session` cookie for this
- * name gets refused — and staying silent there tells a member with a live
- * `badminton_identity` that they simply have no insight. Refreshing will never
- * fix that; signing in will, so the state has to say so. Unknown failures keep
- * rendering nothing (this component is additive, and "couldn't load" over a
- * card that is optional by design is noise).
+ * TWO failures render, and the line between them is who is asserting what.
+ *
+ * A 403 is a refusal: `/api/stats/insight` is owner-or-admin gated, so a device
+ * with no `member_session` cookie for this name gets turned away — and staying
+ * silent there tells a member with a live `badminton_identity` that they simply
+ * have no insight. Refreshing will never fix that; signing in will.
+ *
+ * A 5xx is the server asserting its own failure, which it can now do: the route
+ * returns 503 when a read fails or generation is unavailable, where it used to
+ * answer 200 with every field null and this component could not tell that from
+ * "nothing to say". Both of those are true statements we can put on screen.
+ *
+ * Everything else still renders NOTHING, and that is the original decision kept
+ * rather than overturned. A 429 or a flag-off 404 cannot be explained without
+ * guessing, and "couldn't load" over a card that is optional by design is noise.
+ * The test suite pins both halves — see SummaryGreeting.test.tsx.
  */
 export default function SummaryGreeting() {
   const t = useTranslations('stats');
-  const { data, forbidden } = useInsight(true);
+  const { data, forbidden, serverError } = useInsight(true);
   const greeting = data?.greeting ?? null;
 
   if (forbidden) return <ErrorState message={t('signInAgain')} />;
+  if (serverError) return <ErrorState message={t('insightUnavailable')} />;
   if (!greeting) return null;
 
   return (

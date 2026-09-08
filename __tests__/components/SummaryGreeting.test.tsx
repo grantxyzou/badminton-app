@@ -95,4 +95,33 @@ describe('SummaryGreeting — a refusal is not an absent greeting', () => {
     expect(container.textContent).toBe('');
     expect(screen.queryByRole('alert')).toBeNull();
   });
+
+  /**
+   * The 503 half of the pair above, and the reason they must be tested together.
+   *
+   * Until the route learned to answer 503, a failed read came back as 200 with
+   * every field null — indistinguishable from "the model had nothing to say" — so
+   * this component rendered nothing either way and the silence was the only
+   * available behaviour. Now the server asserts its own failure, which is a true
+   * statement we can show. The 429 stays silent because nothing honest can be said
+   * about it without guessing; keep both tests, or the distinction erodes back to
+   * whichever one someone edits first.
+   */
+  it('DOES say the read failed when the server reports its own failure', async () => {
+    signIn('GreetServerDown');
+    mockInsight(503, { error: 'read_failed' });
+    renderGreeting();
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+    expect(screen.getByRole('alert').textContent).toMatch(/couldn't load/i);
+  });
+
+  it('still renders nothing when the model genuinely had nothing to say', async () => {
+    // The legitimate empty: a 200 with nulls must not look like the 503 above.
+    signIn('GreetQuiet');
+    mockInsight(200, { account: true, greeting: null, level: null, trend: null });
+    const { container } = renderGreeting();
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    expect(container.textContent).toBe('');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
 });

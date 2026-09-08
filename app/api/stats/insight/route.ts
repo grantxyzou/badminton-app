@@ -10,6 +10,7 @@ import type { CanonicalLevel } from '@/lib/level';
 import { recommendDrills, type DrillPick } from '@/lib/drills';
 import { computeInsightSignals, signalsByCard, type InsightSignal, type SignalCard } from '@/lib/insightSignals';
 import { VOICE_PERSONA } from '@/lib/aiPersona';
+import { INSIGHT_MODEL } from '@/lib/aiModels';
 
 /**
  * Account-gated, passively-generated player insight. Replaces the old
@@ -41,7 +42,7 @@ import { VOICE_PERSONA } from '@/lib/aiPersona';
 export const dynamic = 'force-dynamic';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = INSIGHT_MODEL;
 // Structured card insights are several short fields rather than one blob
 // (the retired recap+focus blob ran at 400).
 const MAX_OUTPUT_TOKENS_CARDS = 600;
@@ -93,19 +94,58 @@ interface InsightDoc {
 /**
  * HTTP 200 with every field null — "there is genuinely nothing to say".
  *
- * This is a LEGITIMATE EMPTY, and the distinction matters because it used to be
- * returned for failures too. Remaining callers, classified:
- *   - not a member / no name        → correct: the account gate, nothing to say
- *   - model returned all-null cards → correct: silence beat an obvious remark
- *   - container setup failed (~:153), no API key (~:223), generation threw
- *     (~:262, ~:288) → these are FAILURES still wearing an empty payload. They
- *     degrade to "no insight" rather than saying the read broke. Lower priority
- *     than the throttle was — they are not reachable in ordinary use — but they
- *     are the same defect and should become 503s.
- * The rate-limit trip was the reachable one and now returns a real 429.
+ * This is a LEGITIMATE EMPTY, and there are now exactly two callers, both correct:
+ *   - no `?name=`, or the name is not a member → the account gate
+ *   - the model returned all-null cards        → silence beat an obvious remark
+ *
+ * Every failure that used to wear this payload now returns a real status. The
+ * earlier version of this docstring listed three of them as known-wrong-and-unfixed,
+ * and was itself wrong in three ways worth recording, because they are why the
+ * defect survived being written down:
+ *   1. It MISSED the worst one. A thrown member lookup fell through to the
+ *      `!member` line and answered `account: false` — a database failure telling a
+ *      signed-in member they have no account — and this docstring filed that path
+ *      under "not a member → correct".
+ *   2. Its line numbers had drifted (~:153, ~:223, ~:262, ~:288 against real sites
+ *      that had moved), so anyone checking it against the code lost confidence in
+ *      the whole list rather than in the one wrong entry.
+ *   3. It counted two generation-threw sites. There is one.
+ * An audit that has gone stale inside the file it audits is worse than none: it
+ * reads as evidence the ground has been covered.
  */
 function emptyPayload(account: boolean) {
   return NextResponse.json({ account, greeting: null, trend: null, generatedAt: null });
+}
+
+/** A database read failed. Never a 200 with nulls — that is the lying empty state. */
+function readFailed() {
+  return NextResponse.json({ error: 'read_failed' }, { status: 503 });
+}
+
+/** Generation can't run (no key, or the call threw) and there is no stale read. */
+function aiUnavailable() {
+  return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
+}
+
+/**
+ * The previous insight, when generation can't run — better than both an error and
+ * an empty card, because it was true recently and carries its own timestamp.
+ *
+ * Gated on greeting OR trend, deliberately. Both call sites used to check
+ * `existing?.greeting` alone, while the cache-freshness test uses `greeting ||
+ * trend` and its comment explicitly documents a trend-only doc as a valid shape —
+ * so a member whose cached insight had no greeting had a stale copy sitting in
+ * Cosmos that neither failure path would serve them.
+ */
+function staleOrNull(existing: InsightDoc | null) {
+  if (!existing || (!existing.greeting && !existing.trend)) return null;
+  return NextResponse.json({
+    account: true,
+    greeting: existing.greeting ?? null,
+    trend: existing.trend ?? null,
+    generatedAt: existing.generatedAt,
+    stale: true,
+  });
 }
 
 /**
@@ -176,7 +216,9 @@ export async function GET(req: NextRequest) {
     insightsContainer = getContainer('insights');
   } catch (err) {
     console.error('insight container setup failed:', err);
-    return emptyPayload(true);
+    // No stale fallback is even possible here — this runs before `existing` is
+    // read, so there is nothing to serve. A 503 is the only honest answer.
+    return readFailed();
   }
 
   // ── Account gate: resolve the member. Anonymous names get nothing. ──
@@ -185,7 +227,14 @@ export async function GET(req: NextRequest) {
   // prose, whereas MemberSubject.name is the trimmed QUERY string. Same
   // active-only filter, different return shape — folding it in would silently
   // change the casing the AI narrates. Allowlisted in the resolver canary.
+  //
+  // The `lookupFailed` flag is load-bearing. This catch used to only log, leaving
+  // `member` null, so a THROWN Cosmos read fell through to the `!member` line below
+  // and answered `account: false` — telling a signed-in member they have no account
+  // because the database blipped. That is a worse lie than the three the
+  // `emptyPayload` docstring admits to, and the docstring classified it as correct.
   let member: { id: string; name: string } | null = null;
+  let lookupFailed = false;
   try {
     const { resources } = await membersContainer.items
       .query({
@@ -197,7 +246,9 @@ export async function GET(req: NextRequest) {
     if (m && typeof m.id === 'string' && typeof m.name === 'string') member = { id: m.id, name: m.name };
   } catch (err) {
     console.error('insight member lookup failed:', err);
+    lookupFailed = true;
   }
+  if (lookupFailed) return readFailed();
   if (!member) return emptyPayload(false);
 
   const activeSessionId = await getActiveSessionId();
@@ -233,10 +284,9 @@ export async function GET(req: NextRequest) {
 
   if (!process.env.ANTHROPIC_API_KEY) {
     // No key — serve any stale insight rather than nothing.
-    if (existing?.greeting) {
-      return NextResponse.json({ account: true, greeting: existing.greeting, trend: existing.trend ?? null, generatedAt: existing.generatedAt, stale: true });
-    }
-    return emptyPayload(true);
+    const stale = staleOrNull(existing);
+    if (stale) return stale;
+    return aiUnavailable();
   }
 
   // Canonical level. Same memberId-resolve as the trend; folds the
@@ -270,10 +320,9 @@ export async function GET(req: NextRequest) {
       cards = await generateCards(member.name, snapshot, signals, existing);
     } catch (err) {
       console.error('insight cards generation failed:', err);
-      if (existing?.greeting) {
-        return NextResponse.json({ account: true, greeting: existing.greeting, trend: existing.trend ?? null, generatedAt: existing.generatedAt, stale: true });
-      }
-      return emptyPayload(true);
+      const stale = staleOrNull(existing);
+      if (stale) return stale;
+      return aiUnavailable();
     }
     if (!cards.greeting && !cards.trend) return emptyPayload(true);
 

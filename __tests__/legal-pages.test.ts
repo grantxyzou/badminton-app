@@ -119,7 +119,7 @@ describe('legal copy — both locales, same shape', () => {
   it('the privacy policy names the data that is easy to under-declare', () => {
     // These are the store-label items reviewers audit; the policy must match.
     const text = locales.en.privacy.sections.flatMap((s) => s.p).join(' ');
-    for (const needle of ['e-transfer', 'push token', 'PIN', 'Google', 'Apple', 'Azure', 'No ads']) {
+    for (const needle of ['e-transfer', 'push token', 'PIN', 'Google', 'Apple', 'Azure', 'No ads', 'Anthropic']) {
       expect(text, needle).toContain(needle);
     }
   });

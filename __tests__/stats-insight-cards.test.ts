@@ -153,3 +153,64 @@ describe('GET /api/stats/insight — a throttled read is not an empty one', () =
     expect(body.account).toBeUndefined();
   });
 });
+
+/**
+ * The lying-empty-state fix. `emptyPayload` used to be the answer to a failed
+ * container setup, a missing API key, a thrown generation AND a thrown member
+ * lookup — all rendering as "you have no insight", one of them as "you have no
+ * account". Its own docstring listed three of the four and called the fourth
+ * correct.
+ *
+ * These pin the two that a member can actually reach, and the legitimate empty
+ * they must stay distinguishable from.
+ */
+describe('GET /api/stats/insight — a failed read is not an empty one', () => {
+  beforeEach(() => {
+    resetMockStore();
+    setupAdminPin();
+    mockCreate.mockReset();
+    seedPointer('session-2026-06-17');
+  });
+
+  function req(name: string, ip: string) {
+    return new NextRequest(new URL(`${BASE}?name=${name}`), {
+      headers: { 'x-client-ip': ip, cookie: `member_session=${memberCookieValue(name)}` },
+    });
+  }
+
+  it('503s when generation is unconfigured and there is no previous read to serve', async () => {
+    delete process.env.ANTHROPIC_API_KEY;
+    seedMember('Lin');
+    const res = await GET(req('Lin', `insight-nokey-${Math.random()}`));
+
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.error).toBe('service_unavailable');
+    // The tell, same as the throttle case: no `account`, so nothing can read it
+    // as a payload meaning "this member has nothing".
+    expect(body.account).toBeUndefined();
+  });
+
+  it('503s when the model call throws and there is no previous read to serve', async () => {
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+    seedMember('Viktor');
+    mockCreate.mockRejectedValue(new Error('upstream exploded'));
+    const res = await GET(req('Viktor', `insight-threw-${Math.random()}`));
+
+    expect(res.status).toBe(503);
+    expect((await res.json()).error).toBe('service_unavailable');
+  });
+
+  it('still answers 200 with nulls when the member is simply unknown', async () => {
+    // The legitimate empty must NOT become a 503 — that would make "no account"
+    // look like an outage, which is the same class of lie in the other direction.
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+    const res = await GET(req('Nobody', `insight-unknown-${Math.random()}`));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.account).toBe(false);
+    expect(body.greeting).toBeNull();
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+});

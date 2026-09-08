@@ -11,7 +11,8 @@
  * repeated here — that canary flags the literal anywhere under app/lib/
  * components, comments included.)
  *
- * This route is admin-gated (`isAdminAuthed`), so the audience is trusted and
+ * This route is admin-gated (`isAdminAuthedWithMember` — the role is re-read on
+ * every call, because the route spends API budget), so the audience is trusted and
  * upstream detail is safe to surface. Two guards keep that honest: the upstream
  * text is length-capped so a hostile or enormous body can't be reflected
  * wholesale, and the category prefix always states whose problem it is —
