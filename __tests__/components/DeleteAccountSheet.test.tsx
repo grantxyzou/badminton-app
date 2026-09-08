@@ -64,7 +64,7 @@ describe('what the sheet has to say', () => {
   it('names what is destroyed rather than only saying it is permanent', () => {
     renderSheet();
     const body = screen.getByText(/removes your PIN/i);
-    expect(body.textContent).toMatch(/gear/i);
+    expect(body.textContent).toMatch(/equipment/i);
     expect(body.textContent).toMatch(/stats/i);
   });
 

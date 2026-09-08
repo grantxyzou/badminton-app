@@ -94,7 +94,7 @@ describe('GearPickRail — the card opens the detail sheet', () => {
     const card = await screen.findByLabelText('Racket — Why this?');
     fireEvent.click(card);
 
-    expect(await screen.findByText('Add to my kit')).toBeTruthy();
+    expect(await screen.findByText('Add to my equipment')).toBeTruthy();
     // The headline reason reads as plain language; the rest sit under WHY THIS.
     expect(screen.getByText('Four people at the club play it.')).toBeTruthy();
     // A warning is never collapsed away.
@@ -107,7 +107,7 @@ describe('GearPickRail — the card opens the detail sheet', () => {
     renderRail(gear);
 
     fireEvent.click(await screen.findByLabelText('Racket — Why this?'));
-    fireEvent.click(await screen.findByText('Add to my kit'));
+    fireEvent.click(await screen.findByText('Add to my equipment'));
 
     expect(gear.add).toHaveBeenCalledWith(expect.objectContaining({ id: 'r1' }));
   });
@@ -225,6 +225,6 @@ describe('GearPickSheet — a pick that went away is an error, not a vanishing s
       </NextIntlClientProvider>,
     );
     expect(screen.getByRole('alert')).toBeTruthy();
-    expect(screen.queryByText('Add to my kit')).toBeNull();
+    expect(screen.queryByText('Add to my equipment')).toBeNull();
   });
 });

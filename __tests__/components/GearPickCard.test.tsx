@@ -36,12 +36,12 @@ describe('GearPickCard', () => {
   it('shows "Why this?" and no kit pill when the member does not own the pick', () => {
     renderCard();
     expect(screen.getByText('Why this?')).toBeTruthy();
-    expect(screen.queryByText('In your kit')).toBeNull();
+    expect(screen.queryByText('You own this')).toBeNull();
   });
 
   it('flips to the kit pill and "Why we picked it" once owned', () => {
     renderCard({ owned: true });
-    expect(screen.getByText('In your kit')).toBeTruthy();
+    expect(screen.getByText('You own this')).toBeTruthy();
     expect(screen.getByText('Why we picked it')).toBeTruthy();
     expect(screen.queryByText('Why this?')).toBeNull();
   });
@@ -223,9 +223,9 @@ describe('GearPickCard — the sub-line makes one honest claim', () => {
   it('says the pick is saved when the pick IS what you own', () => {
     renderCard({ category: 'racket', owned: true, pick: { item: ITEM, reasons: ['x'] } });
 
-    expect(screen.getByText(/saved to your kit/i)).toBeTruthy();
+    expect(screen.getByText(/saved to your equipment/i)).toBeTruthy();
     expect(screen.queryByText(/none on file/i)).toBeNull();
-    expect(screen.getByText(/in your kit/i)).toBeTruthy();
+    expect(screen.getByText(/you own this/i)).toBeTruthy();
   });
 });
 
@@ -254,7 +254,7 @@ describe('GearPickCard — two objects, one card', () => {
     });
 
     // The badge still speaks for the string.
-    expect(screen.getByText(/in your kit/i)).toBeTruthy();
+    expect(screen.getByText(/you own this/i)).toBeTruthy();
 
     // The frame line is scoped to the frame, so it cannot be read as a claim
     // about the string.
