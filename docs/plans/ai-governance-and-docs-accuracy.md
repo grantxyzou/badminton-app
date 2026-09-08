@@ -5,6 +5,7 @@ against a rule this repo already holds itself to — it adds no user-facing surf
 so ROADMAP's Change Rule (aimed at new surfaces that serve no track) does not apply.
 Naming a track to satisfy the form would be the drift the rule exists to catch.
 **Status:** shipped 2026-09-07
+**Review on:** 2026-10-07 — a fourth `/api/claude` caller, a question about the Stats 503 copy, or a canary edited to pass a build?
 
 ## Problem
 

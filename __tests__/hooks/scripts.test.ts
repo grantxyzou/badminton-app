@@ -1,5 +1,5 @@
 /**
- * The five `scripts/check-*.mjs` / `block-*.mjs` hooks are this repo's policy
+ * The six `scripts/check-*.mjs` / `block-*.mjs` hooks are this repo's policy
  * layer — each one exists because of a bug class the suite could not see.
  * Nothing tested them. A regression there is silent by construction: a hook
  * that stops firing looks exactly like a clean edit.
@@ -574,5 +574,65 @@ describe('smoke-prod.mjs (post-deploy / pre-merge)', () => {
       expect(r.status).toBe(1);
       expect(r.stderr).toContain('_rid');
     });
+  });
+});
+
+describe('check-plan-reviews.mjs (SessionStart)', () => {
+  /**
+   * The script resolves its plans directory from its own location, so the
+   * fixture is a whole tree with the script copied in — same shape as the
+   * flag-sync fixture above.
+   */
+  function project(plans: Record<string, string>): string {
+    const dir = tmp('plans-');
+    mkdirSync(join(dir, 'scripts'));
+    mkdirSync(join(dir, 'docs/plans'), { recursive: true });
+    cpSync(join(SCRIPTS, 'check-plan-reviews.mjs'), join(dir, 'scripts/check-plan-reviews.mjs'));
+    for (const [name, body] of Object.entries(plans)) {
+      writeFileSync(join(dir, 'docs/plans', name), body);
+    }
+    return join(dir, 'scripts/check-plan-reviews.mjs');
+  }
+
+  const PAST = '**Review on:** 2020-01-01 — did the thing happen?\n';
+  const FUTURE = '**Review on:** 2999-01-01 — did the thing happen?\n';
+
+  it('is silent when nothing is due', () => {
+    const r = run(project({ 'a.md': `# A\n${FUTURE}` }));
+    expect(r.status).toBe(0);
+    expect(r.stderr).toBe('');
+  });
+
+  it('is silent when a plan carries no review line at all', () => {
+    // A finished record with nothing left to decide is the common case, and
+    // demanding a date on all of them would make the field ceremonial.
+    const r = run(project({ 'a.md': '# A\n\nJust a record.\n' }));
+    expect(r.status).toBe(0);
+    expect(r.stderr).toBe('');
+  });
+
+  it('reports an overdue plan, and prints the question back', () => {
+    const r = run(project({ 'a.md': `# A\n${PAST}` }));
+    expect(r.status).toBe(1);
+    expect(r.stderr).toMatch(/docs\/plans\/a\.md/);
+    expect(r.stderr).toMatch(/due 2020-01-01/);
+    // The question is the payload — a report naming only the file makes the
+    // reader open it to find out whether it is worth opening.
+    expect(r.stderr).toMatch(/did the thing happen\?/);
+  });
+
+  it('treats a date that is not a real day as malformed, not as future', () => {
+    // 2026-06-31 matches the shape and is not a day; the flags registry test
+    // learned this the same way. Silently reading as "not yet due" would make
+    // a typo defer the review forever.
+    const r = run(project({ 'a.md': '# A\n**Review on:** 2026-06-31 — x\n' }));
+    expect(r.status).toBe(1);
+    expect(r.stderr).toMatch(/BAD DATE/);
+  });
+
+  it('ignores TEMPLATE.md, whose placeholder is not a date', () => {
+    const r = run(project({ 'TEMPLATE.md': '# T\n**Review on:** <YYYY-MM-DD — the question>\n' }));
+    expect(r.status).toBe(0);
+    expect(r.stderr).toBe('');
   });
 });
