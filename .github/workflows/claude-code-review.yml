@@ -12,11 +12,25 @@ on:
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    # Bot-authored PRs are SKIPPED, not reviewed.
+    #
+    # The action refuses a non-human actor outright — "Workflow initiated by
+    # non-human actor: dependabot (type: Bot)" — and exits 1. That painted a
+    # permanent red X on every dependency PR (#310, #322, #323, #324 all carry
+    # one today), and a check that is always red for a whole PR class is worse
+    # than no check: it teaches you to skim past red exactly where a real
+    # failure would show up. #324's genuine `verify` failure sat next to a
+    # meaningless red `claude-review` for a day.
+    #
+    # Allowing bots through was the other option and is the wrong one: a
+    # REVIEW.md review of a 269-line package-lock.json diff has nothing to say,
+    # and it would spend tokens per dependency PR to say it. What matters on
+    # those is `verify`, which does run.
+    #
+    # NOTE: this cannot be proven on the PR that introduces it — the action
+    # skips any PR touching its own workflow file (see CLAUDE.md). Proof is the
+    # next Dependabot PR showing a grey skip instead of a red X.
+    if: github.event.pull_request.user.type != 'Bot'
 
     runs-on: ubuntu-latest
     permissions:
