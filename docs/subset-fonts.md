@@ -11,6 +11,15 @@ from upstream IBM Plex / Space Grotesk releases.
 | IBM Plex Sans (regular) | 532 KB TTF, wght 100-700 + wdth 85-100 | 58 KB WOFF2, wght 400-700, wdth pinned | 89% |
 | IBM Plex Sans (italic) | 594 KB TTF, same axes | **dropped** | 100% |
 | Space Grotesk | 134 KB TTF, wght 300-700 | 40 KB WOFF2, wght 400-700 | 70% |
+| JetBrains Mono | 285 KB TTF, wght 100-800 | 40 KB WOFF2, wght 400-600 | 86% |
+
+JetBrains Mono was added here on 2026-09-07. Until then it was the one face
+loaded with `next/font/google`, which made `fonts.googleapis.com` a hard
+dependency of `next build` — a fetch failure there ends the build, and so a
+production deploy, rather than degrading the page. It bought nothing:
+`next/font/google` downloads at build time and serves from our own origin
+anyway, which is what `next/font/local` does without the round trip. Pinned by
+`__tests__/design-canary.test.ts` so it cannot come back unnoticed.
 
 Italic is dropped because:
 
@@ -59,7 +68,24 @@ pyftsubset /tmp/SpaceGrotesk-axis-trim.ttf \
   --unicodes="$UNICODES" \
   --layout-features='*' \
   --name-IDs='*'
+
+# JetBrains Mono — only wght axis, limit to the 400–600 the UI asks for
+fonttools varLib.instancer 'SOURCE/JetBrainsMono[wght].ttf' \
+  wght=400:600 \
+  -o /tmp/JetBrainsMono-axis-trim.ttf
+
+pyftsubset /tmp/JetBrainsMono-axis-trim.ttf \
+  --output-file=app/fonts/JetBrainsMono-Subset.woff2 \
+  --flavor=woff2 \
+  --unicodes="$UNICODES" \
+  --layout-features='*' \
+  --name-IDs='*'
 ```
+
+If `pyftsubset` / `fonttools` are not on PATH, the same tools run as modules
+off any Python with fontTools installed — `python3 -m fontTools.subset` and
+`python3 -m fontTools.varLib.instancer` take identical arguments. That is how
+the JetBrains Mono file in this repo was generated.
 
 `--layout-features='*'` keeps OpenType features (kerning, ligatures, fractions).
 `--name-IDs='*'` keeps the font's name records so `next/font/local` and
@@ -74,6 +100,8 @@ refresh:
   `IBMPlexSans-VariableFont_wdth,wght.ttf`)
 - Space Grotesk: https://github.com/floriankarsten/space-grotesk/releases
   (look for `SpaceGrotesk-VariableFont_wght.ttf`)
+- JetBrains Mono: https://github.com/JetBrains/JetBrainsMono/releases (look for
+  `fonts/variable/JetBrainsMono[wght].ttf` inside the release zip)
 
 Drop them in any working directory, run the commands above with that
 working dir as `SOURCE/`, and the new WOFF2 files land in `app/fonts/`.

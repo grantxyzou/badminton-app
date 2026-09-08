@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
-import { JetBrains_Mono } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import PreviewBanner from '@/components/PreviewBanner';
@@ -12,12 +11,25 @@ import './globals.css';
 // Locked type system (design-system bundle v3, subset 2026-05-07):
 //   Space Grotesk  — display / headlines  (variable wght 400–700, Latin Ext WOFF2 ~40 KB)
 //   IBM Plex Sans  — body / UI            (variable wght 400–700, wdth pinned 100, Latin Ext WOFF2 ~58 KB)
-//   JetBrains Mono — data (PINs, $, time) (Google Fonts subset)
+//   JetBrains Mono — data (PINs, $, time) (variable wght 400–600, WOFF2 ~40 KB)
 // Subsetting from upstream variable TTFs: see `docs/subset-fonts.md` for the
 // pyftsubset / fonttools.varLib.instancer pipeline. We dropped the IBM Plex
 // italic font (~150 KB transfer) — `<em>` falls back to algorithmic italic,
 // which is indistinguishable for body emphasis. Self-hosted (not Google
 // Fonts) so first paint never waits on a third-party CDN.
+//
+// ALL THREE are `next/font/local`, and that is load-bearing for the BUILD, not
+// just for first paint. JetBrains Mono came from `next/font/google` until
+// 2026-09-07, which meant `next build` had to reach fonts.googleapis.com or it
+// FAILED outright — not a warning, a non-zero exit:
+//
+//   Error: next/font: Failed to fetch JetBrains Mono from Google Fonts.
+//
+// A production deploy therefore depended on a third party being up at build
+// time, for a font that was already being self-served at runtime (that is what
+// next/font/google does — it downloads at build and serves from our origin).
+// All risk, no benefit. It also made the build unrunnable offline, which is
+// how this was found. Don't reintroduce a `next/font/google` import here.
 const spaceGrotesk = localFont({
   src: './fonts/SpaceGrotesk-Subset.woff2',
   display: 'swap',
@@ -39,12 +51,12 @@ const ibmPlexSans = localFont({
   preload: false,
   weight: '400 700',
 });
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
+const jetbrainsMono = localFont({
+  src: './fonts/JetBrainsMono-Subset.woff2',
   display: 'swap',
   variable: '--ff-jetbrains',
   preload: false, // mono is below-the-fold on first load
+  weight: '400 600',
 });
 
 /**
