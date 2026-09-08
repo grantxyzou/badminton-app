@@ -2,7 +2,7 @@ import { CosmosClient, Container } from '@azure/cosmos';
 import { randomBytes, scryptSync } from 'node:crypto';
 import equipmentCatalogSeed from '../scripts/data/equipment-catalog.json';
 import { scoreAssessment, placePhase, SKILLS } from './assessment';
-import { matchesGroup } from './groupScope';
+import { matchesGroup, queryToleratesUnstamped } from './groupScope';
 
 // ---------------------------------------------------------------------------
 // In-memory mock — used when COSMOS_CONNECTION_STRING is not set (local dev)
@@ -425,10 +425,15 @@ function getMockContainer(name: string) {
             }
             // `@groupId` — see lib/groupScope.ts. Honoured here so a group
             // isolation test cannot pass vacuously (an unrecognised name means
-            // NO filter). Whether an UNSTAMPED row counts as BPM's is the same
-            // constant the real clause reads, so mock and Cosmos flip together.
+            // NO filter). Whether an UNSTAMPED row counts as BPM's follows the
+            // QUERY TEXT, not a constant: only the tolerant clause from
+            // `groupClause()` admits legacy rows, so a plain equality means
+            // the same thing here as it does in Cosmos.
             if ('@groupId' in params) {
-              results = results.filter((r) => matchesGroup(r, String(params['@groupId'])));
+              const tolerate = queryToleratesUnstamped(q.query);
+              results = results.filter((r) =>
+                matchesGroup(r, String(params['@groupId']), tolerate),
+              );
             }
             // Seven routes query `WHERE c.memberId = @memberId`. The mock used
             // to ignore the clause and hand back EVERY row, so several of them

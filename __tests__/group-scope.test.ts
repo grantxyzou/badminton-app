@@ -5,7 +5,24 @@ import {
   groupDocId,
   sessionPrefix,
   matchesGroup,
+  groupClause,
 } from '@/lib/groupScope';
+
+describe('groupClause', () => {
+  it('is a plain equality when strict', () => {
+    expect(groupClause(false)).toBe('c.groupId = @groupId');
+  });
+
+  it('admits unstamped rows for BPM only when tolerant', () => {
+    expect(groupClause(true)).toBe(
+      "(c.groupId = @groupId OR (NOT IS_DEFINED(c.groupId) AND @groupId = 'bpm'))",
+    );
+  });
+
+  it('defaults to the module constant', () => {
+    expect(groupClause()).toBe(groupClause(TOLERATE_UNSTAMPED));
+  });
+});
 
 /**
  * The id and predicate helpers every group-scoped read will lean on.

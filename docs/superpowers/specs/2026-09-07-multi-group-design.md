@@ -40,9 +40,12 @@ the one-account decision.
 ### Ids
 
 - `groupId` is an additive optional FIELD. Cosmos partition keys are immutable,
-  so it is filtered in queries, never made a key. Absent means BPM while
-  `TOLERATE_UNSTAMPED` is `true`; the Phase 2 backfill stamps every existing
-  row `'bpm'`; Phase 5 flips to strict.
+  so it is filtered in queries, never made a key. `groupClause()` emits the
+  WHERE fragment: tolerant (an unstamped row is BPM's) while
+  `TOLERATE_UNSTAMPED` is `true`, plain equality after Phase 5. The mock store
+  keys its own tolerance on the presence of that clause in the query text, so
+  a plain equality excludes legacy rows in tests exactly as it does in Cosmos.
+  The Phase 2 backfill stamps every existing row `'bpm'`.
 - `groupDocId(groupId, id)`: BPM keeps the legacy id, any other group gets
   `${groupId}:${id}`. Applies to the session pointer, the `clubSettings`
   singletons, and session ids (`sessions` has `id === sessionId === PK`, so two

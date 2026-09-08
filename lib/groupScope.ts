@@ -21,9 +21,12 @@
  * (`lib/cosmos.ts`) filters by PARAMETER NAME from a closed allowlist, and an
  * unrecognised name means NO filter — every row comes back. An isolation test
  * written before the mock knew `@groupId` would pass because the fixture only
- * held one group. The mock now calls `matchesGroup`, and its tolerance for
- * unstamped rows is the SAME constant the real clause reads, so the two flip
- * together.
+ * held one group. The mock now calls `matchesGroup`, and whether it admits an
+ * UNSTAMPED row follows the QUERY TEXT — only `groupClause(true)`'s marker
+ * does — so a plain `c.groupId = @groupId` means the same thing in the mock
+ * as in Cosmos. (A first cut keyed the mock on the constant alone, which made
+ * it laxer than production: legacy rows came back in tests for a clause that
+ * excludes them in Cosmos.)
  */
 
 /** Group #1. Every row in production today belongs to it. */
@@ -96,6 +99,31 @@ export function groupDocId(groupId: string, id: string): string {
 /** The prefix every session id in a group starts with — replaces `startsWith('session-')`. */
 export function sessionPrefix(groupId: string): string {
   return groupDocId(groupId, 'session-');
+}
+
+/** The SQL text the mock recognises as the tolerant clause. One string, one owner. */
+const UNSTAMPED_MARKER = 'NOT IS_DEFINED(c.groupId)';
+
+/**
+ * The WHERE fragment that scopes a query to `@groupId`. Tolerant while the
+ * backfill is pending (an unstamped row is BPM's), plain equality after.
+ *
+ * The mock store keys its own tolerance on the PRESENCE of this clause's
+ * marker in the query text, not on the constant alone — so a plain
+ * `c.groupId = @groupId` excludes unstamped rows in the mock exactly as it
+ * does in Cosmos. Without that, a query that returned BPM's history in tests
+ * would return nothing in production, which is the mock-laxer-than-Cosmos
+ * trap this repo has been burned by twice.
+ */
+export function groupClause(tolerate: boolean = TOLERATE_UNSTAMPED): string {
+  return tolerate
+    ? `(c.groupId = @groupId OR (${UNSTAMPED_MARKER} AND @groupId = '${BPM_GROUP_ID}'))`
+    : 'c.groupId = @groupId';
+}
+
+/** Whether a query's text carries the tolerant clause. For the mock store. */
+export function queryToleratesUnstamped(sql: string): boolean {
+  return sql.includes(UNSTAMPED_MARKER);
 }
 
 /**
