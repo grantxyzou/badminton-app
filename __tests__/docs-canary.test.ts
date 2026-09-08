@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
+import { OWNED_CONTAINERS, NOT_MEMBER_SCOPED, CLASSIFIED_ELSEWHERE } from '@/lib/memberPurge';
 
 /**
  * Docs canary — the governing documents' analogue of design-canary / ai-model-canary.
@@ -103,6 +104,58 @@ describe('docs canary — every path a governing doc names still resolves', () =
       .filter((r) => !resolves(r.path))
       .map((r) => `${r.doc} → ${r.path}`);
     expect(dead).toEqual([]);
+  });
+
+  it('documents every Cosmos container the code knows about', () => {
+    /**
+     * The path scan above cannot catch this failure — it is a COUNT going stale,
+     * not a dead path. CLAUDE.md listed 8 containers while the code had 23, for
+     * months, and every path in that sentence resolved perfectly the whole time.
+     *
+     * `lib/memberPurge.ts` is the authoritative set because a deletion request has
+     * to account for every container, and `member-purge-coverage.test.ts` fails the
+     * build when one appears in none of its three lists. So the code already
+     * maintains a complete list; this just ties the documentation to it.
+     *
+     * Names only. Partition keys are NOT checkable here: `memberPurge`'s `OWNED`
+     * table carries `pk` as data but exports only `.map(t => t.container)`, and six
+     * containers predate `ensureContainer` and have no declaration anywhere in the
+     * repo (their keys live in the Azure portal). CLAUDE.md says which six.
+     */
+    const authoritative = [
+      ...OWNED_CONTAINERS,
+      ...Object.keys(NOT_MEMBER_SCOPED),
+      ...Object.keys(CLASSIFIED_ELSEWHERE),
+    ];
+
+    const claudeMd = readFileSync(join(process.cwd(), 'CLAUDE.md'), 'utf8');
+    const start = claudeMd.indexOf('- **Cosmos DB**: Use `getContainer(name)`');
+    expect(start, 'the Cosmos DB bullet moved or was reworded').toBeGreaterThan(-1);
+    // The bullet plus its indented sub-bullets, up to the next top-level bullet.
+    const nextTop = claudeMd.indexOf('\n- ', start + 1);
+    const block = claudeMd.slice(start, nextTop === -1 ? undefined : nextTop);
+
+    const undocumented = authoritative.filter((c) => !block.includes(`\`${c}\``)).sort();
+    expect(
+      undocumented,
+      'CLAUDE.md\'s Cosmos DB bullet is missing these containers:\n  ' +
+        `${undocumented.join('\n  ')}\n` +
+        'Add each one under its partition key. If you just created a container, it also ' +
+        'needs a home in lib/memberPurge.ts — a deletion request must account for it.',
+    ).toEqual([]);
+
+    // The stated total is the other half: a count nobody updates is how this drifted.
+    const stated = block.match(/There are (\d+) containers/);
+    expect(stated, 'the bullet no longer states a container count').not.toBeNull();
+    expect(Number(stated![1]), 'the stated count disagrees with lib/memberPurge.ts').toBe(
+      authoritative.length,
+    );
+
+    // A container listed under two partition keys is worse than one listed under none.
+    for (const c of authoritative) {
+      const hits = block.split(`\`${c}\``).length - 1;
+      expect(hits, `${c} appears ${hits}× in the bullet — it has one partition key`).toBeLessThan(3);
+    }
   });
 
   it('keeps the deliberately-absent list honest', () => {
