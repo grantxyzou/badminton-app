@@ -139,7 +139,7 @@ export async function PATCH(req: NextRequest) {
 
     const container = getContainer('skills');
     const sessionId = await getActiveSessionId();
-    const { resource: existing } = await container.item(id, sessionId).read();
+    const { resource: existing } = await container.item(id, id).read();
     if (!existing) {
       return NextResponse.json({ error: 'Record not found' }, { status: 404 });
     }
