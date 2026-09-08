@@ -2,7 +2,7 @@
 
 **Track:** admin cost-automation (North Star pillar 3). Not a new surface — the stringing
 bench shipped in Stage 1 and this closes gaps found by using it.
-**Status:** in-flight (PR #320, opened 2026-09-06)
+**Status:** shipped 2026-09-06 (PR #320, plus the follow-ups in #321 and #326)
 
 ## Problem
 
