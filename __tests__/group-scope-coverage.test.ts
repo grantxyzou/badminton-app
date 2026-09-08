@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 import { GROUP_SCOPED, PERSON_SCOPED, GLOBAL } from '@/lib/groupScope';
 import { OWNED_CONTAINERS, NOT_MEMBER_SCOPED, CLASSIFIED_ELSEWHERE } from '@/lib/memberPurge';
+import { containersReferencedInSource } from './containerScan';
 
 /**
  * THE CANARY THAT STOPS A CONTAINER SLIPPING BETWEEN GROUPS UNCLASSIFIED.
@@ -12,38 +12,9 @@ import { OWNED_CONTAINERS, NOT_MEMBER_SCOPED, CLASSIFIED_ELSEWHERE } from '@/lib
  * container will not think about tenancy. A container that nobody decided is
  * GROUP / PERSON / GLOBAL is one whose rows every group can read.
  *
- * Source scan, not runtime, on purpose (see the purge canary's docstring).
+ * Source scan, not runtime, on purpose (see the purge canary's docstring);
+ * the scanner itself is shared with that canary in `containerScan.ts`.
  */
-function walk(dir: string, out: string[] = []): string[] {
-  for (const entry of readdirSync(dir)) {
-    if (entry === 'node_modules' || entry.startsWith('.')) continue;
-    const full = join(dir, entry);
-    if (statSync(full).isDirectory()) walk(full, out);
-    else if (/\.tsx?$/.test(entry)) out.push(full);
-  }
-  return out;
-}
-
-/** Resolves single-level `const X = '…'` aliases too — `authhandoff` hid behind one. */
-function containersReferencedInSource(): Set<string> {
-  const root = join(__dirname, '..');
-  const files = [...walk(join(root, 'app')), ...walk(join(root, 'lib'))];
-  const found = new Set<string>();
-  for (const file of files) {
-    const src = readFileSync(file, 'utf8');
-    for (const m of src.matchAll(/(?:get|ensure)Container\(\s*'([a-zA-Z]+)'/g)) found.add(m[1]);
-    const aliases = new Map<string, string>();
-    for (const m of src.matchAll(/\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*'([a-zA-Z]+)'/g)) {
-      aliases.set(m[1], m[2]);
-    }
-    for (const m of src.matchAll(/(?:get|ensure)Container\(\s*([A-Za-z_$][\w$]*)\s*[,)]/g)) {
-      const resolved = aliases.get(m[1]);
-      if (resolved) found.add(resolved);
-    }
-  }
-  return found;
-}
-
 const lists: [string, string[]][] = [
   ['GROUP_SCOPED', Object.keys(GROUP_SCOPED)],
   ['PERSON_SCOPED', Object.keys(PERSON_SCOPED)],
@@ -52,7 +23,7 @@ const lists: [string, string[]][] = [
 
 describe('group scoping classifies every container', () => {
   it('classifies every container the app touches', () => {
-    const referenced = containersReferencedInSource();
+    const referenced = containersReferencedInSource(join(__dirname, '..'));
     expect(referenced.size).toBeGreaterThan(10);
     const classified = new Set(lists.flatMap(([, names]) => names));
     const unclassified = [...referenced].filter((c) => !classified.has(c)).sort();

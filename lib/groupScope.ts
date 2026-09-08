@@ -105,8 +105,10 @@ export function sessionPrefix(groupId: string): string {
 const UNSTAMPED_MARKER = 'NOT IS_DEFINED(c.groupId)';
 
 /**
- * The WHERE fragment that scopes a query to `@groupId`. Tolerant while the
- * backfill is pending (an unstamped row is BPM's), plain equality after.
+ * The WHERE fragment that scopes a query to `@groupId` (the caller still
+ * binds the parameter). An unstamped row can only ever be BPM's, so the OR arm
+ * is emitted only for BPM and only while tolerant; every other group, and BPM
+ * after Phase 5, gets plain equality.
  *
  * The mock store keys its own tolerance on the PRESENCE of this clause's
  * marker in the query text, not on the constant alone — so a plain
@@ -115,9 +117,9 @@ const UNSTAMPED_MARKER = 'NOT IS_DEFINED(c.groupId)';
  * would return nothing in production, which is the mock-laxer-than-Cosmos
  * trap this repo has been burned by twice.
  */
-export function groupClause(tolerate: boolean = TOLERATE_UNSTAMPED): string {
-  return tolerate
-    ? `(c.groupId = @groupId OR (${UNSTAMPED_MARKER} AND @groupId = '${BPM_GROUP_ID}'))`
+export function groupClause(groupId: string, tolerate: boolean = TOLERATE_UNSTAMPED): string {
+  return tolerate && groupId === BPM_GROUP_ID
+    ? `(c.groupId = @groupId OR ${UNSTAMPED_MARKER})`
     : 'c.groupId = @groupId';
 }
 

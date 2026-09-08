@@ -49,16 +49,16 @@ describe('mock store honours @groupId', () => {
   });
 
   it('the tolerant clause includes unstamped rows for BPM only', async () => {
-    expect(await ids(BPM_GROUP_ID, groupClause(true))).toEqual(['s-bpm', 's-legacy']);
-    expect(await ids('a1b2c3', groupClause(true))).toEqual(['s-other']);
+    expect(await ids(BPM_GROUP_ID, groupClause(BPM_GROUP_ID, true))).toEqual(['s-bpm', 's-legacy']);
+    expect(await ids('a1b2c3', groupClause('a1b2c3', true))).toEqual(['s-other']);
   });
 
   it('the strict clause excludes unstamped rows even for BPM', async () => {
-    expect(await ids(BPM_GROUP_ID, groupClause(false))).toEqual(['s-bpm']);
+    expect(await ids(BPM_GROUP_ID, groupClause(BPM_GROUP_ID, false))).toEqual(['s-bpm']);
   });
 
   it('groupClause() defaults to the shared TOLERATE_UNSTAMPED constant', async () => {
-    expect(await ids(BPM_GROUP_ID, groupClause())).toEqual(
+    expect(await ids(BPM_GROUP_ID, groupClause(BPM_GROUP_ID))).toEqual(
       TOLERATE_UNSTAMPED ? ['s-bpm', 's-legacy'] : ['s-bpm'],
     );
   });
@@ -66,7 +66,7 @@ describe('mock store honours @groupId', () => {
   it('ANDs the group clause with the other recognised filters', async () => {
     const { resources } = await getContainer('sessions')
       .items.query<{ id: string }>({
-        query: `SELECT * FROM c WHERE ${groupClause(true)} AND c.sessionId = @sessionId`,
+        query: `SELECT * FROM c WHERE ${groupClause(BPM_GROUP_ID, true)} AND c.sessionId = @sessionId`,
         parameters: [
           { name: '@groupId', value: BPM_GROUP_ID },
           { name: '@sessionId', value: 's-legacy' },
@@ -74,5 +74,30 @@ describe('mock store honours @groupId', () => {
       })
       .fetchAll();
     expect(resources.map((r) => r.id)).toEqual(['s-legacy']);
+  });
+
+  it('a parameterless NOT IS_DEFINED(c.groupId) select returns only unstamped rows', async () => {
+    // The Phase 2 backfill's own query. Without this the mock returns every
+    // row and a test would happily re-stamp another group's rows to BPM.
+    const { resources } = await getContainer('sessions')
+      .items.query<{ id: string }>({ query: 'SELECT * FROM c WHERE NOT IS_DEFINED(c.groupId)' })
+      .fetchAll();
+    expect(resources.map((r) => r.id)).toEqual(['s-legacy']);
+  });
+
+  it('SELECT VALUE COUNT respects the filters instead of counting the container', async () => {
+    // The Phase 2 status read: "how many unstamped rows are left" must be able
+    // to reach zero in a test.
+    const count = async (query: string, parameters: { name: string; value: string }[] = []) => {
+      const { resources } = await getContainer('sessions').items.query<number>({ query, parameters }).fetchAll();
+      return resources[0];
+    };
+    expect(await count('SELECT VALUE COUNT(1) FROM c WHERE NOT IS_DEFINED(c.groupId)')).toBe(1);
+    expect(
+      await count('SELECT VALUE COUNT(1) FROM c WHERE c.groupId = @groupId', [
+        { name: '@groupId', value: 'a1b2c3' },
+      ]),
+    ).toBe(1);
+    expect(await count('SELECT VALUE COUNT(1) FROM c')).toBe(3);
   });
 });

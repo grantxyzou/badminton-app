@@ -85,6 +85,16 @@ don't copy.
 - **`groupId` is a filtered FIELD, never a partition key; BPM's ids are never
   rewritten** (Phase 0). Cosmos keys are immutable, and a rollback runs older
   code against the same database. Only a NEW group gets a `${groupId}:` prefix.
+- **Tolerate-then-flip over stamp-first** (Phase 0, questioned in review). The
+  alternative — backfill `groupId: 'bpm'` onto every row BEFORE Phase 1 and use
+  plain equality from day one — needs no dual mode at all. It lost on the
+  rollback window: a rollback runs OLDER code, which writes rows with no
+  `groupId`, and under plain equality every one of those rows vanishes from
+  BPM's history until somebody notices and re-runs the backfill. Tolerance
+  keeps them readable through any rollback, and the idempotent backfill is
+  re-run after one. The cost is real and accepted: the Phase 5 flip changes
+  the meaning of every scoped query in one deploy, so its gate is the status
+  read showing ZERO unstamped rows for a week, not a calendar date.
 - **A ratchet test, not ESLint, guards raw container access** (Phase 0
   decision, Phase 1 mechanism). A second `no-restricted-syntax` block for the
   same files silently replaces the design-token rules — the documented trap.

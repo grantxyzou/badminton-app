@@ -22,7 +22,8 @@
 
 Goal: every GROUP_SCOPED read/write goes through `groupScope(groupId)` with `resolveGroupId(req)` stubbed to `'bpm'`. Two PRs.
 
-- [ ] 1a `lib/groupContext.ts` (`resolveGroupId(req)` + an RSC variant for `app/page.tsx`); accessor methods on `lib/groupScope.ts` (builder: with-WHERE, no-WHERE, ORDER BY, LIMIT — unit-test the emitted SQL); ratchet list `MIGRATION_BACKLOG` starts full
+- [ ] 1a DECIDE FIRST (raised in the Phase 0 review): the container→partition-key mapping is now kept by hand in four places (`lib/memberPurge.ts` `pk`, the provisioning test, CLAUDE.md, and by every caller of `item(id, pk)`), and the mock ignores the PK argument, so a caller passing the wrong one passes CI and 404s in production. Before the accessor signature lands, derive `pk` from one registry (`lib/containers.ts` `{ name, pk, scope }` that memberPurge and groupScope both read) so `.read(container, id)` never takes a PK from the caller.
+- [ ] 1a `lib/groupContext.ts` (`resolveGroupId(req)` + an RSC variant for `app/page.tsx`); accessor methods on `lib/groupScope.ts` (builder: with-WHERE, no-WHERE, ORDER BY, LIMIT — unit-test the emitted SQL; the group fragment comes from `groupClause(groupId)`); ratchet list `MIGRATION_BACKLOG` starts full
 - [ ] 1a `getActiveSessionId(groupId) → string | null`, `setActiveSessionId(groupId, id)`, `sessionIdFromDate(iso, groupId)`, pointer id via `groupDocId`; sweep the 24 pointer files; routes answer 404 `no_active_session`
 - [ ] 1a the session family: `sessions`, `players`, `announcements`, `skills`, `gameResults`; `lib/announcements.ts`, `lib/kudosEligibility.ts` (`sessionPrefix`)
 - [ ] 1b the rest: `birds` (`lib/birdWrite.ts`), `aliases` (`lib/playerIdentity.ts`), `kudos`, `stringingJobs`, `clubSettings` (`shopDocId` etc. in `lib/stringingShop.ts`, `lib/stringingStrings.ts`, `lib/stringingPricing.ts`), `events`, `insights` (per-group doc id; scope `buildSnapshot`'s queries)

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 import { OWNED_CONTAINERS, NOT_MEMBER_SCOPED, CLASSIFIED_ELSEWHERE } from '@/lib/memberPurge';
+import { containersReferencedInSource } from './containerScan';
 
 /**
  * THE CANARY THAT STOPS ACCOUNT DELETION GOING QUIETLY STALE.
@@ -19,57 +19,13 @@ import { OWNED_CONTAINERS, NOT_MEMBER_SCOPED, CLASSIFIED_ELSEWHERE } from '@/lib
  *
  * A source scan and not a runtime check on purpose: at runtime a container that
  * is never touched by the tests is indistinguishable from one that does not
- * exist, which is the whole problem.
+ * exist, which is the whole problem. The scanner (with its const-alias
+ * resolution — `authhandoff` hid behind one and shipped un-purged) lives in
+ * `containerScan.ts`, shared with `group-scope-coverage.test.ts`.
  */
-function walk(dir: string, out: string[] = []): string[] {
-  for (const entry of readdirSync(dir)) {
-    if (entry === 'node_modules' || entry.startsWith('.')) continue;
-    const full = join(dir, entry);
-    if (statSync(full).isDirectory()) walk(full, out);
-    else if (/\.tsx?$/.test(entry)) out.push(full);
-  }
-  return out;
-}
-
-/**
- * A literal-only scan is not enough, and that is not hypothetical.
- *
- * `lib/authHandoff.ts` and `lib/authMigration.ts` both write
- * `const CONTAINER = 'authhandoff'` and then call `getContainer(CONTAINER)`.
- * The first version of this canary matched only a quoted argument, so BOTH were
- * invisible — and `authhandoff` holds a `memberId`, so account deletion shipped
- * missing it while this test sat green. The canary was wrong in exactly the way
- * it exists to prevent.
- *
- * So resolve single-level const aliases too: collect `const X = '…'` per file,
- * then map `(get|ensure)Container(X)` back through it.
- */
-function containersReferencedInSource(): Set<string> {
-  const root = join(__dirname, '..');
-  const files = [...walk(join(root, 'app')), ...walk(join(root, 'lib'))];
-  const found = new Set<string>();
-  for (const file of files) {
-    const src = readFileSync(file, 'utf8');
-
-    for (const m of src.matchAll(/(?:get|ensure)Container\(\s*'([a-zA-Z]+)'/g)) {
-      found.add(m[1]);
-    }
-
-    const aliases = new Map<string, string>();
-    for (const m of src.matchAll(/\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*'([a-zA-Z]+)'/g)) {
-      aliases.set(m[1], m[2]);
-    }
-    for (const m of src.matchAll(/(?:get|ensure)Container\(\s*([A-Za-z_$][\w$]*)\s*[,)]/g)) {
-      const resolved = aliases.get(m[1]);
-      if (resolved) found.add(resolved);
-    }
-  }
-  return found;
-}
-
 describe('account deletion covers every container', () => {
   it('classifies every container the app touches', () => {
-    const referenced = containersReferencedInSource();
+    const referenced = containersReferencedInSource(join(__dirname, '..'));
     // Sanity: if the scan finds nothing the regex has rotted and the rest of
     // this file would pass vacuously.
     expect(referenced.size).toBeGreaterThan(10);

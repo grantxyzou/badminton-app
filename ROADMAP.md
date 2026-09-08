@@ -9,7 +9,7 @@
 **Non-Goals (drift = building these):**
 - ❌ Multi-sport / generic "sports app" (it is badminton-specific, on purpose)
 - ❌ Generic court/venue booking platform
-- ❌ Multi-tenant **SaaS** — billing, a marketing site, a super-admin plane, subdomains. (**Multi-GROUP inside the one deployment was explicitly chosen on 2026-09-07** as the Stage-2 (#81) initiative, for the store launch: `docs/plans/multi-group.md`. It runs alongside the Stats racket-fit rebuild by Grant's decision, which overrides the WIP cap below for these two.)
+- ❌ Multi-tenant **SaaS** — billing, a marketing site, a super-admin plane, subdomains. (**Multi-GROUP inside the one deployment was explicitly chosen on 2026-09-07** as the Stage-2 (#81) initiative, for the store launch: `docs/plans/multi-group.md`. Its Phase 0 ran alongside the Stats racket-fit rebuild by Grant's decision — a WIP-cap override for that phase only; Phase 1 onward is sequenced AFTER the Stats PRs merge.)
 - ❌ Any new user-facing surface that doesn't serve a named track below
 - ❌ Real-offline/PWA, native app, payments processing, social feed
 

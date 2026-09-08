@@ -10,17 +10,22 @@ import {
 
 describe('groupClause', () => {
   it('is a plain equality when strict', () => {
-    expect(groupClause(false)).toBe('c.groupId = @groupId');
+    expect(groupClause(BPM_GROUP_ID, false)).toBe('c.groupId = @groupId');
   });
 
-  it('admits unstamped rows for BPM only when tolerant', () => {
-    expect(groupClause(true)).toBe(
-      "(c.groupId = @groupId OR (NOT IS_DEFINED(c.groupId) AND @groupId = 'bpm'))",
+  it('admits unstamped rows when tolerant and the group is BPM', () => {
+    expect(groupClause(BPM_GROUP_ID, true)).toBe(
+      '(c.groupId = @groupId OR NOT IS_DEFINED(c.groupId))',
     );
   });
 
+  it('is a plain equality for any other group even when tolerant', () => {
+    // An unstamped row can only ever be BPM's, so no other group needs the OR arm.
+    expect(groupClause('a1b2c3', true)).toBe('c.groupId = @groupId');
+  });
+
   it('defaults to the module constant', () => {
-    expect(groupClause()).toBe(groupClause(TOLERATE_UNSTAMPED));
+    expect(groupClause(BPM_GROUP_ID)).toBe(groupClause(BPM_GROUP_ID, TOLERATE_UNSTAMPED));
   });
 });
 
