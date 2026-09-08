@@ -30,7 +30,7 @@ describe('ProfileTab', () => {
     // Anonymous-state copy was refreshed in #91 — "Profile" was meaningless
     // for signed-out users and "invite only" read as gatekeeping.
     expect(screen.getByRole('heading', { name: 'Welcome back' })).toBeDefined();
-    expect(screen.getByText(/stats, kit and payment history/i)).toBeDefined();
+    expect(screen.getByText(/stats, equipment and payment history/i)).toBeDefined();
     // Inline sign-in form (now shared via <SignInForm>) has a name input
     // (placeholder "Your name" from recovery.nameLabel) + PIN input + Sign in button.
     expect(screen.getByPlaceholderText('Your name')).toBeDefined();

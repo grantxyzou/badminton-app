@@ -299,7 +299,7 @@ describe('YourKitCard — the picker learns what you own from this card', () => 
 
     // The catalog row is present AND marked, rather than hidden.
     expect(await screen.findByText('Nanoflare 800')).toBeTruthy();
-    expect(screen.getByText('In your kit · using today')).toBeTruthy();
+    expect(screen.getByText('Yours · using today')).toBeTruthy();
     // And it is inert — an owned row is not something to add.
     expect(screen.queryByRole('button', { name: 'Yonex Astrox 88D Pro' })).toBeNull();
   });
@@ -318,7 +318,7 @@ describe('YourKitCard — the picker learns what you own from this card', () => 
     fireEvent.click(screen.getByLabelText(/^Racket —/));
 
     expect(await screen.findByText('Nanoflare 800')).toBeTruthy();
-    expect(screen.queryByText(/In your kit/)).toBeNull();
+    expect(screen.queryByText(/Yours ·/)).toBeNull();
   });
 });
 
@@ -384,7 +384,7 @@ describe('YourKitCard — a pick confirms itself in place', () => {
     fireEvent.click(row);
 
     // The row became an owned row...
-    expect(await screen.findByText(/In your kit/)).toBeTruthy();
+    expect(await screen.findByText(/Yours ·/)).toBeTruthy();
     // ...and is no longer something you can add again.
     expect(screen.queryByRole('button', { name: 'Yonex Astrox 88D Pro' })).toBeNull();
     // ...while the sheet is still standing.

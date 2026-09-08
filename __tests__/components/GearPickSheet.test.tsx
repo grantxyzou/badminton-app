@@ -175,7 +175,7 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
       mockGear(gearDoc());
       renderSheet();
 
-      expect(await screen.findByText('Add to my kit')).toBeTruthy();
+      expect(await screen.findByText('Add to my equipment')).toBeTruthy();
       expect(screen.getByText('Astrox 99 Pro')).toBeTruthy();
 
       expect(screen.queryByRole('tab', { name: 'Both' })).toBeNull();
@@ -210,7 +210,7 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
     renderSheet({ pick: false });
 
     expect(await screen.findByRole('alert')).toBeTruthy();
-    expect(screen.queryByText('Add to my kit')).toBeNull();
+    expect(screen.queryByText('Add to my equipment')).toBeNull();
 
     const band = screen.getByRole('tab', { name: '$200–350' });
     await waitFor(() => expect(band.getAttribute('aria-selected')).toBe('true'));
