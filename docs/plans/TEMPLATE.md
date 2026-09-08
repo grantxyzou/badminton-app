@@ -2,6 +2,15 @@
 
 **Track:** <the ROADMAP track or critical-path step this serves — "none" means drift; open a `later` issue instead of starting>
 **Status:** intent
+**Review on:** <YYYY-MM-DD — the question, on ONE line; it is printed back to you verbatim>
+
+<!-- Drop the Review-on line only when nothing is left to decide. A kill criterion
+     with no date is a note, not a gate: `value-hub-slice-0.md` carried an honest
+     one and went unread for nine weeks, by which time three of the four tracks it
+     gated had shipped anyway. `scripts/check-plan-reviews.mjs` prints the plan and
+     the question once the date passes, at session start. It never blocks — being
+     late on a read is a backlog, and a check that failed the build over one would
+     be muted inside a week. -->
 
 ## Problem
 
