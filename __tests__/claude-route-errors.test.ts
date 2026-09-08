@@ -105,4 +105,24 @@ describe('POST /api/claude — failures say why', () => {
     expect(res.status).toBe(401);
     expect(create).not.toHaveBeenCalled();
   });
+
+  /**
+   * The reason this route uses `isAdminAuthedWithMember` rather than the cheap
+   * signature-only check: the admin cookie is valid for 30 days, so a demoted or
+   * deactivated admin would otherwise keep spending API budget for a month. The
+   * cookie here is genuine and unexpired in both cases — only the member doc moved.
+   */
+  it('refuses a demoted admin holding a still-valid cookie', async () => {
+    seedAdminMember({ role: 'member' });
+    const res = await post({ prompt: 'polish this' });
+    expect(res.status).toBe(401);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('refuses a deactivated admin holding a still-valid cookie', async () => {
+    seedAdminMember({ active: false });
+    const res = await post({ prompt: 'polish this' });
+    expect(res.status).toBe(401);
+    expect(create).not.toHaveBeenCalled();
+  });
 });

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { describeAiFailure } from '@/lib/aiError';
+import { PROSE_MODEL } from '@/lib/aiModels';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -12,7 +13,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
   }
 
-  if (!isAdminAuthed(req)) return unauthorized();
+  // Spends real API budget, so use the fresh role re-check rather than the cheap
+  // signature-only variant — the admin cookie outlives a demotion by up to 30 days.
+  // Same trade as `app/api/push/test`, and the same known cost: that helper folds a
+  // Cosmos failure into `{ authed: false }` (lib/auth.ts), so a database blip tells
+  // an admin they are unauthorized. Accepted rather than fixed here, because
+  // `lib/auth.ts` sits on 31 routes and is the wrong place to add a failure mode for
+  // one caller's benefit.
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   // Parsed OUTSIDE the AI try/catch on purpose: a malformed body is a 400 from
   // this route, and folding it into the catch below would have described a bad
@@ -32,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-5',
+      model: PROSE_MODEL,
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
     });

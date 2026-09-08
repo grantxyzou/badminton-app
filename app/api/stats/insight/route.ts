@@ -10,6 +10,7 @@ import type { CanonicalLevel } from '@/lib/level';
 import { recommendDrills, type DrillPick } from '@/lib/drills';
 import { computeInsightSignals, signalsByCard, type InsightSignal, type SignalCard } from '@/lib/insightSignals';
 import { VOICE_PERSONA } from '@/lib/aiPersona';
+import { INSIGHT_MODEL } from '@/lib/aiModels';
 
 /**
  * Account-gated, passively-generated player insight. Replaces the old
@@ -41,7 +42,7 @@ import { VOICE_PERSONA } from '@/lib/aiPersona';
 export const dynamic = 'force-dynamic';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const MODEL = 'claude-sonnet-4-6';
+const MODEL = INSIGHT_MODEL;
 // Structured card insights are several short fields rather than one blob
 // (the retired recap+focus blob ran at 400).
 const MAX_OUTPUT_TOKENS_CARDS = 600;
