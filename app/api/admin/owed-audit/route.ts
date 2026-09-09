@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, POINTER_ID, getActiveSessionId } from '@/lib/cosmos';
+import { getActiveSessionId, SESSION_ID } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
@@ -54,32 +55,24 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const sessionsContainer = getContainer('sessions');
-    const playersContainer = getContainer('players');
+    const scope = groupScope(resolveGroupId(req));
     // Exclusion comparand only; a group with no session excludes nothing.
-    const activeSessionId = await getActiveSessionId(resolveGroupId(req));
+    const activeSessionId = await getActiveSessionId(scope.groupId);
     const now = Date.now();
 
     const identity = await resolveIdentity({ name, memberId });
 
-    const { resources: allSessions } = await sessionsContainer.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.id != @pointerId AND c.id != @legacyId',
-        parameters: [
-          { name: '@pointerId', value: POINTER_ID },
-          { name: '@legacyId', value: 'current-session' },
-        ],
-      })
-      .fetchAll();
+    const allSessions = await scope.query<Session>('sessions', {
+      where: 'c.id != @legacyId',
+      params: [{ name: '@legacyId', value: SESSION_ID }],
+    });
     const sessionById = new Map<string, Session>();
-    for (const s of allSessions as Session[]) sessionById.set(s.id, s);
+    for (const s of allSessions) sessionById.set(s.id, s);
 
-    // All players (small dataset for a friend group); we need the full roster
-    // per session for the live-share denominator, then filter to this identity.
-    const { resources: allPlayers } = await playersContainer.items
-      .query({ query: 'SELECT * FROM c' })
-      .fetchAll();
-    const players = allPlayers as Player[];
+    // All of the group's players (small dataset for a friend group); we need
+    // the full roster per session for the live-share denominator, then filter
+    // to this identity.
+    const players = await scope.query<Player>('players');
 
     const activeCountBySession = new Map<string, number>();
     for (const p of players) {

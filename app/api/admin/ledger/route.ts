@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, POINTER_ID } from '@/lib/cosmos';
+import { SESSION_ID } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import type { Player, Session } from '@/lib/types';
@@ -67,22 +69,16 @@ export async function GET(req: NextRequest) {
     const fromIso = new Date(fromMs).toISOString();
     const toIso = new Date(now).toISOString();
 
-    const sessionsContainer = getContainer('sessions');
-    const playersContainer = getContainer('players');
+    const scope = groupScope(resolveGroupId(req));
 
-    const { resources: allSessions } = await sessionsContainer.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.id != @pointerId AND c.id != @legacyId',
-        parameters: [
-          { name: '@pointerId', value: POINTER_ID },
-          { name: '@legacyId', value: 'current-session' },
-        ],
-      })
-      .fetchAll();
+    const allSessions = await scope.query<Session>('sessions', {
+      where: 'c.id != @legacyId',
+      params: [{ name: '@legacyId', value: SESSION_ID }],
+    });
 
     // Settled-only + in-window. Unsettled sessions are deliberately excluded
     // from spent + bySession so the gap reflects bills already frozen.
-    const windowSessions = (allSessions as Session[])
+    const windowSessions = allSessions
       .filter((s) => {
         if (!s.settled) return false;
         if (!s.datetime) return false;
@@ -118,15 +114,11 @@ export async function GET(req: NextRequest) {
     // and returns every player row — so we MUST post-filter by sessionIdSet
     // for the two stores to agree (same contract as stats/attendance).
     const placeholders = sessionIds.map((_, i) => `@sid${i}`).join(',');
-    const { resources: rawPlayers } = await playersContainer.items
-      .query({
-        query: `SELECT * FROM c WHERE c.sessionId IN (${placeholders})`,
-        parameters: sessionIds.map((id, i) => ({ name: `@sid${i}`, value: id })),
-      })
-      .fetchAll();
-    const players = (rawPlayers as Player[]).filter((p) =>
-      sessionIdSet.has(p.sessionId),
-    );
+    const rawPlayers = await scope.query<Player>('players', {
+      where: `c.sessionId IN (${placeholders})`,
+      params: sessionIds.map((id, i) => ({ name: `@sid${i}`, value: id })),
+    });
+    const players = rawPlayers.filter((p) => sessionIdSet.has(p.sessionId));
 
     // ── Summary + bySession ──
     let spent = 0;

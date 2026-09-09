@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -26,11 +28,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const playersContainer = getContainer('players');
+    const scope = groupScope(resolveGroupId(req));
     const membersContainer = getContainer('members');
 
-    const [{ resources: allPlayers }, { resources: allMembers }] = await Promise.all([
-      playersContainer.items.query({ query: 'SELECT * FROM c' }).fetchAll(),
+    const [allPlayers, { resources: allMembers }] = await Promise.all([
+      scope.query<Record<string, unknown> & { id: string }>('players'),
       membersContainer.items.query({ query: 'SELECT * FROM c' }).fetchAll(),
     ]);
 
@@ -48,7 +50,7 @@ export async function POST(req: NextRequest) {
       linked: 0, created: 0, skipped: 0, wouldLink: 0, wouldCreate: 0, collisions: [],
     };
 
-    for (const player of allPlayers as Array<Record<string, unknown>>) {
+    for (const player of allPlayers) {
       if (typeof player?.name !== 'string') continue;
       if (typeof player.memberId === 'string' && (player.memberId as string).length > 0) {
         summary.skipped++;
@@ -95,7 +97,7 @@ export async function POST(req: NextRequest) {
       if (dryRun) {
         summary.wouldLink++;
       } else if (target) {
-        await playersContainer.items.upsert({ ...player, memberId: target.id });
+        await scope.upsert('players', { ...player, memberId: target.id });
         summary.linked++;
       }
     }

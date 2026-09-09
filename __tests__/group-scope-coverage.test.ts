@@ -23,11 +23,6 @@ const RAW_ACCESS_ALLOWLIST = new Set([
 
 /** Files still reading a GROUP_SCOPED container raw. Phase 1 empties this. */
 const MIGRATION_BACKLOG = new Set([
-  'app/api/admin/anomalies/route.ts',
-  'app/api/admin/backfill-attendance/route.ts',
-  'app/api/admin/ledger/route.ts',
-  'app/api/admin/migrate-memberId/route.ts',
-  'app/api/admin/owed-audit/route.ts',
   'app/api/admin/slice0/route.ts',
   'app/api/aliases/route.ts',
   'app/api/birds/reconcile/route.ts',
@@ -38,8 +33,6 @@ const MIGRATION_BACKLOG = new Set([
   'app/api/members/route.ts',
   'app/api/players/unpaid/route.ts', // stringingJobs (Phase 1b); its session-family reads are swept
   'app/api/session/bird-usage/route.ts', // birds (Phase 1b); its session read is swept
-  'app/api/stats/insight/route.ts',
-  'app/api/stats/partners/route.ts',
   'app/api/stringing/jobs/[id]/accept/route.ts',
   'app/api/stringing/jobs/[id]/route.ts',
   'app/api/stringing/jobs/route.ts',

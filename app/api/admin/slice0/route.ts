@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, ensureContainer } from '@/lib/cosmos';
+import { getContainer, ensureContainer, sessionIdFromDate } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { PICK_KINDS } from '@/lib/events';
@@ -20,7 +22,9 @@ const CLOCK_RESTART = '2026-08-16';
 const norm = (s: string) => s.trim().toLowerCase();
 
 /** `session-YYYY-MM-DD` sorts lexically, so a date cutoff is a string compare. */
-const sessionCutoff = (sinceDate: string) => `session-${sinceDate}`;
+// Per group: a prefixed group's ids sort BEFORE the bare `session-` prefix, so
+// a bare cutoff would exclude every one of that group's sessions.
+const sessionCutoff = (sinceDate: string, groupId: string) => sessionIdFromDate(sinceDate, groupId);
 
 /**
  * Value-Hub Slice-0 kill-criterion readout.
@@ -66,13 +70,13 @@ export async function GET(req: NextRequest) {
     // filtering in app/api/stats/partners/route.ts — the mock store ignores the
     // SQL predicate, so the cutoff and `removed` filter are re-applied in JS to
     // keep mock and prod identical.
-    const cutoff = sessionCutoff(since);
-    const { resources: playerRows } = await getContainer('players').items
-      .query({
-        query: 'SELECT c.sessionId, c.name, c.removed FROM c WHERE c.sessionId >= @cutoff',
-        parameters: [{ name: '@cutoff', value: cutoff }],
-      })
-      .fetchAll();
+    const scope = groupScope(resolveGroupId(req));
+    const cutoff = sessionCutoff(since, scope.groupId);
+    const playerRows = await scope.query<{ sessionId?: unknown; name?: unknown; removed?: unknown }>('players', {
+      select: 'c.sessionId, c.name, c.removed',
+      where: 'c.sessionId >= @cutoff',
+      params: [{ name: '@cutoff', value: cutoff }],
+    });
     const cohort = new Set<string>();
     for (const row of playerRows) {
       if (typeof row.name !== 'string' || typeof row.sessionId !== 'string') continue;

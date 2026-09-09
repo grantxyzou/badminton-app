@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, getActiveSessionId, POINTER_ID } from '@/lib/cosmos';
+import { getContainer, getActiveSessionId, SESSION_ID } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { evaluateAnomalies } from '@/lib/anomalies';
@@ -12,28 +13,31 @@ export async function GET(req: NextRequest) {
   if (!auth.authed) return unauthorized();
 
   try {
-    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    const scope = groupScope(resolveGroupId(req));
+    const sessionId = await getActiveSessionId(scope.groupId);
     // No session yet means no anomalies yet — the same empty list this route
     // already returns when the pointer targets a doc that does not exist.
     if (!sessionId) return NextResponse.json([]);
-    const sessionsContainer = getContainer('sessions');
     const membersContainer = getContainer('members');
 
-    const [{ resources: currentList }, { resource: adminMember }, { resources: allSessions }] = await Promise.all([
-      sessionsContainer.items
-        .query({ query: 'SELECT * FROM c WHERE c.id = @id', parameters: [{ name: '@id', value: sessionId }] })
-        .fetchAll(),
+    const [session, { resource: adminMember }, archived] = await Promise.all([
+      scope.read<Session>('sessions', sessionId, sessionId),
       membersContainer.item(auth.memberId, auth.memberId).read(),
-      sessionsContainer.items.query({ query: 'SELECT * FROM c' }).fetchAll(),
+      // The group's sessions minus the legacy doc and the active one; the
+      // accessor already drops the pointer.
+      scope.query<Session>('sessions', {
+        where: 'c.id != @legacyId AND c.id != @activeId',
+        params: [
+          { name: '@legacyId', value: SESSION_ID },
+          { name: '@activeId', value: sessionId },
+        ],
+      }),
     ]);
 
-    const session = currentList[0] as Session | undefined;
     if (!session) return NextResponse.json([]);
 
-    // Most recent archived session that isn't the active one or the pointer/legacy doc.
-    const previousSession = (allSessions as Session[])
-      .filter((s) => s.id !== POINTER_ID && s.id !== 'current-session' && s.id !== sessionId)
-      .sort((a, b) => (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))[0];
+    // Most recent archived session.
+    const previousSession = archived.sort((a, b) => (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))[0];
 
     const anomalies = evaluateAnomalies({
       session,
