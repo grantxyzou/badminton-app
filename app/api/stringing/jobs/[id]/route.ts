@@ -322,7 +322,13 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       }
     }
 
-    await scope.upsert('stringingJobs', next);
+    // `replace`, not `upsert`: a job archived and DELETED from another phone
+    // between the read above and this write must stay deleted, not come back
+    // with a new status and its price intact.
+    const written = await scope.replace('stringingJobs', next, memberId);
+    if (!written) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
 
     /* THE NOTIFICATION SEAM'S ONLY CALLER.
        `lib/stringingNotify.ts` and its adapter shipped with nothing on either

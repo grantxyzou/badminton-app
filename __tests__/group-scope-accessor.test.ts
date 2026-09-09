@@ -132,12 +132,31 @@ describe('groupScope', () => {
     // by the read() test below, where the mock ignores the partition key.
   });
 
-  it('read verifies the group and hides another group\'s doc', async () => {
+  it('read verifies the group and hides another group\'s doc — SILENTLY', async () => {
     const mine = await groupScope(A).read<{ id: string }>('players', 'pa', 's-a');
     expect(mine?.id).toBe('pa');
     const theirs = await groupScope(A).read('players', 'pb', 's-b');
     expect(theirs).toBeUndefined();
-    expect(leak).toHaveBeenCalledWith(expect.stringContaining('[group-leak]'), expect.anything());
+    // A foreign id on a point read is a legitimate 404 (a stale tab after a
+    // group switch, a guessed id), not a leak. The sentinel is reserved for a
+    // QUERY returning a row the clause should have excluded — logging it here
+    // would pollute the "clean week of logs" gate with ordinary traffic.
+    expect(leak).not.toHaveBeenCalled();
+  });
+
+  it('replace updates a doc the group owns and refuses to resurrect one that is gone', async () => {
+    const updated = await groupScope(A).replace('players', { id: 'pa', sessionId: 's-a', name: 'Lin', paid: true }, 's-a');
+    expect(updated).toMatchObject({ id: 'pa', paid: true, groupId: A });
+    // Deleted between the read and the write (the archive-then-delete race):
+    // upsert would recreate it; replace must not.
+    getStore().players = (getStore().players as { id: string }[]).filter((p) => p.id !== 'pa');
+    const gone = await groupScope(A).replace('players', { id: 'pa', sessionId: 's-a', name: 'Lin', paid: false }, 's-a');
+    expect(gone).toBeUndefined();
+    expect((getStore().players as { id: string }[]).some((p) => p.id === 'pa')).toBe(false);
+    // Another group's doc is not this group's to replace.
+    const theirs = await groupScope(A).replace('players', { id: 'pb', sessionId: 's-b', name: 'X' }, 's-b');
+    expect(theirs).toBeUndefined();
+    expect((getStore().players as { id: string; name: string }[]).find((p) => p.id === 'pb')?.name).toBe('Viktor');
   });
 
   it('read derives the partition key from the id when the registry says /id', async () => {
@@ -169,7 +188,8 @@ describe('groupScope', () => {
     // finds by id alone. Without this check the accessor is laxer than
     // production on every /sessionId-keyed point read.
     expect(await groupScope(A).read('players', 'pa', 's-wrong')).toBeUndefined();
-    expect(leak).toHaveBeenCalledWith(expect.stringContaining('[group-leak]'), expect.anything());
+    // Cosmos would answer this with a plain 404 and no log line; so does the accessor.
+    expect(leak).not.toHaveBeenCalled();
     expect(await groupScope(A).remove('players', 'pa', 's-wrong')).toBe(false);
     expect((getStore().players as { id: string }[]).some((p) => p.id === 'pa')).toBe(true);
   });

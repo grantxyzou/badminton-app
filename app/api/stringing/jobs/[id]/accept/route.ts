@@ -91,7 +91,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       next.pendingEditDeclinedAt = now;
     }
 
-    await scope.upsert('stringingJobs', next);
+    // `replace`: a job the stringer deleted meanwhile must not be recreated by
+    // the player's answer to a proposal that no longer exists.
+    const written = await scope.replace('stringingJobs', next, caller.memberId);
+    if (!written) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
     // Through `toPlayerJob`, like every other player-facing response: the
     // strip cannot be forgotten at a call site.
     return NextResponse.json({ job: toPlayerJob(next) });
