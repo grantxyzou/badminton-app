@@ -29,6 +29,8 @@
  * excludes them in Cosmos.)
  */
 
+import { CONTAINERS, containersOfScope, type ContainerScope, type ContainersOfScope } from './containers';
+
 /** Group #1. Every row in production today belongs to it. */
 export const BPM_GROUP_ID = 'bpm';
 
@@ -42,24 +44,23 @@ export const BPM_GROUP_ID = 'bpm';
 export const TOLERATE_UNSTAMPED = true;
 
 /**
+ * The three tables are VIEWS of `lib/containers.ts` (name → reason), which is
+ * where the scope, the partition key and the reason are recorded together.
+ * They are kept as named exports because the canaries and the docs refer to
+ * the three kinds by these names.
+ */
+function reasonsOfScope<S extends ContainerScope>(scope: S): Readonly<Record<ContainersOfScope<S>, string>> {
+  const out = {} as Record<ContainersOfScope<S>, string>;
+  for (const name of containersOfScope(scope)) out[name] = CONTAINERS[name].reason;
+  return out;
+}
+
+/**
  * Filtered by `groupId` on every read, stamped on every write. Once the scoped
  * accessor lands (Phase 1) raw `getContainer` on one of these is a build error
  * outside an allowlist.
  */
-export const GROUP_SCOPED = {
-  sessions: 'a session is one club\'s night; the pointer doc is per group too',
-  players: 'a roster line of one session; the cost split lives here',
-  announcements: 'written by one club\'s admin to that club',
-  skills: 'per-session skill scores, keyed by roster name within that session',
-  gameResults: 'four roster names from one session',
-  birds: 'shuttle purchases and stock adjustments — one club\'s inventory',
-  aliases: 'e-transfer names read against one club\'s payments (security rule 10)',
-  kudos: 'eligibility is co-play on one roster, and raterName is a roster name',
-  stringingJobs: 'the bench is a club service; a job carries that club\'s rate card',
-  clubSettings: 'shop sign, stocked strings, rate card — per club, per-group ids',
-  events: 'an engagement happens inside one group\'s tabs; slice0 is a per-group readout',
-  insights: 'narrates group play (partners, kudos); one cache doc per group per member',
-} as const satisfies Readonly<Record<string, string>>;
+export const GROUP_SCOPED = reasonsOfScope('group');
 
 /**
  * Keyed by the person; never filtered by group. Raw `getContainer` stays
@@ -67,25 +68,12 @@ export const GROUP_SCOPED = {
  * level calibration, the sign-ups-open push broadcast) must be narrowed to the
  * group's roster first, or "the club" silently means "the database".
  */
-export const PERSON_SCOPED = {
-  members: 'the person: one account, one PIN, one email — many groups',
-  identities: 'one email maps to one member DB-wide, atomically; that fits one-account-many-groups',
-  playerGear: 'one gear bag per person, whichever club they play at',
-  assessments: 'one skill self-assessment history per person',
-  drillCompletions: 'a drill done is done, regardless of club',
-  pushSubscriptions: 'one device row per person; the SENDER narrows by roster',
-  authhandoff: 'ten-minute OAuth stash keyed by a hashed ref, no group context',
-  authmigration: 'five-minute PWA-to-native stash, no group context',
-} as const satisfies Readonly<Record<string, string>>;
+export const PERSON_SCOPED = reasonsOfScope('person');
 
 /** One copy for the whole deployment. */
-export const GLOBAL = {
-  equipmentCatalog: 'the racket/string catalog; seeded, not user data',
-  releases: 'the app\'s own changelog',
-  feedback: 'reports go to the operator, not to a group admin; groupId is context only',
-} as const satisfies Readonly<Record<string, string>>;
+export const GLOBAL = reasonsOfScope('global');
 
-export type GroupContainer = keyof typeof GROUP_SCOPED;
+export type GroupContainer = ContainersOfScope<'group'>;
 
 /**
  * Document id for a group-scoped singleton or date-keyed doc. BPM keeps the

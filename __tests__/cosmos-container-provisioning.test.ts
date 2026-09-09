@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
+import { PROVISIONED_CONTAINERS } from '@/lib/containers';
 
 /**
  * EVERY CONTAINER MUST EITHER ALREADY EXIST IN PRODUCTION OR BE ENSURED.
@@ -26,32 +27,12 @@ import { join } from 'path';
 
 /**
  * Containers that exist in the production database, verified against
- * `az cosmosdb sql container list` on 2026-08-28. Adding a name here is a
- * claim about production, not a way to silence this test.
+ * `az cosmosdb sql container list` on 2026-08-28. Recorded as `provisioned`
+ * in the registry (`lib/containers.ts`) so this test, memberPurge and the
+ * group accessor read ONE list. Marking one `provisioned: true` is a claim
+ * about production, not a way to silence this test.
  */
-const PROVISIONED = new Set([
-  'aliases',
-  'announcements',
-  'assessments',
-  'authhandoff',
-  'birds',
-  'clubSettings',
-  'drillCompletions',
-  'equipmentCatalog',
-  'events',
-  'feedback',
-  'gameResults',
-  'identities',
-  'insights',
-  'kudos',
-  'members',
-  'playerGear',
-  'players',
-  'releases',
-  'sessions',
-  'skills',
-  'stringingJobs',
-]);
+const PROVISIONED = new Set<string>(PROVISIONED_CONTAINERS);
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
