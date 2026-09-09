@@ -285,9 +285,10 @@ export function groupScope(groupId: string): GroupScope {
       // as strict as production on every /sessionId-keyed read.
       const field = pkFieldOf(container);
       if ((resource as Record<string, unknown>)[field] !== pk) {
-        console.error(`[group-leak] ${container}: point read of ${id} under ${field}=${pk} found a doc keyed elsewhere`, {
-          id,
-        });
+        // A constant first argument: `id` and `pk` come from the request, and
+        // console treats its first argument as a format string (CodeQL
+        // js/tainted-format-string).
+        console.error('[group-leak] point read found a doc keyed elsewhere', { container, id, field, pk });
         return undefined;
       }
       return keep<T>(container, [resource])[0];
