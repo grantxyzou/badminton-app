@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
-import { verifyMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
+import { verifyMemberAuth, isAdminAuthed, isAdminAuthedWithMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { rackets } from '@/lib/activeRacket';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -207,10 +207,17 @@ export async function GET(req: NextRequest) {
     // not: it is health-adjacent and the privacy policy says only the member
     // sees it. Stripped for anyone who is not the owner or an admin, in the
     // same shape as the pinHash/deleteToken strip-canary elsewhere.
-    if (gear && 'fitArmComfort' in gear) {
+    //
+    // Tested by VALUE, not by key: `writeGearDoc` writes every field
+    // explicitly, so a doc with no answer carries `fitArmComfort: undefined`
+    // in the mock store while production JSON drops the key — `'in' gear`
+    // would take this branch for every route-written doc in dev and none in
+    // prod. The sync admin check is the read-only convention (CLAUDE.md,
+    // Auth); the fresh role re-check is for mutations.
+    if (gear && gear.fitArmComfort !== undefined) {
       const caller = verifyMemberAuth(req);
       const isOwner = caller?.memberId === memberId;
-      if (!isOwner && !(await isAdminAuthedWithMember(req)).authed) {
+      if (!isOwner && !isAdminAuthed(req)) {
         const { fitArmComfort: _strip, ...safe } = gear;
         return NextResponse.json({ gear: safe });
       }

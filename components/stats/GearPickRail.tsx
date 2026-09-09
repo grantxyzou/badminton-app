@@ -25,8 +25,8 @@ const SOURCED: EquipmentCategory[] = ['racket', 'string'];
  * fit sheet has five controls and a member answering it for the first time
  * taps them in a row; every tap used to be a fetch per sourced category
  * against a 10/min/IP limit whose throttled 200 renders as an error card.
- * Half a second collapses a burst into one pass. The FIRST pass is never
- * delayed — the skeletons would just sit there.
+ * Half a second collapses a burst into one pass. Only a fit-only change is
+ * delayed: the first pass and a format/budget tap refetch at once.
  */
 export const REC_REFETCH_DEBOUNCE_MS = 500;
 
@@ -137,7 +137,15 @@ export default function GearPickRail({ activeName, gear, onPairTension }: GearPi
     ? `${d?.fitGoal ?? ''}|${d?.fitSwing ?? ''}|${d?.fitArmComfort ?? ''}|${d?.fitGrip ?? ''}`
     : null;
   const recKey = prefKey === null ? null : `${prefKey}#${fitKey}`;
-  const fitAloneReachesStrings = gear.rackets.length === 0;
+  // Read inside the effect through a ref, NOT listed as a dependency: as a
+  // dependency it would key the rail on the BAG, and adding the recommended
+  // racket flips it — the effect would re-run at once, re-score with that
+  // racket now excluded, and swap the pick out from under the IN YOUR KIT
+  // flip. Same pattern as `onPairTensionRef` above.
+  const fitAloneReachesStringsRef = useRef(gear.rackets.length === 0);
+  useEffect(() => {
+    fitAloneReachesStringsRef.current = gear.rackets.length === 0;
+  }, [gear.rackets.length]);
   const prevKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -164,7 +172,7 @@ export default function GearPickRail({ activeName, gear, onPairTension }: GearPi
     const run = () => {
       for (const cat of SOURCED) {
         if (isRefresh && statusRef.current[cat] === 'parked') continue;
-        if (onlyFitChanged && cat === 'string' && !fitAloneReachesStrings) continue;
+        if (onlyFitChanged && cat === 'string' && !fitAloneReachesStringsRef.current) continue;
         fetch(`${BASE}/api/recommend?name=${encodeURIComponent(activeName)}&category=${cat}`, { cache: 'no-store' })
           .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
           .then((d) => {
@@ -221,14 +229,17 @@ export default function GearPickRail({ activeName, gear, onPairTension }: GearPi
           });
       }
     };
-    // A refresh is debounced; the first pass is not (see REC_REFETCH_DEBOUNCE_MS).
-    if (isRefresh) timer = setTimeout(run, REC_REFETCH_DEBOUNCE_MS);
+    // Only a fit-sheet burst is debounced (see REC_REFETCH_DEBOUNCE_MS). A
+    // single format or budget tap in the pick sheet refetches at once, as it
+    // always did — the pick under that sheet must not sit stale for half a
+    // second with no loading state to say so.
+    if (onlyFitChanged) timer = setTimeout(run, REC_REFETCH_DEBOUNCE_MS);
     else run();
     return () => {
       live = false;
       if (timer) clearTimeout(timer);
     };
-  }, [activeName, recKey, apply, fitAloneReachesStrings]);
+  }, [activeName, recKey, apply]);
 
   if (!activeName) return null;
 

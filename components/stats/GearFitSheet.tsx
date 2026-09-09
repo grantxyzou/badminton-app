@@ -6,7 +6,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import ListRow from '@/components/primitives/ListRow';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
 import type { UseGear, GearPrefs } from './useGear';
-import { FIT_GOALS, FIT_SWINGS, FIT_ARM_COMFORTS, FIT_GRIPS, type FitGoal, type FitGrip } from '@/lib/types';
+import { FIT_GOALS, FIT_SWINGS, FIT_ARM_COMFORTS, FIT_GRIPS, type FitGoal, type FitGrip, type FitSwing, type FitArmComfort } from '@/lib/types';
 
 export interface GearFitSheetProps {
   open: boolean;
@@ -15,6 +15,19 @@ export interface GearFitSheetProps {
    *  the pick rail re-asks off the same doc with no second fetch. */
   gear: UseGear;
 }
+
+/** Option lists and shared styles depend on nothing from render, so they are
+ *  built once — the rail mounts this sheet unconditionally and re-renders it
+ *  on every pass. */
+const SWING_OPTIONS: ReadonlyArray<[FitSwing, string]> = FIT_SWINGS.map((v) => [v, `fitSwing_${v}`]);
+const ARM_OPTIONS: ReadonlyArray<[FitArmComfort, string]> = FIT_ARM_COMFORTS.map((v) => [v, `fitArm_${v}`]);
+const GRIP_OPTIONS: ReadonlyArray<[FitGrip | null, string]> = [
+  ...FIT_GRIPS.map((v) => [v, `fitGrip_${v}`] as [FitGrip | null, string]),
+  [null, 'fitGripUnsure'],
+];
+const SECTION_STYLE = { display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' } as const;
+const LABEL_STYLE = { margin: '0', color: 'var(--text-secondary)' } as const;
+const LINK_STYLE = { background: 'transparent', border: 'none', padding: '0', cursor: 'pointer', color: 'var(--accent)' } as const;
 
 /** String-budget bands, CAD per restring. Every band is an UPPER bound, the
  *  same rule as the racket bands; `null` is "no limit". A string set is a
@@ -90,10 +103,6 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
     return `$${band}`;
   }
 
-  const sectionStyle = { display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' } as const;
-  const labelStyle = { margin: '0', color: 'var(--text-secondary)' } as const;
-  const linkStyle = { background: 'transparent', border: 'none', padding: '0', cursor: 'pointer', color: 'var(--accent)' } as const;
-
   function segment<T extends string | number | null>(
     label: string,
     options: ReadonlyArray<[T, string]>,
@@ -160,8 +169,8 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
 
           {/* Goal: a vertical list, not a segment — five labels do not fit a
               phone-width tab strip. The selected row carries a check. */}
-          <section style={sectionStyle} role="group" aria-label={hasRacket ? t('fitGoalLabel') : t('fitGoalLabelNoRacket')}>
-            <p className="fs-sm" style={labelStyle}>{hasRacket ? t('fitGoalLabel') : t('fitGoalLabelNoRacket')}</p>
+          <section style={SECTION_STYLE} role="group" aria-label={hasRacket ? t('fitGoalLabel') : t('fitGoalLabelNoRacket')}>
+            <p className="fs-sm" style={LABEL_STYLE}>{hasRacket ? t('fitGoalLabel') : t('fitGoalLabelNoRacket')}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
               {FIT_GOALS.map((g: FitGoal) => {
                 const selected = goal !== undefined && goal === g;
@@ -186,40 +195,35 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
             </div>
           </section>
 
-          <section style={sectionStyle}>
-            <p className="fs-sm" style={labelStyle}>{t('fitSwingLabel')}</p>
-            {segment(t('fitSwingLabel'), FIT_SWINGS.map((s) => [s, `fitSwing_${s}`] as const), swing, (v) => ({ fitSwing: v }))}
+          <section style={SECTION_STYLE}>
+            <p className="fs-sm" style={LABEL_STYLE}>{t('fitSwingLabel')}</p>
+            {segment(t('fitSwingLabel'), SWING_OPTIONS, swing, (v) => ({ fitSwing: v }))}
           </section>
 
-          <section style={sectionStyle}>
+          <section style={SECTION_STYLE}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-              <p className="fs-sm" style={labelStyle}>{t('fitArmLabel')}</p>
+              <p className="fs-sm" style={LABEL_STYLE}>{t('fitArmLabel')}</p>
               {/* Only when there is something to clear: a Clear that clears
                   nothing is a button that lies. */}
               {arm != null && (
-                <button type="button" className="fs-sm" style={linkStyle} disabled={gear.busy} onClick={() => setPref({ fitArmComfort: null })}>
+                <button type="button" className="fs-sm" style={LINK_STYLE} disabled={gear.busy} onClick={() => setPref({ fitArmComfort: null })}>
                   {t('fitClear')}
                 </button>
               )}
             </div>
-            {segment(t('fitArmLabel'), FIT_ARM_COMFORTS.map((a) => [a, `fitArm_${a}`] as const), arm, (v) => ({ fitArmComfort: v }))}
+            {segment(t('fitArmLabel'), ARM_OPTIONS, arm, (v) => ({ fitArmComfort: v }))}
             <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)', lineHeight: 'var(--lh-normal)' }}>
               {t('fitArmNote')}
             </p>
           </section>
 
-          <section style={sectionStyle}>
-            <p className="fs-sm" style={labelStyle}>{t('fitGripLabel')}</p>
-            {segment<FitGrip | null>(
-              t('fitGripLabel'),
-              [...FIT_GRIPS.map((g) => [g, `fitGrip_${g}`] as [FitGrip | null, string]), [null, 'fitGripUnsure']],
-              grip,
-              (v) => ({ fitGrip: v }),
-            )}
+          <section style={SECTION_STYLE}>
+            <p className="fs-sm" style={LABEL_STYLE}>{t('fitGripLabel')}</p>
+            {segment(t('fitGripLabel'), GRIP_OPTIONS, grip, (v) => ({ fitGrip: v }))}
           </section>
 
-          <section style={sectionStyle}>
-            <p className="fs-sm" style={labelStyle}>{t('fitStringBudgetLabel')}</p>
+          <section style={SECTION_STYLE}>
+            <p className="fs-sm" style={LABEL_STYLE}>{t('fitStringBudgetLabel')}</p>
             {segment(t('fitStringBudgetLabel'), STRING_BUDGET_BANDS, stringBudget, (v) => ({ stringBudgetMaxCad: v }))}
           </section>
 
