@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { resolveGroupId } from '@/lib/groupContext';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import {
@@ -257,7 +258,9 @@ async function handlePatch(req: NextRequest) {
   // reads `players.pinHash` directly stays in sync. A failure here is
   // non-fatal — the member record is the source of truth.
   try {
-    const sessionId = await getActiveSessionId();
+    // No session yet means no player row to mirror into; '' matches nothing,
+    // which is the right outcome and not the failure the catch below logs.
+    const sessionId = (await getActiveSessionId(resolveGroupId(req))) ?? '';
     const playersContainer = getContainer('players');
     const { resources: players } = await playersContainer.items
       .query({
@@ -347,7 +350,7 @@ export async function DELETE(req: NextRequest) {
 
     // Shared history first: if a later step fails, the rows that OTHER members
     // depend on have already been made safe, and the owned rows can be retried.
-    const activeSessionId = await getActiveSessionId();
+    const activeSessionId = await getActiveSessionId(resolveGroupId(req));
     const players = await anonymizePlayerRows(caller.memberId, name, activeSessionId);
     const games = await anonymizeGameResults(name);
     const reports = await anonymizeFeedback(name);

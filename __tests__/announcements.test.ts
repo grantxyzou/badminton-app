@@ -27,7 +27,7 @@ describe('POST /api/announcements — markdown round-trip', () => {
     );
     expect(postRes.status).toBe(201);
 
-    const getRes = await GET();
+    const getRes = await GET(makeAdminRequest('GET', 'http://localhost:3000/api/announcements'));
     const list = await getRes.json();
     expect(Array.isArray(list)).toBe(true);
     expect(list.length).toBe(1);

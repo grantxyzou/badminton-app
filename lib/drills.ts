@@ -185,10 +185,12 @@ async function fetchWorkOn(memberId: string): Promise<WorkOnSkill[]> {
  * A caller that only has a memberId in hand (like /api/recommend's `subject`)
  * can still get real drill picks without needing to resolve a name first.
  */
-export async function drillPicksFor(subject: { memberId: string }): Promise<DrillPick[]> {
+export async function drillPicksFor(subject: { memberId: string }, groupId: string): Promise<DrillPick[]> {
   const [workOn, rotationSeed] = await Promise.all([
     fetchWorkOn(subject.memberId),
-    getActiveSessionId(),
+    // The seed only rotates picks week to week; a group with no session yet
+    // gets a constant seed, which is a valid (if unrotating) answer.
+    getActiveSessionId(groupId).then((id) => id ?? ''),
   ]);
   return recommendDrills({ workOn, level: null, rotationSeed });
 }

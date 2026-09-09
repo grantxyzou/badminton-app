@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId, setActiveSessionId, sessionIdFromDate } from '@/lib/cosmos';
+import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { toValidIso } from '@/app/api/session/route';
 import { resolveBirdUsages } from '@/lib/birdWrite';
@@ -55,17 +56,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'datetime required' }, { status: 400 });
     }
 
-    const newId = sessionIdFromDate(datetime);
-    const currentId = await getActiveSessionId();
+    const groupId = resolveGroupId(req);
+    const newId = sessionIdFromDate(datetime, groupId);
+    // `null` is legitimate here and only here: a NEW group's first-ever
+    // advance has no current session, so there is nothing to snapshot.
+    const currentId = await getActiveSessionId(groupId);
 
     if (newId === currentId) {
       return NextResponse.json({ error: 'Session already active for this date' }, { status: 409 });
     }
 
     const container = getContainer('sessions');
-    const { resources: currentSessions } = await container.items
-      .query({ query: 'SELECT * FROM c WHERE c.id = @id', parameters: [{ name: '@id', value: currentId }] })
-      .fetchAll();
+    const { resources: currentSessions } = currentId
+      ? await container.items
+          .query({ query: 'SELECT * FROM c WHERE c.id = @id', parameters: [{ name: '@id', value: currentId }] })
+          .fetchAll()
+      : { resources: [] };
     const currentSession = currentSessions[0];
 
     // Snapshot previous session's cost-per-person for the payment reminder
@@ -98,7 +104,7 @@ export async function POST(req: NextRequest) {
           const { resources: prevPlayers } = await playersContainer.items
             .query({
               query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
-              parameters: [{ name: '@sessionId', value: currentId }],
+              parameters: [{ name: '@sessionId', value: currentId ?? '' }],
             })
             .fetchAll();
           if (prevPlayers.length > 0) {
@@ -178,7 +184,7 @@ export async function POST(req: NextRequest) {
     };
 
     await container.items.upsert(newSession);
-    await setActiveSessionId(newId);
+    await setActiveSessionId(groupId, newId);
 
     return NextResponse.json(newSession, { status: 201 });
   } catch (error) {

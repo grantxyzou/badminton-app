@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { getContainer, getActiveSessionId, POINTER_ID, DEFAULT_SESSION } from '@/lib/cosmos';
+import { BPM_GROUP_ID } from '@/lib/groupScope';
 
 export const dynamic = 'force-dynamic';
 export const alt = 'BPM Badminton';
@@ -11,7 +12,10 @@ export default async function OGImage() {
   let playerCount = 0;
 
   try {
-    const sessionId = await getActiveSessionId();
+    // The share card for the app's one public URL, which is BPM's. A
+    // per-group card needs a per-group URL and is a later phase.
+    const sessionId = await getActiveSessionId(BPM_GROUP_ID);
+    if (!sessionId) throw new Error('no active session');
     const container = getContainer('sessions');
     const { resources } = await container.items
       .query({

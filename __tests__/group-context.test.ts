@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
-import { resolveGroupId, resolveGroupIdFromCookieHeader } from '@/lib/groupContext';
+import { resolveGroupId, resolveGroupIdFromCookieHeader, noActiveSession } from '@/lib/groupContext';
+
+describe('noActiveSession', () => {
+  it('is a 404 with the one error code every route shares', async () => {
+    const res = noActiveSession();
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: 'no_active_session' });
+  });
+});
 import { BPM_GROUP_ID } from '@/lib/groupScope';
 import { makeRequest, setupAdminPin } from './helpers';
 

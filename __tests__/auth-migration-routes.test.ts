@@ -24,7 +24,7 @@ function seedMember(name: string, id = `member-${name.toLowerCase()}`, extra: Re
 
 async function seedPlayer(name: string) {
   const store = getStore();
-  const sessionId = await getActiveSessionId();
+  const sessionId = await getActiveSessionId('bpm');
   if (!store['players']) store['players'] = [];
   const doc = { id: `player-${name.toLowerCase()}`, sessionId, name, deleteToken: 'old-token', createdAt: new Date().toISOString() };
   store['players'].push(doc);
@@ -129,7 +129,7 @@ describe('POST /api/auth/migrate/claim', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toMatchObject({ status: 'ready', name: 'Lin', memberId: id });
-    expect(body.sessionId).toBe(await getActiveSessionId());
+    expect(body.sessionId).toBe(await getActiveSessionId('bpm'));
     // The token the client will store is the token on the doc — that is what
     // lets DELETE /api/players accept the cancel.
     expect(body.deleteToken).toMatch(/^[0-9a-f]{32}$/);

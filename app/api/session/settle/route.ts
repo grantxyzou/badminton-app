@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { sessionCostTotals } from '@/lib/sessionCost';
 import type { Player, Session, SettledSnapshot } from '@/lib/types';
@@ -11,11 +12,11 @@ export const dynamic = 'force-dynamic';
  * `?sessionId=` to settle a session that was already archived (e.g. they
  * advanced before remembering to settle). Falls back to the active pointer.
  */
-async function resolveTargetSessionId(req: NextRequest): Promise<string> {
+async function resolveTargetSessionId(req: NextRequest): Promise<string | null> {
   const params = req.nextUrl.searchParams;
   const override = params.get('sessionId');
   if (override) return override;
-  return await getActiveSessionId();
+  return await getActiveSessionId(resolveGroupId(req));
 }
 
 /**
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const sessionId = await resolveTargetSessionId(req);
+    if (!sessionId) return noActiveSession();
     const sessionsContainer = getContainer('sessions');
     const playersContainer = getContainer('players');
 
@@ -174,6 +176,7 @@ export async function DELETE(req: NextRequest) {
 
   try {
     const sessionId = await resolveTargetSessionId(req);
+    if (!sessionId) return noActiveSession();
     const sessionsContainer = getContainer('sessions');
     const playersContainer = getContainer('players');
 

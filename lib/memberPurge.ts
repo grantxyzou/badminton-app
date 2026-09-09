@@ -245,7 +245,8 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
 export async function anonymizePlayerRows(
   memberId: string,
   name: string,
-  activeSessionId: string,
+  /** `null` when the group has no session: every row is then history, and anonymized. */
+  activeSessionId: string | null,
 ): Promise<{ removed: number; anonymized: number }> {
   const lowerName = name.trim().toLowerCase();
   /* TWO QUERIES, NOT ONE `OR`. Rows written before the memberId migration

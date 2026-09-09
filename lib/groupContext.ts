@@ -14,8 +14,18 @@
  * that has not turned groups on. That rule is pinned now, before there is a
  * claim to forge (`__tests__/group-context.test.ts`).
  */
-import type { NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { BPM_GROUP_ID } from './groupScope';
+
+/**
+ * The answer when a group has no active session (`getActiveSessionId` returned
+ * `null`). One shape for every route, so the client can recognise it: BPM can
+ * never hit it (it has the legacy fallback), a NEW group hits it until its
+ * owner creates the first session.
+ */
+export function noActiveSession(): NextResponse {
+  return NextResponse.json({ error: 'no_active_session' }, { status: 404 });
+}
 
 /** Route handlers. */
 export function resolveGroupId(_req: NextRequest): string {

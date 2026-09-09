@@ -18,9 +18,12 @@ import type { Announcement } from '@/lib/types';
  * misconfig, etc.) so the page can still render. The caller decides
  * how to surface the empty case.
  */
-export async function readActiveAnnouncements(): Promise<Announcement[]> {
+export async function readActiveAnnouncements(groupId: string): Promise<Announcement[]> {
   try {
-    const sessionId = await getActiveSessionId();
+    const sessionId = await getActiveSessionId(groupId);
+    // A group with no session has no announcements — a true empty, not a
+    // failure wearing one.
+    if (!sessionId) return [];
     const container = getContainer('announcements');
     const { resources } = await container.items
       .query<Announcement>({

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, getActiveSessionId, ensureContainer } from '@/lib/cosmos';
+import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import type { PlayerSkills } from '@/lib/types';
 
@@ -37,11 +38,11 @@ function validateScores(raw: unknown): Record<string, number> | null {
   return out;
 }
 
-async function resolveSessionId(req: NextRequest): Promise<string> {
+async function resolveSessionId(req: NextRequest): Promise<string | null> {
   const url = new URL(req.url);
   const override = url.searchParams.get('sessionId');
   if (override && isAdminAuthed(req)) return override;
-  return getActiveSessionId();
+  return getActiveSessionId(resolveGroupId(req));
 }
 
 export async function GET(req: NextRequest) {
@@ -50,6 +51,7 @@ export async function GET(req: NextRequest) {
   try {
     await ensureSkillsContainer();
     const sessionId = await resolveSessionId(req);
+    if (!sessionId) return noActiveSession();
     const container = getContainer('skills');
     const { resources } = await container.items
       .query({
@@ -82,7 +84,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Scores must be integers between 0 and 6' }, { status: 400 });
     }
 
-    const sessionId = await getActiveSessionId();
+    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    if (!sessionId) return noActiveSession();
     const container = getContainer('skills');
 
     // Upsert semantics: find existing record for (sessionId, name) case-insensitive.
@@ -138,7 +141,8 @@ export async function PATCH(req: NextRequest) {
     }
 
     const container = getContainer('skills');
-    const sessionId = await getActiveSessionId();
+    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    if (!sessionId) return noActiveSession();
     const { resource: existing } = await container.item(id, sessionId).read();
     if (!existing) {
       return NextResponse.json({ error: 'Record not found' }, { status: 404 });
@@ -167,7 +171,8 @@ export async function DELETE(req: NextRequest) {
     if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
     const container = getContainer('skills');
-    const sessionId = await getActiveSessionId();
+    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    if (!sessionId) return noActiveSession();
     await container.item(id, sessionId).delete();
     return NextResponse.json({ success: true });
   } catch (error) {

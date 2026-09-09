@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos';
+import { resolveGroupId } from '@/lib/groupContext';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ownsNameOrAdmin } from '@/lib/auth';
 import { drillPicksFor } from '@/lib/drills';
@@ -60,9 +61,10 @@ export async function GET(req: NextRequest) {
 
   try {
     const subject = await resolveActiveSubject(name);
+    const groupId = resolveGroupId(req);
     const [drills, rotationSeed] = await Promise.all([
-      drillPicksFor(subject),
-      getActiveSessionId(),
+      drillPicksFor(subject, groupId),
+      getActiveSessionId(groupId).then((id) => id ?? ''),
     ]);
     // `done` ships with the picks so the "n of 2" counter is right on the
     // FIRST paint. A second round-trip would render 0 of 2 for a beat and then

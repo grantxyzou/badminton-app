@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, sessionIdFromDate } from '@/lib/cosmos';
+import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember } from '@/lib/auth';
 
 /**
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
   // (Pacific Daylight Time); for backfill purposes the offset only affects
   // display, not heatmap bucketing.
   const datetime = `${dateOnly}T${time}:00-07:00`;
-  const sessionId = sessionIdFromDate(datetime);
+  const sessionId = sessionIdFromDate(datetime, resolveGroupId(req));
 
   const sessionsContainer = getContainer('sessions');
   const playersContainer = getContainer('players');

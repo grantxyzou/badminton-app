@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos';
+import { resolveGroupId } from '@/lib/groupContext';
+import { isoWeekKey } from '@/lib/kudos';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { verifyMemberAuth } from '@/lib/auth';
 import { drillDocId, readDone, type DrillCompletionDoc } from '@/lib/drillsDone';
@@ -68,7 +70,9 @@ export async function POST(req: NextRequest) {
     await ensureDrillsDone();
     const [memberId, weekKey] = await Promise.all([
       (await resolveActiveSubject(caller.name)).memberId,
-      getActiveSessionId(),
+      // The week is keyed by the session id; a group with no session yet
+      // falls back to the real ISO week so the doc id is still a real key.
+      getActiveSessionId(resolveGroupId(req)).then((id) => id ?? isoWeekKey(new Date())),
     ]);
 
     const container = getContainer('drillCompletions');
