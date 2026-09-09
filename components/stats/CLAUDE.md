@@ -147,7 +147,10 @@ state of its own except the one thing it exists to own (below).
 - **Honest states** (`resolveFitState`): a pick needs a catalog racket in the
   bag, OR a check-in, OR goal + swing — goal alone is not enough, swing is the
   injury axis. Otherwise `needsFit`, which the route returns as
-  `{ needsFit: true }` (Phase 3 makes the parked card tappable on it).
+  `{ needsFit: true }`; the rail parks on it with a `parkReason`, and
+  `GearPickCard` renders a racket parked on `needsFit` as a tappable DOOR to
+  the questionnaire (`railRacketFit` + `railTapToFit`), one parked on an empty
+  catalog as `railNoCatalog` — never "do a check-in" for either.
 - **Level from RATED skills only** (`fitLevel`, null below three) — the
   string engine keeps `overall()`'s fill-with-3 for its reference constants;
   the two are different on purpose. `buildProfile` records `ratedKeys`.
@@ -293,12 +296,19 @@ racket and never excluded what they owned).
     string-budget change re-asks the string only; a fit change skips the
     string only when the SERVER said it is paired with the member's own frame
     (`pairedWith.source === 'owned'`) — never a client mirror of that rule,
-    which drifted twice (a free-text racket, an unresolvable catalogId); and
-    a category whose in-flight fetch the effect's cleanup discarded is never
+    which drifted twice (a free-text racket, an unresolvable catalogId); a
+    category whose in-flight fetch the effect's cleanup discarded is never
     skipped, whatever its status (`cancelledRef`), or the answer from before
-    the change stays on screen. Nothing about the bag is an effect dependency:
-    keyed on it, adding the recommended racket re-scored with it excluded and
-    swapped the pick out from under the YOU OWN THIS flip.
+    the change stays on screen; and a PARKED category is skipped only when it
+    parked on `no_engine` — `needsFit`, `needsCheckIn` and a string with no
+    frame are THIS member's state and un-park when their answers change.
+    **A fit-driven refetch is HELD while the fit sheet is open**
+    (`holdFitRefetch`, from `GearRegister`'s `openFit`): answered at a human
+    pace, five controls were eleven calls inside a minute against the 10/min
+    limit, and the card is under the sheet anyway. Nothing about the bag is an
+    effect dependency: keyed on it, adding the recommended racket re-scored
+    with it excluded and swapped the pick out from under the YOU OWN THIS flip.
+    The string budget is NOT a key: no engine reads it yet.
   - **The kit card's "Your fit" row lives OUTSIDE the error fork and is never
     disabled.** Opening a sheet is not a mutation, and on the day the gear
     read fails it is the only door. `fitUpdatedAt` moves only when an ANSWER

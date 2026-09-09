@@ -43,8 +43,10 @@ const SKILL_MAP: Record<string, keyof PlayerProfile> = {
 
 /**
  * Whether ANY engine reads the fit questionnaire. `true` since the Phase 2 fit
- * engine (`lib/racketFit.ts`) — it reads every fit field, and `lib/stringPair.ts`
- * reads the string budget. The rail keys its `/api/recommend` refetch on this:
+ * engine (`lib/racketFit.ts`), which reads goal, swing, comfort and grip.
+ * NOTHING reads `stringBudgetMaxCad` yet — it is stored for the pairing
+ * engine's value scorer (a later phase), and the rail must not refetch on it
+ * until then. The rail keys its `/api/recommend` refetch on this:
  * while it was false a fit answer could not change a pick, and re-asking on
  * every tap burnt the 10/min/IP limiter on identical answers. Lives next to
  * `buildProfile` so the rail cannot drift from the server.

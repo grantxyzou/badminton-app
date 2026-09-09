@@ -627,6 +627,10 @@
       "budget_200": "$100–200",
       "budget_350": "$200–350",
       "budget_none": "No limit",
+       "railRacketFit": "Tell us how you play and we'll suggest a racket.",
+       "railNoCatalog": "No rackets to pick from yet.",
+       "railStringsNoFrame": "We'll match strings once there's a racket to pair with.",
+       "railTapToFit": "Answer the fit questions",
        "diffJoin": " · ",
        "reason": {
          "likeYours": "Close to your {model} — the same feel, a fresh frame.",

@@ -627,6 +627,10 @@
       "budget_200": "$100–200",
       "budget_350": "$200–350",
       "budget_none": "不限",
+       "railRacketFit": "告诉我们你怎么打球，我们就能推荐球拍。",
+       "railNoCatalog": "目前还没有可选的球拍。",
+       "railStringsNoFrame": "有了可配对的球拍后，我们会推荐球线。",
+       "railTapToFit": "回答适配问题",
        "diffJoin": "，",
        "reason": {
          "likeYours": "和你的 {model} 很接近——手感一样，拍框更新。",

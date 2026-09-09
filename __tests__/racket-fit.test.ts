@@ -145,6 +145,16 @@ describe('scoring — one place per axis, ceilings warn and penalise, nothing is
     expect(scoreFit(unknown, axesOf(unknown)!, t, withGrip, null).score).toBe(100);
   });
 
+  it('an anchor with no published weight still earns "like yours" — the weight clause is skipped, not failed', () => {
+    const bareAnchor = racket('bare', { model: 'Bare', balance: 'Head-heavy', flex: 'Stiff', tier: 'Premium', playStyle: 'Power' });
+    delete (bareAnchor.attributes as Record<string, unknown>).weightMinG;
+    const inp3 = input({ anchor: bareAnchor, goal: 'happy' });
+    const t = buildTarget(inp3, axesOf(bareAnchor)!);
+    const twin = racket('twin2', { balance: 'Head-heavy', flex: 'Stiff', tier: 'Premium', playStyle: 'Power' });
+    const s = scoreFit(twin, axesOf(twin)!, t, inp3, axesOf(bareAnchor));
+    expect(s.reasons.map((r) => r.key)).toContain('reason.likeYours');
+  });
+
   it('a row with no weight drops the axis and says so, never defaults to 85', () => {
     const noWeight = racket('nw', { balance: 'Head-heavy', flex: 'Stiff', tier: 'Premium', playStyle: 'Power' });
     delete (noWeight.attributes as Record<string, unknown>).weightMinG;

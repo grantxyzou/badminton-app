@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import ListRow from '@/components/primitives/ListRow';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
-import type { UseGear, GearPrefs } from './useGear';
+import { budgetWords, type UseGear, type GearPrefs } from './useGear';
 import { FIT_GOALS, FIT_SWINGS, FIT_ARM_COMFORTS, FIT_GRIPS, type FitGoal, type FitGrip, type FitSwing, type FitArmComfort } from '@/lib/types';
 
 export interface GearFitSheetProps {
@@ -81,7 +81,10 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
   const stringBudget = known ? (doc?.stringBudgetMaxCad ?? null) : undefined;
   // Only a KNOWN empty bag gets the no-racket wording; unknown defaults to
   // the racket form rather than to a sentence built from a failed read.
-  const hasRacket = known ? gear.rackets.length > 0 : true;
+  // The SERVER's anchor rule: a racket that resolves to a catalog row. A
+  // free-text row (the stringing sheet's typed racket) is owned but has no
+  // attributes, so "happy with it" relative to it is happy relative to nothing.
+  const hasRacket = known ? gear.rackets.some((r) => !!r.catalogId) : true;
   // "Nothing — happy with it" is an answer about the racket you hold; with
   // none it is meaningless, and stored it would read to the engine as an
   // anchored "happy". Offered only when there is a racket to be happy with.
@@ -106,15 +109,6 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
     else setError(t('fitSaveError'));
   }
 
-  /** The band's own words for the read-only summary — never "no limit" for a
-   *  value it does not recognise. */
-  function budgetWords(band: number | null): string {
-    if (band === null) return t('budgetLower_none');
-    if (band === 100) return t('budgetLower_100');
-    if (band === 200) return t('budgetLower_200');
-    if (band === 350) return t('budgetLower_350');
-    return `$${band}`;
-  }
 
   /** The Clear link, only while there is something to clear — the privacy
    *  policy promises every answer can be cleared from this sheet, so every
@@ -205,7 +199,7 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
           {known && (
             <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
               {t('fitPrefsReadOnly', {
-                summary: `${t(`formatLower_${doc?.playFormat ?? 'both'}`)} · ${budgetWords(doc?.budgetMaxCad ?? null)}`,
+                summary: `${t(`formatLower_${doc?.playFormat ?? 'both'}`)} · ${budgetWords(t, doc?.budgetMaxCad ?? null)}`,
               })}
             </p>
           )}

@@ -158,6 +158,13 @@ describe('GearFitSheet — every answer is one write through the single owner', 
     expect(await screen.findByRole('button', { name: 'Nothing — happy with it' })).toBeTruthy();
   });
 
+  it('a free-text-only bag is no racket to be happy with — the option is hidden, as the server anchors on nothing', async () => {
+    mockGear(gearDoc({ items: [{ id: 'i1', catalogId: null, category: 'racket', label: 'Astrox 88D Pro' }] }));
+    renderSheet();
+    await screen.findByText('What matters most in a racket?');
+    expect(screen.queryByRole('button', { name: 'Nothing — happy with it' })).toBeNull();
+  });
+
   it('asks the racket form of the question while the bag is UNKNOWN, not the no-racket form', async () => {
     mockGear(null, { getStatus: 500 });
     renderSheet();

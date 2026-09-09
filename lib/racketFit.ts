@@ -329,7 +329,8 @@ export function scoreFit(item: CatalogItem, axes: Axes, target: TargetSpec, inpu
   // Reasons — fixed order, only when true, at most four.
   if (target.anchored && anchorAxes) {
     const goal = input.goal ?? 'happy';
-    const closeOnEveryAxis = dBalance <= 1 && dFlex <= 1 && dTier <= 1 && (axes.weight === null || Math.abs(axes.weight - anchorAxes.weight!) <= 2);
+    const closeOnEveryAxis = dBalance <= 1 && dFlex <= 1 && dTier <= 1
+      && (axes.weight === null || anchorAxes.weight === null || Math.abs(axes.weight - anchorAxes.weight) <= 2);
     const movesGoalAxis =
       (goal === 'more_power' && (axes.balance > anchorAxes.balance || (axes.weight !== null && anchorAxes.weight !== null && axes.weight > anchorAxes.weight)))
       || (goal === 'more_control' && axes.flex > anchorAxes.flex)
