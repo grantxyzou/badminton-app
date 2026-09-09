@@ -12,7 +12,6 @@ import StringerJobsCard from './stringing/StringerJobsCard';
 import InstallBanner from '@/components/InstallBanner';
 import ReleaseNotesTrigger from './ReleaseNotesTrigger';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
-import WelcomeCard from './WelcomeCard';
 import StatusBanner from '@/components/primitives/StatusBanner';
 import PageHeader from '@/components/primitives/PageHeader';
 import EnterCodeSheet from './EnterCodeSheet';
@@ -76,10 +75,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   // collected here — it's an opt-in identity primitive, set via Profile →
   // Create account / Set PIN. Returning players who already have a PIN can
   // tap "Already a player? Sign in →" to authenticate via RecoverySheet.
-  const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    return localStorage.getItem('badminton_onboarding_dismissed') === 'true';
-  });
   const [releases, setReleases] = useState<Release[]>([]);
   const [releaseSheetOpen, setReleaseSheetOpen] = useState(false);
   // True only for the render right after a successful sign-up, so the success
@@ -172,13 +167,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     loadData();
   }, [loadData]);
 
-  useEffect(() => {
-    if (hasIdentity && !onboardingDismissed) {
-      localStorage.setItem('badminton_onboarding_dismissed', 'true');
-      setOnboardingDismissed(true);
-    }
-  }, [hasIdentity, onboardingDismissed]);
-
   const activePlayers = players.filter(p => !p.waitlisted);
   const waitlistPlayers = players.filter(p => p.waitlisted);
 
@@ -215,13 +203,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     : announcement;
   const effectiveIsSignedUp = dv?.isSignedUp !== undefined ? dv.isSignedUp : isSignedUp;
 
-  // Stable identities so memoized children (WelcomeCard / ReleaseNotesTrigger)
-  // don't re-render when HomeTab's frequently-changing state ticks (e.g. name
-  // input keystrokes). Setters from useState are already stable.
-  const dismissOnboarding = useCallback(() => {
-    localStorage.setItem('badminton_onboarding_dismissed', 'true');
-    setOnboardingDismissed(true);
-  }, []);
   const openReleaseSheet = useCallback(() => setReleaseSheetOpen(true), []);
 
   // Unified sign-up + waitlist submit. `waitlist` adds `waitlist: true` to the
@@ -369,10 +350,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
   return (
     <div className="space-y-5">
-      {!hasIdentity && !onboardingDismissed && (
-        <WelcomeCard onDismiss={dismissOnboarding} />
-      )}
-
       {/* PageHeader must be a DIRECT child of this space-y-5 scroll root so its
           position:sticky containing block is the full tab. Wrapping it (with the
           release trigger) in a short <div> made the containing block ~43px tall,
