@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, getActiveSessionId, setActiveSessionId, sessionIdFromDate } from '@/lib/cosmos';
+import { getActiveSessionId, setActiveSessionId, sessionIdFromDate } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { toValidIso } from '@/app/api/session/route';
@@ -66,13 +67,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Session already active for this date' }, { status: 409 });
     }
 
-    const container = getContainer('sessions');
-    const { resources: currentSessions } = currentId
-      ? await container.items
-          .query({ query: 'SELECT * FROM c WHERE c.id = @id', parameters: [{ name: '@id', value: currentId }] })
-          .fetchAll()
-      : { resources: [] };
-    const currentSession = currentSessions[0];
+    const scope = groupScope(groupId);
+    const currentSession = currentId ? await scope.read<Session>('sessions', currentId, currentId) : undefined;
 
     // Snapshot previous session's cost-per-person for the payment reminder
     let prevSessionDate: string | undefined;
@@ -100,15 +96,10 @@ export async function POST(req: NextRequest) {
       } else {
         const { totalCost } = sessionCostTotals(currentSession);
         if (totalCost > 0) {
-          const playersContainer = getContainer('players');
-          const { resources: prevPlayers } = await playersContainer.items
-            .query({
-              query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
-              // The doc was fetched by `WHERE c.id = @id`, so this IS currentId,
-              // and inside `if (currentSession)` it cannot be null.
-              parameters: [{ name: '@sessionId', value: currentSession.id }],
-            })
-            .fetchAll();
+          const prevPlayers = await scope.query('players', {
+            where: 'c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
+            params: [{ name: '@sessionId', value: currentSession.id }],
+          });
           if (prevPlayers.length > 0) {
             prevCostPerPerson = Math.round((totalCost / prevPlayers.length) * 100) / 100;
             prevSessionDate = currentSession.datetime;
@@ -185,7 +176,7 @@ export async function POST(req: NextRequest) {
       ...(prevSnapshot ? { prevSnapshot, anomaliesAtAdvance } : {}),
     };
 
-    await container.items.upsert(newSession);
+    await scope.upsert('sessions', newSession);
     await setActiveSessionId(groupId, newId);
 
     return NextResponse.json(newSession, { status: 201 });

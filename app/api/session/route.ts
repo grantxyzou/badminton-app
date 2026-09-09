@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, getActiveSessionId, POINTER_ID, DEFAULT_SESSION } from '@/lib/cosmos';
+import { getActiveSessionId, DEFAULT_SESSION } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { resolveBirdUsages } from '@/lib/birdWrite';
@@ -25,6 +26,9 @@ function isValidAnomalyDismissedList(value: unknown): value is string[] {
 
 export const dynamic = 'force-dynamic';
 
+/** A session doc as stored: typed loosely, since this route merges arbitrary admin edits into it. */
+type SessionDoc = Record<string, unknown> & { id: string };
+
 /**
  * Removes admin-only fields from a session doc before it goes to a non-admin
  * caller. `eTransferRecipient` is payment PII (rule 10) and `approvedNames` is
@@ -45,16 +49,10 @@ function stripForPublic<T extends Record<string, unknown>>(session: T) {
 
 export async function GET(req: NextRequest) {
   try {
-    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    const scope = groupScope(resolveGroupId(req));
+    const sessionId = await getActiveSessionId(scope.groupId);
     if (!sessionId) return noActiveSession();
-    const container = getContainer('sessions');
-    const { resources } = await container.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.id = @id',
-        parameters: [{ name: '@id', value: sessionId }],
-      })
-      .fetchAll();
-    const session = resources.find((r) => r.id !== POINTER_ID)
+    const session = (await scope.read<SessionDoc>('sessions', sessionId, sessionId))
       ?? { ...DEFAULT_SESSION, id: sessionId, sessionId };
     return NextResponse.json(isAdminAuthed(req) ? session : stripForPublic(session));
   } catch (error) {
@@ -73,7 +71,8 @@ export async function PUT(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    const scope = groupScope(resolveGroupId(req));
+    const sessionId = await getActiveSessionId(scope.groupId);
     if (!sessionId) return noActiveSession();
 
     // Build updates from ONLY the keys the body actually supplied. A field the
@@ -116,17 +115,13 @@ export async function PUT(req: NextRequest) {
     if (body.eTransferRecipient !== undefined) updates.eTransferRecipient = body.eTransferRecipient;
     if (body.anomaliesDismissed !== undefined) updates.anomaliesDismissed = body.anomaliesDismissed;
 
-    const container = getContainer('sessions');
     // Read the existing doc FIRST and spread it, so fields the editing client
     // never sent (settled, approvedNames, prev*, anomaliesAtAdvance) survive.
     // A fixed-key upsert silently wipes them — the atomic-merge-over-PUT rule
     // (CLAUDE.md), same pattern as /api/session/dismiss-anomaly.
-    const { resources } = await container.items
-      .query({ query: 'SELECT * FROM c WHERE c.id = @id', parameters: [{ name: '@id', value: sessionId }] })
-      .fetchAll();
-    const existing = (resources.find((r) => r.id !== POINTER_ID) ?? {}) as Record<string, unknown>;
+    const existing: Record<string, unknown> = (await scope.read<SessionDoc>('sessions', sessionId, sessionId)) ?? {};
 
-    const sessionData: Record<string, unknown> = { ...existing, ...updates, id: sessionId, sessionId };
+    const sessionData: SessionDoc = { ...existing, ...updates, id: sessionId, sessionId };
     // When writing the new birdUsages array, drop the legacy single-object
     // `birdUsage` field (the old full-doc replace dropped it implicitly; the
     // read-spread would otherwise let it linger alongside the array).
@@ -156,7 +151,7 @@ export async function PUT(req: NextRequest) {
     // optimistic client toggle in NextSessionCard and could double-send.
     if (shouldNotify) sessionData.signupOpenNotifiedAt = now;
 
-    const { resource } = await container.items.upsert(sessionData);
+    const resource = await scope.upsert('sessions', sessionData);
 
     // Persist first, notify best-effort — a push failure must never fail the
     // admin's toggle (same posture as app/api/report/route.ts).

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, POINTER_ID } from '@/lib/cosmos';
+import { SESSION_ID } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ownsNameOrAdmin } from '@/lib/auth';
 
@@ -70,27 +72,22 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const sessionsContainer = getContainer('sessions');
-    const playersContainer = getContainer('players');
+    const scope = groupScope(resolveGroupId(req));
 
     // Projected to the two fields actually used (`id`, `datetime`). `SELECT *`
     // pulled every full session doc — birdUsages, approvedNames,
     // prevCostPerPerson — across the whole history to read two of them. This is
     // a projection only; the WHERE clause and therefore the result set are
     // unchanged.
-    const { resources: allSessions } = await sessionsContainer.items
-      .query({
-        query: 'SELECT c.id, c.datetime FROM c WHERE c.id != @pointerId AND c.id != @legacyId',
-        parameters: [
-          { name: '@pointerId', value: POINTER_ID },
-          { name: '@legacyId', value: 'current-session' },
-        ],
-      })
-      .fetchAll();
+    const allSessions = await scope.query<{ id: string; datetime?: string }>('sessions', {
+      select: 'c.id, c.datetime',
+      where: 'c.id != @legacyId',
+      params: [{ name: '@legacyId', value: SESSION_ID }],
+    });
 
     // Sort by datetime descending (most recent first). Sessions without a
     // datetime sink to the bottom.
-    const sorted = (allSessions as Array<{ id: string; datetime?: string }>).slice().sort((a, b) => {
+    const sorted = allSessions.slice().sort((a, b) => {
       const da = a.datetime ?? '';
       const db = b.datetime ?? '';
       if (da === db) return 0;
@@ -122,18 +119,17 @@ export async function GET(req: NextRequest) {
     // Batch into one query filtered by sessionIds to avoid N roundtrips.
     const sessionIds = windowSessions.map((s) => s.id);
     const placeholders = sessionIds.map((_, i) => `@sid${i}`).join(',');
-    const { resources: playerRows } = await playersContainer.items
-      .query({
-        query: `SELECT c.sessionId, c.name, c.removed, c.waitlisted FROM c WHERE c.sessionId IN (${placeholders}) AND LOWER(c.name) = LOWER(@name)`,
-        parameters: [
-          { name: '@name', value: name },
-          ...sessionIds.map((id, i) => ({ name: `@sid${i}`, value: id })),
-        ],
-      })
-      .fetchAll();
+    const playerRows = await scope.query<{ sessionId: string; removed?: boolean; waitlisted?: boolean }>('players', {
+      select: 'c.sessionId, c.name, c.removed, c.waitlisted',
+      where: `c.sessionId IN (${placeholders}) AND LOWER(c.name) = LOWER(@name)`,
+      params: [
+        { name: '@name', value: name },
+        ...sessionIds.map((id, i) => ({ name: `@sid${i}`, value: id })),
+      ],
+    });
 
     const attendedBySession = new Map<string, boolean>();
-    for (const row of playerRows as Array<{ sessionId: string; removed?: boolean; waitlisted?: boolean }>) {
+    for (const row of playerRows) {
       if (row.removed === true) continue;
       if (row.waitlisted === true) continue;
       attendedBySession.set(row.sessionId, true);
