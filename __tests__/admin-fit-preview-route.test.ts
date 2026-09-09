@@ -44,7 +44,10 @@ describe('GET /api/admin/fit-preview', () => {
     expect(body.cases).toHaveLength(1);
     const c = body.cases[0];
     expect(c.id).toBe('g01');
-    expect(JSON.stringify(c)).not.toMatch(/Lin|member-lin/);
+    // The member id rides along for the OPERATOR (the dump script strips it
+    // before printing the fixture); the name never does.
+    expect(c.memberId).toBe('member-lin');
+    expect(JSON.stringify(c)).not.toMatch(/Lin/);
     expect(c.gear.activeCatalogId).toBe(ASTROX);
     expect(c.gear.fitGoal).toBe('more_power');
     expect(c.acceptable).toEqual([]);

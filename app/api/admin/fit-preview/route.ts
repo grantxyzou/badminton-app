@@ -88,6 +88,11 @@ export async function GET(req: NextRequest) {
       n += 1;
       cases.push({
         id: `g${String(n).padStart(2, '0')}`,
+        // The OPERATOR's key, not the fixture's: the dump script prints it
+        // separately and strips it from the cases it emits, so the owner can
+        // ask `?memberId=` for the engine's current answer while rating
+        // without guessing which member `g04` is. Admin-only endpoint.
+        memberId: id,
         note: '',
         ratedBy: '',
         ratedAt: '',

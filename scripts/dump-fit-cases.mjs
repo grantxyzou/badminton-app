@@ -29,4 +29,11 @@ if (!res.ok) {
   process.exit(2);
 }
 const skeleton = await res.json();
+// The cases go to stdout WITHOUT member ids — that is what gets pasted into
+// the fixture. The case→memberId key goes to stderr, for the operator only:
+// it is how you ask `GET /api/admin/fit-preview?memberId=<id>` for the
+// engine's current top three while rating.
+const key = skeleton.cases.map((c) => `${c.id}\t${c.memberId ?? ''}`).join('\n');
+for (const c of skeleton.cases) delete c.memberId;
 console.log(JSON.stringify(skeleton, null, 2));
+console.error(`\n# operator key (NOT for the fixture)\n${key}\n`);
