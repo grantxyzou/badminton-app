@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { randomBytes } from 'crypto';
@@ -156,23 +157,21 @@ export async function PATCH(req: NextRequest) {
     // with /api/players PIN updates.
     if (clearPin && typeof existing?.name === 'string') {
       try {
-        const playersContainer = getContainer('players');
+        const scope = groupScope(resolveGroupId(req));
         // '' when there is no session: matches nothing, nothing to mirror.
-        const sessionId = (await getActiveSessionId(resolveGroupId(req))) ?? '';
-        const { resources: matches } = await playersContainer.items
-          .query({
-            query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name)',
-            parameters: [
-              { name: '@sessionId', value: sessionId },
-              { name: '@name', value: existing.name },
-            ],
-          })
-          .fetchAll();
-        for (const p of matches as Array<Record<string, unknown>>) {
+        const sessionId = (await getActiveSessionId(scope.groupId)) ?? '';
+        const matches = await scope.query<Record<string, unknown> & { id: string }>('players', {
+          where: 'c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name)',
+          params: [
+            { name: '@sessionId', value: sessionId },
+            { name: '@name', value: existing.name },
+          ],
+        });
+        for (const p of matches) {
           if ('pinHash' in p) {
             const mirror = { ...p };
             delete mirror.pinHash;
-            await playersContainer.items.upsert(mirror);
+            await scope.upsert('players', mirror);
           }
         }
       } catch {

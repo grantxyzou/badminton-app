@@ -304,7 +304,7 @@ export async function GET(req: NextRequest) {
   // above the cache read, under a comment claiming it "only runs on miss",
   // which was simply false: every cached load paid for both scans and threw
   // the result away. Moving a read above the cache is not free here.
-  const canonicalLevel = await getCanonicalLevel({ memberId: member.id, name: member.name }).catch((err) => {
+  const canonicalLevel = await getCanonicalLevel({ memberId: member.id, name: member.name }, scope.groupId).catch((err) => {
     console.error('insight level read failed:', err);
     return null;
   });

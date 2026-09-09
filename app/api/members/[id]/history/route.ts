@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { sessionCostTotals } from '@/lib/sessionCost';
 import { expandAliasNames } from '@/lib/playerIdentity';
@@ -26,9 +28,9 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
   const { id: memberId } = await context.params;
 
   try {
+    const scope = groupScope(resolveGroupId(req));
     const membersContainer = getContainer('members');
-    const playersContainer = getContainer('players');
-    const sessionsContainer = getContainer('sessions');
+    // aliases stays raw until Phase 1b sweeps it.
     const aliasesContainer = getContainer('aliases');
 
     const { resource: member } = await membersContainer.item(memberId, memberId).read<Member>();
@@ -36,15 +38,11 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
 
-    // Primary lookup: by memberId (cross-partition).
-    const { resources: byMemberId } = await playersContainer.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.memberId = @memberId',
-        parameters: [{ name: '@memberId', value: memberId }],
-      })
-      .fetchAll();
-
-    let players = byMemberId as Player[];
+    // Primary lookup: by memberId (cross-partition), within this group.
+    let players = await scope.query<Player>('players', {
+      where: 'c.memberId = @memberId',
+      params: [{ name: '@memberId', value: memberId }],
+    });
 
     // Fallback: name + aliases (covers legacy records the migration missed).
     if (players.length === 0) {
@@ -53,10 +51,8 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
         .fetchAll();
       const candidateNames = expandAliasNames(member.name, aliasRows as Alias[]);
 
-      const { resources: allPlayers } = await playersContainer.items
-        .query({ query: 'SELECT * FROM c' })
-        .fetchAll();
-      players = (allPlayers as Player[]).filter(
+      const allPlayers = await scope.query<Player>('players');
+      players = allPlayers.filter(
         (p) => typeof p.name === 'string' && candidateNames.has(p.name.toLowerCase()),
       );
     }
@@ -66,20 +62,18 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     const sessionMap = new Map<string, Session>();
     const attendanceBySession = new Map<string, number>();
     if (sessionIds.length > 0) {
-      const { resources: allSessions } = await sessionsContainer.items
-        .query({ query: 'SELECT * FROM c' })
-        .fetchAll();
-      for (const s of allSessions as Session[]) {
+      const allSessions = await scope.query<Session>('sessions');
+      for (const s of allSessions) {
         if (sessionIds.includes(s.id)) sessionMap.set(s.id, s);
       }
       // Count active players per session so cost-per-person uses the right
       // denominator. Previously this read session.prevCostPerPerson, which
       // is the PREVIOUS session's frozen cost — every history row showed
       // last week's number.
-      const { resources: allPlayers } = await playersContainer.items
-        .query({ query: 'SELECT c.sessionId, c.removed, c.waitlisted FROM c' })
-        .fetchAll();
-      for (const p of allPlayers as Array<{ sessionId?: string; removed?: boolean; waitlisted?: boolean }>) {
+      const allPlayers = await scope.query<{ sessionId?: string; removed?: boolean; waitlisted?: boolean }>('players', {
+        select: 'c.sessionId, c.removed, c.waitlisted',
+      });
+      for (const p of allPlayers) {
         if (typeof p.sessionId !== 'string') continue;
         if (!sessionIds.includes(p.sessionId)) continue;
         if (p.removed === true || p.waitlisted === true) continue;

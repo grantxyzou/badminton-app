@@ -29,8 +29,6 @@ const MIGRATION_BACKLOG = new Set([
   'app/api/birds/route.ts',
   'app/api/kudos/route.ts',
   'app/api/members/[id]/history/route.ts',
-  'app/api/members/me/route.ts',
-  'app/api/members/route.ts',
   'app/api/players/unpaid/route.ts', // stringingJobs (Phase 1b); its session-family reads are swept
   'app/api/session/bird-usage/route.ts', // birds (Phase 1b); its session read is swept
   'app/api/stringing/jobs/[id]/accept/route.ts',
@@ -40,11 +38,8 @@ const MIGRATION_BACKLOG = new Set([
   'app/api/stringing/requests/route.ts',
   'app/api/stringing/shop/route.ts',
   'app/api/stringing/strings/route.ts',
-  'app/opengraph-image.tsx',
   'lib/birdWrite.ts',
   'lib/events.ts',
-  'lib/kudosEligibility.ts',
-  'lib/levelStore.ts',
   'lib/playerIdentity.ts',
   'lib/stringingPricing.ts',
   'lib/stringingShop.ts',

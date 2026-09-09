@@ -19,6 +19,7 @@
  */
 
 import { getContainer, ensureContainer } from './cosmos';
+import { groupScope } from './groupScope';
 import { deriveLevel, type CanonicalLevel } from './level';
 import { calibrateRatings, type CalGame, type CalSeed, type PlayerCalibration } from './calibration';
 
@@ -58,15 +59,17 @@ async function fetchLegacyStage(memberId: string): Promise<number | null> {
   }
 }
 
-/** All games across all sessions (cross-partition), trimmed to what the fold
- *  needs. Empty on any failure (calibration simply contributes nothing). */
-async function fetchAllGames(): Promise<CalGame[]> {
+/** All of ONE GROUP's games across its sessions (cross-partition), trimmed to
+ *  what the fold needs. Empty on any failure (calibration simply contributes
+ *  nothing). Per group because the fold is "everyone's rating depends on
+ *  everyone's" — and everyone means the club, not the database. */
+async function fetchAllGames(groupId: string): Promise<CalGame[]> {
   try {
     await ensureContainer('gameResults', '/sessionId');
-    const { resources } = await getContainer('gameResults').items
-      .query({ query: 'SELECT c.teamA, c.teamB, c.scoreA, c.scoreB, c.loggedAt FROM c' })
-      .fetchAll();
-    return (resources as CalGame[]).filter((g) => g && Array.isArray(g.teamA) && Array.isArray(g.teamB));
+    const resources = await groupScope(groupId).query<CalGame>('gameResults', {
+      select: 'c.teamA, c.teamB, c.scoreA, c.scoreB, c.loggedAt',
+    });
+    return resources.filter((g) => g && Array.isArray(g.teamA) && Array.isArray(g.teamB));
   } catch (err) {
     console.error('level: games read failed:', err);
     return [];
@@ -127,32 +130,35 @@ async function fetchSeeds(): Promise<{ seeds: CalSeed[]; maxAt: string }> {
   }
 }
 
-// ── In-process group-calibration cache (critique I) ──
+// ── In-process group-calibration cache (critique I), one entry per group ──
 const CAL_TTL_MS = 30_000;
-let calCache: { sig: string; at: number; map: Map<string, PlayerCalibration> } | null = null;
+const calCache = new Map<string, { sig: string; at: number; map: Map<string, PlayerCalibration> }>();
 
-/** The whole-group observed-level fold, memoized for CAL_TTL_MS. The signature
- *  changes when a game or check-in lands, busting the cache immediately. */
-async function getGroupCalibration(now: string): Promise<Map<string, PlayerCalibration>> {
-  const [games, { seeds, maxAt }] = await Promise.all([fetchAllGames(), fetchSeeds()]);
+/** One group's observed-level fold, memoized for CAL_TTL_MS. The signature
+ *  changes when a game or check-in lands, busting the cache immediately.
+ *  (The self-seeds are still read person-wide; narrowing them to the group's
+ *  roster needs `memberships`, which arrives in Phase 2.) */
+async function getGroupCalibration(groupId: string, now: string): Promise<Map<string, PlayerCalibration>> {
+  const [games, { seeds, maxAt }] = await Promise.all([fetchAllGames(groupId), fetchSeeds()]);
   const maxLogged = games.reduce((m, g) => (g.loggedAt > m ? g.loggedAt : m), '');
   const sig = `${games.length}:${maxLogged}:${seeds.length}:${maxAt}`;
-  if (calCache && calCache.sig === sig && Date.now() - calCache.at < CAL_TTL_MS) {
-    return calCache.map;
+  const cached = calCache.get(groupId);
+  if (cached && cached.sig === sig && Date.now() - cached.at < CAL_TTL_MS) {
+    return cached.map;
   }
   const map = calibrateRatings(games, seeds, now);
-  calCache = { sig, at: Date.now(), map };
+  calCache.set(groupId, { sig, at: Date.now(), map });
   return map;
 }
 
 /** Test seam — drop the memoized fold so cases don't bleed into each other. */
 export function _resetCalibrationCache(): void {
-  calCache = null;
+  calCache.clear();
 }
 
 /** The single entry point. Folds the member's self-assessments, legacy stage,
- *  and (Phase 2, flag-gated) the group's game calibration into one level. */
-export async function getCanonicalLevel(subject: LevelSubject): Promise<CanonicalLevel> {
+ *  and the GROUP's game calibration into one level. */
+export async function getCanonicalLevel(subject: LevelSubject, groupId: string): Promise<CanonicalLevel> {
   const now = new Date().toISOString();
   const [selfSnapshots, legacyStage] = await Promise.all([
     fetchSelfSnapshots(subject.memberId),
@@ -161,7 +167,7 @@ export async function getCanonicalLevel(subject: LevelSubject): Promise<Canonica
 
   let gameCalibration: { observedLevel: number; games: number; lastGameAt: string | null } | null = null;
   try {
-    const group = await getGroupCalibration(now);
+    const group = await getGroupCalibration(groupId, now);
     const cal = group.get(subject.name.trim().toLowerCase());
     if (cal) gameCalibration = { observedLevel: cal.observedLevel, games: cal.games, lastGameAt: cal.lastGameAt };
   } catch (err) {

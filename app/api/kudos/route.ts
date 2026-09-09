@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos';
+import { groupScope, type GroupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
@@ -38,20 +39,20 @@ function isSkillKey(x: unknown): x is string {
   return typeof x === 'string' && SKILL_KEYS.has(x);
 }
 
-async function playedTogether(aName: string, bName: string, sessionId: string): Promise<boolean> {
+async function playedTogether(scope: GroupScope, aName: string, bName: string, sessionId: string): Promise<boolean> {
   const a = aName.trim().toLowerCase();
   const b = bName.trim().toLowerCase();
-  // NOTE: the mock store ignores @sid in the WHERE, so we JS-filter by sessionId
-  // (same convention as the rest of the codebase — keeps mock/real parity).
+  // `@sessionId`, not `@sid`: the mock store filters by parameter NAME, and
+  // `@sid` was one it did not know — so this read returned every row in tests.
+  // The JS re-filter stays for parity with real Cosmos either way.
   try {
-    const { resources: roster } = await getContainer('players').items
-      .query({
-        query: 'SELECT c.name, c.removed, c.sessionId FROM c WHERE c.sessionId = @sid',
-        parameters: [{ name: '@sid', value: sessionId }],
-      })
-      .fetchAll();
+    const roster = await scope.query<{ name?: string; removed?: boolean; sessionId?: string }>('players', {
+      select: 'c.name, c.removed, c.sessionId',
+      where: 'c.sessionId = @sessionId',
+      params: [{ name: '@sessionId', value: sessionId }],
+    });
     const present = new Set(
-      (roster as { name?: string; removed?: boolean; sessionId?: string }[])
+      roster
         .filter((p) => p && p.sessionId === sessionId && p.removed !== true && typeof p.name === 'string')
         .map((p) => (p.name as string).trim().toLowerCase()),
     );
@@ -61,13 +62,12 @@ async function playedTogether(aName: string, bName: string, sessionId: string): 
   }
   try {
     await ensureContainer('gameResults', '/sessionId');
-    const { resources: games } = await getContainer('gameResults').items
-      .query({
-        query: 'SELECT c.teamA, c.teamB, c.sessionId FROM c WHERE c.sessionId = @sid',
-        parameters: [{ name: '@sid', value: sessionId }],
-      })
-      .fetchAll();
-    for (const g of games as { teamA?: string[]; teamB?: string[]; sessionId?: string }[]) {
+    const games = await scope.query<{ teamA?: string[]; teamB?: string[]; sessionId?: string }>('gameResults', {
+      select: 'c.teamA, c.teamB, c.sessionId',
+      where: 'c.sessionId = @sessionId',
+      params: [{ name: '@sessionId', value: sessionId }],
+    });
+    for (const g of games) {
       if (g.sessionId !== sessionId) continue;
       const all = new Set([...(g.teamA ?? []), ...(g.teamB ?? [])].map((n) => String(n).trim().toLowerCase()));
       if (all.has(a) && all.has(b)) return true;
@@ -105,9 +105,10 @@ export async function POST(req: NextRequest) {
     }
 
     // sessionId override is admin-only (rule 7); otherwise the active session.
+    const scope = groupScope(resolveGroupId(req));
     const sessionId = typeof body.sessionId === 'string' && body.sessionId && isAdminAuthed(req)
       ? body.sessionId
-      : await getActiveSessionId(resolveGroupId(req));
+      : await getActiveSessionId(scope.groupId);
     if (!sessionId) return noActiveSession();
 
     /* Co-play proof: you can only kudos someone you actually played with —
@@ -115,8 +116,8 @@ export async function POST(req: NextRequest) {
        may still pin a specific session (rule 7), in which case that one is
        checked on its own. */
     const eligible = typeof body.sessionId === 'string' && body.sessionId && isAdminAuthed(req)
-      ? await playedTogether(rater.name, recipientName, sessionId)
-      : await playedTogetherRecently(rater.name, recipientName, sessionId);
+      ? await playedTogether(scope, rater.name, recipientName, sessionId)
+      : await playedTogetherRecently(scope.groupId, rater.name, recipientName, sessionId);
     if (!eligible) {
       return NextResponse.json({ error: 'not_co_player' }, { status: 403 });
     }

@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
-import { getContainer, getActiveSessionId, POINTER_ID, DEFAULT_SESSION } from '@/lib/cosmos';
-import { BPM_GROUP_ID } from '@/lib/groupScope';
+import { getActiveSessionId, DEFAULT_SESSION } from '@/lib/cosmos';
+import { BPM_GROUP_ID, groupScope } from '@/lib/groupScope';
 
 export const dynamic = 'force-dynamic';
 export const alt = 'BPM Badminton';
@@ -14,27 +14,17 @@ export default async function OGImage() {
   try {
     // The share card for the app's one public URL, which is BPM's. A
     // per-group card needs a per-group URL and is a later phase.
-    const sessionId = await getActiveSessionId(BPM_GROUP_ID);
+    const scope = groupScope(BPM_GROUP_ID);
+    const sessionId = await getActiveSessionId(scope.groupId);
     if (!sessionId) throw new Error('no active session');
-    const container = getContainer('sessions');
-    const { resources } = await container.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.id = @id',
-        parameters: [{ name: '@id', value: sessionId }],
-      })
-      .fetchAll();
-    const found = resources.find((r: { id: string }) => r.id !== POINTER_ID);
+    const found = await scope.read<typeof DEFAULT_SESSION>('sessions', sessionId, sessionId);
     if (found) session = found;
 
-    const playersContainer = getContainer('players');
-    const { resources: countRes } = await playersContainer.items
-      .query({
-        query:
-          'SELECT VALUE COUNT(1) FROM c WHERE c.sessionId = @sid AND (NOT IS_DEFINED(c.removed) OR c.removed = false) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted = false)',
-        parameters: [{ name: '@sid', value: sessionId }],
-      })
-      .fetchAll();
-    playerCount = countRes[0] ?? 0;
+    playerCount = await scope.count(
+      'players',
+      'c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed = false) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted = false)',
+      [{ name: '@sessionId', value: sessionId }],
+    );
   } catch {
     // fall back to defaults
   }
