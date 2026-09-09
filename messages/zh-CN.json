@@ -172,14 +172,6 @@
     "announcement": {
       "label": "公告"
     },
-    "welcome": {
-      "title": "欢迎来到 BPM 羽毛球",
-      "schedule": "📅 每周四活动",
-      "invite": "🎟️ 仅限邀请 — 需要先添加您的名字",
-      "payment": "💵 活动后通过 e-transfer 支付您的费用",
-      "help": "请联系分享此应用给您的朋友获取帮助。",
-      "dismiss": "知道了"
-    },
     "roster": {
       "count": "{count, plural, other {# 人已报名}}"
     },
