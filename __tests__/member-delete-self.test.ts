@@ -97,7 +97,10 @@ beforeEach(async () => {
     tag: 'great_partner',
   });
 
-  await getContainer('playerGear').items.upsert({ id: `gear-${MEMBER_ID}`, memberId: MEMBER_ID });
+  // Carries the one health-adjacent answer the privacy policy promises is
+  // deleted with the account — the "purges playerGear outright" case below
+  // is what keeps that sentence true.
+  await getContainer('playerGear').items.upsert({ id: `gear-${MEMBER_ID}`, memberId: MEMBER_ID, fitArmComfort: 'often_sore' });
   await getContainer('pushSubscriptions').items.upsert({
     id: 'sub-1',
     memberId: MEMBER_ID,

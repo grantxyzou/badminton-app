@@ -377,3 +377,21 @@ describe('GearPickSheet — preferences are unknown when the gear read fails', (
     expect(screen.queryByRole('alert')).toBeNull();
   });
 });
+
+describe('GearPickSheet — the fit goal joins the summary line', () => {
+  beforeEach(() => { process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true'; });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER; });
+
+  it('names the goal once it has been answered, and not before', async () => {
+    mockGear(gearDoc({ playFormat: 'doubles', budgetMaxCad: 200, fitGoal: 'more_control' }));
+    renderSheet();
+    expect(await screen.findByText('For doubles · under $200 · wants more control')).toBeTruthy();
+  });
+
+  it('offers the Fit link only when the rail gave it somewhere to go', async () => {
+    mockGear(gearDoc({ playFormat: 'doubles' }));
+    renderSheet();
+    await screen.findByText(/For doubles/);
+    expect(screen.queryByRole('button', { name: 'Fit' })).toBeNull();
+  });
+});

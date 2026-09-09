@@ -5,7 +5,7 @@ import { verifyMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { rackets } from '@/lib/activeRacket';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import type { PlayerGear, GearItem, EquipmentCategory } from '@/lib/types';
+import { FIT_GOALS, FIT_SWINGS, FIT_ARM_COMFORTS, FIT_GRIPS, type PlayerGear, type GearItem, type EquipmentCategory } from '@/lib/types';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +26,15 @@ function capFor(category: EquipmentCategory): number {
   return MAX_PER_CATEGORY[category] ?? DEFAULT_CATEGORY_CAP;
 }
 const BAG_WRITES_PER_HOUR = 20;
+/**
+ * Preference writes (format, budget, the fit questionnaire) get their OWN
+ * bucket. They used to share the bag's, and the questionnaire is five to
+ * eight one-tap writes on a first pass — a member who answered it twice hit
+ * 429 on "Add to my equipment" with nothing telling them the questionnaire
+ * had spent the budget. A preference PATCH is one small field on one doc;
+ * sixty an hour is a member changing their mind, not an attack.
+ */
+const PREF_WRITES_PER_HOUR = 60;
 const HOUR_MS = 60 * 60 * 1000;
 const VALID_CATEGORIES = new Set<EquipmentCategory>(['racket', 'string', 'shoe', 'shuttle', 'bag', 'grip']);
 
@@ -50,9 +59,10 @@ function ensureGear(): Promise<void> {
  * the member lookup, or the limiter sits behind the DB call it exists to
  * protect.
  */
-async function authorizeBagWrite(req: NextRequest, name: string) {
-  const key = `gear-bag:${name.toLowerCase()}:${getClientIp(req)}`;
-  if (!checkRateLimit(key, BAG_WRITES_PER_HOUR, HOUR_MS)) {
+async function authorizeBagWrite(req: NextRequest, name: string, bucket: 'bag' | 'prefs' = 'bag') {
+  const key = `gear-${bucket}:${name.toLowerCase()}:${getClientIp(req)}`;
+  const cap = bucket === 'prefs' ? PREF_WRITES_PER_HOUR : BAG_WRITES_PER_HOUR;
+  if (!checkRateLimit(key, cap, HOUR_MS)) {
     return { error: NextResponse.json({ error: 'rate_limited' }, { status: 429 }) };
   }
   const memberId = await resolveActiveMemberId(name);
@@ -81,6 +91,16 @@ async function writeGearDoc(memberId: string, prior: StoredGear | undefined, nex
     activeRacketId: 'activeRacketId' in next ? next.activeRacketId : prior?.activeRacketId,
     playFormat: 'playFormat' in next ? next.playFormat : prior?.playFormat,
     budgetMaxCad: 'budgetMaxCad' in next ? next.budgetMaxCad : prior?.budgetMaxCad,
+    // Every field the doc can hold must appear in this list. It is rebuilt
+    // from scratch on EVERY verb, so a field left off it survives the PATCH
+    // that wrote it and is silently dropped by the next POST or DELETE —
+    // pinned by "fit answers survive a bag write" in equipment-gear-prefs.
+    fitGoal: 'fitGoal' in next ? next.fitGoal : prior?.fitGoal,
+    fitSwing: 'fitSwing' in next ? next.fitSwing : prior?.fitSwing,
+    fitArmComfort: 'fitArmComfort' in next ? next.fitArmComfort : prior?.fitArmComfort,
+    fitGrip: 'fitGrip' in next ? next.fitGrip : prior?.fitGrip,
+    stringBudgetMaxCad: 'stringBudgetMaxCad' in next ? next.stringBudgetMaxCad : prior?.stringBudgetMaxCad,
+    fitUpdatedAt: 'fitUpdatedAt' in next ? next.fitUpdatedAt : prior?.fitUpdatedAt,
     stringLog: prior?.stringLog,
     shoesMileageSessions: prior?.shoesMileageSessions,
     updatedAt: new Date().toISOString(),
@@ -191,7 +211,39 @@ export async function GET(req: NextRequest) {
 
     const container = getContainer('playerGear');
     const { resource } = await container.item(`gear-${memberId}`, memberId).read();
-    return NextResponse.json({ gear: (resource as PlayerGear | undefined) ?? null });
+    const gear = (resource as PlayerGear | undefined) ?? null;
+    // This GET is public by name — a racket preference is low-sensitivity to
+    // read, and the club tally depends on that. The arm-or-shoulder answer is
+    // not: it is health-adjacent and the privacy policy says only the member
+    // sees it. Stripped for anyone who is not the owner or an admin, in the
+    // same shape as the pinHash/deleteToken strip-canary elsewhere.
+    //
+    // Tested by VALUE, not by key: `writeGearDoc` writes every field
+    // explicitly, so a doc with no answer carries `fitArmComfort: undefined`
+    // in the mock store while production JSON drops the key — `'in' gear`
+    // would take this branch for every route-written doc in dev and none in
+    // prod. The sync admin check is the read-only convention (CLAUDE.md,
+    // Auth); the fresh role re-check is for mutations.
+    if (gear && gear.fitArmComfort !== undefined) {
+      const caller = verifyMemberAuth(req);
+      const isOwner = caller?.memberId === memberId;
+      // The FRESH role re-check, unlike other read-only routes: this branch
+      // runs only when a non-owner reads a doc that carries a health-adjacent
+      // answer (a cold path), and a demoted admin's cookie is live for up to
+      // 30 days. One Cosmos read on almost no requests is the right trade.
+      if (!isOwner && !(await isAdminAuthedWithMember(req)).authed) {
+        const { fitArmComfort: _strip, ...safe } = gear;
+        // The marker says "an answer exists that you cannot see". Without it
+        // the OWNER on a lapsed member_session (30-day TTL; localStorage
+        // identity never expires — a state CLAUDE.md names as normal) would be
+        // shown "not answered" for a value Cosmos still holds, and could not
+        // even reach the Clear link. That is the lying-empty-state rule,
+        // produced by the strip itself. What leaks is only that SOME comfort
+        // answer is stored, never which.
+        return NextResponse.json({ gear: { ...safe, fitArmComfortRedacted: true } });
+      }
+    }
+    return NextResponse.json({ gear });
   } catch (error) {
     console.error('GET equipment/gear error:', error);
     return NextResponse.json({ error: 'load_failed' }, { status: 500 });
@@ -318,15 +370,43 @@ export async function PATCH(req: NextRequest) {
       next.budgetMaxCad = v ?? undefined;
     }
 
+    // The fit questionnaire. Each field is an enum (or a bounded number for
+    // the string budget); `null` means "clear it", mirroring budgetMaxCad. A
+    // value outside the vocabulary is refused rather than stored, because the
+    // engine's target table is keyed on these exact strings and an unknown one
+    // would silently score as "not answered".
+    const FIT_ENUMS = {
+      fitGoal: FIT_GOALS, fitSwing: FIT_SWINGS, fitArmComfort: FIT_ARM_COMFORTS, fitGrip: FIT_GRIPS,
+    } as const;
+    let touchedFit = false;
+    for (const key of Object.keys(FIT_ENUMS) as Array<keyof typeof FIT_ENUMS>) {
+      if (!(key in body)) continue;
+      const v = body[key];
+      if (v !== null && !(FIT_ENUMS[key] as readonly string[]).includes(v)) {
+        return NextResponse.json({ error: 'invalid_fit' }, { status: 400 });
+      }
+      (next as Record<string, unknown>)[key] = v ?? undefined;
+      touchedFit = true;
+    }
+    if ('stringBudgetMaxCad' in body) {
+      const v = body.stringBudgetMaxCad;
+      if (v !== null && (typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 5000)) {
+        return NextResponse.json({ error: 'invalid_fit' }, { status: 400 });
+      }
+      next.stringBudgetMaxCad = v ?? undefined;
+      touchedFit = true;
+    }
+
     // activeRacketId is required only when this call isn't setting a
     // preference field — the original PATCH contract ("set my active
-    // racket") vs. the new one ("set my format/budget preference"), sharing
-    // one verb and one auth gate.
-    if (!activeRacketId && !('playFormat' in body) && !('budgetMaxCad' in body)) {
+    // racket") vs. the new one ("set my format/budget/fit preference"),
+    // sharing one verb and one auth gate.
+    if (!activeRacketId && !('playFormat' in body) && !('budgetMaxCad' in body) && !touchedFit) {
       return NextResponse.json({ error: 'active_racket_required' }, { status: 400 });
     }
 
-    const auth = await authorizeBagWrite(req, name);
+    // A pointer move is a bag write; a preference-only PATCH is not.
+    const auth = await authorizeBagWrite(req, name, activeRacketId ? 'bag' : 'prefs');
     if (auth.error) return auth.error;
 
     return await commitGearDoc(auth.memberId, (prior) => {
@@ -336,6 +416,13 @@ export async function PATCH(req: NextRequest) {
         }
         next.activeRacketId = activeRacketId;
       }
+      // `fitUpdatedAt` dates an ANSWER, so it moves only when one actually
+      // changes against the stored doc — not on a re-tap of the lit tab, and
+      // not on the string budget, which is a pairing preference rather than
+      // a fit answer (`stringBudgetMaxCad` is excluded on purpose).
+      const FIT_ANSWERS = ['fitGoal', 'fitSwing', 'fitArmComfort', 'fitGrip'] as const;
+      const changed = FIT_ANSWERS.some((k) => k in next && next[k] !== prior?.[k]);
+      if (changed) next.fitUpdatedAt = new Date().toISOString();
       return { ok: true, next };
     });
   } catch (error) {
