@@ -80,6 +80,61 @@ describe('GearFitSheet — every answer is one write through the single owner', 
     expect(screen.getByRole('button', { name: 'More control' }).querySelector('.material-icons')).toBeNull();
   });
 
+  it('never lights "Not sure" or "No limit" for a member who has not answered — absent is absent', async () => {
+    mockGear(gearDoc());
+    renderSheet();
+    const unsure = await screen.findByRole('tab', { name: 'Not sure' });
+    expect(unsure.getAttribute('aria-selected')).toBe('false');
+    expect(screen.getByRole('tab', { name: 'No limit' }).getAttribute('aria-selected')).toBe('false');
+  });
+
+  it('goal and swing can be cleared, as the privacy policy promises', async () => {
+    mockGear(gearDoc({ fitGoal: 'faster', fitSwing: 'fast' }));
+    renderSheet();
+    const clears = await screen.findAllByRole('button', { name: 'Clear' });
+    expect(clears).toHaveLength(2);
+    fireEvent.click(clears[0]);
+    await waitFor(() => expect(patches()).toEqual([{ name: 'Lin', fitGoal: null }]));
+    // Every control is disabled while a write is in flight, so the second
+    // clear waits for the first to land — the same way a member would.
+    fireEvent.click(await screen.findByRole('button', { name: 'Clear' }));
+    await waitFor(() => expect(patches()).toEqual([
+      { name: 'Lin', fitGoal: null },
+      { name: 'Lin', fitSwing: null },
+    ]));
+  });
+
+  it('tapping the selected goal row clears it', async () => {
+    mockGear(gearDoc({ fitGoal: 'more_control' }));
+    renderSheet();
+    fireEvent.click(await screen.findByRole('button', { name: 'More control' }));
+    await waitFor(() => expect(patches()).toEqual([{ name: 'Lin', fitGoal: null }]));
+  });
+
+  it('goal rows keep their card chrome while a write is in flight', async () => {
+    // A never-resolving PATCH holds `busy` true.
+    mockGear(gearDoc());
+    const pending = new Promise<Response>(() => {});
+    const real = global.fetch;
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
+      (init?.method ?? 'GET').toUpperCase() === 'PATCH' ? pending : (real as typeof fetch)(input, init)));
+    renderSheet();
+    fireEvent.click(await screen.findByRole('button', { name: 'More power' }));
+    // Still buttons, not bare divs, and still labelled.
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Fast' }).hasAttribute('disabled')).toBe(true));
+    expect(screen.getByRole('button', { name: 'More control' }).className).toContain('cc-mini-card');
+  });
+
+  it('a redacted comfort answer lights nothing and says to sign in, rather than "not answered"', async () => {
+    mockGear(gearDoc({ fitArmComfortRedacted: true } as Partial<PlayerGear>));
+    renderSheet();
+    expect(await screen.findByText(enMessages.stats.gear.fitArmRedacted)).toBeTruthy();
+    for (const name of ['Fine', 'Sometimes sore', 'Often sore']) {
+      expect(screen.getByRole('tab', { name }).getAttribute('aria-selected')).toBe('false');
+    }
+    expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull();
+  });
+
   it('tapping a goal row PATCHes exactly that field, once', async () => {
     mockGear(gearDoc());
     renderSheet();

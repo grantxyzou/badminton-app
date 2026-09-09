@@ -26,6 +26,15 @@ function capFor(category: EquipmentCategory): number {
   return MAX_PER_CATEGORY[category] ?? DEFAULT_CATEGORY_CAP;
 }
 const BAG_WRITES_PER_HOUR = 20;
+/**
+ * Preference writes (format, budget, the fit questionnaire) get their OWN
+ * bucket. They used to share the bag's, and the questionnaire is five to
+ * eight one-tap writes on a first pass — a member who answered it twice hit
+ * 429 on "Add to my equipment" with nothing telling them the questionnaire
+ * had spent the budget. A preference PATCH is one small field on one doc;
+ * sixty an hour is a member changing their mind, not an attack.
+ */
+const PREF_WRITES_PER_HOUR = 60;
 const HOUR_MS = 60 * 60 * 1000;
 const VALID_CATEGORIES = new Set<EquipmentCategory>(['racket', 'string', 'shoe', 'shuttle', 'bag', 'grip']);
 
@@ -50,9 +59,10 @@ function ensureGear(): Promise<void> {
  * the member lookup, or the limiter sits behind the DB call it exists to
  * protect.
  */
-async function authorizeBagWrite(req: NextRequest, name: string) {
-  const key = `gear-bag:${name.toLowerCase()}:${getClientIp(req)}`;
-  if (!checkRateLimit(key, BAG_WRITES_PER_HOUR, HOUR_MS)) {
+async function authorizeBagWrite(req: NextRequest, name: string, bucket: 'bag' | 'prefs' = 'bag') {
+  const key = `gear-${bucket}:${name.toLowerCase()}:${getClientIp(req)}`;
+  const cap = bucket === 'prefs' ? PREF_WRITES_PER_HOUR : BAG_WRITES_PER_HOUR;
+  if (!checkRateLimit(key, cap, HOUR_MS)) {
     return { error: NextResponse.json({ error: 'rate_limited' }, { status: 429 }) };
   }
   const memberId = await resolveActiveMemberId(name);
@@ -219,7 +229,14 @@ export async function GET(req: NextRequest) {
       const isOwner = caller?.memberId === memberId;
       if (!isOwner && !isAdminAuthed(req)) {
         const { fitArmComfort: _strip, ...safe } = gear;
-        return NextResponse.json({ gear: safe });
+        // The marker says "an answer exists that you cannot see". Without it
+        // the OWNER on a lapsed member_session (30-day TTL; localStorage
+        // identity never expires — a state CLAUDE.md names as normal) would be
+        // shown "not answered" for a value Cosmos still holds, and could not
+        // even reach the Clear link. That is the lying-empty-state rule,
+        // produced by the strip itself. What leaks is only that SOME comfort
+        // answer is stored, never which.
+        return NextResponse.json({ gear: { ...safe, fitArmComfortRedacted: true } });
       }
     }
     return NextResponse.json({ gear });
@@ -385,7 +402,8 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'active_racket_required' }, { status: 400 });
     }
 
-    const auth = await authorizeBagWrite(req, name);
+    // A pointer move is a bag write; a preference-only PATCH is not.
+    const auth = await authorizeBagWrite(req, name, activeRacketId ? 'bag' : 'prefs');
     if (auth.error) return auth.error;
 
     return await commitGearDoc(auth.memberId, (prior) => {

@@ -131,5 +131,30 @@ describe('fit questionnaire fields', () => {
 
     const admin = (await (await GET(makeAdminRequest('GET', `${BASE}?name=Lin`))).json()).gear;
     expect(admin.fitArmComfort).toBe('often_sore');
+    expect(admin).not.toHaveProperty('fitArmComfortRedacted');
+  });
+
+  it('marks a stripped answer as redacted, so a lapsed-session owner is not told "not answered"', async () => {
+    await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitArmComfort: 'sometimes_sore' }, cookie));
+    const anonymous = await read();
+    expect(anonymous.fitArmComfortRedacted).toBe(true);
+    expect(anonymous).not.toHaveProperty('fitArmComfort');
+    // And no marker at all when there is nothing to strip.
+    await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitArmComfort: null }, cookie));
+    expect(await read()).not.toHaveProperty('fitArmComfortRedacted');
+    expect((await read(cookie))).not.toHaveProperty('fitArmComfortRedacted');
+  });
+
+  it('preference writes do not spend the bag limiter — a questionnaire cannot lock "Add to my equipment"', async () => {
+    // Same IP for every call so the buckets are the ones under test.
+    const headers = { ...cookie, 'X-Client-IP': '10.9.9.9' };
+    for (let i = 0; i < 25; i++) {
+      const res = await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitGoal: i % 2 ? 'faster' : 'more_power' }, headers));
+      expect(res.status, `pref write #${i + 1}`).toBe(200);
+    }
+    const post = await POST(makeRequest('POST', BASE, {
+      name: 'Lin', item: { catalogId: 'racket-yonex-astrox-88d-pro', category: 'racket', label: 'Yonex Astrox 88D Pro' },
+    }, headers));
+    expect(post.status).toBe(200);
   });
 });

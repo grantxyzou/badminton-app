@@ -322,15 +322,91 @@ describe('GearPickRail — the fit answers re-ask the racket, and strings only w
     expect(asks).toHaveLength(2);
   });
 
-  it('the pick sheet\'s Fit link swaps it for the questionnaire', async () => {
+  it('a fit-only change still re-asks a string that is LOADING — never strands it on the skeleton', async () => {
+    let stringAsks = 0;
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('category=string')) {
+        stringAsks += 1;
+        if (stringAsks === 1) return new Promise<Response>(() => {});
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ item: null, unavailable: 'no_engine' }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ item: ITEM, reasons: [] }) });
+    }) as unknown as typeof fetch;
+    const { rerender } = await mounted(fakeGear({ gear: doc({ items: [owned] }), rackets: [owned] }));
+    expect(stringAsks).toBe(1);
+    rerender(ui(fakeGear({ gear: doc({ items: [owned], fitGoal: 'more_power' }), rackets: [owned] })));
+    await elapse(REC_REFETCH_DEBOUNCE_MS);
+    expect(stringAsks).toBe(2);
+  });
+
+  it('a fit-only change re-asks an ERRORED string — its only retry path short of a reload', async () => {
+    let stringAsks = 0;
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('category=string')) {
+        stringAsks += 1;
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ item: null, reason: null }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ item: ITEM, reasons: [] }) });
+    }) as unknown as typeof fetch;
+    const { rerender } = await mounted(fakeGear({ gear: doc({ items: [owned] }), rackets: [owned] }));
+    rerender(ui(fakeGear({ gear: doc({ items: [owned], fitSwing: 'fast' }), rackets: [owned] })));
+    await elapse(REC_REFETCH_DEBOUNCE_MS);
+    expect(stringAsks).toBe(2);
+  });
+
+  it('a free-text racket does NOT fix the frame — the server pairs against the recommended one, so strings re-ask', async () => {
+    const asks = countAsks();
+    const typed = { id: 'i2', catalogId: null, category: 'racket' as const, label: 'Astrox 88D Pro' };
+    const { rerender } = await mounted(fakeGear({ gear: doc({ items: [typed] }), rackets: [typed] }));
+    rerender(ui(fakeGear({ gear: doc({ items: [typed], fitGoal: 'faster' }), rackets: [typed] })));
+    await elapse(REC_REFETCH_DEBOUNCE_MS);
+    expect(stringAsks(asks)).toBe(2);
+  });
+
+  it('a string-budget change re-asks at once — it is a preference the pairing engine reads', async () => {
+    const asks = countAsks();
+    const { rerender } = await mounted(fakeGear({ gear: doc({ items: [owned] }), rackets: [owned] }));
+    rerender(ui(fakeGear({ gear: doc({ items: [owned], stringBudgetMaxCad: 25 }), rackets: [owned] })));
+    await act(async () => {});
+    expect(stringAsks(asks)).toBe(2);
+  });
+
+  it('the pick sheet\'s Fit link closes it through close(), so nothing leaks into the next opening', async () => {
+    countAsks();
+    process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
+    const onOpenFit = vi.fn();
+    try {
+      render(
+        <NextIntlClientProvider locale="en" messages={enMessages}>
+          <GearPickRail activeName="Lin" gear={fakeGear({ gear: doc({}) })} onOpenFit={onOpenFit} />
+        </NextIntlClientProvider>,
+      );
+      fireEvent.click(await screen.findByLabelText('Racket — Why this?'));
+      // Expand the prefs block, then leave through Fit.
+      fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+      expect(await screen.findByRole('tab', { name: 'Doubles' })).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Fit' }));
+      expect(onOpenFit).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(screen.queryByText(enMessages.stats.gear.pickSheetAdd)).toBeNull());
+      // Reopen: the block is folded again.
+      fireEvent.click(await screen.findByLabelText('Racket — Why this?'));
+      await screen.findByRole('button', { name: 'Change' });
+      expect(screen.queryByRole('tab', { name: 'Doubles' })).toBeNull();
+    } finally {
+      delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
+    }
+  });
+
+  it('renders no Fit link when the rail has nowhere to send it', async () => {
     countAsks();
     process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
     try {
       render(ui(fakeGear({ gear: doc({}) })));
       fireEvent.click(await screen.findByLabelText('Racket — Why this?'));
-      fireEvent.click(await screen.findByRole('button', { name: 'Fit' }));
-      expect(await screen.findByText(enMessages.stats.gear.fitIntro)).toBeTruthy();
-      expect(screen.queryByText(enMessages.stats.gear.pickSheetAdd)).toBeNull();
+      await screen.findByRole('button', { name: 'Change' });
+      expect(screen.queryByRole('button', { name: 'Fit' })).toBeNull();
     } finally {
       delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
     }

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 import GearPickRail from './GearPickRail';
+import GearFitSheet from './GearFitSheet';
 import YourKitCard from './YourKitCard';
 import StringTensionCard from './StringTensionCard';
 import ClubGearCard from './ClubGearCard';
@@ -51,13 +52,22 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
   // reader this register exists to prevent.
   const [pairTension, setPairTension] = useState<number | null>(null);
 
+  // The fit questionnaire is owned HERE, not by the rail, because it has two
+  // doors: the pick sheet's Fit link and a row on the kit card. The rail's
+  // door only exists while its racket card is READY — a member whose card is
+  // parked (no check-in) or errored (throttled) would otherwise have no way
+  // to open the sheet, and so no way to clear a stored comfort answer, on
+  // exactly the days the rail is broken.
+  const [openFit, setOpenFit] = useState(false);
+  const openFitSheet = () => setOpenFit(true);
+
   return (
     <>
       {/* What you already own comes first, then what we'd suggest. The rail's
           whole job is to say "here is a pick, and whether you already have it",
           which only means something once you have seen your own kit. */}
-      <YourKitCard activeName={activeName} gear={gear} />
-      <GearPickRail activeName={activeName} gear={gear} onPairTension={setPairTension} />
+      <YourKitCard activeName={activeName} gear={gear} onOpenFit={openFitSheet} />
+      <GearPickRail activeName={activeName} gear={gear} onPairTension={setPairTension} onOpenFit={openFitSheet} />
       <StringTensionCard
         activeName={activeName}
         gear={gear}
@@ -70,6 +80,7 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
         suppressed={pairTension !== null && !gear.loadError}
       />
       <ClubGearCard />
+      <GearFitSheet open={openFit} onClose={() => setOpenFit(false)} gear={gear} />
     </>
   );
 }

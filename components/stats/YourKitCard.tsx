@@ -34,6 +34,9 @@ export interface YourKitCardProps {
    * until reload. See `GearRegister`'s docstring.
    */
   gear: UseGear;
+  /** Opens the fit questionnaire (owned by `GearRegister`). The kit card is
+   *  the door that is ALWAYS there — the rail's only exists on a ready pick. */
+  onOpenFit?: () => void;
 }
 
 /** `notSet` for an empty row, `gearItemLabel` (shared with `BagList`) for a
@@ -64,8 +67,18 @@ function clampTension(raw: string): number | undefined {
  *   - the pick rail INFORMS (what we'd suggest, and whether you own it)
  *   - these rows MANAGE (tap to pick or change)
  */
-export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
+export default function YourKitCard({ activeName, gear, onOpenFit }: YourKitCardProps) {
   const t = useTranslations('stats.gear');
+  // One line of what the member has answered, for the fit row. Null when
+  // nothing is answered OR the doc is unknown — never a sentence built from
+  // fallbacks.
+  const fitDoc = gear.loaded && !gear.loadError ? gear.gear : null;
+  const fitSummary = fitDoc?.fitGoal || fitDoc?.fitSwing
+    ? [
+        fitDoc?.fitGoal ? t(`fitGoalLower_${fitDoc.fitGoal}`) : null,
+        fitDoc?.fitSwing ? t(`fitSwingLower_${fitDoc.fitSwing}`) : null,
+      ].filter(Boolean).join(' · ')
+    : null;
   // The bag-write failure copy lives in `valueHub` alongside bagFull /
   // bagDuplicate, shared with every other surface that writes gear — it moved
   // here with the controls that can produce it.
@@ -227,6 +240,53 @@ export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
               </Row>
             );
           })}
+          {/* The questionnaire's always-there door. Same row material as the
+              categories above; the trailing summary names what is answered so
+              the row reads as state, not as an errand. */}
+          {onOpenFit && (
+            <button
+              type="button"
+              onClick={onOpenFit}
+              disabled={busy}
+              aria-label={`${t('fitTitle')} — ${fitSummary ? t('change') : t('add')}`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-3)',
+                padding: 'var(--space-4)',
+                borderRadius: 'var(--radius-lg)',
+                background: 'var(--inner-card-bg)',
+                border: '1px solid var(--inner-card-border)',
+                width: '100%',
+                textAlign: 'left',
+                cursor: 'pointer',
+              }}
+            >
+              <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>
+                tune
+              </span>
+              <span style={{ minWidth: 0, flex: 1 }}>
+                <span
+                  style={{
+                    display: 'block',
+                    fontSize: 'var(--fs-2xs)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    fontWeight: 700,
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  {t('fitTitle')}
+                </span>
+                <span className="fs-md" style={{ color: fitSummary ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                  {fitSummary ?? t('fitNotAnswered')}
+                </span>
+              </span>
+              <span className="fs-sm" style={{ color: 'var(--accent)', flex: '0 0 auto' }}>
+                {fitSummary ? t('change') : t('add')}
+              </span>
+            </button>
+          )}
         </div>
       )}
 

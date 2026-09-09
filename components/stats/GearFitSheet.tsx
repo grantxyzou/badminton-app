@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import ListRow from '@/components/primitives/ListRow';
@@ -72,7 +72,11 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
   const doc = known ? gear.gear : null;
   const goal = known ? (doc?.fitGoal ?? null) : undefined;
   const swing = known ? (doc?.fitSwing ?? null) : undefined;
-  const arm = known ? (doc?.fitArmComfort ?? null) : undefined;
+  // Redacted = the route stripped it for a caller it could not tie to the
+  // owner. On the owner's own device that means a lapsed member_session; the
+  // answer exists, so nothing lights, and the section says why.
+  const armRedacted = known && doc?.fitArmComfortRedacted === true;
+  const arm = known && !armRedacted ? (doc?.fitArmComfort ?? null) : undefined;
   const grip = known ? (doc?.fitGrip ?? null) : undefined;
   const stringBudget = known ? (doc?.stringBudgetMaxCad ?? null) : undefined;
   const hasRacket = gear.rackets.length > 0;
@@ -103,6 +107,24 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
     return `$${band}`;
   }
 
+  /** The Clear link, only while there is something to clear — the privacy
+   *  policy promises every answer can be cleared from this sheet, so every
+   *  section that stores one gets this, not only the comfort one. */
+  function clearLink(stored: boolean, prefs: GearPrefs) {
+    if (!stored) return null;
+    return (
+      <button type="button" className="fs-sm" style={LINK_STYLE} disabled={gear.busy} onClick={() => setPref(prefs)}>
+        {t('fitClear')}
+      </button>
+    );
+  }
+  const labelRow = (label: string, clear: ReactNode) => (
+    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+      <p className="fs-sm" style={LABEL_STYLE}>{label}</p>
+      {clear}
+    </div>
+  );
+
   function segment<T extends string | number | null>(
     label: string,
     options: ReadonlyArray<[T, string]>,
@@ -116,9 +138,13 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
             key={key}
             type="button"
             role="tab"
-            aria-selected={current !== undefined && current === value}
+            // A `null` option ("Not sure", "No limit") is a CLEAR, and never
+            // lights: the stored doc cannot tell "answered: not sure" from
+            // "never asked", so lighting it would assert an answer the member
+            // did not give. Absent is absent.
+            aria-selected={current !== undefined && value !== null && current === value}
             disabled={gear.busy}
-            className={`flex-1 flex items-center justify-center fs-sm ${current !== undefined && current === value ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+            className={`flex-1 flex items-center justify-center fs-sm ${current !== undefined && value !== null && current === value ? 'segment-tab-active' : 'segment-tab-inactive'}`}
             onClick={() => setPref(write(value))}
           >
             {t(key)}
@@ -170,14 +196,19 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
           {/* Goal: a vertical list, not a segment — five labels do not fit a
               phone-width tab strip. The selected row carries a check. */}
           <section style={SECTION_STYLE} role="group" aria-label={hasRacket ? t('fitGoalLabel') : t('fitGoalLabelNoRacket')}>
-            <p className="fs-sm" style={LABEL_STYLE}>{hasRacket ? t('fitGoalLabel') : t('fitGoalLabelNoRacket')}</p>
+            {labelRow(hasRacket ? t('fitGoalLabel') : t('fitGoalLabelNoRacket'), clearLink(goal != null, { fitGoal: null }))}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
               {FIT_GOALS.map((g: FitGoal) => {
                 const selected = goal !== undefined && goal === g;
                 return (
                   <ListRow
                     key={g}
-                    onClick={gear.busy ? undefined : () => setPref({ fitGoal: g })}
+                    // Always a button. Dropping onClick while busy made
+                    // ListRow render a bare div — five rows losing their card
+                    // chrome for every round-trip. `setPref` guards busy.
+                    // Tapping the selected row clears it, so the list is also
+                    // its own undo.
+                    onClick={() => setPref({ fitGoal: selected ? null : g })}
                     ariaLabel={t(`fitGoal_${g}`)}
                     title={
                       <span className="fs-md" style={{ color: selected ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
@@ -196,24 +227,15 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
           </section>
 
           <section style={SECTION_STYLE}>
-            <p className="fs-sm" style={LABEL_STYLE}>{t('fitSwingLabel')}</p>
+            {labelRow(t('fitSwingLabel'), clearLink(swing != null, { fitSwing: null }))}
             {segment(t('fitSwingLabel'), SWING_OPTIONS, swing, (v) => ({ fitSwing: v }))}
           </section>
 
           <section style={SECTION_STYLE}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-              <p className="fs-sm" style={LABEL_STYLE}>{t('fitArmLabel')}</p>
-              {/* Only when there is something to clear: a Clear that clears
-                  nothing is a button that lies. */}
-              {arm != null && (
-                <button type="button" className="fs-sm" style={LINK_STYLE} disabled={gear.busy} onClick={() => setPref({ fitArmComfort: null })}>
-                  {t('fitClear')}
-                </button>
-              )}
-            </div>
+            {labelRow(t('fitArmLabel'), clearLink(arm != null, { fitArmComfort: null }))}
             {segment(t('fitArmLabel'), ARM_OPTIONS, arm, (v) => ({ fitArmComfort: v }))}
             <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)', lineHeight: 'var(--lh-normal)' }}>
-              {t('fitArmNote')}
+              {armRedacted ? t('fitArmRedacted') : t('fitArmNote')}
             </p>
           </section>
 

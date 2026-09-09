@@ -357,7 +357,11 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
       {onOpenFit && (
         <button
           type="button"
-          onClick={onOpenFit}
+          // Through close(): this is an exit route like any other, and the
+          // sheet stays mounted for the rail's life — a Change block or spec
+          // table left expanded, or a stale error pill, would otherwise be on
+          // screen at the next opening.
+          onClick={() => { close(); onOpenFit(); }}
           className="fs-sm"
           style={{ background: 'transparent', border: 'none', padding: '0', cursor: 'pointer', color: 'var(--accent)' }}
         >

@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { recordEngagement } from '@/lib/engagement';
 import GearPickCard, { type GearPick, type GearPickCardStatus } from './GearPickCard';
 import GearPickSheet from './GearPickSheet';
-import GearFitSheet from './GearFitSheet';
 import type { UseGear } from './useGear';
+import { activeRacket } from '@/lib/activeRacket';
 import type { CatalogItem, EquipmentCategory } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -64,6 +64,11 @@ export interface GearPickRailProps {
    * drift the register was restructured to remove.
    */
   onPairTension?: (lbs: number | null) => void;
+  /** Opens the fit questionnaire, which `GearRegister` owns — it has to be
+   *  reachable from the kit card as well as from a READY racket pick, or a
+   *  member whose racket card is parked or errored could never clear a
+   *  stored comfort answer. The rail closes its own sheet first. */
+  onOpenFit?: () => void;
 }
 
 /**
@@ -80,15 +85,12 @@ export interface GearPickRailProps {
  * per-card gear read here would recreate the exact drift bug the register is
  * being restructured to eliminate.
  */
-export default function GearPickRail({ activeName, gear, onPairTension }: GearPickRailProps) {
+export default function GearPickRail({ activeName, gear, onPairTension, onOpenFit }: GearPickRailProps) {
   const [state, setState] = useState<Record<EquipmentCategory, CategoryState>>(initialState);
   // Which category's detail sheet is open. The rail owns this, not the card:
   // the sheet is opened FROM a card but belongs to the rail, which is the only
   // place that holds both the pick and the gear owner needed to add it.
   const [openCategory, setOpenCategory] = useState<EquipmentCategory | null>(null);
-  // The fit questionnaire, owned here for the same reason the pick sheet is:
-  // it writes through the rail's `gear` and its answers change the pick.
-  const [openFit, setOpenFit] = useState(false);
 
   // Mirror of each category's status, kept in step with `setState` so the fetch
   // effect can consult it without taking `state` as a dependency (which would
@@ -132,7 +134,10 @@ export default function GearPickRail({ activeName, gear, onPairTension }: GearPi
   // re-asks strings only for a member with no racket in the bag; with one, the
   // frame is fixed and the answer cannot move.
   const d = gear.gear;
-  const prefKey = gearLoaded ? `${d?.playFormat ?? ''}|${d?.budgetMaxCad ?? ''}` : null;
+  // `stringBudgetMaxCad` sits with the preferences, not the fit answers: it is
+  // documented as advisory to the PAIRING engine's value scorer, so a change
+  // to it must reach the string pick the way budgetMaxCad reaches the racket.
+  const prefKey = gearLoaded ? `${d?.playFormat ?? ''}|${d?.budgetMaxCad ?? ''}|${d?.stringBudgetMaxCad ?? ''}` : null;
   const fitKey = gearLoaded
     ? `${d?.fitGoal ?? ''}|${d?.fitSwing ?? ''}|${d?.fitArmComfort ?? ''}|${d?.fitGrip ?? ''}`
     : null;
@@ -142,10 +147,17 @@ export default function GearPickRail({ activeName, gear, onPairTension }: GearPi
   // racket flips it — the effect would re-run at once, re-score with that
   // racket now excluded, and swap the pick out from under the IN YOUR KIT
   // flip. Same pattern as `onPairTensionRef` above.
-  const fitAloneReachesStringsRef = useRef(gear.rackets.length === 0);
+  //
+  // The rule is the SERVER's rung-1 rule (`buildProfile`: a frame is fixed
+  // only when the active racket has a `catalogId`), not "owns any racket". A
+  // free-text racket typed into the stringing sheet counts as owned but has no
+  // attributes, so the route falls to rung 2 — the RECOMMENDED frame, which is
+  // exactly the frame the fit answers move.
+  const frameFixed = activeRacket(gear.gear)?.catalogId != null;
+  const fitAloneReachesStringsRef = useRef(!frameFixed);
   useEffect(() => {
-    fitAloneReachesStringsRef.current = gear.rackets.length === 0;
-  }, [gear.rackets.length]);
+    fitAloneReachesStringsRef.current = !frameFixed;
+  }, [frameFixed]);
   const prevKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -172,7 +184,13 @@ export default function GearPickRail({ activeName, gear, onPairTension }: GearPi
     const run = () => {
       for (const cat of SOURCED) {
         if (isRefresh && statusRef.current[cat] === 'parked') continue;
-        if (onlyFitChanged && cat === 'string' && !fitAloneReachesStringsRef.current) continue;
+        // Skip the string only when it already HAS an answer and the frame it
+        // pairs against cannot move. A string still `loading` must be re-asked
+        // — the cleanup above just dropped its in-flight response, and skipping
+        // it now would strand it on the skeleton (the very state the comment
+        // above forbids). An `error` string is re-asked too: this is its only
+        // retry path short of a reload.
+        if (onlyFitChanged && cat === 'string' && statusRef.current.string === 'ready' && !fitAloneReachesStringsRef.current) continue;
         fetch(`${BASE}/api/recommend?name=${encodeURIComponent(activeName)}&category=${cat}`, { cache: 'no-store' })
           .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
           .then((d) => {
@@ -341,10 +359,11 @@ export default function GearPickRail({ activeName, gear, onPairTension }: GearPi
       // One sheet at a time. The pick sheet closes and the questionnaire opens
       // in its place; when that closes the member is back on the rail, whose
       // racket card has re-asked with the new answers. Stacking the two would
-      // put a form over the answer it changes.
-      onOpenFit={() => { setOpenCategory(null); setOpenFit(true); }}
+      // put a form over the answer it changes. (The 220 ms overlap of the two
+      // body-scroll locks during the swap is handled by the lock itself,
+      // which is reference-counted for exactly this.)
+      onOpenFit={onOpenFit ? () => { setOpenCategory(null); onOpenFit(); } : undefined}
     />
-    <GearFitSheet open={openFit} onClose={() => setOpenFit(false)} gear={gear} />
     </>
   );
 }

@@ -403,6 +403,11 @@ export interface PlayerGear {
   /** ISO — stamped by the route on any write that touches a fit field, so an
    *  answer can be dated against the check-in it is paired with. */
   fitUpdatedAt?: string;
+  /** RESPONSE-ONLY, never stored: set by the gear GET when it stripped
+   *  `fitArmComfort` for a caller who is not the owner or an admin. Lets the
+   *  owner on a lapsed session see "answered, sign in to change it" rather
+   *  than a false "not answered". */
+  fitArmComfortRedacted?: boolean;
   /** String-tension history. Drives the "time to restring" refresh nudge in P7. */
   stringLog?: StringLogEntry[];
   /** Sessions logged since current shoes were acquired — drives shoe-mileage nudge. */
