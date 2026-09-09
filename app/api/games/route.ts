@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos';
+import { ensureContainer, getActiveSessionId } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
   try {
     await ensureGames();
     const params = new URL(req.url).searchParams;
-    const container = getContainer('gameResults');
+    const scope = groupScope(resolveGroupId(req));
 
     // All-time read for one player: `?name=X&all=true`. The default stays
     // active-session-scoped so existing callers are unchanged.
@@ -48,9 +49,8 @@ export async function GET(req: NextRequest) {
       if (!rawName) {
         return NextResponse.json({ error: 'name_required' }, { status: 400 });
       }
-      const { resources: every } = await container.items
-        .query({ query: 'SELECT * FROM c' })
-        .fetchAll();
+      // Every game in THIS group — "all-time" stops at the group's edge.
+      const every = await scope.query('gameResults');
       const needle = rawName.toLowerCase();
       // Games store player NAMES, never memberIds (see lib/levelStore.ts) — so
       // this join is name-based and case-insensitive, matching every other
@@ -72,14 +72,12 @@ export async function GET(req: NextRequest) {
     const override = params.get('sessionId');
     const sessionId = override && isAdminAuthed(req)
       ? override
-      : await getActiveSessionId(resolveGroupId(req));
+      : await getActiveSessionId(scope.groupId);
     if (!sessionId) return noActiveSession();
-    const { resources } = await container.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.sessionId = @sessionId',
-        parameters: [{ name: '@sessionId', value: sessionId }],
-      })
-      .fetchAll();
+    const resources = await scope.query<GameResult>('gameResults', {
+      where: 'c.sessionId = @sessionId',
+      params: [{ name: '@sessionId', value: sessionId }],
+    });
     // JS-side newest-first sort — mock store doesn't honor ORDER BY.
     resources.sort((a, b) => String(b.loggedAt).localeCompare(String(a.loggedAt)));
     return NextResponse.json({ games: resources });
@@ -132,9 +130,10 @@ export async function POST(req: NextRequest) {
     }
 
     // sessionId override is admin-only (rule 7); non-admins log to the active session.
+    const scope = groupScope(resolveGroupId(req));
     const sessionId = typeof body.sessionId === 'string' && body.sessionId && isAdminAuthed(req)
       ? body.sessionId
-      : await getActiveSessionId(resolveGroupId(req));
+      : await getActiveSessionId(scope.groupId);
     if (!sessionId) return noActiveSession();
 
     const record: GameResult = {
@@ -147,8 +146,7 @@ export async function POST(req: NextRequest) {
       loggedBy,
       loggedAt: new Date().toISOString(),
     };
-    const container = getContainer('gameResults');
-    const { resource } = await container.items.create(record);
+    const resource = await scope.create('gameResults', record);
     return NextResponse.json(resource, { status: 201 });
   } catch (error) {
     console.error('POST games error:', error);

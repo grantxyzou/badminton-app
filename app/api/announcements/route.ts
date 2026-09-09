@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { getActiveSessionId } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { readActiveAnnouncements } from '@/lib/announcements';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
@@ -19,29 +20,19 @@ export async function DELETE(req: NextRequest) {
   if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   try {
-    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    const scope = groupScope(resolveGroupId(req));
+    const sessionId = await getActiveSessionId(scope.groupId);
     if (!sessionId) return noActiveSession();
     const { id } = await req.json();
     if (!id || typeof id !== 'string') {
       return NextResponse.json({ error: 'ID required' }, { status: 400 });
     }
 
-    const container = getContainer('announcements');
-    const { resources } = await container.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.id = @id AND c.sessionId = @sessionId',
-        parameters: [
-          { name: '@id', value: id },
-          { name: '@sessionId', value: sessionId },
-        ],
-      })
-      .fetchAll();
-
-    if (resources.length === 0) {
+    // remove() read-verifies the doc belongs to this group's session first.
+    const removed = await scope.remove('announcements', id, sessionId);
+    if (!removed) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
-
-    await container.item(id, sessionId).delete();
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE announcement error:', error);
@@ -53,7 +44,8 @@ export async function PATCH(req: NextRequest) {
   if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   try {
-    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    const scope = groupScope(resolveGroupId(req));
+    const sessionId = await getActiveSessionId(scope.groupId);
     if (!sessionId) return noActiveSession();
     const { id, text } = await req.json();
     if (!id || typeof id !== 'string') {
@@ -67,23 +59,13 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Announcement too long (max 800 chars)' }, { status: 400 });
     }
 
-    const container = getContainer('announcements');
-    const { resources } = await container.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.id = @id AND c.sessionId = @sessionId',
-        parameters: [
-          { name: '@id', value: id },
-          { name: '@sessionId', value: sessionId },
-        ],
-      })
-      .fetchAll();
-
-    if (resources.length === 0) {
+    const existing = await scope.read('announcements', id, sessionId);
+    if (!existing) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    const { resource: updated } = await container.items.upsert({
-      ...resources[0],
+    const updated = await scope.upsert('announcements', {
+      ...existing,
       text: trimmed,
       editedAt: new Date().toISOString(),
     });
@@ -98,7 +80,8 @@ export async function POST(req: NextRequest) {
   if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   try {
-    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    const scope = groupScope(resolveGroupId(req));
+    const sessionId = await getActiveSessionId(scope.groupId);
     if (!sessionId) return noActiveSession();
     const { text } = await req.json();
     const trimmed = typeof text === 'string' ? text.trim() : '';
@@ -116,8 +99,7 @@ export async function POST(req: NextRequest) {
       sessionId,
     };
 
-    const container = getContainer('announcements');
-    const { resource } = await container.items.create(announcement);
+    const resource = await scope.create('announcements', announcement);
 
     /* Persist first, notify best-effort — a push failure must never fail the
        admin's post (same posture as the signup-open trigger in

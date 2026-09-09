@@ -32,6 +32,13 @@ export interface ContainerReferences {
 const NAME = `(?:'([a-zA-Z]+)'|([A-Za-z_$][\\w$]*))`;
 const CALL = new RegExp(`(get|ensure)Container\\(\\s*${NAME}\\s*(?:,\\s*'(\\/[a-zA-Z]+)')?\\s*[,)]`, 'g');
 const ALIAS = /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*'([a-zA-Z]+)'/g;
+/**
+ * The scoped accessor's calls — `scope.query('players', …)`, `.read('skills', …)`.
+ * Once a file is swept it names its containers only this way, and the
+ * classification canaries must keep seeing them. A string-literal first
+ * argument is what tells these apart from the SDK's `.query({ … })`.
+ */
+const SCOPED = /\.(?:query|count|read|create|upsert|remove)(?:<[^>]*>)?\(\s*'([a-zA-Z]+)'/g;
 
 export function containerReferences(root: string): ContainerReferences {
   const files = [...walk(join(root, 'app')), ...walk(join(root, 'lib'))];
@@ -57,6 +64,7 @@ export function containerReferences(root: string): ContainerReferences {
       if (kind === 'get') add(gotten, name, rel);
       if (kind === 'ensure' && path) ensured.set(name, path);
     }
+    for (const m of src.matchAll(SCOPED)) add(used, m[1], rel);
   }
   return { used, gotten, ensured };
 }

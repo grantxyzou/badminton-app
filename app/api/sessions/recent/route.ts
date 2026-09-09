@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, POINTER_ID } from '@/lib/cosmos';
+import { SESSION_ID } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { sessionCostTotals } from '@/lib/sessionCost';
 import type { Session } from '@/lib/types';
@@ -26,18 +28,12 @@ export async function GET(req: NextRequest) {
   const limit = Math.max(1, Math.min(MAX_LIMIT, Number.isFinite(requested) ? requested : DEFAULT_LIMIT));
 
   try {
-    const sessionsContainer = getContainer('sessions');
-    const playersContainer = getContainer('players');
+    const scope = groupScope(resolveGroupId(req));
 
-    const { resources: allSessions } = await sessionsContainer.items
-      .query({
-        query: `SELECT * FROM c WHERE c.id != @pointerId AND c.id != @legacyId`,
-        parameters: [
-          { name: '@pointerId', value: POINTER_ID },
-          { name: '@legacyId', value: 'current-session' },
-        ],
-      })
-      .fetchAll();
+    const allSessions = await scope.query<Session>('sessions', {
+      where: 'c.id != @legacyId',
+      params: [{ name: '@legacyId', value: SESSION_ID }],
+    });
     // Sort + limit in JS — Cosmos honors ORDER BY/LIMIT but the mock store doesn't.
     const sessions = (allSessions as Session[])
       .sort((a, b) => (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
@@ -55,13 +51,12 @@ export async function GET(req: NextRequest) {
 
     if (sessionIds.length > 0) {
       const placeholders = sessionIds.map((_, i) => `@sid${i}`).join(',');
-      const { resources: rawPlayers } = await playersContainer.items
-        .query({
-          query: `SELECT c.sessionId, c.paid, c.removed, c.waitlisted FROM c WHERE c.sessionId IN (${placeholders})`,
-          parameters: sessionIds.map((id, i) => ({ name: `@sid${i}`, value: id })),
-        })
-        .fetchAll();
-      for (const p of rawPlayers as PlayerRow[]) {
+      const rawPlayers = await scope.query<PlayerRow>('players', {
+        select: 'c.sessionId, c.paid, c.removed, c.waitlisted',
+        where: `c.sessionId IN (${placeholders})`,
+        params: sessionIds.map((id, i) => ({ name: `@sid${i}`, value: id })),
+      });
+      for (const p of rawPlayers) {
         if (!sessionIdSet.has(p.sessionId)) continue;
         const arr = playersBySession.get(p.sessionId);
         if (arr) arr.push(p);

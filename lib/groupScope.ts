@@ -200,7 +200,8 @@ export function buildGroupQuery(
   return { query: sql, parameters };
 }
 
-type Doc = Record<string, unknown> & { id: string };
+/** Anything with an id. Typed interfaces (GameResult, PlayerSkills…) have no index signature, so no Record here. */
+type Doc = { id: string };
 
 export interface GroupScope {
   readonly groupId: string;

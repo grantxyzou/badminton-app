@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, POINTER_ID } from '@/lib/cosmos';
+import { SESSION_ID } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -18,17 +20,13 @@ export async function GET(req: NextRequest) {
   if (!isAdminAuthed(req)) return unauthorized();
 
   try {
-    const container = getContainer('sessions');
-    const { resources } = await container.items
-      .query({
-        query:
-          'SELECT c.title, c.locationName, c.locationAddress FROM c WHERE c.id != @pointerId AND c.id != @legacyId ORDER BY c.id DESC OFFSET 0 LIMIT 30',
-        parameters: [
-          { name: '@pointerId', value: POINTER_ID },
-          { name: '@legacyId', value: 'current-session' },
-        ],
-      })
-      .fetchAll();
+    const resources = await groupScope(resolveGroupId(req)).query('sessions', {
+      select: 'c.title, c.locationName, c.locationAddress',
+      where: 'c.id != @legacyId',
+      params: [{ name: '@legacyId', value: SESSION_ID }],
+      orderBy: 'c.id DESC',
+      limit: 30,
+    });
 
     // Dedupe venues by name+address (most-recent-first order preserved).
     const seenLoc = new Set<string>();

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { getContainer, getActiveSessionId, ensureContainer } from '@/lib/cosmos';
+import { getActiveSessionId, ensureContainer } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import type { PlayerSkills } from '@/lib/types';
@@ -52,13 +53,10 @@ export async function GET(req: NextRequest) {
     await ensureSkillsContainer();
     const sessionId = await resolveSessionId(req);
     if (!sessionId) return noActiveSession();
-    const container = getContainer('skills');
-    const { resources } = await container.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.sessionId = @sessionId',
-        parameters: [{ name: '@sessionId', value: sessionId }],
-      })
-      .fetchAll();
+    const resources = await groupScope(resolveGroupId(req)).query('skills', {
+      where: 'c.sessionId = @sessionId',
+      params: [{ name: '@sessionId', value: sessionId }],
+    });
     return NextResponse.json({ skills: resources });
   } catch (error) {
     // Surface the failure (500) instead of a lying 200 + empty skills list —
@@ -84,30 +82,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Scores must be integers between 0 and 6' }, { status: 400 });
     }
 
-    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    const scope = groupScope(resolveGroupId(req));
+    const sessionId = await getActiveSessionId(scope.groupId);
     if (!sessionId) return noActiveSession();
-    const container = getContainer('skills');
 
     // Upsert semantics: find existing record for (sessionId, name) case-insensitive.
-    const { resources: existing } = await container.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND LOWER(c.name) = @name',
-        parameters: [
-          { name: '@sessionId', value: sessionId },
-          { name: '@name', value: name.toLowerCase() },
-        ],
-      })
-      .fetchAll();
+    const existing = await scope.query<PlayerSkills>('skills', {
+      where: 'c.sessionId = @sessionId AND LOWER(c.name) = @name',
+      params: [
+        { name: '@sessionId', value: sessionId },
+        { name: '@name', value: name.toLowerCase() },
+      ],
+    });
 
     if (existing.length > 0) {
-      const prior = existing[0] as PlayerSkills;
+      const prior = existing[0];
       const updated: PlayerSkills = {
         ...prior,
         name, // take the new casing
         scores,
         updatedAt: new Date().toISOString(),
       };
-      const { resource } = await container.items.upsert(updated);
+      const resource = await scope.upsert('skills', updated);
       return NextResponse.json(resource);
     }
 
@@ -118,7 +114,7 @@ export async function POST(req: NextRequest) {
       scores,
       updatedAt: new Date().toISOString(),
     };
-    const { resource } = await container.items.create(record);
+    const resource = await scope.create('skills', record);
     return NextResponse.json(resource, { status: 201 });
   } catch (error) {
     console.error('POST skills error:', error);
@@ -140,20 +136,20 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Scores must be integers between 0 and 6' }, { status: 400 });
     }
 
-    const container = getContainer('skills');
-    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    const scope = groupScope(resolveGroupId(req));
+    const sessionId = await getActiveSessionId(scope.groupId);
     if (!sessionId) return noActiveSession();
-    const { resource: existing } = await container.item(id, sessionId).read();
+    const existing = await scope.read<PlayerSkills>('skills', id, sessionId);
     if (!existing) {
       return NextResponse.json({ error: 'Record not found' }, { status: 404 });
     }
 
     const updated: PlayerSkills = {
-      ...(existing as PlayerSkills),
-      scores: { ...(existing as PlayerSkills).scores, ...scores },
+      ...existing,
+      scores: { ...existing.scores, ...scores },
       updatedAt: new Date().toISOString(),
     };
-    const { resource } = await container.items.upsert(updated);
+    const resource = await scope.upsert('skills', updated);
     return NextResponse.json(resource);
   } catch (error) {
     console.error('PATCH skills error:', error);
@@ -170,10 +166,10 @@ export async function DELETE(req: NextRequest) {
     const id = typeof body.id === 'string' ? body.id : '';
     if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
 
-    const container = getContainer('skills');
-    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    const scope = groupScope(resolveGroupId(req));
+    const sessionId = await getActiveSessionId(scope.groupId);
     if (!sessionId) return noActiveSession();
-    await container.item(id, sessionId).delete();
+    await scope.remove('skills', id, sessionId);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE skills error:', error);

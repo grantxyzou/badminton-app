@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { getActiveSessionId } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 
@@ -34,19 +35,19 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    const scope = groupScope(resolveGroupId(req));
+    const sessionId = await getActiveSessionId(scope.groupId);
     if (!sessionId) return noActiveSession();
-    const container = getContainer('sessions');
-    const { resource: existing } = await container.item(sessionId, sessionId).read();
+    const existing = await scope.read<{ id: string; anomaliesDismissed?: unknown }>('sessions', sessionId, sessionId);
     if (!existing) {
       return NextResponse.json({ error: 'No active session' }, { status: 404 });
     }
-    const current: string[] = Array.isArray(existing.anomaliesDismissed) ? existing.anomaliesDismissed : [];
+    const current: string[] = Array.isArray(existing.anomaliesDismissed) ? (existing.anomaliesDismissed as string[]) : [];
     if (current.includes(code)) {
       return NextResponse.json({ anomaliesDismissed: current });
     }
     const next = [...current, code];
-    const { resource: updated } = await container.items.upsert({ ...existing, anomaliesDismissed: next });
+    const updated = await scope.upsert('sessions', { ...existing, anomaliesDismissed: next });
     const result = (updated ?? { anomaliesDismissed: next }) as { anomaliesDismissed?: string[] };
     return NextResponse.json({ anomaliesDismissed: result.anomaliesDismissed ?? next });
   } catch (error) {
