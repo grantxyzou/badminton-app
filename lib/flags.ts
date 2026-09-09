@@ -25,7 +25,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_STRINGING'
   | 'NEXT_PUBLIC_FLAG_PUSH_NOTIFY'
   | 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE'
-  | 'NEXT_PUBLIC_FLAG_MULTI_GROUP';
+  | 'NEXT_PUBLIC_FLAG_MULTI_GROUP'
+  | 'NEXT_PUBLIC_FLAG_RACKET_FIT';
 
 interface FlagMeta {
   description: string;
@@ -113,6 +114,12 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: '2026-11-19',
   },
+  NEXT_PUBLIC_FLAG_RACKET_FIT: {
+    description: 'The racket FIT engine (lib/racketFit.ts) — a distance model against a target spec anchored on the member\'s current racket and their fit answers — in place of the seven skill-proxy scorers in lib/racketRecommend.ts, on the racket branch of GET /api/recommend. Off → that branch is unchanged byte-for-byte. Phase 2 of docs/plans/racket-fit-engine.md.',
+    owner: 'grant',
+    plannedRemoval: '2026-10-23',
+    note: 'Retiring this flag means deleting the OFF branch: recommendRackets, its seven scorers and lib/recommend.ts\'s stage-derived fallback (Phase 4 of the plan), plus the transitional English renderer lib/fitReasonText.ts once the client reads reason KEYS. Pull GEAR_RECOMMENDER forward at the same time — it will have no off branch left.',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -137,6 +144,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_NATIVE_MIGRATE;
     case 'NEXT_PUBLIC_FLAG_MULTI_GROUP':
       return process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
+    case 'NEXT_PUBLIC_FLAG_RACKET_FIT':
+      return process.env.NEXT_PUBLIC_FLAG_RACKET_FIT;
     default: {
       // Exhaustiveness guard. Adding a flag to `FlagName` without adding its
       // `case` above used to be silently legal — `readFlag` just returned

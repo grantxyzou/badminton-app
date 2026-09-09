@@ -130,7 +130,51 @@ state of its own except the one thing it exists to own (below).
   (`GearPickRail`'s `SOURCED`, `YourKitCard`'s `PICKABLE`), so un-parking a
   category is only ever a sourcing step, never a UI change.
 
-### Racket recommender (`NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER`)
+### Racket FIT engine (`NEXT_PUBLIC_FLAG_RACKET_FIT`, Phase 2, 2026-09-09)
+
+`lib/racketFit.ts` replaces the seven scorers below on the racket branch of
+`GET /api/recommend` when the flag is on; off, that branch is unchanged. Spec:
+`docs/superpowers/specs/2026-09-07-racket-fit-design.md`. Pure, no I/O.
+
+- **A distance model against a TARGET SPEC**, not rule scorers. Target =
+  the member's ACTIVE racket's axes (balance 1–3, flex 1–5, weight midpoint,
+  tier 1–3) plus the goal delta (`GOAL_DELTA` — the one table of badminton
+  judgment in the file; tune it there and let the golden set say whether it
+  was right), then swing sets the flex CEILING and comfort sets flex/weight/
+  balance ceilings. Ceilings penalise and WARN; nothing is hidden. Unanchored
+  members get a level-based target with a wider tolerance and a lead reason
+  that says so.
+- **Honest states** (`resolveFitState`): a pick needs a catalog racket in the
+  bag, OR a check-in, OR goal + swing — goal alone is not enough, swing is the
+  injury axis. Otherwise `needsFit`, which the route returns as
+  `{ needsFit: true }`; the rail parks on it with a `parkReason`, and
+  `GearPickCard` renders a racket parked on `needsFit` as a tappable DOOR to
+  the questionnaire (`railRacketFit` + `railTapToFit`), one parked on an empty
+  catalog as `railNoCatalog` — never "do a check-in" for either.
+- **Level from RATED skills only** (`fitLevel`, null below three) — the
+  string engine keeps `overall()`'s fill-with-3 for its reference constants;
+  the two are different on purpose. `buildProfile` records `ratedKeys`.
+- **Exclusion by id OR normalised label** (D5), so a free-text bag row is
+  excluded too — the rail recommended Lin her own typed racket on 2026-09-07.
+- **Reasons are KEYS** (`stats.gear.reason.*`, `warn.*`, `diff.*`) with
+  params; `FIT_REASON_KEYS` is exported and `__tests__/racket-fit.test.ts`
+  asserts every key exists in both locales, because `check-i18n-keys.mjs`
+  cannot see a dynamic `t(reason.key)`. `lib/fitReasonText.ts` renders them
+  to English on the server for the client that still reads `reasons:
+  string[]` — TRANSITIONAL, deleted in Phase 4 once the rail translates keys.
+- **Top pick + two alternatives**, diversity-selected on the (balance, flex,
+  tier) triple with a rank-order fallback, each with a `differsBy` of at most
+  two fragments. Order is score → distance → price → id: deterministic, never
+  catalog order.
+- **The golden set** (`__tests__/fixtures/fit-golden.json`, run by
+  `__tests__/fit-golden.test.ts`) is the expert ground truth: raw ratings +
+  a gear shape per case, an ACCEPTABLE set, never a derived level. Empty
+  today and skipping loudly; Phase 4 raises the guard to five cases.
+- `canon`, `isScorable`, `overall`, `skillLevel`, `maxFlexDemand` and the
+  derived-profile helpers MOVED here; `lib/racketRecommend.ts` re-exports
+  them until it retires.
+
+### Racket recommender (`NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER`) — the OFF branch of the flag above
 
 Scores the **fourteen check-in skill ratings** rather than the old
 `Member.stage` (optional, rarely set — so it showed nearly everyone the same
@@ -252,12 +296,19 @@ racket and never excluded what they owned).
     string-budget change re-asks the string only; a fit change skips the
     string only when the SERVER said it is paired with the member's own frame
     (`pairedWith.source === 'owned'`) — never a client mirror of that rule,
-    which drifted twice (a free-text racket, an unresolvable catalogId); and
-    a category whose in-flight fetch the effect's cleanup discarded is never
+    which drifted twice (a free-text racket, an unresolvable catalogId); a
+    category whose in-flight fetch the effect's cleanup discarded is never
     skipped, whatever its status (`cancelledRef`), or the answer from before
-    the change stays on screen. Nothing about the bag is an effect dependency:
-    keyed on it, adding the recommended racket re-scored with it excluded and
-    swapped the pick out from under the YOU OWN THIS flip.
+    the change stays on screen; and a PARKED category is skipped only when it
+    parked on `no_engine` — `needsFit`, `needsCheckIn` and a string with no
+    frame are THIS member's state and un-park when their answers change.
+    **A fit-driven refetch is HELD while the fit sheet is open**
+    (`holdFitRefetch`, from `GearRegister`'s `openFit`): answered at a human
+    pace, five controls were eleven calls inside a minute against the 10/min
+    limit, and the card is under the sheet anyway. Nothing about the bag is an
+    effect dependency: keyed on it, adding the recommended racket re-scored
+    with it excluded and swapped the pick out from under the YOU OWN THIS flip.
+    The string budget is NOT a key: no engine reads it yet.
   - **The kit card's "Your fit" row lives OUTSIDE the error fork and is never
     disabled.** Opening a sheet is not a mutation, and on the day the gear
     read fails it is the only door. `fitUpdatedAt` moves only when an ANSWER
@@ -271,10 +322,7 @@ racket and never excluded what they owned).
     control (they are the only way to clear a stored answer) with no option
     selected — the same unknown-≠-known-false rule as the pick sheet's
     preference block.
-  Not yet read by any engine: the Phase 2 fit engine is what consumes these;
-  until it lands the answers are stored and shown, nothing more. (Its path is
-  deliberately not written here yet — `__tests__/docs-canary.test.ts` fails on
-  a governing doc naming a file that does not exist.)
+  Read by the fit engine (below) since Phase 2.
 - **Format and budget are asked, not inferred** — the engine's author flagged
   both as not derivable from skill scores. Stored as optional
   `playFormat`/`budgetMaxCad` on `PlayerGear`, edited from inside

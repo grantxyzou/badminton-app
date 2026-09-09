@@ -395,25 +395,98 @@ describe('GearPickRail — the fit answers re-ask the racket, and strings only w
     expect(stringAsks(asks)).toBe(2);
   });
 
-  it('a string-budget change re-asks the string only — the racket engine does not read it', async () => {
+  it('a string-budget change re-asks NOTHING — no engine reads it yet', async () => {
     const asks = countAsks();
     const { rerender } = await mounted(fakeGear({ gear: doc({ items: [owned] }), rackets: [owned] }));
     rerender(ui(fakeGear({ gear: doc({ items: [owned], stringBudgetMaxCad: 25 }), rackets: [owned] })));
-    await elapse(REC_REFETCH_DEBOUNCE_MS);
-    expect(stringAsks(asks)).toBe(2);
-    expect(racketAsks(asks)).toBe(1);
+    await elapse(REC_REFETCH_DEBOUNCE_MS * 2);
+    expect(asks).toHaveLength(2);
   });
 
-  it('a debounced racket pass that a string-budget tap cleared is still run — the key advances only when a pass runs', async () => {
+  it('holds a fit-driven refetch while the fit sheet is open, and runs it once when the sheet closes', async () => {
+    const asks = countAsks();
+    const uiHold = (gear: UseGear, hold: boolean) => (
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <GearPickRail activeName="Lin" gear={gear} holdFitRefetch={hold} />
+      </NextIntlClientProvider>
+    );
+    const { rerender } = render(uiHold(fakeGear({ gear: doc({ items: [owned] }), rackets: [owned] }), false));
+    await screen.findByLabelText('Racket — Why this?');
+    vi.useFakeTimers();
+    // Sheet opens, four answers land seconds apart: nothing is asked.
+    rerender(uiHold(fakeGear({ gear: doc({ items: [owned] }), rackets: [owned] }), true));
+    for (const extra of [{ fitGoal: 'faster' }, { fitGoal: 'faster', fitSwing: 'fast' }, { fitGoal: 'faster', fitSwing: 'fast', fitGrip: 'G5' }]) {
+      rerender(uiHold(fakeGear({ gear: doc({ items: [owned], ...extra }), rackets: [owned] }), true));
+      await elapse(3000);
+    }
+    expect(racketAsks(asks)).toBe(1);
+    // Sheet closes: one pass.
+    rerender(uiHold(fakeGear({ gear: doc({ items: [owned], fitGoal: 'faster', fitSwing: 'fast', fitGrip: 'G5' }), rackets: [owned] }), false));
+    await elapse(REC_REFETCH_DEBOUNCE_MS);
+    expect(racketAsks(asks)).toBe(2);
+    // A format tap from the pick sheet is never held.
+    rerender(uiHold(fakeGear({ gear: doc({ items: [owned], fitGoal: 'faster', fitSwing: 'fast', fitGrip: 'G5', playFormat: 'singles' }), rackets: [owned] }), true));
+    await act(async () => {});
+    expect(racketAsks(asks)).toBe(3);
+  });
+
+  it('needsFit parks the racket card (never an error) and makes it a door to the questionnaire', async () => {
+    const onOpenFit = vi.fn();
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      const body = url.includes('category=racket')
+        ? { item: null, reason: null, needsFit: true, fitState: 'needsFit' }
+        : { item: null, unavailable: 'no_catalog' };
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+    }) as unknown as typeof fetch;
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <GearPickRail activeName="Lin" gear={fakeGear({ gear: doc({}) })} onOpenFit={onOpenFit} />
+      </NextIntlClientProvider>,
+    );
+    const door = await screen.findByRole('button', { name: /Racket — Answer the fit questions/ });
+    expect(screen.queryByText(enMessages.stats.gear.kitError)).toBeNull();
+    expect(screen.getByText(enMessages.stats.gear.railRacketFit)).toBeTruthy();
+    expect(screen.getByText(enMessages.stats.gear.railStringsNoFrame)).toBeTruthy();
+    fireEvent.click(door);
+    expect(onOpenFit).toHaveBeenCalledTimes(1);
+  });
+
+  it('a category parked on the member\'s data is re-asked on a fit change; one parked on no_engine is not', async () => {
+    const asks: string[] = [];
+    let racketAskCount = 0;
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      asks.push(url);
+      if (url.includes('category=racket')) {
+        racketAskCount += 1;
+        // First ask: no fit answers yet. Second: the answers landed.
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(racketAskCount === 1
+          ? { item: null, needsFit: true }
+          : { item: ITEM, reasons: [], fitState: 'unanchored' }) });
+      }
+      // The string has no frame yet: parked on no_catalog, which is the
+      // member's state, not the app's.
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ item: null, unavailable: 'no_catalog' }) });
+    }) as unknown as typeof fetch;
+    const { rerender } = render(ui(fakeGear({ gear: doc({}) })));
+    await screen.findByText(enMessages.stats.gear.railRacketFit);
+    vi.useFakeTimers();
+    rerender(ui(fakeGear({ gear: doc({ fitGoal: 'faster', fitSwing: 'fast' }) })));
+    await elapse(REC_REFETCH_DEBOUNCE_MS);
+    expect(asks.filter((u) => u.includes('category=racket'))).toHaveLength(2);
+    expect(asks.filter((u) => u.includes('category=string'))).toHaveLength(2);
+  });
+
+  it('a debounced racket pass that a second fit tap cleared is still run — the key advances only when a pass runs', async () => {
     const asks = countAsks();
     const { rerender } = await mounted(fakeGear({ gear: doc({ items: [owned] }), rackets: [owned] }));
     rerender(ui(fakeGear({ gear: doc({ items: [owned], fitSwing: 'fast' }), rackets: [owned] })));
     await elapse(REC_REFETCH_DEBOUNCE_MS / 2);
     // Inside the debounce window: the pending racket pass is cleared.
-    rerender(ui(fakeGear({ gear: doc({ items: [owned], fitSwing: 'fast', stringBudgetMaxCad: 25 }), rackets: [owned] })));
+    rerender(ui(fakeGear({ gear: doc({ items: [owned], fitSwing: 'fast', fitGrip: 'G5' }), rackets: [owned] })));
     await elapse(REC_REFETCH_DEBOUNCE_MS);
     expect(racketAsks(asks)).toBe(2);
-    expect(stringAsks(asks)).toBe(2);
   });
 
   it('a string refetch cancelled mid-flight by a fit tap is re-asked, never skipped', async () => {
@@ -432,11 +505,11 @@ describe('GearPickRail — the fit answers re-ask the racket, and strings only w
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ item: ITEM, reasons: [] }) });
     }) as unknown as typeof fetch;
     const { rerender } = await mounted(fakeGear({ gear: doc({ items: [owned] }), rackets: [owned] }));
-    rerender(ui(fakeGear({ gear: doc({ items: [owned], stringBudgetMaxCad: 25 }), rackets: [owned] })));
-    await elapse(REC_REFETCH_DEBOUNCE_MS);
+    rerender(ui(fakeGear({ gear: doc({ items: [owned], playFormat: 'singles' }), rackets: [owned] })));
+    await act(async () => {});
     expect(stringAsks).toBe(2);
     // Fit tap while that string ask is still in flight.
-    rerender(ui(fakeGear({ gear: doc({ items: [owned], stringBudgetMaxCad: 25, fitGrip: 'G5' }), rackets: [owned] })));
+    rerender(ui(fakeGear({ gear: doc({ items: [owned], playFormat: 'singles', fitGrip: 'G5' }), rackets: [owned] })));
     await elapse(REC_REFETCH_DEBOUNCE_MS);
     expect(stringAsks).toBe(3);
     expect(resolveSecond).not.toBeNull();

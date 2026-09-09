@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { recordEngagement } from '@/lib/engagement';
-import GearPickCard, { type GearPick, type GearPickCardStatus } from './GearPickCard';
+import GearPickCard, { type GearPick, type GearPickCardStatus, type ParkReason } from './GearPickCard';
 import GearPickSheet from './GearPickSheet';
 import type { UseGear } from './useGear';
 import { PROFILE_READS_FIT } from '@/lib/racketProfile';
@@ -70,6 +70,12 @@ export interface GearPickRailProps {
    *  member whose racket card is parked or errored could never clear a
    *  stored comfort answer. The rail closes its own sheet first. */
   onOpenFit?: () => void;
+  /** True while the fit questionnaire is open. A fit-driven refetch is HELD
+   *  until it closes: answered at a human pace, five controls were eleven
+   *  `/api/recommend` calls inside a minute against a 10/min limit whose
+   *  throttled 200 renders as an error card, and the card is under the sheet
+   *  anyway. Format/budget changes (made from the pick sheet) are unaffected. */
+  holdFitRefetch?: boolean;
 }
 
 /**
@@ -86,7 +92,7 @@ export interface GearPickRailProps {
  * per-card gear read here would recreate the exact drift bug the register is
  * being restructured to eliminate.
  */
-export default function GearPickRail({ activeName, gear, onPairTension, onOpenFit }: GearPickRailProps) {
+export default function GearPickRail({ activeName, gear, onPairTension, onOpenFit, holdFitRefetch = false }: GearPickRailProps) {
   const [state, setState] = useState<Record<EquipmentCategory, CategoryState>>(initialState);
   // Which category's detail sheet is open. The rail owns this, not the card:
   // the sheet is opened FROM a card but belongs to the rail, which is the only
@@ -141,8 +147,10 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
   const fitKey = gearLoaded && PROFILE_READS_FIT
     ? `${d?.fitGoal ?? ''}|${d?.fitSwing ?? ''}|${d?.fitArmComfort ?? ''}|${d?.fitGrip ?? ''}`
     : '';
-  const sbKey = gearLoaded && PROFILE_READS_FIT ? `${d?.stringBudgetMaxCad ?? ''}` : '';
-  const recKey = prefKey === null ? null : `${prefKey}#${fitKey}#${sbKey}`;
+  // `stringBudgetMaxCad` is deliberately NOT a key: no engine reads it yet
+  // (see PROFILE_READS_FIT's docstring), so a refetch on it returns the same
+  // pick for a limiter token.
+  const recKey = prefKey === null ? null : `${prefKey}#${fitKey}`;
   const prevKeyRef = useRef<string | null>(null);
   // Whether the string pick is paired against the member's OWN racket, as the
   // SERVER reported it (`pairedWith.source`), never as a client mirror of the
@@ -157,6 +165,13 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
   // BEFORE the change that cancelled them, and skipping would leave it there.
   const inFlightRef = useRef(new Set<EquipmentCategory>());
   const cancelledRef = useRef(new Set<EquipmentCategory>());
+  // Why each parked category parked. Only `no_engine` is a property of the app
+  // and safe to skip on a refresh; every other park (`needsFit`,
+  // `needsCheckIn`, `no_catalog` from having no frame) depends on this
+  // member's answers and must be re-asked when they change — a string parked
+  // with "no frame" un-parks the moment the racket engine can recommend one.
+  const parkReasonRef = useRef<Record<EquipmentCategory, ParkReason | null>>({} as Record<EquipmentCategory, ParkReason | null>);
+  const [parkReasons, setParkReasons] = useState<Partial<Record<EquipmentCategory, ParkReason | null>>>({});
 
   // A different member is a different rail. Every ref above describes the
   // previous member's picks, and the skip rules would otherwise serve their
@@ -167,6 +182,8 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
     if (prevNameRef.current === activeName) return;
     prevNameRef.current = activeName;
     statusRef.current = initialStatuses();
+    parkReasonRef.current = {} as Record<EquipmentCategory, ParkReason | null>;
+    setParkReasons({});
     stringSourceRef.current = null;
     prevKeyRef.current = null;
     cancelledRef.current.clear();
@@ -190,11 +207,19 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
     // permanently — a fifth state, and not one of the four honest ones.
     const prev = prevKeyRef.current;
     const isRefresh = prev !== null && prev !== recKey;
-    const [prevPref, prevFit, prevSb] = (prev ?? '##').split('#');
-    const [nextPref, nextFit, nextSb] = recKey.split('#');
+    const [prevPref, prevFit] = (prev ?? '#').split('#');
+    const [nextPref, nextFit] = recKey.split('#');
     const prefChanged = isRefresh && prevPref !== nextPref;
-    const fitChanged = isRefresh && prevFit !== nextFit;
-    const sbChanged = isRefresh && prevSb !== nextSb;
+    // (`prevFit !== nextFit` is implied by isRefresh && !prefChanged.)
+    void prevFit; void nextFit;
+    // Held while the fit sheet is open. `prevKeyRef` does not advance, so the
+    // effect re-runs when the hold lifts and sees the same change.
+    if (isRefresh && !prefChanged && holdFitRefetch) return;
+    // A re-run with NO key change (the hold prop toggling) is not a first
+    // pass: it asks nothing — except whatever the previous run's cleanup just
+    // cancelled, which would otherwise be stranded.
+    const noChange = !isRefresh && prev !== null;
+    if (noChange && cancelledRef.current.size === 0) return;
 
     let live = true;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -208,14 +233,13 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
       for (const cat of SOURCED) {
         // Consumed BEFORE the parked skip, or a stale entry survives it.
         const cancelled = cancelledRef.current.delete(cat);
-        if (isRefresh && !cancelled && statusRef.current[cat] === 'parked') continue;
+        if (noChange && !cancelled) continue;
+        if (isRefresh && !cancelled && statusRef.current[cat] === 'parked' && parkReasonRef.current[cat] === 'no_engine') continue;
         if (isRefresh && !cancelled) {
-          // The racket engine does not read the string budget.
-          if (cat === 'racket' && !prefChanged && !fitChanged) continue;
           // A string already paired with the member's OWN frame cannot move
           // on a fit-only change; any other string is paired with the
           // recommended frame, which can.
-          if (cat === 'string' && !prefChanged && !sbChanged
+          if (cat === 'string' && !prefChanged
             && statusRef.current.string === 'ready' && stringSourceRef.current === 'owned') continue;
         }
         inFlightRef.current.add(cat);
@@ -240,7 +264,12 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
             //                    would otherwise see a confident "Coming soon"
             //                    for a live category. A failure must never
             //                    render as a product state.
-            if (d.unavailable || d.needsCheckIn) {
+            if (d.unavailable || d.needsCheckIn || d.needsFit) {
+              const reason: ParkReason = d.unavailable === 'no_engine' ? 'no_engine'
+                : d.unavailable ? 'no_catalog'
+                : d.needsFit ? 'needsFit' : 'needsCheckIn';
+              parkReasonRef.current[cat] = reason;
+              setParkReasons((prev) => ({ ...prev, [cat]: reason }));
               apply(cat, { status: 'parked', pick: null });
               return;
             }
@@ -293,7 +322,7 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
       for (const cat of inFlightRef.current) cancelledRef.current.add(cat);
       inFlightRef.current.clear();
     };
-  }, [activeName, recKey, apply]);
+  }, [activeName, recKey, apply, holdFitRefetch]);
 
   if (!activeName) return null;
 
@@ -357,6 +386,8 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
             pick={pick}
             owned={isOwned(cat, pick?.item ?? null)}
             status={railStatus(status, pick)}
+            parkReason={status === 'parked' ? (parkReasons[cat] ?? (SOURCED.includes(cat) ? null : 'no_engine')) : null}
+            onOpenFit={onOpenFit}
             onOpen={() => {
               setOpenCategory(cat);
               // The Value-Hub Slice-0 kill-criterion ("did a member interact
