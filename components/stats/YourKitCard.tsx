@@ -25,6 +25,37 @@ const CATEGORIES: { key: EquipmentCategory; labelKey: string; icon: string }[] =
  */
 const PICKABLE: EquipmentCategory[] = ['racket', 'string'];
 
+/** One material for every row in the kit list — the categories and the fit
+ *  door share it so a spacing or colour fix lands once. */
+const KIT_ROW_STYLE = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--space-3)',
+  padding: 'var(--space-4)',
+  borderRadius: 'var(--radius-lg)',
+  background: 'var(--inner-card-bg)',
+  border: '1px solid var(--inner-card-border)',
+  width: '100%',
+  textAlign: 'left',
+} as const;
+const KIT_ROW_LABEL_STYLE = {
+  display: 'block',
+  fontSize: 'var(--fs-2xs)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+  color: 'var(--text-muted)',
+  fontWeight: 700,
+} as const;
+const KIT_ROW_VALUE_STYLE = {
+  display: 'block',
+  marginTop: 'var(--space-05)',
+  fontSize: 'var(--fs-md)',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+} as const;
+const KIT_ROW_ACTION_STYLE = { fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' } as const;
+
 export interface YourKitCardProps {
   activeName: string | null;
   /**
@@ -34,6 +65,9 @@ export interface YourKitCardProps {
    * until reload. See `GearRegister`'s docstring.
    */
   gear: UseGear;
+  /** Opens the fit questionnaire (owned by `GearRegister`). The kit card is
+   *  the door that is ALWAYS there — the rail's only exists on a ready pick. */
+  onOpenFit?: () => void;
 }
 
 /** `notSet` for an empty row, `gearItemLabel` (shared with `BagList`) for a
@@ -64,8 +98,24 @@ function clampTension(raw: string): number | undefined {
  *   - the pick rail INFORMS (what we'd suggest, and whether you own it)
  *   - these rows MANAGE (tap to pick or change)
  */
-export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
+export default function YourKitCard({ activeName, gear, onOpenFit }: YourKitCardProps) {
   const t = useTranslations('stats.gear');
+  // One line of what the member has answered, for the fit row. Null when
+  // nothing is answered OR the doc is unknown — never a sentence built from
+  // fallbacks.
+  const fitDoc = gear.loaded && !gear.loadError ? gear.gear : null;
+  const fitParts = [
+    fitDoc?.fitGoal ? t(`fitGoalLower_${fitDoc.fitGoal}`) : null,
+    fitDoc?.fitSwing ? t(`fitSwingLower_${fitDoc.fitSwing}`) : null,
+    fitDoc?.fitGrip ? fitDoc.fitGrip : null,
+  ].filter(Boolean);
+  // An answer with no one-line form (comfort, string budget, or a comfort
+  // answer this device cannot read) still counts as answered — "Not answered
+  // yet" beside a stored health-adjacent value is a lying empty state.
+  const fitAnsweredQuietly = !!fitDoc && (
+    fitDoc.fitArmComfort != null || fitDoc.fitArmComfortRedacted === true || fitDoc.stringBudgetMaxCad != null
+  );
+  const fitSummary = fitParts.length ? fitParts.join(' · ') : fitAnsweredQuietly ? t('fitAnswered') : null;
   // The bag-write failure copy lives in `valueHub` alongside bagFull /
   // bagDuplicate, shared with every other surface that writes gear — it moved
   // here with the controls that can produce it.
@@ -171,19 +221,7 @@ export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
                       'aria-label': `${t(labelKey)} — ${item ? t('change') : t('add')}`,
                     }
                   : {})}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--space-3)',
-                  padding: 'var(--space-4)',
-                  borderRadius: 'var(--radius-lg)',
-                  background: 'var(--inner-card-bg)',
-                  border: '1px solid var(--inner-card-border)',
-                  width: '100%',
-                  textAlign: 'left',
-                  cursor: pickable ? 'pointer' : 'default',
-                  opacity: pickable ? 1 : 0.6,
-                }}
+                style={{ ...KIT_ROW_STYLE, cursor: pickable ? 'pointer' : 'default', opacity: pickable ? 1 : 0.6 }}
               >
                 <span
                   className="material-icons"
@@ -193,34 +231,13 @@ export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
                   {icon}
                 </span>
                 <span style={{ minWidth: 0, flex: 1 }}>
-                  <span
-                    style={{
-                      display: 'block',
-                      fontSize: 'var(--fs-2xs)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      color: 'var(--text-muted)',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {t(labelKey)}
-                  </span>
-                  <span
-                    style={{
-                      display: 'block',
-                      marginTop: 'var(--space-05)',
-                      fontSize: 'var(--fs-md)',
-                      color: item ? 'var(--text-primary)' : 'var(--text-muted)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
+                  <span style={KIT_ROW_LABEL_STYLE}>{t(labelKey)}</span>
+                  <span style={{ ...KIT_ROW_VALUE_STYLE, color: item ? 'var(--text-primary)' : 'var(--text-muted)' }}>
                     {kitValue(item, t)}
                   </span>
                 </span>
                 {pickable && (
-                  <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
+                  <span style={KIT_ROW_ACTION_STYLE}>
                     {item ? t('change') : t('add')}
                   </span>
                 )}
@@ -228,6 +245,31 @@ export default function YourKitCard({ activeName, gear }: YourKitCardProps) {
             );
           })}
         </div>
+      )}
+      {/* The questionnaire's always-there door — OUTSIDE the error fork and
+          never disabled. Opening a sheet is not a network mutation, and on
+          the day the gear read fails this is the only way to reach the sheet
+          (the rail's door is an error card) and so the only way to clear a
+          stored comfort answer. Same material as the rows above; the
+          trailing summary names what is answered so the row reads as state. */}
+      {onOpenFit && (
+        <button
+          type="button"
+          onClick={onOpenFit}
+          aria-label={`${t('fitTitle')} — ${fitSummary ? t('change') : t('add')}`}
+          style={{ ...KIT_ROW_STYLE, cursor: 'pointer' }}
+        >
+          <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>
+            tune
+          </span>
+          <span style={{ minWidth: 0, flex: 1 }}>
+            <span style={KIT_ROW_LABEL_STYLE}>{t('fitTitle')}</span>
+            <span style={{ ...KIT_ROW_VALUE_STYLE, color: fitSummary ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+              {fitSummary ?? t('fitNotAnswered')}
+            </span>
+          </span>
+          <span style={KIT_ROW_ACTION_STYLE}>{fitSummary ? t('change') : t('add')}</span>
+        </button>
       )}
 
       {/* The kit's MANAGE surface — remove, use-this-one, set tension.

@@ -411,6 +411,20 @@ export interface StringLogEntry {
   catalogId: string | null;
 }
 
+/**
+ * The racket-fit questionnaire — what a fitting asks that a skill check-in
+ * cannot tell us (`docs/superpowers/specs/2026-09-07-racket-fit-design.md`).
+ * Asked, never inferred; every field optional and deletable via `PATCH null`.
+ */
+export type FitGoal = 'happy' | 'more_power' | 'more_control' | 'faster' | 'less_fatigue';
+export type FitSwing = 'slow' | 'medium' | 'fast';
+export type FitArmComfort = 'fine' | 'sometimes_sore' | 'often_sore';
+export type FitGrip = 'G4' | 'G5' | 'G6';
+export const FIT_GOALS: readonly FitGoal[] = ['happy', 'more_power', 'more_control', 'faster', 'less_fatigue'];
+export const FIT_SWINGS: readonly FitSwing[] = ['slow', 'medium', 'fast'];
+export const FIT_ARM_COMFORTS: readonly FitArmComfort[] = ['fine', 'sometimes_sore', 'often_sore'];
+export const FIT_GRIPS: readonly FitGrip[] = ['G4', 'G5', 'G6'];
+
 export interface PlayerGear {
   /** Doc id — `gear-<memberId>` for easy lookup. */
   id: string;
@@ -428,6 +442,27 @@ export interface PlayerGear {
   /** Upper spend bound in CAD. Absent = no preference; the budget scorer stays
    *  neutral rather than penalising. Never a hard filter (spec D6). */
   budgetMaxCad?: number;
+  /** "What would you change about your current racket?" Absent = not asked
+   *  yet; the engine treats an anchored member with no goal as `happy`. */
+  fitGoal?: FitGoal;
+  /** Swing speed / hitting feel. Sets the flex CEILING — the injury axis. */
+  fitSwing?: FitSwing;
+  /** HEALTH-ADJACENT. Optional, deletable via `PATCH null`, disclosed in
+   *  `legal.privacy`, STRIPPED from the public gear GET for anyone but the
+   *  owner or an admin, and purged with the doc (`lib/memberPurge.ts`). */
+  fitArmComfort?: FitArmComfort;
+  fitGrip?: FitGrip;
+  /** Upper bound for a STRING in CAD. Advisory in the pairing engine's value
+   *  scorer, never a hard filter — same rule as `budgetMaxCad`. */
+  stringBudgetMaxCad?: number;
+  /** ISO — stamped by the route on any write that touches a fit field, so an
+   *  answer can be dated against the check-in it is paired with. */
+  fitUpdatedAt?: string;
+  /** RESPONSE-ONLY, never stored: set by the gear GET when it stripped
+   *  `fitArmComfort` for a caller who is not the owner or an admin. Lets the
+   *  owner on a lapsed session see "answered, sign in to change it" rather
+   *  than a false "not answered". */
+  fitArmComfortRedacted?: boolean;
   /** String-tension history. Drives the "time to restring" refresh nudge in P7. */
   stringLog?: StringLogEntry[];
   /** Sessions logged since current shoes were acquired — drives shoe-mileage nudge. */

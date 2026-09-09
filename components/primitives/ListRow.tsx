@@ -28,6 +28,9 @@ export interface ListRowProps {
   trailing?: ReactNode;
   /** When set, the row renders as a tappable cc-mini-card button. */
   onClick?: () => void;
+  /** Disabled keeps the button (and its chrome) but refuses the tap and says
+   *  so — the `.cc-btn:disabled` principle, not a bare div. */
+  disabled?: boolean;
   ariaLabel?: string;
 }
 
@@ -40,7 +43,7 @@ const LAYOUT: CSSProperties = {
   textAlign: 'left',
 };
 
-export default function ListRow({ leading, title, subtitle, trailing, onClick, ariaLabel }: ListRowProps) {
+export default function ListRow({ leading, title, subtitle, trailing, onClick, disabled, ariaLabel }: ListRowProps) {
   const lead = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', minWidth: 0, flex: 1 }}>
       {leading}
@@ -67,9 +70,17 @@ export default function ListRow({ leading, title, subtitle, trailing, onClick, a
       <button
         type="button"
         onClick={onClick}
+        disabled={disabled}
+        aria-disabled={disabled || undefined}
         aria-label={ariaLabel}
         className="cc-mini-card"
-        style={{ ...LAYOUT, padding: 'var(--space-4)', borderRadius: 'var(--radius-lg)', cursor: 'pointer' }}
+        style={{
+          ...LAYOUT,
+          padding: 'var(--space-4)',
+          borderRadius: 'var(--radius-lg)',
+          cursor: disabled ? 'default' : 'pointer',
+          opacity: disabled ? 0.5 : 1,
+        }}
       >
         {body}
       </button>

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import { render, cleanup, waitFor, act, screen } from '@testing-library/react';
+import { render, cleanup, waitFor, act, screen, fireEvent } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import GearRegister from '../../components/stats/GearRegister';
 import enMessages from '../../messages/en.json';
@@ -123,5 +123,49 @@ describe('GearRegister — D2, one tension number at a time', () => {
     await screen.findByText('Your equipment');
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
     await waitFor(() => expect(screen.queryByText('String tension')).not.toBeNull());
+  });
+
+  /**
+   * The fit questionnaire's ALWAYS-THERE door. The pick sheet's Fit link only
+   * exists on a ready racket card; a member whose card is parked (no
+   * check-in) or errored (throttled) would otherwise have no way to open the
+   * sheet — and so no way to clear a stored comfort answer — on exactly the
+   * days the rail is broken.
+   */
+  it('opens the fit questionnaire from the kit card, even with the racket pick parked', async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/equipment/gear')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ gear: { id: 'g', memberId: 'm', items: [], updatedAt: '2026-01-01' } }) });
+      }
+      if (url.includes('/api/recommend')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ item: null, reason: null, needsCheckIn: true }) });
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
+    }) as unknown as typeof fetch;
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <GearRegister activeName="Lin" />
+      </NextIntlClientProvider>,
+    );
+    await screen.findByText(enMessages.stats.gear.railRacketSoon);
+    fireEvent.click(await screen.findByRole('button', { name: /Your fit — Add/ }));
+    expect(await screen.findByText(enMessages.stats.gear.fitIntro)).toBeTruthy();
+  });
+
+  it('keeps the fit door reachable when the gear read FAILS — the only way to clear a stored comfort answer that day', async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/equipment/gear')) return Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'load_failed' }) });
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ item: null, reason: null, needsCheckIn: true }) });
+    }) as unknown as typeof fetch;
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <GearRegister activeName="Lin" />
+      </NextIntlClientProvider>,
+    );
+    await screen.findByText(enMessages.stats.gear.kitError);
+    const door = await screen.findByRole('button', { name: /Your fit — Add/ });
+    expect(door.hasAttribute('disabled')).toBe(false);
+    fireEvent.click(door);
+    expect(await screen.findByText(enMessages.stats.gear.fitIntro)).toBeTruthy();
   });
 });

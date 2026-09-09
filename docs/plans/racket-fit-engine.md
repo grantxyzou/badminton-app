@@ -5,7 +5,7 @@ equipment purchases"; Value-Hub Track 2 (Equipment). ROADMAP §4 still says trac
 1–4 stay blocked until the Slice-0 readout; the `VALUE_HUB_SLICE` note in
 `lib/flags.ts` records that the fan-out was made by shipping, not by reading the
 gate. This file says so rather than pretending the readout happened.
-**Status:** intent
+**Status:** in-flight — Phase 0 shipped 2026-09-08 (#335); Phase 1 (fit fields + sheet + disclosure) in review
 **Review on:** 2026-10-19 — ≥5 golden cases rated, and ≥2 members with any `pick_*` event? If not, drop the fit questionnaire.
 
 ## Problem

@@ -2,7 +2,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOnline } from '@/lib/useOnline';
 import { rackets as racketsOf, activeRacket } from '@/lib/activeRacket';
-import type { PlayerGear, GearItem, CatalogItem } from '@/lib/types';
+import type { PlayerGear, GearItem, CatalogItem, FitGoal, FitSwing, FitArmComfort, FitGrip } from '@/lib/types';
+
+/**
+ * Every preference `PATCH /api/equipment/gear` accepts. `null` clears a field
+ * (the route maps it to `undefined`); omitting a key leaves it alone. One type
+ * for the racket-pick controls and the fit sheet so the two cannot drift.
+ */
+export interface GearPrefs {
+  playFormat?: 'singles' | 'doubles' | 'both';
+  budgetMaxCad?: number | null;
+  fitGoal?: FitGoal | null;
+  fitSwing?: FitSwing | null;
+  fitArmComfort?: FitArmComfort | null;
+  fitGrip?: FitGrip | null;
+  stringBudgetMaxCad?: number | null;
+}
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -70,7 +85,7 @@ export interface UseGear {
   addCustom: (label: string) => Promise<GearResult>;
   activate: (itemId: string) => Promise<GearResult>;
   remove: (itemId: string) => Promise<GearResult>;
-  setPrefs: (prefs: { playFormat?: 'singles' | 'doubles' | 'both'; budgetMaxCad?: number | null }) => Promise<GearResult>;
+  setPrefs: (prefs: GearPrefs) => Promise<GearResult>;
   /** Record the tension of a string ALREADY in the bag. See the impl. */
   setTension: (item: GearItem, tensionLbs: number) => Promise<GearResult>;
 }
@@ -356,7 +371,7 @@ export function useGear(name: string | null): UseGear {
     }),
   ), [mutate, name]);
 
-  const setPrefs = useCallback((prefs: { playFormat?: 'singles' | 'doubles' | 'both'; budgetMaxCad?: number | null }) =>
+  const setPrefs = useCallback((prefs: GearPrefs) =>
     mutate(() => fetch(`${BASE}/api/equipment/gear`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
