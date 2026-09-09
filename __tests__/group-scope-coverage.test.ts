@@ -2,7 +2,78 @@ import { describe, it, expect } from 'vitest';
 import { join } from 'path';
 import { GROUP_SCOPED, PERSON_SCOPED, GLOBAL } from '@/lib/groupScope';
 import { OWNED_CONTAINERS, NOT_MEMBER_SCOPED, CLASSIFIED_ELSEWHERE } from '@/lib/memberPurge';
-import { containersReferencedInSource } from './containerScan';
+import { containersReferencedInSource, containerReferences } from './containerScan';
+
+/**
+ * THE RATCHET. Raw `getContainer('<group-scoped>')` outside the allowlist is
+ * a build error unless the file is on the backlog — and the backlog can only
+ * SHRINK: a file that stops reading raw must be removed from it, or the test
+ * fails the other way. So the sweep's progress is a diff on this list, and a
+ * new route cannot quietly add a raw read.
+ *
+ * A test rather than an ESLint rule on purpose: a second `no-restricted-syntax`
+ * block for the same files silently replaces the design-token rules
+ * (CLAUDE.md documents the trap).
+ */
+const RAW_ACCESS_ALLOWLIST = new Set([
+  'lib/groupScope.ts', // the accessor itself
+  'lib/cosmos.ts', // the pointer helpers and dev seeds
+  'lib/memberPurge.ts', // account deletion spans every group by design (person-level)
+]);
+
+/** Files still reading a GROUP_SCOPED container raw. Phase 1 empties this. */
+const MIGRATION_BACKLOG = new Set([
+  'app/api/admin/anomalies/route.ts',
+  'app/api/admin/backfill-attendance/route.ts',
+  'app/api/admin/ledger/route.ts',
+  'app/api/admin/migrate-memberId/route.ts',
+  'app/api/admin/owed-audit/route.ts',
+  'app/api/admin/slice0/route.ts',
+  'app/api/aliases/route.ts',
+  'app/api/announcements/route.ts',
+  'app/api/auth/migrate/claim/route.ts',
+  'app/api/birds/reconcile/route.ts',
+  'app/api/birds/route.ts',
+  'app/api/games/route.ts',
+  'app/api/kudos/route.ts',
+  'app/api/members/[id]/history/route.ts',
+  'app/api/members/me/route.ts',
+  'app/api/members/route.ts',
+  'app/api/players/recover/route.ts',
+  'app/api/players/route.ts',
+  'app/api/players/unpaid/route.ts',
+  'app/api/session/advance/route.ts',
+  'app/api/session/bird-usage/route.ts',
+  'app/api/session/dismiss-anomaly/route.ts',
+  'app/api/session/route.ts',
+  'app/api/session/settle/route.ts',
+  'app/api/sessions/costs/route.ts',
+  'app/api/sessions/history/route.ts',
+  'app/api/sessions/locations/route.ts',
+  'app/api/sessions/recent/route.ts',
+  'app/api/sessions/route.ts',
+  'app/api/skills/route.ts',
+  'app/api/stats/attendance/route.ts',
+  'app/api/stats/insight/route.ts',
+  'app/api/stats/partners/route.ts',
+  'app/api/stringing/jobs/[id]/accept/route.ts',
+  'app/api/stringing/jobs/[id]/route.ts',
+  'app/api/stringing/jobs/route.ts',
+  'app/api/stringing/pricing/route.ts',
+  'app/api/stringing/requests/route.ts',
+  'app/api/stringing/shop/route.ts',
+  'app/api/stringing/strings/route.ts',
+  'app/opengraph-image.tsx',
+  'lib/announcements.ts',
+  'lib/birdWrite.ts',
+  'lib/events.ts',
+  'lib/kudosEligibility.ts',
+  'lib/levelStore.ts',
+  'lib/playerIdentity.ts',
+  'lib/stringingPricing.ts',
+  'lib/stringingShop.ts',
+  'lib/stringingStrings.ts',
+]);
 
 /**
  * THE CANARY THAT STOPS A CONTAINER SLIPPING BETWEEN GROUPS UNCLASSIFIED.
@@ -60,6 +131,27 @@ describe('group scoping classifies every container', () => {
         expect(reason.length, `${container} needs a real reason`).toBeGreaterThan(15);
       }
     }
+  });
+
+  it('ratchets raw access to GROUP_SCOPED containers — the backlog only shrinks', () => {
+    const { gotten } = containerReferences(join(__dirname, '..'));
+    const raw = new Set<string>();
+    for (const name of Object.keys(GROUP_SCOPED)) {
+      for (const file of gotten.get(name) ?? []) raw.add(file);
+    }
+    const offenders = [...raw].filter((f) => !RAW_ACCESS_ALLOWLIST.has(f) && !MIGRATION_BACKLOG.has(f)).sort();
+    expect(
+      offenders,
+      'These files read a GROUP_SCOPED container through raw getContainer(). Route the read ' +
+        'through groupScope(groupId) from lib/groupScope.ts. (Adding a file to MIGRATION_BACKLOG ' +
+        'is not the fix — that list only shrinks.)',
+    ).toEqual([]);
+
+    const done = [...MIGRATION_BACKLOG].filter((f) => !raw.has(f)).sort();
+    expect(
+      done,
+      'These files no longer read raw — remove them from MIGRATION_BACKLOG so the ratchet holds.',
+    ).toEqual([]);
   });
 
   it('pins the decisions most likely to be second-guessed', () => {

@@ -45,4 +45,16 @@ describe('containerReferences', () => {
     });
     expect(containerReferences(root).ensured.get('kudos')).toBe('/recipientMemberId');
   });
+
+  it('tells raw getContainer access apart from a bare ensureContainer', () => {
+    // The ratchet counts READS. A file that only provisions a container is
+    // not touching its rows.
+    const root = fixture({
+      'lib/a.ts': "await ensureContainer('kudos', '/recipientMemberId');\n",
+      'lib/b.ts': "export const c = getContainer('kudos');\n",
+    });
+    const refs = containerReferences(root);
+    expect(refs.used.get('kudos')?.sort()).toEqual(['lib/a.ts', 'lib/b.ts']);
+    expect(refs.gotten.get('kudos')).toEqual(['lib/b.ts']);
+  });
 });
