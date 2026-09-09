@@ -1,11 +1,13 @@
 import type { GroupScope } from './groupScope';
 import {
+  isAdjustment,
   snapshotBirdUsage,
   snapshotPooledUsage,
   validateBirdEntry,
   validateTubeCount,
   currentPricePerTube,
   POOLED_PURCHASE_ID,
+  type BirdDoc,
 } from './birdUsages';
 import type { BirdPurchase, BirdUsage } from './types';
 
@@ -72,11 +74,9 @@ export async function resolveBirdUsages(raw: unknown, scope: GroupScope): Promis
 
   // Per-purchase entries (legacy path): read each batch, snapshot at its price.
   if (perPurchase.length > 0) {
-    let reads: Array<(BirdPurchase & { type?: string }) | undefined>;
+    let reads: Array<BirdDoc | undefined>;
     try {
-      reads = await Promise.all(
-        perPurchase.map(([id]) => scope.read<BirdPurchase & { type?: string }>('birds', id)),
-      );
+      reads = await Promise.all(perPurchase.map(([id]) => scope.read<BirdDoc>('birds', id)));
     } catch {
       // A transient inventory read failure (throttle / network blip) must fail
       // LEGIBLY and retryably — not silently drop bird cost (legible-fail rule)
@@ -89,7 +89,7 @@ export async function resolveBirdUsages(raw: unknown, scope: GroupScope): Promis
       // Reject unknown ids AND adjustment docs — an adjustment has no costPerTube,
       // so snapshotting one yields NaN cost (CLAUDE.md: never let adjustment docs
       // into bird cost math).
-      if (!purchase || purchase.type === 'adjustment') {
+      if (!purchase || isAdjustment(purchase)) {
         return { ok: false, status: 404, error: 'Selected bird purchase not found' };
       }
       usages.push(snapshotBirdUsage(purchase, perPurchase[i][1]));
@@ -106,7 +106,7 @@ export async function resolveBirdUsages(raw: unknown, scope: GroupScope): Promis
         const resources = await scope.query<Pick<BirdPurchase, 'costPerTube' | 'date'> & { type?: string }>('birds', {
           select: 'c.costPerTube, c.date, c.type',
         });
-        const purchases = resources.filter((d) => d.type !== 'adjustment');
+        const purchases = resources.filter((d) => !isAdjustment(d));
         price = currentPricePerTube(purchases);
       } catch {
         return { ok: false, status: 503, error: 'Could not read bird inventory. Please try again.' };

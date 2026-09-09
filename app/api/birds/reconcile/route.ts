@@ -3,8 +3,8 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { randomBytes } from 'crypto';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
-import { normalizeBirdUsages, totalTubes } from '@/lib/birdUsages';
-import type { Session } from '@/lib/types';
+import { normalizeBirdUsages, splitBirdDocs, totalTubes, type BirdDoc } from '@/lib/birdUsages';
+import type { BirdAdjustment, Session } from '@/lib/types';
 
 /**
  * Reconcile the on-hand bird count to a physical recount. The admin enters the
@@ -29,11 +29,7 @@ export async function POST(req: NextRequest) {
     const counted = Math.round(countedTotal * 4) / 4;
 
     const scope = groupScope(resolveGroupId(req));
-    const resources = await scope.query<{ id: string; type?: string; tubes?: number; delta?: number }>('birds');
-    const purchases = resources.filter((d) => d.type !== 'adjustment');
-    const adjustments = resources.filter((d) => d.type === 'adjustment');
-    const totalPurchased = purchases.reduce((sum, p) => sum + (p.tubes ?? 0), 0);
-    const totalAdjustments = adjustments.reduce((sum, a) => sum + (a.delta ?? 0), 0);
+    const { totalPurchased, totalAdjustments } = splitBirdDocs(await scope.query<BirdDoc>('birds'));
 
     const sessions = await scope.query<Pick<Session, 'birdUsage' | 'birdUsages'>>('sessions', {
       select: 'c.birdUsage, c.birdUsages',
@@ -59,7 +55,7 @@ export async function POST(req: NextRequest) {
     }
 
     const reason = typeof body.reason === 'string' ? body.reason.trim().slice(0, 200) : '';
-    const adjustment: Record<string, unknown> & { id: string } = {
+    const adjustment: BirdAdjustment = {
       id: randomBytes(12).toString('hex'),
       type: 'adjustment',
       delta,

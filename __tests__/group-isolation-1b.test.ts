@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   resetMockStore,
   getStore,
+  seedDoc as push,
   setupAdminPin,
   seedTestAdminMember,
   seedMember,
@@ -16,10 +17,11 @@ import { GET as jobsGet } from '@/app/api/stringing/jobs/route';
 import { GET as shopGet } from '@/app/api/stringing/shop/route';
 import { GET as stringsGet } from '@/app/api/stringing/strings/route';
 import { GET as pricingGet } from '@/app/api/stringing/pricing/route';
-import { readShopOpen, SHOP_DOC_ID } from '@/lib/stringingShop';
+import { readShopOpen, shopDocId } from '@/lib/stringingShop';
+import { stringsDocId } from '@/lib/stringingStrings';
+import { pricingDocId } from '@/lib/stringingPricing';
 import { writeEvent } from '@/lib/events';
 import { resolveIdentity } from '@/lib/playerIdentity';
-import { groupDocId } from '@/lib/groupScope';
 
 /**
  * PHASE 1b'S GATE: the six containers the session-family sweep left raw.
@@ -34,12 +36,6 @@ const MARKER = 'ISOLATION_MARKER_B';
 const FLAG_STRINGING = 'NEXT_PUBLIC_FLAG_STRINGING';
 const FLAG_KUDOS = 'NEXT_PUBLIC_FLAG_KUDOS';
 const before = { s: process.env[FLAG_STRINGING], k: process.env[FLAG_KUDOS] };
-
-function push(container: string, doc: Record<string, unknown>) {
-  const store = getStore();
-  if (!store[container]) store[container] = [];
-  store[container].push(doc);
-}
 
 beforeEach(async () => {
   resetMockStore();
@@ -133,8 +129,16 @@ describe('stringingJobs', () => {
 });
 
 describe('clubSettings', () => {
+  // Two seeds per case. The `<other>:`-prefixed id proves the id helper; a
+  // raw read would never find it either, so on its own it exercises nothing.
+  // The BARE id stamped `groupId: 'other'` is what exercises the accessor: a
+  // raw point read of 'stringing' returns it, the scoped read drops it.
+  const stamped = (id: string, fields: Record<string, unknown>) =>
+    push('clubSettings', { id, updatedAt: 'x', updatedBy: null, groupId: 'other', ...fields });
+
   it('another group’s open sign does not open this shop', async () => {
-    push('clubSettings', { id: groupDocId('other', SHOP_DOC_ID), open: true, updatedAt: 'x', updatedBy: null, groupId: 'other' });
+    stamped(shopDocId('other'), { open: true });
+    stamped(shopDocId('bpm'), { open: true }); // bare 'stringing', but theirs
     expect(await readShopOpen('bpm')).toBe(false);
     expect(await readShopOpen('other')).toBe(true);
     const res = await shopGet(makeRequest('GET', 'http://x/api/stringing/shop'));
@@ -142,8 +146,10 @@ describe('clubSettings', () => {
   });
 
   it('another group’s string list and rate card stay theirs', async () => {
-    push('clubSettings', { id: groupDocId('other', 'stringing-strings'), strings: [MARKER], updatedAt: 'x', updatedBy: null, groupId: 'other' });
-    push('clubSettings', { id: groupDocId('other', 'stringing-pricing'), services: [{ label: MARKER, priceCents: 1 }], updatedAt: 'x', updatedBy: null, groupId: 'other' });
+    stamped(stringsDocId('other'), { strings: [MARKER] });
+    stamped(stringsDocId('bpm'), { strings: [MARKER] });
+    stamped(pricingDocId('other'), { services: [{ label: MARKER, priceCents: 1 }] });
+    stamped(pricingDocId('bpm'), { services: [{ label: MARKER, priceCents: 1 }] });
     const strings = await (await stringsGet(makeRequest('GET', 'http://x/api/stringing/strings'))).json();
     const pricing = await (await pricingGet(makeRequest('GET', 'http://x/api/stringing/pricing'))).json();
     expect(strings).toEqual({ strings: [] });

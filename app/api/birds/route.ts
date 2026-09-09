@@ -3,11 +3,16 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { randomBytes } from 'crypto';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
-import { normalizeBirdUsages, totalTubes, validPurchaseDate, validateTubeCount } from '@/lib/birdUsages';
+import {
+  isAdjustment,
+  normalizeBirdUsages,
+  splitBirdDocs,
+  totalTubes,
+  validPurchaseDate,
+  validateTubeCount,
+  type BirdDoc,
+} from '@/lib/birdUsages';
 import type { BirdPurchase, Session } from '@/lib/types';
-
-/** Either doc kind the birds container holds, before the `type` split. */
-type BirdDoc = Partial<BirdPurchase> & { id: string; type?: string; delta?: number };
 
 // A single purchase is a bulk buy — allow far more than a session's per-entry
 // cap (100), but still reject a fat-fingered 99999. A purchase must be a
@@ -29,12 +34,8 @@ export async function GET(req: NextRequest) {
     // The birds container holds two doc kinds, discriminated by `type`:
     // purchases (no `type` or 'purchase') and reconciliation adjustments
     // ('adjustment'). Split them so purchase math never sees adjustment docs.
-    const purchases = resources.filter((d) => d.type !== 'adjustment');
-    const adjustments = resources.filter((d) => d.type === 'adjustment');
-
-    // Compute current stock: total purchased + manual adjustments - total used
-    const totalPurchased = purchases.reduce((sum, p) => sum + (p.tubes ?? 0), 0);
-    const totalAdjustments = adjustments.reduce((sum, a) => sum + (a.delta ?? 0), 0);
+    // Current stock = total purchased + manual adjustments − total used.
+    const { purchases, adjustments, totalPurchased, totalAdjustments } = splitBirdDocs(resources);
 
     // Pull datetime alongside the usage shapes so we can compute recent-window
     // stats (last 60 days). Burn rate consumers should use those, not
@@ -140,7 +141,7 @@ export async function POST(req: NextRequest) {
     if (tubesError) return NextResponse.json({ error: tubesError }, { status: 400 });
     if (totalCost <= 0) return NextResponse.json({ error: 'Cost must be greater than 0' }, { status: 400 });
 
-    const purchase: Record<string, unknown> & { id: string } = {
+    const purchase: BirdPurchase = {
       id: randomBytes(12).toString('hex'),
       name,
       tubes,
@@ -186,7 +187,8 @@ export async function DELETE(req: NextRequest) {
     // (PATCH /api/session/bird-usage: set 0 on this purchase, re-add on
     // another), then deletes. Adjustment docs are never referenced by
     // sessions, so reconcile-undo (deleting an adjustment) is unaffected.
-    const sessions = await groupScope(resolveGroupId(req)).query<Pick<Session, 'birdUsage' | 'birdUsages'> & { datetime?: string }>('sessions', {
+    const scope = groupScope(resolveGroupId(req));
+    const sessions = await scope.query<Pick<Session, 'birdUsage' | 'birdUsages'> & { datetime?: string }>('sessions', {
       select: 'c.id, c.datetime, c.birdUsage, c.birdUsages',
       where: 'IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)',
       includeLegacy: true, // stock counts every session's tubes, the legacy doc's included
@@ -206,7 +208,7 @@ export async function DELETE(req: NextRequest) {
       }, { status: 409 });
     }
 
-    const removed = await groupScope(resolveGroupId(req)).remove('birds', id);
+    const removed = await scope.remove('birds', id);
     if (!removed) return NextResponse.json({ error: 'Purchase not found' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -226,8 +228,11 @@ export async function PATCH(req: NextRequest) {
     }
 
     const scope = groupScope(resolveGroupId(req));
-    const existing = await scope.read<BirdPurchase>('birds', id);
-    if (!existing) {
+    const existing = await scope.read<BirdDoc>('birds', id);
+    // An adjustment is not a purchase: editing one here would give it a name
+    // and a tube count and put it into the stock math. Same rule as the
+    // bird-usage route and resolveBirdUsages.
+    if (!existing || isAdjustment(existing)) {
       return NextResponse.json({ error: 'Purchase not found' }, { status: 404 });
     }
 

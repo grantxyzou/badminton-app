@@ -1,4 +1,35 @@
-import type { BirdPurchase, BirdUsage, Session } from './types';
+import type { BirdAdjustment, BirdPurchase, BirdUsage, Session } from './types';
+
+/** Either doc kind the `birds` container holds. */
+export type BirdDoc = BirdPurchase | BirdAdjustment;
+
+/** The discriminant, in one place — an adjustment has no `tubes`, so any
+ *  purchase math that sees one produces NaN. */
+export function isAdjustment(d: BirdDoc | { type?: string }): d is BirdAdjustment {
+  return (d as { type?: string }).type === 'adjustment';
+}
+
+/**
+ * Split a raw read of the birds container and total each half. The one place
+ * the two doc kinds are told apart for stock math; GET /api/birds and
+ * reconcile used to spell it separately and identically.
+ */
+export function splitBirdDocs(rows: BirdDoc[]): {
+  purchases: BirdPurchase[];
+  adjustments: BirdAdjustment[];
+  totalPurchased: number;
+  totalAdjustments: number;
+} {
+  const purchases: BirdPurchase[] = [];
+  const adjustments: BirdAdjustment[] = [];
+  for (const d of rows) (isAdjustment(d) ? adjustments : purchases).push(d as never);
+  return {
+    purchases,
+    adjustments,
+    totalPurchased: purchases.reduce((sum, p) => sum + (p.tubes ?? 0), 0),
+    totalAdjustments: adjustments.reduce((sum, a) => sum + (a.delta ?? 0), 0),
+  };
+}
 
 /**
  * Reads the bird usages off a session document, tolerating both the
