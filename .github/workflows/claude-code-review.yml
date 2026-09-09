@@ -92,3 +92,25 @@ jobs:
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
+      # Say what the run actually did — above all, which tools it was refused.
+      #
+      # This job has now been silently not-working in FOUR distinct ways, each
+      # showing a green check, and every diagnosis has been a guess confirmed by
+      # trial: the run log prints a denial COUNT and never the tool names, and
+      # the action uploads no transcript. The 2026-09-09 planted-defect canary
+      # (three blocks-merge defects) drew zero comments on every surface with
+      # `permission_denials_count: 2`, and there was no way to learn what those
+      # two were.
+      #
+      # `if: always()` because the interesting case is the one where the step
+      # above failed. `continue-on-error` because a diagnostic must never turn a
+      # quiet review into a red build — a check that fails for its own reasons
+      # is how people learn to skim past red.
+      - name: What the review run was allowed to do
+        if: always()
+        continue-on-error: true
+        run: |
+          node scripts/summarize-review-run.mjs \
+            "${{ steps.claude-review.outputs.execution_file }}" \
+            .github/workflows/claude-code-review.yml
+

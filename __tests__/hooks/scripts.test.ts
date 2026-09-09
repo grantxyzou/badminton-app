@@ -1,5 +1,5 @@
 /**
- * The six `scripts/check-*.mjs` / `block-*.mjs` hooks are this repo's policy
+ * The seven `scripts/` hooks and diagnostics are this repo's policy
  * layer — each one exists because of a bug class the suite could not see.
  * Nothing tested them. A regression there is silent by construction: a hook
  * that stops firing looks exactly like a clean edit.
@@ -634,5 +634,99 @@ describe('check-plan-reviews.mjs (SessionStart)', () => {
     const r = run(project({ 'TEMPLATE.md': '# T\n**Review on:** <YYYY-MM-DD — the question>\n' }));
     expect(r.status).toBe(0);
     expect(r.stderr).toBe('');
+  });
+});
+
+describe('summarize-review-run.mjs (post-review diagnostic)', () => {
+  /**
+   * The point of this script is one sentence nobody could write for four rounds
+   * of this bot being broken: not "something was denied" but "it wanted X, and
+   * X is not allowed." So that is what these assert.
+   */
+  const WORKFLOW = 'jobs:\n  x:\n    steps:\n      - run: |\n          --allowedTools "Read,Grep,Bash(gh pr comment:*)"\n';
+
+  function transcript(entries: unknown[]): string {
+    return JSON.stringify(entries);
+  }
+
+  const use = (name: string, input: Record<string, unknown> = {}) => ({
+    type: 'assistant',
+    message: { content: [{ type: 'tool_use', name, input }] },
+  });
+  const errorResult = (text: string) => ({
+    type: 'user',
+    message: { content: [{ type: 'tool_result', is_error: true, content: text }] },
+  });
+  const result = { type: 'result', subtype: 'success', num_turns: 7, total_cost_usd: 0.39, permission_denials_count: 2 };
+
+  function project(entries: unknown[], workflow = WORKFLOW): { script: string; dir: string } {
+    const dir = tmp('revrun-');
+    mkdirSync(join(dir, 'scripts'));
+    cpSync(join(SCRIPTS, 'summarize-review-run.mjs'), join(dir, 'scripts/summarize-review-run.mjs'));
+    writeFileSync(join(dir, 'exec.json'), transcript(entries));
+    writeFileSync(join(dir, 'wf.yml'), workflow);
+    return { script: join(dir, 'scripts/summarize-review-run.mjs'), dir };
+  }
+
+  function runIt(entries: unknown[], workflow = WORKFLOW) {
+    const { script, dir } = project(entries, workflow);
+    const r = spawnSync('node', [script, join(dir, 'exec.json'), join(dir, 'wf.yml')], { encoding: 'utf8' });
+    return { status: r.status, stdout: r.stdout };
+  }
+
+  it('names a tool that was attempted but is not on the allowlist', () => {
+    const r = runIt([use('Read'), use('ReportFindings'), result]);
+    expect(r.stdout).toMatch(/ReportFindings/);
+    expect(r.stdout).toMatch(/NOT ALLOWED/);
+    expect(r.stdout).toMatch(/allowlist does not cover/);
+  });
+
+  it('says so plainly when every attempted tool is covered', () => {
+    const r = runIt([use('Read'), use('Grep'), result]);
+    expect(r.stdout).toMatch(/every attempted tool is covered/);
+    expect(r.stdout).not.toMatch(/NOT ALLOWED/);
+  });
+
+  it('matches a Bash command against its allowlist PREFIX, not the bare tool name', () => {
+    // `Bash` alone can't tell you what was refused — the allowlist is per-command.
+    const ok = runIt([use('Bash', { command: 'gh pr comment 1 --body x' }), result]);
+    expect(ok.stdout).not.toMatch(/NOT ALLOWED/);
+    const bad = runIt([use('Bash', { command: 'gh pr edit 1 --add-label x' }), result]);
+    expect(bad.stdout).toMatch(/NOT ALLOWED/);
+    expect(bad.stdout).toMatch(/gh pr edit/);
+  });
+
+  it('surfaces tool errors verbatim', () => {
+    const r = runIt([use('Read'), errorResult('Permission to use Read has not been granted'), result]);
+    expect(r.stdout).toMatch(/Permission to use Read has not been granted/);
+  });
+
+  it('distinguishes "never ran" from "ran and stayed quiet"', () => {
+    // No execution file at all is a different failure from an empty review, and
+    // the log has never made that difference visible.
+    const r = spawnSync('node', [join(SCRIPTS, 'summarize-review-run.mjs'), '/nope/missing.json'], { encoding: 'utf8' });
+    expect(r.status).toBe(0);
+    expect(r.stdout).toMatch(/no execution file/);
+    expect(r.stdout).toMatch(/never ran, rather than ran and stayed quiet/);
+  });
+
+  it('reads newline-delimited JSON as well as an array', () => {
+    // The action has written both shapes across versions; pinning one is how a
+    // dependency bump turns this diagnostic silently useless.
+    const dir = tmp('revrun-nd-');
+    mkdirSync(join(dir, 'scripts'));
+    cpSync(join(SCRIPTS, 'summarize-review-run.mjs'), join(dir, 'scripts/summarize-review-run.mjs'));
+    writeFileSync(join(dir, 'exec.json'), [use('ReportFindings'), result].map((e) => JSON.stringify(e)).join('\n'));
+    writeFileSync(join(dir, 'wf.yml'), WORKFLOW);
+    const r = spawnSync('node', [join(dir, 'scripts/summarize-review-run.mjs'), join(dir, 'exec.json'), join(dir, 'wf.yml')], { encoding: 'utf8' });
+    expect(r.stdout).toMatch(/ReportFindings/);
+    expect(r.stdout).toMatch(/NOT ALLOWED/);
+  });
+
+  it('never fails the job', () => {
+    // A diagnostic that reddens a build teaches people to skim past red.
+    for (const entries of [[], [result], [use('Whatever'), result]]) {
+      expect(runIt(entries).status).toBe(0);
+    }
   });
 });
