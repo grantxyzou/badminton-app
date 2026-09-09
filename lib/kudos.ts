@@ -43,6 +43,8 @@ export const KUDOS_NOTE_MAX = 140;
  */
 export interface KudosDoc {
   id: string;
+  /** Group this kudos was given in; absent = BPM until the Phase 2 backfill (lib/groupScope.ts). */
+  groupId?: string;
   recipientMemberId: string; // partition key
   recipientName: string;
   raterMemberId: string;

@@ -2,6 +2,7 @@ import { CosmosClient, Container } from '@azure/cosmos';
 import { randomBytes, scryptSync } from 'node:crypto';
 import equipmentCatalogSeed from '../scripts/data/equipment-catalog.json';
 import { scoreAssessment, placePhase, SKILLS } from './assessment';
+import { matchesGroup, queryToleratesUnstamped } from './groupScope';
 
 // ---------------------------------------------------------------------------
 // In-memory mock — used when COSMOS_CONNECTION_STRING is not set (local dev)
@@ -386,14 +387,6 @@ function getMockContainer(name: string) {
               params[p.name] = p.value;
             }
             let results = [...store];
-            // `SELECT VALUE COUNT(1)` returns a one-element array holding a
-            // NUMBER in Cosmos. The mock used to hand back the rows instead, so
-            // a caller counting documents silently read a document where it
-            // expected an integer and fell through to its own fallback — which
-            // works, but means no test could ever exercise the counting path.
-            if (/SELECT\s+VALUE\s+COUNT\(/i.test(q.query)) {
-              return { resources: [results.length] as unknown as Record<string, unknown>[] };
-            }
             if ('@sessionId' in params) {
               results = results.filter((r) => r.sessionId === params['@sessionId']);
             }
@@ -421,6 +414,26 @@ function getMockContainer(name: string) {
             }
             if ('@id' in params) {
               results = results.filter((r) => r.id === params['@id']);
+            }
+            // `@groupId` — see lib/groupScope.ts. Honoured here so a group
+            // isolation test cannot pass vacuously (an unrecognised name means
+            // NO filter). Whether an UNSTAMPED row counts as BPM's follows the
+            // QUERY TEXT, not a constant: only the tolerant clause from
+            // `groupClause()` admits legacy rows, so a plain equality means
+            // the same thing here as it does in Cosmos.
+            if ('@groupId' in params) {
+              const tolerate = queryToleratesUnstamped(q.query);
+              results = results.filter((r) =>
+                matchesGroup(r, String(params['@groupId']), tolerate),
+              );
+            } else if (queryToleratesUnstamped(q.query)) {
+              // A parameterless `WHERE NOT IS_DEFINED(c.groupId)` — the
+              // Phase 2 backfill's own select. Without this the mock returned
+              // every row, and a backfill test would happily re-stamp another
+              // group's rows to BPM while Cosmos touched only the unstamped
+              // ones. (`stringing/jobs` documents the same trap for
+              // `NOT IS_DEFINED(c.archivedAt)`.)
+              results = results.filter((r) => r.groupId === undefined);
             }
             // Seven routes query `WHERE c.memberId = @memberId`. The mock used
             // to ignore the clause and hand back EVERY row, so several of them
@@ -465,6 +478,18 @@ function getMockContainer(name: string) {
             }
             if ('@activeId' in params) {
               results = results.filter((r) => r.id !== params['@activeId']);
+            }
+            // `SELECT VALUE COUNT(1)` returns a one-element array holding a
+            // NUMBER in Cosmos. The mock used to hand back the rows instead, so
+            // a caller counting documents silently read a document where it
+            // expected an integer and fell through to its own fallback — which
+            // works, but means no test could ever exercise the counting path.
+            // It sits AFTER the filters on purpose: it used to short-circuit
+            // before them and count the whole container regardless of WHERE,
+            // so "how many unstamped rows are left" could never reach zero in
+            // a test.
+            if (/SELECT\s+VALUE\s+COUNT\(/i.test(q.query)) {
+              return { resources: [results.length] as unknown as Record<string, unknown>[] };
             }
             return { resources: results };
           },

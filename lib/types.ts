@@ -21,6 +21,8 @@ export interface ETransferRecipient {
 
 export interface Session {
   id: string;
+  /** Group this doc belongs to; absent = BPM until the Phase 2 backfill (lib/groupScope.ts). */
+  groupId?: string;
   sessionId?: string;
   title: string;
   locationName?: string;
@@ -96,6 +98,7 @@ export interface BirdUsage {
 
 export interface Player {
   id: string;
+  groupId?: string;
   name: string;
   sessionId: string;
   timestamp: string;
@@ -134,6 +137,53 @@ export type RecoveryEvent =
   | { event: 'recovery-failed'; at: string; reason: 'wrong_pin' | 'wrong_code' | 'expired_code' };
 
 export type Role = 'admin' | 'member';
+
+// ---------------------------------------------------------------------------
+// Groups (docs/plans/multi-group.md). ONE ACCOUNT, MANY GROUPS: `Member` stays
+// the person; a `Membership` carries the per-group role. Every group-scoped doc
+// type below gains an additive optional `groupId` — absent means BPM while
+// `TOLERATE_UNSTAMPED` holds (lib/groupScope.ts). Nothing writes these yet
+// (Phase 0 is types only); the containers arrive in Phase 2.
+// ---------------------------------------------------------------------------
+
+/** Per-group role. `owner` is the creator (or the backfilled BPM admin); nobody demotes them. */
+export type MembershipRole = 'owner' | 'admin' | 'member';
+
+export interface GroupSettings {
+  eTransferRecipient?: ETransferRecipient;
+  /** ISO dates the club skips (moved off the admin's own Member doc). */
+  skipDates: string[];
+  maxPlayers: number;
+  /** Receipt memo template; `{group} {date} - {name}` by default. */
+  receiptMemo?: string;
+  /** The App Review demo group — excluded from any future metric, nothing else special. */
+  demo?: true;
+}
+
+/** Container `groups`, PK `/id`. Group #1 is `'bpm'`; new groups get a random hex id. */
+export interface Group {
+  id: string;
+  name: string;
+  sport: 'badminton';
+  ownerMemberId: string;
+  createdAt: string;
+  createdBy: string;
+  settings: GroupSettings;
+}
+
+/** Container `memberships`, PK `/groupId`; id is `${groupId}:${memberId}`. */
+export interface Membership {
+  id: string;
+  groupId: string;
+  memberId: string;
+  /** Roster name, unique per group (reserved atomically, the `identities` pattern). */
+  name: string;
+  nameLower: string;
+  role: MembershipRole;
+  status: 'active' | 'removed' | 'left';
+  joinedAt: string;
+  joinedVia: 'create' | 'link' | 'code' | 'backfill' | 'admin';
+}
 
 export interface Member {
   id: string;
@@ -220,12 +270,14 @@ export interface Member {
 
 export interface Alias {
   id: string;
+  groupId?: string;
   appName: string;
   etransferName: string;
 }
 
 export interface BirdPurchase {
   id: string;
+  groupId?: string;
   name: string;            // brand + model (e.g., "Victor Master No.3")
   tubes: number;
   totalCost: number;
@@ -247,6 +299,7 @@ export interface BirdPurchase {
  */
 export interface BirdAdjustment {
   id: string;
+  groupId?: string;
   type: 'adjustment';
   delta: number;
   countedTotal: number;
@@ -257,6 +310,7 @@ export interface BirdAdjustment {
 
 export interface Announcement {
   id: string;
+  groupId?: string;
   text: string;
   time: string;
   editedAt?: string;
@@ -265,6 +319,7 @@ export interface Announcement {
 
 export interface PlayerSkills {
   id: string;
+  groupId?: string;
   sessionId: string;      // partition key
   name: string;           // player roster name — 1:1 with (sessionId, name)
   scores: Record<string, number>;  // ACE dimension id → 0..6
@@ -417,6 +472,7 @@ export interface PlayerGear {
 
 export interface GameResult {
   id: string;
+  groupId?: string;
   /** Partition key. */
   sessionId: string;
   /** 1-indexed for the human-readable label; not used as a join key. Optional — Slice-0 logger doesn't capture it. */
@@ -439,6 +495,7 @@ export interface GameResult {
  */
 export interface EngagementEvent {
   id: string;
+  groupId?: string;
   /** Partition key. From the member_session cookie, so it can't be spoofed. */
   memberId: string;
   /** Display name at the time of the event — convenience for readouts. */
@@ -467,6 +524,7 @@ export interface EngagementEvent {
 export interface StringingJob {
   /** Random hex doc id. NOT the printed number — see `formatJobNo`. */
   id: string;
+  groupId?: string;
   /** Partition key: the player the racket belongs to. */
   memberId: string;
   /** Human-facing tag, e.g. `J-0042`. Unique-ish, cosmetic, never an id. */
