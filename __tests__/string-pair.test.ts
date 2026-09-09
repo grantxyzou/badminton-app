@@ -8,7 +8,7 @@ function profile(over: Partial<PlayerProfile> = {}): PlayerProfile {
     serves: 3, net_play: 3, clears: 3, drops: 3, drives: 3, smashes: 3, grip: 3,
     footwork: 3, court_coverage: 3, stamina: 3,
     game_reading: 3, consistency: 3, rules: 3, mindset: 3,
-    format: 'both', ...over,
+    format: 'both', ratedKeys: [], ...over,
   };
 }
 

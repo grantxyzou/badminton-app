@@ -7,6 +7,9 @@ import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
 import { recommendRacket } from '@/lib/recommend';
 import { buildProfile } from '@/lib/racketProfile';
 import { recommendRackets } from '@/lib/racketRecommend';
+import { recommendFit, fitLevel, fitTechniqueCeiling, isScorable, canon, FIT_ENGINE_VERSION, type FitInput } from '@/lib/racketFit';
+import { fitReasonTexts } from '@/lib/fitReasonText';
+import { activeRacket, rackets } from '@/lib/activeRacket';
 import { pairString, pairTension } from '@/lib/stringPair';
 import { getCanonicalLevel } from '@/lib/levelStore';
 import { buildPickReasons } from '@/lib/pickReasons';
@@ -51,6 +54,39 @@ async function clubEntriesOrEmpty(): Promise<ClubGearEntry[]> {
   }
 }
 
+
+/**
+ * The fit engine's view of a member. Everything it needs is already in hand
+ * on this route — the gear doc, the profile (possibly null: no check-in) and
+ * the racket catalog — so this stays here rather than growing a fourth
+ * member-resolution path. The anchor is the ACTIVE racket, and only when its
+ * catalogId resolves to a scorable row; every other racket in the bag, and a
+ * free-text one, is excluded by id or by normalised label.
+ */
+function buildFitInput(
+  gear: PlayerGear | null,
+  profile: ReturnType<typeof buildProfile>,
+  hasRatings: boolean,
+  catalogRackets: CatalogItem[],
+): FitInput {
+  const active = activeRacket(gear);
+  const anchorRow = active?.catalogId ? catalogRackets.find((r) => r.id === active.catalogId) ?? null : null;
+  const owned = rackets(gear).filter((i) => !i.retiredAt);
+  return {
+    anchor: anchorRow && isScorable(anchorRow) ? anchorRow : null,
+    ownedIds: new Set(owned.map((i) => i.catalogId).filter((id): id is string => typeof id === 'string')),
+    ownedLabels: new Set(owned.map((i) => canon(i.label)).filter(Boolean)),
+    goal: gear?.fitGoal,
+    swing: gear?.fitSwing,
+    armComfort: gear?.fitArmComfort,
+    grip: gear?.fitGrip,
+    format: gear?.playFormat ?? 'both',
+    budgetMaxCad: typeof gear?.budgetMaxCad === 'number' ? gear.budgetMaxCad : undefined,
+    level: profile ? fitLevel(profile) : null,
+    hasRatings,
+    techniqueCeiling: profile ? fitTechniqueCeiling(profile) : undefined,
+  };
+}
 
 function reasonFor(item: CatalogItem, stage?: number): string {
   if (typeof stage === 'number') {
@@ -145,10 +181,15 @@ export async function GET(req: NextRequest) {
         if (code !== 404 && code !== '404') throw err;
       }
 
-      const profile = buildProfile({ ratings: (latest?.ratings as Rating[]) ?? [], gear });
+      const ratings = (latest?.ratings as Rating[]) ?? [];
+      const profile = buildProfile({ ratings, gear });
+      const fitOn = isFlagOn('NEXT_PUBLIC_FLAG_RACKET_FIT');
+
       // D5: no ratings -> say so rather than score fourteen 3s and emit a
-      // confident, meaningless pick.
-      if (!profile) {
+      // confident, meaningless pick. The FIT engine has its own honest-state
+      // ladder (a racket in the bag, or a check-in, or goal + swing) and
+      // answers `needsFit` itself, so only the string branch keeps this gate.
+      if (!profile && !(fitOn && category === 'racket')) {
         return NextResponse.json({ item: null, reason: null, needsCheckIn: true });
       }
 
@@ -173,6 +214,9 @@ export async function GET(req: NextRequest) {
         : [];
 
       if (category === 'string') {
+        // The string engine reads skill dimensions, so it keeps the D5 gate
+        // even when the fit flag lifted it for rackets above.
+        if (!profile) return NextResponse.json({ item: null, reason: null, needsCheckIn: true });
         // D1 ladder. The frame is resolved HERE rather than taken from the
         // client: a racketId in the query string would let any caller pair
         // against any frame, and the gear doc that answers rung one is already
@@ -192,7 +236,9 @@ export async function GET(req: NextRequest) {
         }
         if (!frame) {
           source = 'recommended';
-          frame = recommendRackets(profile, catalogRackets as CatalogItem[], 1, 'racket')[0]?.item ?? null;
+          frame = fitOn
+            ? recommendFit(buildFitInput(gear, profile, ratings.length > 0, catalogRackets as CatalogItem[]), catalogRackets as CatalogItem[]).top?.item ?? null
+            : recommendRackets(profile, catalogRackets as CatalogItem[], 1, 'racket')[0]?.item ?? null;
         }
         // No frame from either rung means the racket catalog is empty or
         // unscorable — a catalog problem, the same one the racket card reports.
@@ -225,7 +271,37 @@ export async function GET(req: NextRequest) {
         });
       }
 
-      const top = recommendRackets(profile, catalogItems as CatalogItem[], 1, category)[0];
+      if (fitOn) {
+        // The fit engine. Reasons are KEYS; the English strings alongside
+        // are transitional (`lib/fitReasonText.ts`) for the client that still
+        // reads `reasons: string[]`. Everything new is additive.
+        const fit = recommendFit(buildFitInput(gear, profile, ratings.length > 0, catalogItems as CatalogItem[]), catalogItems as CatalogItem[]);
+        if (fit.fitState === 'needsFit') {
+          return NextResponse.json({ item: null, reason: null, needsFit: true, engineVersion: FIT_ENGINE_VERSION, fitState: fit.fitState });
+        }
+        if (!fit.top) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
+        const clubEntries: ClubGearEntry[] = await clubEntriesOrEmpty();
+        const reasons = buildPickReasons({ item: fit.top.item, engineReasons: fitReasonTexts(fit.top.reasons), clubEntries });
+        return NextResponse.json({
+          item: fit.top.item,
+          reason: reasons[0] ?? null,
+          reasons,
+          warnings: fitReasonTexts(fit.top.warnings),
+          reasonKeys: fit.top.reasons,
+          warningKeys: fit.top.warnings,
+          alternatives: fit.alternatives.map((a) => ({
+            item: a.item,
+            reasons: fitReasonTexts(a.reasons),
+            reasonKeys: a.reasons,
+            differsBy: a.differsBy ?? [],
+            differsByText: fitReasonTexts(a.differsBy ?? []),
+          })),
+          engineVersion: FIT_ENGINE_VERSION,
+          fitState: fit.fitState,
+        });
+      }
+
+      const top = recommendRackets(profile!, catalogItems as CatalogItem[], 1, category)[0];
       // The mock store ignores @category (see lib/cosmos.ts), so catalogItems
       // above can be non-empty even when nothing of THIS category exists —
       // recommendRackets' internal filter is the one that actually agrees

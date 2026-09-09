@@ -15,6 +15,11 @@ export interface PlayerProfile {
   format: 'singles' | 'doubles' | 'both';
   budgetMaxCad?: number;
   currentRacketId?: string;
+  /** Engine field names that were ACTUALLY rated. The fourteen skill fields
+   *  above default to 3 for the string engine's reference constants; the fit
+   *  engine averages over this list only (`fitLevel`), because a two-skill
+   *  check-in must not run on twelve invented values. */
+  ratedKeys: string[];
 }
 
 /** App assessment key -> engine profile field. The check-in's fourteen skills
@@ -37,14 +42,14 @@ const SKILL_MAP: Record<string, keyof PlayerProfile> = {
 };
 
 /**
- * Whether ANY engine reads the fit questionnaire yet. `false` until the Phase 2
- * fit engine lands. The rail keys its `/api/recommend` refetch on this: while
- * it is false a fit answer cannot change a pick, and re-asking on every tap
- * burnt the 10/min/IP limiter — whose throttled 200 renders as an error card —
- * on identical answers. Lives next to `buildProfile` so the rail cannot drift
- * from the server: the day a field is read here, this flips here.
+ * Whether ANY engine reads the fit questionnaire. `true` since the Phase 2 fit
+ * engine (`lib/racketFit.ts`) — it reads every fit field, and `lib/stringPair.ts`
+ * reads the string budget. The rail keys its `/api/recommend` refetch on this:
+ * while it was false a fit answer could not change a pick, and re-asking on
+ * every tap burnt the 10/min/IP limiter on identical answers. Lives next to
+ * `buildProfile` so the rail cannot drift from the server.
  */
-export const PROFILE_READS_FIT = false;
+export const PROFILE_READS_FIT = true;
 
 /** What an unrated skill counts as. Matches the engine's own defaults: a
  *  mid-scale 3 is "no signal", not "weak". */
@@ -73,6 +78,7 @@ export function buildProfile(input: {
     footwork: DEFAULT_SKILL, court_coverage: DEFAULT_SKILL, stamina: DEFAULT_SKILL,
     game_reading: DEFAULT_SKILL, consistency: DEFAULT_SKILL, rules: DEFAULT_SKILL, mindset: DEFAULT_SKILL,
     format: input.gear?.playFormat ?? 'both',
+    ratedKeys: [],
   };
 
   for (const rating of input.ratings) {
@@ -80,6 +86,7 @@ export function buildProfile(input: {
     if (!field) continue; // unknown key — ignore rather than throw
     if (typeof rating.value !== 'number') continue;
     (profile as unknown as Record<string, number>)[field] = rating.value;
+    profile.ratedKeys.push(field);
   }
 
   if (typeof input.gear?.budgetMaxCad === 'number') profile.budgetMaxCad = input.gear.budgetMaxCad;
