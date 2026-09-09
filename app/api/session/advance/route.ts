@@ -104,7 +104,9 @@ export async function POST(req: NextRequest) {
           const { resources: prevPlayers } = await playersContainer.items
             .query({
               query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
-              parameters: [{ name: '@sessionId', value: currentId ?? '' }],
+              // The doc was fetched by `WHERE c.id = @id`, so this IS currentId,
+              // and inside `if (currentSession)` it cannot be null.
+              parameters: [{ name: '@sessionId', value: currentSession.id }],
             })
             .fetchAll();
           if (prevPlayers.length > 0) {

@@ -33,8 +33,10 @@ export function resolveGroupId(_req: NextRequest): string {
 }
 
 /**
- * Server components and server-only libs (`app/page.tsx`, `lib/announcements.ts`,
- * `app/opengraph-image.tsx`), which have a cookie HEADER rather than a request.
+ * Server components, which have a cookie HEADER rather than a request
+ * (`app/page.tsx`, feeding `lib/announcements.ts`). `app/opengraph-image.tsx`
+ * deliberately does NOT go through here: it is the share card for the app's
+ * one public URL and hardcodes BPM until there is a per-group URL.
  */
 export function resolveGroupIdFromCookieHeader(_cookieHeader: string | null): string {
   return BPM_GROUP_ID;

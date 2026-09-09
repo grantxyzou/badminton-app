@@ -3,7 +3,7 @@ import { join } from 'path';
 import { CONTAINERS, pkOf, pkFieldOf, containersOfScope, PROVISIONED_CONTAINERS } from '@/lib/containers';
 import { GROUP_SCOPED, PERSON_SCOPED, GLOBAL } from '@/lib/groupScope';
 import { OWNED_CONTAINERS, NOT_MEMBER_SCOPED, CLASSIFIED_ELSEWHERE } from '@/lib/memberPurge';
-import { containersReferencedInSource } from './containerScan';
+import { containersReferencedInSource, containerReferences } from './containerScan';
 
 /**
  * ONE REGISTRY FOR THE THINGS THAT ARE TRUE OF A CONTAINER.
@@ -53,6 +53,18 @@ describe('lib/containers registry', () => {
       ...Object.keys(CLASSIFIED_ELSEWHERE),
     ].sort();
     expect(purge).toEqual(Object.keys(CONTAINERS).sort());
+  });
+
+  it('every ensureContainer() literal in the source agrees with the registry', () => {
+    // 32 call sites hand-type the path. One typo (`/memberID`) would create the
+    // container with the wrong key on a fresh deployment and every point read
+    // would 404 while the mock, which ignores keys, stayed green.
+    const { ensured } = containerReferences(join(__dirname, '..'));
+    expect(ensured.size).toBeGreaterThan(5);
+    const wrong = [...ensured.entries()]
+      .filter(([name, path]) => name in CONTAINERS && path !== pkOf(name as keyof typeof CONTAINERS))
+      .map(([name, path]) => `${name}: ${path} (registry says ${pkOf(name as keyof typeof CONTAINERS)})`);
+    expect(wrong).toEqual([]);
   });
 
   it('marks which containers exist in production versus are ensured lazily', () => {

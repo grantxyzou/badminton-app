@@ -19,6 +19,7 @@
 
 import library from '@/scripts/data/drill-library.json';
 import { getContainer, ensureContainer, getActiveSessionId } from './cosmos';
+import { weekKeyFor } from './drillsDone';
 import { summarizeAssessmentTrend, type StoredAssessment } from './assessment';
 
 export interface Drill {
@@ -188,9 +189,9 @@ async function fetchWorkOn(memberId: string): Promise<WorkOnSkill[]> {
 export async function drillPicksFor(subject: { memberId: string }, groupId: string): Promise<DrillPick[]> {
   const [workOn, rotationSeed] = await Promise.all([
     fetchWorkOn(subject.memberId),
-    // The seed only rotates picks week to week; a group with no session yet
-    // gets a constant seed, which is a valid (if unrotating) answer.
-    getActiveSessionId(groupId).then((id) => id ?? ''),
+    // Same key the completions are stored under (lib/drillsDone.ts), so the
+    // picks and the "n of 2 done" counter rotate together by construction.
+    getActiveSessionId(groupId).then((id) => weekKeyFor(id)),
   ]);
   return recommendDrills({ workOn, level: null, rotationSeed });
 }

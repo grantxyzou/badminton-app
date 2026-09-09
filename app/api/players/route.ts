@@ -488,9 +488,9 @@ export async function PATCH(req: NextRequest) {
       }
 
       const sessionId = isAdmin && typeof body.sessionId === 'string'
-      ? body.sessionId
-      : await getActiveSessionId(resolveGroupId(req));
-    if (!sessionId) return noActiveSession();
+        ? body.sessionId
+        : await getActiveSessionId(resolveGroupId(req));
+      if (!sessionId) return noActiveSession();
       const container = getContainer('players');
 
       // Resolve the player record. Prefer id (legacy clients), fall back

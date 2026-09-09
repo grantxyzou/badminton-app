@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import { resolveGroupId, resolveGroupIdFromCookieHeader, noActiveSession } from '@/lib/groupContext';
+import { BPM_GROUP_ID } from '@/lib/groupScope';
+import { makeRequest, setupAdminPin } from './helpers';
+
+const originalEnv = { ...process.env };
 
 describe('noActiveSession', () => {
   it('is a 404 with the one error code every route shares', async () => {
@@ -8,10 +12,6 @@ describe('noActiveSession', () => {
     expect(await res.json()).toEqual({ error: 'no_active_session' });
   });
 });
-import { BPM_GROUP_ID } from '@/lib/groupScope';
-import { makeRequest, setupAdminPin } from './helpers';
-
-const originalEnv = { ...process.env };
 
 /**
  * Phase 1 contract: every request resolves to BPM. The cookie claim that

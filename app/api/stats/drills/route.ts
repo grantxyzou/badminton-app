@@ -4,7 +4,7 @@ import { resolveGroupId } from '@/lib/groupContext';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ownsNameOrAdmin } from '@/lib/auth';
 import { drillPicksFor } from '@/lib/drills';
-import { drillDocId, readDone, type DrillCompletionDoc } from '@/lib/drillsDone';
+import { drillDocId, readDone, weekKeyFor, type DrillCompletionDoc } from '@/lib/drillsDone';
 import { resolveActiveSubject } from '@/lib/memberResolve';
 
 /**
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
     const groupId = resolveGroupId(req);
     const [drills, rotationSeed] = await Promise.all([
       drillPicksFor(subject, groupId),
-      getActiveSessionId(groupId).then((id) => id ?? ''),
+      getActiveSessionId(groupId).then((id) => weekKeyFor(id)),
     ]);
     // `done` ships with the picks so the "n of 2" counter is right on the
     // FIRST paint. A second round-trip would render 0 of 2 for a beat and then

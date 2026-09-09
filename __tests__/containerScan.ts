@@ -3,7 +3,8 @@ import { join } from 'path';
 
 /**
  * Every Cosmos container name the app's source touches — the ONE scanner the
- * coverage canaries share (`member-purge-coverage`, `group-scope-coverage`).
+ * container canaries share (`member-purge-coverage`, `group-scope-coverage`,
+ * `containers-registry`, `cosmos-container-provisioning`).
  *
  * It used to be pasted per canary. The next regex gap (a double-quoted
  * argument, a name with a digit, an imported constant) would then get patched
@@ -19,26 +20,43 @@ import { join } from 'path';
  * deletion shipped missing it while the test sat green. So single-level
  * `const X = '…'` aliases are resolved too.
  */
-export function containersReferencedInSource(root: string): Set<string> {
+export interface ContainerReferences {
+  /** name → repo-relative files that call `getContainer` or `ensureContainer` with it. */
+  used: Map<string, string[]>;
+  /** name → the partition-key path literal it was ensured with. */
+  ensured: Map<string, string>;
+}
+
+const NAME = `(?:'([a-zA-Z]+)'|([A-Za-z_$][\\w$]*))`;
+const CALL = new RegExp(`(get|ensure)Container\\(\\s*${NAME}\\s*(?:,\\s*'(\\/[a-zA-Z]+)')?\\s*[,)]`, 'g');
+const ALIAS = /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*'([a-zA-Z]+)'/g;
+
+export function containerReferences(root: string): ContainerReferences {
   const files = [...walk(join(root, 'app')), ...walk(join(root, 'lib'))];
-  const found = new Set<string>();
+  const used = new Map<string, string[]>();
+  const ensured = new Map<string, string>();
   for (const file of files) {
     const src = readFileSync(file, 'utf8');
-
-    for (const m of src.matchAll(/(?:get|ensure)Container\(\s*'([a-zA-Z]+)'/g)) {
-      found.add(m[1]);
-    }
-
     const aliases = new Map<string, string>();
-    for (const m of src.matchAll(/\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*'([a-zA-Z]+)'/g)) {
-      aliases.set(m[1], m[2]);
-    }
-    for (const m of src.matchAll(/(?:get|ensure)Container\(\s*([A-Za-z_$][\w$]*)\s*[,)]/g)) {
-      const resolved = aliases.get(m[1]);
-      if (resolved) found.add(resolved);
+    for (const m of src.matchAll(ALIAS)) aliases.set(m[1], m[2]);
+
+    const rel = file.slice(root.length + 1);
+    for (const m of src.matchAll(CALL)) {
+      const [, kind, literal, ident, path] = m;
+      const name = literal ?? (ident ? aliases.get(ident) : undefined);
+      if (!name) continue;
+      const files = used.get(name) ?? [];
+      if (!files.includes(rel)) files.push(rel);
+      used.set(name, files);
+      if (kind === 'ensure' && path) ensured.set(name, path);
     }
   }
-  return found;
+  return { used, ensured };
+}
+
+/** The set-shaped view most canaries want. */
+export function containersReferencedInSource(root: string): Set<string> {
+  return new Set(containerReferences(root).used.keys());
 }
 
 function walk(dir: string, out: string[] = []): string[] {
