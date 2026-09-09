@@ -16,6 +16,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { verifyMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -238,7 +240,9 @@ export async function GET(req: NextRequest) {
 
   try {
     await ensureJobs();
-    const container = getContainer('stringingJobs');
+    // Every read below is the GROUP's bench: a stringer in two clubs sees two
+    // benches, one per cookie claim, never a merge.
+    const scope = groupScope(resolveGroupId(req));
 
     /**
      * `?view=player` forces the PLAYER projection for anybody, including an
@@ -273,12 +277,10 @@ export async function GET(req: NextRequest) {
         .catch(() => false);
       if (!canString) return NextResponse.json({ jobs: [], view: 'stringer' });
 
-      const { resources } = await container.items
-        .query<StringingJob>({
-          query: `SELECT * FROM c WHERE c.stringerId = @stringerId AND ${LIVE_SQL}`,
-          parameters: [{ name: '@stringerId', value: me }],
-        })
-        .fetchAll();
+      const resources = await scope.query<StringingJob>('stringingJobs', {
+        where: `c.stringerId = @stringerId AND ${LIVE_SQL}`,
+        params: [{ name: '@stringerId', value: me }],
+      });
       // Re-filtered: the mock recognises @stringerId but not the archive
       // predicate, and an archived job is off the bench for everyone.
       const jobs = resources
@@ -301,14 +303,13 @@ export async function GET(req: NextRequest) {
        * row can flag "still owed" from `isBillable` without a second fetch.
        */
       const wantArchived = req.nextUrl.searchParams.get('archived') === 'true';
-      const scope = wantArchived ? ARCHIVED_SQL : LIVE_SQL;
-      const query = mine
+      const shelf = wantArchived ? ARCHIVED_SQL : LIVE_SQL;
+      const resources = await scope.query<StringingJob>('stringingJobs', mine
         ? {
-            query: `SELECT * FROM c WHERE c.stringerId = @stringerId AND ${scope}`,
-            parameters: [{ name: '@stringerId', value: admin.memberId }],
+            where: `c.stringerId = @stringerId AND ${shelf}`,
+            params: [{ name: '@stringerId', value: admin.memberId }],
           }
-        : { query: `SELECT * FROM c WHERE ${scope}`, parameters: [] };
-      const { resources } = await container.items.query<StringingJob>(query).fetchAll();
+        : { where: shelf });
       const jobs = resources
         .filter((j) => isArchived(j) === wantArchived)
         .sort(benchOrder);
@@ -326,12 +327,10 @@ export async function GET(req: NextRequest) {
     if (!memberId) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
-    const { resources } = await container.items
-      .query<StringingJob>({
-        query: `SELECT * FROM c WHERE c.memberId = @memberId AND ${LIVE_SQL}`,
-        parameters: [{ name: '@memberId', value: memberId }],
-      })
-      .fetchAll();
+    const resources = await scope.query<StringingJob>('stringingJobs', {
+      where: `c.memberId = @memberId AND ${LIVE_SQL}`,
+      params: [{ name: '@memberId', value: memberId }],
+    });
     // A player never sees an archived job. Archiving is how a stringer says
     // "this is done with"; leaving it on someone's Home card afterwards would
     // make the two screens disagree about the same racket.
@@ -398,14 +397,12 @@ export async function POST(req: NextRequest) {
   const now = new Date().toISOString();
   try {
     await ensureJobs();
-    const container = getContainer('stringingJobs');
+    const scope = groupScope(resolveGroupId(req));
 
     // Job NUMBER only — the id stays random. A sequential id would be
     // enumerable, and this number is printed on a tag anyone can read.
-    const { resources: existing } = await container.items
-      .query<{ n: number }>({ query: 'SELECT VALUE COUNT(1) FROM c', parameters: [] })
-      .fetchAll();
-    const sequence = (typeof existing[0] === 'number' ? existing[0] : 0) + 1;
+    // Per group: each club's tags count from J-0001.
+    const sequence = (await scope.count('stringingJobs')) + 1;
 
     const job: StringingJob = {
       id: `job-${randomBytes(8).toString('hex')}`,
@@ -432,7 +429,7 @@ export async function POST(req: NextRequest) {
       history: [{ status, at: now, by: admin.memberId ?? null }],
     };
 
-    await container.items.create(job);
+    await scope.create('stringingJobs', job);
     return NextResponse.json({ job }, { status: 201 });
   } catch (err) {
     console.error('POST /api/stringing/jobs failed:', err);

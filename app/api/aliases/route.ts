@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { randomBytes } from 'crypto';
+import type { Alias } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
+
+// An alias maps a club's sign-up name to an e-transfer name — payment data
+// (security rule 10), and a CLUB's payment data: every read and write here is
+// scoped to the group, so one club's mappings never reach another's admin.
 
 export async function GET(req: NextRequest) {
   if (!isAdminAuthed(req)) return unauthorized();
   try {
-    const container = getContainer('aliases');
-    const { resources } = await container.items
-      .query({ query: 'SELECT * FROM c ORDER BY c.appName ASC' })
-      .fetchAll();
+    const resources = await groupScope(resolveGroupId(req)).query<Alias>('aliases', { orderBy: 'c.appName ASC' });
     return NextResponse.json(resources);
   } catch (error) {
     // Surface the failure (503) instead of a lying 200 + empty list — an admin
@@ -32,13 +35,12 @@ export async function POST(req: NextRequest) {
     if (!appName || !etransferName) {
       return NextResponse.json({ error: 'Both names required' }, { status: 400 });
     }
-    const alias = {
+    const alias: Alias = {
       id: randomBytes(12).toString('hex'),
       appName,
       etransferName,
     };
-    const container = getContainer('aliases');
-    const { resource } = await container.items.create(alias);
+    const resource = await groupScope(resolveGroupId(req)).create('aliases', alias);
     return NextResponse.json(resource, { status: 201 });
   } catch (error) {
     console.error('POST alias error:', error);
@@ -54,15 +56,15 @@ export async function PATCH(req: NextRequest) {
     if (typeof id !== 'string') {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
-    const container = getContainer('aliases');
-    const { resource: existing } = await container.item(id, id).read();
+    const scope = groupScope(resolveGroupId(req));
+    const existing = await scope.read<Alias>('aliases', id);
     if (!existing) {
       return NextResponse.json({ error: 'Alias not found' }, { status: 404 });
     }
     const updates: Record<string, string> = {};
     if (typeof body.appName === 'string') updates.appName = body.appName.trim().slice(0, 50);
     if (typeof body.etransferName === 'string') updates.etransferName = body.etransferName.trim().slice(0, 50);
-    const { resource: updated } = await container.items.upsert({ ...existing, ...updates });
+    const updated = await scope.upsert('aliases', { ...existing, ...updates });
     return NextResponse.json(updated);
   } catch (error) {
     console.error('PATCH alias error:', error);
@@ -78,8 +80,10 @@ export async function DELETE(req: NextRequest) {
     if (typeof id !== 'string') {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
-    const container = getContainer('aliases');
-    await container.item(id, id).delete();
+    // A miss is a 404, not a green 200: the accessor only deletes a row it
+    // verified belongs to this group.
+    const removed = await groupScope(resolveGroupId(req)).remove('aliases', id);
+    if (!removed) return NextResponse.json({ error: 'Alias not found' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE alias error:', error);

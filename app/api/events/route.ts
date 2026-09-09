@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeEvent, isClientKind, CLIENT_PAYLOAD } from '@/lib/events';
+import { resolveGroupId } from '@/lib/groupContext';
 import { verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -78,12 +79,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const resource = await writeEvent({
-      memberId: caller.memberId,
-      name: caller.name,
-      kind: body.kind,
-      ...payloadFor(body.kind, body),
-    });
+    const resource = await writeEvent(
+      {
+        memberId: caller.memberId,
+        name: caller.name,
+        kind: body.kind,
+        ...payloadFor(body.kind, body),
+      },
+      resolveGroupId(req),
+    );
     return NextResponse.json(resource, { status: 201 });
   } catch (err) {
     // A beacon must never be load-bearing, but it must also not lie about

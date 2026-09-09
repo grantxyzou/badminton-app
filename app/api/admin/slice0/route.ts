@@ -131,12 +131,12 @@ export async function GET(req: NextRequest) {
       // fit engine's feedback tally below — it is partitioned by /memberId, so
       // a date-range read fans out across every partition, and it grows by one
       // row per racket pick served.
-      const { resources: events } = await getContainer('events').items
-        .query({
-          query: 'SELECT c.memberId, c.name, c.kind, c.at, c.catalogId, c.engineVersion, c.rating FROM c WHERE c.at >= @since',
-          parameters: [{ name: '@since', value: since }],
-        })
-        .fetchAll();
+      // The GROUP's events: Slice-0 is a per-club readout.
+      const events = await scope.query<Partial<PickEvent> & Record<string, unknown>>('events', {
+        select: 'c.memberId, c.name, c.kind, c.at, c.catalogId, c.engineVersion, c.rating',
+        where: 'c.at >= @since',
+        params: [{ name: '@since', value: since }],
+      });
       const taps = new Map<string, number>();
       for (const e of events) {
         if (typeof e?.kind !== 'string' || typeof e.at !== 'string' || e.at < since) continue;

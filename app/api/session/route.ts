@@ -99,7 +99,7 @@ export async function PUT(req: NextRequest) {
     // absent means "leave birdUsages untouched".
     let birdUsages: BirdUsage[] | undefined = undefined;
     if (Array.isArray(body.birdUsages)) {
-      const resolved = await resolveBirdUsages(body.birdUsages);
+      const resolved = await resolveBirdUsages(body.birdUsages, scope);
       if (!resolved.ok) return NextResponse.json({ error: resolved.error }, { status: resolved.status });
       birdUsages = resolved.usages;
     }

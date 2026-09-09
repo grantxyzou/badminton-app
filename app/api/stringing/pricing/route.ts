@@ -7,7 +7,8 @@
  * list and nothing else.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -15,7 +16,7 @@ import { ensureClubSettings } from '@/lib/stringingShop';
 import {
   readPricing,
   normalisePricing,
-  PRICING_DOC_ID,
+  pricingDocId,
   type PricingDoc,
 } from '@/lib/stringingPricing';
 
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
     // not entitled to make it.
     return NextResponse.json({ services: null });
   }
-  return NextResponse.json({ services: await readPricing() });
+  return NextResponse.json({ services: await readPricing(resolveGroupId(req)) });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -57,13 +58,14 @@ export async function PATCH(req: NextRequest) {
 
   try {
     await ensureClubSettings();
+    const groupId = resolveGroupId(req);
     const doc: PricingDoc = {
-      id: PRICING_DOC_ID,
+      id: pricingDocId(groupId),
       services,
       updatedAt: new Date().toISOString(),
       updatedBy: admin.memberId,
     };
-    await getContainer('clubSettings').items.upsert(doc);
+    await groupScope(groupId).upsert('clubSettings', doc);
     return NextResponse.json({ services: doc.services });
   } catch (err) {
     console.error('PATCH /api/stringing/pricing failed:', err);

@@ -18,7 +18,8 @@
  * keys entirely and would otherwise hand back a row from anybody's partition.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -55,11 +56,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   try {
-    const container = getContainer('stringingJobs');
+    const scope = groupScope(resolveGroupId(req));
     // The caller's OWN partition. Not a filter — the address itself.
-    const { resource: job } = await container
-      .item(id, caller.memberId)
-      .read<StringingJob>();
+    const job = await scope.read<StringingJob>('stringingJobs', id, caller.memberId);
     if (!job || job.memberId !== caller.memberId || job.id !== id) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
@@ -92,7 +91,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       next.pendingEditDeclinedAt = now;
     }
 
-    await container.item(id, caller.memberId).replace(next);
+    await scope.upsert('stringingJobs', next);
     // Through `toPlayerJob`, like every other player-facing response: the
     // strip cannot be forgotten at a call site.
     return NextResponse.json({ job: toPlayerJob(next) });

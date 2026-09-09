@@ -18,7 +18,9 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { getContainer, ensureContainer } from '@/lib/cosmos';
+import { ensureContainer } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -79,7 +81,8 @@ export async function POST(req: NextRequest) {
   // The shop sign is enforced HERE, not only in the UI. The Home card decides
   // whether to show the button from the same value, but a client cannot be
   // trusted to have looked.
-  const open = await readShopOpen();
+  const groupId = resolveGroupId(req);
+  const open = await readShopOpen(groupId);
   if (open !== true) {
     // `null` (unknown) refuses too. A request accepted while we could not tell
     // whether anyone is stringing is a racket nobody is expecting.
@@ -102,15 +105,13 @@ export async function POST(req: NextRequest) {
   const now = new Date().toISOString();
   try {
     await ensureJobs();
-    const container = getContainer('stringingJobs');
+    const scope = groupScope(groupId);
 
     // Single-partition read — the reason /memberId is the partition key.
-    const { resources: existing } = await container.items
-      .query<StringingJob>({
-        query: 'SELECT * FROM c WHERE c.memberId = @memberId',
-        parameters: [{ name: '@memberId', value: caller.memberId }],
-      })
-      .fetchAll();
+    const existing = await scope.query<StringingJob>('stringingJobs', {
+      where: 'c.memberId = @memberId',
+      params: [{ name: '@memberId', value: caller.memberId }],
+    });
     // Archived jobs do not count. The cap bounds the SHELF, and an archived
     // job is off the shelf by definition — without this, archiving a job that
     // was abandoned mid-process (still `received`, racket long since collected)
@@ -123,10 +124,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'too_many_open' }, { status: 409 });
     }
 
-    const { resources: counted } = await container.items
-      .query<number>({ query: 'SELECT VALUE COUNT(1) FROM c', parameters: [] })
-      .fetchAll();
-    const sequence = (typeof counted[0] === 'number' ? counted[0] : 0) + 1;
+    const sequence = (await scope.count('stringingJobs')) + 1;
 
     const job: StringingJob = {
       id: `job-${randomBytes(8).toString('hex')}`,
@@ -154,7 +152,7 @@ export async function POST(req: NextRequest) {
       history: [{ status: 'requested', at: now, by: caller.memberId }],
     };
 
-    await container.items.create(job);
+    await scope.create('stringingJobs', job);
     // The PLAYER view back, not the raw document. Symmetry with GET matters
     // here: a create that echoed the full job would hand back exactly the
     // fields the read is careful to strip.

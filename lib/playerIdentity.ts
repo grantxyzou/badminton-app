@@ -1,4 +1,5 @@
 import { getContainer } from './cosmos';
+import { groupScope } from './groupScope';
 import type { Alias, Member, Player, Session } from './types';
 import { sessionCostTotals } from './sessionCost';
 
@@ -57,13 +58,17 @@ export interface ResolvedIdentity {
 
 /**
  * Resolve a player's identity from a name (or memberId). Reads the `members`
- * and `aliases` containers. Used by `/api/players/unpaid` and
+ * container (a person, never filtered by group) and the GROUP's `aliases` —
+ * an e-transfer name is a club's payment record, so a person can carry a
+ * different one in each club. Used by `/api/players/unpaid` and
  * `/api/admin/owed-audit`. Never throws on an empty result — an unknown name
  * resolves to `{ member: null, memberId: null, names: { <name> } }`.
  */
-export async function resolveIdentity(arg: { name?: string; memberId?: string }): Promise<ResolvedIdentity> {
+export async function resolveIdentity(
+  arg: { name?: string; memberId?: string },
+  groupId: string,
+): Promise<ResolvedIdentity> {
   const membersContainer = getContainer('members');
-  const aliasesContainer = getContainer('aliases');
 
   let member: Member | null = null;
   if (arg.memberId) {
@@ -82,10 +87,8 @@ export async function resolveIdentity(arg: { name?: string; memberId?: string })
   }
 
   const baseName = (member?.name ?? arg.name ?? '').trim();
-  const { resources: aliasRows } = await aliasesContainer.items
-    .query({ query: 'SELECT * FROM c' })
-    .fetchAll();
-  const names = baseName ? expandAliasNames(baseName, aliasRows as Alias[]) : new Set<string>();
+  const aliasRows = await groupScope(groupId).query<Alias>('aliases');
+  const names = baseName ? expandAliasNames(baseName, aliasRows) : new Set<string>();
 
   return { member, memberId: member?.id ?? null, names };
 }

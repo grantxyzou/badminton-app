@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { randomBytes } from 'crypto';
@@ -29,16 +28,14 @@ export async function POST(req: NextRequest) {
     // Match the inventory's 0.25-tube granularity.
     const counted = Math.round(countedTotal * 4) / 4;
 
-    const container = getContainer('birds');
-    const { resources } = await container.items
-      .query({ query: 'SELECT * FROM c' })
-      .fetchAll();
-    const purchases = resources.filter((d: { type?: string }) => d.type !== 'adjustment');
-    const adjustments = resources.filter((d: { type?: string }) => d.type === 'adjustment');
-    const totalPurchased = purchases.reduce((sum: number, p: { tubes: number }) => sum + p.tubes, 0);
-    const totalAdjustments = adjustments.reduce((sum: number, a: { delta?: number }) => sum + (a.delta ?? 0), 0);
+    const scope = groupScope(resolveGroupId(req));
+    const resources = await scope.query<{ id: string; type?: string; tubes?: number; delta?: number }>('birds');
+    const purchases = resources.filter((d) => d.type !== 'adjustment');
+    const adjustments = resources.filter((d) => d.type === 'adjustment');
+    const totalPurchased = purchases.reduce((sum, p) => sum + (p.tubes ?? 0), 0);
+    const totalAdjustments = adjustments.reduce((sum, a) => sum + (a.delta ?? 0), 0);
 
-    const sessions = await groupScope(resolveGroupId(req)).query<Pick<Session, 'birdUsage' | 'birdUsages'>>('sessions', {
+    const sessions = await scope.query<Pick<Session, 'birdUsage' | 'birdUsages'>>('sessions', {
       select: 'c.birdUsage, c.birdUsages',
       where: 'IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)',
       includeLegacy: true, // same rule as GET /api/birds, so the delta matches the display
@@ -62,7 +59,7 @@ export async function POST(req: NextRequest) {
     }
 
     const reason = typeof body.reason === 'string' ? body.reason.trim().slice(0, 200) : '';
-    const adjustment: Record<string, unknown> = {
+    const adjustment: Record<string, unknown> & { id: string } = {
       id: randomBytes(12).toString('hex'),
       type: 'adjustment',
       delta,
@@ -72,7 +69,7 @@ export async function POST(req: NextRequest) {
     };
     if (reason) adjustment.reason = reason;
 
-    const { resource } = await container.items.create(adjustment);
+    const resource = await scope.create('birds', adjustment);
     return NextResponse.json({ adjustment: resource, currentStock: counted, delta }, { status: 201 });
   } catch (error) {
     console.error('POST birds/reconcile error:', error);

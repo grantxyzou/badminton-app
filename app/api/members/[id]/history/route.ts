@@ -30,8 +30,6 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
   try {
     const scope = groupScope(resolveGroupId(req));
     const membersContainer = getContainer('members');
-    // aliases stays raw until Phase 1b sweeps it.
-    const aliasesContainer = getContainer('aliases');
 
     const { resource: member } = await membersContainer.item(memberId, memberId).read<Member>();
     if (!member) {
@@ -46,10 +44,8 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
     // Fallback: name + aliases (covers legacy records the migration missed).
     if (players.length === 0) {
-      const { resources: aliasRows } = await aliasesContainer.items
-        .query({ query: 'SELECT * FROM c' })
-        .fetchAll();
-      const candidateNames = expandAliasNames(member.name, aliasRows as Alias[]);
+      const aliasRows = await scope.query<Alias>('aliases');
+      const candidateNames = expandAliasNames(member.name, aliasRows);
 
       const allPlayers = await scope.query<Player>('players');
       players = allPlayers.filter(

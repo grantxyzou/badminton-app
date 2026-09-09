@@ -65,14 +65,14 @@ describe('resolveIdentity', () => {
     seedMember('Mike', { id: 'm-mike' });
     seedAlias('Mike', 'Michael Chen');
 
-    const idy = await resolveIdentity({ name: 'mike' });
+    const idy = await resolveIdentity({ name: 'mike' }, 'bpm');
     expect(idy.memberId).toBe('m-mike');
     expect(idy.names.has('mike')).toBe(true);
     expect(idy.names.has('michael chen')).toBe(true);
   });
 
   it('resolves an unknown name to no member but keeps the name itself', async () => {
-    const idy = await resolveIdentity({ name: 'Ghost' });
+    const idy = await resolveIdentity({ name: 'Ghost' }, 'bpm');
     expect(idy.member).toBeNull();
     expect(idy.memberId).toBeNull();
     expect(idy.names).toEqual(new Set(['ghost']));

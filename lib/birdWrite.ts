@@ -1,4 +1,4 @@
-import { getContainer } from './cosmos';
+import type { GroupScope } from './groupScope';
 import {
   snapshotBirdUsage,
   snapshotPooledUsage,
@@ -26,8 +26,11 @@ export type ResolveBirdUsagesResult =
  *
  * A non-array input resolves to `[]` (the caller decides whether that means
  * "clear the array" or "leave untouched").
+ *
+ * Inventory is read through the caller's group scope: a batch id from another
+ * club's inventory resolves to "not found", never to that club's price.
  */
-export async function resolveBirdUsages(raw: unknown): Promise<ResolveBirdUsagesResult> {
+export async function resolveBirdUsages(raw: unknown, scope: GroupScope): Promise<ResolveBirdUsagesResult> {
   if (!Array.isArray(raw)) return { ok: true, usages: [] };
 
   // A pooled entry (`{ pooled: true, tubes }`) logs shuttles at the current
@@ -65,14 +68,15 @@ export async function resolveBirdUsages(raw: unknown): Promise<ResolveBirdUsages
 
   const pooled = wanted.filter(([id]) => id === POOLED_PURCHASE_ID);
   const perPurchase = wanted.filter(([id]) => id !== POOLED_PURCHASE_ID);
-  const birds = getContainer('birds');
   const usages: BirdUsage[] = [];
 
   // Per-purchase entries (legacy path): read each batch, snapshot at its price.
   if (perPurchase.length > 0) {
-    let reads;
+    let reads: Array<(BirdPurchase & { type?: string }) | undefined>;
     try {
-      reads = await Promise.all(perPurchase.map(([id]) => birds.item(id, id).read()));
+      reads = await Promise.all(
+        perPurchase.map(([id]) => scope.read<BirdPurchase & { type?: string }>('birds', id)),
+      );
     } catch {
       // A transient inventory read failure (throttle / network blip) must fail
       // LEGIBLY and retryably — not silently drop bird cost (legible-fail rule)
@@ -81,7 +85,7 @@ export async function resolveBirdUsages(raw: unknown): Promise<ResolveBirdUsages
       return { ok: false, status: 503, error: 'Could not read bird inventory. Please try again.' };
     }
     for (let i = 0; i < perPurchase.length; i++) {
-      const purchase = reads[i].resource;
+      const purchase = reads[i];
       // Reject unknown ids AND adjustment docs — an adjustment has no costPerTube,
       // so snapshotting one yields NaN cost (CLAUDE.md: never let adjustment docs
       // into bird cost math).
@@ -99,11 +103,10 @@ export async function resolveBirdUsages(raw: unknown): Promise<ResolveBirdUsages
     let price = pooledPrice;
     if (price === null) {
       try {
-        const { resources } = await birds.items
-          .query({ query: 'SELECT c.costPerTube, c.date, c.type FROM c' })
-          .fetchAll();
-        const purchases = (resources as Array<Pick<BirdPurchase, 'costPerTube' | 'date'> & { type?: string }>)
-          .filter((d) => d.type !== 'adjustment');
+        const resources = await scope.query<Pick<BirdPurchase, 'costPerTube' | 'date'> & { type?: string }>('birds', {
+          select: 'c.costPerTube, c.date, c.type',
+        });
+        const purchases = resources.filter((d) => d.type !== 'adjustment');
         price = currentPricePerTube(purchases);
       } catch {
         return { ok: false, status: 503, error: 'Could not read bird inventory. Please try again.' };

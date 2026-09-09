@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
     const activeSessionId = await getActiveSessionId(scope.groupId);
     const now = Date.now();
 
-    const identity = await resolveIdentity({ name, memberId });
+    const identity = await resolveIdentity({ name, memberId }, scope.groupId);
 
     const allSessions = await scope.query<Session>('sessions');
     const sessionById = new Map<string, Session>();

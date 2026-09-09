@@ -22,33 +22,16 @@ const RAW_ACCESS_ALLOWLIST = new Set([
 ]);
 
 /**
- * (file → containers) still read raw. Phase 1b empties this. Keyed per PAIR,
- * not per file: a file-level entry would let a swept file quietly add a new
- * raw read of a different container and stay green.
+ * (file → containers) still read raw. Keyed per PAIR, not per file: a
+ * file-level entry would let a swept file quietly add a new raw read of a
+ * different container and stay green.
+ *
+ * EMPTY since Phase 1b (2026-09-09). It stays as a type and a mechanism so
+ * that a future sweep of a newly GROUP-scoped container has somewhere to park
+ * its interim state — and so that the assertion below reads "no raw access at
+ * all" rather than being deleted and forgotten.
  */
-const MIGRATION_BACKLOG: Record<string, string[]> = {
-  'app/api/admin/slice0/route.ts': ['events'],
-  'app/api/aliases/route.ts': ['aliases'],
-  'app/api/birds/reconcile/route.ts': ['birds'],
-  'app/api/birds/route.ts': ['birds'],
-  'app/api/kudos/route.ts': ['kudos'],
-  'app/api/members/[id]/history/route.ts': ['aliases'],
-  'app/api/players/unpaid/route.ts': ['stringingJobs'],
-  'app/api/session/bird-usage/route.ts': ['birds'],
-  'app/api/stringing/jobs/[id]/accept/route.ts': ['stringingJobs'],
-  'app/api/stringing/jobs/[id]/route.ts': ['stringingJobs'],
-  'app/api/stringing/jobs/route.ts': ['stringingJobs'],
-  'app/api/stringing/pricing/route.ts': ['clubSettings'],
-  'app/api/stringing/requests/route.ts': ['stringingJobs'],
-  'app/api/stringing/shop/route.ts': ['clubSettings'],
-  'app/api/stringing/strings/route.ts': ['clubSettings'],
-  'lib/birdWrite.ts': ['birds'],
-  'lib/events.ts': ['events'],
-  'lib/playerIdentity.ts': ['aliases'],
-  'lib/stringingPricing.ts': ['clubSettings'],
-  'lib/stringingShop.ts': ['clubSettings'],
-  'lib/stringingStrings.ts': ['clubSettings'],
-};
+const MIGRATION_BACKLOG: Record<string, string[]> = {};
 
 /**
  * THE CANARY THAT STOPS A CONTAINER SLIPPING BETWEEN GROUPS UNCLASSIFIED.

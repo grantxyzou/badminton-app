@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { randomBytes } from 'crypto';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { normalizeBirdUsages, totalTubes, validPurchaseDate, validateTubeCount } from '@/lib/birdUsages';
-import type { Session } from '@/lib/types';
+import type { BirdPurchase, Session } from '@/lib/types';
+
+/** Either doc kind the birds container holds, before the `type` split. */
+type BirdDoc = Partial<BirdPurchase> & { id: string; type?: string; delta?: number };
 
 // A single purchase is a bulk buy — allow far more than a session's per-entry
 // cap (100), but still reject a fat-fingered 99999. A purchase must be a
@@ -21,25 +23,23 @@ export async function GET(req: NextRequest) {
   if (!isAdminAuthed(req)) return unauthorized();
 
   try {
-    const container = getContainer('birds');
-    const { resources } = await container.items
-      .query({ query: 'SELECT * FROM c ORDER BY c.date DESC' })
-      .fetchAll();
+    const scope = groupScope(resolveGroupId(req));
+    const resources = await scope.query<BirdDoc>('birds', { orderBy: 'c.date DESC' });
 
     // The birds container holds two doc kinds, discriminated by `type`:
     // purchases (no `type` or 'purchase') and reconciliation adjustments
     // ('adjustment'). Split them so purchase math never sees adjustment docs.
-    const purchases = resources.filter((d: { type?: string }) => d.type !== 'adjustment');
-    const adjustments = resources.filter((d: { type?: string }) => d.type === 'adjustment');
+    const purchases = resources.filter((d) => d.type !== 'adjustment');
+    const adjustments = resources.filter((d) => d.type === 'adjustment');
 
     // Compute current stock: total purchased + manual adjustments - total used
-    const totalPurchased = purchases.reduce((sum: number, p: { tubes: number }) => sum + p.tubes, 0);
-    const totalAdjustments = adjustments.reduce((sum: number, a: { delta?: number }) => sum + (a.delta ?? 0), 0);
+    const totalPurchased = purchases.reduce((sum, p) => sum + (p.tubes ?? 0), 0);
+    const totalAdjustments = adjustments.reduce((sum, a) => sum + (a.delta ?? 0), 0);
 
     // Pull datetime alongside the usage shapes so we can compute recent-window
     // stats (last 60 days). Burn rate consumers should use those, not
     // totalUsed / recentSessionCount, which mixes time scales.
-    const sessions = await groupScope(resolveGroupId(req)).query<Pick<Session, 'birdUsage' | 'birdUsages'> & { datetime?: string }>('sessions', {
+    const sessions = await scope.query<Pick<Session, 'birdUsage' | 'birdUsages'> & { datetime?: string }>('sessions', {
       select: 'c.birdUsage, c.birdUsages, c.datetime',
       where: 'IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)',
       includeLegacy: true, // stock counts every session's tubes, the legacy doc's included
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
     if (tubesError) return NextResponse.json({ error: tubesError }, { status: 400 });
     if (totalCost <= 0) return NextResponse.json({ error: 'Cost must be greater than 0' }, { status: 400 });
 
-    const purchase: Record<string, unknown> = {
+    const purchase: Record<string, unknown> & { id: string } = {
       id: randomBytes(12).toString('hex'),
       name,
       tubes,
@@ -161,8 +161,7 @@ export async function POST(req: NextRequest) {
       purchase.notes = body.notes.trim().slice(0, 500);
     }
 
-    const container = getContainer('birds');
-    const { resource } = await container.items.create(purchase);
+    const resource = await groupScope(resolveGroupId(req)).create('birds', purchase);
     return NextResponse.json(resource, { status: 201 });
   } catch (error) {
     console.error('POST birds error:', error);
@@ -207,8 +206,8 @@ export async function DELETE(req: NextRequest) {
       }, { status: 409 });
     }
 
-    const container = getContainer('birds');
-    await container.item(id, id).delete();
+    const removed = await groupScope(resolveGroupId(req)).remove('birds', id);
+    if (!removed) return NextResponse.json({ error: 'Purchase not found' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE birds error:', error);
@@ -226,13 +225,13 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'ID required' }, { status: 400 });
     }
 
-    const container = getContainer('birds');
-    const { resource: existing } = await container.item(id, id).read();
+    const scope = groupScope(resolveGroupId(req));
+    const existing = await scope.read<BirdPurchase>('birds', id);
     if (!existing) {
       return NextResponse.json({ error: 'Purchase not found' }, { status: 404 });
     }
 
-    const updated = { ...existing };
+    const updated: BirdPurchase = { ...existing };
 
     if (typeof body.name === 'string') {
       const name = body.name.trim().slice(0, 100);
@@ -272,7 +271,7 @@ export async function PATCH(req: NextRequest) {
         ? body.notes.trim().slice(0, 500) : undefined;
     }
 
-    const { resource } = await container.items.upsert(updated);
+    const resource = await scope.upsert('birds', updated);
     return NextResponse.json(resource);
   } catch (error) {
     console.error('PATCH birds error:', error);
