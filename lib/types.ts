@@ -514,7 +514,10 @@ export interface EngagementEvent {
   category?: 'racket' | 'string';
 }
 
-export type EngagementKind = 'rec_card_tap' | 'pick_served' | 'pick_added' | 'pick_tried' | 'pick_rated';
+/** One source of truth for the kinds is `lib/events.ts`; this union is
+ *  derived from its two lists so the type and the runtime allowlist cannot
+ *  drift apart. */
+export type EngagementKind = import('./events').ClientKind | import('./events').ServerKind;
 
 /**
  * A racket handed to a stringer.

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import { NextIntlClientProvider } from 'next-intl';
 import GearPickSheet from '../../components/stats/GearPickSheet';
 import { useGear, type UseGear } from '../../components/stats/useGear';
@@ -491,6 +492,46 @@ describe('GearPickSheet — alternatives and the feedback loop', () => {
     await waitFor(() => expect(beacons.filter((b) => b.kind === 'pick_tried')).toHaveLength(1));
     expect(await screen.findByText('Noted — thanks for trying it.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: "I've tried it" })).toBeNull();
+  });
+
+  it('a rating, a "tried", and a chosen alternative all reset when the pick underneath changes', async () => {
+    mockAll(gearDoc());
+    function Live() {
+      const gear: UseGear = useGear('Lin');
+      const [which, setWhich] = useState<'A' | 'B'>('A');
+      const pickB = { ...fitPick, item: { ...ITEM, id: 'rB', model: 'Racket B' }, alternatives: [fitPick.alternatives[0]] };
+      return (
+        <>
+          <button type="button" onClick={() => setWhich('B')}>swap pick</button>
+          <GearPickSheet open onClose={vi.fn()} category="racket" pick={which === 'A' ? fitPick : pickB} owned={false} gear={gear} />
+        </>
+      );
+    }
+    render(<NextIntlClientProvider locale="en" messages={enMessages}><Live /></NextIntlClientProvider>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Not for me' }));
+    expect(await screen.findByText('Thanks — noted.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Yonex Nanoflare 800 Pro' }));
+    await screen.findByText('Back to our pick');
+    fireEvent.click(screen.getByRole('button', { name: 'swap pick' }));
+    // Racket B: rateable again, and shown as the top pick, not as alternatives[1].
+    expect(await screen.findByRole('button', { name: 'Not for me' })).toBeTruthy();
+    expect(screen.getByText('Racket B')).toBeTruthy();
+    expect(screen.queryByText('Back to our pick')).toBeNull();
+  });
+
+  it('an alternative that differs by tier or brand alone gets a plain headline, not "… than our pick"', async () => {
+    mockAll(gearDoc());
+    const tierPick = { ...fitPick, alternatives: [
+      { item: ALT1, reasons: [], differsBy: [{ key: 'diff.tierUp' }], differsByText: ['a tier up'] },
+      { item: ALT2, reasons: [], differsBy: [{ key: 'diff.softer' }], differsByText: ['softer'] },
+    ] };
+    function H() { const gear: UseGear = useGear('Lin'); return <GearPickSheet open onClose={vi.fn()} category="racket" pick={tierPick} owned={false} gear={gear} />; }
+    render(<NextIntlClientProvider locale="en" messages={enMessages}><H /></NextIntlClientProvider>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Yonex Nanoflare 800 Pro' }));
+    expect(await screen.findByText('a tier up.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Yonex Astrox 99 Pro' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Yonex Auraspeed 90K' }));
+    expect(await screen.findByText('softer than our pick.')).toBeTruthy();
   });
 
   it('no rating row on a legacy pick — there is no engine version to rate', async () => {

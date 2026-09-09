@@ -166,9 +166,15 @@ state of its own except the one thing it exists to own (below).
   tier) triple with a rank-order fallback, each with a `differsBy` of at most
   two fragments. Order is score → distance → price → id: deterministic, never
   catalog order.
-- **Phase 3 (2026-09-09) — the sheet and the loop.** `GearPickRail` TRANSLATES
-  `reasonKeys` / `warningKeys` / `differsBy` in the member's locale and falls
-  back to the server's English strings only for the legacy engine.
+- **Phase 3 (2026-09-09) — the sheet and the loop.** `GearPickRail` stores
+  what the server sent (keys AND the legacy English strings) and TRANSLATES
+  `reasonKeys` / `warningKeys` / `differsBy` at RENDER (a `useMemo` view over
+  state), so a language toggle re-renders the reasons in place with no
+  refetch and the fetch effect does not depend on `t`. The club-tally line
+  keeps its reserved last slot on the engine path as a KEY
+  (`buildPickReasonKeys`, `reason.clubPlays`). Per-pick sheet state (a rating,
+  a "tried", a chosen alternative) resets when the PICK's identity changes,
+  not only on close — the pick is live under an open sheet.
   `GearPickSheet` shows the top pick and an "Or consider" list of the other
   candidates with their "differs by" line; tapping one SWAPS the sheet's
   subject (name, price, reasons, the Add action all follow; warnings and the
@@ -180,7 +186,16 @@ state of its own except the one thing it exists to own (below).
   owns). **`pick_served` is written SERVER-SIDE** by `/api/recommend` when a
   fit pick is returned to the member it is about — never on admin view, and
   `POST /api/events` refuses it from a client — so the feedback read has an
-  honest denominator. `GET /api/admin/slice0` reports `picks` split by
+  honest denominator. **`lib/events.ts` is the ONE writer** for the `events`
+  container and the one home of the kind lists (`CLIENT_KINDS`,
+  `SERVER_KINDS`, `PICK_KINDS`) and the per-kind payload schema; the beacon
+  route, the client type and the Slice-0 reader all derive from it, and the
+  recommend route's `pick_served` runs alongside the club read, never on the
+  response's critical path. `lib/racketFitInput.ts` is the ONE builder of the
+  engine's input, shared by `/api/recommend` and `/api/admin/fit-preview`, so
+  the golden set is rated against exactly what members are served. `served`
+  is one row per REQUEST (a format tap re-serves); the plan's gate reads
+  `picks.engagedMembers` — added, tried or rated — never served. `GET /api/admin/slice0` reports `picks` split by
   `engineVersion`; `GET /api/admin/fit-preview` answers one member's top three
   (`?memberId=`) or prints anonymised golden-set skeletons, which
   `scripts/dump-fit-cases.mjs` fetches for the owner and the stringer to rate.

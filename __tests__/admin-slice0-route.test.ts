@@ -186,10 +186,14 @@ describe('GET /api/admin/slice0', () => {
       { id: 'p5', memberId: 'a', name: 'a', kind: 'pick_rated', at, catalogId: 'r1', engineVersion: 'fit-1', rating: 'up' },
       { id: 'p6', memberId: 'b', name: 'b', kind: 'pick_rated', at, catalogId: 'r2', engineVersion: 'fit-1', rating: 'down' },
       { id: 'p7', memberId: 'b', name: 'b', kind: 'pick_tried', at, catalogId: 'r2', engineVersion: 'fit-1' },
+      { id: 'p8', memberId: 'c', name: 'c', kind: 'pick_served', at, catalogId: 'r1', engineVersion: 'fit-1' },
     );
     const body = await (await GET(makeGetRequest(`${URL_BASE}?since=2026-09-01`, true))).json();
-    expect(body.picks.engineVersions['fit-1']).toEqual({ served: 3, servedMembers: 2, added: 1, tried: 1, ratedUp: 1, ratedDown: 1 });
-    expect(body.picks.byCatalogId).toEqual({ r1: { added: 1, up: 1, down: 0 }, r2: { added: 0, up: 0, down: 1 } });
+    expect(body.picks.engineVersions['fit-1']).toEqual({ served: 4, servedMembers: 3, added: 1, tried: 1, ratedUp: 1, ratedDown: 1 });
+    expect(body.picks.byCatalogId).toEqual({ r1: { added: 1, tried: 0, up: 1, down: 0 }, r2: { added: 0, tried: 1, up: 0, down: 1 } });
+    // Served is the denominator, never engagement: two members were served,
+    // and both acted — but a third who was only served would not count.
+    expect(body.picks.engagedMembers).toBe(2);
   });
 });
 

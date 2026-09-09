@@ -141,6 +141,28 @@ describe('GET /api/recommend — the fit engine', () => {
     expect((getStore().events ?? []).filter((e) => (e as { kind?: string }).kind === 'pick_served')).toHaveLength(1);
   });
 
+  it('keeps the club line as the LAST reason key on the engine path, capped at three', async () => {
+    // Three other members own the racket the engine will pick for Lin — the
+    // tally is category-scoped and needs CLUB_GEAR_MIN_COHORT (3) owners.
+    await seedRatings(THREE_RATINGS);
+    const first = await (await ask()).json();
+    const pickedId = first.item.id;
+    const pickedLabel = `${first.item.brand} ${first.item.model}`;
+    for (const who of ['a', 'b', 'c']) {
+      await getContainer('playerGear').items.upsert({
+        id: `gear-${who}`, memberId: who, updatedAt: '2026-09-01',
+        items: [{ id: 'i', catalogId: pickedId, category: 'racket', label: pickedLabel }],
+      });
+    }
+    const body = await (await ask()).json();
+    expect(body.item.id).toBe(pickedId);
+    const keys = body.reasonKeys.map((k: { key: string }) => k.key);
+    expect(keys.length).toBeLessThanOrEqual(3);
+    expect(keys[keys.length - 1]).toBe('reason.clubPlays');
+    expect(body.reasonKeys[keys.length - 1].params).toEqual({ count: 3 });
+    expect(body.reasons[keys.length - 1]).toBe('3 people in the club already play it.');
+  });
+
   it('with the fit flag OFF the racket branch is the old shape — no fitState, no alternatives', async () => {
     process.env.NEXT_PUBLIC_FLAG_RACKET_FIT = 'false';
     await seedRatings(THREE_RATINGS);

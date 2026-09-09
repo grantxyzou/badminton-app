@@ -6,7 +6,7 @@ equipment purchases"; Value-Hub Track 2 (Equipment). ROADMAP §4 still says trac
 `lib/flags.ts` records that the fan-out was made by shipping, not by reading the
 gate. This file says so rather than pretending the readout happened.
 **Status:** in-flight — Phase 0 shipped 2026-09-08 (#335); Phase 1 shipped 2026-09-09 (#337, #344); Phase 2 (the engine, behind `NEXT_PUBLIC_FLAG_RACKET_FIT`) in review (#345); Phase 3 (alternatives, feedback beacons, admin reads) in review
-**Review on:** 2026-10-19 — ≥5 golden cases rated, and ≥2 members with any `pick_*` event? If not, drop the fit questionnaire.
+**Review on:** 2026-10-19 — ≥5 golden cases rated, and `picks.engagedMembers` ≥ 2 in `GET /api/admin/slice0` (members who ADDED, TRIED or RATED a pick — `pick_served` is the denominator, not engagement)? If not, drop the fit questionnaire.
 
 ## Problem
 
@@ -45,7 +45,9 @@ Read on the date above, via `GET /api/admin/slice0`'s `picks` block and
 
 - Fewer than **5** expert-rated golden cases (owner + club stringer), OR
 - fewer than **2** members who saw a pick recorded any of `pick_added`,
-  `pick_tried`, `pick_rated`
+  `pick_tried`, `pick_rated` (`picks.engagedMembers`; `pick_served` is written
+  on every request that returns a pick and is the denominator, never the
+  numerator)
 
 → remove the fit questionnaire (`GearFitSheet`, the `fit*` fields stay as
 harmless optional data) and revert the engine to anchor-only: current racket +

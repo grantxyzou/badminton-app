@@ -1,9 +1,10 @@
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
-import type { EngagementKind as ServerKind } from './types';
+import type { ClientKind } from './events';
 
-/** The kinds a CLIENT may send — `pick_served` is server-written only. */
-export type EngagementKind = Exclude<ServerKind, 'pick_served'>;
+/** The kinds a CLIENT may send — server-only kinds (`pick_served`) are not in
+ *  this type, and `POST /api/events` refuses them. */
+export type EngagementKind = ClientKind;
 
 /** What a `pick_*` beacon carries. Validated and bounded server-side. */
 export interface EngagementMeta {

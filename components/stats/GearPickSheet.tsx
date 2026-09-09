@@ -136,9 +136,22 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   // into `alternatives`. Local, reset on close like the disclosures — the
   // next card's sheet must open on ITS top pick.
   const [altIndex, setAltIndex] = useState<number | null>(null);
-  // The feedback loop, per open: a rating and a "tried it" are each said once.
+  // The feedback loop, per PICK: a rating and a "tried it" are each said once
+  // about one racket. The pick is LIVE (a format tap in this sheet replaces
+  // it), so these reset when the pick's identity changes, not only on close —
+  // or a rating given to racket A would sit under racket B, and B could never
+  // be rated. `altIndex` resets for the same reason: the new response's
+  // alternatives are a different list.
   const [rated, setRated] = useState<'up' | 'down' | null>(null);
   const [tried, setTried] = useState(false);
+  const pickId = pick?.item.id ?? null;
+  const [seenPickId, setSeenPickId] = useState<string | null>(pickId);
+  if (pickId !== seenPickId) {
+    setSeenPickId(pickId);
+    setAltIndex(null);
+    setRated(null);
+    setTried(false);
+  }
 
   // The rail keeps this sheet MOUNTED for the whole register's life (it is the
   // one sheet for every card), so a refusal from one visit would still be on
@@ -178,8 +191,15 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   // becomes the headline ("softer · $41 less than our pick") — a name and a
   // price with nothing under them is a row, not an explanation.
   const altDiff = shownAlt ? (shownAlt.differsByText ?? []).join(t('diffJoin')) : '';
+  // "{diff} than our pick" only reads as a sentence for the comparative
+  // fragments (stiffer, lighter, $40 less…); a tier step or "same spec,
+  // other brand" stands on its own.
+  const comparative = new Set(['diff.stiffer', 'diff.softer', 'diff.headHeavier', 'diff.headLighter', 'diff.lighter', 'diff.heavier', 'diff.cheaper', 'diff.pricier']);
+  const altHeadline = !altDiff ? null
+    : (shownAlt?.differsBy ?? []).every((d) => comparative.has(d.key)) ? t('pickSheetAltHeadline', { diff: altDiff })
+    : `${altDiff}.`;
   const reasons = shownAlt
-    ? (shownAlt.reasons.length > 0 ? shownAlt.reasons : (altDiff ? [t('pickSheetAltHeadline', { diff: altDiff })] : []))
+    ? (shownAlt.reasons.length > 0 ? shownAlt.reasons : (altHeadline ? [altHeadline] : []))
     : (pick?.reasons ?? []);
   const headline = reasons[0] ?? null;
   const rest = reasons.slice(1);

@@ -12,12 +12,12 @@
  *   ADMIN_COOKIE='<admin_session value>' BASE_URL='https://bpm.grantzou.com/bpm' node scripts/dump-fit-cases.mjs
  *   ADMIN_COOKIE='<from devtools>'        BASE_URL='http://localhost:3000/bpm'   node scripts/dump-fit-cases.mjs
  *
- * Add --score to also print the engine's current top three for each member
- * (what you are rating against). Exit 2 on auth or request failure.
+ * To see what the engine currently says for one member (what you are rating
+ * against), ask the same endpoint with `?memberId=<id>`. Exit 2 on auth or
+ * request failure.
  */
 const baseUrl = process.env.BASE_URL?.trim();
 const adminCookie = process.env.ADMIN_COOKIE?.replace(/\s+/g, '');
-const score = process.argv.includes('--score');
 if (!baseUrl || !adminCookie) {
   console.error('BASE_URL and ADMIN_COOKIE env vars are required (see the header of this file).');
   process.exit(2);
@@ -29,11 +29,4 @@ if (!res.ok) {
   process.exit(2);
 }
 const skeleton = await res.json();
-if (score) {
-  for (const c of skeleton.cases) {
-    // The skeleton carries no memberId on purpose; --score re-asks per case by
-    // re-posting nothing — it uses the same order the server enumerated.
-    c._currentTop3 = '(run with a memberId: GET /api/admin/fit-preview?memberId=<id>)';
-  }
-}
 console.log(JSON.stringify(skeleton, null, 2));
