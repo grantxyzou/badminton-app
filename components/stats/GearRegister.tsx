@@ -67,7 +67,7 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
           whole job is to say "here is a pick, and whether you already have it",
           which only means something once you have seen your own kit. */}
       <YourKitCard activeName={activeName} gear={gear} onOpenFit={openFitSheet} />
-      <GearPickRail activeName={activeName} gear={gear} onPairTension={setPairTension} onOpenFit={openFitSheet} />
+      <GearPickRail activeName={activeName} gear={gear} onPairTension={setPairTension} onOpenFit={openFitSheet} holdFitRefetch={openFit} />
       <StringTensionCard
         activeName={activeName}
         gear={gear}

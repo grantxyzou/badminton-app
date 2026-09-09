@@ -91,6 +91,20 @@ export interface UseGear {
 }
 
 /**
+ * The racket budget band's own words, for a summary line. One owner: the pick
+ * sheet and the fit sheet both read it, so they cannot disagree about the
+ * same stored `budgetMaxCad`. An unrecognised band falls back to the figure —
+ * never to "no limit", which would assert a cap the member did not set.
+ */
+export function budgetWords(t: (key: string) => string, band: number | null): string {
+  if (band === null) return t('budgetLower_none');
+  if (band === 100) return t('budgetLower_100');
+  if (band === 200) return t('budgetLower_200');
+  if (band === 350) return t('budgetLower_350');
+  return `$${band}`;
+}
+
+/**
  * Single owner of one player's gear doc.
  *
  * Before this, RacketRow held the read and GearSheet held the writes, and each

@@ -7,7 +7,7 @@ import StatusBadge from '@/components/primitives/StatusBadge';
 import { isFlagOn } from '@/lib/flags';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '../BottomSheet';
 import type { GearPick } from './GearPickCard';
-import type { UseGear } from './useGear';
+import { budgetWords, type UseGear } from './useGear';
 import type { CatalogItem, EquipmentCategory } from '@/lib/types';
 
 export interface GearPickSheetProps {
@@ -239,16 +239,6 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
 
   const showPrefs = recommenderOn && category === 'racket';
 
-  /** The band's own words, so the summary line reads as a sentence rather than
-   *  as a number. An unrecognised band falls back to the figure itself — never
-   *  to "no limit", which would assert a cap the member did not set. */
-  function budgetWords(band: number | null): string {
-    if (band === null) return t('budgetLower_none');
-    if (band === 100) return t('budgetLower_100');
-    if (band === 200) return t('budgetLower_200');
-    if (band === 350) return t('budgetLower_350');
-    return `$${band}`;
-  }
 
   /* The two segment controls, revealed by the Change link rather than shown
      standing. Extracted so the error branch below can render them too: they
@@ -330,12 +320,12 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
           {fitGoal
             ? t('pickSheetPrefSummaryFit', {
                 format: t(`formatLower_${playFormat}`),
-                budget: budgetWords(budgetMaxCad as number | null),
+                budget: budgetWords(t, budgetMaxCad as number | null),
                 goal: t(`fitGoalLower_${fitGoal}`),
               })
             : t('pickSheetPrefSummary', {
                 format: t(`formatLower_${playFormat}`),
-                budget: budgetWords(budgetMaxCad as number | null),
+                budget: budgetWords(t, budgetMaxCad as number | null),
               })}
         </span>
       )}

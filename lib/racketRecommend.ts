@@ -13,19 +13,11 @@ const FLEX_DEMAND: Record<string, number> = {
   Flexible: 1, Medium: 2, 'Medium-Stiff': 3, Stiff: 4, 'Extra Stiff': 5,
 };
 
-/**
- * Vocabulary lookups are a case- and separator-tolerant BACKSTOP ONLY. The
- * catalog is the fix: 11 pre-v2 rows carried `"head-heavy"` / `"extra-stiff"`
- * where the vocabulary is `Head-heavy` / `Extra Stiff`, so every comparison
- * below silently missed and those frames scored as though they were something
- * else (see the 2026-08-21 normalization of scripts/data/equipment-catalog.json).
- * Normalizing here as well means the next hand-authored row degrades to a
- * SCORE rather than to a wrong one — but it does not make a malformed row
- * correct, and `isScorable` still rejects a row that omits a field outright.
- */
-function canon(v: unknown): string {
-  return String(v ?? '').trim().toLowerCase().replace(/[\s_]+/g, '-');
-}
+// `canon`, `isScorable`, the derived-profile helpers and `maxFlexDemand`
+// moved to lib/racketFit.ts (Phase 2); re-exported so every existing import
+// keeps working until this file retires in Phase 4.
+export { canon, isScorable, overall, skillLevel, technical, physical, mental, maxFlexDemand } from './racketFit';
+import { canon, isScorable, skillLevel, technical, maxFlexDemand } from './racketFit';
 
 function flexDemand(raw: unknown): number | undefined {
   const key = canon(raw);
@@ -47,56 +39,13 @@ const WEIGHTS = {
   skillTier: 1.1, weight: 1.0, budget: 0.9,
 };
 
-/** Fields the scorers read. A row missing any of them cannot be scored
- *  honestly, so it is skipped rather than defaulted (spec D4).
- *
- *  Exported so the catalog data test can assert that no seeded racket is
- *  silently unscorable — the failure mode here is invisible at runtime (a
- *  skipped row looks exactly like a row that scored badly), and it has now
- *  cost the catalog twice: 50 of 71 rows in production once, and 11 rows in
- *  the seed file itself until 2026-08-21. */
-export function isScorable(item: CatalogItem): boolean {
-  const a = item.attributes ?? {};
-  return typeof a.balance === 'string' && typeof a.flex === 'string' && typeof a.tier === 'string';
-}
-
 interface ScoreResult {
   score: number;
   reasons: string[];
   warnings: string[];
 }
 
-// ---------------------------------------------------------------------------
-// Derived profile values (mirrors the Python's PlayerProfile @property methods)
-// ---------------------------------------------------------------------------
-
-function technical(p: PlayerProfile): number {
-  return (p.serves + p.net_play + p.clears + p.drops + p.drives + p.smashes + p.grip) / 7;
-}
-
-function physical(p: PlayerProfile): number {
-  return (p.footwork + p.court_coverage + p.stamina) / 3;
-}
-
-function mental(p: PlayerProfile): number {
-  return (p.game_reading + p.consistency + p.rules + p.mindset) / 4;
-}
-
-/** Exported for `lib/stringPair.ts` (spec V2): the string engine reuses this
- *  fourteen-skill average rather than deriving a six-dimension one, so the two
- *  engines cannot disagree about how good a player is. */
-export function overall(p: PlayerProfile): number {
-  return (technical(p) + physical(p) + mental(p)) / 3;
-}
-
-/** Exported for `lib/stringPair.ts` (spec V2) — one definition of who counts
- *  as Advanced, shared by the racket tier gate and the string skill gate. */
-export function skillLevel(p: PlayerProfile): 'Beginner' | 'Intermediate' | 'Advanced' {
-  const o = overall(p);
-  if (o < 2.5) return 'Beginner';
-  if (o < 3.75) return 'Intermediate';
-  return 'Advanced';
-}
+// Derived profile values live in lib/racketFit.ts now.
 
 function powerBias(p: PlayerProfile): number {
   const powerSide = (p.smashes + p.clears) / 2;
@@ -107,15 +56,6 @@ function powerBias(p: PlayerProfile): number {
 // ---------------------------------------------------------------------------
 // Scorers
 // ---------------------------------------------------------------------------
-
-// Consistency + grip technique determine how much stiffness a player can use.
-function maxFlexDemand(p: PlayerProfile): number {
-  const technique = (p.consistency + p.grip + p.smashes) / 3;
-  if (technique <= 2.0) return 2; // Medium at most
-  if (technique <= 3.0) return 3; // Medium-Stiff at most
-  if (technique <= 4.0) return 4; // Stiff at most
-  return 5; // anything
-}
 
 function scoreFlex(item: CatalogItem, p: PlayerProfile): ScoreResult {
   const flex = String(item.attributes!.flex);

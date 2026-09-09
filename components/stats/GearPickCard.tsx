@@ -35,9 +35,20 @@ export interface GearPick {
 
 export type GearPickCardStatus = 'loading' | 'ready' | 'error' | 'parked';
 
+/** Why a category parked. `no_engine` is a property of the app (shoes,
+ *  shuttles); the rest depend on THIS member's data and can change. */
+export type ParkReason = 'no_engine' | 'no_catalog' | 'needsCheckIn' | 'needsFit';
+
 export interface GearPickCardProps {
   category: EquipmentCategory;
   pick: GearPick | null;
+  /** Set when `status` is parked. Picks the body line — a racket parked on an
+   *  empty catalog must not be told to do a check-in, and one parked on
+   *  `needsFit` gets a door to the questionnaire. */
+  parkReason?: ParkReason | null;
+  /** Opens the fit questionnaire. A racket card parked on `needsFit` becomes
+   *  a tappable door to it — the one state where a parked card acts. */
+  onOpenFit?: () => void;
   /** True when `pick.item` is already in the member's kit. Drives the
    *  IN YOUR KIT flip — the bug this redesign exists to fix was recommending
    *  back the racket the member already owns. */
@@ -139,7 +150,7 @@ function formatSpec(item: CatalogItem): string | null {
   return values.length > 0 ? values.join(' · ') : null;
 }
 
-export default function GearPickCard({ category, pick, owned, status, onOpen }: GearPickCardProps) {
+export default function GearPickCard({ category, pick, owned, status, onOpen, parkReason, onOpenFit }: GearPickCardProps) {
   const t = useTranslations('stats.gear');
   const meta = META[category];
 
@@ -165,8 +176,18 @@ export default function GearPickCard({ category, pick, owned, status, onOpen }: 
   // the honest move is the same card that names what the category will do,
   // never an empty box.
   if (status === 'parked' || !pick) {
+    // The body line follows the REASON, not the category alone: with the fit
+    // engine on, a racket parks on `needsFit` (answer the questions) or on an
+    // empty catalog — telling either one to "do a check-in" is a lie.
+    const bodyKey =
+      parkReason === 'needsFit' ? 'railRacketFit'
+      : parkReason === 'no_catalog' ? (category === 'string' ? 'railStringsNoFrame' : 'railNoCatalog')
+      : (meta.soonKey ?? 'railComingSoon');
+    const isFitDoor = parkReason === 'needsFit' && !!onOpenFit;
+    const Shell = isFitDoor ? 'button' : 'div';
     return (
-      <div
+      <Shell
+        {...(isFitDoor ? { type: 'button' as const, onClick: onOpenFit, 'aria-label': `${t(meta.labelKey)} — ${t('railTapToFit')}` } : {})}
         className="glass-card p-4"
         style={{
           width: CARD_WIDTH,
@@ -174,7 +195,9 @@ export default function GearPickCard({ category, pick, owned, status, onOpen }: 
           display: 'flex',
           flexDirection: 'column',
           gap: 'var(--space-2)',
-          opacity: 0.72,
+          opacity: isFitDoor ? 1 : 0.72,
+          textAlign: 'left',
+          cursor: isFitDoor ? 'pointer' : 'default',
         }}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minHeight: 'var(--card-header-row-h)' }}>
@@ -197,9 +220,15 @@ export default function GearPickCard({ category, pick, owned, status, onOpen }: 
             one here double-spaced this card's first body line against the
             RACKET card sitting beside it in the same rail. */}
         <span className="fs-base" style={{ lineHeight: 'var(--lh-normal)', color: 'var(--text-secondary)' }}>
-          {t(meta.soonKey ?? 'railComingSoon')}
+          {t(bodyKey)}
         </span>
-      </div>
+        {isFitDoor && (
+          <span className="fs-sm" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)', marginTop: 'auto' }}>
+            {t('railTapToFit')}
+            <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-sm)' }}>chevron_right</span>
+          </span>
+        )}
+      </Shell>
     );
   }
 
