@@ -228,10 +228,24 @@ export interface GroupScope {
   readonly groupId: string;
   query<T = Record<string, unknown>>(container: GroupContainer, q?: GroupQuery): Promise<T[]>;
   count(container: GroupContainer, where?: string, params?: SqlParameter[]): Promise<number>;
-  /** Point read. `pkValue` is required unless the registry says the key is `/id`. */
+  /**
+   * Point read. `pkValue` is required unless the registry says the key is `/id`.
+   * A doc of another group (or under another partition key) reads as absent,
+   * SILENTLY: a foreign id is a legitimate 404 — a stale tab after a group
+   * switch, a guessed id — not a leak. The `[group-leak]` sentinel is reserved
+   * for a QUERY returning a row its clause should have excluded.
+   */
   read<T extends Doc = Doc>(container: GroupContainer, id: string, pkValue?: string): Promise<T | undefined>;
   create<T extends Doc>(container: GroupContainer, doc: T): Promise<T>;
   upsert<T extends Doc>(container: GroupContainer, doc: T): Promise<T>;
+  /**
+   * Read-verify, then replace. Resolves `undefined` — and writes nothing — when
+   * the doc is gone or belongs to another group. Use this for a
+   * read-modify-write: `upsert` would RESURRECT a doc deleted between the read
+   * and the write (a stringing job archived and deleted from one phone while a
+   * status tap lands from another).
+   */
+  replace<T extends Doc>(container: GroupContainer, doc: T, pkValue?: string): Promise<T | undefined>;
   /** Read-verify, then delete. A doc of another group is left alone. */
   remove(container: GroupContainer, id: string, pkValue?: string): Promise<boolean>;
 }
@@ -282,16 +296,12 @@ export function groupScope(groupId: string): GroupScope {
       if (!resource) return undefined;
       // Cosmos would 404 a point read under the wrong partition key; the mock
       // finds by id alone. Checking the key FIELD keeps the accessor exactly
-      // as strict as production on every /sessionId-keyed read.
-      const field = pkFieldOf(container);
-      if ((resource as Record<string, unknown>)[field] !== pk) {
-        // A constant first argument: `id` and `pk` come from the request, and
-        // console treats its first argument as a format string (CodeQL
-        // js/tainted-format-string).
-        console.error('[group-leak] point read found a doc keyed elsewhere', { container, id, field, pk });
-        return undefined;
-      }
-      return keep<T>(container, [resource])[0];
+      // as strict as production on every /sessionId-keyed read. Both misses
+      // are silent (see the interface): a point read cannot leak, it can only
+      // be asked for something that isn't this group's.
+      if ((resource as Record<string, unknown>)[pkFieldOf(container)] !== pk) return undefined;
+      if (!matchesGroup(resource as { groupId?: unknown }, groupId, tolerate)) return undefined;
+      return resource as T;
     },
 
     async create<T extends Doc>(container: GroupContainer, doc: T): Promise<T> {
@@ -301,6 +311,16 @@ export function groupScope(groupId: string): GroupScope {
 
     async upsert<T extends Doc>(container: GroupContainer, doc: T): Promise<T> {
       const { resource } = await getContainer(container).items.upsert({ ...doc, groupId });
+      return (resource ?? { ...doc, groupId }) as T;
+    },
+
+    async replace<T extends Doc>(container: GroupContainer, doc: T, pkValue?: string): Promise<T | undefined> {
+      const pk = pkValueFor(container, doc.id, pkValue);
+      const existing = await scope.read(container, doc.id, pk);
+      if (!existing) return undefined;
+      // The mock's `replace` pushes on a miss; the verify above is what makes
+      // this honest there too. Cosmos itself 404s a missing replace.
+      const { resource } = await getContainer(container).item(doc.id, pk).replace({ ...doc, groupId });
       return (resource ?? { ...doc, groupId }) as T;
     },
 

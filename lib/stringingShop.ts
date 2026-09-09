@@ -6,9 +6,14 @@
  * card decides whether to offer the button from the same value, but a client
  * flag protects nothing — anyone can POST directly.
  */
-import { getContainer, ensureContainer } from './cosmos';
+import { ensureContainer } from './cosmos';
+import { groupDocId, groupScope } from './groupScope';
 
 export const SHOP_DOC_ID = 'stringing';
+/** One sign per club: `'stringing'` for BPM, `'<groupId>:stringing'` otherwise. */
+export function shopDocId(groupId: string): string {
+  return groupDocId(groupId, SHOP_DOC_ID);
+}
 
 export interface ShopDoc {
   id: string;
@@ -37,12 +42,10 @@ export function ensureClubSettings(): Promise<void> {
  * (safe). Collapsing the two into a boolean would force one of those to be
  * wrong.
  */
-export async function readShopOpen(): Promise<boolean | null> {
+export async function readShopOpen(groupId: string): Promise<boolean | null> {
   try {
     await ensureClubSettings();
-    const { resource } = await getContainer('clubSettings')
-      .item(SHOP_DOC_ID, SHOP_DOC_ID)
-      .read<ShopDoc>();
+    const resource = await groupScope(groupId).read<ShopDoc>('clubSettings', shopDocId(groupId));
     // A missing document is a real answer: nobody has opened the shop, so it
     // is closed. Only a THROWN read is unknown.
     return resource?.open === true;

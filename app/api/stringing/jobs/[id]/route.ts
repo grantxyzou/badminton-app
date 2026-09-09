@@ -15,6 +15,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { notifyPlayerOfStage, notifyPlayerOfPendingEdit } from '@/lib/stringingNotifyDispatch';
 import { getContainer } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -119,8 +121,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 
   try {
-    const container = getContainer('stringingJobs');
-    const { resource: job } = await container.item(id, memberId).read<StringingJob>();
+    const scope = groupScope(resolveGroupId(req));
+    const job = await scope.read<StringingJob>('stringingJobs', id, memberId);
     if (!job) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
@@ -320,7 +322,13 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       }
     }
 
-    await container.item(id, memberId).replace(next);
+    // `replace`, not `upsert`: a job archived and DELETED from another phone
+    // between the read above and this write must stay deleted, not come back
+    // with a new status and its price intact.
+    const written = await scope.replace('stringingJobs', next, memberId);
+    if (!written) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
 
     /* THE NOTIFICATION SEAM'S ONLY CALLER.
        `lib/stringingNotify.ts` and its adapter shipped with nothing on either
@@ -402,8 +410,8 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
   }
 
   try {
-    const container = getContainer('stringingJobs');
-    const { resource: job } = await container.item(id, memberId).read<StringingJob>();
+    const scope = groupScope(resolveGroupId(req));
+    const job = await scope.read<StringingJob>('stringingJobs', id, memberId);
     if (!job) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
@@ -426,7 +434,8 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
       return NextResponse.json({ error: 'not_archived' }, { status: 409 });
     }
 
-    await container.item(id, memberId).delete();
+    const removed = await scope.remove('stringingJobs', id, memberId);
+    if (!removed) return NextResponse.json({ error: 'not_found' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error(`DELETE /api/stringing/jobs/${id} failed:`, err);

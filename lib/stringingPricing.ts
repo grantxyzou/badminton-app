@@ -16,10 +16,14 @@
  * Stored in `clubSettings` beside the shop sign and the string list, for the
  * same reason: club-wide rather than per-admin, and readable by a player.
  */
-import { getContainer } from './cosmos';
+import { groupDocId, groupScope } from './groupScope';
 import { ensureClubSettings } from './stringingShop';
 
 export const PRICING_DOC_ID = 'stringing-pricing';
+/** One rate card per club: bare for BPM, `'<groupId>:stringing-pricing'` otherwise. */
+export function pricingDocId(groupId: string): string {
+  return groupDocId(groupId, PRICING_DOC_ID);
+}
 export const MAX_SERVICES = 12;
 export const MAX_LABEL_LEN = 60;
 /** $1000. A rate card, not an invoice — anything above this is a typo. */
@@ -40,12 +44,10 @@ export interface PricingDoc {
 }
 
 /** The rate card, or `null` if it could not be read. `[]` means none posted. */
-export async function readPricing(): Promise<ServicePrice[] | null> {
+export async function readPricing(groupId: string): Promise<ServicePrice[] | null> {
   try {
     await ensureClubSettings();
-    const { resource } = await getContainer('clubSettings')
-      .item(PRICING_DOC_ID, PRICING_DOC_ID)
-      .read<PricingDoc>();
+    const resource = await groupScope(groupId).read<PricingDoc>('clubSettings', pricingDocId(groupId));
     if (!resource) return [];
     return Array.isArray(resource.services) ? resource.services : [];
   } catch (err) {

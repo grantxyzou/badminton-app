@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import * as cosmos from '@/lib/cosmos';
-import { resolveBirdUsages } from '@/lib/birdWrite';
+import { resolveBirdUsages as resolveRaw } from '@/lib/birdWrite';
+import { groupScope } from '@/lib/groupScope';
+
+// Every read goes through the BPM scope; the stubs below are what the
+// accessor finds under `getContainer('birds')`.
+const resolveBirdUsages = (raw: unknown) => resolveRaw(raw, groupScope('bpm'));
 
 // A minimal `birds` container stub: resolveBirdUsages only ever calls
 // `.item(id, id).read()`, so that's all we implement.

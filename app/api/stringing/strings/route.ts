@@ -8,7 +8,8 @@
  * author.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -16,7 +17,7 @@ import { ensureClubSettings } from '@/lib/stringingShop';
 import {
   readOfferedStrings,
   normaliseOfferedStrings,
-  STRINGS_DOC_ID,
+  stringsDocId,
   type OfferedStringsDoc,
 } from '@/lib/stringingStrings';
 
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
     // custom"; a throttled read must not be allowed to say that confidently.
     return NextResponse.json({ strings: null });
   }
-  return NextResponse.json({ strings: await readOfferedStrings() });
+  return NextResponse.json({ strings: await readOfferedStrings(resolveGroupId(req)) });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -58,8 +59,9 @@ export async function PATCH(req: NextRequest) {
 
   try {
     await ensureClubSettings();
+    const groupId = resolveGroupId(req);
     const doc: OfferedStringsDoc = {
-      id: STRINGS_DOC_ID,
+      id: stringsDocId(groupId),
       strings,
       updatedAt: new Date().toISOString(),
       updatedBy: admin.memberId,
@@ -67,7 +69,7 @@ export async function PATCH(req: NextRequest) {
     // Upsert, like the shop sign: the document is one list, so there is nothing
     // to merge and nothing a concurrent write could clobber except the list
     // itself — which is what the caller means to replace.
-    await getContainer('clubSettings').items.upsert(doc);
+    await groupScope(groupId).upsert('clubSettings', doc);
     return NextResponse.json({ strings: doc.strings });
   } catch (err) {
     console.error('PATCH /api/stringing/strings failed:', err);

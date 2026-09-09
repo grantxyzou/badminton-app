@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos';
+import { ensureContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
@@ -76,7 +76,6 @@ export async function POST(req: NextRequest) {
     }
 
     const recipient = await resolveActiveSubject(recipientName);
-    const container = getContainer('kudos');
     const createdAt = new Date().toISOString();
 
     /* ONE OF EACH TAG PER (rater, recipient, ISO WEEK).
@@ -85,20 +84,20 @@ export async function POST(req: NextRequest) {
        whichever session happens to be active", so advancing reset it. A week
        is the club's natural cadence and cannot be reset by an admin action.
 
-       The mock store ignores the WHERE (it filters by PARAMETER NAME, not
-       SQL), so the keys are JS-filtered for mock/real parity. */
+       The mock store filters by PARAMETER NAME, not SQL — `@recipientMemberId`
+       and `@raterMemberId` are names it knows — and the keys are JS-filtered
+       for mock/real parity either way. */
     const week = isoWeekKey(createdAt);
-    const { resources: existing } = await container.items
-      .query({
-        query: 'SELECT c.recipientMemberId, c.raterMemberId, c.tag, c.createdAt FROM c WHERE c.recipientMemberId = @rid AND c.raterMemberId = @raterId AND c.tag = @tag',
-        parameters: [
-          { name: '@rid', value: recipient.memberId },
-          { name: '@raterId', value: rater.memberId },
-          { name: '@tag', value: body.tag },
-        ],
-      })
-      .fetchAll();
-    const dupe = (existing as { recipientMemberId?: string; raterMemberId?: string; tag?: string; createdAt?: string }[])
+    const existing = await scope.query<{ recipientMemberId?: string; raterMemberId?: string; tag?: string; createdAt?: string }>('kudos', {
+      select: 'c.recipientMemberId, c.raterMemberId, c.tag, c.createdAt',
+      where: 'c.recipientMemberId = @recipientMemberId AND c.raterMemberId = @raterMemberId AND c.tag = @tag',
+      params: [
+        { name: '@recipientMemberId', value: recipient.memberId },
+        { name: '@raterMemberId', value: rater.memberId },
+        { name: '@tag', value: body.tag },
+      ],
+    });
+    const dupe = existing
       .some((d) => d.recipientMemberId === recipient.memberId && d.raterMemberId === rater.memberId
         && d.tag === body.tag && typeof d.createdAt === 'string' && isoWeekKey(d.createdAt) === week);
     if (dupe) return NextResponse.json({ error: 'already_sent' }, { status: 409 });
@@ -123,7 +122,7 @@ export async function POST(req: NextRequest) {
       ...(skillKey ? { skillKey } : {}),
       createdAt,
     };
-    await container.items.create(doc);
+    await scope.create('kudos', doc);
     // Echo back only non-sensitive fields (never the rater identity).
     return NextResponse.json({ ok: true, tag: doc.tag, recipientName: doc.recipientName }, { status: 201 });
   } catch (error) {
@@ -159,14 +158,13 @@ export async function GET(req: NextRequest) {
        every kudos without a note, so a bare tag can never become attributable
        — see the exception documented on KudosDoc. `raterMemberId` is still
        never selected at all. */
-    const { resources } = await getContainer('kudos').items
-      .query({
-        query: 'SELECT c.tag, c.recipientMemberId, c.note, c.skillKey, c.raterName, c.createdAt FROM c WHERE c.recipientMemberId = @rid',
-        parameters: [{ name: '@rid', value: subject.memberId }],
-      })
-      .fetchAll();
-    // Mock store ignores the WHERE → JS-filter by recipient.
-    const mine = (resources as KudosDoc[]).filter((d) => d.recipientMemberId === subject.memberId);
+    const resources = await groupScope(resolveGroupId(req)).query<KudosDoc>('kudos', {
+      select: 'c.tag, c.recipientMemberId, c.note, c.skillKey, c.raterName, c.createdAt',
+      where: 'c.recipientMemberId = @recipientMemberId',
+      params: [{ name: '@recipientMemberId', value: subject.memberId }],
+    });
+    // JS-filtered by recipient too, for mock/real parity.
+    const mine = resources.filter((d) => d.recipientMemberId === subject.memberId);
     return NextResponse.json({ kudos: aggregateKudos(mine), notes: visibleNotes(mine) });
   } catch (error) {
     console.error('GET kudos error:', error);

@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
     // → drop tubes:0 → batch-read → snapshot). Previously this silently dropped
     // invalid/unknown entries where PUT 400s — now both reject identically, so
     // a carried-forward typo surfaces instead of quietly losing tubes.
-    const resolvedBirds = await resolveBirdUsages(body.birdUsages);
+    const resolvedBirds = await resolveBirdUsages(body.birdUsages, scope);
     if (!resolvedBirds.ok) {
       return NextResponse.json({ error: resolvedBirds.error }, { status: resolvedBirds.status });
     }

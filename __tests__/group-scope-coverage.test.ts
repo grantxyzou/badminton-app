@@ -5,11 +5,17 @@ import { OWNED_CONTAINERS, NOT_MEMBER_SCOPED, CLASSIFIED_ELSEWHERE } from '@/lib
 import { containersReferencedInSource, containerReferences } from './containerScan';
 
 /**
- * THE RATCHET. Raw `getContainer('<group-scoped>')` outside the allowlist is
- * a build error unless the file is on the backlog — and the backlog can only
- * SHRINK: a file that stops reading raw must be removed from it, or the test
- * fails the other way. So the sweep's progress is a diff on this list, and a
- * new route cannot quietly add a raw read.
+ * THE GATE. Raw `getContainer('<group-scoped>')` anywhere in app/ or lib/
+ * outside the allowlist is a build error, so a new route cannot quietly add
+ * a raw read.
+ *
+ * During the Phase 1 sweep this was a RATCHET: a `MIGRATION_BACKLOG` of
+ * (file, container) pairs still read raw, which could only shrink. Phase 1b
+ * (2026-09-09) emptied it and the list was deleted rather than kept at `{}`
+ * — an empty backlog made half the assertion unable to fail. If a container
+ * is ever re-scoped from PERSON/GLOBAL to GROUP, re-add a backlog keyed per
+ * PAIR (a file-level entry would let a swept file add a raw read of a
+ * different container and stay green) and shrink it to nothing again.
  *
  * A test rather than an ESLint rule on purpose: a second `no-restricted-syntax`
  * block for the same files silently replaces the design-token rules
@@ -20,35 +26,6 @@ const RAW_ACCESS_ALLOWLIST = new Set([
   'lib/cosmos.ts', // the pointer helpers and dev seeds
   'lib/memberPurge.ts', // account deletion spans every group by design (person-level)
 ]);
-
-/**
- * (file → containers) still read raw. Phase 1b empties this. Keyed per PAIR,
- * not per file: a file-level entry would let a swept file quietly add a new
- * raw read of a different container and stay green.
- */
-const MIGRATION_BACKLOG: Record<string, string[]> = {
-  'app/api/admin/slice0/route.ts': ['events'],
-  'app/api/aliases/route.ts': ['aliases'],
-  'app/api/birds/reconcile/route.ts': ['birds'],
-  'app/api/birds/route.ts': ['birds'],
-  'app/api/kudos/route.ts': ['kudos'],
-  'app/api/members/[id]/history/route.ts': ['aliases'],
-  'app/api/players/unpaid/route.ts': ['stringingJobs'],
-  'app/api/session/bird-usage/route.ts': ['birds'],
-  'app/api/stringing/jobs/[id]/accept/route.ts': ['stringingJobs'],
-  'app/api/stringing/jobs/[id]/route.ts': ['stringingJobs'],
-  'app/api/stringing/jobs/route.ts': ['stringingJobs'],
-  'app/api/stringing/pricing/route.ts': ['clubSettings'],
-  'app/api/stringing/requests/route.ts': ['stringingJobs'],
-  'app/api/stringing/shop/route.ts': ['clubSettings'],
-  'app/api/stringing/strings/route.ts': ['clubSettings'],
-  'lib/birdWrite.ts': ['birds'],
-  'lib/events.ts': ['events'],
-  'lib/playerIdentity.ts': ['aliases'],
-  'lib/stringingPricing.ts': ['clubSettings'],
-  'lib/stringingShop.ts': ['clubSettings'],
-  'lib/stringingStrings.ts': ['clubSettings'],
-};
 
 /**
  * THE CANARY THAT STOPS A CONTAINER SLIPPING BETWEEN GROUPS UNCLASSIFIED.
@@ -108,30 +85,19 @@ describe('group scoping classifies every container', () => {
     }
   });
 
-  it('ratchets raw access to GROUP_SCOPED containers — the backlog only shrinks', () => {
+  it('allows no raw access to a GROUP_SCOPED container outside the allowlist', () => {
     const { gotten } = containerReferences(join(__dirname, '..'));
-    // Every (file, container) pair still read raw.
-    const raw = new Set<string>();
+    const raw: string[] = [];
     for (const name of Object.keys(GROUP_SCOPED)) {
       for (const file of gotten.get(name) ?? []) {
-        if (!RAW_ACCESS_ALLOWLIST.has(file)) raw.add(`${file} → ${name}`);
+        if (!RAW_ACCESS_ALLOWLIST.has(file)) raw.push(`${file} → ${name}`);
       }
     }
-    const backlog = new Set(
-      Object.entries(MIGRATION_BACKLOG).flatMap(([file, names]) => names.map((n) => `${file} → ${n}`)),
-    );
-    const offenders = [...raw].filter((pair) => !backlog.has(pair)).sort();
     expect(
-      offenders,
+      raw.sort(),
       'These reads of a GROUP_SCOPED container go through raw getContainer(). Route them ' +
-        'through groupScope(groupId) from lib/groupScope.ts. (Adding an entry to MIGRATION_BACKLOG ' +
-        'is not the fix — that list only shrinks.)',
-    ).toEqual([]);
-
-    const done = [...backlog].filter((pair) => !raw.has(pair)).sort();
-    expect(
-      done,
-      'These reads are no longer raw — remove them from MIGRATION_BACKLOG so the ratchet holds.',
+        'through groupScope(groupId) from lib/groupScope.ts. (Adding the file to ' +
+        'RAW_ACCESS_ALLOWLIST is not the fix.)',
     ).toEqual([]);
   });
 

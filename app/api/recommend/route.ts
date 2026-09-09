@@ -29,9 +29,15 @@ import { buildFitInput, readGearOrNull } from '@/lib/racketFitInput';
  * logs and never fails the recommendation. One row per REQUEST, so it counts
  * how often a pick was put in front of someone, not how many distinct picks.
  */
-async function recordServed(memberId: string, name: string, catalogId: string, engineVersion: string): Promise<void> {
+async function recordServed(
+  groupId: string,
+  memberId: string,
+  name: string,
+  catalogId: string,
+  engineVersion: string,
+): Promise<void> {
   try {
-    await writeEvent({ memberId, name, kind: 'pick_served', catalogId, engineVersion, category: 'racket' });
+    await writeEvent({ memberId, name, kind: 'pick_served', catalogId, engineVersion, category: 'racket' }, groupId);
   } catch (err) {
     console.warn('recommend: pick_served write failed (not load-bearing):', err);
   }
@@ -260,7 +266,9 @@ export async function GET(req: NextRequest) {
         }
         if (!fit.top) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
         const [, clubEntries] = await Promise.all([
-          ownsName && member ? recordServed(subject.memberId, member.name, fit.top.item.id, FIT_ENGINE_VERSION) : Promise.resolve(),
+          ownsName && member
+            ? recordServed(resolveGroupId(req), subject.memberId, member.name, fit.top.item.id, FIT_ENGINE_VERSION)
+            : Promise.resolve(),
           clubEntriesOrEmpty(),
         ]);
         // The club line keeps its reserved last slot on the engine path too —

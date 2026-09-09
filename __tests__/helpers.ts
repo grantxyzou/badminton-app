@@ -33,6 +33,14 @@ export function seedPointer(activeSessionId: string) {
   });
 }
 
+/** Push one raw document into a mock container, creating the container. */
+export function seedDoc<T extends Record<string, unknown>>(container: string, doc: T): T {
+  const store = getStore();
+  if (!store[container]) store[container] = [];
+  store[container].push(doc);
+  return doc;
+}
+
 export function seedSession(id: string, overrides: Record<string, unknown> = {}) {
   const store = getStore();
   if (!store['sessions']) store['sessions'] = [];

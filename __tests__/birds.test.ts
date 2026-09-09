@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as cosmos from '@/lib/cosmos';
 import {
   resetMockStore,
+  getStore,
+  seedDoc,
   setupAdminPin,
   makeAdminRequest,
   makeRequest,
@@ -357,6 +359,17 @@ describe('Birds API', () => {
   });
 
   describe('PATCH /api/birds', () => {
+    it('refuses to edit a reconciliation adjustment as if it were a purchase', async () => {
+      // Both doc kinds share the container. The other two purchase readers
+      // (bird-usage, birdWrite) reject `type: 'adjustment'`; PATCH must too,
+      // or an adjustment gains a name and a tube count and joins the math.
+      seedDoc('birds', { id: 'adj-1', type: 'adjustment', delta: -2, countedTotal: 10, date: '2026-09-01', createdAt: 'x' });
+      const res = await PATCH(makeAdminRequest('PATCH', 'http://localhost:3000/api/birds', { id: 'adj-1', name: 'Nope', tubes: 4 }));
+      expect(res.status).toBe(404);
+      const rows = getStore()['birds'] as Array<{ id: string; name?: string }>;
+      expect(rows.find((r) => r.id === 'adj-1')?.name).toBeUndefined();
+    });
+
     it('updates name only', async () => {
       const createRes = await POST(makeAdminRequest('POST', 'http://localhost:3000/api/birds', {
         name: 'Old Name', tubes: 4, totalCost: 80,

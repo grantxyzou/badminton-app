@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { normalizeBirdUsages, snapshotBirdUsage, validateBirdEntry } from '@/lib/birdUsages';
-import type { BirdUsage, Session } from '@/lib/types';
+import type { BirdPurchase, BirdUsage, Session } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,8 +38,8 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
 
-    const birdsContainer = getContainer('birds');
-    const { resource: purchase } = await birdsContainer.item(purchaseId, purchaseId).read();
+    // The GROUP's inventory: a batch id from another club is "not found".
+    const purchase = await scope.read<BirdPurchase & { type?: string }>('birds', purchaseId);
     // Reject unknown ids AND adjustment docs (no costPerTube → NaN cost).
     if (!purchase || purchase.type === 'adjustment') {
       return NextResponse.json({ error: 'Purchase not found' }, { status: 404 });

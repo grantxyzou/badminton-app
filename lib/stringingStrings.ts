@@ -14,10 +14,14 @@
  * what I stock yet", and the form degrades to the custom path rather than
  * offering an empty dropdown.
  */
-import { getContainer } from './cosmos';
+import { groupDocId, groupScope } from './groupScope';
 import { ensureClubSettings } from './stringingShop';
 
 export const STRINGS_DOC_ID = 'stringing-strings';
+/** One list per club: bare for BPM, `'<groupId>:stringing-strings'` otherwise. */
+export function stringsDocId(groupId: string): string {
+  return groupDocId(groupId, STRINGS_DOC_ID);
+}
 export const MAX_OFFERED = 24;
 export const MAX_LABEL_LEN = 60;
 
@@ -36,12 +40,10 @@ export interface OfferedStringsDoc {
  * while unknown means "we could not ask" and must not be presented as a
  * confident empty stock list.
  */
-export async function readOfferedStrings(): Promise<string[] | null> {
+export async function readOfferedStrings(groupId: string): Promise<string[] | null> {
   try {
     await ensureClubSettings();
-    const { resource } = await getContainer('clubSettings')
-      .item(STRINGS_DOC_ID, STRINGS_DOC_ID)
-      .read<OfferedStringsDoc>();
+    const resource = await groupScope(groupId).read<OfferedStringsDoc>('clubSettings', stringsDocId(groupId));
     if (!resource) return [];
     return Array.isArray(resource.strings) ? resource.strings : [];
   } catch (err) {

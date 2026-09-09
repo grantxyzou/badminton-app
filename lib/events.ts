@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
-import { getContainer, ensureContainer } from './cosmos';
+import { ensureContainer } from './cosmos';
+import { groupScope } from './groupScope';
 import type { EngagementEvent } from './types';
 
 /**
@@ -61,14 +62,17 @@ export function __resetEventsForTests(): void {
  * criterion asks whether a member interacted MORE THAN ONCE, which needs the
  * history. Throws on failure — the caller decides whether that is
  * load-bearing (the beacon route reports it; the recommend route logs it).
+ *
+ * Stamped with the group the tap happened in — `events` is GROUP-scoped so
+ * that Slice-0 is a per-club readout and one club's engagement never reaches
+ * another club's admin.
  */
-export async function writeEvent(evt: Omit<EngagementEvent, 'id' | 'at'>): Promise<EngagementEvent> {
+export async function writeEvent(evt: Omit<EngagementEvent, 'id' | 'at' | 'groupId'>, groupId: string): Promise<EngagementEvent> {
   await ensureEvents();
   const record: EngagementEvent = {
     ...evt,
     id: randomBytes(16).toString('hex'),
     at: new Date().toISOString(),
   };
-  const { resource } = await getContainer('events').items.create(record);
-  return (resource as EngagementEvent | undefined) ?? record;
+  return groupScope(groupId).create('events', record);
 }

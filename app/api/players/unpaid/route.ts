@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-// getContainer stays for the stringingJobs read until Phase 1b sweeps it.
-import { getContainer, getActiveSessionId } from '@/lib/cosmos';
-import { groupScope } from '@/lib/groupScope';
+import { getActiveSessionId } from '@/lib/cosmos';
+import { groupScope, type GroupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { ownsNameOrAdmin } from '@/lib/auth';
@@ -65,15 +64,13 @@ const EMPTY = {
  * asymmetry is intentional: showing session debt without stringing is
  * incomplete, while showing nothing at all is useless.
  */
-async function chargesFor(memberId: string | null): Promise<StringingCharge[]> {
+async function chargesFor(scope: GroupScope, memberId: string | null): Promise<StringingCharge[]> {
   if (!memberId || !isFlagOn('NEXT_PUBLIC_FLAG_STRINGING')) return [];
   try {
-    const { resources } = await getContainer('stringingJobs')
-      .items.query<StringingJob>({
-        query: 'SELECT * FROM c WHERE c.memberId = @memberId',
-        parameters: [{ name: '@memberId', value: memberId }],
-      })
-      .fetchAll();
+    const resources = await scope.query<StringingJob>('stringingJobs', {
+      where: 'c.memberId = @memberId',
+      params: [{ name: '@memberId', value: memberId }],
+    });
     return stringingCharges(resources);
   } catch {
     return [];
@@ -107,7 +104,7 @@ export async function GET(req: NextRequest) {
     const activeSessionId = await getActiveSessionId(scope.groupId);
     const now = Date.now();
 
-    const identity = await resolveIdentity({ name });
+    const identity = await resolveIdentity({ name }, scope.groupId);
 
     const allSessions = await scope.query<Session>('sessions');
 
@@ -121,7 +118,7 @@ export async function GET(req: NextRequest) {
     if (relevant.length === 0) {
       // Not EMPTY: a player can have no session debt and still owe for a
       // racket. Returning the constant here would hide the charge entirely.
-      const stringing = await chargesFor(identity.memberId);
+      const stringing = await chargesFor(scope, identity.memberId);
       const stringingOwed = stringingTotal(stringing);
       return NextResponse.json({
         ...EMPTY,
@@ -173,7 +170,7 @@ export async function GET(req: NextRequest) {
     // Newest first.
     unpaid.sort((a, b) => (a.date < b.date ? 1 : -1));
     const sessionsOwed = round2(unpaid.reduce((sum, s) => sum + s.owedAmount, 0));
-    const stringing = await chargesFor(identity.memberId);
+    const stringing = await chargesFor(scope, identity.memberId);
     const stringingOwed = stringingTotal(stringing);
 
     return NextResponse.json({
