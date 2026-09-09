@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
-import { verifyMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
+import { verifyMemberAuth, peekMemberSession, isAdminAuthedWithMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { rackets } from '@/lib/activeRacket';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -35,6 +35,12 @@ const BAG_WRITES_PER_HOUR = 20;
  * sixty an hour is a member changing their mind, not an attack.
  */
 const PREF_WRITES_PER_HOUR = 60;
+/** The fit ANSWERS (not the string budget, which is a pairing preference).
+ *  One list: PATCH validates against it, assigns from it, and stamps
+ *  `fitUpdatedAt` by it. */
+const FIT_ENUMS = {
+  fitGoal: FIT_GOALS, fitSwing: FIT_SWINGS, fitArmComfort: FIT_ARM_COMFORTS, fitGrip: FIT_GRIPS,
+} as const;
 const HOUR_MS = 60 * 60 * 1000;
 const VALID_CATEGORIES = new Set<EquipmentCategory>(['racket', 'string', 'shoe', 'shuttle', 'bag', 'grip']);
 
@@ -233,14 +239,18 @@ export async function GET(req: NextRequest) {
       // 30 days. One Cosmos read on almost no requests is the right trade.
       if (!isOwner && !(await isAdminAuthedWithMember(req)).authed) {
         const { fitArmComfort: _strip, ...safe } = gear;
-        // The marker says "an answer exists that you cannot see". Without it
-        // the OWNER on a lapsed member_session (30-day TTL; localStorage
-        // identity never expires — a state CLAUDE.md names as normal) would be
-        // shown "not answered" for a value Cosmos still holds, and could not
-        // even reach the Clear link. That is the lying-empty-state rule,
-        // produced by the strip itself. What leaks is only that SOME comfort
-        // answer is stored, never which.
-        return NextResponse.json({ gear: { ...safe, fitArmComfortRedacted: true } });
+        // The marker says "an answer exists that you cannot see", and it goes
+        // to exactly one reader: the OWNER on a lapsed member_session (30-day
+        // TTL; localStorage identity never expires — a state CLAUDE.md names
+        // as normal), who would otherwise be shown "not answered" for a value
+        // Cosmos still holds and could not even reach the Clear link. A lapsed
+        // owner is a cookie whose SIGNATURE still verifies for this member and
+        // whose expiry has passed. Anyone else — anonymous, another member —
+        // gets no marker: that a named person has stored a health-adjacent
+        // answer is itself the thing the policy says only they and the
+        // organiser may know.
+        const lapsedOwner = peekMemberSession(req)?.memberId === memberId;
+        return NextResponse.json({ gear: lapsedOwner ? { ...safe, fitArmComfortRedacted: true } : safe });
       }
     }
     return NextResponse.json({ gear });
@@ -375,9 +385,6 @@ export async function PATCH(req: NextRequest) {
     // value outside the vocabulary is refused rather than stored, because the
     // engine's target table is keyed on these exact strings and an unknown one
     // would silently score as "not answered".
-    const FIT_ENUMS = {
-      fitGoal: FIT_GOALS, fitSwing: FIT_SWINGS, fitArmComfort: FIT_ARM_COMFORTS, fitGrip: FIT_GRIPS,
-    } as const;
     let touchedFit = false;
     for (const key of Object.keys(FIT_ENUMS) as Array<keyof typeof FIT_ENUMS>) {
       if (!(key in body)) continue;
@@ -410,20 +417,24 @@ export async function PATCH(req: NextRequest) {
     if (auth.error) return auth.error;
 
     return await commitGearDoc(auth.memberId, (prior) => {
+      // A fresh object per attempt: `compute` re-runs after a losing race
+      // with a re-read `prior`, and a stamp decided on attempt one must not
+      // leak into attempt two when the re-read doc already holds the answer.
+      const attempt: Partial<PlayerGear> = { ...next };
       if (activeRacketId) {
         if (!rackets(prior ?? null).some((i) => i.id === activeRacketId)) {
           return { ok: false, response: NextResponse.json({ error: 'racket_not_found' }, { status: 404 }) };
         }
-        next.activeRacketId = activeRacketId;
+        attempt.activeRacketId = activeRacketId;
       }
       // `fitUpdatedAt` dates an ANSWER, so it moves only when one actually
       // changes against the stored doc — not on a re-tap of the lit tab, and
       // not on the string budget, which is a pairing preference rather than
-      // a fit answer (`stringBudgetMaxCad` is excluded on purpose).
-      const FIT_ANSWERS = ['fitGoal', 'fitSwing', 'fitArmComfort', 'fitGrip'] as const;
-      const changed = FIT_ANSWERS.some((k) => k in next && next[k] !== prior?.[k]);
-      if (changed) next.fitUpdatedAt = new Date().toISOString();
-      return { ok: true, next };
+      // a fit answer. One list drives validation, assignment and the stamp.
+      const changed = (Object.keys(FIT_ENUMS) as Array<keyof typeof FIT_ENUMS>)
+        .some((k) => k in attempt && attempt[k] !== prior?.[k]);
+      if (changed) attempt.fitUpdatedAt = new Date().toISOString();
+      return { ok: true, next: attempt };
     });
   } catch (error) {
     console.error('PATCH equipment/gear error:', error);

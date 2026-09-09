@@ -627,6 +627,7 @@
       "budget_200": "$100–200",
       "budget_350": "$200–350",
       "budget_none": "No limit",
+       "fitAnswered": "Answered",
        "fitNotAnswered": "Not answered yet",
        "fitSwingLower_slow": "relaxed swing",
        "fitSwingLower_medium": "medium swing",

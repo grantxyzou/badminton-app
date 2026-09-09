@@ -141,7 +141,7 @@ describe('fit questionnaire fields', () => {
     seedAdminMember({ role: 'member' });
     const demoted = (await (await GET(makeAdminRequest('GET', `${BASE}?name=Lin`))).json()).gear;
     expect(demoted).not.toHaveProperty('fitArmComfort');
-    expect(demoted.fitArmComfortRedacted).toBe(true);
+    expect(demoted).not.toHaveProperty('fitArmComfortRedacted');
   });
 
   it('fitUpdatedAt moves only when an answer actually changes — not on a re-send, not on the string budget', async () => {
@@ -155,15 +155,25 @@ describe('fit questionnaire fields', () => {
     expect((await read(cookie)).fitUpdatedAt).not.toBe(first);
   });
 
-  it('marks a stripped answer as redacted, so a lapsed-session owner is not told "not answered"', async () => {
+  it('marks a stripped answer as redacted for the LAPSED OWNER only — never for an anonymous reader', async () => {
     await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitArmComfort: 'sometimes_sore' }, cookie));
+    // Anonymous: neither the value nor the fact that one exists.
     const anonymous = await read();
-    expect(anonymous.fitArmComfortRedacted).toBe(true);
     expect(anonymous).not.toHaveProperty('fitArmComfort');
+    expect(anonymous).not.toHaveProperty('fitArmComfortRedacted');
+    // Another member's live cookie: the same nothing.
+    const other = await read({ Cookie: `member_session=${memberCookieValue('Viktor')}` });
+    expect(other).not.toHaveProperty('fitArmComfortRedacted');
+    // Lin's own cookie, past its TTL: stripped, but told so.
+    const lapsed = await read({ Cookie: `member_session=${memberCookieValue('Lin', 'member-lin', -60)}` });
+    expect(lapsed).not.toHaveProperty('fitArmComfort');
+    expect(lapsed.fitArmComfortRedacted).toBe(true);
+    // Viktor's lapsed cookie is not Lin's.
+    const lapsedOther = await read({ Cookie: `member_session=${memberCookieValue('Viktor', 'member-viktor', -60)}` });
+    expect(lapsedOther).not.toHaveProperty('fitArmComfortRedacted');
     // And no marker at all when there is nothing to strip.
     await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitArmComfort: null }, cookie));
-    expect(await read()).not.toHaveProperty('fitArmComfortRedacted');
-    expect((await read(cookie))).not.toHaveProperty('fitArmComfortRedacted');
+    expect(await read({ Cookie: `member_session=${memberCookieValue('Lin', 'member-lin', -60)}` })).not.toHaveProperty('fitArmComfortRedacted');
   });
 
   it('preference writes do not spend the bag limiter — a questionnaire cannot lock "Add to my equipment"', async () => {

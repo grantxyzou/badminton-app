@@ -242,9 +242,15 @@ export function adminCookieValue(): string {
  * `verifyMemberAuth` path), but bound to an arbitrary name/id — used to test
  * member-scoped read gates like /api/stats/level.
  */
-export function memberCookieValue(name: string, memberId = `member-${name.toLowerCase()}`): string {
+export function memberCookieValue(
+  name: string,
+  memberId = `member-${name.toLowerCase()}`,
+  /** Seconds until expiry. Negative mints a LAPSED cookie — signature valid,
+   *  expiry passed — the state a member is in after the 30-day TTL. */
+  ttlSeconds = 60 * 60 * 24 * 30,
+): string {
   const now = Math.floor(Date.now() / 1000);
-  const payload = { memberId, name, iat: now, exp: now + 60 * 60 * 24 * 30 };
+  const payload = { memberId, name, iat: now - 60, exp: now + ttlSeconds };
   const headerB64 = base64urlEncode(Buffer.from(JSON.stringify(payload), 'utf8'));
   const sig = createHmac('sha256', TEST_SESSION_SECRET).update(headerB64).digest();
   const sigB64 = base64urlEncode(sig);

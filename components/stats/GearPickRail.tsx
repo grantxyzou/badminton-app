@@ -158,6 +158,22 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
   const inFlightRef = useRef(new Set<EquipmentCategory>());
   const cancelledRef = useRef(new Set<EquipmentCategory>());
 
+  // A different member is a different rail. Every ref above describes the
+  // previous member's picks, and the skip rules would otherwise serve their
+  // string pick (or their parked card) to whoever signs in next on a shared
+  // device.
+  const prevNameRef = useRef(activeName);
+  useEffect(() => {
+    if (prevNameRef.current === activeName) return;
+    prevNameRef.current = activeName;
+    statusRef.current = initialStatuses();
+    stringSourceRef.current = null;
+    prevKeyRef.current = null;
+    cancelledRef.current.clear();
+    inFlightRef.current.clear();
+    setState(initialState());
+  }, [activeName]);
+
   useEffect(() => {
     if (!activeName || recKey === null) return;
     // First pass vs. a preference change. On a refresh, skip only the PARKED
@@ -179,14 +195,20 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
     const prefChanged = isRefresh && prevPref !== nextPref;
     const fitChanged = isRefresh && prevFit !== nextFit;
     const sbChanged = isRefresh && prevSb !== nextSb;
-    prevKeyRef.current = recKey;
 
     let live = true;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const run = () => {
+      // The key advances only when a pass actually RUNS. Advancing it at
+      // schedule time meant a debounced pass that was then cleared left the
+      // next diff comparing against a key nothing ever fetched — a swing tap
+      // followed inside 500 ms by a string-budget tap skipped the racket for
+      // good, with the pre-swing pick still on screen.
+      prevKeyRef.current = recKey;
       for (const cat of SOURCED) {
-        if (isRefresh && statusRef.current[cat] === 'parked') continue;
+        // Consumed BEFORE the parked skip, or a stale entry survives it.
         const cancelled = cancelledRef.current.delete(cat);
+        if (isRefresh && !cancelled && statusRef.current[cat] === 'parked') continue;
         if (isRefresh && !cancelled) {
           // The racket engine does not read the string budget.
           if (cat === 'racket' && !prefChanged && !fitChanged) continue;
