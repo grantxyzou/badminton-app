@@ -8,9 +8,31 @@ import type { CatalogItem, EquipmentCategory } from '@/lib/types';
 
 /** A resolved recommendation for one category: the catalog row plus the
  *  why-this lines the engine produced for it. */
+/** One reason as the fit engine emits it: an i18n key under `stats.gear`
+ *  plus params. The rail translates these in the member's locale; the
+ *  server's `reasons: string[]` is the English fallback for the legacy path. */
+export interface PickReasonKey {
+  key: string;
+  params?: Record<string, string | number>;
+}
+
+export interface PickAlternative {
+  item: CatalogItem;
+  reasons: string[];
+  reasonKeys?: PickReasonKey[];
+  differsBy: PickReasonKey[];
+  differsByText?: string[];
+}
+
 export interface GearPick {
   item: CatalogItem;
   reasons: string[];
+  /** Fit-engine additions (Phase 2+). All optional so legacy picks type-check. */
+  reasonKeys?: PickReasonKey[];
+  warningKeys?: PickReasonKey[];
+  alternatives?: PickAlternative[];
+  fitState?: string;
+  engineVersion?: string;
   /** Safety flags the engine raised about this pick (e.g. a weight warning).
    *  Optional so existing `GearPick` literals still type-check, but never
    *  optional to DISPLAY: `GearPickSheet` renders warnings uncollapsed. A card

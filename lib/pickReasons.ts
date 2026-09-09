@@ -70,3 +70,28 @@ export function buildPickReasons(input: PickReasonInput): string[] {
 
   return out.slice(0, limit);
 }
+
+/**
+ * The same two-source, club-last rule for reason KEYS (the fit engine). One
+ * function per representation rather than one that returns either: the
+ * string form is the legacy engine's and retires with it in Phase 4.
+ */
+export interface PickReasonKey { key: string; params?: Record<string, string | number> }
+
+export function buildPickReasonKeys(input: {
+  item: CatalogItem;
+  engineReasons: PickReasonKey[];
+  clubEntries: ClubGearEntry[];
+  limit?: number;
+}): PickReasonKey[] {
+  const { item, engineReasons, clubEntries, limit = 3 } = input;
+  const safeClub = clubEntries.filter(
+    (e) => e && e.category === item.category && typeof e.count === 'number' && e.count >= CLUB_GEAR_MIN_COHORT,
+  );
+  const match = safeClub.find((e) => e.label === `${item.brand} ${item.model}` || e.label === item.model);
+  const clubKey: PickReasonKey | null = match ? { key: 'reason.clubPlays', params: { count: match.count } } : null;
+  const engineCap = clubKey ? Math.max(1, limit - 1) : limit;
+  const out = engineReasons.filter((r) => r && typeof r.key === 'string').slice(0, engineCap);
+  if (clubKey) out.push(clubKey);
+  return out.slice(0, limit);
+}

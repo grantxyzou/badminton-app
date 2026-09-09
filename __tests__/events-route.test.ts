@@ -133,3 +133,42 @@ describe('POST /api/events', () => {
     expect(sawRateLimit).toBe(true);
   });
 });
+
+describe('POST /api/events — the fit engine\'s feedback beacons', () => {
+  it('accepts pick_added / pick_tried / pick_rated with a bounded payload, dropping anything else', async () => {
+    const res = await POST(postAs('m1', 'Lin', {
+      kind: 'pick_rated', catalogId: 'racket-yonex-astrox-88d-pro', engineVersion: 'fit-1', rating: 'up', category: 'racket',
+      extra: 'nope', memberId: 'someone-else',
+    }));
+    expect(res.status).toBe(201);
+    const row = getStore().events[0] as Record<string, unknown>;
+    expect(row).toMatchObject({ kind: 'pick_rated', memberId: 'm1', catalogId: 'racket-yonex-astrox-88d-pro', engineVersion: 'fit-1', rating: 'up', category: 'racket' });
+    expect(row).not.toHaveProperty('extra');
+    for (const kind of ['pick_added', 'pick_tried']) {
+      expect((await POST(postAs('m1', 'Lin', { kind, catalogId: 'r1' }))).status).toBe(201);
+    }
+  });
+
+  it('drops an out-of-vocabulary rating or category, and an over-long id, rather than storing them', async () => {
+    const res = await POST(postAs('m1', 'Lin', { kind: 'pick_rated', rating: 'meh', category: 'shoe', catalogId: 'x'.repeat(200) }));
+    expect(res.status).toBe(201);
+    const row = getStore().events[0] as Record<string, unknown>;
+    expect(row).not.toHaveProperty('rating');
+    expect(row).not.toHaveProperty('category');
+    expect(row).not.toHaveProperty('catalogId');
+  });
+
+  it('refuses pick_served from the client — it is the denominator and only the server writes it', async () => {
+    const res = await POST(postAs('m1', 'Lin', { kind: 'pick_served', catalogId: 'r1' }));
+    expect(res.status).toBe(400);
+    expect(getStore().events ?? []).toHaveLength(0);
+  });
+
+  it('a rec_card_tap carries no payload even if one is sent', async () => {
+    await POST(postAs('m1', 'Lin', { kind: 'rec_card_tap', catalogId: 'r1', rating: 'up' }));
+    const row = getStore().events[0] as Record<string, unknown>;
+    expect(row).not.toHaveProperty('catalogId');
+    expect(row).not.toHaveProperty('rating');
+  });
+});
+

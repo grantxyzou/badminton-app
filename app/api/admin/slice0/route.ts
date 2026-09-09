@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
+import { PICK_KINDS } from '@/lib/events';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,20 +93,53 @@ export async function GET(req: NextRequest) {
     // before concluding the feature failed.
     let repeatTappers = 0;
     let anyTappers = 0;
+
+    // --- The fit engine's feedback loop, tallied in the same pass. -----------
+    // `served` is written server-side by /api/recommend on every fit pick
+    // RETURNED (one per request — a format tap re-serves), so it is the
+    // denominator and is NOT engagement: `engagedMembers` counts only members
+    // who added, tried or rated, which is what the plan's review gate reads.
+    interface PickEvent { memberId?: string; kind: string; catalogId?: string; engineVersion?: string; rating?: string }
+    type VersionRow = { served: number; servedMembers: number; added: number; tried: number; ratedUp: number; ratedDown: number };
+    const picks: { engineVersions: Record<string, VersionRow>; byCatalogId: Record<string, { added: number; tried: number; up: number; down: number }>; engagedMembers: number } =
+      { engineVersions: {}, byCatalogId: {}, engagedMembers: 0 };
+    const servedBy = new Map<string, Set<string>>();
+    const engaged = new Set<string>();
+    const tallyPick = (e: PickEvent, memberKey: string) => {
+      const v = typeof e.engineVersion === 'string' ? e.engineVersion : 'unknown';
+      const row = (picks.engineVersions[v] ??= { served: 0, servedMembers: 0, added: 0, tried: 0, ratedUp: 0, ratedDown: 0 });
+      if (e.kind === 'pick_served') { row.served += 1; (servedBy.get(v) ?? servedBy.set(v, new Set()).get(v)!).add(memberKey); return; }
+      engaged.add(memberKey);
+      if (e.kind === 'pick_added') row.added += 1;
+      if (e.kind === 'pick_tried') row.tried += 1;
+      if (e.kind === 'pick_rated') { if (e.rating === 'up') row.ratedUp += 1; else if (e.rating === 'down') row.ratedDown += 1; }
+      if (typeof e.catalogId === 'string') {
+        const c = (picks.byCatalogId[e.catalogId] ??= { added: 0, tried: 0, up: 0, down: 0 });
+        if (e.kind === 'pick_added') c.added += 1;
+        if (e.kind === 'pick_tried') c.tried += 1;
+        if (e.kind === 'pick_rated' && e.rating === 'up') c.up += 1;
+        if (e.kind === 'pick_rated' && e.rating === 'down') c.down += 1;
+      }
+    };
     try {
       await ensureContainer('events', '/memberId');
+      // ONE cross-partition scan of `events` for the window, shared with the
+      // fit engine's feedback tally below — it is partitioned by /memberId, so
+      // a date-range read fans out across every partition, and it grows by one
+      // row per racket pick served.
       const { resources: events } = await getContainer('events').items
         .query({
-          query: 'SELECT c.memberId, c.name, c.kind, c.at FROM c WHERE c.at >= @since',
+          query: 'SELECT c.memberId, c.name, c.kind, c.at, c.catalogId, c.engineVersion, c.rating FROM c WHERE c.at >= @since',
           parameters: [{ name: '@since', value: since }],
         })
         .fetchAll();
       const taps = new Map<string, number>();
       for (const e of events) {
-        if (e?.kind !== 'rec_card_tap' || typeof e.at !== 'string' || e.at < since) continue;
+        if (typeof e?.kind !== 'string' || typeof e.at !== 'string' || e.at < since) continue;
         const key = typeof e.memberId === 'string' ? e.memberId : norm(String(e.name ?? ''));
         if (!key) continue;
-        taps.set(key, (taps.get(key) ?? 0) + 1);
+        if (e.kind === 'rec_card_tap') taps.set(key, (taps.get(key) ?? 0) + 1);
+        if ((PICK_KINDS as readonly string[]).includes(e.kind)) tallyPick(e as PickEvent, key);
       }
       anyTappers = taps.size;
       repeatTappers = [...taps.values()].filter((n) => n > 1).length;
@@ -151,6 +185,9 @@ export async function GET(req: NextRequest) {
       console.warn('slice0: gear read failed (treating as zero):', err);
     }
 
+    for (const [v, members] of servedBy) picks.engineVersions[v].servedMembers = members.size;
+    picks.engagedMembers = engaged.size;
+
     const denominator = cohort.size;
     const rate = (n: number) => (denominator > 0 ? Math.round((n / denominator) * 1000) / 1000 : 0);
     const recRate = rate(repeatTappers);
@@ -182,6 +219,7 @@ export async function GET(req: NextRequest) {
         passes: gameRate >= GAME_THRESHOLD,
       },
       racketSavers,
+      picks,
       verdict,
     });
   } catch (error) {

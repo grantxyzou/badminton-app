@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { randomBytes } from 'crypto';
-import { getContainer, ensureContainer } from '@/lib/cosmos';
+import { writeEvent, isClientKind, CLIENT_PAYLOAD } from '@/lib/events';
 import { verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -12,30 +11,21 @@ const RATE_MAX = 120;
 const RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
 /**
- * Allowlisted event kinds. Deliberately closed: an open `kind` field turns this
- * into a free-text sink that nothing can aggregate, and every new kind should
- * be a considered addition with a matching reader.
+ * The kinds and their payload schema live in `lib/events.ts`, once. Every
+ * field a kind does not declare is dropped here — an open payload turns the
+ * container into a free-text sink — and a server-only kind (`pick_served`,
+ * the feedback loop's denominator) is not a client kind at all, so it is
+ * refused as unknown.
  */
-const KINDS = ['rec_card_tap'] as const;
-type Kind = (typeof KINDS)[number];
-
-function isKind(v: unknown): v is Kind {
-  return typeof v === 'string' && (KINDS as readonly string[]).includes(v);
-}
-
-// Lazy container bootstrap — real Cosmos doesn't auto-create containers (the
-// mock store does, which is exactly how that difference hides until prod).
-// Partitioned by `/memberId`: every read is "what did this member do", and it
-// keeps one heavy user from hot-spotting a shared partition.
-let ready: Promise<void> | null = null;
-function ensureEvents(): Promise<void> {
-  if (!ready) {
-    ready = ensureContainer('events', '/memberId').catch((err) => {
-      ready = null;
-      throw err;
-    });
+function payloadFor(kind: keyof typeof CLIENT_PAYLOAD, body: Record<string, unknown>): Pick<EngagementEvent, 'catalogId' | 'engineVersion' | 'rating' | 'category'> {
+  const out: Pick<EngagementEvent, 'catalogId' | 'engineVersion' | 'rating' | 'category'> = {};
+  for (const field of CLIENT_PAYLOAD[kind]) {
+    if (field === 'catalogId' && typeof body.catalogId === 'string' && body.catalogId.length <= 80) out.catalogId = body.catalogId;
+    if (field === 'engineVersion' && typeof body.engineVersion === 'string' && body.engineVersion.length <= 20) out.engineVersion = body.engineVersion;
+    if (field === 'rating' && (body.rating === 'up' || body.rating === 'down')) out.rating = body.rating;
+    if (field === 'category' && (body.category === 'racket' || body.category === 'string')) out.category = body.category;
   }
-  return ready;
+  return out;
 }
 
 /**
@@ -83,20 +73,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
   }
 
-  if (!isKind(body.kind)) {
+  if (!isClientKind(body.kind)) {
     return NextResponse.json({ error: 'unknown_kind' }, { status: 400 });
   }
 
   try {
-    await ensureEvents();
-    const record: EngagementEvent = {
-      id: randomBytes(16).toString('hex'),
+    const resource = await writeEvent({
       memberId: caller.memberId,
       name: caller.name,
       kind: body.kind,
-      at: new Date().toISOString(),
-    };
-    const { resource } = await getContainer('events').items.create(record);
+      ...payloadFor(body.kind, body),
+    });
     return NextResponse.json(resource, { status: 201 });
   } catch (err) {
     // A beacon must never be load-bearing, but it must also not lie about

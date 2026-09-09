@@ -7,16 +7,34 @@ import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
 import { recommendRacket } from '@/lib/recommend';
 import { buildProfile } from '@/lib/racketProfile';
 import { recommendRackets } from '@/lib/racketRecommend';
-import { recommendFit, fitLevel, fitTechniqueCeiling, isScorable, canon, FIT_ENGINE_VERSION, type FitInput } from '@/lib/racketFit';
+import { recommendFit, FIT_ENGINE_VERSION } from '@/lib/racketFit';
 import { fitReasonTexts } from '@/lib/fitReasonText';
-import { activeRacket, rackets } from '@/lib/activeRacket';
 import { pairString, pairTension } from '@/lib/stringPair';
 import { getCanonicalLevel } from '@/lib/levelStore';
-import { buildPickReasons } from '@/lib/pickReasons';
+import { buildPickReasons, buildPickReasonKeys } from '@/lib/pickReasons';
 import { tallyClubGear, type ClubGearEntry } from '@/lib/clubGear';
 import type { CatalogItem, EquipmentCategory, PlayerGear } from '@/lib/types';
 import type { Rating } from '@/lib/assessment';
 import { resolveActiveSubject } from '@/lib/memberResolve';
+import { writeEvent } from '@/lib/events';
+import { buildFitInput, readGearOrNull } from '@/lib/racketFitInput';
+
+/**
+ * The feedback loop's DENOMINATOR: one `pick_served` row per fit pick actually
+ * returned to the member it is about. Written server-side so the client
+ * cannot mint it, and only when the caller OWNS the name — an admin browsing
+ * someone's stats is not that member's engagement. Best-effort and NOT on the
+ * response's critical path: it runs alongside the club read, and a failure
+ * logs and never fails the recommendation. One row per REQUEST, so it counts
+ * how often a pick was put in front of someone, not how many distinct picks.
+ */
+async function recordServed(memberId: string, name: string, catalogId: string, engineVersion: string): Promise<void> {
+  try {
+    await writeEvent({ memberId, name, kind: 'pick_served', catalogId, engineVersion, category: 'racket' });
+  } catch (err) {
+    console.warn('recommend: pick_served write failed (not load-bearing):', err);
+  }
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -54,39 +72,6 @@ async function clubEntriesOrEmpty(): Promise<ClubGearEntry[]> {
   }
 }
 
-
-/**
- * The fit engine's view of a member. Everything it needs is already in hand
- * on this route — the gear doc, the profile (possibly null: no check-in) and
- * the racket catalog — so this stays here rather than growing a fourth
- * member-resolution path. The anchor is the ACTIVE racket, and only when its
- * catalogId resolves to a scorable row; every other racket in the bag, and a
- * free-text one, is excluded by id or by normalised label.
- */
-function buildFitInput(
-  gear: PlayerGear | null,
-  profile: ReturnType<typeof buildProfile>,
-  hasRatings: boolean,
-  catalogRackets: CatalogItem[],
-): FitInput {
-  const active = activeRacket(gear);
-  const anchorRow = active?.catalogId ? catalogRackets.find((r) => r.id === active.catalogId) ?? null : null;
-  const owned = rackets(gear).filter((i) => !i.retiredAt);
-  return {
-    anchor: anchorRow && isScorable(anchorRow) ? anchorRow : null,
-    ownedIds: new Set(owned.map((i) => i.catalogId).filter((id): id is string => typeof id === 'string')),
-    ownedLabels: new Set(owned.map((i) => canon(i.label)).filter(Boolean)),
-    goal: gear?.fitGoal,
-    swing: gear?.fitSwing,
-    armComfort: gear?.fitArmComfort,
-    grip: gear?.fitGrip,
-    format: gear?.playFormat ?? 'both',
-    budgetMaxCad: typeof gear?.budgetMaxCad === 'number' ? gear.budgetMaxCad : undefined,
-    level: profile ? fitLevel(profile) : null,
-    hasRatings,
-    techniqueCeiling: profile ? fitTechniqueCeiling(profile) : undefined,
-  };
-}
 
 function reasonFor(item: CatalogItem, stage?: number): string {
   if (typeof stage === 'number') {
@@ -172,14 +157,7 @@ export async function GET(req: NextRequest) {
       // (recommending a racket the player already owns) and lose their
       // format/budget, so it falls through to the outer catch's 500 instead
       // (lying-empty-state rule).
-      let gear: PlayerGear | null = null;
-      try {
-        const { resource } = await getContainer('playerGear').item(`gear-${subject.memberId}`, subject.memberId).read();
-        gear = (resource as PlayerGear | undefined) ?? null;
-      } catch (err) {
-        const code = (err as { code?: number | string })?.code;
-        if (code !== 404 && code !== '404') throw err;
-      }
+      const gear: PlayerGear | null = await readGearOrNull(subject.memberId);
 
       const ratings = (latest?.ratings as Rating[]) ?? [];
       const profile = buildProfile({ ratings, gear });
@@ -237,7 +215,7 @@ export async function GET(req: NextRequest) {
         if (!frame) {
           source = 'recommended';
           frame = fitOn
-            ? recommendFit(buildFitInput(gear, profile, ratings.length > 0, catalogRackets as CatalogItem[]), catalogRackets as CatalogItem[]).top?.item ?? null
+            ? recommendFit(buildFitInput(gear, ratings, catalogRackets as CatalogItem[]), catalogRackets as CatalogItem[]).top?.item ?? null
             : recommendRackets(profile, catalogRackets as CatalogItem[], 1, 'racket')[0]?.item ?? null;
         }
         // No frame from either rung means the racket catalog is empty or
@@ -275,19 +253,25 @@ export async function GET(req: NextRequest) {
         // The fit engine. Reasons are KEYS; the English strings alongside
         // are transitional (`lib/fitReasonText.ts`) for the client that still
         // reads `reasons: string[]`. Everything new is additive.
-        const fit = recommendFit(buildFitInput(gear, profile, ratings.length > 0, catalogItems as CatalogItem[]), catalogItems as CatalogItem[]);
+        const fit = recommendFit(buildFitInput(gear, ratings, catalogItems as CatalogItem[]), catalogItems as CatalogItem[]);
         if (fit.fitState === 'needsFit') {
           return NextResponse.json({ item: null, reason: null, needsFit: true, engineVersion: FIT_ENGINE_VERSION, fitState: fit.fitState });
         }
         if (!fit.top) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
-        const clubEntries: ClubGearEntry[] = await clubEntriesOrEmpty();
-        const reasons = buildPickReasons({ item: fit.top.item, engineReasons: fitReasonTexts(fit.top.reasons), clubEntries });
+        const [, clubEntries] = await Promise.all([
+          ownsName && member ? recordServed(subject.memberId, member.name, fit.top.item.id, FIT_ENGINE_VERSION) : Promise.resolve(),
+          clubEntriesOrEmpty(),
+        ]);
+        // The club line keeps its reserved last slot on the engine path too —
+        // as a KEY, so the rail can say it in the member's locale.
+        const reasonKeys = buildPickReasonKeys({ item: fit.top.item, engineReasons: fit.top.reasons, clubEntries });
+        const reasons = fitReasonTexts(reasonKeys);
         return NextResponse.json({
           item: fit.top.item,
           reason: reasons[0] ?? null,
           reasons,
           warnings: fitReasonTexts(fit.top.warnings),
-          reasonKeys: fit.top.reasons,
+          reasonKeys,
           warningKeys: fit.top.warnings,
           alternatives: fit.alternatives.map((a) => ({
             item: a.item,

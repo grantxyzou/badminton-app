@@ -4,7 +4,7 @@ import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { __resetCatalogSeedForTests } from '@/lib/catalogSeed';
 import { _resetCalibrationCache } from '@/lib/levelStore';
 import { FIT_ENGINE_VERSION } from '@/lib/racketFit';
-import { resetMockStore, seedMember, setupAdminPin, makeRequest, memberCookieValue } from './helpers';
+import { resetMockStore, getStore, seedMember, seedAdminMember, setupAdminPin, makeRequest, makeAdminRequest, memberCookieValue } from './helpers';
 
 /**
  * `GET /api/recommend` with `NEXT_PUBLIC_FLAG_RACKET_FIT` on — the fit engine
@@ -126,6 +126,41 @@ describe('GET /api/recommend — the fit engine', () => {
     body = await (await ask('string')).json();
     expect(body.item?.category).toBe('string');
     expect(body.pairedWith?.source).toBe('recommended');
+  });
+
+  it('writes ONE pick_served per fit pick, for the owner only — an admin browsing writes nothing', async () => {
+    await seedRatings(THREE_RATINGS);
+    await (await ask()).json();
+    const served = (getStore().events ?? []).filter((e) => (e as { kind?: string }).kind === 'pick_served') as Array<Record<string, unknown>>;
+    expect(served).toHaveLength(1);
+    expect(served[0]).toMatchObject({ memberId: 'member-lin', engineVersion: FIT_ENGINE_VERSION, category: 'racket' });
+    expect(typeof served[0].catalogId).toBe('string');
+
+    seedAdminMember();
+    await (await GET(makeAdminRequest('GET', `${BASE}?name=Lin&category=racket`))).json();
+    expect((getStore().events ?? []).filter((e) => (e as { kind?: string }).kind === 'pick_served')).toHaveLength(1);
+  });
+
+  it('keeps the club line as the LAST reason key on the engine path, capped at three', async () => {
+    // Three other members own the racket the engine will pick for Lin — the
+    // tally is category-scoped and needs CLUB_GEAR_MIN_COHORT (3) owners.
+    await seedRatings(THREE_RATINGS);
+    const first = await (await ask()).json();
+    const pickedId = first.item.id;
+    const pickedLabel = `${first.item.brand} ${first.item.model}`;
+    for (const who of ['a', 'b', 'c']) {
+      await getContainer('playerGear').items.upsert({
+        id: `gear-${who}`, memberId: who, updatedAt: '2026-09-01',
+        items: [{ id: 'i', catalogId: pickedId, category: 'racket', label: pickedLabel }],
+      });
+    }
+    const body = await (await ask()).json();
+    expect(body.item.id).toBe(pickedId);
+    const keys = body.reasonKeys.map((k: { key: string }) => k.key);
+    expect(keys.length).toBeLessThanOrEqual(3);
+    expect(keys[keys.length - 1]).toBe('reason.clubPlays');
+    expect(body.reasonKeys[keys.length - 1].params).toEqual({ count: 3 });
+    expect(body.reasons[keys.length - 1]).toBe('3 people in the club already play it.');
   });
 
   it('with the fit flag OFF the racket branch is the old shape — no fitState, no alternatives', async () => {

@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { recordEngagement } from '@/lib/engagement';
-import GearPickCard, { type GearPick, type GearPickCardStatus, type ParkReason } from './GearPickCard';
+import GearPickCard, { type GearPick, type GearPickCardStatus, type ParkReason, type PickReasonKey } from './GearPickCard';
 import GearPickSheet from './GearPickSheet';
 import type { UseGear } from './useGear';
 import { PROFILE_READS_FIT } from '@/lib/racketProfile';
@@ -93,7 +94,37 @@ export interface GearPickRailProps {
  * being restructured to eliminate.
  */
 export default function GearPickRail({ activeName, gear, onPairTension, onOpenFit, holdFitRefetch = false }: GearPickRailProps) {
+  const t = useTranslations('stats.gear');
+  // Reason KEYS are translated at RENDER, in the member's locale — the point
+  // of the fit engine speaking in keys. State holds what the server sent
+  // (keys AND the legacy English strings); the view below derives the
+  // sentences, so a language toggle re-renders them with no refetch and the
+  // fetch effect does not depend on `t`.
+  const say = useCallback((keys: PickReasonKey[] | undefined, fallback: string[]): string[] => {
+    if (!Array.isArray(keys) || keys.length === 0) return fallback;
+    return keys.map((k) => t(k.key, k.params as Record<string, string | number>));
+  }, [t]);
   const [state, setState] = useState<Record<EquipmentCategory, CategoryState>>(initialState);
+  const view = useMemo(() => {
+    const out = {} as Record<EquipmentCategory, CategoryState>;
+    for (const cat of ORDER) {
+      const { status, pick } = state[cat];
+      out[cat] = pick ? {
+        status,
+        pick: {
+          ...pick,
+          reasons: say(pick.reasonKeys, pick.reasons),
+          warnings: say(pick.warningKeys, pick.warnings ?? []),
+          alternatives: pick.alternatives?.map((a) => ({
+            ...a,
+            reasons: say(a.reasonKeys, a.reasons),
+            differsByText: say(a.differsBy, a.differsByText ?? []),
+          })),
+        },
+      } : { status, pick };
+    }
+    return out;
+  }, [state, say]);
   // Which category's detail sheet is open. The rail owns this, not the card:
   // the sheet is opened FROM a card but belongs to the rail, which is the only
   // place that holds both the pick and the gear owner needed to add it.
@@ -293,6 +324,19 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
                   ? d.reasons
                   : (typeof d.reason === 'string' && d.reason ? [d.reason] : []),
                 warnings: Array.isArray(d.warnings) ? d.warnings : [],
+                reasonKeys: Array.isArray(d.reasonKeys) ? d.reasonKeys : undefined,
+                warningKeys: Array.isArray(d.warningKeys) ? d.warningKeys : undefined,
+                alternatives: Array.isArray(d.alternatives)
+                  ? d.alternatives.map((a: { item: CatalogItem; reasons?: string[]; reasonKeys?: PickReasonKey[]; differsBy?: PickReasonKey[]; differsByText?: string[] }) => ({
+                      item: a.item,
+                      reasons: Array.isArray(a.reasons) ? a.reasons : [],
+                      reasonKeys: a.reasonKeys,
+                      differsBy: Array.isArray(a.differsBy) ? a.differsBy : [],
+                      differsByText: Array.isArray(a.differsByText) ? a.differsByText : [],
+                    }))
+                  : undefined,
+                fitState: typeof d.fitState === 'string' ? d.fitState : undefined,
+                engineVersion: typeof d.engineVersion === 'string' ? d.engineVersion : undefined,
                 pairedWith: d.pairedWith ?? undefined,
                 tensionLbs: typeof d.tensionLbs === 'number' ? d.tensionLbs : null,
               },
@@ -360,7 +404,7 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
     return gear.loadError && pick ? 'error' : status;
   }
 
-  const openPick = openCategory ? state[openCategory].pick : null;
+  const openPick = openCategory ? view[openCategory].pick : null;
 
   return (
     <>
@@ -378,7 +422,7 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
       }}
     >
       {ORDER.map((cat) => {
-        const { status, pick } = state[cat];
+        const { status, pick } = view[cat];
         return (
           <GearPickCard
             key={cat}

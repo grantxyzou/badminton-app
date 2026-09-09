@@ -500,11 +500,24 @@ export interface EngagementEvent {
   memberId: string;
   /** Display name at the time of the event — convenience for readouts. */
   name: string;
-  /** Allowlisted in app/api/events/route.ts; not free text. */
-  kind: 'rec_card_tap';
+  /** Allowlisted in app/api/events/route.ts; not free text. `pick_served` is
+   *  written SERVER-SIDE by /api/recommend and refused from the client. */
+  kind: EngagementKind;
   /** ISO 8601. Sortable as a plain string, so range queries are string compares. */
   at: string;
+  /** The pick a `pick_*` event is about. Additive; absent on `rec_card_tap`. */
+  catalogId?: string;
+  /** Which engine produced the pick, so the feedback read can split by version. */
+  engineVersion?: string;
+  /** `pick_rated` only. */
+  rating?: 'up' | 'down';
+  category?: 'racket' | 'string';
 }
+
+/** One source of truth for the kinds is `lib/events.ts`; this union is
+ *  derived from its two lists so the type and the runtime allowlist cannot
+ *  drift apart. */
+export type EngagementKind = import('./events').ClientKind | import('./events').ServerKind;
 
 /**
  * A racket handed to a stringer.

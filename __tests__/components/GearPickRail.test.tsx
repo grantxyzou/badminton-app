@@ -554,3 +554,57 @@ describe('GearPickRail — the fit answers re-ask the racket, and strings only w
     }
   });
 });
+
+describe('GearPickRail — reason keys are translated in the member\'s locale', () => {
+  it('renders zh-CN reasons from keys, ignoring the server\'s English strings', async () => {
+    const zh = (await import('../../messages/zh-CN.json')).default;
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const body = String(input).includes('category=racket')
+        ? {
+            item: ITEM,
+            reasons: ['Built for doubles.'],
+            reasonKeys: [{ key: 'reason.doublesBuilt' }, { key: 'reason.withinBudget', params: { cad: 200 } }],
+            warnings: ['x'], warningKeys: [{ key: 'warn.headHeavyWithSoreArm' }],
+            engineVersion: 'fit-1', fitState: 'anchored',
+            alternatives: [{ item: { ...ITEM, id: 'r9', model: 'Alt' }, reasons: [], reasonKeys: [], differsBy: [{ key: 'diff.softer' }], differsByText: ['softer'] }],
+          }
+        : { item: null, unavailable: 'no_engine' };
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+    }) as unknown as typeof fetch;
+    render(
+      <NextIntlClientProvider locale="zh-CN" messages={zh}>
+        <GearPickRail activeName="Lin" gear={fakeGear()} />
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(await screen.findByLabelText(/球拍/));
+    expect(await screen.findByText(zh.stats.gear.reason.doublesBuilt)).toBeTruthy();
+    expect(screen.getByText(zh.stats.gear.reason.withinBudget.replace('{cad}', '200'))).toBeTruthy();
+    expect(screen.getByText(zh.stats.gear.warn.headHeavyWithSoreArm)).toBeTruthy();
+    expect(screen.getByText(zh.stats.gear.diff.softer)).toBeTruthy();
+    expect(screen.queryByText('Built for doubles.')).toBeNull();
+  });
+
+  it('a language toggle re-renders the reasons in place — no refetch, no limiter token', async () => {
+    const zh = (await import('../../messages/zh-CN.json')).default;
+    const asks: string[] = [];
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      asks.push(String(input));
+      const body = String(input).includes('category=racket')
+        ? { item: ITEM, reasons: ['Built for doubles.'], reasonKeys: [{ key: 'reason.doublesBuilt' }], engineVersion: 'fit-1' }
+        : { item: null, unavailable: 'no_engine' };
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+    }) as unknown as typeof fetch;
+    const ui2 = (locale: 'en' | 'zh-CN', messages: typeof enMessages) => (
+      <NextIntlClientProvider locale={locale} messages={messages}>
+        <GearPickRail activeName="Lin" gear={fakeGear()} />
+      </NextIntlClientProvider>
+    );
+    const { rerender } = render(ui2('en', enMessages));
+    fireEvent.click(await screen.findByLabelText('Racket — Why this?'));
+    expect(await screen.findByText('Built for doubles.')).toBeTruthy();
+    const before = asks.length;
+    rerender(ui2('zh-CN', zh as unknown as typeof enMessages));
+    expect(await screen.findByText(zh.stats.gear.reason.doublesBuilt)).toBeTruthy();
+    expect(asks.length).toBe(before);
+  });
+});

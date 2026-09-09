@@ -1,7 +1,18 @@
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
-/** Mirrors the allowlist in app/api/events/route.ts. */
-export type EngagementKind = 'rec_card_tap';
+import type { ClientKind } from './events';
+
+/** The kinds a CLIENT may send — server-only kinds (`pick_served`) are not in
+ *  this type, and `POST /api/events` refuses them. */
+export type EngagementKind = ClientKind;
+
+/** What a `pick_*` beacon carries. Validated and bounded server-side. */
+export interface EngagementMeta {
+  catalogId?: string;
+  engineVersion?: string;
+  rating?: 'up' | 'down';
+  category?: 'racket' | 'string';
+}
 
 /**
  * Fire-and-forget engagement beacon.
@@ -17,12 +28,12 @@ export type EngagementKind = 'rec_card_tap';
  * load. Nothing the user sees or decides depends on this call, so surfacing its
  * failure would be noise. It is not used for anything the UI reads back.
  */
-export async function recordEngagement(kind: EngagementKind): Promise<void> {
+export async function recordEngagement(kind: EngagementKind, meta?: EngagementMeta): Promise<void> {
   try {
     await fetch(`${BASE}/api/events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind }),
+      body: JSON.stringify({ kind, ...meta }),
       cache: 'no-store',
       keepalive: true,
     });

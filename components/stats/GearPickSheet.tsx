@@ -4,6 +4,8 @@ import { Fragment, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import StatusBadge from '@/components/primitives/StatusBadge';
+import ListRow from '@/components/primitives/ListRow';
+import { recordEngagement } from '@/lib/engagement';
 import { isFlagOn } from '@/lib/flags';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '../BottomSheet';
 import type { GearPick } from './GearPickCard';
@@ -130,6 +132,26 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   const [prefError, setPrefError] = useState<string | null>(null);
   const [prefsOpen, setPrefsOpen] = useState(false);
   const [specsOpen, setSpecsOpen] = useState(false);
+  // Which of the pick's rows is on show: null = the top pick, else an index
+  // into `alternatives`. Local, reset on close like the disclosures — the
+  // next card's sheet must open on ITS top pick.
+  const [altIndex, setAltIndex] = useState<number | null>(null);
+  // The feedback loop, per PICK: a rating and a "tried it" are each said once
+  // about one racket. The pick is LIVE (a format tap in this sheet replaces
+  // it), so these reset when the pick's identity changes, not only on close —
+  // or a rating given to racket A would sit under racket B, and B could never
+  // be rated. `altIndex` resets for the same reason: the new response's
+  // alternatives are a different list.
+  const [rated, setRated] = useState<'up' | 'down' | null>(null);
+  const [tried, setTried] = useState(false);
+  const pickId = pick?.item.id ?? null;
+  const [seenPickId, setSeenPickId] = useState<string | null>(pickId);
+  if (pickId !== seenPickId) {
+    setSeenPickId(pickId);
+    setAltIndex(null);
+    setRated(null);
+    setTried(false);
+  }
 
   // The rail keeps this sheet MOUNTED for the whole register's life (it is the
   // one sheet for every card), so a refusal from one visit would still be on
@@ -143,19 +165,54 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
     setPrefError(null);
     setPrefsOpen(false);
     setSpecsOpen(false);
+    setAltIndex(null);
+    setRated(null);
+    setTried(false);
     onClose();
   }
 
-  const item = pick?.item ?? null;
+  // The row on show. An alternative brings its own reasons and a "differs
+  // by" line; warnings and the tension figure belong to the TOP pick only
+  // (the engine scored the ceilings against it), so they clear on a swap.
+  const alternatives = pick?.alternatives ?? [];
+  const shownAlt = altIndex !== null ? alternatives[altIndex] ?? null : null;
+  const item = shownAlt?.item ?? pick?.item ?? null;
   const heading = item ? `${item.brand} ${item.model}` : t('pickSheetWeRecommend');
+  // Ownership of the row ON SHOW. `owned` from the rail is about the top pick;
+  // an alternative reads the same shared gear doc.
+  const shownOwned = shownAlt
+    ? (gear.gear?.items ?? []).some((i) => i && !i.retiredAt && i.catalogId === shownAlt.item.id)
+    : owned;
 
   // The engine's headline reason IS the plain-language line (it's the same
   // string `/api/recommend` returns as `reason`), so the reason list below it
   // shows what's left rather than repeating it back one line lower.
-  const reasons = pick?.reasons ?? [];
+  // An alternative's own reasons lead; with none, its "differs by" line
+  // becomes the headline ("softer · $41 less than our pick") — a name and a
+  // price with nothing under them is a row, not an explanation.
+  const altDiff = shownAlt ? (shownAlt.differsByText ?? []).join(t('diffJoin')) : '';
+  // "{diff} than our pick" only reads as a sentence for the comparative
+  // fragments (stiffer, lighter, $40 less…); a tier step or "same spec,
+  // other brand" stands on its own.
+  const comparative = new Set(['diff.stiffer', 'diff.softer', 'diff.headHeavier', 'diff.headLighter', 'diff.lighter', 'diff.heavier', 'diff.cheaper', 'diff.pricier']);
+  const altHeadline = !altDiff ? null
+    : (shownAlt?.differsBy ?? []).every((d) => comparative.has(d.key)) ? t('pickSheetAltHeadline', { diff: altDiff })
+    : `${altDiff}.`;
+  const reasons = shownAlt
+    ? (shownAlt.reasons.length > 0 ? shownAlt.reasons : (altHeadline ? [altHeadline] : []))
+    : (pick?.reasons ?? []);
   const headline = reasons[0] ?? null;
   const rest = reasons.slice(1);
-  const warnings = pick?.warnings ?? [];
+  const warnings = shownAlt ? [] : (pick?.warnings ?? []);
+  // The other candidates: whichever of top + alternatives is not on show.
+  const others = pick
+    ? [{ index: null as number | null, item: pick.item, line: t('pickSheetWeRecommend') },
+       ...alternatives.map((a, i) => ({ index: i as number | null, item: a.item, line: (a.differsByText ?? []).join(t('diffJoin')) }))]
+      .filter((o) => o.index !== altIndex)
+    : [];
+  // The event payload's category is the two the engines score; a beacon from
+  // a parked category cannot happen (no pick, no sheet) but the type says so.
+  const beaconMeta = { engineVersion: pick?.engineVersion, category: category === 'racket' || category === 'string' ? category : undefined };
 
   // The two preferences the scoring engine actually reads. Only the
   // skill-scored engine consumes them, so the controls follow its flag rather
@@ -193,7 +250,9 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
       // Same rule as the catalog sheet: the answer to "did that work" is the
       // surface changing, not the surface leaving. `owned` flips off the
       // register's shared `useGear`, so the action swaps to the IN YOUR KIT
-      // badge and the footer line in place.
+      // badge and the footer line in place. The beacon is the feedback loop's
+      // "acted on it" — fire-and-forget, after the write landed, never before.
+      void recordEngagement('pick_added', { catalogId: item.id, ...beaconMeta });
       return;
     }
     // `duplicate_racket` is unreachable from here (an owned pick shows the
@@ -416,7 +475,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
               >
                 {item.model}
               </span>
-              {owned && <StatusBadge variant="accent">{t('railInKit')}</StatusBadge>}
+              {shownOwned && <StatusBadge variant="accent">{t('railInKit')}</StatusBadge>}
             </span>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
               {typeof item.msrp === 'number' && item.msrp > 0 && (
@@ -453,6 +512,30 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
                     {r}
                   </p>
                 </div>
+              ))}
+            </div>
+          )}
+
+          {/* The feedback loop's "was it right" — only on an engine pick
+              (`engineVersion` is set), said once per open. Two ghost buttons,
+              not a star row: a friend asking "any good?" wants a yes or a no. */}
+          {pick?.engineVersion && !shownAlt && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+              <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
+                {rated ? t('pickSheetRated') : t('pickSheetRateLabel')}
+              </span>
+              {!rated && (['up', 'down'] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  className="cc-btn cc-btn-ghost"
+                  onClick={() => {
+                    setRated(r);
+                    void recordEngagement('pick_rated', { catalogId: item!.id, rating: r, ...beaconMeta });
+                  }}
+                >
+                  {t(r === 'up' ? 'pickSheetRateUp' : 'pickSheetRateDown')}
+                </button>
               ))}
             </div>
           )}
@@ -495,6 +578,33 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
               <p className="fs-sm" style={{ margin: 'var(--space-2) 0 0', color: 'var(--text-muted)', lineHeight: 'var(--lh-normal)' }}>
                 {t('tensionAdvisory')}
               </p>
+            </section>
+          )}
+
+          {/* "Or consider": the other candidates, each with how it differs
+              from the top pick. Tapping one swaps the sheet's subject — the
+              name, price, reasons and the Add action all follow — rather than
+              opening a second sheet over this one. A shortlist a member can
+              borrow one of at the club is the point of alternatives. */}
+          {others.length > 0 && (
+            <section style={{ borderTop: '1px solid var(--divider)', paddingTop: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              <span className="fs-2xs" style={{ color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700 }}>
+                {shownAlt ? t('pickSheetBackToPick') : t('pickSheetOrConsider')}
+              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                {others.map((o) => (
+                  <ListRow
+                    key={o.item.id}
+                    onClick={() => { setAltIndex(o.index); setSpecsOpen(false); }}
+                    ariaLabel={`${o.item.brand} ${o.item.model}`}
+                    title={<span className="fs-md" style={{ color: 'var(--text-primary)' }}>{o.item.model}</span>}
+                    subtitle={o.line || o.item.brand}
+                    trailing={typeof o.item.msrp === 'number' && o.item.msrp > 0 ? (
+                      <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>${o.item.msrp}</span>
+                    ) : undefined}
+                  />
+                ))}
+              </div>
             </section>
           )}
 
@@ -566,10 +676,26 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
 
       {/* Pinned, so the action is reachable at any scroll position. */}
       <BottomSheetFooter>
-        {owned ? (
-          <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
-            {t('railInKitLine')}
-          </p>
+        {shownOwned ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+            <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
+              {tried ? t('pickSheetTriedThanks') : t('railInKitLine')}
+            </p>
+            {/* "I've tried it" is the loop's strongest signal and only means
+                something for a racket the member actually holds. */}
+            {!tried && (
+              <button
+                type="button"
+                className="cc-btn cc-btn-ghost"
+                onClick={() => {
+                  setTried(true);
+                  void recordEngagement('pick_tried', { catalogId: item.id, ...beaconMeta });
+                }}
+              >
+                {t('pickSheetTried')}
+              </button>
+            )}
+          </div>
         ) : (
           <button
             type="button"
