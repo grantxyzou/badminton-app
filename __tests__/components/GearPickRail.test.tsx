@@ -7,6 +7,17 @@ import GearPickSheet from '../../components/stats/GearPickSheet';
 import type { UseGear } from '../../components/stats/useGear';
 import enMessages from '../../messages/en.json';
 
+/**
+ * The refetch keys are gated on `PROFILE_READS_FIT` (lib/racketProfile.ts),
+ * which is false until the Phase 2 engine reads the fit answers. These tests
+ * pin the machinery, so they run with the gate ON; `GearPickRail.fitGate`
+ * pins the gate itself.
+ */
+vi.mock('../../lib/racketProfile', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/racketProfile')>()),
+  PROFILE_READS_FIT: true,
+}));
+
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 const ITEM = {
@@ -238,12 +249,17 @@ describe('GearPickRail — the fit answers re-ask the racket, and strings only w
   const owned = { id: 'i1', catalogId: 'r-owned', category: 'racket' as const, label: 'Yonex Astrox 88D Pro' };
   const doc = (extra: object) => ({ id: 'g', memberId: 'm', updatedAt: '2026-01-01', items: [], ...extra });
 
-  function countAsks() {
+  /** Every call answers with a pick; the string pick carries the frame it was
+   *  paired against, which is what the rail's string-skip keys on. */
+  function countAsks(stringSource: 'owned' | 'recommended' = 'owned') {
     const asks: string[] = [];
     global.fetch = vi.fn((input: RequestInfo | URL) => {
       const url = String(input);
       asks.push(url);
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({ item: ITEM, reasons: [] }) });
+      const body = url.includes('category=string')
+        ? { item: ITEM, reasons: [], pairedWith: { label: 'Astrox 88D Pro', source: stringSource } }
+        : { item: ITEM, reasons: [] };
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
     }) as unknown as typeof fetch;
     return asks;
   }
@@ -275,7 +291,7 @@ describe('GearPickRail — the fit answers re-ask the racket, and strings only w
   });
 
   it('a fit-only change re-asks BOTH when the member owns no racket — the string pairs against the recommended frame', async () => {
-    const asks = countAsks();
+    const asks = countAsks('recommended');
     const { rerender } = await mounted(fakeGear({ gear: doc({}) }));
 
     rerender(ui(fakeGear({ gear: doc({ fitSwing: 'fast' }) })));
@@ -356,8 +372,11 @@ describe('GearPickRail — the fit answers re-ask the racket, and strings only w
     expect(stringAsks).toBe(2);
   });
 
-  it('a free-text racket does NOT fix the frame — the server pairs against the recommended one, so strings re-ask', async () => {
-    const asks = countAsks();
+  it('the string skip keys on what the SERVER paired against — a string paired with the recommended frame re-asks even when the bag has a racket', async () => {
+    // A free-text racket, or a catalogId the catalog no longer resolves, is
+    // "owned" to a client mirror and "recommended" to the server. Only the
+    // server's answer counts.
+    const asks = countAsks('recommended');
     const typed = { id: 'i2', catalogId: null, category: 'racket' as const, label: 'Astrox 88D Pro' };
     const { rerender } = await mounted(fakeGear({ gear: doc({ items: [typed] }), rackets: [typed] }));
     rerender(ui(fakeGear({ gear: doc({ items: [typed], fitGoal: 'faster' }), rackets: [typed] })));
@@ -365,12 +384,50 @@ describe('GearPickRail — the fit answers re-ask the racket, and strings only w
     expect(stringAsks(asks)).toBe(2);
   });
 
-  it('a string-budget change re-asks at once — it is a preference the pairing engine reads', async () => {
+  it('bag-then-fit: adding a racket does not refetch, so the NEXT fit change must re-pair the string it left on the recommended frame', async () => {
+    const asks = countAsks('recommended');
+    const { rerender } = await mounted(fakeGear({ gear: doc({}) }));
+    rerender(ui(fakeGear({ gear: doc({ items: [owned] }), rackets: [owned] })));
+    await elapse(REC_REFETCH_DEBOUNCE_MS);
+    expect(asks).toHaveLength(2);
+    rerender(ui(fakeGear({ gear: doc({ items: [owned], fitGoal: 'more_power' }), rackets: [owned] })));
+    await elapse(REC_REFETCH_DEBOUNCE_MS);
+    expect(stringAsks(asks)).toBe(2);
+  });
+
+  it('a string-budget change re-asks the string only — the racket engine does not read it', async () => {
     const asks = countAsks();
     const { rerender } = await mounted(fakeGear({ gear: doc({ items: [owned] }), rackets: [owned] }));
     rerender(ui(fakeGear({ gear: doc({ items: [owned], stringBudgetMaxCad: 25 }), rackets: [owned] })));
-    await act(async () => {});
+    await elapse(REC_REFETCH_DEBOUNCE_MS);
     expect(stringAsks(asks)).toBe(2);
+    expect(racketAsks(asks)).toBe(1);
+  });
+
+  it('a string refetch cancelled mid-flight by a fit tap is re-asked, never skipped', async () => {
+    let stringAsks = 0;
+    let resolveSecond: ((r: unknown) => void) | null = null;
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('category=string')) {
+        stringAsks += 1;
+        const body = { item: ITEM, reasons: [], pairedWith: { label: 'x', source: 'owned' } };
+        // The second ask (the string-budget refresh) is held open so a fit
+        // tap can cancel it.
+        if (stringAsks === 2) return new Promise<Response>((r) => { resolveSecond = r as (r: unknown) => void; });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ item: ITEM, reasons: [] }) });
+    }) as unknown as typeof fetch;
+    const { rerender } = await mounted(fakeGear({ gear: doc({ items: [owned] }), rackets: [owned] }));
+    rerender(ui(fakeGear({ gear: doc({ items: [owned], stringBudgetMaxCad: 25 }), rackets: [owned] })));
+    await elapse(REC_REFETCH_DEBOUNCE_MS);
+    expect(stringAsks).toBe(2);
+    // Fit tap while that string ask is still in flight.
+    rerender(ui(fakeGear({ gear: doc({ items: [owned], stringBudgetMaxCad: 25, fitGrip: 'G5' }), rackets: [owned] })));
+    await elapse(REC_REFETCH_DEBOUNCE_MS);
+    expect(stringAsks).toBe(3);
+    expect(resolveSecond).not.toBeNull();
   });
 
   it('the pick sheet\'s Fit link closes it through close(), so nothing leaks into the next opening', async () => {

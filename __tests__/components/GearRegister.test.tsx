@@ -151,4 +151,21 @@ describe('GearRegister — D2, one tension number at a time', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Your fit — Add/ }));
     expect(await screen.findByText(enMessages.stats.gear.fitIntro)).toBeTruthy();
   });
+
+  it('keeps the fit door reachable when the gear read FAILS — the only way to clear a stored comfort answer that day', async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/equipment/gear')) return Promise.resolve({ ok: false, status: 500, json: async () => ({ error: 'load_failed' }) });
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ item: null, reason: null, needsCheckIn: true }) });
+    }) as unknown as typeof fetch;
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <GearRegister activeName="Lin" />
+      </NextIntlClientProvider>,
+    );
+    await screen.findByText(enMessages.stats.gear.kitError);
+    const door = await screen.findByRole('button', { name: /Your fit — Add/ });
+    expect(door.hasAttribute('disabled')).toBe(false);
+    fireEvent.click(door);
+    expect(await screen.findByText(enMessages.stats.gear.fitIntro)).toBeTruthy();
+  });
 });

@@ -25,6 +25,37 @@ const CATEGORIES: { key: EquipmentCategory; labelKey: string; icon: string }[] =
  */
 const PICKABLE: EquipmentCategory[] = ['racket', 'string'];
 
+/** One material for every row in the kit list — the categories and the fit
+ *  door share it so a spacing or colour fix lands once. */
+const KIT_ROW_STYLE = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--space-3)',
+  padding: 'var(--space-4)',
+  borderRadius: 'var(--radius-lg)',
+  background: 'var(--inner-card-bg)',
+  border: '1px solid var(--inner-card-border)',
+  width: '100%',
+  textAlign: 'left',
+} as const;
+const KIT_ROW_LABEL_STYLE = {
+  display: 'block',
+  fontSize: 'var(--fs-2xs)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+  color: 'var(--text-muted)',
+  fontWeight: 700,
+} as const;
+const KIT_ROW_VALUE_STYLE = {
+  display: 'block',
+  marginTop: 'var(--space-05)',
+  fontSize: 'var(--fs-md)',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+} as const;
+const KIT_ROW_ACTION_STYLE = { fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' } as const;
+
 export interface YourKitCardProps {
   activeName: string | null;
   /**
@@ -184,19 +215,7 @@ export default function YourKitCard({ activeName, gear, onOpenFit }: YourKitCard
                       'aria-label': `${t(labelKey)} — ${item ? t('change') : t('add')}`,
                     }
                   : {})}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--space-3)',
-                  padding: 'var(--space-4)',
-                  borderRadius: 'var(--radius-lg)',
-                  background: 'var(--inner-card-bg)',
-                  border: '1px solid var(--inner-card-border)',
-                  width: '100%',
-                  textAlign: 'left',
-                  cursor: pickable ? 'pointer' : 'default',
-                  opacity: pickable ? 1 : 0.6,
-                }}
+                style={{ ...KIT_ROW_STYLE, cursor: pickable ? 'pointer' : 'default', opacity: pickable ? 1 : 0.6 }}
               >
                 <span
                   className="material-icons"
@@ -206,88 +225,45 @@ export default function YourKitCard({ activeName, gear, onOpenFit }: YourKitCard
                   {icon}
                 </span>
                 <span style={{ minWidth: 0, flex: 1 }}>
-                  <span
-                    style={{
-                      display: 'block',
-                      fontSize: 'var(--fs-2xs)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      color: 'var(--text-muted)',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {t(labelKey)}
-                  </span>
-                  <span
-                    style={{
-                      display: 'block',
-                      marginTop: 'var(--space-05)',
-                      fontSize: 'var(--fs-md)',
-                      color: item ? 'var(--text-primary)' : 'var(--text-muted)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
+                  <span style={KIT_ROW_LABEL_STYLE}>{t(labelKey)}</span>
+                  <span style={{ ...KIT_ROW_VALUE_STYLE, color: item ? 'var(--text-primary)' : 'var(--text-muted)' }}>
                     {kitValue(item, t)}
                   </span>
                 </span>
                 {pickable && (
-                  <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
+                  <span style={KIT_ROW_ACTION_STYLE}>
                     {item ? t('change') : t('add')}
                   </span>
                 )}
               </Row>
             );
           })}
-          {/* The questionnaire's always-there door. Same row material as the
-              categories above; the trailing summary names what is answered so
-              the row reads as state, not as an errand. */}
-          {onOpenFit && (
-            <button
-              type="button"
-              onClick={onOpenFit}
-              disabled={busy}
-              aria-label={`${t('fitTitle')} — ${fitSummary ? t('change') : t('add')}`}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-3)',
-                padding: 'var(--space-4)',
-                borderRadius: 'var(--radius-lg)',
-                background: 'var(--inner-card-bg)',
-                border: '1px solid var(--inner-card-border)',
-                width: '100%',
-                textAlign: 'left',
-                cursor: 'pointer',
-              }}
-            >
-              <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>
-                tune
-              </span>
-              <span style={{ minWidth: 0, flex: 1 }}>
-                <span
-                  style={{
-                    display: 'block',
-                    fontSize: 'var(--fs-2xs)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                    fontWeight: 700,
-                    color: 'var(--text-muted)',
-                  }}
-                >
-                  {t('fitTitle')}
-                </span>
-                <span className="fs-md" style={{ color: fitSummary ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                  {fitSummary ?? t('fitNotAnswered')}
-                </span>
-              </span>
-              <span className="fs-sm" style={{ color: 'var(--accent)', flex: '0 0 auto' }}>
-                {fitSummary ? t('change') : t('add')}
-              </span>
-            </button>
-          )}
         </div>
+      )}
+      {/* The questionnaire's always-there door — OUTSIDE the error fork and
+          never disabled. Opening a sheet is not a network mutation, and on
+          the day the gear read fails this is the only way to reach the sheet
+          (the rail's door is an error card) and so the only way to clear a
+          stored comfort answer. Same material as the rows above; the
+          trailing summary names what is answered so the row reads as state. */}
+      {onOpenFit && (
+        <button
+          type="button"
+          onClick={onOpenFit}
+          aria-label={`${t('fitTitle')} — ${fitSummary ? t('change') : t('add')}`}
+          style={{ ...KIT_ROW_STYLE, cursor: 'pointer' }}
+        >
+          <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>
+            tune
+          </span>
+          <span style={{ minWidth: 0, flex: 1 }}>
+            <span style={KIT_ROW_LABEL_STYLE}>{t('fitTitle')}</span>
+            <span style={{ ...KIT_ROW_VALUE_STYLE, color: fitSummary ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+              {fitSummary ?? t('fitNotAnswered')}
+            </span>
+          </span>
+          <span style={KIT_ROW_ACTION_STYLE}>{fitSummary ? t('change') : t('add')}</span>
+        </button>
       )}
 
       {/* The kit's MANAGE surface — remove, use-this-one, set tension.

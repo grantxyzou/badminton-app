@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
-import { verifyMemberAuth, isAdminAuthed, isAdminAuthedWithMember } from '@/lib/auth';
+import { verifyMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { rackets } from '@/lib/activeRacket';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -227,7 +227,11 @@ export async function GET(req: NextRequest) {
     if (gear && gear.fitArmComfort !== undefined) {
       const caller = verifyMemberAuth(req);
       const isOwner = caller?.memberId === memberId;
-      if (!isOwner && !isAdminAuthed(req)) {
+      // The FRESH role re-check, unlike other read-only routes: this branch
+      // runs only when a non-owner reads a doc that carries a health-adjacent
+      // answer (a cold path), and a demoted admin's cookie is live for up to
+      // 30 days. One Cosmos read on almost no requests is the right trade.
+      if (!isOwner && !(await isAdminAuthedWithMember(req)).authed) {
         const { fitArmComfort: _strip, ...safe } = gear;
         // The marker says "an answer exists that you cannot see". Without it
         // the OWNER on a lapsed member_session (30-day TTL; localStorage
@@ -392,7 +396,6 @@ export async function PATCH(req: NextRequest) {
       next.stringBudgetMaxCad = v ?? undefined;
       touchedFit = true;
     }
-    if (touchedFit) next.fitUpdatedAt = new Date().toISOString();
 
     // activeRacketId is required only when this call isn't setting a
     // preference field — the original PATCH contract ("set my active
@@ -413,6 +416,13 @@ export async function PATCH(req: NextRequest) {
         }
         next.activeRacketId = activeRacketId;
       }
+      // `fitUpdatedAt` dates an ANSWER, so it moves only when one actually
+      // changes against the stored doc — not on a re-tap of the lit tab, and
+      // not on the string budget, which is a pairing preference rather than
+      // a fit answer (`stringBudgetMaxCad` is excluded on purpose).
+      const FIT_ANSWERS = ['fitGoal', 'fitSwing', 'fitArmComfort', 'fitGrip'] as const;
+      const changed = FIT_ANSWERS.some((k) => k in next && next[k] !== prior?.[k]);
+      if (changed) next.fitUpdatedAt = new Date().toISOString();
       return { ok: true, next };
     });
   } catch (error) {

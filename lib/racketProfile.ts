@@ -36,6 +36,16 @@ const SKILL_MAP: Record<string, keyof PlayerProfile> = {
   training_mindset: 'mindset',
 };
 
+/**
+ * Whether ANY engine reads the fit questionnaire yet. `false` until the Phase 2
+ * fit engine lands. The rail keys its `/api/recommend` refetch on this: while
+ * it is false a fit answer cannot change a pick, and re-asking on every tap
+ * burnt the 10/min/IP limiter — whose throttled 200 renders as an error card —
+ * on identical answers. Lives next to `buildProfile` so the rail cannot drift
+ * from the server: the day a field is read here, this flips here.
+ */
+export const PROFILE_READS_FIT = false;
+
 /** What an unrated skill counts as. Matches the engine's own defaults: a
  *  mid-scale 3 is "no signal", not "weak". */
 const DEFAULT_SKILL = 3;

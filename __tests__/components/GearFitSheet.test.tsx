@@ -135,6 +135,46 @@ describe('GearFitSheet — every answer is one write through the single owner', 
     expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull();
   });
 
+  it('re-tapping the lit tab, or clearing what is already absent, sends no PATCH', async () => {
+    mockGear(gearDoc({ fitSwing: 'fast' }));
+    renderSheet();
+    const fast = await screen.findByRole('tab', { name: 'Fast' });
+    await waitFor(() => expect(fast.getAttribute('aria-selected')).toBe('true'));
+    fireEvent.click(fast);
+    fireEvent.click(screen.getByRole('tab', { name: 'Not sure' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'No limit' }));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(patches()).toEqual([]);
+  });
+
+  it('offers "Nothing — happy with it" only when there is a racket to be happy with', async () => {
+    mockGear(gearDoc());
+    const { unmount } = renderSheet();
+    await screen.findByText('What matters most in a racket?');
+    expect(screen.queryByRole('button', { name: 'Nothing — happy with it' })).toBeNull();
+    unmount();
+    mockGear(gearDoc({ items: [{ id: 'i1', catalogId: 'r1', category: 'racket', label: 'Yonex Astrox 88D Pro' }] }));
+    renderSheet();
+    expect(await screen.findByRole('button', { name: 'Nothing — happy with it' })).toBeTruthy();
+  });
+
+  it('asks the racket form of the question while the bag is UNKNOWN, not the no-racket form', async () => {
+    mockGear(null, { getStatus: 500 });
+    renderSheet();
+    expect(await screen.findByText('What would you change about your racket?')).toBeTruthy();
+  });
+
+  it('goal rows are disabled, visibly, while a write is in flight', async () => {
+    mockGear(gearDoc());
+    const pending = new Promise<Response>(() => {});
+    const real = global.fetch;
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) =>
+      (init?.method ?? 'GET').toUpperCase() === 'PATCH' ? pending : (real as typeof fetch)(input, init)));
+    renderSheet();
+    fireEvent.click(await screen.findByRole('button', { name: 'More power' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'More control' }).hasAttribute('disabled')).toBe(true));
+  });
+
   it('tapping a goal row PATCHes exactly that field, once', async () => {
     mockGear(gearDoc());
     renderSheet();

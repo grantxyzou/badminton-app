@@ -134,6 +134,27 @@ describe('fit questionnaire fields', () => {
     expect(admin).not.toHaveProperty('fitArmComfortRedacted');
   });
 
+  it('a DEMOTED admin no longer reads the comfort answer, cookie or no cookie', async () => {
+    await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitArmComfort: 'often_sore' }, cookie));
+    const admin = (await (await GET(makeAdminRequest('GET', `${BASE}?name=Lin`))).json()).gear;
+    expect(admin.fitArmComfort).toBe('often_sore');
+    seedAdminMember({ role: 'member' });
+    const demoted = (await (await GET(makeAdminRequest('GET', `${BASE}?name=Lin`))).json()).gear;
+    expect(demoted).not.toHaveProperty('fitArmComfort');
+    expect(demoted.fitArmComfortRedacted).toBe(true);
+  });
+
+  it('fitUpdatedAt moves only when an answer actually changes — not on a re-send, not on the string budget', async () => {
+    await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitGoal: 'faster' }, cookie));
+    const first = (await read(cookie)).fitUpdatedAt;
+    await new Promise((r) => setTimeout(r, 5));
+    await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitGoal: 'faster' }, cookie));
+    await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', stringBudgetMaxCad: 25 }, cookie));
+    expect((await read(cookie)).fitUpdatedAt).toBe(first);
+    await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitGoal: 'more_power' }, cookie));
+    expect((await read(cookie)).fitUpdatedAt).not.toBe(first);
+  });
+
   it('marks a stripped answer as redacted, so a lapsed-session owner is not told "not answered"', async () => {
     await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitArmComfort: 'sometimes_sore' }, cookie));
     const anonymous = await read();

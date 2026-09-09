@@ -215,16 +215,19 @@ racket and never excluded what they owned).
   goes through the pick sheet's `close()` — it is an exit route like any
   other — and the two sheets swap, never stack. **That swap overlaps two body
   scroll locks for ~220 ms** (the closing sheet still holds its lock), which is
-  why `useBodyScrollLock` is reference-counted: per-instance snapshots restored
-  the page to scrollable beneath the open sheet, then pinned it fixed with
-  nothing on screen. Format and budget stay in `GearPickSheet`; the fit sheet
+  why `useBodyScrollLock` is reference-counted and `useFocusTrap` is
+  top-of-stack-only: per-instance cleanups restored the page to scrollable
+  beneath the open sheet, then pinned it fixed with nothing on screen, and
+  handed keyboard focus to the rail card BEHIND the open sheet. Format and budget stay in `GearPickSheet`; the fit sheet
   shows them read-only. A `null` option ("Not sure", "No limit") is a CLEAR and
   never lights — the doc cannot tell "answered: not sure" from "never asked".
   Five rules that are easy to break:
   - **`fitArmComfort` is health-adjacent.** The gear GET is public by name, so
-    the route strips it for anyone but the owner or an admin (same shape as
-    the pinHash strip-canary, tested by VALUE not by key — the mock keeps an
-    explicit `undefined`, production JSON drops it); it is disclosed in
+    the route strips it for anyone but the owner or an admin — with the FRESH
+    role re-check on that cold path, so a demoted admin's live cookie does not
+    read it for 30 days (same shape as the pinHash strip-canary, tested by
+    VALUE not by key — the mock keeps an explicit `undefined`, production JSON
+    drops it); it is disclosed in
     `legal.privacy` in both locales (pinned by the `'arm or shoulder'` needle
     in `__tests__/legal-pages.test.ts`) and purged with the doc. **A strip
     sets `fitArmComfortRedacted: true`** (response-only, never stored): the
@@ -237,21 +240,29 @@ racket and never excluded what they owned).
   - **`writeGearDoc` rebuilds the doc from an explicit field list.** A field
     left off it survives the PATCH that wrote it and is dropped by the next
     POST or DELETE. Pinned by "fit answers survive a bag write".
-  - **The rail's refetch has TWO keys, and is never keyed on the bag.**
-    Format, budget and the string budget reach both engines; the fit answers
-    reach the racket engine, and reach the STRING pick only through the frame
-    it pairs against. "Frame fixed" is the SERVER's rule (`buildProfile`: the
-    active racket has a `catalogId`), not "owns any racket" — a free-text
-    racket falls to the recommended frame, which the fit answers move. A
-    fit-only change skips the string only when it is already `ready` with a
-    fixed frame; a `loading` or `error` string is always re-asked (skipping
-    loading strands it on the skeleton, and error has no other retry). That
-    ownership boolean is read through a ref, NOT listed as an effect
-    dependency: as a dependency it keyed the rail on the bag, and adding the
-    recommended racket re-scored with it excluded and swapped the pick out
-    from under the YOU OWN THIS flip. Only a fit-only change is debounced
-    (`REC_REFETCH_DEBOUNCE_MS`, 500 ms); the first pass and a format/budget
-    tap refetch at once, so the pick under an open sheet never sits stale.
+  - **The rail's refetch has THREE keys, two of them GATED, and is never
+    keyed on the bag.** Format/budget reach both engines and always re-ask at
+    once. The fit answers and the string budget are in the key only while
+    `PROFILE_READS_FIT` (`lib/racketProfile.ts`) is true — it is false until
+    the Phase 2 engine reads them, because re-asking on a field no engine
+    reads burnt the 10/min/IP limiter on identical answers (three reviewers,
+    one throttle-math). Flip it THERE, next to `buildProfile`, so the rail
+    cannot drift from the server. With the gate open: a change that leaves
+    format/budget alone is debounced (`REC_REFETCH_DEBOUNCE_MS`, 500 ms); a
+    string-budget change re-asks the string only; a fit change skips the
+    string only when the SERVER said it is paired with the member's own frame
+    (`pairedWith.source === 'owned'`) — never a client mirror of that rule,
+    which drifted twice (a free-text racket, an unresolvable catalogId); and
+    a category whose in-flight fetch the effect's cleanup discarded is never
+    skipped, whatever its status (`cancelledRef`), or the answer from before
+    the change stays on screen. Nothing about the bag is an effect dependency:
+    keyed on it, adding the recommended racket re-scored with it excluded and
+    swapped the pick out from under the YOU OWN THIS flip.
+  - **The kit card's "Your fit" row lives OUTSIDE the error fork and is never
+    disabled.** Opening a sheet is not a mutation, and on the day the gear
+    read fails it is the only door. `fitUpdatedAt` moves only when an ANSWER
+    changes against the stored doc — a re-tap of the lit tab sends no PATCH
+    at all, and the string budget is a pairing preference, not an answer.
   - **Preference PATCHes have their own limiter bucket** (`gear-prefs`, 60/h)
     separate from the bag's (`gear-bag`, 20/h). A first-pass questionnaire is
     five to eight writes; sharing the bucket let it lock "Add to my

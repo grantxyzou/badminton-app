@@ -5,7 +5,7 @@ import { recordEngagement } from '@/lib/engagement';
 import GearPickCard, { type GearPick, type GearPickCardStatus } from './GearPickCard';
 import GearPickSheet from './GearPickSheet';
 import type { UseGear } from './useGear';
-import { activeRacket } from '@/lib/activeRacket';
+import { PROFILE_READS_FIT } from '@/lib/racketProfile';
 import type { CatalogItem, EquipmentCategory } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -25,8 +25,9 @@ const SOURCED: EquipmentCategory[] = ['racket', 'string'];
  * fit sheet has five controls and a member answering it for the first time
  * taps them in a row; every tap used to be a fetch per sourced category
  * against a 10/min/IP limit whose throttled 200 renders as an error card.
- * Half a second collapses a burst into one pass. Only a fit-only change is
- * delayed: the first pass and a format/budget tap refetch at once.
+ * Half a second collapses a burst into one pass. Only a change that leaves
+ * format and budget alone is delayed: the first pass and a format/budget tap
+ * refetch at once.
  */
 export const REC_REFETCH_DEBOUNCE_MS = 500;
 
@@ -127,38 +128,35 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
   // 10/min rate limit whose throttled response has no `unavailable` field —
   // i.e. it would render as an error card (see the ladder below).
   const gearLoaded = gear.loaded;
-  // Two keys, because the two engines read different fields. Format and
-  // budget reach both; the fit answers reach the racket engine only — and
-  // reach the STRING pick solely through the frame it pairs against, which is
-  // the member's own racket whenever they have one. So a fit-only change
-  // re-asks strings only for a member with no racket in the bag; with one, the
-  // frame is fixed and the answer cannot move.
+  // Three keys, because three things read them differently. Format/budget
+  // reach both engines. The fit answers reach the racket engine (and the
+  // string pick only through the frame it pairs against). The string budget
+  // reaches the PAIRING engine only. The last two are gated on
+  // `PROFILE_READS_FIT`: until an engine reads a field, re-asking on it burns
+  // the 10/min/IP limiter on an identical answer, and a throttled 200 renders
+  // as an error card. The gate lives next to `buildProfile` so the rail and
+  // the server cannot disagree about which fields matter.
   const d = gear.gear;
-  // `stringBudgetMaxCad` sits with the preferences, not the fit answers: it is
-  // documented as advisory to the PAIRING engine's value scorer, so a change
-  // to it must reach the string pick the way budgetMaxCad reaches the racket.
-  const prefKey = gearLoaded ? `${d?.playFormat ?? ''}|${d?.budgetMaxCad ?? ''}|${d?.stringBudgetMaxCad ?? ''}` : null;
-  const fitKey = gearLoaded
+  const prefKey = gearLoaded ? `${d?.playFormat ?? ''}|${d?.budgetMaxCad ?? ''}` : null;
+  const fitKey = gearLoaded && PROFILE_READS_FIT
     ? `${d?.fitGoal ?? ''}|${d?.fitSwing ?? ''}|${d?.fitArmComfort ?? ''}|${d?.fitGrip ?? ''}`
-    : null;
-  const recKey = prefKey === null ? null : `${prefKey}#${fitKey}`;
-  // Read inside the effect through a ref, NOT listed as a dependency: as a
-  // dependency it would key the rail on the BAG, and adding the recommended
-  // racket flips it — the effect would re-run at once, re-score with that
-  // racket now excluded, and swap the pick out from under the IN YOUR KIT
-  // flip. Same pattern as `onPairTensionRef` above.
-  //
-  // The rule is the SERVER's rung-1 rule (`buildProfile`: a frame is fixed
-  // only when the active racket has a `catalogId`), not "owns any racket". A
-  // free-text racket typed into the stringing sheet counts as owned but has no
-  // attributes, so the route falls to rung 2 — the RECOMMENDED frame, which is
-  // exactly the frame the fit answers move.
-  const frameFixed = activeRacket(gear.gear)?.catalogId != null;
-  const fitAloneReachesStringsRef = useRef(!frameFixed);
-  useEffect(() => {
-    fitAloneReachesStringsRef.current = !frameFixed;
-  }, [frameFixed]);
+    : '';
+  const sbKey = gearLoaded && PROFILE_READS_FIT ? `${d?.stringBudgetMaxCad ?? ''}` : '';
+  const recKey = prefKey === null ? null : `${prefKey}#${fitKey}#${sbKey}`;
   const prevKeyRef = useRef<string | null>(null);
+  // Whether the string pick is paired against the member's OWN racket, as the
+  // SERVER reported it (`pairedWith.source`), never as a client mirror of the
+  // server's rule. The mirror drifted twice: it counted a free-text racket as
+  // a fixed frame, and it counted a catalogId the catalog no longer resolves.
+  // Only a string paired with an owned frame can be skipped on a fit change —
+  // any other string is paired against the RECOMMENDED frame, which the fit
+  // answers move.
+  const stringSourceRef = useRef<'owned' | 'recommended' | null>(null);
+  // Categories whose in-flight fetch this effect's cleanup discarded. They are
+  // never skipped by the next run: the answer on screen is the one from
+  // BEFORE the change that cancelled them, and skipping would leave it there.
+  const inFlightRef = useRef(new Set<EquipmentCategory>());
+  const cancelledRef = useRef(new Set<EquipmentCategory>());
 
   useEffect(() => {
     if (!activeName || recKey === null) return;
@@ -176,7 +174,11 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
     // permanently — a fifth state, and not one of the four honest ones.
     const prev = prevKeyRef.current;
     const isRefresh = prev !== null && prev !== recKey;
-    const onlyFitChanged = isRefresh && prev.split('#')[0] === recKey.split('#')[0];
+    const [prevPref, prevFit, prevSb] = (prev ?? '##').split('#');
+    const [nextPref, nextFit, nextSb] = recKey.split('#');
+    const prefChanged = isRefresh && prevPref !== nextPref;
+    const fitChanged = isRefresh && prevFit !== nextFit;
+    const sbChanged = isRefresh && prevSb !== nextSb;
     prevKeyRef.current = recKey;
 
     let live = true;
@@ -184,17 +186,22 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
     const run = () => {
       for (const cat of SOURCED) {
         if (isRefresh && statusRef.current[cat] === 'parked') continue;
-        // Skip the string only when it already HAS an answer and the frame it
-        // pairs against cannot move. A string still `loading` must be re-asked
-        // — the cleanup above just dropped its in-flight response, and skipping
-        // it now would strand it on the skeleton (the very state the comment
-        // above forbids). An `error` string is re-asked too: this is its only
-        // retry path short of a reload.
-        if (onlyFitChanged && cat === 'string' && statusRef.current.string === 'ready' && !fitAloneReachesStringsRef.current) continue;
+        const cancelled = cancelledRef.current.delete(cat);
+        if (isRefresh && !cancelled) {
+          // The racket engine does not read the string budget.
+          if (cat === 'racket' && !prefChanged && !fitChanged) continue;
+          // A string already paired with the member's OWN frame cannot move
+          // on a fit-only change; any other string is paired with the
+          // recommended frame, which can.
+          if (cat === 'string' && !prefChanged && !sbChanged
+            && statusRef.current.string === 'ready' && stringSourceRef.current === 'owned') continue;
+        }
+        inFlightRef.current.add(cat);
         fetch(`${BASE}/api/recommend?name=${encodeURIComponent(activeName)}&category=${cat}`, { cache: 'no-store' })
           .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
           .then((d) => {
             if (!live) return;
+            inFlightRef.current.delete(cat);
             // The ladder, in order:
             //
             //   `unavailable`  → parked, regardless of which of the two reasons
@@ -219,6 +226,7 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
               apply(cat, { status: 'error', pick: null });
               return;
             }
+            if (cat === 'string') stringSourceRef.current = d.pairedWith?.source ?? null;
             apply(cat, {
               status: 'ready',
               pick: {
@@ -243,7 +251,9 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
           // not "known parked" — it must render the distinct error card per the
           // legible-fail rule, never a confident coming-soon.
           .catch(() => {
-            if (live) apply(cat, { status: 'error', pick: null });
+            if (!live) return;
+            inFlightRef.current.delete(cat);
+            apply(cat, { status: 'error', pick: null });
           });
       }
     };
@@ -251,11 +261,15 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
     // single format or budget tap in the pick sheet refetches at once, as it
     // always did — the pick under that sheet must not sit stale for half a
     // second with no loading state to say so.
-    if (onlyFitChanged) timer = setTimeout(run, REC_REFETCH_DEBOUNCE_MS);
+    if (isRefresh && !prefChanged) timer = setTimeout(run, REC_REFETCH_DEBOUNCE_MS);
     else run();
     return () => {
       live = false;
       if (timer) clearTimeout(timer);
+      // Whatever was still in flight is now discarded; the next run must
+      // re-ask it whatever its status, or the old answer stays on screen.
+      for (const cat of inFlightRef.current) cancelledRef.current.add(cat);
+      inFlightRef.current.clear();
     };
   }, [activeName, recKey, apply]);
 

@@ -79,7 +79,13 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
   const arm = known && !armRedacted ? (doc?.fitArmComfort ?? null) : undefined;
   const grip = known ? (doc?.fitGrip ?? null) : undefined;
   const stringBudget = known ? (doc?.stringBudgetMaxCad ?? null) : undefined;
-  const hasRacket = gear.rackets.length > 0;
+  // Only a KNOWN empty bag gets the no-racket wording; unknown defaults to
+  // the racket form rather than to a sentence built from a failed read.
+  const hasRacket = known ? gear.rackets.length > 0 : true;
+  // "Nothing — happy with it" is an answer about the racket you hold; with
+  // none it is meaningless, and stored it would read to the engine as an
+  // anchored "happy". Offered only when there is a racket to be happy with.
+  const goals = hasRacket ? FIT_GOALS : FIT_GOALS.filter((g) => g !== 'happy');
 
   function close() {
     setError(null);
@@ -145,7 +151,15 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
             aria-selected={current !== undefined && value !== null && current === value}
             disabled={gear.busy}
             className={`flex-1 flex items-center justify-center fs-sm ${current !== undefined && value !== null && current === value ? 'segment-tab-active' : 'segment-tab-inactive'}`}
-            onClick={() => setPref(write(value))}
+            // A re-tap of the lit tab, or a clear when nothing is stored, is
+            // a no-op — not a PATCH that re-stamps fitUpdatedAt and spends a
+            // limiter token to change nothing.
+            onClick={() => {
+              const stored = current !== undefined && current !== null && current === value;
+              const clearingNothing = value === null && (current === null || current === undefined);
+              if (stored || clearingNothing) return;
+              setPref(write(value));
+            }}
           >
             {t(key)}
           </button>
@@ -198,7 +212,7 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
           <section style={SECTION_STYLE} role="group" aria-label={hasRacket ? t('fitGoalLabel') : t('fitGoalLabelNoRacket')}>
             {labelRow(hasRacket ? t('fitGoalLabel') : t('fitGoalLabelNoRacket'), clearLink(goal != null, { fitGoal: null }))}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-              {FIT_GOALS.map((g: FitGoal) => {
+              {goals.map((g: FitGoal) => {
                 const selected = goal !== undefined && goal === g;
                 return (
                   <ListRow
@@ -209,6 +223,7 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
                     // Tapping the selected row clears it, so the list is also
                     // its own undo.
                     onClick={() => setPref({ fitGoal: selected ? null : g })}
+                    disabled={gear.busy}
                     ariaLabel={t(`fitGoal_${g}`)}
                     title={
                       <span className="fs-md" style={{ color: selected ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
