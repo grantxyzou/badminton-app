@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer, getActiveSessionId, ensureContainer } from '@/lib/cosmos';
+import { resolveGroupId } from '@/lib/groupContext';
 import { topPartners } from '@/lib/recommend';
 import { ownsNameOrAdmin } from '@/lib/auth';
 import { summarizeAssessmentTrend, type AssessmentTrend, type StoredAssessment } from '@/lib/assessment';
@@ -251,7 +252,10 @@ export async function GET(req: NextRequest) {
   if (lookupFailed) return readFailed();
   if (!member) return emptyPayload(false);
 
-  const activeSessionId = await getActiveSessionId();
+  // A group with no session yet gets an empty seed: the cache key never
+  // matches (nothing to be stale against) and the drill rotation is constant.
+  // The insight doc itself moves to a per-group id in Phase 1b.
+  const activeSessionId = (await getActiveSessionId(resolveGroupId(req))) ?? '';
 
   // ── Latest self-assessment. Fetched before the cache check so a
   //    fresh check-in invalidates the session-cached read. Raw docs are kept so

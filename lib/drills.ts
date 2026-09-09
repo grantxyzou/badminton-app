@@ -19,6 +19,7 @@
 
 import library from '@/scripts/data/drill-library.json';
 import { getContainer, ensureContainer, getActiveSessionId } from './cosmos';
+import { weekKeyFor } from './drillsDone';
 import { summarizeAssessmentTrend, type StoredAssessment } from './assessment';
 
 export interface Drill {
@@ -185,10 +186,12 @@ async function fetchWorkOn(memberId: string): Promise<WorkOnSkill[]> {
  * A caller that only has a memberId in hand (like /api/recommend's `subject`)
  * can still get real drill picks without needing to resolve a name first.
  */
-export async function drillPicksFor(subject: { memberId: string }): Promise<DrillPick[]> {
+export async function drillPicksFor(subject: { memberId: string }, groupId: string): Promise<DrillPick[]> {
   const [workOn, rotationSeed] = await Promise.all([
     fetchWorkOn(subject.memberId),
-    getActiveSessionId(),
+    // Same key the completions are stored under (lib/drillsDone.ts), so the
+    // picks and the "n of 2 done" counter rotate together by construction.
+    getActiveSessionId(groupId).then((id) => weekKeyFor(id)),
   ]);
   return recommendDrills({ workOn, level: null, rotationSeed });
 }

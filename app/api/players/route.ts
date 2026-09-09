@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, setMemberCookie } from '@/lib/auth';
@@ -54,7 +55,10 @@ export async function GET(req: NextRequest) {
   try {
     const params = new URL(req.url).searchParams;
     const overrideSessionId = params.get('sessionId');
-    const sessionId = overrideSessionId && isAdminAuthed(req) ? overrideSessionId : await getActiveSessionId();
+    const sessionId = overrideSessionId && isAdminAuthed(req)
+      ? overrideSessionId
+      : await getActiveSessionId(resolveGroupId(req));
+    if (!sessionId) return noActiveSession();
     const includeRemoved = params.get('all') === 'true' && isAdminAuthed(req);
     const container = getContainer('players');
     const { resources } = await container.items
@@ -85,7 +89,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const sessionId = isAdminAuthed(req) && typeof body.sessionId === 'string' ? body.sessionId : await getActiveSessionId();
+    const sessionId = isAdminAuthed(req) && typeof body.sessionId === 'string'
+      ? body.sessionId
+      : await getActiveSessionId(resolveGroupId(req));
+    if (!sessionId) return noActiveSession();
     const { name } = body;
     const joinWaitlist = body.waitlist === true;
 
@@ -480,7 +487,10 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid PIN format' }, { status: 400 });
       }
 
-      const sessionId = isAdmin && typeof body.sessionId === 'string' ? body.sessionId : await getActiveSessionId();
+      const sessionId = isAdmin && typeof body.sessionId === 'string'
+        ? body.sessionId
+        : await getActiveSessionId(resolveGroupId(req));
+      if (!sessionId) return noActiveSession();
       const container = getContainer('players');
 
       // Resolve the player record. Prefer id (legacy clients), fall back
@@ -578,7 +588,8 @@ export async function PATCH(req: NextRequest) {
       if (!checkRateLimit(`selfpay:${ip}`, 10, 60 * 1000)) {
         return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
       }
-      const sessionId = await getActiveSessionId();
+      const sessionId = await getActiveSessionId(resolveGroupId(req));
+      if (!sessionId) return noActiveSession();
       const container = getContainer('players');
       const { resource: existing } = await container.item(id, sessionId).read();
       if (!existing) {
@@ -601,7 +612,10 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const sessionId = typeof body.sessionId === 'string' ? body.sessionId : await getActiveSessionId();
+    const sessionId = typeof body.sessionId === 'string'
+      ? body.sessionId
+      : await getActiveSessionId(resolveGroupId(req));
+    if (!sessionId) return noActiveSession();
     const container = getContainer('players');
     const { resource: existing } = await container.item(id, sessionId).read();
     if (!existing) {
@@ -679,7 +693,10 @@ export async function DELETE(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const sessionId = isAdmin && typeof body.sessionId === 'string' ? body.sessionId : await getActiveSessionId();
+    const sessionId = isAdmin && typeof body.sessionId === 'string'
+      ? body.sessionId
+      : await getActiveSessionId(resolveGroupId(req));
+    if (!sessionId) return noActiveSession();
 
     // Admin hard purge — permanently delete every record for this session
     if (isAdmin && body.purgeAll === true) {

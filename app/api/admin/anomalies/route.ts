@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId, POINTER_ID } from '@/lib/cosmos';
+import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { evaluateAnomalies } from '@/lib/anomalies';
 import type { Session } from '@/lib/types';
@@ -11,7 +12,10 @@ export async function GET(req: NextRequest) {
   if (!auth.authed) return unauthorized();
 
   try {
-    const sessionId = await getActiveSessionId();
+    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    // No session yet means no anomalies yet — the same empty list this route
+    // already returns when the pointer targets a doc that does not exist.
+    if (!sessionId) return NextResponse.json([]);
     const sessionsContainer = getContainer('sessions');
     const membersContainer = getContainer('members');
 

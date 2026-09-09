@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos';
+import { resolveGroupId } from '@/lib/groupContext';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { verifyMemberAuth } from '@/lib/auth';
-import { drillDocId, readDone, type DrillCompletionDoc } from '@/lib/drillsDone';
+import { drillDocId, readDone, weekKeyFor, type DrillCompletionDoc } from '@/lib/drillsDone';
 import { resolveActiveSubject } from '@/lib/memberResolve';
 
 /**
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
     await ensureDrillsDone();
     const [memberId, weekKey] = await Promise.all([
       (await resolveActiveSubject(caller.name)).memberId,
-      getActiveSessionId(),
+      getActiveSessionId(resolveGroupId(req)).then((id) => weekKeyFor(id)),
     ]);
 
     const container = getContainer('drillCompletions');

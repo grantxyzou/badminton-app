@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { readActiveAnnouncements } from '@/lib/announcements';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
@@ -7,10 +8,10 @@ import { sendPushToAll } from '@/lib/push';
 import { buildAnnouncementPayload } from '@/lib/pushMessages';
 import { randomBytes } from 'crypto';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   // Delegates to the shared lib so the server-rendered home page
   // (`app/page.tsx`) and this REST endpoint stay in lockstep.
-  const resources = await readActiveAnnouncements();
+  const resources = await readActiveAnnouncements(resolveGroupId(req));
   return NextResponse.json(resources);
 }
 
@@ -18,7 +19,8 @@ export async function DELETE(req: NextRequest) {
   if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   try {
-    const sessionId = await getActiveSessionId();
+    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    if (!sessionId) return noActiveSession();
     const { id } = await req.json();
     if (!id || typeof id !== 'string') {
       return NextResponse.json({ error: 'ID required' }, { status: 400 });
@@ -51,7 +53,8 @@ export async function PATCH(req: NextRequest) {
   if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   try {
-    const sessionId = await getActiveSessionId();
+    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    if (!sessionId) return noActiveSession();
     const { id, text } = await req.json();
     if (!id || typeof id !== 'string') {
       return NextResponse.json({ error: 'ID required' }, { status: 400 });
@@ -95,7 +98,8 @@ export async function POST(req: NextRequest) {
   if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   try {
-    const sessionId = await getActiveSessionId();
+    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    if (!sessionId) return noActiveSession();
     const { text } = await req.json();
     const trimmed = typeof text === 'string' ? text.trim() : '';
     if (!trimmed) {

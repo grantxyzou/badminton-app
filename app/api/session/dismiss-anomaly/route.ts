@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -33,7 +34,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const sessionId = await getActiveSessionId();
+    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    if (!sessionId) return noActiveSession();
     const container = getContainer('sessions');
     const { resource: existing } = await container.item(sessionId, sessionId).read();
     if (!existing) {

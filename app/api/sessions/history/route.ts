@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId, POINTER_ID } from '@/lib/cosmos';
+import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { buildReceiptInput } from '@/lib/buildReceiptInput';
 import type { ETransferRecipient, Member, Session } from '@/lib/types';
@@ -39,7 +40,8 @@ export async function GET(req: NextRequest) {
     // receipt — this list is for PAST (archived) sessions only. Exclude it
     // alongside the pointer + legacy docs. (Also keeps unsettled cover-mode
     // math out of this list, which reads frozen settled snapshots.)
-    const activeId = await getActiveSessionId();
+    // Bound as the `@activeId` exclusion; a group with no session excludes nothing.
+    const activeId = (await getActiveSessionId(resolveGroupId(req))) ?? '';
 
     // All PAST sessions (exclude pointer + legacy + active). Sort + slice in JS
     // — the mock store ignores ORDER BY / LIMIT (same contract as sessions/recent).

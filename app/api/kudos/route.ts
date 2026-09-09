@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos';
+import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -106,7 +107,8 @@ export async function POST(req: NextRequest) {
     // sessionId override is admin-only (rule 7); otherwise the active session.
     const sessionId = typeof body.sessionId === 'string' && body.sessionId && isAdminAuthed(req)
       ? body.sessionId
-      : await getActiveSessionId();
+      : await getActiveSessionId(resolveGroupId(req));
+    if (!sessionId) return noActiveSession();
 
     /* Co-play proof: you can only kudos someone you actually played with —
        now across the recent sessions rather than only the active one. An admin

@@ -1,6 +1,8 @@
 import HomeShell from '@/components/HomeShell';
 import { OnlineProvider } from '@/lib/useOnline';
+import { headers } from 'next/headers';
 import { readActiveAnnouncements } from '@/lib/announcements';
+import { resolveGroupIdFromCookieHeader } from '@/lib/groupContext';
 import { configuredProviders } from '@/lib/oauthProviders';
 import { isFlagOn } from '@/lib/flags';
 
@@ -25,7 +27,8 @@ export const dynamic = 'force-dynamic';
  * before this change. Direct server-render shaves the bulk of that.
  */
 export default async function Page() {
-  const announcements = await readActiveAnnouncements();
+  const groupId = resolveGroupIdFromCookieHeader((await headers()).get('cookie'));
+  const announcements = await readActiveAnnouncements(groupId);
   const initialAnnouncement = announcements[0] ?? null;
   // Which sign-in providers this deployment has credentials for. Pure env
   // reads — no Cosmos, no network — so it costs nothing here, and resolving it

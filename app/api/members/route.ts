@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { randomBytes } from 'crypto';
 
@@ -156,7 +157,8 @@ export async function PATCH(req: NextRequest) {
     if (clearPin && typeof existing?.name === 'string') {
       try {
         const playersContainer = getContainer('players');
-        const sessionId = await getActiveSessionId();
+        // '' when there is no session: matches nothing, nothing to mirror.
+        const sessionId = (await getActiveSessionId(resolveGroupId(req))) ?? '';
         const { resources: matches } = await playersContainer.items
           .query({
             query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name)',

@@ -17,16 +17,18 @@
  *
  * PARTITION KEYS ARE THE HAZARD HERE. `container.item(id, pk)` takes the
  * partition key VALUE, and the mock store IGNORES it — so a wrong value passes
- * every test and silently no-ops against real Cosmos. That is why the tables
- * below record `pk` and `pkField` as DATA: one wrong value is visible in a diff
- * instead of buried in the twelfth hand-written block. The values were read
- * from the `ensureContainer(name, path)` calls, not guessed from call sites.
+ * every test and silently no-ops against real Cosmos. The key for each
+ * container therefore comes from ONE registry, `lib/containers.ts`
+ * (`pkFieldOf`), rather than a hand-written column here: this table used to
+ * carry `pk` and `pkField` as data, which made a wrong value visible in a diff
+ * but still let the two lists drift apart.
  *
  * `__tests__/member-purge-coverage.test.ts` fails the build when a container
  * exists that appears in none of the three tables, so this cannot go stale the
  * next time someone adds one.
  */
 import { getContainer } from './cosmos';
+import { pkFieldOf, type ContainerName } from './containers';
 
 /** What an anonymized row says instead of a name. */
 export const TOMBSTONE_NAME = 'Former member';
@@ -34,13 +36,9 @@ export const TOMBSTONE_NAME = 'Former member';
 export const TOMBSTONE_MEMBER_ID = 'deleted-member';
 
 interface PurgeTarget {
-  container: string;
-  /** Partition key PATH as declared to `ensureContainer`. Documentation. */
-  pk: string;
+  container: ContainerName;
   /** Doc field identifying the member. */
   by: 'memberId' | 'recipientMemberId' | 'name';
-  /** Doc field supplying the partition key VALUE for `.item(id, pk)`. */
-  pkField: 'id' | 'memberId' | 'sessionId' | 'recipientMemberId';
   /** Case-insensitive match — for the name-keyed containers. */
   ci?: boolean;
 }
@@ -49,14 +47,14 @@ interface PurgeTarget {
  * Owned by one member and meaningful to nobody else. Deleted outright.
  */
 const OWNED: readonly PurgeTarget[] = [
-  { container: 'identities', pk: '/id', by: 'memberId', pkField: 'id' },
+  { container: 'identities', by: 'memberId' },
   // Rule 10: e-transfer names are sensitive payment data. Scoped to the
   // caller's OWN memberId — never a name fallback.
-  { container: 'aliases', pk: '/id', by: 'memberId', pkField: 'id' },
-  { container: 'assessments', pk: '/memberId', by: 'memberId', pkField: 'memberId' },
-  { container: 'insights', pk: '/memberId', by: 'memberId', pkField: 'memberId' },
-  { container: 'playerGear', pk: '/memberId', by: 'memberId', pkField: 'memberId' },
-  { container: 'pushSubscriptions', pk: '/memberId', by: 'memberId', pkField: 'memberId' },
+  { container: 'aliases', by: 'memberId' },
+  { container: 'assessments', by: 'memberId' },
+  { container: 'insights', by: 'memberId' },
+  { container: 'playerGear', by: 'memberId' },
+  { container: 'pushSubscriptions', by: 'memberId' },
   /* Deleting these MOVES AN ANALYTICS NUMBER, and that is accepted, not
      overlooked. `events` is the append-only history behind the Value-Hub
      Slice-0 kill-criterion ("did a member interact more than once?"), read via
@@ -68,14 +66,14 @@ const OWNED: readonly PurgeTarget[] = [
      than reducing it. A smaller true number beats a larger false one, and
      someone's engagement trail is personal data besides. The caveat is
      repeated at the point the number is READ, which is where it can mislead. */
-  { container: 'events', pk: '/memberId', by: 'memberId', pkField: 'memberId' },
-  { container: 'drillCompletions', pk: '/memberId', by: 'memberId', pkField: 'memberId' },
-  { container: 'stringingJobs', pk: '/memberId', by: 'memberId', pkField: 'memberId' },
+  { container: 'events', by: 'memberId' },
+  { container: 'drillCompletions', by: 'memberId' },
+  { container: 'stringingJobs', by: 'memberId' },
   // Kudos RECEIVED are about them. Kudos they GAVE are part of someone else's
   // count and are anonymized instead — see below.
-  { container: 'kudos', pk: '/recipientMemberId', by: 'recipientMemberId', pkField: 'recipientMemberId' },
+  { container: 'kudos', by: 'recipientMemberId' },
   // Skill scores are keyed by roster NAME, not memberId (PK is /sessionId).
-  { container: 'skills', pk: '/sessionId', by: 'name', pkField: 'sessionId', ci: true },
+  { container: 'skills', by: 'name', ci: true },
   /* SHORT-LIVED IS NOT THE SAME AS HARMLESS. This parks a `memberId` against a
      hashed ref for ten minutes while an OAuth handoff is in flight. It expires
      on its own, so purging it changes little in practice — but "it would have
@@ -86,11 +84,11 @@ const OWNED: readonly PurgeTarget[] = [
      references its container through `const CONTAINER = '…'` rather than a
      literal, and the canary only matched quoted arguments — so it survived a
      deletion request in the first cut of this file. */
-  { container: 'authhandoff', pk: '/id', by: 'memberId', pkField: 'id' },
+  { container: 'authhandoff', by: 'memberId' },
   /* Same family: a five-minute stash holding a memberId while a PWA→native
      migration link is in flight (lib/authMigration.ts). Also a `const
      CONTAINER` alias, which is why the canary resolves those now. */
-  { container: 'authmigration', pk: '/id', by: 'memberId', pkField: 'id' },
+  { container: 'authmigration', by: 'memberId' },
 ];
 
 /** Names only — for the coverage canary, which must not import the table shape. */
@@ -194,7 +192,7 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
       );
       for (const row of rows) {
         await getContainer(t.container)
-          .item(String(row.id), String(row[t.pkField]))
+          .item(String(row.id), String(row[pkFieldOf(t.container)]))
           .delete();
         summary.deleted += 1;
       }
@@ -247,7 +245,8 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
 export async function anonymizePlayerRows(
   memberId: string,
   name: string,
-  activeSessionId: string,
+  /** `null` when the group has no session: every row is then history, and anonymized. */
+  activeSessionId: string | null,
 ): Promise<{ removed: number; anonymized: number }> {
   const lowerName = name.trim().toLowerCase();
   /* TWO QUERIES, NOT ONE `OR`. Rows written before the memberId migration

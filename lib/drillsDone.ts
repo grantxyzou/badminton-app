@@ -13,6 +13,8 @@
  * together by construction rather than by two clocks agreeing.
  */
 
+import { isoWeekKey } from './kudos';
+
 export interface DrillCompletionDoc {
   /** `${memberId}:${weekKey}` — one doc per member-week. */
   id: string;
@@ -24,6 +26,19 @@ export interface DrillCompletionDoc {
 
 export function drillDocId(memberId: string, weekKey: string): string {
   return `${memberId}:${weekKey}`;
+}
+
+/**
+ * Which week a completion (and the drill rotation) belongs to: the active
+ * session id, or the real ISO week when a group has no session yet.
+ *
+ * ONE owner, used by the write, the read and the rotation seed alike. The
+ * first cut had two fallbacks — the write used the ISO week, the read used
+ * '' — so a completion in a session-less group was written and never read
+ * back.
+ */
+export function weekKeyFor(activeSessionId: string | null, now: Date = new Date()): string {
+  return activeSessionId ?? isoWeekKey(now);
 }
 
 /**

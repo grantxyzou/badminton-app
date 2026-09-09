@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, POINTER_ID, getActiveSessionId } from '@/lib/cosmos';
+import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { resolveIdentity, matchesIdentity, classifyOwed, type OwedReason } from '@/lib/playerIdentity';
@@ -55,7 +56,8 @@ export async function GET(req: NextRequest) {
   try {
     const sessionsContainer = getContainer('sessions');
     const playersContainer = getContainer('players');
-    const activeSessionId = await getActiveSessionId();
+    // Exclusion comparand only; a group with no session excludes nothing.
+    const activeSessionId = await getActiveSessionId(resolveGroupId(req));
     const now = Date.now();
 
     const identity = await resolveIdentity({ name, memberId });
@@ -95,7 +97,7 @@ export async function GET(req: NextRequest) {
       if (typeof p.name === 'string') linkedNames.add(p.name);
 
       const result = classifyOwed(p, session, {
-        activeSessionId,
+        activeSessionId: activeSessionId ?? '',
         now,
         activeCount: activeCountBySession.get(p.sessionId) ?? 0,
       });

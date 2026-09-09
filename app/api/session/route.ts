@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId, POINTER_ID, DEFAULT_SESSION } from '@/lib/cosmos';
+import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { resolveBirdUsages } from '@/lib/birdWrite';
 import { isFlagOn } from '@/lib/flags';
@@ -44,7 +45,8 @@ function stripForPublic<T extends Record<string, unknown>>(session: T) {
 
 export async function GET(req: NextRequest) {
   try {
-    const sessionId = await getActiveSessionId();
+    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    if (!sessionId) return noActiveSession();
     const container = getContainer('sessions');
     const { resources } = await container.items
       .query({
@@ -71,7 +73,8 @@ export async function PUT(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const sessionId = await getActiveSessionId();
+    const sessionId = await getActiveSessionId(resolveGroupId(req));
+    if (!sessionId) return noActiveSession();
 
     // Build updates from ONLY the keys the body actually supplied. A field the
     // editing client doesn't send (e.g. a date-only editor sends only datetimes)

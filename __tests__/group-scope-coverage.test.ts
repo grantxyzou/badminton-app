@@ -37,15 +37,10 @@ describe('group scoping classifies every container', () => {
     ).toEqual([]);
   });
 
-  it('never classifies one container two ways', () => {
-    for (const [nameA, a] of lists) {
-      for (const [nameB, b] of lists) {
-        if (nameA >= nameB) continue;
-        const overlap = a.filter((c) => b.includes(c));
-        expect(overlap, `${nameA} and ${nameB} both claim: ${overlap.join(', ')}`).toEqual([]);
-      }
-    }
-  });
+  // "Never classifies one container two ways" used to be an assertion here.
+  // Since the three tables became views of `CONTAINERS[name].scope` (one field,
+  // one value) it could no longer fail, and a check that cannot fail is a claim
+  // the type system already makes. Deleted rather than kept as ceremony.
 
   it('agrees with lib/memberPurge.ts about which containers exist', () => {
     // Two authoritative lists of the same thing drift apart; pin them together.

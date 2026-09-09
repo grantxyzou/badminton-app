@@ -21,6 +21,7 @@ import { randomBytes } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isFlagOn } from '@/lib/flags';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { resolveGroupId } from '@/lib/groupContext';
 import { completeSignIn } from '@/lib/authSession';
 import { claimMigration, type ClaimInput } from '@/lib/authMigration';
 import type { Member, Player } from '@/lib/types';
@@ -72,7 +73,10 @@ export async function POST(req: NextRequest) {
 
     // Re-mint deleteToken when a session player exists — the precedent is
     // app/api/players/recover/route.ts, kept the same shape on purpose.
-    const sessionId = await getActiveSessionId();
+    // A group with no session has no player row to re-mint a token for; the
+    // "no player" path below already handles that. '' is bound so the query
+    // matches nothing rather than skipping the shape the client expects.
+    const sessionId = (await getActiveSessionId(resolveGroupId(req))) ?? '';
     const playersContainer = getContainer('players');
     const { resources: playerHits } = await playersContainer.items
       .query({

@@ -16,6 +16,7 @@ import { verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { getActiveSessionId } from '@/lib/cosmos';
+import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { eligibleCoPlayers } from '@/lib/kudosEligibility';
 
 export const dynamic = 'force-dynamic';
@@ -33,7 +34,8 @@ export async function GET(req: NextRequest) {
   if (!member) return NextResponse.json({ error: 'auth_required' }, { status: 401 });
 
   try {
-    const activeSessionId = await getActiveSessionId();
+    const activeSessionId = await getActiveSessionId(resolveGroupId(req));
+    if (!activeSessionId) return noActiveSession();
     const names = await eligibleCoPlayers(member.name, activeSessionId);
     return NextResponse.json({ names });
   } catch (error) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, POINTER_ID, getActiveSessionId } from '@/lib/cosmos';
+import { resolveGroupId } from '@/lib/groupContext';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { ownsNameOrAdmin } from '@/lib/auth';
 import { resolveIdentity, matchesIdentity, classifyOwed, finiteSessionDate } from '@/lib/playerIdentity';
@@ -100,7 +101,9 @@ export async function GET(req: NextRequest) {
   try {
     const sessionsContainer = getContainer('sessions');
     const playersContainer = getContainer('players');
-    const activeSessionId = await getActiveSessionId();
+    // Only an EXCLUSION comparand here (the active session is not yet a debt);
+    // a group with no session excludes nothing, which is right.
+    const activeSessionId = await getActiveSessionId(resolveGroupId(req));
     const now = Date.now();
 
     const identity = await resolveIdentity({ name });
@@ -167,7 +170,7 @@ export async function GET(req: NextRequest) {
       const session = sessionById.get(p.sessionId);
       if (!session) continue;
       const result = classifyOwed(p, session, {
-        activeSessionId,
+        activeSessionId: activeSessionId ?? '',
         now,
         activeCount: activeCountBySession.get(p.sessionId) ?? 0,
       });

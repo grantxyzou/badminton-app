@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { readdirSync, readFileSync, statSync } from 'fs';
+import { readFileSync } from 'fs';
 import { join } from 'path';
+import { PROVISIONED_CONTAINERS } from '@/lib/containers';
+import { containerReferences } from './containerScan';
 
 /**
  * EVERY CONTAINER MUST EITHER ALREADY EXIST IN PRODUCTION OR BE ENSURED.
@@ -26,67 +28,26 @@ import { join } from 'path';
 
 /**
  * Containers that exist in the production database, verified against
- * `az cosmosdb sql container list` on 2026-08-28. Adding a name here is a
- * claim about production, not a way to silence this test.
+ * `az cosmosdb sql container list` on 2026-08-28. Recorded as `provisioned`
+ * in the registry (`lib/containers.ts`) so this test, memberPurge and the
+ * group accessor read ONE list. Marking one `provisioned: true` is a claim
+ * about production, not a way to silence this test.
  */
-const PROVISIONED = new Set([
-  'aliases',
-  'announcements',
-  'assessments',
-  'authhandoff',
-  'birds',
-  'clubSettings',
-  'drillCompletions',
-  'equipmentCatalog',
-  'events',
-  'feedback',
-  'gameResults',
-  'identities',
-  'insights',
-  'kudos',
-  'members',
-  'playerGear',
-  'players',
-  'releases',
-  'sessions',
-  'skills',
-  'stringingJobs',
-]);
-
-function walk(dir: string, out: string[] = []): string[] {
-  for (const entry of readdirSync(dir)) {
-    if (entry === 'node_modules' || entry.startsWith('.')) continue;
-    const full = join(dir, entry);
-    if (statSync(full).isDirectory()) walk(full, out);
-    else if (/\.tsx?$/.test(entry)) out.push(full);
-  }
-  return out;
-}
+const PROVISIONED = new Set<string>(PROVISIONED_CONTAINERS);
 
 const ROOT = process.cwd();
-const SOURCES = [join(ROOT, 'app'), join(ROOT, 'lib')].flatMap((d) => walk(d));
-const ALL_TEXT = SOURCES.map((f) => readFileSync(f, 'utf8')).join('\n');
+// The shared scanner (containerScan.ts) resolves `const CONTAINER = '…'`
+// aliases; this file's own literal-only regex could not see `authhandoff`.
+const REFS = containerReferences(ROOT);
 
-/** Every container name reachable via `getContainer('…')`. */
+/** Every container name reachable via `getContainer` / `ensureContainer`. */
 function containersUsed(): Map<string, string[]> {
-  const used = new Map<string, string[]>();
-  for (const file of SOURCES) {
-    const text = readFileSync(file, 'utf8');
-    for (const m of text.matchAll(/getContainer\(\s*['"]([A-Za-z0-9_]+)['"]\s*\)/g)) {
-      const name = m[1];
-      used.set(name, [...(used.get(name) ?? []), file.replace(ROOT + '/', '')]);
-    }
-  }
-  return used;
+  return REFS.used;
 }
 
 /** Container names that some module calls `ensureContainer` for. */
 function containersEnsured(): Set<string> {
-  const ensured = new Set<string>();
-  for (const m of ALL_TEXT.matchAll(/ensureContainer\(\s*['"]([A-Za-z0-9_]+)['"]/g)) {
-    ensured.add(m[1]);
-  }
-  return ensured;
+  return new Set(REFS.ensured.keys());
 }
 
 describe('Cosmos containers are provisioned before use', () => {

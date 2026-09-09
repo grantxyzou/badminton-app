@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos';
+import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -69,7 +70,10 @@ export async function GET(req: NextRequest) {
 
     // sessionId override is admin-only (rule 7); non-admins read the active session.
     const override = params.get('sessionId');
-    const sessionId = override && isAdminAuthed(req) ? override : await getActiveSessionId();
+    const sessionId = override && isAdminAuthed(req)
+      ? override
+      : await getActiveSessionId(resolveGroupId(req));
+    if (!sessionId) return noActiveSession();
     const { resources } = await container.items
       .query({
         query: 'SELECT * FROM c WHERE c.sessionId = @sessionId',
@@ -130,7 +134,8 @@ export async function POST(req: NextRequest) {
     // sessionId override is admin-only (rule 7); non-admins log to the active session.
     const sessionId = typeof body.sessionId === 'string' && body.sessionId && isAdminAuthed(req)
       ? body.sessionId
-      : await getActiveSessionId();
+      : await getActiveSessionId(resolveGroupId(req));
+    if (!sessionId) return noActiveSession();
 
     const record: GameResult = {
       id: randomBytes(16).toString('hex'),

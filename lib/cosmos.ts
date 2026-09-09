@@ -2,7 +2,8 @@ import { CosmosClient, Container } from '@azure/cosmos';
 import { randomBytes, scryptSync } from 'node:crypto';
 import equipmentCatalogSeed from '../scripts/data/equipment-catalog.json';
 import { scoreAssessment, placePhase, SKILLS } from './assessment';
-import { matchesGroup, queryToleratesUnstamped } from './groupScope';
+import { matchesGroup, queryToleratesUnstamped, groupDocId, BPM_GROUP_ID } from './groupScope';
+import { pkOf, type ContainerName } from './containers';
 
 // ---------------------------------------------------------------------------
 // In-memory mock — used when COSMOS_CONNECTION_STRING is not set (local dev)
@@ -111,14 +112,17 @@ function seedDevScenarioIfRequested(containerName: string) {
   const deadlineDate = new Date(now.getTime() + (played ? -27 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000));
   const datetime = sessionDate.toISOString();
   const deadline = deadlineDate.toISOString();
-  const sessionId = sessionIdFromDate(datetime);
+  const sessionId = sessionIdFromDate(datetime, BPM_GROUP_ID);
 
-  // Sessions container: session doc + pointer doc
+  // Sessions container: session doc + pointer doc. Both stamped `groupId`
+  // the way the Phase 2 backfill stamps production, so dev never relies on
+  // the transition tolerance for unstamped rows.
   mockStore.sessions ??= [];
   if (!mockStore.sessions.find((s) => s.id === sessionId)) {
     mockStore.sessions.push({
       id: sessionId,
       sessionId,
+      groupId: BPM_GROUP_ID,
       title: 'Thursday Badminton',
       datetime,
       endDatetime: new Date(sessionDate.getTime() + 2 * 60 * 60 * 1000).toISOString(),
@@ -137,6 +141,7 @@ function seedDevScenarioIfRequested(containerName: string) {
     mockStore.sessions.push({
       id: POINTER_ID,
       sessionId: POINTER_ID,
+      groupId: BPM_GROUP_ID,
       activeSessionId: sessionId,
       updatedAt: now.toISOString(),
     });
@@ -570,9 +575,14 @@ function getMockContainer(name: string) {
 
 export const POINTER_ID = 'active-session-pointer';
 
-// Derives a session ID from an ISO datetime string.
-export function sessionIdFromDate(isoDatetime: string): string {
-  return `session-${isoDatetime.slice(0, 10)}`;
+/**
+ * Derives a session ID from an ISO datetime string, per group. BPM keeps
+ * `session-YYYY-MM-DD`; any other group is prefixed (`groupDocId`), because
+ * `sessions` has `id === sessionId === partition key` and two groups playing
+ * the same date would otherwise 409 on create.
+ */
+export function sessionIdFromDate(isoDatetime: string, groupId: string): string {
+  return groupDocId(groupId, `session-${isoDatetime.slice(0, 10)}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -613,8 +623,9 @@ export function getContainer(name: string): Container {
  * a deploy doesn't require a human to provision the container first.
  */
 export async function ensureContainer(
-  name: string,
-  partitionKeyPath: string,
+  name: ContainerName,
+  /** Defaults to the registry's key. Passing one is allowed, and the registry test pins it. */
+  partitionKeyPath: string = pkOf(name),
 ): Promise<void> {
   if (!process.env.COSMOS_CONNECTION_STRING) return;
   await getDatabase().containers.createIfNotExists({
@@ -623,23 +634,42 @@ export async function ensureContainer(
   });
 }
 
-// Resolves the currently active session ID via the pointer document.
-// Falls back to 'current-session' for backward compatibility with existing
-// production data until the admin performs the first "Advance" action.
-export async function getActiveSessionId(): Promise<string> {
+/**
+ * Resolves a group's active session ID via its pointer document.
+ *
+ * BPM's pointer is the legacy `active-session-pointer` doc, and BPM alone
+ * falls back to `'current-session'` — production data from before the pointer
+ * existed. Any other group's pointer lives at `groupDocId(groupId, POINTER_ID)`
+ * and has NO fallback: a group with no pointer has no session, and the honest
+ * answer is `null`, not an id that points at nothing. Callers decide what that
+ * means for them (a 404, an empty list, a skipped best-effort write).
+ */
+export async function getActiveSessionId(groupId: string): Promise<string | null> {
+  const fallback = groupId === BPM_GROUP_ID ? SESSION_ID : null;
   try {
-    const container = getContainer('sessions');
-    const { resource } = await container.item(POINTER_ID, POINTER_ID).read();
-    return (resource as { activeSessionId?: string } | undefined)?.activeSessionId ?? 'current-session';
-  } catch {
-    return 'current-session';
+    const pointerId = groupDocId(groupId, POINTER_ID);
+    const { resource } = await getContainer('sessions').item(pointerId, pointerId).read();
+    return (resource as { activeSessionId?: string } | undefined)?.activeSessionId ?? fallback;
+  } catch (err) {
+    // A MISSING pointer is the fallback case (a point read of a doc that does
+    // not exist is a 404). Anything else — an outage, a misconfiguration — is
+    // a failure, and a failure must not come back as "this group has no
+    // session": every caller treats that answer as a true empty. The mock
+    // never throws, so this branch is exercised only by production.
+    if ((err as { code?: number }).code === 404) return fallback;
+    throw err;
   }
 }
 
-// Writes the pointer to a new session ID.
-export async function setActiveSessionId(id: string): Promise<void> {
-  const container = getContainer('sessions');
-  await container.items.upsert({ id: POINTER_ID, sessionId: POINTER_ID, activeSessionId: id });
+/** Points a group at a new session ID. The pointer's id is its partition key. */
+export async function setActiveSessionId(groupId: string, id: string): Promise<void> {
+  const pointerId = groupDocId(groupId, POINTER_ID);
+  await getContainer('sessions').items.upsert({
+    id: pointerId,
+    sessionId: pointerId,
+    groupId,
+    activeSessionId: id,
+  });
 }
 
 // Keep for any remaining references during migration
