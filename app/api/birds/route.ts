@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { randomBytes } from 'crypto';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { normalizeBirdUsages, totalTubes, validPurchaseDate, validateTubeCount } from '@/lib/birdUsages';
@@ -34,13 +36,14 @@ export async function GET(req: NextRequest) {
     const totalPurchased = purchases.reduce((sum: number, p: { tubes: number }) => sum + p.tubes, 0);
     const totalAdjustments = adjustments.reduce((sum: number, a: { delta?: number }) => sum + (a.delta ?? 0), 0);
 
-    const sessionsContainer = getContainer('sessions');
     // Pull datetime alongside the usage shapes so we can compute recent-window
     // stats (last 60 days). Burn rate consumers should use those, not
     // totalUsed / recentSessionCount, which mixes time scales.
-    const { resources: sessions } = await sessionsContainer.items
-      .query({ query: 'SELECT c.birdUsage, c.birdUsages, c.datetime FROM c WHERE IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)' })
-      .fetchAll();
+    const sessions = await groupScope(resolveGroupId(req)).query<Pick<Session, 'birdUsage' | 'birdUsages'> & { datetime?: string }>('sessions', {
+      select: 'c.birdUsage, c.birdUsages, c.datetime',
+      where: 'IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)',
+      includeLegacy: true, // stock counts every session's tubes, the legacy doc's included
+    });
 
     // All-time tubes used, both in total and per purchase. The per-purchase
     // map drives `remainingByPurchase`, which the create-session bird picker
@@ -184,11 +187,12 @@ export async function DELETE(req: NextRequest) {
     // (PATCH /api/session/bird-usage: set 0 on this purchase, re-add on
     // another), then deletes. Adjustment docs are never referenced by
     // sessions, so reconcile-undo (deleting an adjustment) is unaffected.
-    const sessionsContainer = getContainer('sessions');
-    const { resources: sessions } = await sessionsContainer.items
-      .query({ query: 'SELECT c.id, c.datetime, c.birdUsage, c.birdUsages FROM c WHERE IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)' })
-      .fetchAll();
-    const referencing = (sessions as Array<Pick<Session, 'birdUsage' | 'birdUsages'> & { datetime?: string }>)
+    const sessions = await groupScope(resolveGroupId(req)).query<Pick<Session, 'birdUsage' | 'birdUsages'> & { datetime?: string }>('sessions', {
+      select: 'c.id, c.datetime, c.birdUsage, c.birdUsages',
+      where: 'IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)',
+      includeLegacy: true, // stock counts every session's tubes, the legacy doc's included
+    });
+    const referencing = sessions
       .filter((s) => normalizeBirdUsages(s).some((u) => u.purchaseId === id && (u.tubes ?? 0) > 0));
     if (referencing.length > 0) {
       const sessionDates = referencing

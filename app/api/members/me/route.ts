@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
@@ -260,17 +261,15 @@ async function handlePatch(req: NextRequest) {
   try {
     // No session yet means no player row to mirror into; '' matches nothing,
     // which is the right outcome and not the failure the catch below logs.
-    const sessionId = (await getActiveSessionId(resolveGroupId(req))) ?? '';
-    const playersContainer = getContainer('players');
-    const { resources: players } = await playersContainer.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name)',
-        parameters: [
-          { name: '@sessionId', value: sessionId },
-          { name: '@name', value: name },
-        ],
-      })
-      .fetchAll();
+    const scope = groupScope(resolveGroupId(req));
+    const sessionId = (await getActiveSessionId(scope.groupId)) ?? '';
+    const players = await scope.query<Record<string, unknown> & { id: string }>('players', {
+      where: 'c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name)',
+      params: [
+        { name: '@sessionId', value: sessionId },
+        { name: '@name', value: name },
+      ],
+    });
     const player = players[0];
     if (player) {
       const playerDoc = { ...player };
@@ -279,7 +278,7 @@ async function handlePatch(req: NextRequest) {
       } else {
         playerDoc.pinHash = nextPinHash;
       }
-      await playersContainer.items.upsert(playerDoc);
+      await scope.upsert('players', playerDoc);
     }
   } catch (err) {
     console.warn('member PIN: player mirror failed (non-fatal):', err);

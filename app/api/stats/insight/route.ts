@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { getContainer, getActiveSessionId, ensureContainer } from '@/lib/cosmos';
+import { getContainer, getActiveSessionId, ensureContainer, sessionIdFromDate } from '@/lib/cosmos';
+import { groupScope, groupDocId, type GroupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { topPartners } from '@/lib/recommend';
 import { ownsNameOrAdmin } from '@/lib/auth';
@@ -208,13 +209,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
-  let membersContainer, playersContainer, sessionsContainer, insightsContainer;
+  let membersContainer;
+  const scope = groupScope(resolveGroupId(req));
   try {
     await ensureInsightsContainer();
     membersContainer = getContainer('members');
-    playersContainer = getContainer('players');
-    sessionsContainer = getContainer('sessions');
-    insightsContainer = getContainer('insights');
   } catch (err) {
     console.error('insight container setup failed:', err);
     // No stale fallback is even possible here — this runs before `existing` is
@@ -255,7 +254,10 @@ export async function GET(req: NextRequest) {
   // A group with no session yet gets an empty seed: the cache key never
   // matches (nothing to be stale against) and the drill rotation is constant.
   // The insight doc itself moves to a per-group id in Phase 1b.
-  const activeSessionId = (await getActiveSessionId(resolveGroupId(req))) ?? '';
+  const activeSessionId = (await getActiveSessionId(scope.groupId)) ?? '';
+  // One cache doc per group per member: the insight narrates group play, so a
+  // person in two groups gets two, instead of the two thrashing one doc.
+  const insightId = groupDocId(scope.groupId, member.id);
 
   // ── Latest self-assessment. Fetched before the cache check so a
   //    fresh check-in invalidates the session-cached read. Raw docs are kept so
@@ -268,8 +270,7 @@ export async function GET(req: NextRequest) {
   //    newer assessment has landed since it was generated. ──
   let existing: InsightDoc | null = null;
   try {
-    const { resource } = await insightsContainer.item(member.id, member.id).read<InsightDoc>();
-    existing = resource ?? null;
+    existing = (await scope.read<InsightDoc>('insights', insightId, member.id)) ?? null;
   } catch {
     existing = null;
   }
@@ -303,7 +304,7 @@ export async function GET(req: NextRequest) {
   // above the cache read, under a comment claiming it "only runs on miss",
   // which was simply false: every cached load paid for both scans and threw
   // the result away. Moving a read above the cache is not free here.
-  const canonicalLevel = await getCanonicalLevel({ memberId: member.id, name: member.name }).catch((err) => {
+  const canonicalLevel = await getCanonicalLevel({ memberId: member.id, name: member.name }, scope.groupId).catch((err) => {
     console.error('insight level read failed:', err);
     return null;
   });
@@ -314,7 +315,7 @@ export async function GET(req: NextRequest) {
     : [];
 
   // ── Gather the data snapshot (deterministic — fed verbatim to Claude). ──
-  const snapshot = await buildSnapshot({ name: member.name, playersContainer, sessionsContainer, trend, canonicalLevel, drills });
+  const snapshot = await buildSnapshot({ name: member.name, scope, trend, canonicalLevel, drills });
 
   // ── Distributed insights: structured, signal-grounded slices. ──
   {
@@ -331,9 +332,9 @@ export async function GET(req: NextRequest) {
     if (!cards.greeting && !cards.trend) return emptyPayload(true);
 
     const generatedAt = new Date().toISOString();
-    const doc: InsightDoc = { id: member.id, memberId: member.id, name: member.name, sessionId: activeSessionId, greeting: cards.greeting, trend: cards.trend, generatedAt, lastAssessmentAt: latestAssessmentAt };
+    const doc: InsightDoc = { id: insightId, memberId: member.id, name: member.name, sessionId: activeSessionId, greeting: cards.greeting, trend: cards.trend, generatedAt, lastAssessmentAt: latestAssessmentAt };
     try {
-      await insightsContainer.items.upsert(doc);
+      await scope.upsert('insights', doc);
     } catch (err) {
       console.warn('insight cache write failed (non-fatal):', err);
     }
@@ -365,15 +366,14 @@ interface Snapshot {
 
 async function buildSnapshot({
   name,
-  playersContainer,
-  sessionsContainer,
+  scope,
   trend,
   canonicalLevel,
   drills,
 }: {
   name: string;
-  playersContainer: ReturnType<typeof getContainer>;
-  sessionsContainer: ReturnType<typeof getContainer>;
+  /** The group whose play this narrates. Partner names leave for Anthropic, so this is a privacy boundary too. */
+  scope: GroupScope;
   trend: AssessmentTrend | null;
   canonicalLevel: CanonicalLevel | null;
   drills: DrillPick[];
@@ -381,38 +381,35 @@ async function buildSnapshot({
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - ATTENDANCE_WEEKS * 7);
   const cutoffIso = cutoffDate.toISOString();
-  const cutoffSessionId = `session-${cutoffIso.slice(0, 10)}`;
+  const cutoffSessionId = sessionIdFromDate(cutoffIso, scope.groupId);
   const nowIso = new Date().toISOString();
 
   const [playerHits, sessionHits, partnerHits] = await Promise.all([
-    playersContainer.items
-      .query({
-        query: 'SELECT c.sessionId FROM c WHERE LOWER(c.name) = LOWER(@name) AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
-        parameters: [{ name: '@name', value: name }],
-      })
-      .fetchAll(),
-    sessionsContainer.items
-      .query({
-        query: 'SELECT c.id, c.datetime FROM c WHERE c.datetime >= @cutoff',
-        parameters: [{ name: '@cutoff', value: cutoffIso }],
-      })
-      .fetchAll(),
-    playersContainer.items
-      .query({
-        query: 'SELECT c.sessionId, c.name, c.removed FROM c WHERE c.sessionId >= @cutoff',
-        parameters: [{ name: '@cutoff', value: cutoffSessionId }],
-      })
-      .fetchAll(),
+    scope.query<{ sessionId?: string }>('players', {
+      select: 'c.sessionId',
+      where: 'LOWER(c.name) = LOWER(@name) AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
+      params: [{ name: '@name', value: name }],
+    }),
+    scope.query<{ id: string; datetime: string | null }>('sessions', {
+      select: 'c.id, c.datetime',
+      where: 'c.datetime >= @cutoff',
+      params: [{ name: '@cutoff', value: cutoffIso }],
+    }),
+    scope.query<{ sessionId?: string; name?: string; removed?: boolean }>('players', {
+      select: 'c.sessionId, c.name, c.removed',
+      where: 'c.sessionId >= @cutoff',
+      params: [{ name: '@cutoff', value: cutoffSessionId }],
+    }),
   ]);
 
   const attendedSessionIds = new Set<string>(
-    (playerHits.resources as { sessionId?: string }[]).map((p) => p.sessionId).filter((id): id is string => typeof id === 'string'),
+    playerHits.map((p) => p.sessionId).filter((id): id is string => typeof id === 'string'),
   );
 
   // Exclude not-yet-played (future-dated) sessions — an upcoming session is not
   // something the member has played yet. (Same rule as the attendance route.)
   const nowMs = Date.now();
-  const recentSessions = (sessionHits.resources as { id: string; datetime: string | null }[])
+  const recentSessions = sessionHits
     .filter((s) => s.datetime && new Date(s.datetime).getTime() <= nowMs)
     .sort((a, b) => (a.datetime ?? '').localeCompare(b.datetime ?? ''));
 
@@ -420,7 +417,7 @@ async function buildSnapshot({
 
   // Co-attendance map for partners + the last-played partner list.
   const bySession = new Map<string, string[]>();
-  for (const row of partnerHits.resources as { sessionId?: string; name?: string; removed?: boolean }[]) {
+  for (const row of partnerHits) {
     if (typeof row.sessionId !== 'string' || typeof row.name !== 'string' || row.removed === true) continue;
     const arr = bySession.get(row.sessionId) ?? [];
     arr.push(row.name);
@@ -446,13 +443,12 @@ async function buildSnapshot({
   let skills: Record<string, number> | null = null;
   if (!trend) {
     try {
-      const { resources: skillRows } = await getContainer('skills').items
-        .query({
-          query: 'SELECT c.name, c.scores FROM c WHERE LOWER(c.name) = LOWER(@name)',
-          parameters: [{ name: '@name', value: name }],
-        })
-        .fetchAll();
-      const scores = (skillRows[0] as { scores?: Record<string, number> } | undefined)?.scores;
+      const skillRows = await scope.query<{ scores?: Record<string, number> }>('skills', {
+        select: 'c.name, c.scores',
+        where: 'LOWER(c.name) = LOWER(@name)',
+        params: [{ name: '@name', value: name }],
+      });
+      const scores = skillRows[0]?.scores;
       if (scores && Object.keys(scores).length > 0) skills = scores;
     } catch {
       skills = null;

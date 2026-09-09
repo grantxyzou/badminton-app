@@ -29,7 +29,11 @@
  * excludes them in Cosmos.)
  */
 
-import { CONTAINERS, containersOfScope, type ContainerScope, type ContainersOfScope } from './containers';
+import type { SqlParameter } from '@azure/cosmos';
+import { CONTAINERS, containersOfScope, pkFieldOf, type ContainerScope, type ContainersOfScope } from './containers';
+// A cycle with ./cosmos, and a safe one: neither module touches the other's
+// exports at evaluation time, only inside functions.
+import { getContainer, POINTER_ID, SESSION_ID } from './cosmos';
 
 /** Group #1. Every row in production today belongs to it. */
 export const BPM_GROUP_ID = 'bpm';
@@ -128,4 +132,185 @@ export function matchesGroup(
 ): boolean {
   if (row.groupId === groupId) return true;
   return tolerate && row.groupId === undefined && groupId === BPM_GROUP_ID;
+}
+
+// ---------------------------------------------------------------------------
+// The scoped accessor — the only way a route reads or writes a GROUP_SCOPED
+// container once the Phase 1 sweep is done.
+//
+// Three independent layers against a cross-group leak:
+//   1. `buildGroupQuery` always emits the group clause. A builder, not SQL
+//      rewriting: appending to arbitrary SQL breaks on ORDER BY / OFFSET and on
+//      the thirty scans that had no WHERE at all; the builder makes those
+//      scoped by construction.
+//   2. Every returned row is re-checked in JS by `matchesGroup`, and a mismatch
+//      is dropped with a `[group-leak]` log — the sentinel the test suite
+//      asserts never fires. This is what makes the mock-store trap moot on the
+//      accessor path: even a query that somehow bypassed the clause cannot
+//      hand back another group's row.
+//   3. Writes are stamped with the SCOPE's group, never the caller's.
+//
+// Partition keys come from the registry (`pkFieldOf`), so a caller supplies
+// the key VALUE only when it is not the id — and never the path.
+// ---------------------------------------------------------------------------
+
+export interface GroupQuery {
+  /** Projection, default `*`. `c.groupId` is appended to a field list so rows can be verified. */
+  select?: string;
+  /** WHERE fragment WITHOUT the keyword; wrapped in parentheses. May reference `params`. */
+  where?: string;
+  /** Caller parameters. `@groupId` and `@pointerId` are the builder's; naming one throws. */
+  params?: SqlParameter[];
+  /** e.g. `c.id DESC`. */
+  orderBy?: string;
+  /** Emitted as `OFFSET 0 LIMIT n`. */
+  limit?: number;
+  /**
+   * `sessions` only. BPM's pre-pointer default session (`'current-session'`)
+   * is a real row that every list has always excluded; the builder excludes
+   * it by default, like the pointer doc. Opt in for a whole-history scan that
+   * genuinely wants it (bird stock, a member's history).
+   */
+  includeLegacy?: boolean;
+}
+
+const RESERVED_PARAMS = new Set(['@groupId', '@pointerId', '@legacyId']);
+
+export function buildGroupQuery(
+  groupId: string,
+  container: GroupContainer,
+  q: GroupQuery,
+): { query: string; parameters: SqlParameter[] } {
+  for (const p of q.params ?? []) {
+    if (RESERVED_PARAMS.has(p.name)) {
+      throw new Error(`buildGroupQuery: ${p.name} is bound by the accessor; pick another name`);
+    }
+  }
+  const select = q.select?.trim() || '*';
+  // The builder appends `c.groupId` to a field list so rows can be verified,
+  // and skips verification for a VALUE select; the mock applies no projections,
+  // so a shape that breaks either rule would pass CI and misbehave only in
+  // Cosmos. Refuse the shapes it cannot make safe.
+  if (/^(DISTINCT|TOP)\b/i.test(select)) {
+    throw new Error(`buildGroupQuery: ${select.split(/\s/)[0].toUpperCase()} is not supported — filter in JS instead`);
+  }
+  const isValue = /^VALUE\b/i.test(select);
+  if (isValue && !/^VALUE\s+COUNT\(/i.test(select)) {
+    throw new Error('buildGroupQuery: only VALUE COUNT(...) is supported; a VALUE projection cannot be group-verified');
+  }
+  const projection = select === '*' || isValue ? select : `${select}, c.groupId`;
+
+  const clauses = [groupClause(groupId)];
+  const parameters: SqlParameter[] = [...(q.params ?? [])];
+  if (container === 'sessions') {
+    // The pointer is a row in `sessions`, stamped with its group and carrying
+    // no datetime; without this it comes back as "a session" in every list.
+    clauses.push('c.id != @pointerId');
+    parameters.push({ name: '@pointerId', value: groupDocId(groupId, POINTER_ID) });
+    if (!q.includeLegacy) {
+      clauses.push('c.id != @legacyId');
+      parameters.push({ name: '@legacyId', value: SESSION_ID });
+    }
+  }
+  if (q.where?.trim()) clauses.push(`(${q.where.trim()})`);
+  parameters.push({ name: '@groupId', value: groupId });
+
+  let sql = `SELECT ${projection} FROM c WHERE ${clauses.join(' AND ')}`;
+  if (q.orderBy) sql += ` ORDER BY ${q.orderBy}`;
+  if (q.limit !== undefined) sql += ` OFFSET 0 LIMIT ${Math.max(0, Math.floor(q.limit))}`;
+  return { query: sql, parameters };
+}
+
+/** Anything with an id. Typed interfaces (GameResult, PlayerSkills…) have no index signature, so no Record here. */
+type Doc = { id: string };
+
+export interface GroupScope {
+  readonly groupId: string;
+  query<T = Record<string, unknown>>(container: GroupContainer, q?: GroupQuery): Promise<T[]>;
+  count(container: GroupContainer, where?: string, params?: SqlParameter[]): Promise<number>;
+  /** Point read. `pkValue` is required unless the registry says the key is `/id`. */
+  read<T extends Doc = Doc>(container: GroupContainer, id: string, pkValue?: string): Promise<T | undefined>;
+  create<T extends Doc>(container: GroupContainer, doc: T): Promise<T>;
+  upsert<T extends Doc>(container: GroupContainer, doc: T): Promise<T>;
+  /** Read-verify, then delete. A doc of another group is left alone. */
+  remove(container: GroupContainer, id: string, pkValue?: string): Promise<boolean>;
+}
+
+export function groupScope(groupId: string): GroupScope {
+  const tolerate = TOLERATE_UNSTAMPED;
+
+  function keep<T>(container: GroupContainer, rows: unknown[]): T[] {
+    const out: T[] = [];
+    for (const row of rows) {
+      if (row && typeof row === 'object' && matchesGroup(row as { groupId?: unknown }, groupId, tolerate)) {
+        out.push(row as T);
+      } else {
+        console.error(`[group-leak] ${container}: a row outside group ${groupId} reached the accessor`, {
+          id: (row as { id?: unknown } | null)?.id,
+        });
+      }
+    }
+    return out;
+  }
+
+  function pkValueFor(container: GroupContainer, id: string, pkValue: string | undefined): string {
+    if (pkFieldOf(container) === 'id') return id;
+    if (pkValue === undefined) {
+      throw new Error(`groupScope.${container}: partition key value (${pkFieldOf(container)}) is required`);
+    }
+    return pkValue;
+  }
+
+  const scope: GroupScope = {
+    groupId,
+
+    async query<T = Record<string, unknown>>(container: GroupContainer, q: GroupQuery = {}): Promise<T[]> {
+      const built = buildGroupQuery(groupId, container, q);
+      const { resources } = await getContainer(container).items.query(built).fetchAll();
+      const isValue = /^VALUE\b/i.test(q.select?.trim() ?? '');
+      return isValue ? ((resources ?? []) as T[]) : keep<T>(container, resources ?? []);
+    },
+
+    async count(container, where, params) {
+      const rows = await scope.query<number>(container, { select: 'VALUE COUNT(1)', where, params });
+      return typeof rows[0] === 'number' ? rows[0] : 0;
+    },
+
+    async read<T extends Doc = Doc>(container: GroupContainer, id: string, pkValue?: string): Promise<T | undefined> {
+      const pk = pkValueFor(container, id, pkValue);
+      const { resource } = await getContainer(container).item(id, pk).read();
+      if (!resource) return undefined;
+      // Cosmos would 404 a point read under the wrong partition key; the mock
+      // finds by id alone. Checking the key FIELD keeps the accessor exactly
+      // as strict as production on every /sessionId-keyed read.
+      const field = pkFieldOf(container);
+      if ((resource as Record<string, unknown>)[field] !== pk) {
+        // A constant first argument: `id` and `pk` come from the request, and
+        // console treats its first argument as a format string (CodeQL
+        // js/tainted-format-string).
+        console.error('[group-leak] point read found a doc keyed elsewhere', { container, id, field, pk });
+        return undefined;
+      }
+      return keep<T>(container, [resource])[0];
+    },
+
+    async create<T extends Doc>(container: GroupContainer, doc: T): Promise<T> {
+      const { resource } = await getContainer(container).items.create({ ...doc, groupId });
+      return (resource ?? { ...doc, groupId }) as T;
+    },
+
+    async upsert<T extends Doc>(container: GroupContainer, doc: T): Promise<T> {
+      const { resource } = await getContainer(container).items.upsert({ ...doc, groupId });
+      return (resource ?? { ...doc, groupId }) as T;
+    },
+
+    async remove(container, id, pkValue) {
+      const pk = pkValueFor(container, id, pkValue);
+      const existing = await scope.read(container, id, pk);
+      if (!existing) return false;
+      await getContainer(container).item(id, pk).delete();
+      return true;
+    },
+  };
+  return scope;
 }

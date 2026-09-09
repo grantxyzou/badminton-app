@@ -34,9 +34,10 @@ export async function GET(req: NextRequest) {
   if (!member) return NextResponse.json({ error: 'auth_required' }, { status: 401 });
 
   try {
-    const activeSessionId = await getActiveSessionId(resolveGroupId(req));
+    const groupId = resolveGroupId(req);
+    const activeSessionId = await getActiveSessionId(groupId);
     if (!activeSessionId) return noActiveSession();
-    const names = await eligibleCoPlayers(member.name, activeSessionId);
+    const names = await eligibleCoPlayers(groupId, member.name, activeSessionId);
     return NextResponse.json({ names });
   } catch (error) {
     console.error('GET kudos/eligible error:', error);

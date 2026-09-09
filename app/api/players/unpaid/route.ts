@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, POINTER_ID, getActiveSessionId } from '@/lib/cosmos';
+// getContainer stays for the stringingJobs read until Phase 1b sweeps it.
+import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { ownsNameOrAdmin } from '@/lib/auth';
@@ -99,28 +101,19 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const sessionsContainer = getContainer('sessions');
-    const playersContainer = getContainer('players');
+    const scope = groupScope(resolveGroupId(req));
     // Only an EXCLUSION comparand here (the active session is not yet a debt);
     // a group with no session excludes nothing, which is right.
-    const activeSessionId = await getActiveSessionId(resolveGroupId(req));
+    const activeSessionId = await getActiveSessionId(scope.groupId);
     const now = Date.now();
 
     const identity = await resolveIdentity({ name });
 
-    const { resources: allSessions } = await sessionsContainer.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.id != @pointerId AND c.id != @legacyId',
-        parameters: [
-          { name: '@pointerId', value: POINTER_ID },
-          { name: '@legacyId', value: 'current-session' },
-        ],
-      })
-      .fetchAll();
+    const allSessions = await scope.query<Session>('sessions');
 
     // Sessions a debt can come from: settled (frozen amount) OR unsettled & past
     // & not the active session (live share). Both require a finite datetime.
-    const relevant = (allSessions as Session[]).filter((s) => {
+    const relevant = allSessions.filter((s) => {
       if (!finiteSessionDate(s)) return false;
       if (s.settled) return true;
       return s.id !== activeSessionId && new Date(s.datetime).getTime() < now;
@@ -147,13 +140,11 @@ export async function GET(req: NextRequest) {
     // returns every row — so we post-filter by the session set for parity
     // (same contract as stats/attendance + admin/ledger).
     const placeholders = sessionIds.map((_, i) => `@sid${i}`).join(',');
-    const { resources: rawPlayers } = await playersContainer.items
-      .query({
-        query: `SELECT * FROM c WHERE c.sessionId IN (${placeholders})`,
-        parameters: sessionIds.map((id, i) => ({ name: `@sid${i}`, value: id })),
-      })
-      .fetchAll();
-    const players = (rawPlayers as Player[]).filter((p) => sessionIdSet.has(p.sessionId));
+    const rawPlayers = await scope.query<Player>('players', {
+      where: `c.sessionId IN (${placeholders})`,
+      params: sessionIds.map((id, i) => ({ name: `@sid${i}`, value: id })),
+    });
+    const players = rawPlayers.filter((p) => sessionIdSet.has(p.sessionId));
 
     // Full active-roster size per session = the live per-person denominator.
     // Counted independent of who's asking, so the share is right regardless of

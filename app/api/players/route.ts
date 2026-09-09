@@ -1,21 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { groupScope, type GroupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, setMemberCookie } from '@/lib/auth';
 import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import { appendEvent } from '@/lib/recoveryAudit';
-import { isOverCapacity } from '@/lib/capacity';
-import type { RecoveryEvent } from '@/lib/types';
+import { isOverCapacity, ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
+import type { RecoveryEvent, Session } from '@/lib/types';
 
 const BLOCKLISTED_PINS = new Set(['0000', '1111', '1234', '4321', '1212']);
-
-// Single definition of a session's "active" (not-removed, not-waitlisted)
-// players — shared by the pre-insert capacity check and the post-insert
-// reconciliation (#79) so the two can never disagree on who counts.
-const ACTIVE_PLAYERS_QUERY =
-  'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)';
 
 /**
  * Close the signup capacity race (#79). The pre-insert count check and the
@@ -33,21 +28,22 @@ const ACTIVE_PLAYERS_QUERY =
  * the real-Cosmos test in #82.
  */
 async function reconcileCapacity(
-  container: ReturnType<typeof getContainer>,
+  scope: GroupScope,
   sessionId: string,
   doc: { id: string; timestamp?: string; [k: string]: unknown },
   maxPlayers: number,
   joinWaitlist: boolean,
 ): Promise<'kept' | 'waitlisted' | 'full'> {
-  const { resources } = await container.items
-    .query({ query: ACTIVE_PLAYERS_QUERY, parameters: [{ name: '@sessionId', value: sessionId }] })
-    .fetchAll();
+  const resources = await scope.query<{ id: string; timestamp?: string }>('players', {
+    where: ACTIVE_PLAYERS_WHERE,
+    params: [{ name: '@sessionId', value: sessionId }],
+  });
   if (!isOverCapacity(resources, doc.id, maxPlayers)) return 'kept';
   if (joinWaitlist) {
-    await container.items.upsert({ ...doc, waitlisted: true });
+    await scope.upsert('players', { ...doc, waitlisted: true });
     return 'waitlisted';
   }
-  await container.item(doc.id, sessionId).delete();
+  await scope.remove('players', doc.id, sessionId);
   return 'full';
 }
 
@@ -60,15 +56,13 @@ export async function GET(req: NextRequest) {
       : await getActiveSessionId(resolveGroupId(req));
     if (!sessionId) return noActiveSession();
     const includeRemoved = params.get('all') === 'true' && isAdminAuthed(req);
-    const container = getContainer('players');
-    const { resources } = await container.items
-      .query({
-        query: includeRemoved
-          ? 'SELECT * FROM c WHERE c.sessionId = @sessionId ORDER BY c.timestamp ASC'
-          : 'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) ORDER BY c.timestamp ASC',
-        parameters: [{ name: '@sessionId', value: sessionId }],
-      })
-      .fetchAll();
+    const resources = await groupScope(resolveGroupId(req)).query<Record<string, unknown>>('players', {
+      where: includeRemoved
+        ? 'c.sessionId = @sessionId'
+        : 'c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true)',
+      params: [{ name: '@sessionId', value: sessionId }],
+      orderBy: 'c.timestamp ASC',
+    });
     // Strip deleteToken — it must never be exposed to other clients
     return NextResponse.json(resources.map(({ deleteToken: _dt, pinHash: _ph, ...p }: { deleteToken?: string; pinHash?: string; [key: string]: unknown }) => p));
   } catch (error) {
@@ -180,30 +174,25 @@ export async function POST(req: NextRequest) {
       return out;
     }
 
-    const sessionContainer = getContainer('sessions');
+    const scope = groupScope(resolveGroupId(req));
     const membersContainer = getContainer('members');
-    const container = getContainer('players');
 
-    // Parallelize all 4 queries — session, members, existing player, active count
-    const [sessionsRes, membersRes, existingRes, activeRes] = await Promise.all([
-      sessionContainer.items
-        .query({ query: 'SELECT * FROM c WHERE c.id = @id', parameters: [{ name: '@id', value: sessionId }] })
-        .fetchAll(),
+    // Parallelize all 4 reads — session, members, existing player, active count
+    const [sessionData, membersRes, existingRes, activeRes] = await Promise.all([
+      scope.read<Session>('sessions', sessionId, sessionId),
       membersContainer.items
         .query({ query: 'SELECT * FROM c WHERE c.active = true' })
         .fetchAll(),
-      container.items
-        .query({
-          query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name)',
-          parameters: [{ name: '@sessionId', value: sessionId }, { name: '@name', value: trimmedName }],
-        })
-        .fetchAll(),
-      container.items
-        .query({ query: ACTIVE_PLAYERS_QUERY, parameters: [{ name: '@sessionId', value: sessionId }] })
-        .fetchAll(),
+      scope.query<Record<string, unknown>>('players', {
+        where: 'c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name)',
+        params: [{ name: '@sessionId', value: sessionId }, { name: '@name', value: trimmedName }],
+      }),
+      scope.query<Record<string, unknown>>('players', {
+        where: ACTIVE_PLAYERS_WHERE,
+        params: [{ name: '@sessionId', value: sessionId }],
+      }),
     ]);
 
-    const sessionData = sessionsRes.resources[0];
     const maxPlayers =
       sessionData?.maxPlayers ?? parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12', 10);
 
@@ -348,7 +337,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const anyExisting = existingRes.resources;
+    const anyExisting = existingRes;
     const activeRecord = anyExisting.find((p: { removed?: boolean }) => !p.removed);
     const removedRecord = anyExisting.find((p: { removed?: boolean }) => p.removed);
 
@@ -356,7 +345,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Already signed up' }, { status: 409 });
     }
 
-    const activePlayers = activeRes.resources;
+    const activePlayers = activeRes;
     const isFull = activePlayers.length >= maxPlayers;
 
     if (isFull && !joinWaitlist) {
@@ -379,7 +368,7 @@ export async function POST(req: NextRequest) {
         ...(matchedMember ? { memberId: matchedMember.id } : {}),
         ...(pinHash ? { pinHash } : {}),
       };
-      const { resource } = await container.items.upsert(restored);
+      const resource = await scope.upsert('players', restored as typeof restored & { id: string });
 
       // Update member stats + mirror pinHash for unified admin auth
       if (matchedMember) {
@@ -412,14 +401,14 @@ export async function POST(req: NextRequest) {
       ...(pinHash ? { pinHash } : {}),
     };
 
-    const { resource } = await container.items.create(player);
+    const resource = await scope.create('players', player);
 
     // Close the capacity race (#79): the pre-insert check + this create aren't
     // atomic, so concurrent signups can both land active. Reconcile against the
     // now-committed active set and demote ourselves if we're past the cap.
     let waitlisted = player.waitlisted;
     if (!player.waitlisted) {
-      const outcome = await reconcileCapacity(container, sessionId, player, maxPlayers, joinWaitlist);
+      const outcome = await reconcileCapacity(scope, sessionId, player, maxPlayers, joinWaitlist);
       if (outcome === 'full') {
         return NextResponse.json({ error: 'Session is full' }, { status: 409 });
       }
@@ -487,11 +476,11 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid PIN format' }, { status: 400 });
       }
 
+      const scope = groupScope(resolveGroupId(req));
       const sessionId = isAdmin && typeof body.sessionId === 'string'
         ? body.sessionId
-        : await getActiveSessionId(resolveGroupId(req));
+        : await getActiveSessionId(scope.groupId);
       if (!sessionId) return noActiveSession();
-      const container = getContainer('players');
 
       // Resolve the player record. Prefer id (legacy clients), fall back
       // to name lookup so RecoveryPinSheet can patch without first GETing
@@ -501,20 +490,16 @@ export async function PATCH(req: NextRequest) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let existing: any = null;
       if (typeof id === 'string') {
-        const { resource } = await container.item(id, sessionId).read();
-        existing = resource ?? null;
+        existing = (await scope.read('players', id, sessionId)) ?? null;
       } else if (typeof body.name === 'string' && body.name.trim()) {
         const trimmedLookupName = body.name.trim();
-        const { resources } = await container.items
-          .query({
-            query:
-              'SELECT * FROM c WHERE c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name) AND (NOT IS_DEFINED(c.removed) OR c.removed != true)',
-            parameters: [
-              { name: '@sessionId', value: sessionId },
-              { name: '@name', value: trimmedLookupName },
-            ],
-          })
-          .fetchAll();
+        const resources = await scope.query('players', {
+          where: 'c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name) AND (NOT IS_DEFINED(c.removed) OR c.removed != true)',
+          params: [
+            { name: '@sessionId', value: sessionId },
+            { name: '@name', value: trimmedLookupName },
+          ],
+        });
         existing = resources[0] ?? null;
       } else {
         return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
@@ -545,7 +530,7 @@ export async function PATCH(req: NextRequest) {
       } else {
         updatedDoc.pinHash = nextPinHash;
       }
-      const { resource: updated } = await container.items.upsert(updatedDoc);
+      const updated = await scope.upsert('players', updatedDoc as Record<string, unknown> & { id: string });
 
       // Mirror pinHash to the matching Member so unified admin auth can
       // verify against it. Best-effort — a Cosmos hiccup here shouldn't fail
@@ -588,22 +573,25 @@ export async function PATCH(req: NextRequest) {
       if (!checkRateLimit(`selfpay:${ip}`, 10, 60 * 1000)) {
         return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
       }
-      const sessionId = await getActiveSessionId(resolveGroupId(req));
+      const scope = groupScope(resolveGroupId(req));
+      const sessionId = await getActiveSessionId(scope.groupId);
       if (!sessionId) return noActiveSession();
-      const container = getContainer('players');
-      const { resource: existing } = await container.item(id, sessionId).read();
+      const existing = await scope.read<Record<string, unknown> & { id: string }>('players', id, sessionId);
       if (!existing) {
         return NextResponse.json({ error: 'Player not found' }, { status: 404 });
       }
       // Validate deleteToken
       const storedToken = existing.deleteToken;
       const providedToken = body.deleteToken;
-      if (!storedToken || !providedToken || storedToken.length !== providedToken.length ||
+      if (typeof storedToken !== 'string' || typeof providedToken !== 'string' || storedToken.length !== providedToken.length ||
           !timingSafeEqual(Buffer.from(storedToken), Buffer.from(providedToken))) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
-      const { resource: updated } = await container.items.upsert({ ...existing, selfReportedPaid: true });
-      const { deleteToken: _dt, pinHash: _ph, ...safe } = updated as typeof existing;
+      const updated = await scope.upsert<Record<string, unknown> & { id: string }>('players', {
+        ...existing,
+        selfReportedPaid: true,
+      });
+      const { deleteToken: _dt, pinHash: _ph, ...safe } = updated;
       return NextResponse.json(safe);
     }
 
@@ -612,12 +600,12 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const scope = groupScope(resolveGroupId(req));
     const sessionId = typeof body.sessionId === 'string'
       ? body.sessionId
-      : await getActiveSessionId(resolveGroupId(req));
+      : await getActiveSessionId(scope.groupId);
     if (!sessionId) return noActiveSession();
-    const container = getContainer('players');
-    const { resource: existing } = await container.item(id, sessionId).read();
+    const existing = await scope.read<Record<string, unknown> & { id: string }>('players', id, sessionId);
     if (!existing) {
       return NextResponse.json({ error: 'Player not found' }, { status: 404 });
     }
@@ -649,33 +637,25 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    const sessionContainer = getContainer('sessions');
-    const { resources: sessions } = await sessionContainer.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.id = @id',
-        parameters: [{ name: '@id', value: sessionId }],
-      })
-      .fetchAll();
+    const sessionDoc = await scope.read<{ id: string; maxPlayers?: number }>('sessions', sessionId, sessionId);
     const maxPlayers =
-      sessions[0]?.maxPlayers ?? parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12', 10);
+      sessionDoc?.maxPlayers ?? parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12', 10);
 
     // Capacity check when restoring a removed player or promoting a waitlisted player
     if (body.removed === false || body.waitlisted === false) {
-      const { resources: active } = await container.items
-        .query({
-          query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
-          parameters: [{ name: '@sessionId', value: sessionId }],
-        })
-        .fetchAll();
+      const active = await scope.query<{ id: string }>('players', {
+        where: ACTIVE_PLAYERS_WHERE,
+        params: [{ name: '@sessionId', value: sessionId }],
+      });
       // Exclude the player being promoted from the count (they're currently in the list as waitlisted/removed)
-      const countExcludingSelf = active.filter((p: { id: string }) => p.id !== id).length;
+      const countExcludingSelf = active.filter((p) => p.id !== id).length;
       if (countExcludingSelf >= maxPlayers) {
         return NextResponse.json({ error: 'Session is full' }, { status: 409 });
       }
     }
 
-    const { resource: updated } = await container.items.upsert({ ...existing, ...updates });
-    const { deleteToken: _dt, pinHash: _ph, ...safe } = updated as typeof existing;
+    const updated = await scope.upsert('players', { ...existing, ...updates });
+    const { deleteToken: _dt, pinHash: _ph, ...safe } = updated;
     return NextResponse.json(safe);
   } catch (error) {
     console.error('PATCH player error:', error);
@@ -693,44 +673,41 @@ export async function DELETE(req: NextRequest) {
 
   try {
     const body = await req.json();
+    const scope = groupScope(resolveGroupId(req));
     const sessionId = isAdmin && typeof body.sessionId === 'string'
       ? body.sessionId
-      : await getActiveSessionId(resolveGroupId(req));
+      : await getActiveSessionId(scope.groupId);
     if (!sessionId) return noActiveSession();
 
     // Admin hard purge — permanently delete every record for this session
     if (isAdmin && body.purgeAll === true) {
-      const container = getContainer('players');
-      const { resources: all } = await container.items
-        .query({
-          query: 'SELECT * FROM c WHERE c.sessionId = @sessionId',
-          parameters: [{ name: '@sessionId', value: sessionId }],
-        })
-        .fetchAll();
-      await Promise.all(all.map((p) => container.item(p.id, sessionId).delete()));
+      const all = await scope.query<{ id: string }>('players', {
+        where: 'c.sessionId = @sessionId',
+        params: [{ name: '@sessionId', value: sessionId }],
+      });
+      await Promise.all(all.map((p) => scope.remove('players', p.id, sessionId)));
       return NextResponse.json({ success: true, count: all.length });
     }
 
     // Admin single purge — permanently delete one record
     if (isAdmin && typeof body.purgeOne === 'string') {
-      const container = getContainer('players');
-      await container.item(body.purgeOne, sessionId).delete();
+      // A miss must say so: the raw delete used to throw a Cosmos 404 here,
+      // and a green 200 for a row that was never deleted is worse than that.
+      const removed = await scope.remove('players', body.purgeOne, sessionId);
+      if (!removed) return NextResponse.json({ error: 'Player not found' }, { status: 404 });
       return NextResponse.json({ success: true });
     }
 
     // Admin bulk clear — soft-delete all active players for a new week
     if (isAdmin && body.clearAll === true) {
-      const container = getContainer('players');
-      const { resources: active } = await container.items
-        .query({
-          query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true)',
-          parameters: [{ name: '@sessionId', value: sessionId }],
-        })
-        .fetchAll();
+      const active = await scope.query<Record<string, unknown> & { id: string }>('players', {
+        where: 'c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true)',
+        params: [{ name: '@sessionId', value: sessionId }],
+      });
       const now = new Date().toISOString();
       await Promise.all(
         active.map((p) =>
-          container.items.upsert({ ...p, removed: true, removedAt: now, cancelledBySelf: false })
+          scope.upsert('players', { ...p, removed: true, removedAt: now, cancelledBySelf: false })
         )
       );
       return NextResponse.json({ success: true, count: active.length });
@@ -750,17 +727,13 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const container = getContainer('players');
-    const { resources } = await container.items
-      .query({
-        query:
-          'SELECT * FROM c WHERE c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name) AND (NOT IS_DEFINED(c.removed) OR c.removed != true)',
-        parameters: [
-          { name: '@sessionId', value: sessionId },
-          { name: '@name', value: trimmedName },
-        ],
-      })
-      .fetchAll();
+    const resources = await scope.query<Record<string, unknown> & { id: string; deleteToken?: string }>('players', {
+      where: 'c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name) AND (NOT IS_DEFINED(c.removed) OR c.removed != true)',
+      params: [
+        { name: '@sessionId', value: sessionId },
+        { name: '@name', value: trimmedName },
+      ],
+    });
 
     if (resources.length === 0) {
       return NextResponse.json({ error: 'Player not found' }, { status: 404 });
@@ -776,7 +749,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     // Soft delete — mark as removed instead of destroying the record
-    await container.items.upsert({
+    await scope.upsert('players', {
       ...player,
       removed: true,
       removedAt: new Date().toISOString(),

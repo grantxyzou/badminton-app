@@ -23,6 +23,8 @@ import { join } from 'path';
 export interface ContainerReferences {
   /** name → repo-relative files that call `getContainer` or `ensureContainer` with it. */
   used: Map<string, string[]>;
+  /** name → repo-relative files that call `getContainer` with it (raw access; the ratchet's input). */
+  gotten: Map<string, string[]>;
   /** name → the partition-key path literal it was ensured with. */
   ensured: Map<string, string>;
 }
@@ -30,11 +32,24 @@ export interface ContainerReferences {
 const NAME = `(?:'([a-zA-Z]+)'|([A-Za-z_$][\\w$]*))`;
 const CALL = new RegExp(`(get|ensure)Container\\(\\s*${NAME}\\s*(?:,\\s*'(\\/[a-zA-Z]+)')?\\s*[,)]`, 'g');
 const ALIAS = /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*'([a-zA-Z]+)'/g;
+/**
+ * The scoped accessor's calls — `scope.query('players', …)`, `.read('skills', …)`.
+ * Once a file is swept it names its containers only this way, and the
+ * classification canaries must keep seeing them. A string-literal first
+ * argument is what tells these apart from the SDK's `.query({ … })`.
+ */
+const SCOPED = /\.(?:query|count|read|create|upsert|remove)(?:<[^>]*>)?\(\s*'([a-zA-Z]+)'/g;
 
 export function containerReferences(root: string): ContainerReferences {
   const files = [...walk(join(root, 'app')), ...walk(join(root, 'lib'))];
   const used = new Map<string, string[]>();
+  const gotten = new Map<string, string[]>();
   const ensured = new Map<string, string>();
+  const add = (map: Map<string, string[]>, name: string, rel: string) => {
+    const files = map.get(name) ?? [];
+    if (!files.includes(rel)) files.push(rel);
+    map.set(name, files);
+  };
   for (const file of files) {
     const src = readFileSync(file, 'utf8');
     const aliases = new Map<string, string>();
@@ -45,13 +60,13 @@ export function containerReferences(root: string): ContainerReferences {
       const [, kind, literal, ident, path] = m;
       const name = literal ?? (ident ? aliases.get(ident) : undefined);
       if (!name) continue;
-      const files = used.get(name) ?? [];
-      if (!files.includes(rel)) files.push(rel);
-      used.set(name, files);
+      add(used, name, rel);
+      if (kind === 'get') add(gotten, name, rel);
       if (kind === 'ensure' && path) ensured.set(name, path);
     }
+    for (const m of src.matchAll(SCOPED)) add(used, m[1], rel);
   }
-  return { used, ensured };
+  return { used, gotten, ensured };
 }
 
 /** The set-shaped view most canaries want. */

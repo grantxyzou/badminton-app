@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
+import { resolveGroupId } from '@/lib/groupContext';
 import { ensureCatalogSeeded } from '@/lib/catalogSeed';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -332,7 +333,7 @@ export async function GET(req: NextRequest) {
     let stage: number | undefined;
     if (name) {
       const subject = await resolveActiveSubject(name);
-      const canonical = await getCanonicalLevel(subject);
+      const canonical = await getCanonicalLevel(subject, resolveGroupId(req));
       stage = typeof canonical.stage === 'number' ? canonical.stage : undefined;
     }
 

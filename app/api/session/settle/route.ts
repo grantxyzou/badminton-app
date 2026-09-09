@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { getActiveSessionId } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { sessionCostTotals } from '@/lib/sessionCost';
+import { ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
 import type { Player, Session, SettledSnapshot } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -38,16 +40,9 @@ export async function POST(req: NextRequest) {
   try {
     const sessionId = await resolveTargetSessionId(req);
     if (!sessionId) return noActiveSession();
-    const sessionsContainer = getContainer('sessions');
-    const playersContainer = getContainer('players');
+    const scope = groupScope(resolveGroupId(req));
 
-    const { resources: sessionDocs } = await sessionsContainer.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.id = @id',
-        parameters: [{ name: '@id', value: sessionId }],
-      })
-      .fetchAll();
-    const session = sessionDocs[0] as Session | undefined;
+    const session = await scope.read<Session>('sessions', sessionId, sessionId);
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
@@ -58,13 +53,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { resources: allPlayers } = await playersContainer.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
-        parameters: [{ name: '@sessionId', value: sessionId }],
-      })
-      .fetchAll();
-    const activePlayers = allPlayers as Player[];
+    const activePlayers = await scope.query<Player>('players', {
+      where: ACTIVE_PLAYERS_WHERE,
+      params: [{ name: '@sessionId', value: sessionId }],
+    });
 
     if (activePlayers.length === 0) {
       return NextResponse.json(
@@ -125,7 +117,7 @@ export async function POST(req: NextRequest) {
       settled: snapshot,
       signupOpen: false,
     };
-    await sessionsContainer.items.upsert(updatedSession);
+    await scope.upsert('sessions', updatedSession);
 
     // Stamp each active player with their frozen owed amount.
     // Cosmos: same partition (sessionId), so failures here are unusual; we
@@ -143,7 +135,7 @@ export async function POST(req: NextRequest) {
         owedAmount: owed,
         settledAt: at,
       };
-      await playersContainer.items.upsert(updated);
+      await scope.upsert('players', updated);
       stampedPlayers.push({
         id: player.id,
         name: player.name,
@@ -177,16 +169,9 @@ export async function DELETE(req: NextRequest) {
   try {
     const sessionId = await resolveTargetSessionId(req);
     if (!sessionId) return noActiveSession();
-    const sessionsContainer = getContainer('sessions');
-    const playersContainer = getContainer('players');
+    const scope = groupScope(resolveGroupId(req));
 
-    const { resources: sessionDocs } = await sessionsContainer.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.id = @id',
-        parameters: [{ name: '@id', value: sessionId }],
-      })
-      .fetchAll();
-    const session = sessionDocs[0] as Session | undefined;
+    const session = await scope.read<Session>('sessions', sessionId, sessionId);
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
@@ -194,23 +179,21 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Session is not settled.' }, { status: 404 });
     }
 
-    const { resources: settledPlayers } = await playersContainer.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.sessionId = @sessionId AND IS_DEFINED(c.settledAt)',
-        parameters: [{ name: '@sessionId', value: sessionId }],
-      })
-      .fetchAll();
+    const settledPlayers = await scope.query<Player>('players', {
+      where: 'c.sessionId = @sessionId AND IS_DEFINED(c.settledAt)',
+      params: [{ name: '@sessionId', value: sessionId }],
+    });
 
-    for (const player of settledPlayers as Player[]) {
+    for (const player of settledPlayers) {
       const next = { ...player } as Player & { owedAmount?: number; settledAt?: string };
       delete next.owedAmount;
       delete next.settledAt;
-      await playersContainer.items.upsert(next);
+      await scope.upsert('players', next);
     }
 
     const nextSession = { ...session } as Session & { settled?: SettledSnapshot };
     delete nextSession.settled;
-    await sessionsContainer.items.upsert(nextSession);
+    await scope.upsert('sessions', nextSession);
 
     return NextResponse.json({ sessionId, unsettled: true });
   } catch (error) {

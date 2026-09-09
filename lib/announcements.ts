@@ -1,11 +1,12 @@
 // Server-only by virtue of importing lib/cosmos (uses non-public env vars
 // that won't resolve in a client context). Don't add 'use client' to any
 // file that imports this.
-import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { getActiveSessionId } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
 import type { Announcement } from '@/lib/types';
 
 /**
- * Read announcements for the active session, newest first.
+ * Read a group's announcements for its active session, newest first.
  *
  * Callable from server components (RSC) and from API route handlers.
  * Centralizing this here lets `app/page.tsx` server-render the
@@ -24,14 +25,11 @@ export async function readActiveAnnouncements(groupId: string): Promise<Announce
     // A group with no session has no announcements — a true empty, not a
     // failure wearing one.
     if (!sessionId) return [];
-    const container = getContainer('announcements');
-    const { resources } = await container.items
-      .query<Announcement>({
-        query: 'SELECT * FROM c WHERE c.sessionId = @sessionId ORDER BY c.time DESC',
-        parameters: [{ name: '@sessionId', value: sessionId }],
-      })
-      .fetchAll();
-    return resources;
+    return await groupScope(groupId).query<Announcement>('announcements', {
+      where: 'c.sessionId = @sessionId',
+      params: [{ name: '@sessionId', value: sessionId }],
+      orderBy: 'c.time DESC',
+    });
   } catch (error) {
     console.error('readActiveAnnouncements failed:', error);
     return [];

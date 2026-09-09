@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ownsNameOrAdmin } from '@/lib/auth';
 import { getCanonicalLevel } from '@/lib/levelStore';
+import { resolveGroupId } from '@/lib/groupContext';
 import { resolveActiveSubject } from '@/lib/memberResolve';
 
 /**
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const subject = await resolveActiveSubject(name);
-    const level = await getCanonicalLevel(subject);
+    const level = await getCanonicalLevel(subject, resolveGroupId(req));
     return NextResponse.json({ level });
   } catch (error) {
     console.error('GET stats/level error:', error);

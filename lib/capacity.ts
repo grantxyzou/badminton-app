@@ -17,6 +17,16 @@
  * unit-testable; the handler wraps it with the re-query + demote writes.
  */
 
+/**
+ * The one definition of a session's ACTIVE players — not removed, not
+ * waitlisted — as a WHERE fragment for the group accessor. Sign-up, the
+ * post-insert reconciliation, advance's cost snapshot, settle (the copy that
+ * computes money) and the share card all count the same people because they
+ * all read this. An absent flag counts as active.
+ */
+export const ACTIVE_PLAYERS_WHERE =
+  'c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)';
+
 export interface CapacityEntry {
   id: string;
   /** ISO 8601 signup time. Missing sorts earliest (keeps its spot). */

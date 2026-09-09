@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { normalizeBirdUsages, snapshotBirdUsage, validateBirdEntry } from '@/lib/birdUsages';
 import type { BirdUsage, Session } from '@/lib/types';
@@ -31,14 +33,8 @@ export async function PATCH(req: NextRequest) {
     if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 });
     const { purchaseId, tubes } = v.value;
 
-    const sessionsContainer = getContainer('sessions');
-    const { resources } = await sessionsContainer.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.id = @id',
-        parameters: [{ name: '@id', value: sessionId }],
-      })
-      .fetchAll();
-    const session = resources[0] as Session | undefined;
+    const scope = groupScope(resolveGroupId(req));
+    const session = await scope.read<Session>('sessions', sessionId, sessionId);
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
@@ -62,7 +58,7 @@ export async function PATCH(req: NextRequest) {
     // Drop legacy single-object field so it doesn't shadow the array on future reads.
     delete (updated as { birdUsage?: unknown }).birdUsage;
 
-    const { resource } = await sessionsContainer.items.upsert(updated);
+    const resource = await scope.upsert('sessions', updated);
     return NextResponse.json(resource);
   } catch (error) {
     console.error('PATCH /api/session/bird-usage error:', error);

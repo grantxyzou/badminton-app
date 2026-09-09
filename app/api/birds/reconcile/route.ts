@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { randomBytes } from 'crypto';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { normalizeBirdUsages, totalTubes } from '@/lib/birdUsages';
@@ -36,13 +38,14 @@ export async function POST(req: NextRequest) {
     const totalPurchased = purchases.reduce((sum: number, p: { tubes: number }) => sum + p.tubes, 0);
     const totalAdjustments = adjustments.reduce((sum: number, a: { delta?: number }) => sum + (a.delta ?? 0), 0);
 
-    const sessionsContainer = getContainer('sessions');
-    const { resources: sessions } = await sessionsContainer.items
-      .query({ query: 'SELECT c.birdUsage, c.birdUsages FROM c WHERE IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)' })
-      .fetchAll();
+    const sessions = await groupScope(resolveGroupId(req)).query<Pick<Session, 'birdUsage' | 'birdUsages'>>('sessions', {
+      select: 'c.birdUsage, c.birdUsages',
+      where: 'IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)',
+      includeLegacy: true, // same rule as GET /api/birds, so the delta matches the display
+    });
     // Sum RAW, round once — the same rule GET /api/birds uses, so this delta
     // can never disagree with the displayed stock by a rounding penny.
-    const totalUsed = (sessions as Pick<Session, 'birdUsage' | 'birdUsages'>[]).reduce(
+    const totalUsed = sessions.reduce(
       (sum, s) => sum + totalTubes(normalizeBirdUsages(s)),
       0,
     );

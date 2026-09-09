@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { getContainer, sessionIdFromDate } from '@/lib/cosmos';
+import { sessionIdFromDate } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember } from '@/lib/auth';
 
@@ -69,10 +70,8 @@ export async function POST(req: NextRequest) {
   // (Pacific Daylight Time); for backfill purposes the offset only affects
   // display, not heatmap bucketing.
   const datetime = `${dateOnly}T${time}:00-07:00`;
-  const sessionId = sessionIdFromDate(datetime, resolveGroupId(req));
-
-  const sessionsContainer = getContainer('sessions');
-  const playersContainer = getContainer('players');
+  const scope = groupScope(resolveGroupId(req));
+  const sessionId = sessionIdFromDate(datetime, scope.groupId);
 
   // Upsert the session record (idempotent — re-running the same date is fine).
   const sessionDoc = {
@@ -85,17 +84,15 @@ export async function POST(req: NextRequest) {
     signupOpen: false, // historical, no live signups
     backfilled: true,  // marker so future maintenance can identify these
   };
-  await sessionsContainer.items.upsert(sessionDoc);
+  await scope.upsert('sessions', sessionDoc);
 
   // Look up existing player records for this session to avoid duplicates.
-  const { resources: existing } = await playersContainer.items
-    .query({
-      query: 'SELECT * FROM c WHERE c.sessionId = @sessionId',
-      parameters: [{ name: '@sessionId', value: sessionId }],
-    })
-    .fetchAll();
+  const existing = await scope.query<{ id: string; name: string }>('players', {
+    where: 'c.sessionId = @sessionId',
+    params: [{ name: '@sessionId', value: sessionId }],
+  });
   const existingByLowerName = new Map<string, { id: string; name: string }>(
-    (existing as { id: string; name: string }[]).map((p) => [p.name.toLowerCase(), p]),
+    existing.map((p) => [p.name.toLowerCase(), p]),
   );
 
   // For each name: if a record exists for this session, leave it; otherwise
@@ -108,7 +105,7 @@ export async function POST(req: NextRequest) {
       skipped += 1;
       continue;
     }
-    await playersContainer.items.create({
+    await scope.create('players', {
       id: randomBytes(12).toString('hex'),
       name,
       sessionId,

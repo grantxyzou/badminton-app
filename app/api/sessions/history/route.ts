@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, getActiveSessionId, POINTER_ID } from '@/lib/cosmos';
+import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { buildReceiptInput } from '@/lib/buildReceiptInput';
@@ -26,8 +27,7 @@ export async function GET(req: NextRequest) {
   const limit = Math.max(1, Math.min(MAX_LIMIT, Number.isFinite(requested) ? requested : DEFAULT_LIMIT));
 
   try {
-    const sessionsContainer = getContainer('sessions');
-    const playersContainer = getContainer('players');
+    const scope = groupScope(resolveGroupId(req));
     const membersContainer = getContainer('members');
 
     // The calling admin's own recipient is the default; a session may override it.
@@ -41,21 +41,16 @@ export async function GET(req: NextRequest) {
     // alongside the pointer + legacy docs. (Also keeps unsettled cover-mode
     // math out of this list, which reads frozen settled snapshots.)
     // Bound as the `@activeId` exclusion; a group with no session excludes nothing.
-    const activeId = (await getActiveSessionId(resolveGroupId(req))) ?? '';
+    const activeId = (await getActiveSessionId(scope.groupId)) ?? '';
 
-    // All PAST sessions (exclude pointer + legacy + active). Sort + slice in JS
-    // — the mock store ignores ORDER BY / LIMIT (same contract as sessions/recent).
-    const { resources: allSessions } = await sessionsContainer.items
-      .query({
-        query: 'SELECT * FROM c WHERE c.id != @pointerId AND c.id != @legacyId AND c.id != @activeId',
-        parameters: [
-          { name: '@pointerId', value: POINTER_ID },
-          { name: '@legacyId', value: 'current-session' },
-          { name: '@activeId', value: activeId },
-        ],
-      })
-      .fetchAll();
-    const sessions = (allSessions as Session[])
+    // All PAST sessions (the accessor excludes the pointer and legacy docs;
+    // the active one is excluded here). Sort + slice in JS — the mock store
+    // ignores ORDER BY / LIMIT (same contract as sessions/recent).
+    const allSessions = await scope.query<Session>('sessions', {
+      where: 'c.id != @activeId',
+      params: [{ name: '@activeId', value: activeId }],
+    });
+    const sessions = allSessions
       .sort((a, b) => (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
       .slice(0, limit);
 
@@ -67,13 +62,12 @@ export async function GET(req: NextRequest) {
     const playersBySession = new Map<string, PlayerRow[]>();
     if (sessionIds.length > 0) {
       const placeholders = sessionIds.map((_, i) => `@sid${i}`).join(',');
-      const { resources: rawPlayers } = await playersContainer.items
-        .query({
-          query: `SELECT c.sessionId, c.name, c.paid, c.removed, c.waitlisted FROM c WHERE c.sessionId IN (${placeholders})`,
-          parameters: sessionIds.map((id, i) => ({ name: `@sid${i}`, value: id })),
-        })
-        .fetchAll();
-      for (const p of rawPlayers as PlayerRow[]) {
+      const rawPlayers = await scope.query<PlayerRow>('players', {
+        select: 'c.sessionId, c.name, c.paid, c.removed, c.waitlisted',
+        where: `c.sessionId IN (${placeholders})`,
+        params: sessionIds.map((id, i) => ({ name: `@sid${i}`, value: id })),
+      });
+      for (const p of rawPlayers) {
         if (!sessionIdSet.has(p.sessionId)) continue;
         const arr = playersBySession.get(p.sessionId);
         if (arr) arr.push(p);

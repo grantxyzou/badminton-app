@@ -12,9 +12,12 @@
  * roster. Reported as "kudos goes away with the session too fast" — it was
  * actually immediately.
  *
- * Now: anyone who shared a roster with you in a RECENT session.
+ * Now: anyone who shared a roster with you in a RECENT session — of one group.
+ * Every read here goes through `groupScope`, so a co-player is always someone
+ * from the same club.
  */
-import { getContainer, ensureContainer } from '@/lib/cosmos';
+import { ensureContainer } from '@/lib/cosmos';
+import { groupScope, sessionPrefix } from '@/lib/groupScope';
 
 /**
  * How far back co-play counts. Two months of Thursdays.
@@ -37,28 +40,32 @@ const lower = (s: string) => s.trim().toLowerCase();
  * The active id leads because it is the likeliest match — so the common case
  * short-circuits on the first read — and because it is the only way the LEGACY
  * `'current-session'` id is reachable. That id is still live in production
- * (CLAUDE.md) and does not match `session-YYYY-MM-DD`, so a prefix filter alone
+ * (CLAUDE.md) and does not match the dated prefix, so a prefix filter alone
  * would silently exclude the very session most people just played.
  */
 export async function recentSessionIds(
+  groupId: string,
   activeSessionId: string,
   limit = CO_PLAY_LOOKBACK_SESSIONS,
 ): Promise<string[]> {
   const ids: string[] = activeSessionId ? [activeSessionId] : [];
+  const prefix = sessionPrefix(groupId);
   try {
-    const { resources } = await getContainer('sessions').items
-      // Bounded IN THE QUERY, not only in JS. `sessions` is partitioned by
-      // /sessionId, so an unbounded SELECT is a cross-partition scan of every
-      // session the club has ever held, on every card mount and every send.
-      // The JS sort/slice below stays as the real filter because the mock
-      // store ignores SQL entirely; ORDER BY here is what stops real Cosmos
-      // reading the whole container. +1 covers the active id being in range.
-      .query({ query: `SELECT c.id FROM c ORDER BY c.id DESC OFFSET 0 LIMIT ${limit + 1}` })
-      .fetchAll();
-    const dated = (resources as { id?: string }[])
+    // Bounded IN THE QUERY, not only in JS. `sessions` is partitioned by
+    // /sessionId, so an unbounded SELECT is a cross-partition scan of every
+    // session the club has ever held, on every card mount and every send.
+    // The JS sort/slice below stays as the real filter because the mock
+    // store ignores ORDER BY; the LIMIT is what stops real Cosmos reading the
+    // whole container. +1 covers the active id being in range. Within one
+    // group every dated id shares a prefix, so lexical order IS date order.
+    const resources = await groupScope(groupId).query<{ id?: string }>('sessions', {
+      select: 'c.id',
+      orderBy: 'c.id DESC',
+      limit: limit + 1,
+    });
+    const dated = resources
       .map((r) => r?.id)
-      .filter((id): id is string => typeof id === 'string' && id.startsWith('session-') && id !== activeSessionId)
-      // `session-YYYY-MM-DD` sorts lexically in date order — no parsing needed.
+      .filter((id): id is string => typeof id === 'string' && id.startsWith(prefix) && id !== activeSessionId)
       .sort((a, b) => b.localeCompare(a))
       .slice(0, limit);
     ids.push(...dated);
@@ -69,17 +76,18 @@ export async function recentSessionIds(
 }
 
 /** Non-removed roster names for one session, lowercased. */
-async function rosterFor(sessionId: string): Promise<Set<string>> {
+async function rosterFor(groupId: string, sessionId: string): Promise<Set<string>> {
   try {
-    const { resources } = await getContainer('players').items
-      .query({
-        query: 'SELECT c.name, c.removed, c.sessionId FROM c WHERE c.sessionId = @sid',
-        parameters: [{ name: '@sid', value: sessionId }],
-      })
-      .fetchAll();
-    // The mock store filters by PARAMETER NAME, not SQL, so JS-filter for parity.
+    // `@sessionId`, not `@sid`: the mock filters by parameter NAME, and `@sid`
+    // was one it did not know — so this returned every row in tests.
+    const resources = await groupScope(groupId).query<{ name?: string; removed?: boolean; sessionId?: string }>('players', {
+      select: 'c.name, c.removed, c.sessionId',
+      where: 'c.sessionId = @sessionId',
+      params: [{ name: '@sessionId', value: sessionId }],
+    });
+    // The JS re-filter stays for parity with real Cosmos either way.
     return new Set(
-      (resources as { name?: string; removed?: boolean; sessionId?: string }[])
+      resources
         .filter((p) => p && p.sessionId === sessionId && p.removed !== true && typeof p.name === 'string')
         .map((p) => lower(p.name as string)),
     );
@@ -93,21 +101,20 @@ async function rosterFor(sessionId: string): Promise<Set<string>> {
  * Display names, deduped case-insensitively, in first-seen (newest session)
  * order so the people you just played with come first.
  */
-export async function eligibleCoPlayers(name: string, activeSessionId: string): Promise<string[]> {
+export async function eligibleCoPlayers(groupId: string, name: string, activeSessionId: string): Promise<string[]> {
   const me = lower(name);
-  const ids = await recentSessionIds(activeSessionId);
+  const ids = await recentSessionIds(groupId, activeSessionId);
   const seen = new Set<string>();
   const out: string[] = [];
 
   for (const id of ids) {
     try {
-      const { resources } = await getContainer('players').items
-        .query({
-          query: 'SELECT c.name, c.removed, c.sessionId FROM c WHERE c.sessionId = @sid',
-          parameters: [{ name: '@sid', value: id }],
-        })
-        .fetchAll();
-      const rows = (resources as { name?: string; removed?: boolean; sessionId?: string }[])
+      const resources = await groupScope(groupId).query<{ name?: string; removed?: boolean; sessionId?: string }>('players', {
+        select: 'c.name, c.removed, c.sessionId',
+        where: 'c.sessionId = @sessionId',
+        params: [{ name: '@sessionId', value: id }],
+      });
+      const rows = resources
         .filter((p) => p && p.sessionId === id && p.removed !== true && typeof p.name === 'string');
       // Only a session I was actually on can make anyone a co-player.
       if (!rows.some((p) => lower(p.name as string) === me)) continue;
@@ -133,16 +140,15 @@ export async function eligibleCoPlayers(name: string, activeSessionId: string): 
  * when the rule moved into this module — caught by the route test that
  * exercises exactly this path.
  */
-async function sharedAGame(a: string, b: string, sessionId: string): Promise<boolean> {
+async function sharedAGame(groupId: string, a: string, b: string, sessionId: string): Promise<boolean> {
   try {
     await ensureContainer('gameResults', '/sessionId');
-    const { resources } = await getContainer('gameResults').items
-      .query({
-        query: 'SELECT c.teamA, c.teamB, c.sessionId FROM c WHERE c.sessionId = @sid',
-        parameters: [{ name: '@sid', value: sessionId }],
-      })
-      .fetchAll();
-    for (const g of resources as { teamA?: string[]; teamB?: string[]; sessionId?: string }[]) {
+    const resources = await groupScope(groupId).query<{ teamA?: string[]; teamB?: string[]; sessionId?: string }>('gameResults', {
+      select: 'c.teamA, c.teamB, c.sessionId',
+      where: 'c.sessionId = @sessionId',
+      params: [{ name: '@sessionId', value: sessionId }],
+    });
+    for (const g of resources) {
       if (g.sessionId !== sessionId) continue;
       const all = new Set([...(g.teamA ?? []), ...(g.teamB ?? [])].map((n) => lower(String(n))));
       if (all.has(a) && all.has(b)) return true;
@@ -154,21 +160,32 @@ async function sharedAGame(a: string, b: string, sessionId: string): Promise<boo
 }
 
 /**
+ * Did these two share ONE named session — by roster, or by a logged game?
+ * The admin-override path of `POST /api/kudos` (which names the session it
+ * means) uses this; the player path uses `playedTogetherRecently` below. Same
+ * two proofs, so the two paths cannot drift.
+ */
+export async function playedTogetherIn(groupId: string, aName: string, bName: string, sessionId: string): Promise<boolean> {
+  const a = lower(aName);
+  const b = lower(bName);
+  const roster = await rosterFor(groupId, sessionId);
+  if (roster.has(a) && roster.has(b)) return true;
+  return sharedAGame(groupId, a, b, sessionId);
+}
+
+/**
  * Did these two share a recent session — by roster, or by a logged game?
  * Short-circuits on the first match, so the common case (you played last
  * Thursday, and it is the active session) costs one read.
  */
 export async function playedTogetherRecently(
+  groupId: string,
   aName: string,
   bName: string,
   activeSessionId: string,
 ): Promise<boolean> {
-  const a = lower(aName);
-  const b = lower(bName);
-  for (const id of await recentSessionIds(activeSessionId)) {
-    const roster = await rosterFor(id);
-    if (roster.has(a) && roster.has(b)) return true;
-    if (await sharedAGame(a, b, id)) return true;
+  for (const id of await recentSessionIds(groupId, activeSessionId)) {
+    if (await playedTogetherIn(groupId, aName, bName, id)) return true;
   }
   return false;
 }
