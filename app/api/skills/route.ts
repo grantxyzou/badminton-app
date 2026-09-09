@@ -169,7 +169,8 @@ export async function DELETE(req: NextRequest) {
     const scope = groupScope(resolveGroupId(req));
     const sessionId = await getActiveSessionId(scope.groupId);
     if (!sessionId) return noActiveSession();
-    await scope.remove('skills', id, sessionId);
+    const removed = await scope.remove('skills', id, sessionId);
+    if (!removed) return NextResponse.json({ error: 'Record not found' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('DELETE skills error:', error);

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SESSION_ID } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -81,8 +80,6 @@ export async function GET(req: NextRequest) {
     // unchanged.
     const allSessions = await scope.query<{ id: string; datetime?: string }>('sessions', {
       select: 'c.id, c.datetime',
-      where: 'c.id != @legacyId',
-      params: [{ name: '@legacyId', value: SESSION_ID }],
     });
 
     // Sort by datetime descending (most recent first). Sessions without a

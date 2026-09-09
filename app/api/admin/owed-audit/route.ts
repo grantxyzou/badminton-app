@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getActiveSessionId, SESSION_ID } from '@/lib/cosmos';
+import { getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
@@ -62,10 +62,7 @@ export async function GET(req: NextRequest) {
 
     const identity = await resolveIdentity({ name, memberId });
 
-    const allSessions = await scope.query<Session>('sessions', {
-      where: 'c.id != @legacyId',
-      params: [{ name: '@legacyId', value: SESSION_ID }],
-    });
+    const allSessions = await scope.query<Session>('sessions');
     const sessionById = new Map<string, Session>();
     for (const s of allSessions) sessionById.set(s.id, s);
 

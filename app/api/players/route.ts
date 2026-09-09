@@ -7,17 +7,10 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, setMemberCookie } from '@/lib/auth';
 import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import { appendEvent } from '@/lib/recoveryAudit';
-import { isOverCapacity } from '@/lib/capacity';
+import { isOverCapacity, ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
 import type { RecoveryEvent, Session } from '@/lib/types';
 
 const BLOCKLISTED_PINS = new Set(['0000', '1111', '1234', '4321', '1212']);
-
-// Single definition of a session's "active" (not-removed, not-waitlisted)
-// players — shared by the pre-insert capacity check and the post-insert
-// reconciliation (#79) so the two can never disagree on who counts.
-// A WHERE fragment for the group accessor (it supplies SELECT and the group clause).
-const ACTIVE_PLAYERS_WHERE =
-  'c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)';
 
 /**
  * Close the signup capacity race (#79). The pre-insert count check and the
@@ -698,7 +691,10 @@ export async function DELETE(req: NextRequest) {
 
     // Admin single purge — permanently delete one record
     if (isAdmin && typeof body.purgeOne === 'string') {
-      await scope.remove('players', body.purgeOne, sessionId);
+      // A miss must say so: the raw delete used to throw a Cosmos 404 here,
+      // and a green 200 for a row that was never deleted is worse than that.
+      const removed = await scope.remove('players', body.purgeOne, sessionId);
+      if (!removed) return NextResponse.json({ error: 'Player not found' }, { status: 404 });
       return NextResponse.json({ success: true });
     }
 

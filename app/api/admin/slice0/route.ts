@@ -158,12 +158,11 @@ export async function GET(req: NextRequest) {
     const loggers = new Set<string>();
     try {
       await ensureContainer('gameResults', '/sessionId');
-      const { resources: games } = await getContainer('gameResults').items
-        .query({
-          query: 'SELECT c.loggedBy, c.loggedAt FROM c WHERE c.loggedAt >= @since',
-          parameters: [{ name: '@since', value: since }],
-        })
-        .fetchAll();
+      const games = await scope.query<{ loggedBy?: unknown; loggedAt?: unknown }>('gameResults', {
+        select: 'c.loggedBy, c.loggedAt',
+        where: 'c.loggedAt >= @since',
+        params: [{ name: '@since', value: since }],
+      });
       for (const g of games) {
         if (typeof g?.loggedBy !== 'string' || typeof g.loggedAt !== 'string') continue;
         if (g.loggedAt < since) continue;

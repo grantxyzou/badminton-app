@@ -5,6 +5,7 @@ import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { toValidIso } from '@/app/api/session/route';
 import { resolveBirdUsages } from '@/lib/birdWrite';
+import { ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
 import { sessionCostTotals } from '@/lib/sessionCost';
 import { detectSettingsDrift } from '@/lib/anomalies';
 import type { BirdUsage, Session } from '@/lib/types';
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest) {
         const { totalCost } = sessionCostTotals(currentSession);
         if (totalCost > 0) {
           const prevPlayers = await scope.query('players', {
-            where: 'c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
+            where: ACTIVE_PLAYERS_WHERE,
             params: [{ name: '@sessionId', value: currentSession.id }],
           });
           if (prevPlayers.length > 0) {

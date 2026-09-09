@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos';
-import { groupScope, type GroupScope } from '@/lib/groupScope';
+import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
@@ -9,7 +9,7 @@ import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { aggregateKudos, isKudosTag, normalizeNote, isoWeekKey, visibleNotes, type KudosDoc } from '@/lib/kudos';
 import { SKILLS } from '@/lib/assessment';
 import { resolveActiveSubject } from '@/lib/memberResolve';
-import { playedTogetherRecently } from '@/lib/kudosEligibility';
+import { playedTogetherIn, playedTogetherRecently } from '@/lib/kudosEligibility';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,58 +24,11 @@ function ensureKudos(): Promise<void> {
   return ready;
 }
 
-
-/** Name → subject id (members directory canonical, name-fallback otherwise). */
-
-/**
- * Did `a` and `b` (case-insensitive names) play the same session? True if both
- * are non-removed in the session's roster, OR they appear together in any game.
- * Reuses existing co-attendance data — no new tracking.
- */
 /** A skill key must name a real assessment skill. Anything else is dropped
  *  rather than stored, so a structured field never holds free text. */
 const SKILL_KEYS = new Set(SKILLS.map((sk) => sk.key));
 function isSkillKey(x: unknown): x is string {
   return typeof x === 'string' && SKILL_KEYS.has(x);
-}
-
-async function playedTogether(scope: GroupScope, aName: string, bName: string, sessionId: string): Promise<boolean> {
-  const a = aName.trim().toLowerCase();
-  const b = bName.trim().toLowerCase();
-  // `@sessionId`, not `@sid`: the mock store filters by parameter NAME, and
-  // `@sid` was one it did not know — so this read returned every row in tests.
-  // The JS re-filter stays for parity with real Cosmos either way.
-  try {
-    const roster = await scope.query<{ name?: string; removed?: boolean; sessionId?: string }>('players', {
-      select: 'c.name, c.removed, c.sessionId',
-      where: 'c.sessionId = @sessionId',
-      params: [{ name: '@sessionId', value: sessionId }],
-    });
-    const present = new Set(
-      roster
-        .filter((p) => p && p.sessionId === sessionId && p.removed !== true && typeof p.name === 'string')
-        .map((p) => (p.name as string).trim().toLowerCase()),
-    );
-    if (present.has(a) && present.has(b)) return true;
-  } catch {
-    /* fall through to games check */
-  }
-  try {
-    await ensureContainer('gameResults', '/sessionId');
-    const games = await scope.query<{ teamA?: string[]; teamB?: string[]; sessionId?: string }>('gameResults', {
-      select: 'c.teamA, c.teamB, c.sessionId',
-      where: 'c.sessionId = @sessionId',
-      params: [{ name: '@sessionId', value: sessionId }],
-    });
-    for (const g of games) {
-      if (g.sessionId !== sessionId) continue;
-      const all = new Set([...(g.teamA ?? []), ...(g.teamB ?? [])].map((n) => String(n).trim().toLowerCase()));
-      if (all.has(a) && all.has(b)) return true;
-    }
-  } catch {
-    /* fall through */
-  }
-  return false;
 }
 
 export async function POST(req: NextRequest) {
@@ -116,7 +69,7 @@ export async function POST(req: NextRequest) {
        may still pin a specific session (rule 7), in which case that one is
        checked on its own. */
     const eligible = typeof body.sessionId === 'string' && body.sessionId && isAdminAuthed(req)
-      ? await playedTogether(scope, rater.name, recipientName, sessionId)
+      ? await playedTogetherIn(scope.groupId, rater.name, recipientName, sessionId)
       : await playedTogetherRecently(scope.groupId, rater.name, recipientName, sessionId);
     if (!eligible) {
       return NextResponse.json({ error: 'not_co_player' }, { status: 403 });

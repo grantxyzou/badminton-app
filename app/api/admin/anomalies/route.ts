@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, getActiveSessionId, SESSION_ID } from '@/lib/cosmos';
+import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
@@ -23,14 +23,11 @@ export async function GET(req: NextRequest) {
     const [session, { resource: adminMember }, archived] = await Promise.all([
       scope.read<Session>('sessions', sessionId, sessionId),
       membersContainer.item(auth.memberId, auth.memberId).read(),
-      // The group's sessions minus the legacy doc and the active one; the
-      // accessor already drops the pointer.
+      // The group's sessions minus the active one; the accessor drops the
+      // pointer and legacy docs.
       scope.query<Session>('sessions', {
-        where: 'c.id != @legacyId AND c.id != @activeId',
-        params: [
-          { name: '@legacyId', value: SESSION_ID },
-          { name: '@activeId', value: sessionId },
-        ],
+        where: 'c.id != @activeId',
+        params: [{ name: '@activeId', value: sessionId }],
       }),
     ]);
 

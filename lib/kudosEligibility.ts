@@ -16,7 +16,7 @@
  * Every read here goes through `groupScope`, so a co-player is always someone
  * from the same club.
  */
-import { ensureContainer, SESSION_ID } from '@/lib/cosmos';
+import { ensureContainer } from '@/lib/cosmos';
 import { groupScope, sessionPrefix } from '@/lib/groupScope';
 
 /**
@@ -60,8 +60,6 @@ export async function recentSessionIds(
     // group every dated id shares a prefix, so lexical order IS date order.
     const resources = await groupScope(groupId).query<{ id?: string }>('sessions', {
       select: 'c.id',
-      where: 'c.id != @legacyId',
-      params: [{ name: '@legacyId', value: SESSION_ID }],
       orderBy: 'c.id DESC',
       limit: limit + 1,
     });
@@ -162,6 +160,20 @@ async function sharedAGame(groupId: string, a: string, b: string, sessionId: str
 }
 
 /**
+ * Did these two share ONE named session — by roster, or by a logged game?
+ * The admin-override path of `POST /api/kudos` (which names the session it
+ * means) uses this; the player path uses `playedTogetherRecently` below. Same
+ * two proofs, so the two paths cannot drift.
+ */
+export async function playedTogetherIn(groupId: string, aName: string, bName: string, sessionId: string): Promise<boolean> {
+  const a = lower(aName);
+  const b = lower(bName);
+  const roster = await rosterFor(groupId, sessionId);
+  if (roster.has(a) && roster.has(b)) return true;
+  return sharedAGame(groupId, a, b, sessionId);
+}
+
+/**
  * Did these two share a recent session — by roster, or by a logged game?
  * Short-circuits on the first match, so the common case (you played last
  * Thursday, and it is the active session) costs one read.
@@ -172,12 +184,8 @@ export async function playedTogetherRecently(
   bName: string,
   activeSessionId: string,
 ): Promise<boolean> {
-  const a = lower(aName);
-  const b = lower(bName);
   for (const id of await recentSessionIds(groupId, activeSessionId)) {
-    const roster = await rosterFor(groupId, id);
-    if (roster.has(a) && roster.has(b)) return true;
-    if (await sharedAGame(groupId, a, b, id)) return true;
+    if (await playedTogetherIn(groupId, aName, bName, id)) return true;
   }
   return false;
 }

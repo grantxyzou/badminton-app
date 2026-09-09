@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SESSION_ID } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
@@ -22,8 +21,6 @@ export async function GET(req: NextRequest) {
   try {
     const resources = await groupScope(resolveGroupId(req)).query('sessions', {
       select: 'c.title, c.locationName, c.locationAddress',
-      where: 'c.id != @legacyId',
-      params: [{ name: '@legacyId', value: SESSION_ID }],
       orderBy: 'c.id DESC',
       limit: 30,
     });

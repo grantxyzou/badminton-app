@@ -4,6 +4,7 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { sessionCostTotals } from '@/lib/sessionCost';
+import { ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
 import type { Player, Session, SettledSnapshot } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
     }
 
     const activePlayers = await scope.query<Player>('players', {
-      where: 'c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed != true) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted != true)',
+      where: ACTIVE_PLAYERS_WHERE,
       params: [{ name: '@sessionId', value: sessionId }],
     });
 

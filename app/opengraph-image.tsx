@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { getActiveSessionId, DEFAULT_SESSION } from '@/lib/cosmos';
 import { BPM_GROUP_ID, groupScope } from '@/lib/groupScope';
+import { ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
 
 export const dynamic = 'force-dynamic';
 export const alt = 'BPM Badminton';
@@ -20,11 +21,7 @@ export default async function OGImage() {
     const found = await scope.read<typeof DEFAULT_SESSION>('sessions', sessionId, sessionId);
     if (found) session = found;
 
-    playerCount = await scope.count(
-      'players',
-      'c.sessionId = @sessionId AND (NOT IS_DEFINED(c.removed) OR c.removed = false) AND (NOT IS_DEFINED(c.waitlisted) OR c.waitlisted = false)',
-      [{ name: '@sessionId', value: sessionId }],
-    );
+    playerCount = await scope.count('players', ACTIVE_PLAYERS_WHERE, [{ name: '@sessionId', value: sessionId }]);
   } catch {
     // fall back to defaults
   }

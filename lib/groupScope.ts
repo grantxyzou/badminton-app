@@ -33,7 +33,7 @@ import type { SqlParameter } from '@azure/cosmos';
 import { CONTAINERS, containersOfScope, pkFieldOf, type ContainerScope, type ContainersOfScope } from './containers';
 // A cycle with ./cosmos, and a safe one: neither module touches the other's
 // exports at evaluation time, only inside functions.
-import { getContainer, POINTER_ID } from './cosmos';
+import { getContainer, POINTER_ID, SESSION_ID } from './cosmos';
 
 /** Group #1. Every row in production today belongs to it. */
 export const BPM_GROUP_ID = 'bpm';
@@ -165,9 +165,16 @@ export interface GroupQuery {
   orderBy?: string;
   /** Emitted as `OFFSET 0 LIMIT n`. */
   limit?: number;
+  /**
+   * `sessions` only. BPM's pre-pointer default session (`'current-session'`)
+   * is a real row that every list has always excluded; the builder excludes
+   * it by default, like the pointer doc. Opt in for a whole-history scan that
+   * genuinely wants it (bird stock, a member's history).
+   */
+  includeLegacy?: boolean;
 }
 
-const RESERVED_PARAMS = new Set(['@groupId', '@pointerId']);
+const RESERVED_PARAMS = new Set(['@groupId', '@pointerId', '@legacyId']);
 
 export function buildGroupQuery(
   groupId: string,
@@ -180,7 +187,17 @@ export function buildGroupQuery(
     }
   }
   const select = q.select?.trim() || '*';
+  // The builder appends `c.groupId` to a field list so rows can be verified,
+  // and skips verification for a VALUE select; the mock applies no projections,
+  // so a shape that breaks either rule would pass CI and misbehave only in
+  // Cosmos. Refuse the shapes it cannot make safe.
+  if (/^(DISTINCT|TOP)\b/i.test(select)) {
+    throw new Error(`buildGroupQuery: ${select.split(/\s/)[0].toUpperCase()} is not supported — filter in JS instead`);
+  }
   const isValue = /^VALUE\b/i.test(select);
+  if (isValue && !/^VALUE\s+COUNT\(/i.test(select)) {
+    throw new Error('buildGroupQuery: only VALUE COUNT(...) is supported; a VALUE projection cannot be group-verified');
+  }
   const projection = select === '*' || isValue ? select : `${select}, c.groupId`;
 
   const clauses = [groupClause(groupId)];
@@ -190,6 +207,10 @@ export function buildGroupQuery(
     // no datetime; without this it comes back as "a session" in every list.
     clauses.push('c.id != @pointerId');
     parameters.push({ name: '@pointerId', value: groupDocId(groupId, POINTER_ID) });
+    if (!q.includeLegacy) {
+      clauses.push('c.id != @legacyId');
+      parameters.push({ name: '@legacyId', value: SESSION_ID });
+    }
   }
   if (q.where?.trim()) clauses.push(`(${q.where.trim()})`);
   parameters.push({ name: '@groupId', value: groupId });
@@ -259,6 +280,16 @@ export function groupScope(groupId: string): GroupScope {
       const pk = pkValueFor(container, id, pkValue);
       const { resource } = await getContainer(container).item(id, pk).read();
       if (!resource) return undefined;
+      // Cosmos would 404 a point read under the wrong partition key; the mock
+      // finds by id alone. Checking the key FIELD keeps the accessor exactly
+      // as strict as production on every /sessionId-keyed read.
+      const field = pkFieldOf(container);
+      if ((resource as Record<string, unknown>)[field] !== pk) {
+        console.error(`[group-leak] ${container}: point read of ${id} under ${field}=${pk} found a doc keyed elsewhere`, {
+          id,
+        });
+        return undefined;
+      }
       return keep<T>(container, [resource])[0];
     },
 

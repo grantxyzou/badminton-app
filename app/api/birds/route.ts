@@ -42,6 +42,7 @@ export async function GET(req: NextRequest) {
     const sessions = await groupScope(resolveGroupId(req)).query<Pick<Session, 'birdUsage' | 'birdUsages'> & { datetime?: string }>('sessions', {
       select: 'c.birdUsage, c.birdUsages, c.datetime',
       where: 'IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)',
+      includeLegacy: true, // stock counts every session's tubes, the legacy doc's included
     });
 
     // All-time tubes used, both in total and per purchase. The per-purchase
@@ -189,6 +190,7 @@ export async function DELETE(req: NextRequest) {
     const sessions = await groupScope(resolveGroupId(req)).query<Pick<Session, 'birdUsage' | 'birdUsages'> & { datetime?: string }>('sessions', {
       select: 'c.id, c.datetime, c.birdUsage, c.birdUsages',
       where: 'IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)',
+      includeLegacy: true, // stock counts every session's tubes, the legacy doc's included
     });
     const referencing = sessions
       .filter((s) => normalizeBirdUsages(s).some((u) => u.purchaseId === id && (u.tubes ?? 0) > 0));

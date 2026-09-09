@@ -62,7 +62,8 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     const sessionMap = new Map<string, Session>();
     const attendanceBySession = new Map<string, number>();
     if (sessionIds.length > 0) {
-      const allSessions = await scope.query<Session>('sessions');
+      // A member's history reaches back to the legacy default session too.
+      const allSessions = await scope.query<Session>('sessions', { includeLegacy: true });
       for (const s of allSessions) {
         if (sessionIds.includes(s.id)) sessionMap.set(s.id, s);
       }

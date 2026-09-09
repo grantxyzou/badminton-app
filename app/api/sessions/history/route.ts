@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getContainer, getActiveSessionId, SESSION_ID } from '@/lib/cosmos';
+import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
@@ -43,15 +43,12 @@ export async function GET(req: NextRequest) {
     // Bound as the `@activeId` exclusion; a group with no session excludes nothing.
     const activeId = (await getActiveSessionId(scope.groupId)) ?? '';
 
-    // All PAST sessions (the accessor excludes the pointer; legacy + active are
-    // excluded here). Sort + slice in JS — the mock store ignores ORDER BY /
-    // LIMIT (same contract as sessions/recent).
+    // All PAST sessions (the accessor excludes the pointer and legacy docs;
+    // the active one is excluded here). Sort + slice in JS — the mock store
+    // ignores ORDER BY / LIMIT (same contract as sessions/recent).
     const allSessions = await scope.query<Session>('sessions', {
-      where: 'c.id != @legacyId AND c.id != @activeId',
-      params: [
-        { name: '@legacyId', value: SESSION_ID },
-        { name: '@activeId', value: activeId },
-      ],
+      where: 'c.id != @activeId',
+      params: [{ name: '@activeId', value: activeId }],
     });
     const sessions = allSessions
       .sort((a, b) => (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))

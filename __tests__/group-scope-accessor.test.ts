@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { groupScope, buildGroupQuery, BPM_GROUP_ID, TOLERATE_UNSTAMPED } from '@/lib/groupScope';
-import { POINTER_ID } from '@/lib/cosmos';
+import { POINTER_ID, SESSION_ID } from '@/lib/cosmos';
 import { resetMockStore, getStore } from './helpers';
 
 /**
@@ -162,5 +162,42 @@ describe('groupScope', () => {
     expect((getStore().players as { id: string }[]).some((p) => p.id === 'pb')).toBe(true);
     await groupScope(A).remove('players', 'pa', 's-a');
     expect((getStore().players as { id: string }[]).some((p) => p.id === 'pa')).toBe(false);
+  });
+
+  it('read verifies the partition-key FIELD too, because the mock ignores the key argument', async () => {
+    // Cosmos would 404 a point read with the wrong partition key; the mock
+    // finds by id alone. Without this check the accessor is laxer than
+    // production on every /sessionId-keyed point read.
+    expect(await groupScope(A).read('players', 'pa', 's-wrong')).toBeUndefined();
+    expect(leak).toHaveBeenCalledWith(expect.stringContaining('[group-leak]'), expect.anything());
+    expect(await groupScope(A).remove('players', 'pa', 's-wrong')).toBe(false);
+    expect((getStore().players as { id: string }[]).some((p) => p.id === 'pa')).toBe(true);
+  });
+});
+
+describe('buildGroupQuery guards', () => {
+  it('refuses DISTINCT, TOP and any VALUE projection other than COUNT', () => {
+    // The builder appends c.groupId to a field list and skips verification
+    // for VALUE selects; the mock applies no projections, so a shape that
+    // breaks either rule would pass CI and misbehave only in Cosmos.
+    expect(() => buildGroupQuery(A, 'sessions', { select: 'DISTINCT c.locationName' })).toThrow(/DISTINCT/);
+    expect(() => buildGroupQuery(A, 'sessions', { select: 'TOP 5 c.id' })).toThrow(/TOP/);
+    expect(() => buildGroupQuery(A, 'players', { select: 'VALUE c.name' })).toThrow(/VALUE/);
+    expect(() => buildGroupQuery(A, 'players', { select: 'VALUE COUNT(1)' })).not.toThrow();
+  });
+
+  it('excludes the legacy current-session doc from sessions reads unless asked to include it', () => {
+    // BPM's pre-pointer default session is a real row that every list has
+    // always excluded by hand. Builder-owned now, like the pointer exclusion,
+    // so the next list cannot forget the incantation.
+    const q = buildGroupQuery(BPM_GROUP_ID, 'sessions', {});
+    expect(q.query).toContain('c.id != @legacyId');
+    expect(q.parameters).toContainEqual({ name: '@legacyId', value: SESSION_ID });
+    const inclusive = buildGroupQuery(BPM_GROUP_ID, 'sessions', { includeLegacy: true });
+    expect(inclusive.query).not.toContain('@legacyId');
+    expect(buildGroupQuery(A, 'players', {}).query).not.toContain('@legacyId');
+    expect(() =>
+      buildGroupQuery(A, 'sessions', { params: [{ name: '@legacyId', value: 'x' }] }),
+    ).toThrow(/@legacyId/);
   });
 });

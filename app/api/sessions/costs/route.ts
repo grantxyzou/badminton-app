@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SESSION_ID } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
@@ -13,8 +12,7 @@ export async function GET(req: NextRequest) {
   try {
     const resources = await groupScope(resolveGroupId(req)).query<{ costPerCourt: number }>('sessions', {
       select: 'c.costPerCourt',
-      where: 'c.id != @legacyId AND IS_NUMBER(c.costPerCourt) AND c.costPerCourt > 0',
-      params: [{ name: '@legacyId', value: SESSION_ID }],
+      where: 'IS_NUMBER(c.costPerCourt) AND c.costPerCourt > 0',
       orderBy: 'c.id DESC',
       limit: 10,
     });

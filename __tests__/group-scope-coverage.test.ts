@@ -21,30 +21,34 @@ const RAW_ACCESS_ALLOWLIST = new Set([
   'lib/memberPurge.ts', // account deletion spans every group by design (person-level)
 ]);
 
-/** Files still reading a GROUP_SCOPED container raw. Phase 1 empties this. */
-const MIGRATION_BACKLOG = new Set([
-  'app/api/admin/slice0/route.ts',
-  'app/api/aliases/route.ts',
-  'app/api/birds/reconcile/route.ts',
-  'app/api/birds/route.ts',
-  'app/api/kudos/route.ts',
-  'app/api/members/[id]/history/route.ts',
-  'app/api/players/unpaid/route.ts', // stringingJobs (Phase 1b); its session-family reads are swept
-  'app/api/session/bird-usage/route.ts', // birds (Phase 1b); its session read is swept
-  'app/api/stringing/jobs/[id]/accept/route.ts',
-  'app/api/stringing/jobs/[id]/route.ts',
-  'app/api/stringing/jobs/route.ts',
-  'app/api/stringing/pricing/route.ts',
-  'app/api/stringing/requests/route.ts',
-  'app/api/stringing/shop/route.ts',
-  'app/api/stringing/strings/route.ts',
-  'lib/birdWrite.ts',
-  'lib/events.ts',
-  'lib/playerIdentity.ts',
-  'lib/stringingPricing.ts',
-  'lib/stringingShop.ts',
-  'lib/stringingStrings.ts',
-]);
+/**
+ * (file → containers) still read raw. Phase 1b empties this. Keyed per PAIR,
+ * not per file: a file-level entry would let a swept file quietly add a new
+ * raw read of a different container and stay green.
+ */
+const MIGRATION_BACKLOG: Record<string, string[]> = {
+  'app/api/admin/slice0/route.ts': ['events'],
+  'app/api/aliases/route.ts': ['aliases'],
+  'app/api/birds/reconcile/route.ts': ['birds'],
+  'app/api/birds/route.ts': ['birds'],
+  'app/api/kudos/route.ts': ['kudos'],
+  'app/api/members/[id]/history/route.ts': ['aliases'],
+  'app/api/players/unpaid/route.ts': ['stringingJobs'],
+  'app/api/session/bird-usage/route.ts': ['birds'],
+  'app/api/stringing/jobs/[id]/accept/route.ts': ['stringingJobs'],
+  'app/api/stringing/jobs/[id]/route.ts': ['stringingJobs'],
+  'app/api/stringing/jobs/route.ts': ['stringingJobs'],
+  'app/api/stringing/pricing/route.ts': ['clubSettings'],
+  'app/api/stringing/requests/route.ts': ['stringingJobs'],
+  'app/api/stringing/shop/route.ts': ['clubSettings'],
+  'app/api/stringing/strings/route.ts': ['clubSettings'],
+  'lib/birdWrite.ts': ['birds'],
+  'lib/events.ts': ['events'],
+  'lib/playerIdentity.ts': ['aliases'],
+  'lib/stringingPricing.ts': ['clubSettings'],
+  'lib/stringingShop.ts': ['clubSettings'],
+  'lib/stringingStrings.ts': ['clubSettings'],
+};
 
 /**
  * THE CANARY THAT STOPS A CONTAINER SLIPPING BETWEEN GROUPS UNCLASSIFIED.
@@ -106,22 +110,28 @@ describe('group scoping classifies every container', () => {
 
   it('ratchets raw access to GROUP_SCOPED containers — the backlog only shrinks', () => {
     const { gotten } = containerReferences(join(__dirname, '..'));
+    // Every (file, container) pair still read raw.
     const raw = new Set<string>();
     for (const name of Object.keys(GROUP_SCOPED)) {
-      for (const file of gotten.get(name) ?? []) raw.add(file);
+      for (const file of gotten.get(name) ?? []) {
+        if (!RAW_ACCESS_ALLOWLIST.has(file)) raw.add(`${file} → ${name}`);
+      }
     }
-    const offenders = [...raw].filter((f) => !RAW_ACCESS_ALLOWLIST.has(f) && !MIGRATION_BACKLOG.has(f)).sort();
+    const backlog = new Set(
+      Object.entries(MIGRATION_BACKLOG).flatMap(([file, names]) => names.map((n) => `${file} → ${n}`)),
+    );
+    const offenders = [...raw].filter((pair) => !backlog.has(pair)).sort();
     expect(
       offenders,
-      'These files read a GROUP_SCOPED container through raw getContainer(). Route the read ' +
-        'through groupScope(groupId) from lib/groupScope.ts. (Adding a file to MIGRATION_BACKLOG ' +
+      'These reads of a GROUP_SCOPED container go through raw getContainer(). Route them ' +
+        'through groupScope(groupId) from lib/groupScope.ts. (Adding an entry to MIGRATION_BACKLOG ' +
         'is not the fix — that list only shrinks.)',
     ).toEqual([]);
 
-    const done = [...MIGRATION_BACKLOG].filter((f) => !raw.has(f)).sort();
+    const done = [...backlog].filter((pair) => !raw.has(pair)).sort();
     expect(
       done,
-      'These files no longer read raw — remove them from MIGRATION_BACKLOG so the ratchet holds.',
+      'These reads are no longer raw — remove them from MIGRATION_BACKLOG so the ratchet holds.',
     ).toEqual([]);
   });
 

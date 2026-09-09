@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
     const sessions = await groupScope(resolveGroupId(req)).query<Pick<Session, 'birdUsage' | 'birdUsages'>>('sessions', {
       select: 'c.birdUsage, c.birdUsages',
       where: 'IS_DEFINED(c.birdUsage) OR IS_DEFINED(c.birdUsages)',
+      includeLegacy: true, // same rule as GET /api/birds, so the delta matches the display
     });
     // Sum RAW, round once — the same rule GET /api/birds uses, so this delta
     // can never disagree with the displayed stock by a rounding penny.

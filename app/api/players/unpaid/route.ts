@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 // getContainer stays for the stringingJobs read until Phase 1b sweeps it.
-import { getContainer, getActiveSessionId, SESSION_ID } from '@/lib/cosmos';
+import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
@@ -109,10 +109,7 @@ export async function GET(req: NextRequest) {
 
     const identity = await resolveIdentity({ name });
 
-    const allSessions = await scope.query<Session>('sessions', {
-      where: 'c.id != @legacyId',
-      params: [{ name: '@legacyId', value: SESSION_ID }],
-    });
+    const allSessions = await scope.query<Session>('sessions');
 
     // Sessions a debt can come from: settled (frozen amount) OR unsettled & past
     // & not the active session (live share). Both require a finite datetime.

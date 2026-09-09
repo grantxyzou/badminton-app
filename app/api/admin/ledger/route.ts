@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SESSION_ID } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
@@ -71,10 +70,7 @@ export async function GET(req: NextRequest) {
 
     const scope = groupScope(resolveGroupId(req));
 
-    const allSessions = await scope.query<Session>('sessions', {
-      where: 'c.id != @legacyId',
-      params: [{ name: '@legacyId', value: SESSION_ID }],
-    });
+    const allSessions = await scope.query<Session>('sessions');
 
     // Settled-only + in-window. Unsettled sessions are deliberately excluded
     // from spent + bySession so the gap reflects bills already frozen.
