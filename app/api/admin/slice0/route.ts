@@ -151,6 +151,37 @@ export async function GET(req: NextRequest) {
       console.warn('slice0: gear read failed (treating as zero):', err);
     }
 
+    // --- The fit engine's feedback loop. -------------------------------------
+    // Served is written server-side by /api/recommend (the denominator); the
+    // rest are client beacons from GearPickSheet. Same append-only container,
+    // same reader, split by engine version so a retuned GOAL_DELTA can be
+    // compared against the one before it. Same undercount caveat as above.
+    const picks = { engineVersions: {} as Record<string, { served: number; servedMembers: number; added: number; tried: number; ratedUp: number; ratedDown: number }>, byCatalogId: {} as Record<string, { added: number; up: number; down: number }> };
+    try {
+      const { resources: pickEvents } = await getContainer('events').items
+        .query({ query: 'SELECT c.memberId, c.kind, c.at, c.catalogId, c.engineVersion, c.rating FROM c WHERE c.at >= @since', parameters: [{ name: '@since', value: since }] })
+        .fetchAll();
+      const servedBy = new Map<string, Set<string>>();
+      for (const e of pickEvents) {
+        if (typeof e?.kind !== 'string' || !e.kind.startsWith('pick_') || typeof e.at !== 'string' || e.at < since) continue;
+        const v = typeof e.engineVersion === 'string' ? e.engineVersion : 'unknown';
+        const row = (picks.engineVersions[v] ??= { served: 0, servedMembers: 0, added: 0, tried: 0, ratedUp: 0, ratedDown: 0 });
+        if (e.kind === 'pick_served') { row.served += 1; (servedBy.get(v) ?? servedBy.set(v, new Set()).get(v)!).add(String(e.memberId)); }
+        if (e.kind === 'pick_added') row.added += 1;
+        if (e.kind === 'pick_tried') row.tried += 1;
+        if (e.kind === 'pick_rated') { if (e.rating === 'up') row.ratedUp += 1; else if (e.rating === 'down') row.ratedDown += 1; }
+        if (typeof e.catalogId === 'string' && e.kind !== 'pick_served') {
+          const c = (picks.byCatalogId[e.catalogId] ??= { added: 0, up: 0, down: 0 });
+          if (e.kind === 'pick_added') c.added += 1;
+          if (e.kind === 'pick_rated' && e.rating === 'up') c.up += 1;
+          if (e.kind === 'pick_rated' && e.rating === 'down') c.down += 1;
+        }
+      }
+      for (const [v, members] of servedBy) picks.engineVersions[v].servedMembers = members.size;
+    } catch (err) {
+      console.warn('slice0: pick events read failed (treating as zero):', err);
+    }
+
     const denominator = cohort.size;
     const rate = (n: number) => (denominator > 0 ? Math.round((n / denominator) * 1000) / 1000 : 0);
     const recRate = rate(repeatTappers);
@@ -182,6 +213,7 @@ export async function GET(req: NextRequest) {
         passes: gameRate >= GAME_THRESHOLD,
       },
       racketSavers,
+      picks,
       verdict,
     });
   } catch (error) {

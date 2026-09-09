@@ -395,3 +395,109 @@ describe('GearPickSheet — the fit goal joins the summary line', () => {
     expect(screen.queryByRole('button', { name: 'Fit' })).toBeNull();
   });
 });
+
+describe('GearPickSheet — alternatives and the feedback loop', () => {
+  const ALT1 = { ...ITEM, id: 'r2', model: 'Nanoflare 800 Pro', msrp: 249 };
+  const ALT2 = { ...ITEM, id: 'r3', model: 'Auraspeed 90K', msrp: 199 };
+  const fitPick = {
+    item: { ...ITEM, msrp: 309 },
+    reasons: ['A step up in power from your Astrox 88D Pro.', 'Built for doubles.'],
+    warnings: ['Stiff is stiffer than your swing wants — mishits will feel harsh.'],
+    engineVersion: 'fit-1',
+    fitState: 'anchored',
+    alternatives: [
+      { item: ALT1, reasons: ['Quicker in hand than your Astrox 88D Pro.'], differsBy: [{ key: 'diff.softer' }, { key: 'diff.cheaper', params: { cad: 60 } }], differsByText: ['softer', '$60 less'] },
+      { item: ALT2, reasons: ['Easier on the arm.'], differsBy: [{ key: 'diff.headLighter' }], differsByText: ['more head-light'] },
+    ],
+  };
+  let beacons: Array<Record<string, unknown>>;
+
+  function mockAll(doc: PlayerGear) {
+    beacons = [];
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = (init?.method ?? 'GET').toUpperCase();
+      if (url.includes('/api/events')) {
+        beacons.push(JSON.parse(String(init?.body)));
+        return Promise.resolve({ ok: true, status: 201, json: async () => ({}) } as Response);
+      }
+      if (url.includes('/api/equipment/gear')) {
+        const next = method === 'POST'
+          ? { ...doc, items: [...doc.items, { id: 'new', catalogId: JSON.parse(String(init?.body)).item.catalogId, category: 'racket', label: 'x' }] }
+          : doc;
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ gear: next }) } as Response);
+      }
+      return Promise.reject(new Error(`Unmocked fetch: ${url}`));
+    }) as unknown as typeof fetch);
+  }
+  function FitHarness({ owned = false }: { owned?: boolean }) {
+    const gear: UseGear = useGear('Lin');
+    return <GearPickSheet open onClose={vi.fn()} category="racket" pick={fitPick} owned={owned} gear={gear} />;
+  }
+  const renderFit = (owned = false) => render(
+    <NextIntlClientProvider locale="en" messages={enMessages}>
+      <FitHarness owned={owned} />
+    </NextIntlClientProvider>,
+  );
+  beforeEach(() => { process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true'; });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER; });
+
+  it('lists the two alternatives with their "differs by" line and price, under "Or consider"', async () => {
+    mockAll(gearDoc());
+    renderFit();
+    expect(await screen.findByText('Or consider')).toBeTruthy();
+    expect(screen.getByText('softer · $60 less')).toBeTruthy();
+    expect(screen.getByText('more head-light')).toBeTruthy();
+    expect(screen.getByText('$249')).toBeTruthy();
+  });
+
+  it('tapping an alternative swaps the subject — name, price, reasons and the Add action follow; the top pick\'s warnings clear', async () => {
+    mockAll(gearDoc());
+    renderFit();
+    await screen.findByText('Or consider');
+    expect(screen.getByText(/mishits will feel harsh/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Yonex Nanoflare 800 Pro' }));
+    expect(await screen.findByText('Quicker in hand than your Astrox 88D Pro.')).toBeTruthy();
+    expect(screen.queryByText(/mishits will feel harsh/)).toBeNull();
+    expect(screen.getByText('Back to our pick')).toBeTruthy();
+    // The top pick is now in the list; the shown one is not.
+    expect(screen.getByRole('button', { name: 'Yonex Astrox 99 Pro' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Yonex Nanoflare 800 Pro' })).toBeNull();
+    // Add adds THIS one.
+    fireEvent.click(screen.getByRole('button', { name: 'Add to my equipment' }));
+    await waitFor(() => expect(beacons.find((b) => b.kind === 'pick_added')).toMatchObject({ catalogId: 'r2', engineVersion: 'fit-1', category: 'racket' }));
+  });
+
+  it('a yes/no rating fires pick_rated once and then says thanks', async () => {
+    mockAll(gearDoc());
+    renderFit();
+    fireEvent.click(await screen.findByRole('button', { name: 'Not for me' }));
+    await waitFor(() => expect(beacons.filter((b) => b.kind === 'pick_rated')).toEqual([
+      { kind: 'pick_rated', catalogId: 'r1', rating: 'down', engineVersion: 'fit-1', category: 'racket' },
+    ]));
+    expect(await screen.findByText('Thanks — noted.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Yes' })).toBeNull();
+  });
+
+  it('"I\'ve tried it" exists only for a row the member owns, fires pick_tried once', async () => {
+    mockAll(gearDoc());
+    const { unmount } = renderFit(false);
+    await screen.findByText('Or consider');
+    expect(screen.queryByRole('button', { name: "I've tried it" })).toBeNull();
+    unmount();
+    mockAll(gearDoc());
+    renderFit(true);
+    fireEvent.click(await screen.findByRole('button', { name: "I've tried it" }));
+    await waitFor(() => expect(beacons.filter((b) => b.kind === 'pick_tried')).toHaveLength(1));
+    expect(await screen.findByText('Noted — thanks for trying it.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: "I've tried it" })).toBeNull();
+  });
+
+  it('no rating row on a legacy pick — there is no engine version to rate', async () => {
+    mockGear(gearDoc());
+    renderSheet();
+    await screen.findByText(/For/);
+    expect(screen.queryByText('Was this pick any good?')).toBeNull();
+    expect(screen.queryByText('Or consider')).toBeNull();
+  });
+});

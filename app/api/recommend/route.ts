@@ -17,6 +17,28 @@ import { tallyClubGear, type ClubGearEntry } from '@/lib/clubGear';
 import type { CatalogItem, EquipmentCategory, PlayerGear } from '@/lib/types';
 import type { Rating } from '@/lib/assessment';
 import { resolveActiveSubject } from '@/lib/memberResolve';
+import { randomBytes } from 'crypto';
+
+/**
+ * The feedback loop's DENOMINATOR: one `pick_served` row per fit pick actually
+ * returned to the member it is about. Written here, server-side, so the client
+ * cannot mint it, and only when the caller OWNS the name — an admin browsing
+ * someone's stats is not that member's engagement (the same rule `events`
+ * applies to every client beacon). Best-effort: a failed write logs and never
+ * fails the recommendation.
+ */
+async function recordServed(memberId: string, name: string, catalogId: string, engineVersion: string): Promise<void> {
+  try {
+    await ensureContainer('events', '/memberId');
+    await getContainer('events').items.create({
+      id: randomBytes(16).toString('hex'),
+      memberId, name, kind: 'pick_served', at: new Date().toISOString(),
+      catalogId, engineVersion, category: 'racket',
+    });
+  } catch (err) {
+    console.warn('recommend: pick_served write failed (not load-bearing):', err);
+  }
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -280,6 +302,7 @@ export async function GET(req: NextRequest) {
           return NextResponse.json({ item: null, reason: null, needsFit: true, engineVersion: FIT_ENGINE_VERSION, fitState: fit.fitState });
         }
         if (!fit.top) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
+        if (ownsName && member) await recordServed(subject.memberId, member.name, fit.top.item.id, FIT_ENGINE_VERSION);
         const clubEntries: ClubGearEntry[] = await clubEntriesOrEmpty();
         const reasons = buildPickReasons({ item: fit.top.item, engineReasons: fitReasonTexts(fit.top.reasons), clubEntries });
         return NextResponse.json({

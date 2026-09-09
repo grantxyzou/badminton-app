@@ -166,6 +166,24 @@ state of its own except the one thing it exists to own (below).
   tier) triple with a rank-order fallback, each with a `differsBy` of at most
   two fragments. Order is score → distance → price → id: deterministic, never
   catalog order.
+- **Phase 3 (2026-09-09) — the sheet and the loop.** `GearPickRail` TRANSLATES
+  `reasonKeys` / `warningKeys` / `differsBy` in the member's locale and falls
+  back to the server's English strings only for the legacy engine.
+  `GearPickSheet` shows the top pick and an "Or consider" list of the other
+  candidates with their "differs by" line; tapping one SWAPS the sheet's
+  subject (name, price, reasons, the Add action all follow; warnings and the
+  tension figure are the top pick's and clear on a swap) — never a second
+  sheet over this one. Three beacons, all fire-and-forget through
+  `recordEngagement(kind, meta)`: `pick_added` after a successful add,
+  `pick_rated` (a yes/no under the headline, engine picks only, once per
+  open), `pick_tried` (a ghost button in the footer, only for a row the member
+  owns). **`pick_served` is written SERVER-SIDE** by `/api/recommend` when a
+  fit pick is returned to the member it is about — never on admin view, and
+  `POST /api/events` refuses it from a client — so the feedback read has an
+  honest denominator. `GET /api/admin/slice0` reports `picks` split by
+  `engineVersion`; `GET /api/admin/fit-preview` answers one member's top three
+  (`?memberId=`) or prints anonymised golden-set skeletons, which
+  `scripts/dump-fit-cases.mjs` fetches for the owner and the stringer to rate.
 - **The golden set** (`__tests__/fixtures/fit-golden.json`, run by
   `__tests__/fit-golden.test.ts`) is the expert ground truth: raw ratings +
   a gear shape per case, an ACCEPTABLE set, never a derived level. Empty

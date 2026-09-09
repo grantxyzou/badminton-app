@@ -16,11 +16,27 @@ const RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
  * into a free-text sink that nothing can aggregate, and every new kind should
  * be a considered addition with a matching reader.
  */
-const KINDS = ['rec_card_tap'] as const;
+const KINDS = ['rec_card_tap', 'pick_added', 'pick_tried', 'pick_rated'] as const;
 type Kind = (typeof KINDS)[number];
 
 function isKind(v: unknown): v is Kind {
   return typeof v === 'string' && (KINDS as readonly string[]).includes(v);
+}
+
+/**
+ * The optional payload a `pick_*` beacon carries. Each field is bounded and
+ * anything else is dropped — an open payload turns the container into a
+ * free-text sink. `pick_served` is deliberately NOT in `KINDS`: it is the
+ * denominator of the feedback read and is written by `/api/recommend` when a
+ * pick is actually returned, so the client cannot mint it.
+ */
+function pickMeta(body: Record<string, unknown>): Pick<EngagementEvent, 'catalogId' | 'engineVersion' | 'rating' | 'category'> {
+  const out: Pick<EngagementEvent, 'catalogId' | 'engineVersion' | 'rating' | 'category'> = {};
+  if (typeof body.catalogId === 'string' && body.catalogId.length <= 80) out.catalogId = body.catalogId;
+  if (typeof body.engineVersion === 'string' && body.engineVersion.length <= 20) out.engineVersion = body.engineVersion;
+  if (body.rating === 'up' || body.rating === 'down') out.rating = body.rating;
+  if (body.category === 'racket' || body.category === 'string') out.category = body.category;
+  return out;
 }
 
 // Lazy container bootstrap — real Cosmos doesn't auto-create containers (the
@@ -95,6 +111,7 @@ export async function POST(req: NextRequest) {
       name: caller.name,
       kind: body.kind,
       at: new Date().toISOString(),
+      ...(body.kind === 'rec_card_tap' ? {} : pickMeta(body)),
     };
     const { resource } = await getContainer('events').items.create(record);
     return NextResponse.json(resource, { status: 201 });

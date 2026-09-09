@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { recordEngagement } from '@/lib/engagement';
-import GearPickCard, { type GearPick, type GearPickCardStatus, type ParkReason } from './GearPickCard';
+import GearPickCard, { type GearPick, type GearPickCardStatus, type ParkReason, type PickReasonKey } from './GearPickCard';
 import GearPickSheet from './GearPickSheet';
 import type { UseGear } from './useGear';
 import { PROFILE_READS_FIT } from '@/lib/racketProfile';
@@ -93,6 +94,14 @@ export interface GearPickRailProps {
  * being restructured to eliminate.
  */
 export default function GearPickRail({ activeName, gear, onPairTension, onOpenFit, holdFitRefetch = false }: GearPickRailProps) {
+  const t = useTranslations('stats.gear');
+  // Reason KEYS are translated HERE, in the member's locale — the point of the
+  // fit engine speaking in keys. The server's English strings are the
+  // fallback for the legacy engine, which still speaks in sentences.
+  const say = useCallback((keys: PickReasonKey[] | undefined, fallback: string[]): string[] => {
+    if (!Array.isArray(keys) || keys.length === 0) return fallback;
+    return keys.map((k) => t(k.key, k.params as Record<string, string | number>));
+  }, [t]);
   const [state, setState] = useState<Record<EquipmentCategory, CategoryState>>(initialState);
   // Which category's detail sheet is open. The rail owns this, not the card:
   // the sheet is opened FROM a card but belongs to the rail, which is the only
@@ -289,10 +298,23 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
                 // `reason` string. Reading only the array threw that away and
                 // left the pick sheet — whose entire job is explaining one
                 // recommendation — with a heading and an Add button and no why.
-                reasons: Array.isArray(d.reasons)
+                reasons: say(d.reasonKeys, Array.isArray(d.reasons)
                   ? d.reasons
-                  : (typeof d.reason === 'string' && d.reason ? [d.reason] : []),
-                warnings: Array.isArray(d.warnings) ? d.warnings : [],
+                  : (typeof d.reason === 'string' && d.reason ? [d.reason] : [])),
+                warnings: say(d.warningKeys, Array.isArray(d.warnings) ? d.warnings : []),
+                reasonKeys: Array.isArray(d.reasonKeys) ? d.reasonKeys : undefined,
+                warningKeys: Array.isArray(d.warningKeys) ? d.warningKeys : undefined,
+                alternatives: Array.isArray(d.alternatives)
+                  ? d.alternatives.map((a: { item: CatalogItem; reasons?: string[]; reasonKeys?: PickReasonKey[]; differsBy?: PickReasonKey[]; differsByText?: string[] }) => ({
+                      item: a.item,
+                      reasons: say(a.reasonKeys, Array.isArray(a.reasons) ? a.reasons : []),
+                      reasonKeys: a.reasonKeys,
+                      differsBy: Array.isArray(a.differsBy) ? a.differsBy : [],
+                      differsByText: say(a.differsBy, Array.isArray(a.differsByText) ? a.differsByText : []),
+                    }))
+                  : undefined,
+                fitState: typeof d.fitState === 'string' ? d.fitState : undefined,
+                engineVersion: typeof d.engineVersion === 'string' ? d.engineVersion : undefined,
                 pairedWith: d.pairedWith ?? undefined,
                 tensionLbs: typeof d.tensionLbs === 'number' ? d.tensionLbs : null,
               },
@@ -322,7 +344,7 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
       for (const cat of inFlightRef.current) cancelledRef.current.add(cat);
       inFlightRef.current.clear();
     };
-  }, [activeName, recKey, apply, holdFitRefetch]);
+  }, [activeName, recKey, apply, holdFitRefetch, say]);
 
   if (!activeName) return null;
 
