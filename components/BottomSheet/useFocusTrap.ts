@@ -42,9 +42,9 @@ export function useFocusTrap(
     const container = containerRef.current;
     if (!container) return;
 
-    if (stack.length === 0) {
-      origin = (triggerRef?.current as HTMLElement | null) ?? (document.activeElement as HTMLElement | null);
-    }
+    const previouslyFocused =
+      (triggerRef?.current as HTMLElement | null) ?? (document.activeElement as HTMLElement | null);
+    if (stack.length === 0) origin = previouslyFocused;
     stack.push(container);
     focusFirst(container);
 
@@ -71,8 +71,12 @@ export function useFocusTrap(
       if (i >= 0) stack.splice(i, 1);
       const top = stack[stack.length - 1];
       if (top) {
-        // Another sheet is still open: focus belongs to it, never to the page.
-        if (!top.contains(document.activeElement)) focusFirst(top);
+        // Another sheet is still open: focus belongs to it, never to the
+        // page. A NESTED sheet (opened from a button inside the one that
+        // remains) goes back to that button; a SWAPPED sheet (whose opener
+        // was in a sheet now gone) goes to the first focusable.
+        if (previouslyFocused?.isConnected && top.contains(previouslyFocused)) previouslyFocused.focus?.();
+        else if (!top.contains(document.activeElement)) focusFirst(top);
         return;
       }
       // Last one out restores the origin — if it still exists. Focusing a

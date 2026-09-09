@@ -117,7 +117,7 @@ function signPayload(payload: SessionPayload): string {
   return `${headerB64}.${sigB64}`;
 }
 
-function verifyToken(token: string): SessionPayload | null {
+function verifyToken(token: string, opts: { ignoreExpiry?: boolean } = {}): SessionPayload | null {
   const parts = token.split('.');
   if (parts.length !== 2) return null;
   const [headerB64, sigB64] = parts;
@@ -140,7 +140,7 @@ function verifyToken(token: string): SessionPayload | null {
     ) {
       return null;
     }
-    if (payload.exp < Math.floor(Date.now() / 1000)) return null;
+    if (!opts.ignoreExpiry && payload.exp < Math.floor(Date.now() / 1000)) return null;
     return payload;
   } catch {
     return null;
@@ -273,6 +273,21 @@ export function clearMemberCookie(res: NextResponse): void {
  * proof, NO role/authorization). Returns the bound member identity or null.
  * Never grants admin. Cheap; no Cosmos round-trip.
  */
+/**
+ * Who this device WAS signed in as, expiry ignored — signature and shape still
+ * verified. For one job only: telling the owner of a doc on a lapsed 30-day
+ * `member_session` apart from an anonymous reader, so a redaction marker can
+ * be sent to the former and never to the latter. It grants nothing; a caller
+ * that needs authorization uses `verifyMemberAuth`.
+ */
+export function peekMemberSession(req: NextRequest): { memberId: string; name: string } | null {
+  const cookie = req.cookies.get(MEMBER_COOKIE_NAME)?.value;
+  if (!cookie) return null;
+  const payload = verifyToken(cookie, { ignoreExpiry: true });
+  if (!payload) return null;
+  return { memberId: payload.memberId, name: payload.name };
+}
+
 export function verifyMemberAuth(req: NextRequest): { memberId: string; name: string } | null {
   const cookie = req.cookies.get(MEMBER_COOKIE_NAME)?.value;
   if (!cookie) return null;

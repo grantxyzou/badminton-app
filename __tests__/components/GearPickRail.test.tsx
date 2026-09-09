@@ -404,6 +404,18 @@ describe('GearPickRail — the fit answers re-ask the racket, and strings only w
     expect(racketAsks(asks)).toBe(1);
   });
 
+  it('a debounced racket pass that a string-budget tap cleared is still run — the key advances only when a pass runs', async () => {
+    const asks = countAsks();
+    const { rerender } = await mounted(fakeGear({ gear: doc({ items: [owned] }), rackets: [owned] }));
+    rerender(ui(fakeGear({ gear: doc({ items: [owned], fitSwing: 'fast' }), rackets: [owned] })));
+    await elapse(REC_REFETCH_DEBOUNCE_MS / 2);
+    // Inside the debounce window: the pending racket pass is cleared.
+    rerender(ui(fakeGear({ gear: doc({ items: [owned], fitSwing: 'fast', stringBudgetMaxCad: 25 }), rackets: [owned] })));
+    await elapse(REC_REFETCH_DEBOUNCE_MS);
+    expect(racketAsks(asks)).toBe(2);
+    expect(stringAsks(asks)).toBe(2);
+  });
+
   it('a string refetch cancelled mid-flight by a fit tap is re-asked, never skipped', async () => {
     let stringAsks = 0;
     let resolveSecond: ((r: unknown) => void) | null = null;

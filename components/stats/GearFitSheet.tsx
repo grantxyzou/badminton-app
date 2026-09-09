@@ -85,7 +85,10 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
   // "Nothing — happy with it" is an answer about the racket you hold; with
   // none it is meaningless, and stored it would read to the engine as an
   // anchored "happy". Offered only when there is a racket to be happy with.
-  const goals = hasRacket ? FIT_GOALS : FIT_GOALS.filter((g) => g !== 'happy');
+  // …but a 'happy' that is already STORED stays visible, or the list would
+  // show no selection beside a Clear link, and any tap would overwrite an
+  // answer the member could not see.
+  const goals = hasRacket || goal === 'happy' ? FIT_GOALS : FIT_GOALS.filter((g) => g !== 'happy');
 
   function close() {
     setError(null);

@@ -104,12 +104,18 @@ export default function YourKitCard({ activeName, gear, onOpenFit }: YourKitCard
   // nothing is answered OR the doc is unknown — never a sentence built from
   // fallbacks.
   const fitDoc = gear.loaded && !gear.loadError ? gear.gear : null;
-  const fitSummary = fitDoc?.fitGoal || fitDoc?.fitSwing
-    ? [
-        fitDoc?.fitGoal ? t(`fitGoalLower_${fitDoc.fitGoal}`) : null,
-        fitDoc?.fitSwing ? t(`fitSwingLower_${fitDoc.fitSwing}`) : null,
-      ].filter(Boolean).join(' · ')
-    : null;
+  const fitParts = [
+    fitDoc?.fitGoal ? t(`fitGoalLower_${fitDoc.fitGoal}`) : null,
+    fitDoc?.fitSwing ? t(`fitSwingLower_${fitDoc.fitSwing}`) : null,
+    fitDoc?.fitGrip ? fitDoc.fitGrip : null,
+  ].filter(Boolean);
+  // An answer with no one-line form (comfort, string budget, or a comfort
+  // answer this device cannot read) still counts as answered — "Not answered
+  // yet" beside a stored health-adjacent value is a lying empty state.
+  const fitAnsweredQuietly = !!fitDoc && (
+    fitDoc.fitArmComfort != null || fitDoc.fitArmComfortRedacted === true || fitDoc.stringBudgetMaxCad != null
+  );
+  const fitSummary = fitParts.length ? fitParts.join(' · ') : fitAnsweredQuietly ? t('fitAnswered') : null;
   // The bag-write failure copy lives in `valueHub` alongside bagFull /
   // bagDuplicate, shared with every other surface that writes gear — it moved
   // here with the controls that can produce it.
