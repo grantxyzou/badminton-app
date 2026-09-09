@@ -3,9 +3,12 @@ import { randomBytes } from 'crypto';
 import { completeSignIn } from '@/lib/authSession';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
+import { resolveGroupId } from '@/lib/groupContext';
 import { verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import { verifyRecoveryCode } from '@/lib/memberRecoveryCode';
 import { appendEvent } from '@/lib/recoveryAudit';
+import type { Player } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,22 +65,21 @@ async function handlePost(req: NextRequest) {
   // players — the completeSignIn call below also clears admin status if
   // the recovered identity is not itself an admin.
 
-  const playersContainer = getContainer('players');
+  const scope = groupScope(resolveGroupId(req));
   const membersContainer = getContainer('members');
 
   // Resolve the (optional) session player up front. Used for code path
   // (codes are issued against a specific player record) and for the
-  // success path (mint a fresh deleteToken if a player exists).
-  const { resources: playerHits } = await playersContainer.items
-    .query({
-      query:
-        'SELECT * FROM c WHERE c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name) AND (NOT IS_DEFINED(c.removed) OR c.removed != true)',
-      parameters: [
-        { name: '@sessionId', value: sessionId },
-        { name: '@name', value: name },
-      ],
-    })
-    .fetchAll();
+  // success path (mint a fresh deleteToken if a player exists). The body's
+  // sessionId is only ever read through the group scope, so a session id from
+  // another group matches nothing.
+  const playerHits = await scope.query<Player>('players', {
+    where: 'c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name) AND (NOT IS_DEFINED(c.removed) OR c.removed != true)',
+    params: [
+      { name: '@sessionId', value: sessionId },
+      { name: '@name', value: name },
+    ],
+  });
   const player = playerHits[0] ?? null;
 
   // === PIN path ============================================================
@@ -103,7 +105,7 @@ async function handlePost(req: NextRequest) {
           at: new Date().toISOString(),
           reason: 'wrong_pin',
         });
-        await playersContainer.items.upsert({ ...player, recoveryEvents: updatedEvents });
+        await scope.upsert('players', { ...player, recoveryEvents: updatedEvents });
       }
       return FAIL();
     }
@@ -116,7 +118,7 @@ async function handlePost(req: NextRequest) {
           at: new Date().toISOString(),
           reason: 'wrong_pin',
         });
-        await playersContainer.items.upsert({ ...player, recoveryEvents: updatedEvents });
+        await scope.upsert('players', { ...player, recoveryEvents: updatedEvents });
       }
       return FAIL();
     }
@@ -128,7 +130,7 @@ async function handlePost(req: NextRequest) {
         event: 'recovered-via-pin',
         at: new Date().toISOString(),
       });
-      await playersContainer.items.upsert({
+      await scope.upsert('players', {
         ...player,
         deleteToken: newDeleteToken,
         recoveryEvents: updatedEvents,
@@ -206,7 +208,7 @@ async function handlePost(req: NextRequest) {
   let newDeleteToken: string | null = null;
   if (player) {
     newDeleteToken = randomBytes(16).toString('hex');
-    await playersContainer.items.upsert({
+    await scope.upsert('players', {
       ...player,
       deleteToken: newDeleteToken,
       // Keep the per-player mirror in sync with the canonical store.

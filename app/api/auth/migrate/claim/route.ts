@@ -21,6 +21,7 @@ import { randomBytes } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isFlagOn } from '@/lib/flags';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
+import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { completeSignIn } from '@/lib/authSession';
 import { claimMigration, type ClaimInput } from '@/lib/authMigration';
@@ -76,24 +77,21 @@ export async function POST(req: NextRequest) {
     // A group with no session has no player row to re-mint a token for; the
     // "no player" path below already handles that. '' is bound so the query
     // matches nothing rather than skipping the shape the client expects.
-    const sessionId = (await getActiveSessionId(resolveGroupId(req))) ?? '';
-    const playersContainer = getContainer('players');
-    const { resources: playerHits } = await playersContainer.items
-      .query({
-        query:
-          'SELECT * FROM c WHERE c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name) AND (NOT IS_DEFINED(c.removed) OR c.removed != true)',
-        parameters: [
-          { name: '@sessionId', value: sessionId },
-          { name: '@name', value: member.name },
-        ],
-      })
-      .fetchAll();
-    const player = (playerHits[0] as Player | undefined) ?? null;
+    const scope = groupScope(resolveGroupId(req));
+    const sessionId = (await getActiveSessionId(scope.groupId)) ?? '';
+    const playerHits = await scope.query<Player>('players', {
+      where: 'c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name) AND (NOT IS_DEFINED(c.removed) OR c.removed != true)',
+      params: [
+        { name: '@sessionId', value: sessionId },
+        { name: '@name', value: member.name },
+      ],
+    });
+    const player = playerHits[0] ?? null;
 
     let deleteToken: string | null = null;
     if (player) {
       deleteToken = randomBytes(16).toString('hex');
-      await playersContainer.items.upsert({ ...player, deleteToken });
+      await scope.upsert('players', { ...player, deleteToken });
     }
 
     // Never spread the member doc into the response (strip canary).
