@@ -25,7 +25,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash, timingSafeEqual } from 'crypto';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { backfillStatus, runBackfill, DEFAULT_SCAN_CAP } from '@/lib/groupBackfill';
+import { backfillStatus, runBackfill, DEFAULT_SCAN_CAP, DEFAULT_ROW_BUDGET } from '@/lib/groupBackfill';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
 
   let dryRun = true;
   let limit = DEFAULT_SCAN_CAP;
+  let budget = DEFAULT_ROW_BUDGET;
   try {
     const body = await req.json();
     dryRun = body?.dryRun !== false;
@@ -72,12 +73,18 @@ export async function POST(req: NextRequest) {
     if (typeof body?.limit === 'number' && Number.isFinite(body.limit)) {
       limit = Math.max(1, Math.min(10000, Math.floor(body.limit)));
     }
+    // `budget` is the one that bounds the REQUEST — `limit` is per container,
+    // and 13 containers at the old ceiling was 130,000 rows in a 230s window.
+    // Raising it is allowed; defeating it is not.
+    if (typeof body?.budget === 'number' && Number.isFinite(body.budget)) {
+      budget = Math.max(1, Math.min(20000, Math.floor(body.budget)));
+    }
   } catch {
     // no body — a dry run, the safe default
   }
 
   try {
-    const summary = await runBackfill({ dryRun, limit });
+    const summary = await runBackfill({ dryRun, limit, budget });
     return NextResponse.json(summary);
   } catch (error) {
     console.error('POST /api/admin/migrate-groups:', error);

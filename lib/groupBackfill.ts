@@ -74,6 +74,45 @@ export const STAMPED_CONTAINERS: readonly ContainerName[] = containersOfScope('g
  */
 export const DEFAULT_SCAN_CAP = 2000;
 
+/**
+ * A GLOBAL ceiling on rows stamped per request, and the reason it exists:
+ * `DEFAULT_SCAN_CAP` is per CONTAINER, and there are `STAMPED_CONTAINERS.length`
+ * of them. A per-container cap does not bound a request — 13 x 2000 is 26,000
+ * rows, and at two sequential round trips each that is 52,000 calls inside a
+ * window that ends at 230 SECONDS. The cap that was supposed to guarantee a
+ * report was the one thing that could not.
+ */
+export const DEFAULT_ROW_BUDGET = 5000;
+
+/**
+ * Stamps in flight at once. The writes are INDEPENDENT — different rows, and a
+ * conflict is already reported rather than retried — so the sequential loop was
+ * paying full round-trip latency 52,000 times for no ordering it needed. Twelve
+ * is deliberately modest: enough to make the budget above comfortable inside the
+ * window, small enough that a backfill cannot starve the live app of RUs.
+ */
+export const STAMP_CONCURRENCY = 12;
+
+/**
+ * Stop stamping at this point and report, even with budget left. The belt to
+ * the budget's braces: the budget assumes a latency, and this assumes nothing.
+ * Whatever Cosmos is doing, the operator gets a summary naming what is left
+ * instead of a 504 naming nothing.
+ */
+export const SOFT_DEADLINE_MS = 150_000;
+
+/** Run `worker` over `items`, at most `n` in flight, preserving no order. */
+async function pooled<T>(items: T[], n: number, worker: (item: T) => Promise<void>): Promise<void> {
+  let next = 0;
+  const runners = Array.from({ length: Math.min(n, items.length) }, async () => {
+    while (next < items.length) {
+      const i = next++;
+      await worker(items[i]);
+    }
+  });
+  await Promise.all(runners);
+}
+
 export interface BackfillStatus {
   group: 'present' | 'absent';
   members: {
@@ -120,6 +159,14 @@ export interface BackfillSummary {
   conflicts: Record<string, number>;
   /** Rows per container this run was allowed to touch. */
   limit: number;
+  /** Rows this run was allowed to stamp in TOTAL, across every container. */
+  budget: number;
+  /**
+   * Why the run stopped short, when it did. `budget` and `deadline` are normal
+   * on a large migration and mean "run it again"; only an empty `remaining`
+   * with `null` here means the work is done.
+   */
+  stoppedEarly: 'budget' | 'deadline' | null;
   /** Containers that still hold unstamped rows. Non-empty means: run it again. */
   remaining: string[];
   errors: string[];
@@ -247,9 +294,17 @@ export async function stampRow(container: ContainerName, row: Row): Promise<'sta
   }
 }
 
-export async function runBackfill(opts: { dryRun: boolean; limit?: number }): Promise<BackfillSummary> {
+export async function runBackfill(opts: {
+  dryRun: boolean;
+  limit?: number;
+  budget?: number;
+  deadlineMs?: number;
+}): Promise<BackfillSummary> {
   const { dryRun } = opts;
   const limit = opts.limit ?? DEFAULT_SCAN_CAP;
+  const budget = opts.budget ?? DEFAULT_ROW_BUDGET;
+  const deadlineMs = opts.deadlineMs ?? SOFT_DEADLINE_MS;
+  const startedAt = Date.now();
   const summary: BackfillSummary = {
     dryRun,
     group: 'exists',
@@ -258,6 +313,8 @@ export async function runBackfill(opts: { dryRun: boolean; limit?: number }): Pr
     stamped: {},
     conflicts: {},
     limit,
+    budget,
+    stoppedEarly: null,
     remaining: [],
     errors: [],
   };
@@ -447,16 +504,33 @@ export async function runBackfill(opts: { dryRun: boolean; limit?: number }): Pr
   // 3. The stamp, `limit` rows per container. A container with more left is
   // named in `remaining` — that, and the status read, is what tells the
   // operator to run it again.
+  let spent = 0;
   for (const c of STAMPED_CONTAINERS) {
-    const { rows, more } = await unstampedRows(c, limit);
     summary.stamped[c] = 0;
     summary.conflicts[c] = 0;
+
+    // Out of budget or out of time: every container from here on is untouched
+    // and therefore unfinished. Name it and keep going through the list, so
+    // `remaining` is the WHOLE truth rather than the prefix we got to.
+    const exhausted = summary.stoppedEarly !== null || spent >= budget || Date.now() - startedAt > deadlineMs;
+    if (exhausted) {
+      if (summary.stoppedEarly === null) summary.stoppedEarly = spent >= budget ? 'budget' : 'deadline';
+      const { rows } = await unstampedRows(c, 1);
+      if (rows.length > 0) summary.remaining.push(c);
+      continue;
+    }
+
+    // Never scan more than the budget can pay for; `more` stays honest because
+    // unstampedRows always reads one past whatever cap it is given.
+    const cap = dryRun ? limit : Math.min(limit, budget - spent);
+    const { rows, more } = await unstampedRows(c, cap);
     if (more) summary.remaining.push(c);
     if (dryRun) {
       summary.stamped[c] = rows.length;
       continue;
     }
-    for (const row of rows) {
+
+    await pooled(rows, STAMP_CONCURRENCY, async (row) => {
       try {
         const r = await stampRow(c, row);
         if (r === 'stamped') summary.stamped[c] += 1;
@@ -464,7 +538,9 @@ export async function runBackfill(opts: { dryRun: boolean; limit?: number }): Pr
       } catch (err) {
         summary.errors.push(`${c}/${row.id}: ${(err as Error).message}`);
       }
-    }
+    });
+    spent += rows.length;
+
     // A conflict is a row this run left behind, so the container is not done
     // even when the scan had nothing beyond the limit.
     if (!more && summary.conflicts[c] > 0) summary.remaining.push(c);
