@@ -28,6 +28,9 @@ const RAW_ACCESS_ALLOWLIST = new Set([
   // The person-side view of memberships ("which clubs am I in?") is cross-group
   // by definition. ONE raw read; `groups-lib.test.ts` pins the count at one.
   'lib/groups.ts',
+  // The Phase 2 backfill stamps `groupId` onto every unstamped row of every
+  // group container — it spans them all by definition, like the purge.
+  'lib/groupBackfill.ts',
 ]);
 
 /**
@@ -101,6 +104,21 @@ describe('group scoping classifies every container', () => {
       'These reads of a GROUP_SCOPED container go through raw getContainer(). Route them ' +
         'through groupScope(groupId) from lib/groupScope.ts. (Adding the file to ' +
         'RAW_ACCESS_ALLOWLIST is not the fix.)',
+    ).toEqual([]);
+  });
+
+  it('allows no DYNAMIC getContainer outside the allowlist either', () => {
+    // `getContainer(container)` names no container the scanner can resolve, so
+    // the literal check above sees nothing to complain about — which is how a
+    // file could have reached every group-scoped container while staying green.
+    // The three files that legitimately do span them all are the same three
+    // (plus the accessor) already allowed above; anything else passing a
+    // variable is a raw read whose target nobody can audit.
+    const { dynamic } = containerReferences(join(__dirname, '..'));
+    expect(
+      [...dynamic].filter((file) => !RAW_ACCESS_ALLOWLIST.has(file)).sort(),
+      'These files call getContainer() with a non-literal container name, so no canary can tell ' +
+        'which containers they touch. Route them through groupScope(groupId), or pass a literal.',
     ).toEqual([]);
   });
 
