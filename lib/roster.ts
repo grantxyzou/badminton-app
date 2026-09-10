@@ -127,8 +127,17 @@ export async function adminAddToRoster(
 /**
  * The ids a club aggregate over a PERSON container is allowed to see.
  * Flag off: every active Member. Flag on: the group's active memberships.
+ *
+ * NOT `rosterMembers().map(id)`, which is what it was. That joins every
+ * membership to its Member doc with a POINT READ EACH and then throws all of it
+ * away except an id the membership already carried — N Cosmos round-trips per
+ * request, on a B1 tier, for three hot callers. Worse, that join RETHROWS
+ * anything that is not a 404, so one transient 429 on one member read took the
+ * whole aggregate down: `bands` 500s, and inside `fetchSeeds`'s try/catch it
+ * degrades to ZERO seeds, so calibration runs silently unanchored instead of
+ * reporting a failure — the lying-empty-state shape this repo forbids.
  */
 export async function rosterMemberIds(groupId: string): Promise<Set<string>> {
-  const entries = await rosterMembers(groupId);
-  return new Set(entries.map((e) => e.member.id));
+  if (!groupsOn()) return new Set((await rosterMembers(groupId)).map((e) => e.member.id));
+  return new Set((await listMemberships(groupId)).map((m) => m.memberId));
 }

@@ -12,6 +12,7 @@ import { isFlagOn } from '@/lib/flags';
 import { verifyMemberAuth } from '@/lib/auth';
 import { getContainer } from '@/lib/cosmos';
 import { requireOutboundOrigin } from '@/lib/appOrigin';
+import { resolveGroupId } from '@/lib/groupContext';
 import { mintMigration } from '@/lib/authMigration';
 import type { Member } from '@/lib/types';
 
@@ -50,7 +51,9 @@ export async function POST(req: NextRequest) {
     }
 
     const locale = req.cookies.get('NEXT_LOCALE')?.value;
-    const minted = await mintMigration({ id: member.id, name: member.name }, locale);
+    // The group is read HERE, where a live `member_session` proves it. The claim
+    // arrives from the native shell's jar and cannot resolve it.
+    const minted = await mintMigration({ id: member.id, name: member.name }, locale, undefined, resolveGroupId(req));
     return NextResponse.json({
       ...minted,
       link: `${origin}/bpm/migrate?c=${minted.linkCode}`,

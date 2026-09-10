@@ -110,6 +110,18 @@ export interface HandoffDoc {
    * Additive: absent means a PWA or browser flow.
    */
   native?: boolean;
+  /**
+   * WHICH CLUB THE SIGN-IN BELONGS TO, parked because nothing else can carry it.
+   *
+   * The whole reason this stash exists is that the excursion runs in a
+   * DIFFERENT COOKIE JAR — the system browser sheet, not the PWA — so the
+   * callback and the claim see no `member_session` and `resolveGroupId` answers
+   * BPM for everybody. A member of another club signing in with Google would
+   * land in BPM, holding a cookie claiming a group they are not on the roster
+   * of. The stash is the one thing that crosses the split, so the group rides
+   * in it. Additive: absent means BPM, which is what every pre-claim stash is.
+   */
+  groupId?: string;
   /** Set by `completeHandoff` once the provider handshake resolves a member. */
   memberId?: string;
   createdAt: string;
@@ -139,7 +151,7 @@ async function readDoc(ref: string): Promise<HandoffDoc | null> {
  */
 export async function beginHandoff(
   ref: string,
-  values: { state: string; codeVerifier: string; native?: boolean },
+  values: { state: string; codeVerifier: string; native?: boolean; groupId?: string },
   now: number = Date.now(),
 ): Promise<boolean> {
   if (!isHandoffRef(ref)) return false;
@@ -153,6 +165,7 @@ export async function beginHandoff(
     state: values.state,
     codeVerifier: values.codeVerifier,
     ...(values.native ? { native: true } : {}),
+    ...(values.groupId ? { groupId: values.groupId } : {}),
     createdAt: new Date(now).toISOString(),
     expiresAt: new Date(now + HANDOFF_TTL_MS).toISOString(),
   };
@@ -207,7 +220,7 @@ export async function completeHandoff(
  * to keep polling rather than give up; it is reported as a status, not as data.
  */
 export type HandoffClaim =
-  | { status: 'ready'; memberId: string }
+  | { status: 'ready'; memberId: string; groupId?: string }
   | { status: 'pending' }
   | { status: 'none' };
 
@@ -232,5 +245,5 @@ export async function claimHandoff(
   } catch {
     return { status: 'none' };
   }
-  return { status: 'ready', memberId: doc.memberId };
+  return { status: 'ready', memberId: doc.memberId, ...(doc.groupId ? { groupId: doc.groupId } : {}) };
 }

@@ -34,6 +34,84 @@ const mockStore = g._mockStore;
  * Refuses to fire when real Cosmos is configured — the seed is a
  * development affordance, not a production migration.
  */
+/**
+ * A dev group and its roster, so a local run looks like a backfilled one.
+ *
+ * The dev seeds already stamp `groupId` on the rows they write, but a stamped
+ * row with no `groups/bpm` doc and no memberships is a HALF-migrated
+ * deployment — a state production is never meant to sit in. Turning the flag
+ * on against it made every roster empty and every admin a 401, which reads as
+ * a broken feature rather than as missing seed data. So the seeds write what
+ * the backfill would have: the group doc, one active membership per Member,
+ * and the name reservation each membership implies.
+ *
+ * Mock store only, like everything else here, and idempotent — both seeders
+ * call it and either may run first.
+ */
+function seedDevGroupMembership(
+  member: { id: string; name: string; role?: string },
+  createdAt: string,
+  opts: { owner?: boolean } = {},
+) {
+  mockStore.groups ??= [];
+  let group = mockStore.groups.find((r) => r.id === BPM_GROUP_ID);
+  if (!group) {
+    group = {
+      id: BPM_GROUP_ID,
+      name: 'BPM Badminton',
+      sport: 'badminton',
+      ownerMemberId: member.id,
+      createdAt,
+      createdBy: member.id,
+      settings: { skipDates: [], maxPlayers: 12 },
+    };
+    mockStore.groups.push(group);
+  }
+  // WHO OWNS THE DEV GROUP MUST NOT DEPEND ON WHICH CONTAINER WAS TOUCHED
+  // FIRST. The scenario seeder fires on `sessions` as well as `members`, so an
+  // app whose first read is `/api/session` seeded the roster before the admin
+  // and left a fixture player owning the group — which changes what
+  // `reassignOwnership` and `removeFromRoster` do, for no reason anybody chose.
+  // The `SEED_DEV_ADMIN` member claims ownership whenever it is seeded, in
+  // either order.
+  if (opts.owner) {
+    group.ownerMemberId = member.id;
+    group.createdBy = member.id;
+  }
+  mockStore.memberships ??= [];
+  const id = `${BPM_GROUP_ID}:${member.id}`;
+  const nameLower = member.name.trim().toLowerCase();
+  const owner = (group as { ownerMemberId?: string }).ownerMemberId;
+  const role = owner === member.id ? 'owner' : member.role === 'admin' ? 'admin' : 'member';
+  const existingRow = mockStore.memberships.find((r) => r.id === id);
+  if (existingRow) {
+    // A re-seed in the other order: the row is there, the role may be stale.
+    existingRow.role = role;
+  } else {
+    mockStore.memberships.push({
+      id,
+      groupId: BPM_GROUP_ID,
+      memberId: member.id,
+      name: member.name,
+      nameLower,
+      role,
+      status: 'active',
+      joinedAt: createdAt,
+      joinedVia: 'backfill',
+    });
+  }
+  // Whoever held owner before this seed took it over stops being one.
+  if (opts.owner) {
+    for (const r of mockStore.memberships) {
+      if (r.groupId === BPM_GROUP_ID && r.role === 'owner' && r.memberId !== member.id) r.role = 'admin';
+    }
+  }
+  const reservation = `${BPM_GROUP_ID}:name:${nameLower}`;
+  if (!mockStore.memberships.find((r) => r.id === reservation)) {
+    mockStore.memberships.push({ id: reservation, groupId: BPM_GROUP_ID, kind: 'name', memberId: member.id, nameLower });
+  }
+}
+
 function seedDevAdminIfRequested(containerName: string) {
   if (containerName !== 'members') return;
   if (g._devAdminSeeded) return;
@@ -54,15 +132,19 @@ function seedDevAdminIfRequested(containerName: string) {
   const salt = randomBytes(16);
   const hash = scryptSync(pin, salt, 32, { N: 16384, r: 8, p: 1 });
   mockStore.members ??= [];
+  const adminCreatedAt = new Date().toISOString();
   mockStore.members.push({
     id: 'dev-admin-seed',
     name,
     role: 'admin',
     active: true,
     sessionCount: 0,
-    createdAt: new Date().toISOString(),
+    createdAt: adminCreatedAt,
     pinHash: `${salt.toString('hex')}:${hash.toString('hex')}`,
   });
+  // The seeded admin OWNS the dev group, so `POST /api/admin` admits them with
+  // the flag on — where `Member.role` is not what admits an admin any more.
+  seedDevGroupMembership({ id: 'dev-admin-seed', name, role: 'admin' }, adminCreatedAt, { owner: true });
   g._devAdminSeeded = true;
   console.warn(
     `[dev] SEED_DEV_ADMIN: seeded admin member "${name}" with the given PIN ` +
@@ -181,6 +263,12 @@ function seedDevScenarioIfRequested(containerName: string) {
       createdAt: now.toISOString(),
       ...(m.pinHash ? { pinHash: m.pinHash } : {}),
     });
+  }
+  // Every seeded person joins the dev group, so the roster, the name
+  // reservations and every group-scoped read look backfilled rather than
+  // half-migrated.
+  for (const m of seedMembers) {
+    seedDevGroupMembership({ id: `dev-member-${m.name.toLowerCase()}`, name: m.name }, now.toISOString());
   }
 
   // Value-Hub Slice-0: seed the racket catalog so the recommendation card +

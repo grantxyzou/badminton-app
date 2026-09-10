@@ -18,7 +18,7 @@ import { getContainer } from '@/lib/cosmos';
 import { claimHandoff } from '@/lib/authHandoff';
 import { completeSignIn } from '@/lib/authSession';
 import type { Member } from '@/lib/types';
-import { resolveGroupId } from '@/lib/groupContext';
+import { resolveGroupId, explicitGroupId } from '@/lib/groupContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +75,15 @@ export async function POST(req: NextRequest) {
     // sign-in, not a session sign-up (see the auth taxonomy in CLAUDE.md).
     memberId: member.id,
   });
-  await completeSignIn(res, member, resolveGroupId(req));
+  // THE CLAIM ARRIVES IN THE APP'S OWN JAR — that is the whole point of the
+  // preimage — so its cookie is the better source, and the stash is the
+  // fallback for a device that carries none. The other order looked right and
+  // was not: in the NATIVE shell `/start` is opened with `Browser.open`, in the
+  // system browser sheet, so the group parked there is the SHEET's, normally
+  // absent and occasionally a stale group from an unrelated sign-in. (On the
+  // PWA path `/start` runs inside the app — the measured `count=1` log in
+  // lib/authHandoff.ts is what proves that — so both sources agree there.)
+  // `completeSignIn` refuses either one it cannot find a membership for.
+  await completeSignIn(res, member, explicitGroupId(req) ?? claim.groupId ?? resolveGroupId(req));
   return res;
 }
