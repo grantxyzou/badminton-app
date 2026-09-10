@@ -24,6 +24,7 @@ import {
   MAX_EMAIL_LENGTH,
 } from '@/lib/authIdentity';
 import type { Member } from '@/lib/types';
+import { resolveGroupId } from '@/lib/groupContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest) {
       email: member.email ?? null,
       emailVerified: member.emailVerified === true,
     });
-    completeSignIn(res, member);
+    await completeSignIn(res, member, resolveGroupId(req));
     return res;
   } catch (err) {
     // A Cosmos throttle or misconfig must be distinguishable from bad

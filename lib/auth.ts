@@ -23,7 +23,12 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
-import type { Member } from '@/lib/types';
+import { isFlagOn } from '@/lib/flags';
+import { BPM_GROUP_ID } from '@/lib/groupScope';
+import { readMembership, readGroupAdmin } from '@/lib/groups';
+import type { Member, MembershipRole } from '@/lib/types';
+/** Server-read: while off, every claim reads as BPM and memberships are not consulted. */
+const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 
 const COOKIE_NAME = 'admin_session';
 // 30 days — matches the longevity users expect from their `badminton_identity`
@@ -97,6 +102,13 @@ function getSessionSecret(): string {
 interface SessionPayload {
   memberId: string;
   name: string;
+  /**
+   * The group this session was minted FOR (multi-group Phase 2). Verified at
+   * mint time against a membership, so the sync checks can keep trusting the
+   * signature alone. Absent on a cookie minted before the claim existed —
+   * which reads as BPM, the only group there was.
+   */
+  groupId?: string;
   iat: number; // seconds
   exp: number; // seconds
 }
@@ -136,7 +148,8 @@ function verifyToken(token: string, opts: { ignoreExpiry?: boolean } = {}): Sess
       typeof payload.memberId !== 'string' ||
       typeof payload.name !== 'string' ||
       typeof payload.iat !== 'number' ||
-      typeof payload.exp !== 'number'
+      typeof payload.exp !== 'number' ||
+      (payload.groupId !== undefined && typeof payload.groupId !== 'string')
     ) {
       return null;
     }
@@ -199,11 +212,12 @@ export function verifySignedValue<T>(token: string | null | undefined): T | null
  * Sets the admin session cookie. The cookie value is a signed payload that
  * binds the session to a specific Member (by id + name). 8h lifetime.
  */
-export function setAdminCookie(res: NextResponse, memberId: string, name: string): void {
+export function setAdminCookie(res: NextResponse, memberId: string, name: string, groupId: string = BPM_GROUP_ID): void {
   const now = Math.floor(Date.now() / 1000);
   const payload: SessionPayload = {
     memberId,
     name,
+    groupId,
     iat: now,
     exp: now + COOKIE_MAX_AGE_S,
   };
@@ -255,9 +269,9 @@ const COOKIE_OPTS = {
   path: COOKIE_PATH,
 };
 
-export function setMemberCookie(res: NextResponse, memberId: string, name: string): void {
+export function setMemberCookie(res: NextResponse, memberId: string, name: string, groupId: string = BPM_GROUP_ID): void {
   const now = Math.floor(Date.now() / 1000);
-  const payload: SessionPayload = { memberId, name, iat: now, exp: now + COOKIE_MAX_AGE_S };
+  const payload: SessionPayload = { memberId, name, groupId, iat: now, exp: now + COOKIE_MAX_AGE_S };
   res.cookies.set(MEMBER_COOKIE_NAME, signPayload(payload), {
     ...COOKIE_OPTS,
     maxAge: COOKIE_MAX_AGE_S,
@@ -280,20 +294,75 @@ export function clearMemberCookie(res: NextResponse): void {
  * be sent to the former and never to the latter. It grants nothing; a caller
  * that needs authorization uses `verifyMemberAuth`.
  */
-export function peekMemberSession(req: NextRequest): { memberId: string; name: string } | null {
+export interface MemberSession {
+  memberId: string;
+  name: string;
+  /** The claim, or BPM for a cookie that predates it. Only meaningful with the flag on. */
+  groupId: string;
+}
+
+const sessionOf = (p: SessionPayload): MemberSession => ({
+  memberId: p.memberId,
+  name: p.name,
+  groupId: p.groupId ?? BPM_GROUP_ID,
+});
+
+export function peekMemberSession(req: NextRequest): MemberSession | null {
   const cookie = req.cookies.get(MEMBER_COOKIE_NAME)?.value;
   if (!cookie) return null;
   const payload = verifyToken(cookie, { ignoreExpiry: true });
   if (!payload) return null;
-  return { memberId: payload.memberId, name: payload.name };
+  return sessionOf(payload);
 }
 
-export function verifyMemberAuth(req: NextRequest): { memberId: string; name: string } | null {
+export function verifyMemberAuth(req: NextRequest): MemberSession | null {
   const cookie = req.cookies.get(MEMBER_COOKIE_NAME)?.value;
   if (!cookie) return null;
   const payload = verifyToken(cookie);
   if (!payload) return null;
-  return { memberId: payload.memberId, name: payload.name };
+  return sessionOf(payload);
+}
+
+/**
+ * The group claim of a raw session token — signature and expiry verified,
+ * nothing else — for `lib/groupContext.ts`, which resolves a request's group
+ * synchronously from either cookie. `null` for anything that does not verify.
+ */
+export function readGroupClaim(token: string | null | undefined): string | null {
+  if (!token) return null;
+  const payload = verifyToken(token);
+  return payload ? (payload.groupId ?? BPM_GROUP_ID) : null;
+}
+
+/** The two session cookie names, for the header-parsing twin in lib/groupContext.ts. */
+export const SESSION_COOKIE_NAMES = { member: MEMBER_COOKIE_NAME, admin: COOKIE_NAME } as const;
+
+/**
+ * The membership gate for a route that acts INSIDE a group as a signed-in
+ * member (Phase 3's group routes; no caller yet). Flag off: any valid
+ * `member_session` of an active person is a member of BPM, with `Member.role`
+ * as the role. Flag on: the claimed group must hold an ACTIVE membership for
+ * this person, and the role comes from it.
+ */
+export async function requireGroupMember(
+  req: NextRequest,
+): Promise<(MemberSession & { role: MembershipRole }) | null> {
+  const session = verifyMemberAuth(req);
+  if (!session) return null;
+  try {
+    if (!groupsOn()) {
+      // Flag off: everyone is in BPM and `Member.role` is the role — the same
+      // read `isAdminAuthedWithMember` makes, so a BPM admin is an admin here too.
+      const { resource } = await getContainer('members').item(session.memberId, session.memberId).read<Member>();
+      if (!resource || resource.active !== true) return null;
+      return { ...session, groupId: BPM_GROUP_ID, role: resource.role === 'admin' ? 'admin' : 'member' };
+    }
+    const m = await readMembership(session.groupId, session.memberId);
+    if (!m || m.status !== 'active') return null;
+    return { memberId: m.memberId, name: m.name, groupId: m.groupId, role: m.role };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -351,7 +420,7 @@ export function ownsNameOrAdmin(req: NextRequest, name: string): boolean {
  */
 export async function isAdminAuthedWithMember(
   req: NextRequest,
-): Promise<{ authed: true; memberId: string; name: string } | { authed: false }> {
+): Promise<{ authed: true; memberId: string; name: string; groupId: string } | { authed: false }> {
   const cookie = req.cookies.get(COOKIE_NAME)?.value;
   if (!cookie) return { authed: false };
   const payload = verifyToken(cookie);
@@ -360,10 +429,19 @@ export async function isAdminAuthedWithMember(
   try {
     const container = getContainer('members');
     const { resource } = await container.item(payload.memberId, payload.memberId).read<Member>();
-    if (!resource || resource.active !== true || resource.role !== 'admin') {
-      return { authed: false };
+    // An inactive person is nobody's admin, whichever group the cookie names.
+    if (!resource || resource.active !== true) return { authed: false };
+    if (!groupsOn()) {
+      // Flag off: `Member.role` is the source of truth and the claim is ignored.
+      if (resource.role !== 'admin') return { authed: false };
+      return { authed: true, memberId: resource.id, name: resource.name, groupId: BPM_GROUP_ID };
     }
-    return { authed: true, memberId: resource.id, name: resource.name };
+    // Flag on: the role lives on the membership IN THE CLAIMED GROUP. A demotion
+    // there takes effect on the next request, same as `Member.role` did.
+    const groupId = payload.groupId ?? BPM_GROUP_ID;
+    const m = await readGroupAdmin(groupId, resource.id);
+    if (!m) return { authed: false };
+    return { authed: true, memberId: resource.id, name: m.name, groupId };
   } catch {
     return { authed: false };
   }

@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
       const out = NextResponse.json({ id: safe.id, name: safe.name, deleteToken: null }, { status: 201 });
       // Account just created with a PIN → trust this device for future sign-ups
       // (unless an admin created it on someone else's behalf).
-      if (!isAdminAuthed(req)) setMemberCookie(out, safe.id, safe.name);
+      if (!isAdminAuthed(req)) setMemberCookie(out, safe.id, safe.name, resolveGroupId(req));
       return out;
     }
 
@@ -384,7 +384,7 @@ export async function POST(req: NextRequest) {
       const { pinHash: _ph, ...safeResource } = resource as unknown as Record<string, unknown>;
       const out = NextResponse.json({ ...safeResource, deleteToken }, { status: 201 });
       if (matchedMember && (trustDevice || pinHash) && !isAdminAuthed(req)) {
-        setMemberCookie(out, matchedMember.id, matchedMember.name);
+        setMemberCookie(out, matchedMember.id, matchedMember.name, resolveGroupId(req));
       }
       return out;
     }
@@ -435,7 +435,7 @@ export async function POST(req: NextRequest) {
     // or created (first PIN) the member's PIN — the "stay logged in" model.
     // Skip for admins acting on behalf of others and for anon (no-PIN) names.
     if (matchedMember && (trustDevice || pinHash) && !isAdminAuthed(req)) {
-      setMemberCookie(out, matchedMember.id, matchedMember.name);
+      setMemberCookie(out, matchedMember.id, matchedMember.name, resolveGroupId(req));
     }
     return out;
   } catch (error) {

@@ -261,11 +261,16 @@ function base64urlEncode(buf: Buffer): string {
  * Mirrors the production `signPayload` function exactly so tests exercise
  * the real verification path.
  */
-export function adminCookieValue(): string {
+export function adminCookieValue(
+  /** `groupId: null` mints a cookie from before the claim existed (reads as BPM). */
+  opts: { groupId?: string | null } = {},
+): string {
   const now = Math.floor(Date.now() / 1000);
+  const groupId = opts.groupId === undefined ? 'bpm' : opts.groupId;
   const payload = {
     memberId: TEST_ADMIN_MEMBER_ID,
     name: TEST_ADMIN_NAME,
+    ...(groupId === null ? {} : { groupId }),
     iat: now,
     exp: now + 60 * 60 * 8,
   };
@@ -287,9 +292,11 @@ export function memberCookieValue(
   /** Seconds until expiry. Negative mints a LAPSED cookie — signature valid,
    *  expiry passed — the state a member is in after the 30-day TTL. */
   ttlSeconds = 60 * 60 * 24 * 30,
+  /** The group claim (multi-group Phase 2). `null` mints a pre-claim cookie, which reads as BPM. */
+  groupId: string | null = 'bpm',
 ): string {
   const now = Math.floor(Date.now() / 1000);
-  const payload = { memberId, name, iat: now - 60, exp: now + ttlSeconds };
+  const payload = { memberId, name, ...(groupId === null ? {} : { groupId }), iat: now - 60, exp: now + ttlSeconds };
   const headerB64 = base64urlEncode(Buffer.from(JSON.stringify(payload), 'utf8'));
   const sig = createHmac('sha256', TEST_SESSION_SECRET).update(headerB64).digest();
   const sigB64 = base64urlEncode(sig);

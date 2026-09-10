@@ -22,6 +22,7 @@ import { reserveIdentity, releaseIdentity } from '@/lib/authIdentity';
 import { readPendingSignup, clearPendingSignup } from '@/lib/pendingSignup';
 import { completeHandoff } from '@/lib/authHandoff';
 import type { Member } from '@/lib/types';
+import { resolveGroupId } from '@/lib/groupContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -152,7 +153,7 @@ export async function POST(req: NextRequest) {
     // leaving a stale admin_session alive for a non-admin. Verified, and
     // pinned by __tests__/auth-cookie-order.test.ts.
     clearPendingSignup(res);
-    completeSignIn(res, member);
+    await completeSignIn(res, member, resolveGroupId(req));
     return res;
   } catch (err) {
     await releaseIdentity(pending.provider, pending.sub);

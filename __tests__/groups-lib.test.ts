@@ -12,6 +12,7 @@ import {
   listMemberships,
   listMembershipsForMember,
   reassignOwnership,
+  setMembershipRole,
   membershipId,
   nameReservationId,
   rosterNameKey,
@@ -187,6 +188,20 @@ describe('listMembershipsForMember (the one cross-group read)', () => {
     const src = readFileSync(join(__dirname, '..', 'lib', 'groups.ts'), 'utf8');
     const raw = src.match(/getContainer\(\s*'memberships'\s*\)/g) ?? [];
     expect(raw).toHaveLength(1);
+  });
+});
+
+describe('setMembershipRole', () => {
+  it('changes an active member’s role, never the owner’s, and nothing for the absent', async () => {
+    seedMembership('g1', 'owner', { name: 'O', role: 'owner' });
+    seedMembership('g1', 'm1', { name: 'M', role: 'member' });
+    seedMembership('g1', 'm2', { name: 'L', role: 'admin', status: 'left' });
+    expect((await setMembershipRole('g1', 'm1', 'admin'))?.role).toBe('admin');
+    expect((await readMembership('g1', 'm1'))?.role).toBe('admin');
+    expect(await setMembershipRole('g1', 'owner', 'member')).toBeUndefined();
+    expect((await readMembership('g1', 'owner'))?.role).toBe('owner');
+    expect(await setMembershipRole('g1', 'm2', 'member')).toBeUndefined();
+    expect(await setMembershipRole('g1', 'nobody', 'admin')).toBeUndefined();
   });
 });
 

@@ -18,6 +18,7 @@ import { getContainer } from '@/lib/cosmos';
 import { claimHandoff } from '@/lib/authHandoff';
 import { completeSignIn } from '@/lib/authSession';
 import type { Member } from '@/lib/types';
+import { resolveGroupId } from '@/lib/groupContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,6 +75,6 @@ export async function POST(req: NextRequest) {
     // sign-in, not a session sign-up (see the auth taxonomy in CLAUDE.md).
     memberId: member.id,
   });
-  completeSignIn(res, member);
+  await completeSignIn(res, member, resolveGroupId(req));
   return res;
 }
