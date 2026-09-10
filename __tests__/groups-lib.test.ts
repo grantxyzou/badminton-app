@@ -181,13 +181,22 @@ describe('listMembershipsForMember (the one cross-group read)', () => {
     for (const m of mine) expect(m).not.toHaveProperty('kind');
   });
 
-  it('is the ONLY raw read of memberships in lib/groups.ts', () => {
+  it('holds lib/groups.ts to exactly TWO raw reads of memberships', () => {
     // `memberships` is GROUP_SCOPED, so lib/groups.ts sits on the raw-access
-    // allowlist for this one person-side read. A file-level allowlist would let
-    // a second raw read in unnoticed; this pins the count.
+    // allowlist. A file-level allowlist would let a third raw read in
+    // unnoticed; this pins the count so each one has to be argued for.
+    //
+    // The two, and why `groupScope()` cannot express either — the accessor's
+    // whole job is to pin a query to ONE group, and both of these deliberately
+    // span them:
+    //   1. `listMembershipsForMember` — the person-side view, "which clubs am
+    //      I in?", which Phase 3's group switcher is built on.
+    //   2. `findMembershipsByRosterName` — signing in by name and PIN with no
+    //      group context, where the question IS "how many people could this
+    //      be?" and the answer decides whether a sign-in is allowed at all.
     const src = readFileSync(join(__dirname, '..', 'lib', 'groups.ts'), 'utf8');
     const raw = src.match(/getContainer\(\s*'memberships'\s*\)/g) ?? [];
-    expect(raw).toHaveLength(1);
+    expect(raw).toHaveLength(2);
   });
 });
 
@@ -237,9 +246,12 @@ describe('reassignOwnership', () => {
     const closed = await readGroup('g1');
     expect(closed?.closedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(closed?.ownerMemberId).toBe('owner');
-    // Nothing outside the group doc is touched: a group-lifecycle sweep is Phase 3's.
+    // Nothing outside the group doc is touched: a group-lifecycle sweep is
+    // Phase 3's. Three rows in g1 — the owner's membership, the owner's own
+    // name reservation (`seedMembership` writes it, the way `addMembership`
+    // does) and the orphaned Ghost reservation — all of them still there.
     expect(getStore()['sessions']).toHaveLength(1);
-    expect(getStore()['memberships'].filter((r) => (r as { groupId: string }).groupId === 'g1')).toHaveLength(2);
+    expect(getStore()['memberships'].filter((r) => (r as { groupId: string }).groupId === 'g1')).toHaveLength(3);
   });
 
   it('writes the group doc BEFORE the membership roles, so a retry converges on it', async () => {

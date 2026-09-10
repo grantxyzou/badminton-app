@@ -39,6 +39,28 @@ function fromTokens(member: string | undefined, admin: string | undefined): stri
   return readGroupClaim(member) ?? readGroupClaim(admin) ?? BPM_GROUP_ID;
 }
 
+/**
+ * THE CLAIM, OR NOTHING. `resolveGroupId` answers BPM when a request carries
+ * no claim, which is right for every group-scoped read: BPM is the group every
+ * pre-claim device belongs to. Sign-in is the one caller that must tell those
+ * two apart, because "this person is in BPM" and "we do not know which club
+ * this person means" lead to different behaviour — the second has to search
+ * across memberships and insist on exactly one match.
+ *
+ * Deliberately a SECOND function rather than a parameter on the first: the
+ * fallback is a contract ~18 callers rely on, pinned flag-off by
+ * `__tests__/group-context.test.ts`. Always `null` with the flag off, so the
+ * no-context branch is unreachable until groups are on.
+ */
+export function explicitGroupId(req: NextRequest): string | null {
+  if (!isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) return null;
+  return (
+    readGroupClaim(req.cookies.get(SESSION_COOKIE_NAMES.member)?.value) ??
+    readGroupClaim(req.cookies.get(SESSION_COOKIE_NAMES.admin)?.value) ??
+    null
+  );
+}
+
 /** Route handlers. */
 export function resolveGroupId(req: NextRequest): string {
   return fromTokens(
