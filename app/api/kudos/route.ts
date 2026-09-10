@@ -4,7 +4,6 @@ import { ensureContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
-import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { aggregateKudos, isKudosTag, normalizeNote, isoWeekKey, visibleNotes, type KudosDoc } from '@/lib/kudos';
 import { SKILLS } from '@/lib/assessment';
@@ -35,9 +34,6 @@ export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
   if (!checkRateLimit(`kudos:${ip}`, 20, 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-  }
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_KUDOS')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   // Identity-bound (rule 12): the rater is the cookie holder, never the body.
@@ -135,9 +131,6 @@ export async function GET(req: NextRequest) {
   const ip = getClientIp(req);
   if (!checkRateLimit(`kudos-get:${ip}`, 60, 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-  }
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_KUDOS')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   const name = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50) ?? '';

@@ -34,21 +34,17 @@ import { resolveIdentity } from '@/lib/playerIdentity';
  */
 const MARKER = 'ISOLATION_MARKER_B';
 const FLAG_STRINGING = 'NEXT_PUBLIC_FLAG_STRINGING';
-const FLAG_KUDOS = 'NEXT_PUBLIC_FLAG_KUDOS';
-const before = { s: process.env[FLAG_STRINGING], k: process.env[FLAG_KUDOS] };
+const before = { s: process.env[FLAG_STRINGING] };
 
 beforeEach(async () => {
   resetMockStore();
   setupAdminPin();
   await seedTestAdminMember();
   process.env[FLAG_STRINGING] = 'true';
-  process.env[FLAG_KUDOS] = 'true';
 });
 afterEach(() => {
   if (before.s === undefined) delete process.env[FLAG_STRINGING];
   else process.env[FLAG_STRINGING] = before.s;
-  if (before.k === undefined) delete process.env[FLAG_KUDOS];
-  else process.env[FLAG_KUDOS] = before.k;
 });
 
 describe('birds', () => {

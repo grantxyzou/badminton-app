@@ -29,5 +29,4 @@ SEED_DEV_SCENARIO=played-thursday \
 SEED_DEV_ADMIN=Grant:1130 \
 SESSION_SECRET="${SESSION_SECRET:-dev-demo-session-secret-not-for-production-32}" \
 NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE=true \
-NEXT_PUBLIC_FLAG_KUDOS=true \
   npm run dev -- --port "${PORT}"

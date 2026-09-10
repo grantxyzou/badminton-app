@@ -13,7 +13,6 @@ import PageHeader from '@/components/primitives/PageHeader';
 import { BottomSheet, BottomSheetBody } from '@/components/BottomSheet';
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
 import GiveKudosSheet from '@/components/stats/GiveKudosSheet';
-import { isFlagOn } from '@/lib/flags';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
@@ -109,7 +108,6 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
   }
 
   const activePlayers = players.filter(p => !p.waitlisted);
-  const kudosEnabled = isFlagOn('NEXT_PUBLIC_FLAG_KUDOS');
   /* Only someone who was on this roster can have played with anyone on it.
      Checking it here keeps the button off rows the server would refuse. */
   const iAmOnRoster =
@@ -202,7 +200,7 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
                       enforces, so the button can never open a sheet whose send
                       is refused. Neutral, not accent: Sign-Ups spends its accent
                       on signing up. */}
-                  {!isMe && kudosEnabled && iAmOnRoster && (
+                  {!isMe && iAmOnRoster && (
                     <button
                       type="button"
                       onClick={() => setKudosFor(player.name)}

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { POST, GET } from '../app/api/kudos/route';
 import {
   resetMockStore, getStore, seedMember, setupAdminPin, makeRequest, makeGetRequest, memberCookieValue,
@@ -28,19 +28,9 @@ describe('/api/kudos', () => {
   beforeEach(() => {
     resetMockStore();
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_KUDOS = 'true';
-  });
-  afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_KUDOS;
   });
 
   describe('POST', () => {
-    it('404s when the flag is off', async () => {
-      process.env.NEXT_PUBLIC_FLAG_KUDOS = 'false';
-      const res = await POST(postAs('Viktor', { recipientName: 'Lin', tag: 'clutch' }));
-      expect(res.status).toBe(404);
-    });
-
     it('401s without a member cookie (rater identity comes from the cookie)', async () => {
       const res = await POST(makeRequest('POST', BASE, { recipientName: 'Lin', tag: 'clutch' }));
       expect(res.status).toBe(401);
@@ -94,12 +84,6 @@ describe('/api/kudos', () => {
       expect(res.status).toBe(201);
     }
 
-    it('404s when the flag is off', async () => {
-      process.env.NEXT_PUBLIC_FLAG_KUDOS = 'false';
-      const res = await GET(getAs('Lin'));
-      expect(res.status).toBe(404);
-    });
-
     it('400s with no name', async () => {
       const res = await GET(makeRequest('GET', BASE));
       expect(res.status).toBe(400);
@@ -141,7 +125,6 @@ describe('/api/kudos — the redesign', () => {
   beforeEach(() => {
     resetMockStore();
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_KUDOS = 'true';
   });
 
   /** Seed a roster row against an arbitrary session id. */
