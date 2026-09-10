@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'not_co_player' }, { status: 403 });
     }
 
-    const recipient = await resolveActiveSubject(recipientName);
+    const recipient = await resolveActiveSubject(resolveGroupId(req), recipientName);
     const createdAt = new Date().toISOString();
 
     /* ONE OF EACH TAG PER (rater, recipient, ISO WEEK).
@@ -145,7 +145,7 @@ export async function GET(req: NextRequest) {
 
   try {
     await ensureKudos();
-    const subject = await resolveActiveSubject(name);
+    const subject = await resolveActiveSubject(resolveGroupId(req), name);
     /* `raterName` is selected here, which is a DELIBERATE change and the only
        place it is read back. `visibleNotes` is what makes it safe: it drops
        every kudos without a note, so a bare tag can never become attributable

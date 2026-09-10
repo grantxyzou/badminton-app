@@ -168,6 +168,19 @@ async function replaceGroup(group: Group): Promise<void> {
   await getContainer('groups').item(group.id, group.id).replace(group);
 }
 
+/**
+ * Merge a partial into a group's settings. Resolves `undefined` — and writes
+ * nothing — when the group does not exist (BPM's doc arrives with the
+ * backfill; until then the admin's Member doc is the only copy).
+ */
+export async function updateGroupSettings(groupId: string, patch: Partial<GroupSettings>): Promise<Group | undefined> {
+  const group = await readGroup(groupId);
+  if (!group) return undefined;
+  const next: Group = { ...group, settings: { ...group.settings, ...patch } };
+  await replaceGroup(next);
+  return next;
+}
+
 // ---------------------------------------------------------------------------
 // memberships (GROUP_SCOPED, PK /groupId) — through the accessor
 // ---------------------------------------------------------------------------
@@ -200,6 +213,51 @@ export async function reserveRosterName(groupId: string, name: string, memberId:
     }
   }
   return false;
+}
+
+/**
+ * Who holds `name` in `groupId` — the reservation's member id, whatever the
+ * state of their membership. `null` when the name is free. The check a WRITE
+ * makes before creating a person under a name (`resolveActiveMemberId` is the
+ * read-side answer and ignores a lingering reservation on purpose).
+ */
+export async function rosterNameHolder(groupId: string, name: string): Promise<string | null> {
+  await ensureReady();
+  const held = await groupScope(groupId).read<NameReservation>('memberships', nameReservationId(groupId, name), groupId);
+  return held && held.kind === 'name' ? held.memberId : null;
+}
+
+/**
+ * Rename one person IN ONE GROUP: reserve the new name (throws
+ * `RosterNameTakenError` if someone else holds it here), move the membership,
+ * release the old reservation. Resolves `undefined` with nothing written when
+ * they have no membership here. A no-op rename (case only) still updates the
+ * display case.
+ */
+export async function renameRosterMember(groupId: string, memberId: string, newName: string): Promise<Membership | undefined> {
+  await ensureReady();
+  const m = await readMembership(groupId, memberId);
+  if (!m) return undefined;
+  const name = newName.trim();
+  if (!(await reserveRosterName(groupId, name, memberId))) throw new RosterNameTakenError(groupId, name);
+  const next = await groupScope(groupId).replace('memberships', { ...m, name, nameLower: rosterNameKey(name) }, groupId);
+  if (rosterNameKey(name) !== m.nameLower) await releaseRosterName(groupId, m.name);
+  return next;
+}
+
+/**
+ * Take one person off one roster: status `removed`, and their name released
+ * so someone else here can use it (a rejoin reserves it again). The owner
+ * cannot be removed this way — hand the group on first (`reassignOwnership`).
+ */
+export async function removeFromRoster(groupId: string, memberId: string): Promise<Membership | undefined> {
+  await ensureReady();
+  const m = await readMembership(groupId, memberId);
+  if (!m || m.role === 'owner') return undefined;
+  if (m.status === 'removed') return m;
+  const next = await groupScope(groupId).replace('memberships', { ...m, status: 'removed' as const }, groupId);
+  if ((await rosterNameHolder(groupId, m.name)) === memberId) await releaseRosterName(groupId, m.name);
+  return next;
 }
 
 /** Free a name in one group. Leaves the same name in every other group alone. */

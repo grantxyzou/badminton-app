@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
   try {
     await ensureDrillsDone();
     const [memberId, weekKey] = await Promise.all([
-      (await resolveActiveSubject(caller.name)).memberId,
+      (await resolveActiveSubject(resolveGroupId(req), caller.name)).memberId,
       getActiveSessionId(resolveGroupId(req)).then((id) => weekKeyFor(id)),
     ]);
 

@@ -20,6 +20,7 @@ import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { issueAccessRequest, isPending } from '@/lib/accessRequest';
 import { sendPushToMembers } from '@/lib/push';
 import type { Member } from '@/lib/types';
+import { resolveGroupId } from '@/lib/groupContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const memberId = await resolveActiveMemberId(name);
+    const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
     const { secret, stored } = issueAccessRequest();
 
     if (memberId) {

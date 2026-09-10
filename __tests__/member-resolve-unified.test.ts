@@ -26,7 +26,7 @@ describe('member resolution is active-only and agrees across routes', () => {
 
   it('resolves an active member to their real id', async () => {
     const lin = seedMember('Lin', { active: true });
-    const s = await resolveActiveSubject('Lin');
+    const s = await resolveActiveSubject('bpm', 'Lin');
     expect(s.memberId).toBe(lin.id);
     expect(s.isMember).toBe(true);
   });
@@ -36,7 +36,7 @@ describe('member resolution is active-only and agrees across routes', () => {
     // have returned 'm-gone' here, so drills/assessments/kudos wrote there while
     // gear/recommend wrote at `name:gone`.
     seedMember('Gone', { active: false });
-    const s = await resolveActiveSubject('Gone');
+    const s = await resolveActiveSubject('bpm', 'Gone');
     expect(s.memberId).toBe('name:gone');
     expect(s.isMember).toBe(false);
   });
@@ -45,21 +45,21 @@ describe('member resolution is active-only and agrees across routes', () => {
     seedMember('Gone', { active: false });
     // Same filter, different contract: gear must NOT invent an id, or it starts
     // writing bag documents at `gear-name:gone`.
-    expect(await resolveActiveMemberId('Gone')).toBeNull();
+    expect(await resolveActiveMemberId('bpm', 'Gone')).toBeNull();
     const lin = seedMember('Lin', { active: true });
-    expect(await resolveActiveMemberId('Lin')).toBe(lin.id);
+    expect(await resolveActiveMemberId('bpm', 'Lin')).toBe(lin.id);
   });
 
   it('is case- and whitespace-insensitive on the way in, and preserves the given name', async () => {
     const lin = seedMember('Lin', { active: true });
-    const s = await resolveActiveSubject('  lIN  ');
+    const s = await resolveActiveSubject('bpm', '  lIN  ');
     expect(s.memberId).toBe(lin.id);
     expect(s.name).toBe('lIN');
   });
 
   it('falls back rather than throwing when the members read fails', async () => {
     // Read-only surfaces must degrade, not 500.
-    const s = await resolveActiveSubject('Nobody');
+    const s = await resolveActiveSubject('bpm', 'Nobody');
     expect(s.memberId).toBe('name:nobody');
     expect(s.isMember).toBe(false);
   });

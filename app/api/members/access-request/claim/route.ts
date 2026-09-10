@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
      * The legitimate device is unaffected: it always holds a genuinely pending
      * request, so it still sees `pending` until approval.
      */
-    const memberId = await resolveActiveMemberId(name);
+    const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
     if (!memberId) return NextResponse.json({ status: 'none' });
 
     const container = getContainer('members');

@@ -55,6 +55,7 @@ import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { outboundOriginOrNull } from '@/lib/appOrigin';
 import type { Member } from '@/lib/types';
 import { resolveGroupId } from '@/lib/groupContext';
+import { rosterNameHolder, addMembership } from '@/lib/groups';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,7 +103,14 @@ export async function POST(req: NextRequest) {
   // case-insensitive name query: that lookup has exactly one owner, because it
   // once existed as ten hand-copied variants that disagreed about whether to
   // filter on `active`. `__tests__/member-resolve-canary.test.ts` enforces it.
-  if (await resolveActiveMemberId(name)) {
+  // With groups on the WRITE-side check is the reservation itself — a name a
+  // removed member still holds is not free — and the account that follows is
+  // joined to this group, or nothing could ever resolve it.
+  const signupGroupId = resolveGroupId(req);
+  const taken = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')
+    ? (await rosterNameHolder(signupGroupId, name)) !== null
+    : (await resolveActiveMemberId(signupGroupId, name)) !== null;
+  if (taken) {
     return NextResponse.json({ error: 'name_taken' }, { status: 409 });
   }
 
@@ -130,6 +138,9 @@ export async function POST(req: NextRequest) {
       emailVerification: verification.record,
     };
     await membersContainer.items.create(member);
+    if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) {
+      await addMembership({ groupId: signupGroupId, memberId: member.id, name: member.name, joinedVia: 'link' });
+    }
 
     // Best-effort. The account already exists and works, so a mail failure must
     // not fail the request — but the caller is told, so the UI can offer a

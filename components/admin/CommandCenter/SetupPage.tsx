@@ -85,11 +85,13 @@ export default function SetupPage({ onBack }: SetupPageProps) {
     setLoading(true);
     setLoadError(false);
     try {
-      const [sessionRes, birdsRes, playersRes, membersRes, recentCostsRes] = await Promise.all([
+      const [sessionRes, birdsRes, playersRes, settingsRes, recentCostsRes] = await Promise.all([
         fetch(`${BASE}/api/session`, { cache: 'no-store' }),
         fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
         fetch(`${BASE}/api/players`, { cache: 'no-store' }),
-        fetch(`${BASE}/api/members`, { cache: 'no-store' }),
+        // The club's settings, from the endpoint that owns them — not a scan of
+        // /api/members for whoever has role 'admin' (multi-group Phase 2).
+        fetch(`${BASE}/api/admin/settings`, { cache: 'no-store' }),
         fetch(`${BASE}/api/sessions/costs`, { cache: 'no-store' }),
       ]);
       // The session is the doc Save overwrites — if it didn't load, the form is
@@ -98,7 +100,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
       const session = sessionRes.ok ? await sessionRes.json() as Session : null;
       const birds = birdsRes.ok ? await birdsRes.json() as { purchases: BirdPurchase[]; currentStock?: number } : null;
       const players = playersRes.ok ? await playersRes.json() as Array<{ name?: string; removed?: boolean; waitlisted?: boolean }> : [];
-      const members = membersRes.ok ? await membersRes.json() as Array<{ role?: string; eTransferRecipient?: { name: string; email: string; memo?: string } }> : [];
+      const settings = settingsRes.ok ? await settingsRes.json() as { eTransferRecipient?: { name: string; email: string; memo?: string } | null } : null;
       const costs = recentCostsRes.ok ? await recentCostsRes.json() as { costs: number[] } : null;
 
       if (session) {
@@ -136,9 +138,8 @@ export default function SetupPage({ onBack }: SetupPageProps) {
         players.filter((p) => !p.removed && !p.waitlisted).map((p) => p.name).filter((n): n is string => !!n),
       );
 
-      const adminMember = Array.isArray(members) ? members.find((m) => m.role === 'admin') : null;
       const sessionRecipient = (session as Session & { eTransferRecipient?: { name: string; email: string; memo?: string } } | null)?.eTransferRecipient;
-      setRecipient(sessionRecipient ?? adminMember?.eTransferRecipient ?? null);
+      setRecipient(sessionRecipient ?? settings?.eTransferRecipient ?? null);
 
       if (costs?.costs) setRecentCosts(costs.costs);
     } catch (err) {

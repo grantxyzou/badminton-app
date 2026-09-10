@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
+import { resolveGroupId } from '@/lib/groupContext';
+import { isFlagOn } from '@/lib/flags';
+import { readGroup, updateGroupSettings } from '@/lib/groups';
 import type { ETransferRecipient } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -24,11 +27,20 @@ function isValidSkipDates(value: unknown): value is string[] {
 }
 
 /**
- * Returns the calling admin's own settings (eTransferRecipient, skipDates).
- * Reading from /api/members and finding `role === 'admin'` is fragile when
- * there are multiple admins and breaks if the public list changes shape.
- * This endpoint is auth-gated and scoped to the calling admin's memberId.
+ * The club's settings (eTransferRecipient, skipDates). Reading from
+ * /api/members and finding `role === 'admin'` is fragile when there are
+ * multiple admins and breaks if the public list changes shape; this endpoint
+ * is auth-gated.
+ *
+ * WHERE THEY LIVE (multi-group Phase 2): on the GROUP doc, `groups.settings`,
+ * which is what makes them the club's rather than one admin's. With the flag
+ * on, and a group doc present, that is the answer; otherwise — flag off, or
+ * BPM before the backfill has created its doc — they are read from the
+ * calling admin's own Member doc, where they always were. PATCH writes BOTH
+ * (the Member fields stay for rollback: older code reads only those).
  */
+const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
+
 export async function GET(req: NextRequest) {
   const auth = await isAdminAuthedWithMember(req);
   if (!auth.authed) return unauthorized();
@@ -36,11 +48,17 @@ export async function GET(req: NextRequest) {
   try {
     const container = getContainer('members');
     const { resource: existing } = await container.item(auth.memberId, auth.memberId).read();
-    if (!existing) return NextResponse.json({ eTransferRecipient: null, skipDates: [] });
-    const member = existing as Record<string, unknown> & { eTransferRecipient?: ETransferRecipient; skipDates?: string[] };
+    const member = (existing ?? {}) as Record<string, unknown> & { eTransferRecipient?: ETransferRecipient; skipDates?: string[] };
+    // PER FIELD: a group doc that exists but has never had a recipient saved
+    // still answers with the admin's — otherwise Setup showed no recipient
+    // until the first re-save, and receipts went out without one.
+    const group = groupsOn() ? await readGroup(resolveGroupId(req)) : undefined;
+    const skipDates = Array.isArray(group?.settings.skipDates) && group.settings.skipDates.length > 0
+      ? group.settings.skipDates
+      : Array.isArray(member.skipDates) ? member.skipDates : [];
     return NextResponse.json({
-      eTransferRecipient: member.eTransferRecipient ?? null,
-      skipDates: Array.isArray(member.skipDates) ? member.skipDates : [],
+      eTransferRecipient: group?.settings.eTransferRecipient ?? member.eTransferRecipient ?? null,
+      skipDates,
     });
   } catch (error) {
     console.error('GET /api/admin/settings error:', error);
@@ -79,6 +97,14 @@ export async function PATCH(req: NextRequest) {
       ...(body.eTransferRecipient !== undefined ? { eTransferRecipient: body.eTransferRecipient } : {}),
     };
     const { resource } = await container.items.upsert(updated);
+    // The group doc is the authoritative copy once groups are on. Written
+    // AFTER the Member doc so a failure here leaves the legacy copy current.
+    if (groupsOn()) {
+      await updateGroupSettings(resolveGroupId(req), {
+        ...(body.skipDates !== undefined ? { skipDates: body.skipDates } : {}),
+        ...(body.eTransferRecipient !== undefined ? { eTransferRecipient: body.eTransferRecipient } : {}),
+      });
+    }
     const safe = resource as Record<string, unknown>;
     // This reads and echoes back the caller's own MEMBER document, so every
     // member secret has to come off — not just the PIN hash. `recoveryCode`
