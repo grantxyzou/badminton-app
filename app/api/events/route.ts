@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeEvent, isClientKind, CLIENT_PAYLOAD } from '@/lib/events';
+import { writeEvent, isClientKind, isValueHubKind, isCheckInSource, CLIENT_PAYLOAD } from '@/lib/events';
 import { resolveGroupId } from '@/lib/groupContext';
 import { verifyMemberAuth } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
@@ -18,13 +18,14 @@ const RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
  * the feedback loop's denominator) is not a client kind at all, so it is
  * refused as unknown.
  */
-function payloadFor(kind: keyof typeof CLIENT_PAYLOAD, body: Record<string, unknown>): Pick<EngagementEvent, 'catalogId' | 'engineVersion' | 'rating' | 'category'> {
-  const out: Pick<EngagementEvent, 'catalogId' | 'engineVersion' | 'rating' | 'category'> = {};
+function payloadFor(kind: keyof typeof CLIENT_PAYLOAD, body: Record<string, unknown>): Pick<EngagementEvent, 'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source'> {
+  const out: Pick<EngagementEvent, 'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source'> = {};
   for (const field of CLIENT_PAYLOAD[kind]) {
     if (field === 'catalogId' && typeof body.catalogId === 'string' && body.catalogId.length <= 80) out.catalogId = body.catalogId;
     if (field === 'engineVersion' && typeof body.engineVersion === 'string' && body.engineVersion.length <= 20) out.engineVersion = body.engineVersion;
     if (field === 'rating' && (body.rating === 'up' || body.rating === 'down')) out.rating = body.rating;
     if (field === 'category' && (body.category === 'racket' || body.category === 'string')) out.category = body.category;
+    if (field === 'source' && isCheckInSource(body.source)) out.source = body.source;
   }
   return out;
 }
@@ -51,12 +52,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
-  // Same posture as /api/games: the feature's flag gates its API surface too, so
-  // turning the flag off doesn't leave a live write endpoint behind.
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
-
   // Identity-bound (security rule 12): the member_session cookie, minted at
   // sign-up without a PIN. No admin-on-behalf branch on purpose — an admin
   // tapping while browsing someone else's stats is not that member's
@@ -76,6 +71,23 @@ export async function POST(req: NextRequest) {
 
   if (!isClientKind(body.kind)) {
     return NextResponse.json({ error: 'unknown_kind' }, { status: 400 });
+  }
+
+  // The flag gate is PER-KIND, and deliberately below the kind parse rather
+  // than at the top of the handler.
+  //
+  // Equipment kinds keep the /api/games posture: the feature's flag gates its
+  // API surface too, so turning the flag off doesn't leave a live write
+  // endpoint behind. The SKILL-funnel kinds do not, because this gate used to
+  // be a blanket 404 on a flag with a retirement date on it — every beacon in
+  // the app would have gone silent on the day that flag was deleted, and a
+  // measurement that switches itself off on a date is not a measurement.
+  //
+  // Order is load-bearing: rate limit (rule 4) and auth (rule 12) both still
+  // run FIRST. Hoisting the kind parse above them to decide the gate earlier
+  // would put body parsing in front of authentication.
+  if (isValueHubKind(body.kind) && !isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   try {

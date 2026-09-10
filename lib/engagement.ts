@@ -1,17 +1,20 @@
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
-import type { ClientKind } from './events';
+import type { ClientKind, CheckInSource } from './events';
 
 /** The kinds a CLIENT may send — server-only kinds (`pick_served`) are not in
  *  this type, and `POST /api/events` refuses them. */
 export type EngagementKind = ClientKind;
 
-/** What a `pick_*` beacon carries. Validated and bounded server-side. */
+/** What a beacon carries. Validated and bounded server-side — the route drops
+ *  every field its kind does not declare in `CLIENT_PAYLOAD`. */
 export interface EngagementMeta {
   catalogId?: string;
   engineVersion?: string;
   rating?: 'up' | 'down';
   category?: 'racket' | 'string';
+  /** `checkin_open` only — which door the member used. */
+  source?: CheckInSource;
 }
 
 /**

@@ -534,6 +534,11 @@ export interface EngagementEvent {
   /** `pick_rated` only. */
   rating?: 'up' | 'down';
   category?: 'racket' | 'string';
+  /** `checkin_open` only — which door opened the check-in ('strip' | 'trend' |
+   *  'learn'). Additive and optional: an event written before this existed has
+   *  none, and the Slice-0 reader counts those under 'unknown' rather than
+   *  dropping them. */
+  source?: string;
 }
 
 /** One source of truth for the kinds is `lib/events.ts`; this union is

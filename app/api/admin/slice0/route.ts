@@ -4,7 +4,9 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { PICK_KINDS } from '@/lib/events';
+import { PICK_KINDS, isCheckInSource } from '@/lib/events';
+import { SKILLS } from '@/lib/assessment';
+import { rosterMembers } from '@/lib/roster';
 
 export const dynamic = 'force-dynamic';
 
@@ -125,6 +127,54 @@ export async function GET(req: NextRequest) {
         if (e.kind === 'pick_rated' && e.rating === 'down') c.down += 1;
       }
     };
+    // --- The skill funnel's denominator: the ROSTER, not attendance. --------
+    // Every other rate on this route is denominated on who turned up since the
+    // cutoff. That frame has now misled three separate readings: 7/17 reads as
+    // 41% where 7/56 is 12.5%; the rec-card rate "fell" 0.25 -> 0.176 purely
+    // because the cohort grew 12 -> 17 while repeat tappers held at 3; and the
+    // games 0/12 was read as disinterest for weeks when it was an empty picker.
+    //
+    // Attendance is not the question this block asks. Someone who skipped three
+    // weeks still has the app on their phone and is exactly the person we want
+    // to give a reason to open it. THE TWO DENOMINATORS ARE NOT COMPARABLE —
+    // `cohortSize` is attendance, `skill.rosterSize` is the roster, and the
+    // response names both so nobody divides across them by accident.
+    const rosterNames = new Set<string>();
+    const idToName = new Map<string, string>();
+    try {
+      for (const entry of await rosterMembers(scope.groupId)) {
+        const nm = norm(String(entry.member?.name ?? ''));
+        if (!nm) continue;
+        rosterNames.add(nm);
+        if (typeof entry.member?.id === 'string') idToName.set(entry.member.id, nm);
+      }
+    } catch (err) {
+      console.warn('slice0: roster read failed (skill block will report zero):', err);
+    }
+
+    /**
+     * One key space for a person across two containers.
+     *
+     * `events` keys by `memberId` when it has one and falls back to the name;
+     * `assessments` carries both. `resolveActiveSubject` can mint a name-derived
+     * id, so the same human can hold an assessment under one and events under
+     * the other. Resolving everything to the roster's normalised NAME is what
+     * puts all four ratios on one denominator. Anyone not on the roster returns
+     * null and is dropped — not counted, not denominated.
+     */
+    const rosterKey = (memberId?: unknown, name?: unknown): string | null => {
+      if (typeof memberId === 'string') {
+        const byId = idToName.get(memberId);
+        if (byId) return byId;
+      }
+      const byName = norm(String(name ?? ''));
+      return byName && rosterNames.has(byName) ? byName : null;
+    };
+
+    const statsOpeners = new Set<string>();
+    const checkInOpeners = new Set<string>();
+    const openBySource: Record<string, number> = { strip: 0, trend: 0, learn: 0, unknown: 0 };
+
     try {
       await ensureContainer('events', '/memberId');
       // ONE cross-partition scan of `events` for the window, shared with the
@@ -133,7 +183,7 @@ export async function GET(req: NextRequest) {
       // row per racket pick served.
       // The GROUP's events: Slice-0 is a per-club readout.
       const events = await scope.query<Partial<PickEvent> & Record<string, unknown>>('events', {
-        select: 'c.memberId, c.name, c.kind, c.at, c.catalogId, c.engineVersion, c.rating',
+        select: 'c.memberId, c.name, c.kind, c.at, c.catalogId, c.engineVersion, c.rating, c.source',
         where: 'c.at >= @since',
         params: [{ name: '@since', value: since }],
       });
@@ -144,6 +194,25 @@ export async function GET(req: NextRequest) {
         if (!key) continue;
         if (e.kind === 'rec_card_tap') taps.set(key, (taps.get(key) ?? 0) + 1);
         if ((PICK_KINDS as readonly string[]).includes(e.kind)) tallyPick(e as PickEvent, key);
+
+        // --- Skill funnel. Denominated on the ROSTER, so an event from someone
+        // who is not on it is dropped rather than counted against a
+        // denominator they are not in.
+        if (e.kind === 'stats_open' || e.kind === 'checkin_open') {
+          const rk = rosterKey(e.memberId, e.name);
+          if (rk) {
+            // Each kind names itself. An `else` here would bind to "not
+            // stats_open" rather than to `checkin_open`, so the day a third
+            // kind joins the guard above it would be silently counted as a
+            // check-in open — a misclassification that reads as real data.
+            if (e.kind === 'stats_open') statsOpeners.add(rk);
+            if (e.kind === 'checkin_open') {
+              checkInOpeners.add(rk);
+              const src = isCheckInSource(e.source) ? e.source : 'unknown';
+              openBySource[src] = (openBySource[src] ?? 0) + 1;
+            }
+          }
+        }
       }
       anyTappers = taps.size;
       repeatTappers = [...taps.values()].filter((n) => n > 1).length;
@@ -188,11 +257,56 @@ export async function GET(req: NextRequest) {
       console.warn('slice0: gear read failed (treating as zero):', err);
     }
 
+    // --- Check-in completions: read the CONTAINER, not a beacon. ------------
+    // There is deliberately no `checkin_saved` event. Completions are already
+    // stored per member with full history and a `takenAt`, so a beacon would be
+    // a second, lossier bookkeeping of a fact we already hold — blind to every
+    // check-in taken before the beacon shipped, and droppable by a `keepalive`
+    // fetch whose 201 nobody waits for.
+    //
+    // `assessments` is PERSON-scoped (lib/containers.ts), so a raw read is
+    // correct here and `groupScope` would be wrong — but a club AGGREGATE over
+    // a person container MUST be narrowed to the roster, which `rosterKey` does.
+    let everCheckedIn = 0;
+    let repeatCheckedIn = 0;
+    let checkedInWindow = 0;
+    let partialSaves = 0;
+    try {
+      await ensureContainer('assessments', '/memberId');
+      const { resources: rows } = await getContainer('assessments').items
+        .query({ query: 'SELECT c.memberId, c.name, c.takenAt, c.ratings FROM c' })
+        .fetchAll();
+      const allTime = new Map<string, number>();
+      const inWindow = new Set<string>();
+      for (const a of rows) {
+        const rk = rosterKey(a?.memberId, a?.name);
+        if (!rk) continue;
+        allTime.set(rk, (allTime.get(rk) ?? 0) + 1);
+        if (typeof a?.takenAt === 'string' && a.takenAt >= since) {
+          inWindow.add(rk);
+          const rated = a?.ratings && typeof a.ratings === 'object' ? Object.keys(a.ratings).length : 0;
+          if (rated > 0 && rated < SKILLS.length) partialSaves += 1;
+        }
+      }
+      everCheckedIn = allTime.size;
+      repeatCheckedIn = [...allTime.values()].filter((n) => n > 1).length;
+      checkedInWindow = inWindow.size;
+    } catch (err) {
+      console.warn('slice0: assessments read failed (treating as zero):', err);
+    }
+
     for (const [v, members] of servedBy) picks.engineVersions[v].servedMembers = members.size;
     picks.engagedMembers = engaged.size;
 
     const denominator = cohort.size;
     const rate = (n: number) => (denominator > 0 ? Math.round((n / denominator) * 1000) / 1000 : 0);
+
+    // A ratio on an empty denominator is NULL, never 0. A confident zero there
+    // is the lying-empty-state rule in metric form: it points the reader at a
+    // stage that has not been reached rather than at the one that has. `verdict`
+    // below already models this; these mirror it.
+    const rosterSize = rosterNames.size;
+    const ratio = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 1000) / 1000 : null);
     const recRate = rate(repeatTappers);
     const gameRate = rate(loggers.size);
 
@@ -208,6 +322,36 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       since,
       cohortSize: denominator,
+      /**
+       * The skill funnel. NOTE THE DENOMINATOR: `rosterSize`, not `cohortSize`.
+       * These four ratios are not comparable with `recCard` / `games` above,
+       * which are denominated on attendance since the cutoff.
+       *
+       * `statsOpeners` is a FLOOR, not a count. Both beacons need a
+       * `member_session` cookie, and a member whose 30-day cookie lapsed still
+       * sees the whole Stats tab (its reads are name-keyed) while recording
+       * nothing. Unknown is not known-false: read a low number as "at least
+       * this many", never as "only this many".
+       *
+       * `openBySource` counts EVENTS; `checkInOpeners` counts MEMBERS. One
+       * person opening the check-in three times from the strip is 3 and 1.
+       */
+      skill: {
+        rosterSize,
+        statsOpeners: statsOpeners.size,
+        checkInOpeners: checkInOpeners.size,
+        openBySource,
+        checkedInWindow,
+        everCheckedIn,
+        repeatCheckedIn,
+        partialSaves,
+        rates: {
+          reach: ratio(statsOpeners.size, rosterSize),
+          entry: ratio(checkInOpeners.size, statsOpeners.size),
+          finish: ratio(checkedInWindow, checkInOpeners.size),
+          repeat: ratio(repeatCheckedIn, rosterSize),
+        },
+      },
       recCard: {
         anyTappers,
         repeatTappers,
