@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
-import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { sendPushToMembers, isPushConfigured } from '@/lib/push';
 import { buildTestPayload } from '@/lib/pushMessages';
@@ -22,9 +21,6 @@ export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
   if (!checkRateLimit(`push-test:${ip}`, 10, 60 * 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-  }
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_PUSH_NOTIFY')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   // Sends cost real quota, so use the fresh role re-check rather than the cheap

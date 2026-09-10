@@ -19,7 +19,6 @@ import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { issueAccessRequest, isPending } from '@/lib/accessRequest';
 import { sendPushToMembers } from '@/lib/push';
-import { isFlagOn } from '@/lib/flags';
 import type { Member } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -83,35 +82,33 @@ export async function POST(req: NextRequest) {
          * No money and no secret in the body, obviously; a lock screen is a
          * public surface. The name is the whole point of the notification.
          */
-        if (isFlagOn('NEXT_PUBLIC_FLAG_PUSH_NOTIFY')) {
-          try {
-            const { resources: admins } = await container.items
-              .query<Member>({
-                query: "SELECT * FROM c WHERE c.role = 'admin' AND c.active = true",
-                parameters: [],
-              })
-              .fetchAll();
-            /* Re-filtered in JS. The mock store matches on parameter NAMES
-               and this query binds none, so `c.role = 'admin'` is invisible to
-               it — under the mock every active member comes back, and
-               "tell the admins" would broadcast one person's lockout to the
-               whole club. Production Cosmos honours the WHERE; the test
-               environment is the one that needs this line. */
-            const adminIds = admins
-              .filter((a) => a.role === 'admin' && a.active === true)
-              .map((a) => a.id)
-              .filter(Boolean);
-            if (adminIds.length > 0) {
-              await sendPushToMembers(adminIds, {
-                title: 'Someone can’t sign in',
-                body: `${member.name} is asking to be let in.`,
-                url: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/?tab=admin`,
-                tag: `access-${member.id}`,
-              });
-            }
-          } catch (err) {
-            console.error('access-request push failed:', err);
+        try {
+          const { resources: admins } = await container.items
+            .query<Member>({
+              query: "SELECT * FROM c WHERE c.role = 'admin' AND c.active = true",
+              parameters: [],
+            })
+            .fetchAll();
+          /* Re-filtered in JS. The mock store matches on parameter NAMES
+             and this query binds none, so `c.role = 'admin'` is invisible to
+             it — under the mock every active member comes back, and
+             "tell the admins" would broadcast one person's lockout to the
+             whole club. Production Cosmos honours the WHERE; the test
+             environment is the one that needs this line. */
+          const adminIds = admins
+            .filter((a) => a.role === 'admin' && a.active === true)
+            .map((a) => a.id)
+            .filter(Boolean);
+          if (adminIds.length > 0) {
+            await sendPushToMembers(adminIds, {
+              title: 'Someone can’t sign in',
+              body: `${member.name} is asking to be let in.`,
+              url: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/?tab=admin`,
+              tag: `access-${member.id}`,
+            });
           }
+        } catch (err) {
+          console.error('access-request push failed:', err);
         }
       }
     }

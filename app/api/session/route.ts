@@ -4,7 +4,6 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { resolveBirdUsages } from '@/lib/birdWrite';
-import { isFlagOn } from '@/lib/flags';
 import { sendPushToAll } from '@/lib/push';
 import { buildSignupOpenPayload } from '@/lib/pushMessages';
 import type { BirdUsage, ETransferRecipient } from '@/lib/types';
@@ -138,11 +137,11 @@ export async function PUT(req: NextRequest) {
     const willOpen = sessionData.signupOpen === true;
     const notYetNotified = typeof existing.signupOpenNotifiedAt !== 'string';
     const shouldNotify =
-      wasClosed && willOpen && notYetNotified && isFlagOn('NEXT_PUBLIC_FLAG_PUSH_NOTIFY');
+      wasClosed && willOpen && notYetNotified;
 
     const now = new Date().toISOString();
-    // Record the first open regardless of the flag — it's plain session
-    // history, and it's the value calculateSignupOpensOffset (advance route)
+    // Record the first open unconditionally — it's plain session history,
+    // and it's the value calculateSignupOpensOffset (advance route)
     // currently hardcodes to 0 for want of it.
     if (wasClosed && willOpen && typeof existing.signupOpenedAt !== 'string') {
       sessionData.signupOpenedAt = now;
