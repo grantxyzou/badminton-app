@@ -658,6 +658,8 @@
          "anchoredDefault": "Close to your {model} — tell us what to change for a sharper pick.",
          "unanchored": "From your fit answers, with no racket on file — add yours for a sharper pick.",
          "levelOnly": "From your check-in only — answer the fit questions for a sharper pick.",
+         "swingUnanswered": "Tell us your swing speed and we'll get the shaft right.",
+         "anchorStifferThanSwing": "Your {model} is stiffer than your swing wants — these are softer on purpose.",
          "clubPlays": "{count} people in the club already play it."
        },
        "warn": {
@@ -706,7 +708,7 @@
        "fitArm_fine": "Fine",
        "fitArm_sometimes_sore": "Sometimes sore",
        "fitArm_often_sore": "Often sore",
-       "fitArmNote": "Optional. Only softens the pick — a sore arm rules out the stiffest, heaviest frames. Only you and the organiser can see it; clear it any time.",
+       "fitArmNote": "Optional. Only softens the pick — a sore arm steers you to lighter, head-light frames and a slightly lower string tension. Only you and the organiser can see it; clear it any time.",
        "fitClear": "Clear",
        "fitGripLabel": "Grip size",
        "fitGrip_G4": "G4",

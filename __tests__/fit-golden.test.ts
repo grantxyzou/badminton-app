@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { recommendFit, fitLevel, fitTechniqueCeiling, isScorable, canon, FIT_ENGINE_VERSION, type FitInput } from '../lib/racketFit';
+import { recommendFit, fitLevel, isScorable, canon, FIT_ENGINE_VERSION, type FitInput } from '../lib/racketFit';
 import { buildProfile } from '../lib/racketProfile';
 import { activeRacket, rackets } from '../lib/activeRacket';
 import type { CatalogItem, PlayerGear } from '../lib/types';
@@ -50,7 +50,6 @@ function toInput(c: GoldenCase): FitInput {
     budgetMaxCad: gear.budgetMaxCad,
     level: profile ? fitLevel(profile) : null,
     hasRatings: c.ratings.length > 0,
-    techniqueCeiling: profile ? fitTechniqueCeiling(profile) : undefined,
   };
 }
 

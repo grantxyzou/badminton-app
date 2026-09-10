@@ -140,10 +140,14 @@ state of its own except the one thing it exists to own (below).
   the member's ACTIVE racket's axes (balance 1–3, flex 1–5, weight midpoint,
   tier 1–3) plus the goal delta (`GOAL_DELTA` — the one table of badminton
   judgment in the file; tune it there and let the golden set say whether it
-  was right), then swing sets the flex CEILING and comfort sets flex/weight/
-  balance ceilings. Ceilings penalise and WARN; nothing is hidden. Unanchored
-  members get a level-based target with a wider tolerance and a lead reason
-  that says so.
+  was right), then swing sets the flex CEILING (the ONLY input that speaks to
+  flex since `fit-2`, 2026-09-10 — an unanswered swing caps nothing, widens
+  the tolerance and asks) and comfort sets weight/balance ceilings and hands
+  the string engine a 1–2 lb tension reduction, never a flex cap. Ceilings
+  penalise and WARN; nothing is hidden. Unanchored members get a level-based
+  target with a wider tolerance and a lead reason that says so. A Beginner
+  reaching up past the target's tier pays double — reordered, never excluded.
+  The sources are in the file header and spec D3/D4/D12/D13.
 - **Honest states** (`resolveFitState`): a pick needs a catalog racket in the
   bag, OR a check-in, OR goal + swing — goal alone is not enough, swing is the
   injury axis. Otherwise `needsFit`, which the route returns as
@@ -203,9 +207,10 @@ state of its own except the one thing it exists to own (below).
   `__tests__/fit-golden.test.ts`) is the expert ground truth: raw ratings +
   a gear shape per case, an ACCEPTABLE set, never a derived level. Empty
   today and skipping loudly; Phase 4 raises the guard to five cases.
-- `canon`, `isScorable`, `overall`, `skillLevel`, `maxFlexDemand` and the
-  derived-profile helpers MOVED here; `lib/racketRecommend.ts` re-exports
-  them until it retires.
+- `canon`, `isScorable`, `overall`, `skillLevel` and the derived-profile
+  helpers MOVED here; `lib/racketRecommend.ts` re-exports them until it
+  retires. `maxFlexDemand` is still exported for that legacy path only — the
+  fit engine no longer reads it.
 
 ### Racket recommender (`NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER`) — the OFF branch of the flag above
 

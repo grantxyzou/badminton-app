@@ -17,6 +17,26 @@ import type { PlayerProfile } from './racketProfile';
  * comfort are CEILINGS, not target moves: a sore arm is a constraint, and a
  * frame above a ceiling stays ranked, penalised and warned, never hidden.
  *
+ * fit-2 (2026-09-10) re-weighted three axes on the published evidence rather
+ * than on folk wisdom, after the first golden-set rating:
+ *  - FLEX FOLLOWS THE SWING, NOT THE LEVEL. Racket deflection adds head speed
+ *    only inside the ~60–100 ms the player accelerates before impact, so the
+ *    right stiffness is a property of stroke timing (Kwan 2010; Phomsoupha
+ *    2024). The level-derived "technique ceiling" is gone: an unanswered swing
+ *    widens the tolerance and asks for the answer instead of guessing.
+ *  - BALANCE OUTWEIGHS GRAMS. Swing speed falls with swing-WEIGHT and stays
+ *    flat when total mass changes at fixed swing-weight (Cross 2006), so the
+ *    gram axis is a tie-break and the balance axis carries the load.
+ *  - A SORE ARM STEERS TENSION AND SWING-WEIGHT, NOT FLEX. Lower string
+ *    tension measurably reduces elbow load and lighter rackets reduce
+ *    shoulder and elbow load (tennis literature; no badminton study links
+ *    shaft flex to either). Comfort keeps its weight and head-heavy caps,
+ *    hands the string engine a lower tension, and no longer caps flex.
+ *  - TIER IS PRICE, NOT FITNESS FOR LEVEL. A Beginner should still be able to
+ *    buy a Premium frame, so tier stays a soft penalty — doubled for a
+ *    Beginner reaching UP, so the Entry and Mid rows that fit as well rank
+ *    first (owner, 2026-09-10).
+ *
  * Pure: no fetch, no DB, no clock, no randomness. Every reason is an i18n KEY
  * with params, never a sentence — English-only reasons were one of the
  * defects. `FIT_REASON_KEYS` is exported so a test can assert every key the
@@ -24,7 +44,7 @@ import type { PlayerProfile } from './racketProfile';
  * dynamic `t(reason.key)`.
  */
 
-export const FIT_ENGINE_VERSION = 'fit-1';
+export const FIT_ENGINE_VERSION = 'fit-2';
 
 export type FitState = 'anchored' | 'anchored_default' | 'unanchored' | 'level_only' | 'needsFit';
 export type FitLevel = 'Beginner' | 'Intermediate' | 'Advanced';
@@ -47,9 +67,6 @@ export interface FitInput {
   level: FitLevel | null;
   /** True when any check-in rating exists at all. */
   hasRatings: boolean;
-  /** The old flex ceiling from consistency/grip/smashes, when all three are
-   *  rated. The fallback when no swing is given. */
-  techniqueCeiling?: 1 | 2 | 3 | 4 | 5;
 }
 
 export interface FitReason {
@@ -78,6 +95,9 @@ export interface TargetSpec {
   balanceCeil: number | null;
   sigma: number;
   anchored: boolean;
+  /** False when the swing was not answered: the flex axis is then a guess
+   *  the reasons say so about, and the tolerance is widened. */
+  swingKnown: boolean;
 }
 
 export interface FitResult {
@@ -153,13 +173,6 @@ export function fitLevel(p: PlayerProfile): FitLevel | null {
   return 'Advanced';
 }
 
-/** The fallback flex ceiling, only when all three inputs were actually rated. */
-export function fitTechniqueCeiling(p: PlayerProfile): 2 | 3 | 4 | 5 | undefined {
-  const needed = ['consistency', 'grip', 'smashes'];
-  if (!needed.every((k) => p.ratedKeys.includes(k))) return undefined;
-  return maxFlexDemand(p);
-}
-
 // ---------------------------------------------------------------------------
 // Axes — one exported table
 // ---------------------------------------------------------------------------
@@ -223,14 +236,30 @@ const LEVEL_BASE: Record<FitLevel | 'null', { balance: number; flex: number; wei
  * is. `style` is the play-style label the goal favours (+3 secondary).
  * Tune HERE and nowhere else; the golden set is what says whether a change
  * was right.
+ *
+ * fit-2: `faster` and `less_fatigue` move BALANCE first and grams second —
+ * swing speed tracks swing-weight, not mass (Cross 2006) — and neither
+ * touches flex, which follows the swing answer alone.
  */
 export const GOAL_DELTA: Record<FitGoal, { balance: number | 'toward2'; flex: number; weight: number; style: string | null }> = {
   happy: { balance: 0, flex: 0, weight: 0, style: null },
   more_power: { balance: +1, flex: 0, weight: +2, style: 'Power' },
   more_control: { balance: 'toward2', flex: +1, weight: 0, style: 'Control' },
-  faster: { balance: -1, flex: 0, weight: -3, style: 'Speed' },
-  less_fatigue: { balance: -1, flex: -1, weight: -4, style: null },
+  faster: { balance: -1, flex: 0, weight: -2, style: 'Speed' },
+  less_fatigue: { balance: -1, flex: 0, weight: -3, style: null },
 };
+
+/** What a sore arm asks of the string engine, in lbs. The one comfort effect
+ *  the literature supports directly: lower tension lowers elbow load. Not
+ *  part of the racket target: the route hands it to `pairString`, which
+ *  scores and names the string at the same eased tension. */
+export const COMFORT_TENSION_DELTA_LB: Record<FitArmComfort, number> = { fine: 0, sometimes_sore: -1, often_sore: -2 };
+export function comfortTensionDeltaLb(c: FitArmComfort | undefined): number {
+  return c ? COMFORT_TENSION_DELTA_LB[c] : 0;
+}
+
+/** How far the tolerance widens when the swing is not answered. */
+const SWING_UNKNOWN_SIGMA = 1.2;
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
@@ -249,25 +278,40 @@ export function buildTarget(input: FitInput, anchorAxes: Axes | null): TargetSpe
   let weight = base.weight + delta.weight;
   const style = goal === 'happy' ? (anchorAxes?.style ?? null) : delta.style;
 
-  // Swing sets the flex CEILING — the injury axis — and nudges the target.
+  // Swing sets the flex CEILING and the target never sits above it. The
+  // swing is the ONLY input that speaks to flex: an unanswered swing caps
+  // nothing and widens the tolerance instead — guessing stiffness from a
+  // check-in score was the fit-1 defect the research removed.
+  const swingKnown = input.swing !== undefined;
   let flexCeil: number;
-  if (input.swing === 'slow') { flexCeil = 2; flex = Math.min(flex, 2); }
-  else if (input.swing === 'medium') { flexCeil = 4; }
+  if (input.swing === 'slow') flexCeil = 2;
+  else if (input.swing === 'medium') flexCeil = 4;
   else if (input.swing === 'fast') { flexCeil = 5; flex = Math.max(flex, 3); }
-  else { flexCeil = input.techniqueCeiling ?? 4; }
+  else flexCeil = 5;
+  flex = Math.min(flex, flexCeil);
 
-  // Comfort is a constraint, never a target move.
+  // Comfort is a constraint, never a target move — and it constrains
+  // swing-weight (grams, head-heaviness) and string tension, not flex.
   let weightCeil: number | null = null;
   let balanceCeil: number | null = null;
-  if (input.armComfort === 'sometimes_sore') { flexCeil = Math.min(flexCeil, 3); weightCeil = 85; }
-  if (input.armComfort === 'often_sore') { flexCeil = Math.min(flexCeil, 2); weightCeil = 83; balanceCeil = 2; }
+  if (input.armComfort === 'sometimes_sore') { weightCeil = 85; }
+  if (input.armComfort === 'often_sore') { weightCeil = 83; balanceCeil = 2; }
 
   balance = clamp(balance, 1, 3);
   flex = clamp(flex, 1, 5);
   weight = clamp(weight, 75, 89);
 
-  const sigma = anchored ? 1.0 : input.level ? 1.3 : 1.6;
-  return { balance, flex, weight, tier: base.tier, style, flexCeil, weightCeil, balanceCeil, sigma, anchored };
+  const sigma = (anchored ? 1.0 : input.level ? 1.3 : 1.6) * (swingKnown ? 1 : SWING_UNKNOWN_SIGMA);
+  return {
+    balance, flex, weight, tier: base.tier, style, flexCeil, weightCeil, balanceCeil,
+    sigma: Math.round(sigma * 100) / 100, anchored, swingKnown,
+  };
+}
+
+/** The anchor is two or more flex steps above what the swing wants: the
+ *  current racket is the problem, and the lead reason should say so. */
+export function anchorStifferThanSwing(target: TargetSpec, anchorAxes: Axes | null): boolean {
+  return target.swingKnown && anchorAxes !== null && anchorAxes.flex - target.flexCeil >= 2;
 }
 
 // ---------------------------------------------------------------------------
@@ -283,12 +327,24 @@ interface Scored {
   warnings: FitReason[];
 }
 
-export const WEIGHTS = { balance: 22, flex: 12, weight: 2.5, tier: 6 } as const;
+/** Grams at 1.2 × up to 10 g = 12, about half a balance step: the gram axis
+ *  is a tie-break next to balance, per Cross 2006. */
+export const WEIGHTS = { balance: 22, flex: 12, weight: 1.2, tier: 6 } as const;
+/** A Beginner reaching UP past the TARGET's tier pays double — the level row's
+ *  tier (Entry) when unanchored, the anchor's own tier when anchored, so a
+ *  Beginner who already plays Premium is not steered down from it. Reordered
+ *  toward the rows that fit as well, never excluded from a Premium frame. */
+export const TIER_UP_BEGINNER = 12;
 const WEIGHT_DELTA_CAP = 10;
 const CAP_FLEX = 10;
 const CAP_WEIGHT = 4;
 const CAP_BALANCE = 10;
 const SECONDARY = { format: 4, formatBoth: 3, style: 3, gripMiss: -6, overBudget: -20 } as const;
+/** The over-budget penalty ramps to its full −20 at this fraction over the
+ *  budget. fit-1 charged the full 20 for $7 over $200, and the owner's own
+ *  golden rating (2026-09-10) chose exactly that racket: a budget is a
+ *  preference, and D6 already says it never excludes. */
+export const BUDGET_RAMP = 0.25;
 
 export function scoreFit(item: CatalogItem, axes: Axes, target: TargetSpec, input: FitInput, anchorAxes: Axes | null): Scored {
   const reasons: FitReason[] = [];
@@ -298,7 +354,8 @@ export function scoreFit(item: CatalogItem, axes: Axes, target: TargetSpec, inpu
   const dFlex = Math.abs(axes.flex - target.flex);
   const dWeight = axes.weight === null ? 0 : Math.min(Math.abs(axes.weight - target.weight), WEIGHT_DELTA_CAP);
   const dTier = Math.abs(axes.tier - target.tier);
-  const penalty = (WEIGHTS.balance * dBalance + WEIGHTS.flex * dFlex + WEIGHTS.weight * dWeight + WEIGHTS.tier * dTier) / target.sigma;
+  const tierWeight = input.level === 'Beginner' && axes.tier > target.tier ? TIER_UP_BEGINNER : WEIGHTS.tier;
+  const penalty = (WEIGHTS.balance * dBalance + WEIGHTS.flex * dFlex + WEIGHTS.weight * dWeight + tierWeight * dTier) / target.sigma;
 
   let caps = 0;
   if (axes.flex > target.flexCeil) {
@@ -322,20 +379,31 @@ export function scoreFit(item: CatalogItem, axes: Axes, target: TargetSpec, inpu
   if (target.style && canon(axes.style) === canon(target.style)) secondary += SECONDARY.style;
   if (input.grip && axes.grip && !axes.grip.has(input.grip)) secondary += SECONDARY.gripMiss;
   const overBudget = typeof input.budgetMaxCad === 'number' && typeof item.msrp === 'number' && item.msrp > input.budgetMaxCad;
-  if (overBudget) secondary += SECONDARY.overBudget;
+  if (overBudget) {
+    const over = (item.msrp! - input.budgetMaxCad!) / Math.max(1, BUDGET_RAMP * input.budgetMaxCad!);
+    secondary += SECONDARY.overBudget * Math.min(1, over);
+  }
 
   const score = Math.round(clamp(100 - penalty - caps + secondary, 0, 100) * 10) / 10;
 
   // Reasons — fixed order, only when true, at most four.
   if (target.anchored && anchorAxes) {
     const goal = input.goal ?? 'happy';
-    const closeOnEveryAxis = dBalance <= 1 && dFlex <= 1 && dTier <= 1
+    // "Like yours" is a claim about the ANCHOR on every axis — the target's
+    // flex can sit two steps under the anchor once the swing caps it, and a
+    // frame that close to the target is not "the same feel" as the racket.
+    const closeOnEveryAxis = Math.abs(axes.balance - anchorAxes.balance) <= 1
+      && Math.abs(axes.flex - anchorAxes.flex) <= 1
+      && Math.abs(axes.tier - anchorAxes.tier) <= 1
       && (axes.weight === null || anchorAxes.weight === null || Math.abs(axes.weight - anchorAxes.weight) <= 2);
+    const lighter = axes.weight !== null && anchorAxes.weight !== null && axes.weight < anchorAxes.weight;
     const movesGoalAxis =
       (goal === 'more_power' && (axes.balance > anchorAxes.balance || (axes.weight !== null && anchorAxes.weight !== null && axes.weight > anchorAxes.weight)))
       || (goal === 'more_control' && axes.flex > anchorAxes.flex)
-      || (goal === 'faster' && (axes.balance < anchorAxes.balance || (axes.weight !== null && anchorAxes.weight !== null && axes.weight < anchorAxes.weight)))
-      || (goal === 'less_fatigue' && ((axes.weight !== null && anchorAxes.weight !== null && axes.weight < anchorAxes.weight) || axes.flex < anchorAxes.flex));
+      || (goal === 'faster' && (axes.balance < anchorAxes.balance || lighter))
+      // Less fatigue is a swing-weight goal: less head-heavy or lighter. Flex
+      // is not on the list — the file header says why.
+      || (goal === 'less_fatigue' && (axes.balance < anchorAxes.balance || lighter));
     const model = anchorLabel(input.anchor!);
     if (goal === 'happy' && closeOnEveryAxis) reasons.push({ key: 'reason.likeYours', params: { model } });
     else if (goal === 'more_power' && movesGoalAxis) reasons.push({ key: 'reason.powerStep', params: { model } });
@@ -343,8 +411,13 @@ export function scoreFit(item: CatalogItem, axes: Axes, target: TargetSpec, inpu
     else if (goal === 'faster' && movesGoalAxis) reasons.push({ key: 'reason.speedStep', params: { model } });
     else if (goal === 'less_fatigue' && movesGoalAxis) reasons.push({ key: 'reason.fatigueStep', params: { model } });
   }
-  if (input.swing && dFlex === 0) reasons.push({ key: 'reason.flexFitsSwing', params: { flex: FLEX_NAME[axes.flex] } });
-  else if (axes.flex === target.flexCeil - 1) reasons.push({ key: 'reason.flexHeadroom', params: { flex: FLEX_NAME[axes.flex] } });
+  // Both flex sentences are claims about the swing; neither is made when the
+  // swing was not answered — "headroom" against a ceiling nobody set is noise.
+  // "Headroom" is praise for a frame one step UNDER the ceiling and no
+  // stiffer than the target; a frame being penalised for being too stiff
+  // must not be told it has room.
+  if (target.swingKnown && dFlex === 0) reasons.push({ key: 'reason.flexFitsSwing', params: { flex: FLEX_NAME[axes.flex] } });
+  else if (target.swingKnown && axes.flex === target.flexCeil - 1 && axes.flex <= target.flex) reasons.push({ key: 'reason.flexHeadroom', params: { flex: FLEX_NAME[axes.flex] } });
   if (input.format === 'doubles' && sub === 'doubles') reasons.push({ key: 'reason.doublesBuilt' });
   else if (input.format === 'singles' && axes.balance === 3) reasons.push({ key: 'reason.singlesRear' });
   else if (input.format === 'both' && axes.balance === 2) reasons.push({ key: 'reason.evenVersatile' });
@@ -378,16 +451,28 @@ export function compareFit(a: Scored, b: Scored): number {
 
 const triple = (s: Scored) => `${s.axes.balance}|${s.axes.flex}|${s.axes.tier}`;
 
+/**
+ * Alternative 1 is the RUNNER-UP, whatever its spec. Alternative 2 is the
+ * first row whose (balance, flex, tier) differs from the top's, so the
+ * shortlist still shows one real contrast.
+ *
+ * fit-1 demanded a different triple of BOTH alternatives, and the golden set
+ * caught what that costs: the owner's own case (g06) had the ArcSaber 7 Pro
+ * at rank 2 on the same triple as the top pick, and the rule skipped it for
+ * a Medium-flex row the owner did not want. The runner-up is the most
+ * defensible alternative there is; diversity is worth one slot, not two.
+ */
 export function pickAlternatives(ranked: Scored[]): Scored[] {
   const [top, ...rest] = ranked;
   if (!top) return [];
   const window = rest.slice(0, 10);
   const out: Scored[] = [];
-  const first = window.find((s) => triple(s) !== triple(top));
-  if (first) out.push(first);
-  const second = window.find((s) => s !== first && triple(s) !== triple(top) && (!first || triple(s) !== triple(first)));
-  if (second) out.push(second);
-  // The diversity rule never yields fewer than two: fall back to rank order.
+  const runnerUp = window[0];
+  if (runnerUp) out.push(runnerUp);
+  const contrast = window.find((s) => s !== runnerUp && triple(s) !== triple(top) && (!runnerUp || triple(s) !== triple(runnerUp)))
+    ?? window.find((s) => s !== runnerUp && triple(s) !== triple(top));
+  if (contrast) out.push(contrast);
+  // Never fewer than two: fall back to rank order.
   for (const s of window) {
     if (out.length >= 2) break;
     if (!out.includes(s)) out.push(s);
@@ -454,8 +539,12 @@ export function recommendFit(input: FitInput, catalog: CatalogItem[]): FitResult
   const top = scored[0];
   if (!top) return { fitState, top: null, alternatives: [], target };
 
+  // ONE lead sentence, never two: the ladder is exclusive. "Softer on
+  // purpose" is only said when the top pick actually is softer.
   const lead: FitReason[] = [];
-  if (fitState === 'anchored_default') lead.push({ key: 'reason.anchoredDefault', params: { model: anchorLabel(input.anchor!) } });
+  if (anchorStifferThanSwing(target, anchorAxes) && top.axes.flex < anchorAxes!.flex) lead.push({ key: 'reason.anchorStifferThanSwing', params: { model: anchorLabel(input.anchor!) } });
+  else if (fitState === 'anchored_default') lead.push({ key: 'reason.anchoredDefault', params: { model: anchorLabel(input.anchor!) } });
+  else if (fitState === 'anchored' && !target.swingKnown) lead.push({ key: 'reason.swingUnanswered' });
   else if (fitState === 'unanchored') lead.push({ key: 'reason.unanchored' });
   else if (fitState === 'level_only') lead.push({ key: 'reason.levelOnly' });
 
@@ -482,6 +571,7 @@ export const FIT_REASON_KEYS = [
   'reason.doublesBuilt', 'reason.singlesRear', 'reason.evenVersatile',
   'reason.withinBudget', 'reason.gripMatch', 'reason.weightUnknown',
   'reason.anchoredDefault', 'reason.unanchored', 'reason.levelOnly', 'reason.clubPlays',
+  'reason.swingUnanswered', 'reason.anchorStifferThanSwing',
   'warn.flexAboveCeiling', 'warn.weightAboveCeiling', 'warn.headHeavyWithSoreArm',
   'diff.stiffer', 'diff.softer', 'diff.headHeavier', 'diff.headLighter', 'diff.lighter', 'diff.heavier',
   'diff.cheaper', 'diff.pricier', 'diff.tierUp', 'diff.tierDown', 'diff.sameSpecOtherBrand',
