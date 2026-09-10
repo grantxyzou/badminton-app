@@ -63,6 +63,15 @@ export interface MigrationDoc {
   sibling: string;
   /** NEXT_LOCALE at mint time, so the native app opens in the same language. */
   locale?: string;
+  /**
+   * The club the identity was minted IN. Same reason the OAuth stash carries
+   * one: this link exists precisely to cross a cookie-jar boundary — the PWA's
+   * session into the native shell's — so the claim sees no `member_session` and
+   * `resolveGroupId` answers BPM for everybody. Without it, migrating a member
+   * of another club would hand them a cookie claiming a group they are not on
+   * the roster of. Additive: absent means BPM.
+   */
+  groupId?: string;
   createdAt: string;
   expiresAt: string;
 }
@@ -114,6 +123,7 @@ export async function mintMigration(
   member: { id: string; name: string },
   locale: string | undefined,
   now: number = Date.now(),
+  groupId?: string,
 ): Promise<Minted> {
   await containerReady();
   const linkCode = randomBytes(32).toString('hex');
@@ -122,7 +132,14 @@ export async function mintMigration(
   const sId = shortId(member.name, shortCode);
   const createdAt = new Date(now).toISOString();
   const expiresAt = new Date(now + MIGRATION_TTL_MS).toISOString();
-  const base = { memberId: member.id, name: member.name, ...(locale ? { locale } : {}), createdAt, expiresAt };
+  const base = {
+    memberId: member.id,
+    name: member.name,
+    ...(locale ? { locale } : {}),
+    ...(groupId ? { groupId } : {}),
+    createdAt,
+    expiresAt,
+  };
 
   const container = getContainer(CONTAINER);
   await container.items.upsert({ ...base, id: linkId, kind: 'link', sibling: sId } satisfies MigrationDoc);
@@ -131,7 +148,7 @@ export async function mintMigration(
 }
 
 export type MigrationClaim =
-  | { status: 'ready'; memberId: string; name: string; locale?: string }
+  | { status: 'ready'; memberId: string; name: string; locale?: string; groupId?: string }
   /** Absent, expired and already-used are ONE answer — a probe learns nothing. */
   | { status: 'none' };
 
@@ -170,5 +187,11 @@ export async function claimMigration(
     /* the sibling may already be gone; the claimed half is what matters */
   }
 
-  return { status: 'ready', memberId: doc.memberId, name: doc.name, ...(doc.locale ? { locale: doc.locale } : {}) };
+  return {
+    status: 'ready',
+    memberId: doc.memberId,
+    name: doc.name,
+    ...(doc.locale ? { locale: doc.locale } : {}),
+    ...(doc.groupId ? { groupId: doc.groupId } : {}),
+  };
 }

@@ -107,3 +107,28 @@ describe('claim', () => {
     );
   });
 });
+
+describe('the migration stash carries the GROUP', () => {
+  /**
+   * Same split, opposite direction: this link exists to carry a PWA identity
+   * into the native shell, which is another jar again. The group is read at
+   * MINT, where a live `member_session` proves it; the claim cannot resolve it.
+   */
+  it('parks the minting group on both halves and returns it on claim', async () => {
+    const { linkCode, shortCode } = await mintMigration(LIN, undefined, Date.now(), 'club-x');
+    expect(docs().every((d) => (d as unknown as { groupId?: string }).groupId === 'club-x')).toBe(true);
+    expect(await claimMigration({ link: linkCode })).toMatchObject({ status: 'ready', memberId: LIN.id, groupId: 'club-x' });
+    // The short half burned with it; a fresh mint proves the other code path.
+    const second = await mintMigration(LIN, undefined, Date.now(), 'club-x');
+    expect(await claimMigration({ short: second.shortCode, name: LIN.name })).toMatchObject({ groupId: 'club-x' });
+    expect(shortCode).toHaveLength(6);
+  });
+
+  it('is additive — no group means BPM, which is what the claim route falls back to', async () => {
+    const { linkCode } = await mintMigration(LIN, undefined);
+    expect(docs().every((d) => (d as unknown as { groupId?: string }).groupId === undefined)).toBe(true);
+    const claim = await claimMigration({ link: linkCode });
+    expect(claim).toMatchObject({ status: 'ready', memberId: LIN.id });
+    expect((claim as { groupId?: string }).groupId).toBeUndefined();
+  });
+});

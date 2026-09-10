@@ -107,7 +107,17 @@ describe('the roster (lib/roster.ts)', () => {
     // Member.role is the person's default; the group's role wins on the roster.
     expect(roster.find((e) => e.member.name === 'Pat')?.member.role).toBe('member');
     expect(roster.find((e) => e.member.name === 'Quinn')?.member.role).toBe('admin');
-    expect(await rosterMemberIds('club-a')).toEqual(new Set([p.id, q.id]));
+    // `rosterMemberIds` reads the MEMBERSHIPS and stops there — one query, no
+    // point read per person. So an orphaned membership (`purged-person`: the
+    // account was deleted, the row outlived it) stays in the set, where
+    // `rosterMembers` drops it for having no Member doc. That is deliberate:
+    // the set exists to narrow aggregates over PERSON containers, and a purged
+    // member's rows went with them, so a ghost id matches nothing. Joining
+    // every id to its Member doc to remove it would cost N Cosmos round-trips
+    // per request on three hot paths — and would fail the whole aggregate on
+    // one transient error, which inside the level fold degrades to zero seeds
+    // rather than to an error anybody sees.
+    expect(await rosterMemberIds('club-a')).toEqual(new Set([p.id, q.id, 'purged-person']));
   });
 });
 

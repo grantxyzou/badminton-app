@@ -20,6 +20,8 @@
 
 import { getContainer, ensureContainer } from './cosmos';
 import { groupScope } from './groupScope';
+import { isFlagOn } from './flags';
+import { rosterMemberIds } from './roster';
 import { deriveLevel, type CanonicalLevel } from './level';
 import { calibrateRatings, type CalGame, type CalSeed, type PlayerCalibration } from './calibration';
 
@@ -102,9 +104,13 @@ async function fetchAllGames(groupId: string): Promise<CalGame[]> {
  * every anchor. Closing the name/id split properly means migrating
  * `gameResults` first.
  */
-async function fetchSeeds(): Promise<{ seeds: CalSeed[]; maxAt: string }> {
+async function fetchSeeds(groupId: string): Promise<{ seeds: CalSeed[]; maxAt: string }> {
   try {
     await ensureContainer('assessments', '/memberId');
+    // Narrowed to the roster with the flag on: `assessments` is PERSON-scoped,
+    // so without this a self-assessment from another club anchors this club's
+    // calibration. Same rule and same flag-off reasoning as stats/club/bands.
+    const roster = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') ? await rosterMemberIds(groupId) : null;
     const { resources } = await getContainer('assessments').items
       .query({ query: 'SELECT c.memberId, c.name, c.takenAt, c.overall FROM c' })
       .fetchAll();
@@ -115,6 +121,7 @@ async function fetchSeeds(): Promise<{ seeds: CalSeed[]; maxAt: string }> {
       // Unauthenticated, name-derived subject — never an anchor. Mirrors the
       // same `startsWith('name:')` check `fetchLegacyStage` already uses.
       if (typeof d.memberId !== 'string' || d.memberId.startsWith('name:')) continue;
+      if (roster && !roster.has(d.memberId)) continue;
       // maxAt covers only documents that can actually change the result, so a
       // skipped write doesn't needlessly bust the group-calibration cache.
       if (d.takenAt > maxAt) maxAt = d.takenAt;
@@ -139,7 +146,7 @@ const calCache = new Map<string, { sig: string; at: number; map: Map<string, Pla
  *  (The self-seeds are still read person-wide; narrowing them to the group's
  *  roster needs `memberships`, which arrives in Phase 2.) */
 async function getGroupCalibration(groupId: string, now: string): Promise<Map<string, PlayerCalibration>> {
-  const [games, { seeds, maxAt }] = await Promise.all([fetchAllGames(groupId), fetchSeeds()]);
+  const [games, { seeds, maxAt }] = await Promise.all([fetchAllGames(groupId), fetchSeeds(groupId)]);
   const maxLogged = games.reduce((m, g) => (g.loggedAt > m ? g.loggedAt : m), '');
   const sig = `${games.length}:${maxLogged}:${seeds.length}:${maxAt}`;
   const cached = calCache.get(groupId);

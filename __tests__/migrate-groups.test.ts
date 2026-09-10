@@ -42,7 +42,8 @@ const post = (body: Record<string, unknown>, headers: Record<string, string> = {
 beforeEach(async () => {
   resetMockStore();
   setupAdminPin();
-  await seedTestAdminMember();
+  // No membership: the backfill's premise is Members with no memberships yet.
+  await seedTestAdminMember({ membership: false });
   process.env.MIGRATION_KEY = KEY;
   delete process.env.ADMIN_NAMES;
 });
@@ -168,7 +169,7 @@ describe('the run', () => {
     expect(await readMembership('bpm', second.id)).toBeUndefined();
     expect(s.errors).toEqual([]);
     // The dry run sees the same collision without writing.
-    resetMockStore(); await seedTestAdminMember();
+    resetMockStore(); await seedTestAdminMember({ membership: false });
     seedMember('Lin', { createdAt: '2025-01-01T00:00:00Z' }); seedMember('LIN', { createdAt: '2025-06-01T00:00:00Z' });
     const dry = await runBackfill({ dryRun: true });
     expect(dry.memberships.collisions).toHaveLength(1);

@@ -7,6 +7,8 @@ import { normalizeStatsPrivacy, isComparisonRevealed } from '@/lib/statsPrivacy'
 import type { Rating, StoredAssessment } from '@/lib/assessment';
 import { resolveActiveSubject } from '@/lib/memberResolve';
 import { resolveGroupId } from '@/lib/groupContext';
+import { rosterMemberIds } from '@/lib/roster';
+import { isFlagOn } from '@/lib/flags';
 
 /**
  * Club comparison bands for one member — private by design, same gate as
@@ -41,9 +43,22 @@ interface AssessmentDoc extends StoredAssessment {
   memberId?: string;
 }
 
-/** Latest snapshot per member, across the whole club. */
-async function latestRatingsByMember(): Promise<Map<string, Rating[]>> {
+/**
+ * THE CLUB IS THE ROSTER, not the deployment. `assessments` is PERSON-scoped —
+ * one account, many groups — so an aggregate over it must be narrowed to the
+ * group's people first, or one club's bands are computed from another club's
+ * players. That is the rule `lib/groupScope.ts` states for every club AGGREGATE
+ * over a PERSON container, and `rosterMemberIds` is what makes it callable.
+ *
+ * The narrowing applies ONLY with the flag on. Flag off, `rosterMemberIds`
+ * would answer "every ACTIVE member", which is very nearly the same set but not
+ * exactly: a soft-deleted member's assessments count toward the club today.
+ * Dropping them is a defensible correction and NOT this change — flag off,
+ * nothing observable moves, so it rides in with the cutover.
+ */
+async function latestRatingsByMember(groupId: string, viewerId: string): Promise<Map<string, Rating[]>> {
   await ensureContainer('assessments', '/memberId');
+  const roster = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') ? await rosterMemberIds(groupId) : null;
   const { resources } = await getContainer('assessments')
     .items.query({ query: 'SELECT c.memberId, c.takenAt, c.ratings FROM c' })
     .fetchAll();
@@ -52,6 +67,13 @@ async function latestRatingsByMember(): Promise<Map<string, Rating[]>> {
   const latest = new Map<string, Rating[]>();
   for (const doc of resources as AssessmentDoc[]) {
     if (!doc || typeof doc.memberId !== 'string' || typeof doc.takenAt !== 'string') continue;
+    // THE VIEWER IS ALWAYS ADMITTED, roster or not. The filter answers "who is
+    // the club", and the viewer's own band is not a club statistic — dropping
+    // it renders their own row as "no data" while the cohort around it paints.
+    // Two ways to be off the roster and still be looking at this page: a
+    // membership set `removed` while a 30-day `member_session` is still valid,
+    // and a synthetic `name:` subject (an admin viewing an unclaimed player).
+    if (roster && doc.memberId !== viewerId && !roster.has(doc.memberId)) continue;
     if (!Array.isArray(doc.ratings)) continue;
     const seen = latestAt.get(doc.memberId);
     if (seen && seen >= doc.takenAt) continue;
@@ -89,8 +111,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const memberId = (await resolveActiveSubject(resolveGroupId(req), name)).memberId;
-    const [privacy, byMember] = await Promise.all([readPrivacy(memberId), latestRatingsByMember()]);
+    const groupId = resolveGroupId(req);
+    const memberId = (await resolveActiveSubject(groupId, name)).memberId;
+    const [privacy, byMember] = await Promise.all([readPrivacy(memberId), latestRatingsByMember(groupId, memberId)]);
 
     const viewer = byMember.get(memberId) ?? [];
     const others: Rating[][] = [];

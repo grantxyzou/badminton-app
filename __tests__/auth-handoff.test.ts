@@ -216,3 +216,33 @@ describe('handoff through the name step', () => {
     expect(await claimHandoff(id, later)).toEqual({ status: 'ready', memberId: 'm' });
   });
 });
+
+describe('the stash carries the GROUP across the cookie-jar split', () => {
+  /**
+   * The excursion runs in the system browser sheet, a different cookie jar from
+   * the PWA. That is the whole reason this stash exists — so the callback and
+   * the claim see no `member_session` at all, and `resolveGroupId` answers BPM
+   * for everybody. A member of another club signing in with Google would land
+   * holding a cookie claiming a group they are not on the roster of. The group
+   * has to ride in the stash, because nothing else crosses the split.
+   */
+  it('hands the claim the group the flow STARTED in, not the one it lands in', async () => {
+    const id = createHandoffId();
+    const ref = handoffRef(id);
+    expect(await beginHandoff(ref, { state: S, codeVerifier: V, groupId: 'club-x' })).toBe(true);
+    expect((await readHandoff(ref))?.groupId).toBe('club-x');
+    await completeHandoff(ref, 'member-lin');
+    expect(await claimHandoff(id)).toEqual({ status: 'ready', memberId: 'member-lin', groupId: 'club-x' });
+  });
+
+  it('is additive — a stash minted before the claim existed carries none', async () => {
+    const id = createHandoffId();
+    const ref = handoffRef(id);
+    await beginHandoff(ref, { state: S, codeVerifier: V });
+    expect((await readHandoff(ref))?.groupId).toBeUndefined();
+    await completeHandoff(ref, 'member-lin');
+    // No `groupId` key at all, so the claim route falls back to BPM the way
+    // every pre-claim device already resolves.
+    expect(await claimHandoff(id)).toEqual({ status: 'ready', memberId: 'member-lin' });
+  });
+});

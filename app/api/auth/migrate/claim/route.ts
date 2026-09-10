@@ -22,7 +22,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isFlagOn } from '@/lib/flags';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
-import { resolveGroupId } from '@/lib/groupContext';
+import { resolveGroupId, explicitGroupId } from '@/lib/groupContext';
 import { completeSignIn } from '@/lib/authSession';
 import { claimMigration, type ClaimInput } from '@/lib/authMigration';
 import type { Member, Player } from '@/lib/types';
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
         secure: process.env.NODE_ENV === 'production',
       });
     }
-    await completeSignIn(res, { id: member.id, name: member.name, role: member.role }, resolveGroupId(req));
+    await completeSignIn(res, { id: member.id, name: member.name, role: member.role }, explicitGroupId(req) ?? claim.groupId ?? resolveGroupId(req));
     return res;
   } catch (err) {
     console.error('POST /api/auth/migrate/claim failed:', err);

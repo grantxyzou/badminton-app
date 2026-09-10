@@ -14,6 +14,7 @@ import { isFlagOn } from '@/lib/flags';
 import { appOrigin, googleClient } from '@/lib/oauthProviders';
 import { createState, createCodeVerifier, setOAuthCookies } from '@/lib/oauthState';
 import { beginHandoff, isHandoffRef } from '@/lib/authHandoff';
+import { resolveGroupId } from '@/lib/groupContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,7 +65,7 @@ export async function GET(req: NextRequest) {
   const native = search.get('native') === '1';
   if (handoff) {
     try {
-      await beginHandoff(handoff, { state, codeVerifier, native });
+      await beginHandoff(handoff, { state, codeVerifier, native, groupId: resolveGroupId(req) });
     } catch (err) {
       console.error('handoff begin failed:', err);
     }

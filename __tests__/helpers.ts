@@ -219,7 +219,7 @@ export function getTestAdminName(): string {
  * Seed the test Member that admin tests authenticate as: `role: 'admin'`,
  * `active: true`, and `pinHash` derived from `TEST_PIN`. Idempotent.
  */
-export async function seedTestAdminMember() {
+export async function seedTestAdminMember(opts: { membership?: boolean } = {}) {
   const store = getStore();
   if (!store['members']) store['members'] = [];
   const existing = (store['members'] as Array<{ id: string }>).find(
@@ -228,6 +228,7 @@ export async function seedTestAdminMember() {
   const pinHash = await hashPin(TEST_PIN);
   if (existing) {
     Object.assign(existing, { role: 'admin', active: true, pinHash });
+    if (opts.membership !== false) seedAdminMembership();
     return existing;
   }
   const member = {
@@ -240,7 +241,27 @@ export async function seedTestAdminMember() {
     pinHash,
   };
   store['members'].push(member);
+  if (opts.membership !== false) seedAdminMembership();
   return member;
+}
+
+/**
+ * The test admin's BPM membership, seeded WITH the Member.
+ *
+ * With groups on, `Member.role` is not what admits an admin — the membership in
+ * the resolved group is (`isAdminAuthedWithMember`, `POST /api/admin`). So a
+ * seeded admin without one is an admin of nowhere, and every flag-on admin test
+ * had to remember to add it by hand or read as a 401 that looks like a routing
+ * bug. Flag OFF this row is inert: nothing reads `memberships` at all.
+ *
+ * `seedTestAdminMember({ membership: false })` opts out, for the one premise
+ * where it would be wrong: the BACKFILL, whose whole job is a deployment that
+ * has Members and no memberships yet.
+ */
+function seedAdminMembership() {
+  const rows = (getStore()['memberships'] ?? []) as { id: string }[];
+  if (rows.some((r) => r.id === `bpm:${TEST_ADMIN_MEMBER_ID}`)) return;
+  seedMembership('bpm', TEST_ADMIN_MEMBER_ID, { name: TEST_ADMIN_NAME, role: 'owner' });
 }
 
 /** The memberId carried by the test admin cookie — exported so tests can
