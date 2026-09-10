@@ -28,7 +28,6 @@ import { buildPlayerNotice, shouldNotify, type PlayerNotice } from '@/lib/string
 import { sendStringingNotice } from '@/lib/stringingNotifyEmail';
 import { sendPushToMembers } from '@/lib/push';
 import { buildStringingPayload, buildPendingEditPayload } from '@/lib/pushMessages';
-import { isFlagOn } from '@/lib/flags';
 import type { StringingJob, Member } from '@/lib/types';
 
 export interface NotifyOutcome {
@@ -49,7 +48,6 @@ export interface NotifyOutcome {
  * upstream of the email arm and must not be able to cost it.
  */
 async function pushToPlayer(notice: PlayerNotice, memberId: string): Promise<number> {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_PUSH_NOTIFY')) return 0;
   const payload = buildStringingPayload(notice);
   if (!payload) return 0;
   try {
@@ -127,9 +125,6 @@ export async function notifyPlayerOfStage(job: StringingJob): Promise<NotifyOutc
  */
 export async function notifyPlayerOfPendingEdit(job: StringingJob): Promise<NotifyOutcome> {
   try {
-    if (!isFlagOn('NEXT_PUBLIC_FLAG_PUSH_NOTIFY')) {
-      return { attempted: false, emailSent: false, pushSent: 0, reason: 'quiet_stage' };
-    }
     const payload = buildPendingEditPayload(job);
     // To this member's devices ONLY. A broadcast here would tell the whole club
     // about one person's racket.

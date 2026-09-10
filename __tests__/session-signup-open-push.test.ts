@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   resetMockStore,
   getStore,
@@ -47,11 +47,6 @@ describe('PUT /api/session — sign-up-open push trigger', () => {
     seedAdminMember();
     sendPushToAll.mockReset();
     sendPushToAll.mockResolvedValue({ configured: true, sent: 3, failed: 0, removed: 0 });
-    process.env.NEXT_PUBLIC_FLAG_PUSH_NOTIFY = 'true';
-  });
-
-  afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_PUSH_NOTIFY;
   });
 
   describe('edge detection', () => {
@@ -117,23 +112,6 @@ describe('PUT /api/session — sign-up-open push trigger', () => {
       await put({ signupOpen: true });
 
       expect(sessionDoc()?.signupOpenedAt).toBe(firstOpenedAt);
-    });
-  });
-
-  describe('flag gating', () => {
-    it('does not send when the flag is off, but still records signupOpenedAt', async () => {
-      delete process.env.NEXT_PUBLIC_FLAG_PUSH_NOTIFY;
-      seedSession('current-session', { signupOpen: false });
-
-      const res = await put({ signupOpen: true });
-
-      expect(res.status).toBe(200);
-      expect(sendPushToAll).not.toHaveBeenCalled();
-      expect(sessionDoc()?.signupOpenNotifiedAt).toBeUndefined();
-      // Plain session history, independent of the notification feature.
-      expect(sessionDoc()?.signupOpenedAt).toBeTruthy();
-
-      process.env.NEXT_PUBLIC_FLAG_PUSH_NOTIFY = 'true';
     });
   });
 

@@ -109,15 +109,6 @@ jobs:
           # zero callers, so nobody is told their racket is ready. Taking a real
           # racket before that is wired means remembering to tell them yourself.
           NEXT_PUBLIC_FLAG_STRINGING: 'true'
-          # ON as of 2026-08-28. Revived from PR #241; the VAPID pair now
-          # exists (public key in the repo variable below, private key +
-          # VAPID_SUBJECT in vnext App Settings), which is the precondition --
-          # the client reads the public key at BUILD time and subscribe()
-          # throws when it is undefined.
-          #
-          # Nobody is notified until they OPT IN on Profile -> Notifications,
-          # and only one trigger is wired: sign-ups opening.
-          NEXT_PUBLIC_FLAG_PUSH_NOTIFY: 'true'
           # The one-time link that carries a signed-in PWA identity into the
           # native shell (docs/plans/native-shell.md, WP5). Gates two
           # credential-minting routes SERVER-side and the "Move to the app"

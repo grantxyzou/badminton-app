@@ -92,8 +92,7 @@ describe('the announcement route notifies on CREATE only', () => {
     expect(patch).not.toContain('sendPushToAll');
   });
 
-  it('is behind the push flag, and persists before it notifies', () => {
-    expect(src).toContain("isFlagOn('NEXT_PUBLIC_FLAG_PUSH_NOTIFY')");
+  it('persists before it notifies', () => {
     // Scoped to the POST BODY: `sendPushToAll` also appears in the import at
     // the top of the file, which made a whole-file index comparison
     // meaningless. The claim is about order WITHIN the handler.

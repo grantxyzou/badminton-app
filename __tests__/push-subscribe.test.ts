@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { POST, DELETE } from '../app/api/push/subscribe/route';
 import { resetMockStore, getStore, setupAdminPin, makeRequest, memberCookieValue } from './helpers';
 import type { PushSubscriptionDoc } from '../lib/types';
@@ -33,27 +33,6 @@ describe('/api/push/subscribe', () => {
   beforeEach(() => {
     resetMockStore();
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_PUSH_NOTIFY = 'true';
-  });
-
-  afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_PUSH_NOTIFY;
-  });
-
-  describe('flag gating', () => {
-    it('POST 404s when the flag is off', async () => {
-      delete process.env.NEXT_PUBLIC_FLAG_PUSH_NOTIFY;
-      const res = await POST(postAs('Lin', validSub()));
-      expect(res.status).toBe(404);
-      process.env.NEXT_PUBLIC_FLAG_PUSH_NOTIFY = 'true';
-    });
-
-    it('DELETE 404s when the flag is off', async () => {
-      delete process.env.NEXT_PUBLIC_FLAG_PUSH_NOTIFY;
-      const res = await DELETE(deleteAs('Lin', { endpoint: validSub().endpoint }));
-      expect(res.status).toBe(404);
-      process.env.NEXT_PUBLIC_FLAG_PUSH_NOTIFY = 'true';
-    });
   });
 
   describe('auth', () => {
