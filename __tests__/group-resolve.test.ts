@@ -12,6 +12,7 @@ import {
   makeRequest,
   makeAdminRequest,
   makeGetRequest,
+  adminCookieValue,
   ADMIN_MEMBER_ID,
 } from './helpers';
 import { resolveActiveMemberId, resolveActiveSubject } from '@/lib/memberResolve';
@@ -335,5 +336,33 @@ describe('/api/admin/settings', () => {
     me.skipDates = ['2026-10-01'];
     const got = await settingsGet(makeGetRequest('http://x/api/admin/settings', true));
     expect(await got.json()).toEqual({ eTransferRecipient: null, skipDates: ['2026-10-01'] });
+  });
+});
+
+describe('a taken roster name says so', () => {
+  /**
+   * A roster name is unique inside a club BY CONSTRUCTION — the reservation
+   * doc's id is the name, so a second claim 409s on insert. That makes the
+   * constraint impossible to discover in advance, which makes this 409 the only
+   * moment it is ever visible. It has to carry both a machine code and prose
+   * that says what to do about it.
+   */
+  it('names the constraint and the fix, with a code the client can branch on', async () => {
+    on();
+    seedGroup('bpm');
+    const lin = seedMember('Lin');
+    await addMembership({ groupId: 'bpm', memberId: lin.id, name: 'Lin', joinedVia: 'admin' });
+
+    const res = await membersPost(
+      makeRequest('POST', 'http://x/api/members', { name: 'lin' }, { Cookie: `admin_session=${adminCookieValue({ groupId: 'bpm' })}` }),
+    );
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe('roster_name_taken');
+    // Says it is a per-CLUB rule and that a distinct name is the way out —
+    // "Member already exists" said neither, and an admin could not tell a
+    // double-add from a genuine clash between two different people.
+    expect(body.error).toMatch(/roster/i);
+    expect(body.error).toMatch(/distinct|last initial/i);
   });
 });

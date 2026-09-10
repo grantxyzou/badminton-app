@@ -100,7 +100,9 @@ describe('POST /api/members', () => {
 
     // ASSERT
     expect(res.status).toBe(409);
-    expect(data.error).toBe('Member already exists');
+    // The code is the contract; the prose is for the admin reading it.
+    expect(data.code).toBe('member_exists');
+    expect(data.error).toMatch(/already exists/i);
   });
 
   it('empty name → 400', async () => {

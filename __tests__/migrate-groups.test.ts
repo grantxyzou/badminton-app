@@ -427,6 +427,63 @@ describe('drift between runs — the flag is OFF for the whole backfill window',
   });
 });
 
+describe('names two people want', () => {
+  /**
+   * A roster name is unique inside a club BY CONSTRUCTION, so a clash cannot be
+   * created and therefore cannot be found by looking. It only becomes visible
+   * when somebody is standing in front of it. These counts are the advance
+   * warning, and they live in the read an operator already opens.
+   */
+  it('counts a duplicate name, and the REMOVED member it strands', async () => {
+    // Removal releases a name, so a live member can take it. Now the removed
+    // one cannot come back under their own name at all.
+    seedMember('Chris');
+    seedMember('chris', { active: false });
+    expect((await backfillStatus()).names).toEqual({ duplicates: 1, blockedRejoins: 1, similar: 0 });
+  });
+
+  it('counts blockedRejoins per MEMBER, not per name', async () => {
+    // One live Chris and two removed ones strands TWO people, and the number
+    // is read as "how many can't come back".
+    seedMember('Chris');
+    seedMember('chris', { active: false });
+    seedMember('CHRIS', { active: false });
+    expect((await backfillStatus()).names).toMatchObject({ duplicates: 1, blockedRejoins: 2 });
+  });
+
+  it('does NOT call a punctuation variant blocked — the reservation keys differ', async () => {
+    // `Chris L.` and `chris l` reserve DIFFERENT ids, so the rejoin succeeds
+    // and calling it blocked would send the operator to rename for nothing.
+    // It surfaces as `similar`, which claims nothing about behaviour.
+    seedMember('Chris L.');
+    seedMember('chris l', { active: false });
+    expect((await backfillStatus()).names).toEqual({ duplicates: 0, blockedRejoins: 0, similar: 1 });
+  });
+
+  it('sees a NON-LATIN name, which the first cut folded to nothing and skipped', async () => {
+    // zh-CN is a first-class locale. Stripping to `[a-z0-9]` made every CJK
+    // name normalise to '' — so a roster of them reported a serene zero while
+    // the backfill itself refused on the collision.
+    seedMember('林丹');
+    seedMember('林丹', { active: false });
+    expect((await backfillStatus()).names).toMatchObject({ duplicates: 1, blockedRejoins: 1 });
+  });
+
+  it('counts two INACTIVE namesakes as a duplicate but not a blocked rejoin', async () => {
+    // Nobody holds the name, so either could come back under it. Worth seeing,
+    // not worth acting on.
+    seedMember('Chris', { active: false });
+    seedMember('chris', { active: false });
+    expect((await backfillStatus()).names).toEqual({ duplicates: 1, blockedRejoins: 0, similar: 0 });
+  });
+
+  it('is zero for a clean roster — which is what production reads', async () => {
+    seedMember('Lin');
+    seedMember('Viktor', { active: false });
+    expect((await backfillStatus()).names).toEqual({ duplicates: 0, blockedRejoins: 0, similar: 0 });
+  });
+});
+
 describe('the status read is what the cutover is gated on', () => {
   it('caps a large count and says so, but zero is always exact', async () => {
     seedSession('session-2026-09-03', { datetime: '2026-09-03T19:00:00-07:00' });
