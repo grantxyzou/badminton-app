@@ -88,7 +88,28 @@ jobs:
           # the step above restores .claude/, CLAUDE.md and friends from
           # origin/main precisely because the PR head is untrusted.
           claude_args: |
-            --allowedTools "Read,Grep,Glob,Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*)"
+            --allowedTools "Skill,Agent,Read,Grep,Glob,Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*)"
+          #
+          # `Skill` and `Agent` were added 2026-09-10 because WITHOUT THEM THE
+          # REVIEW DOES NOT HAPPEN. The prompt above invokes
+          # `/code-review:code-review`, which needs `Skill` to execute at all —
+          # denied, it surfaces as `tool errors: Execute skill:
+          # code-review:code-review` and sometimes as the CLI fallback
+          # misreading the argument ("no pull requests found for branch
+          # grantxyzou/badminton-app/pull/NNN", 6 of 21 observed runs). And that
+          # command is built ENTIRELY on subagents: three Haiku steps, five
+          # parallel Sonnet reviewers, one Haiku confidence score per issue.
+          # With `Agent` denied, a lone agent improvised the lot — sometimes a
+          # full 50-turn review that found real bugs (#342), sometimes nothing
+          # at all.
+          #
+          # Canary #356 planted five REVIEW.md-named defects (pinHash in a
+          # response, sync isAdminAuthed on two mutating handlers, a lying empty
+          # state, Math.random() for an id, a wrong partition key) and the bot
+          # posted ZERO comments on every surface across TWO runs. That is the
+          # fifth way this job has been quietly not-working, and the first one
+          # caught by a canary rather than by accident.
+          #
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
