@@ -22,6 +22,7 @@ import { setPendingSignup } from '@/lib/pendingSignup';
 import { clearOAuthCookies } from '@/lib/oauthState';
 import { completeHandoff, readHandoff } from '@/lib/authHandoff';
 import type { Member } from '@/lib/types';
+import { resolveGroupId } from '@/lib/groupContext';
 
 export interface ProviderClaims {
   provider: Extract<AuthProvider, 'google' | 'apple'>;
@@ -195,7 +196,7 @@ export async function finishOAuthCallback(
         landing(origin, { signedIn: '1', provider: claims.provider, ...nativeParam }),
       );
       clearOAuthCookies(res);
-      completeSignIn(res, member);
+      await completeSignIn(res, member, resolveGroupId(req));
       return res;
     }
     // Parking failed (expired or swept). Fall through: Safari is still signed
@@ -209,6 +210,6 @@ export async function finishOAuthCallback(
   // leaving a stale admin_session alive for a non-admin. Verified, and
   // pinned by __tests__/auth-cookie-order.test.ts.
   clearOAuthCookies(res);
-  completeSignIn(res, member);
+  await completeSignIn(res, member, resolveGroupId(req));
   return res;
 }

@@ -291,7 +291,7 @@ async function handlePatch(req: NextRequest) {
   // POST /api/players so a member who sets their PIN in Profile isn't asked
   // for it again on the Home sign-up card.
   if (!clearPin) {
-    setMemberCookie(out, String(member.id), String(member.name));
+    setMemberCookie(out, String(member.id), String(member.name), resolveGroupId(req));
   }
   return out;
 }

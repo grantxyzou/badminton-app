@@ -15,6 +15,7 @@ import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { canClaim, isPending } from '@/lib/accessRequest';
 import { setMemberCookie } from '@/lib/auth';
 import type { Member } from '@/lib/types';
+import { resolveGroupId } from '@/lib/groupContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
            who forgot theirs already knows what a PIN is. */
         hasPin: typeof member.pinHash === 'string' && member.pinHash.length > 0,
       });
-      setMemberCookie(res, member.id, member.name);
+      setMemberCookie(res, member.id, member.name, resolveGroupId(req));
       return res;
     }
 

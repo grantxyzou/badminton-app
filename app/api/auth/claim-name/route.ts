@@ -40,6 +40,7 @@ import { reserveIdentity, releaseIdentity, normalizeEmail } from '@/lib/authIden
 import { readPendingSignup, clearPendingSignup } from '@/lib/pendingSignup';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import type { Member } from '@/lib/types';
+import { resolveGroupId } from '@/lib/groupContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -183,7 +184,7 @@ export async function POST(req: NextRequest) {
     // leaving a stale admin_session alive for a non-admin. Verified, and
     // pinned by __tests__/auth-cookie-order.test.ts.
     clearPendingSignup(res);
-    completeSignIn(res, updated);
+    await completeSignIn(res, updated, resolveGroupId(req));
     return res;
   } catch (err) {
     // A Cosmos throttle must be distinguishable from a wrong PIN, or the

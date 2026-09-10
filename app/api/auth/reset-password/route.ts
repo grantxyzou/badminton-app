@@ -19,6 +19,7 @@ import { checkToken } from '@/lib/authToken';
 import { completeSignIn } from '@/lib/authSession';
 import { normalizeEmail, lookupIdentity, MAX_EMAIL_LENGTH } from '@/lib/authIdentity';
 import type { Member } from '@/lib/types';
+import { resolveGroupId } from '@/lib/groupContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
     await container.items.upsert(updated);
 
     const res = NextResponse.json({ ok: true, id: member.id, name: member.name });
-    completeSignIn(res, updated);
+    await completeSignIn(res, updated, resolveGroupId(req));
     return res;
   } catch (err) {
     console.error('POST /api/auth/reset-password unhandled:', err);

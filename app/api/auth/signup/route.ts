@@ -54,6 +54,7 @@ import {
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { outboundOriginOrNull } from '@/lib/appOrigin';
 import type { Member } from '@/lib/types';
+import { resolveGroupId } from '@/lib/groupContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -158,7 +159,7 @@ export async function POST(req: NextRequest) {
       { id: memberId, name, email, emailVerified: false, verificationSent: sent },
       { status: 201 },
     );
-    completeSignIn(res, member);
+    await completeSignIn(res, member, resolveGroupId(req));
     return res;
   } catch (err) {
     // Free the address so this person can try again, and so it is not blocked

@@ -315,6 +315,43 @@ export async function listMembershipsForMember(memberId: string): Promise<Member
   return ((resources ?? []) as Membership[]).filter((r) => r.memberId === memberId && isMembershipRow(r));
 }
 
+/** Owner or admin of a group — the roles that mint an `admin_session` there. */
+export const GROUP_ADMIN_ROLES: ReadonlySet<MembershipRole> = new Set<MembershipRole>(['owner', 'admin']);
+
+/**
+ * THE ONE definition of "is an admin of this group": an ACTIVE membership
+ * whose role is owner or admin. `lib/auth.ts`, `lib/authSession.ts` and the
+ * admin login route all call this rather than restating it — a rule added to
+ * a shared function is worthless if a caller reimplemented it.
+ */
+export function isGroupAdminMembership(m: Membership | undefined): m is Membership {
+  return !!m && m.status === 'active' && GROUP_ADMIN_ROLES.has(m.role);
+}
+
+/** The membership if it admits `memberId` as an admin of `groupId`, else undefined. */
+export async function readGroupAdmin(groupId: string, memberId: string): Promise<Membership | undefined> {
+  const m = await readMembership(groupId, memberId);
+  return isGroupAdminMembership(m) ? m : undefined;
+}
+
+/**
+ * Change one person's role in one group. `owner` is not assignable here —
+ * ownership moves only through `reassignOwnership`, so a group can never have
+ * two owners or none. Resolves `undefined` when there is no active
+ * membership to change.
+ */
+export async function setMembershipRole(
+  groupId: string,
+  memberId: string,
+  role: Exclude<MembershipRole, 'owner'>,
+): Promise<Membership | undefined> {
+  await ensureReady();
+  const m = await readMembership(groupId, memberId);
+  if (!m || m.status !== 'active' || m.role === 'owner') return undefined;
+  if (m.role === role) return m;
+  return groupScope(groupId).replace('memberships', { ...m, role }, groupId);
+}
+
 // ---------------------------------------------------------------------------
 // Ownership
 // ---------------------------------------------------------------------------

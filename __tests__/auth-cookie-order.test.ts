@@ -28,20 +28,20 @@ import { clearOAuthCookies } from '../lib/oauthState';
 beforeEach(() => setupAdminPin());
 
 describe('cookie ordering — behaviour', () => {
-  it('a cookies.set after completeSignIn DOES drop the admin clears', () => {
+  it('a cookies.set after completeSignIn DOES drop the admin clears', async () => {
     // Pinning the hazard itself, so the reason for the rule stays visible.
     const res = NextResponse.json({ ok: true });
-    completeSignIn(res, { id: 'm1', name: 'Lin', role: 'member' });
+    await completeSignIn(res, { id: 'm1', name: 'Lin', role: 'member' }, 'bpm');
     expect(res.headers.getSetCookie().filter((h) => h.startsWith('admin_session=;'))).toHaveLength(2);
 
     clearOAuthCookies(res); // the mistake
     expect(res.headers.getSetCookie().filter((h) => h.startsWith('admin_session=;'))).toHaveLength(0);
   });
 
-  it('clearing BEFORE completeSignIn keeps them', () => {
+  it('clearing BEFORE completeSignIn keeps them', async () => {
     const res = NextResponse.json({ ok: true });
     clearOAuthCookies(res);
-    completeSignIn(res, { id: 'm1', name: 'Lin', role: 'member' });
+    await completeSignIn(res, { id: 'm1', name: 'Lin', role: 'member' }, 'bpm');
 
     const headers = res.headers.getSetCookie();
     expect(headers.filter((h) => h.startsWith('admin_session=;'))).toHaveLength(2);
@@ -69,7 +69,7 @@ describe('cookie ordering — structure', () => {
     .map((f) => f.replace(process.cwd() + '/', ''))
     .filter((f) => readFileSync(f, 'utf8').includes('completeSignIn(res'));
 
-  it('finds the sign-in terminus call sites', () => {
+  it('finds the sign-in terminus call sites', async () => {
     expect(files.length).toBeGreaterThanOrEqual(3);
   });
 
