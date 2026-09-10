@@ -10,7 +10,7 @@ import { buildProfile } from '@/lib/racketProfile';
 import { recommendRackets } from '@/lib/racketRecommend';
 import { recommendFit, comfortTensionDeltaLb, FIT_ENGINE_VERSION } from '@/lib/racketFit';
 import { fitReasonTexts } from '@/lib/fitReasonText';
-import { pairString, pairTension } from '@/lib/stringPair';
+import { pairString } from '@/lib/stringPair';
 import { getCanonicalLevel } from '@/lib/levelStore';
 import { buildPickReasons, buildPickReasonKeys } from '@/lib/pickReasons';
 import { tallyClubGear, type ClubGearEntry } from '@/lib/clubGear';
@@ -229,7 +229,13 @@ export async function GET(req: NextRequest) {
         // unscorable — a catalog problem, the same one the racket card reports.
         if (!frame) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
 
-        const pairing = pairString(frame, catalogItems as CatalogItem[], profile);
+        // A sore arm lowers the tension a pound or two inside the frame's
+        // rated window — the one comfort effect the evidence supports. The
+        // SAME delta scores the candidates and names the tension below, or
+        // the card would name a string that won at a tension it then tells
+        // the member not to use.
+        const tensionDelta = comfortTensionDeltaLb(gear?.fitArmComfort);
+        const pairing = pairString(frame, catalogItems as CatalogItem[], profile, tensionDelta);
         // Every candidate rejected by the tension gate. Not a failure and not
         // a catalog gap: this frame genuinely has no compatible string here.
         if (!pairing) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
@@ -252,9 +258,7 @@ export async function GET(req: NextRequest) {
           // carries those. See `StringPairing.provenance`.
           provenance: pairing.provenance,
           pairedWith: { label: `${frame.brand} ${frame.model}`, source },
-          // A sore arm lowers the tension a pound or two inside the frame's
-          // rated window — the one comfort effect the evidence supports.
-          tensionLbs: pairTension(frame, pairing.item, profile, comfortTensionDeltaLb(gear?.fitArmComfort)),
+          tensionLbs: pairing.tensionLbs,
         });
       }
 

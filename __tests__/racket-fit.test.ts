@@ -4,7 +4,7 @@ import {
   resolveFitState, fitLevel, GOAL_DELTA, FIT_REASON_KEYS, canon, comfortTensionDeltaLb, anchorStifferThanSwing,
   type FitInput,
 } from '../lib/racketFit';
-import { pairTension } from '../lib/stringPair';
+import { pairTension, pairString } from '../lib/stringPair';
 import type { PlayerProfile } from '../lib/racketProfile';
 import type { CatalogItem } from '../lib/types';
 import en from '../messages/en.json';
@@ -94,20 +94,25 @@ describe('target — anchor plus goal delta, then ceilings', () => {
 
   it('comfort caps weight and head-heaviness and lowers tension — it never touches flex or the target', () => {
     const sometimes = buildTarget(input({ anchor: ANCHOR, goal: 'more_power', swing: 'fast', armComfort: 'sometimes_sore' }), anchorAxes);
-    expect(sometimes).toMatchObject({ flexCeil: 5, weightCeil: 85, balanceCeil: null, balance: 3, tensionDeltaLb: -1 });
+    expect(sometimes).toMatchObject({ flexCeil: 5, weightCeil: 85, balanceCeil: null, balance: 3 });
     const often = buildTarget(input({ anchor: ANCHOR, goal: 'more_power', swing: 'fast', armComfort: 'often_sore' }), anchorAxes);
-    expect(often).toMatchObject({ flexCeil: 5, weightCeil: 83, balanceCeil: 2, balance: 3, tensionDeltaLb: -2 });
+    expect(often).toMatchObject({ flexCeil: 5, weightCeil: 83, balanceCeil: 2, balance: 3 });
+    expect(comfortTensionDeltaLb('sometimes_sore')).toBe(-1);
+    expect(comfortTensionDeltaLb('often_sore')).toBe(-2);
     expect(comfortTensionDeltaLb('fine')).toBe(0);
     expect(comfortTensionDeltaLb(undefined)).toBe(0);
   });
 
   it('the comfort delta reaches the string engine, inside the frame’s rated window', () => {
     const frame = racket('f', { balance: 'Even', flex: 'Medium', tier: 'Mid-range', tensionMinLbs: 20, tensionMaxLbs: 26 });
-    const string = racket('s', { tensionMinLbs: 20, tensionMaxLbs: 30 });
+    const string = { ...racket('s', { tensionMinLbs: 20, tensionMaxLbs: 30 }), category: 'string' } as CatalogItem;
     const profile = { serves: 5, net_play: 5, clears: 5, drops: 5, drives: 5, smashes: 5, grip: 5, footwork: 5, court_coverage: 5, stamina: 5, game_reading: 5, consistency: 5, rules: 5, mindset: 5, format: 'both', ratedKeys: [] } as unknown as PlayerProfile;
     const base = pairTension(frame, string, profile)!;
     expect(pairTension(frame, string, profile, -2)).toBe(Math.max(20, base - 2));
     expect(pairTension(frame, string, profile, -40)).toBe(20); // never below the overlap
+    // And the pairing SCORES at the eased tension it names — one delta, both places.
+    const eased = pairString(frame, [string], profile, -2)!;
+    expect(eased.tensionLbs).toBe(pairTension(frame, string, profile, -2));
   });
 
   it('names the anchor as the problem when it sits two flex steps above the swing', () => {
@@ -169,6 +174,15 @@ describe('scoring — one place per axis, ceilings warn and penalise, nothing is
     const inter = input({ level: 'Intermediate', swing: 'medium' });
     const premiumMid = racket('prem2', { balance: 'Even', flex: 'Medium-Stiff', tier: 'Premium', weightMinG: 83, weightMaxG: 87 });
     expect(scoreFit(premiumMid, axesOf(premiumMid)!, buildTarget(inter, null), inter, null).penalty).toBeCloseTo(6 / 1.3, 5);
+    // "Up" is past the TARGET's tier. A Beginner already playing a Premium
+    // anchor is not steered down from it: Premium costs 0, and Entry pays the
+    // ordinary 6 per step DOWN.
+    const anchoredBeginner = input({ level: 'Beginner', anchor: ANCHOR, goal: 'happy', swing: 'fast' });
+    const tA = buildTarget(anchoredBeginner, axesOf(ANCHOR)!);
+    const premTwin = racket('ptwin', { balance: 'Head-heavy', flex: 'Stiff', tier: 'Premium', playStyle: 'Power' });
+    const entryTwin = racket('etwin', { balance: 'Head-heavy', flex: 'Stiff', tier: 'Entry-level', playStyle: 'Power' });
+    expect(scoreFit(premTwin, axesOf(premTwin)!, tA, anchoredBeginner, axesOf(ANCHOR)).penalty).toBe(0);
+    expect(scoreFit(entryTwin, axesOf(entryTwin)!, tA, anchoredBeginner, axesOf(ANCHOR)).penalty).toBe(12);
   });
 
   it('a frame above the flex ceiling is penalised AND warned, never dropped', () => {
@@ -286,10 +300,43 @@ describe('ranking, exclusion and alternatives', () => {
     expect(withSwing.top!.reasons.map((x) => x.key)).not.toContain('reason.swingUnanswered');
   });
 
-  it('leads with the anchor being the problem when it is stiffer than the swing wants', () => {
-    const r = recommendFit(input({ anchor: ANCHOR, goal: 'happy', swing: 'slow', ownedIds: new Set(['anchor']) }), catalog);
+  it('leads with the anchor being the problem when it is stiffer than the swing wants — one lead, and only when the pick IS softer', () => {
+    // The shared catalog has nothing softer than Stiff; give it one row a
+    // relaxed swing can use, and that row wins.
+    const soft = [...catalog, racket('soft', { balance: 'Head-heavy', flex: 'Medium', tier: 'Premium', playStyle: 'Power' })];
+    const r = recommendFit(input({ anchor: ANCHOR, goal: 'happy', swing: 'slow', ownedIds: new Set(['anchor']) }), soft);
+    expect(r.top!.item.id).toBe('soft');
     expect(r.top!.reasons[0]).toEqual({ key: 'reason.anchorStifferThanSwing', params: { model: 'Astrox 88D Pro' } });
     expect(r.target!.flex).toBe(2);
+    // The lead ladder is exclusive: no second lead sentence stacks under it,
+    // and "like yours" (a claim about the anchor) does not follow a lead
+    // that says the anchor is wrong.
+    const keys = r.top!.reasons.map((x) => x.key);
+    expect(keys.filter((k) => ['reason.anchoredDefault', 'reason.swingUnanswered', 'reason.levelOnly', 'reason.unanchored'].includes(k))).toEqual([]);
+    expect(keys).not.toContain('reason.likeYours');
+    // Same anchor, no goal, slow swing: still one lead, the stiffness one.
+    const d = recommendFit(input({ anchor: ANCHOR, swing: 'slow', ownedIds: new Set(['anchor']) }), soft);
+    expect(d.top!.reasons.map((x) => x.key).filter((k) => k.startsWith('reason.anchor'))).toEqual(['reason.anchorStifferThanSwing']);
+    // When nothing softer exists, the claim is not made — the shared catalog
+    // is exactly that case, and the pick falls back to the ordinary lead.
+    const stiffOnly = recommendFit(input({ anchor: ANCHOR, goal: 'happy', swing: 'slow', ownedIds: new Set(['anchor']) }), catalog);
+    expect(stiffOnly.top!.reasons.map((x) => x.key)).not.toContain('reason.anchorStifferThanSwing');
+  });
+
+  it('"less fatigue" credits a lighter swing-weight, never a softer shaft', () => {
+    const inp = input({ anchor: ANCHOR, goal: 'less_fatigue', swing: 'fast' });
+    const t = buildTarget(inp, axesOf(ANCHOR)!);
+    const even = racket('even', { balance: 'Even', flex: 'Stiff', tier: 'Premium' });
+    const softer = racket('soft', { balance: 'Head-heavy', flex: 'Medium-Stiff', tier: 'Premium' });
+    expect(scoreFit(even, axesOf(even)!, t, inp, axesOf(ANCHOR)).reasons.map((x) => x.key)).toContain('reason.fatigueStep');
+    expect(scoreFit(softer, axesOf(softer)!, t, inp, axesOf(ANCHOR)).reasons.map((x) => x.key)).not.toContain('reason.fatigueStep');
+  });
+
+  it('"headroom" is never said of a frame stiffer than the target', () => {
+    const inp = input({ level: 'Beginner', swing: 'fast' }); // target flex 3, ceiling 5
+    const t = buildTarget(inp, null);
+    const stiff = racket('stiff', { balance: 'Even', flex: 'Stiff', tier: 'Entry-level' });
+    expect(scoreFit(stiff, axesOf(stiff)!, t, inp, null).reasons.map((x) => x.key)).not.toContain('reason.flexHeadroom');
   });
 
   it('leads the unanchored and level-only states with a reason that says so', () => {

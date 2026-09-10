@@ -337,6 +337,10 @@ export interface StringPairing {
    * disappearing. Nothing renders it; `/api/recommend` does not forward it.
    */
   systemPower: { value: number; target: number };
+  /** The tension this pairing was SCORED at (comfort delta applied), in
+   *  lbs; null for the ceiling-less frames. The route names this number —
+   *  never a second `pairTension` call that could disagree with it. */
+  tensionLbs: number | null;
 }
 
 interface ScoreResult {
@@ -581,6 +585,9 @@ export function pairString(
   racket: CatalogItem,
   strings: CatalogItem[],
   profile: PlayerProfile,
+  /** The fit engine's comfort delta (`comfortTensionDeltaLb`). Scored AND
+   *  displayed at the same eased tension — the 2026-08-21 lesson below. */
+  deltaLb = 0,
 ): StringPairing | null {
   const dims = aceDims(profile);
   // V2: one definition of Advanced, shared with the racket engine.
@@ -607,7 +614,7 @@ export function pairString(
        `pairTension` returns null for the 11 ceiling-less frames, which is the
        old behaviour exactly — so this degrades to the previous result
        precisely where it has no better answer. */
-    const recommendedTension = pairTension(racket, s, profile);
+    const recommendedTension = pairTension(racket, s, profile, deltaLb);
 
     // A tension CAVEAT keeps its front slot; only the generic window-width
     // description is demoted (below). Demoting both pushed "ceiling
@@ -671,6 +678,7 @@ export function pairString(
       best = {
         item: s, score, reasons, warnings, provenance,
         systemPower: { value: power.system, target: power.target },
+        tensionLbs: recommendedTension,
       };
     }
   }

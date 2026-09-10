@@ -98,9 +98,6 @@ export interface TargetSpec {
   /** False when the swing was not answered: the flex axis is then a guess
    *  the reasons say so about, and the tolerance is widened. */
   swingKnown: boolean;
-  /** What comfort asks of the STRING engine, in lbs (0, −1 or −2). The
-   *  racket target never moves for it; `pairTension` applies it. */
-  tensionDeltaLb: number;
 }
 
 export interface FitResult {
@@ -253,7 +250,9 @@ export const GOAL_DELTA: Record<FitGoal, { balance: number | 'toward2'; flex: nu
 };
 
 /** What a sore arm asks of the string engine, in lbs. The one comfort effect
- *  the literature supports directly: lower tension lowers elbow load. */
+ *  the literature supports directly: lower tension lowers elbow load. Not
+ *  part of the racket target: the route hands it to `pairString`, which
+ *  scores and names the string at the same eased tension. */
 export const COMFORT_TENSION_DELTA_LB: Record<FitArmComfort, number> = { fine: 0, sometimes_sore: -1, often_sore: -2 };
 export function comfortTensionDeltaLb(c: FitArmComfort | undefined): number {
   return c ? COMFORT_TENSION_DELTA_LB[c] : 0;
@@ -306,7 +305,6 @@ export function buildTarget(input: FitInput, anchorAxes: Axes | null): TargetSpe
   return {
     balance, flex, weight, tier: base.tier, style, flexCeil, weightCeil, balanceCeil,
     sigma: Math.round(sigma * 100) / 100, anchored, swingKnown,
-    tensionDeltaLb: comfortTensionDeltaLb(input.armComfort),
   };
 }
 
@@ -332,8 +330,10 @@ interface Scored {
 /** Grams at 1.2 × up to 10 g = 12, about half a balance step: the gram axis
  *  is a tie-break next to balance, per Cross 2006. */
 export const WEIGHTS = { balance: 22, flex: 12, weight: 1.2, tier: 6 } as const;
-/** A Beginner reaching UP a tier pays double — reordered toward the Entry and
- *  Mid rows that fit as well, never excluded from a Premium frame. */
+/** A Beginner reaching UP past the TARGET's tier pays double — the level row's
+ *  tier (Entry) when unanchored, the anchor's own tier when anchored, so a
+ *  Beginner who already plays Premium is not steered down from it. Reordered
+ *  toward the rows that fit as well, never excluded from a Premium frame. */
 export const TIER_UP_BEGINNER = 12;
 const WEIGHT_DELTA_CAP = 10;
 const CAP_FLEX = 10;
@@ -381,13 +381,21 @@ export function scoreFit(item: CatalogItem, axes: Axes, target: TargetSpec, inpu
   // Reasons — fixed order, only when true, at most four.
   if (target.anchored && anchorAxes) {
     const goal = input.goal ?? 'happy';
-    const closeOnEveryAxis = dBalance <= 1 && dFlex <= 1 && dTier <= 1
+    // "Like yours" is a claim about the ANCHOR on every axis — the target's
+    // flex can sit two steps under the anchor once the swing caps it, and a
+    // frame that close to the target is not "the same feel" as the racket.
+    const closeOnEveryAxis = Math.abs(axes.balance - anchorAxes.balance) <= 1
+      && Math.abs(axes.flex - anchorAxes.flex) <= 1
+      && Math.abs(axes.tier - anchorAxes.tier) <= 1
       && (axes.weight === null || anchorAxes.weight === null || Math.abs(axes.weight - anchorAxes.weight) <= 2);
+    const lighter = axes.weight !== null && anchorAxes.weight !== null && axes.weight < anchorAxes.weight;
     const movesGoalAxis =
       (goal === 'more_power' && (axes.balance > anchorAxes.balance || (axes.weight !== null && anchorAxes.weight !== null && axes.weight > anchorAxes.weight)))
       || (goal === 'more_control' && axes.flex > anchorAxes.flex)
-      || (goal === 'faster' && (axes.balance < anchorAxes.balance || (axes.weight !== null && anchorAxes.weight !== null && axes.weight < anchorAxes.weight)))
-      || (goal === 'less_fatigue' && ((axes.weight !== null && anchorAxes.weight !== null && axes.weight < anchorAxes.weight) || axes.flex < anchorAxes.flex));
+      || (goal === 'faster' && (axes.balance < anchorAxes.balance || lighter))
+      // Less fatigue is a swing-weight goal: less head-heavy or lighter. Flex
+      // is not on the list — the file header says why.
+      || (goal === 'less_fatigue' && (axes.balance < anchorAxes.balance || lighter));
     const model = anchorLabel(input.anchor!);
     if (goal === 'happy' && closeOnEveryAxis) reasons.push({ key: 'reason.likeYours', params: { model } });
     else if (goal === 'more_power' && movesGoalAxis) reasons.push({ key: 'reason.powerStep', params: { model } });
@@ -397,8 +405,11 @@ export function scoreFit(item: CatalogItem, axes: Axes, target: TargetSpec, inpu
   }
   // Both flex sentences are claims about the swing; neither is made when the
   // swing was not answered — "headroom" against a ceiling nobody set is noise.
+  // "Headroom" is praise for a frame one step UNDER the ceiling and no
+  // stiffer than the target; a frame being penalised for being too stiff
+  // must not be told it has room.
   if (target.swingKnown && dFlex === 0) reasons.push({ key: 'reason.flexFitsSwing', params: { flex: FLEX_NAME[axes.flex] } });
-  else if (target.swingKnown && axes.flex === target.flexCeil - 1) reasons.push({ key: 'reason.flexHeadroom', params: { flex: FLEX_NAME[axes.flex] } });
+  else if (target.swingKnown && axes.flex === target.flexCeil - 1 && axes.flex <= target.flex) reasons.push({ key: 'reason.flexHeadroom', params: { flex: FLEX_NAME[axes.flex] } });
   if (input.format === 'doubles' && sub === 'doubles') reasons.push({ key: 'reason.doublesBuilt' });
   else if (input.format === 'singles' && axes.balance === 3) reasons.push({ key: 'reason.singlesRear' });
   else if (input.format === 'both' && axes.balance === 2) reasons.push({ key: 'reason.evenVersatile' });
@@ -508,9 +519,11 @@ export function recommendFit(input: FitInput, catalog: CatalogItem[]): FitResult
   const top = scored[0];
   if (!top) return { fitState, top: null, alternatives: [], target };
 
+  // ONE lead sentence, never two: the ladder is exclusive. "Softer on
+  // purpose" is only said when the top pick actually is softer.
   const lead: FitReason[] = [];
-  if (anchorStifferThanSwing(target, anchorAxes)) lead.push({ key: 'reason.anchorStifferThanSwing', params: { model: anchorLabel(input.anchor!) } });
-  if (fitState === 'anchored_default') lead.push({ key: 'reason.anchoredDefault', params: { model: anchorLabel(input.anchor!) } });
+  if (anchorStifferThanSwing(target, anchorAxes) && top.axes.flex < anchorAxes!.flex) lead.push({ key: 'reason.anchorStifferThanSwing', params: { model: anchorLabel(input.anchor!) } });
+  else if (fitState === 'anchored_default') lead.push({ key: 'reason.anchoredDefault', params: { model: anchorLabel(input.anchor!) } });
   else if (fitState === 'anchored' && !target.swingKnown) lead.push({ key: 'reason.swingUnanswered' });
   else if (fitState === 'unanchored') lead.push({ key: 'reason.unanchored' });
   else if (fitState === 'level_only') lead.push({ key: 'reason.levelOnly' });

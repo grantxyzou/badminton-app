@@ -25,7 +25,7 @@ inputs, so the design starts by asking what a fitting asks.
 | D2 | Current racket is the ANCHOR; the goal is a delta from it | "Happy with it, want more power" is the most predictive fitting question and it uses the kit the member already logged. |
 | D3 | Comfort and swing are CEILINGS, not target moves | A sore arm is a constraint. Rows above a ceiling stay ranked, penalised and warned — a 0-score frame is legible, an excluded one is not. **fit-2:** swing is the ONLY input that caps flex; comfort caps weight and head-heaviness and lowers string tension, never flex — the elbow-load evidence is about tension and swing-weight, and no badminton study links shaft flex to arm pain. |
 | D4 | Skills demoted: tier from RATED skills only | No more fourteen 3s. `level` is `null` below 3 rated skills; the target then uses a neutral row and says so. **fit-2 dropped the fallback flex ceiling** derived from consistency/grip/smashes: racket deflection pays off inside the ~60–100 ms of stroke acceleration (Kwan 2010; Phomsoupha 2024), which a skill score does not measure. An unanswered swing now widens the tolerance and asks. |
-| D12 | Tier is price, not fitness for level — a soft penalty, doubled for a Beginner reaching UP | The owner's first golden rating (2026-09-10) marked a Premium frame unacceptable for a Beginner at 91/100; the owner also ruled that a Beginner may still buy a Premium frame. Reorder, never exclude. |
+| D12 | Tier is price, not fitness for level — a soft penalty, doubled for a Beginner reaching UP past the target's tier (the level row's when unanchored, the anchor's own when anchored, so a Beginner already on Premium is not steered down) | The owner's first golden rating (2026-09-10) marked a Premium frame unacceptable for a Beginner at 91/100; the owner also ruled that a Beginner may still buy a Premium frame. Reorder, never exclude. |
 | D13 | Balance outweighs grams | Swing speed falls with swing-weight and stays flat when mass changes at fixed swing-weight (Cross 2006); heavier-swinging rackets did not slow the shuttle for experienced players (Towler 2023). Grams are a tie-break at 1.2/g, balance carries 22/step. |
 | D5 | Exclude ALL owned rackets, not the active one — by `catalogId` OR by normalised label | The rail masked the old behaviour with an "In your kit" badge. And a bag row added as free text (the stringing sheet's typed racket, and the `fresh-thursday` seed) has no `catalogId`, so id-only exclusion recommended Lin her own Astrox 88D Pro on 2026-09-07 with "Recommended based on your playing style" — the exact defect the register was built to remove, back through a side door. `canon(brand + ' ' + model)` closes it; the ownership badge in `GearPickRail` must use the same match. |
 | D6 | Budget never hard-filters (unchanged from 2026-08-19 D6) | Prices are USD-derived and stale. |
@@ -137,7 +137,10 @@ Clamp balance [1, 3], flex [1, 5], weight [75, 89].
 4. **Comfort → ceilings on swing-weight and tension, never flex**:
    sometimes_sore `weightCeil = 85`, `tensionDeltaLb = −1`; often_sore
    `weightCeil = 83`, `balanceCeil = 2`, `tensionDeltaLb = −2`. The delta is
-   applied by `pairTension` inside the frame's rated window.
+   not part of the racket target: the route hands `comfortTensionDeltaLb` to
+   `pairString`, which scores every candidate AND names the tension
+   (`StringPairing.tensionLbs`) at the same eased figure, inside the frame's
+   rated window.
 5. **Tolerance** `sigma = (anchored ? 1.0 : level ? 1.3 : 1.6) × (swingKnown ? 1 : 1.2)`.
 
 ### Scoring
@@ -170,9 +173,12 @@ comparator is exported and tested on two identical synthetic rows.
 3. Balance/format: `doublesBuilt` / `singlesRear` / `evenVersatile`.
 4. `withinBudget {cad}` / `gripMatch {grip}`.
 
-`anchorStifferThanSwing {model}` leads whenever it applies; then one of
-`unanchored` / `levelOnly` / `anchoredDefault {model}` / `swingUnanswered`
-(anchored with a goal but no swing). The
+ONE lead sentence, exclusive: `anchorStifferThanSwing {model}` when the anchor
+sits ≥ 2 flex steps above the swing's ceiling AND the top pick is softer than
+the anchor; else `anchoredDefault {model}` / `swingUnanswered` (anchored with a
+goal but no swing) / `unanchored` / `levelOnly`. `likeYours` is a claim about
+the ANCHOR on every axis (not the target), and `flexHeadroom` is only said of
+a frame no stiffer than the target. The
 club line in `lib/pickReasons.ts` becomes `{ key: 'reason.clubPlays', params:
 { count } }` with a next-intl plural.
 

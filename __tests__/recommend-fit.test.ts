@@ -108,13 +108,14 @@ describe('GET /api/recommend — the fit engine', () => {
       activeRacketId: 'i1', fitGoal: 'happy', fitSwing: 'fast', fitArmComfort: 'often_sore',
     });
     const body = await (await ask()).json();
-    // 'happy' next to a Stiff head-heavy anchor targets stiff + head-heavy, which a
-    // sore arm caps — so the winner is one the ceilings allow, and any warned
-    // rows still rank behind it rather than vanishing.
+    // 'happy' next to a Stiff head-heavy anchor targets head-heavy, which an
+    // often-sore arm caps at Even — so the head-heavy winner carries the
+    // warning rather than vanishing, and the English list mirrors the keys.
     expect(body.item).toBeTruthy();
     expect(Array.isArray(body.warningKeys)).toBe(true);
     expect(Array.isArray(body.warnings)).toBe(true);
     expect(body.warnings.length).toBe(body.warningKeys.length);
+    expect(JSON.stringify(body.warningKeys)).toContain('warn.headHeavyWithSoreArm');
   });
 
   it('the string branch keeps needsCheckIn without ratings, and pairs against the FIT pick when no racket is owned', async () => {

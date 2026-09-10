@@ -242,7 +242,10 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
     const [nextPref, nextFit] = recKey.split('#');
     const prefChanged = isRefresh && prevPref !== nextPref;
     // (`prevFit !== nextFit` is implied by isRefresh && !prefChanged.)
-    void prevFit; void nextFit;
+    // Comfort is the one fit answer the STRING engine reads (fit-2: a sore
+    // arm lowers the paired tension), so a string paired with the member's
+    // own frame does move on it — it is the third segment of `fitKey`.
+    const comfortChanged = isRefresh && (prevFit ?? '').split('|')[2] !== (nextFit ?? '').split('|')[2];
     // Held while the fit sheet is open. `prevKeyRef` does not advance, so the
     // effect re-runs when the hold lifts and sees the same change.
     if (isRefresh && !prefChanged && holdFitRefetch) return;
@@ -268,9 +271,10 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
         if (isRefresh && !cancelled && statusRef.current[cat] === 'parked' && parkReasonRef.current[cat] === 'no_engine') continue;
         if (isRefresh && !cancelled) {
           // A string already paired with the member's OWN frame cannot move
-          // on a fit-only change; any other string is paired with the
-          // recommended frame, which can.
-          if (cat === 'string' && !prefChanged
+          // on a fit-only change — except the comfort answer, which sets its
+          // tension; any other string is paired with the recommended frame,
+          // which every fit answer can move.
+          if (cat === 'string' && !prefChanged && !comfortChanged
             && statusRef.current.string === 'ready' && stringSourceRef.current === 'owned') continue;
         }
         inFlightRef.current.add(cat);

@@ -119,6 +119,12 @@ because they are correct regardless of uptake.
   evidence, take it out", and there is, for tension and weight. **Tier is
   price**: a Beginner may still buy Premium (owner), so it is a soft penalty
   doubled for reaching up, never a cap.
+- **Follow-up, not done (review of #355):** `pickAlternatives` diversifies on
+  (balance, flex, tier), and tier is the cheapest axis to differ on, so a
+  same-spec pricier row is the cheapest ticket into slot 3 — that is what put
+  the Halbertec 9000 in g01's top three, and it still fires for Intermediates.
+  Drop tier from the triple or bound the diversity pick to a score band; decide
+  against the golden set once it has five rated cases.
 - **Sequenced ahead of multi-group** (owner, 2026-09-07). Phases 0–3 are what
   unblock that plan's call-site sweep; Phase 4 lands after it.
 

@@ -290,6 +290,17 @@ describe('GearPickRail — the fit answers re-ask the racket, and strings only w
     expect(stringAsks(asks)).toBe(1);
   });
 
+  it('a COMFORT change re-asks the string even when the member owns a racket — it sets the paired tension (fit-2)', async () => {
+    const asks = countAsks();
+    const { rerender } = await mounted(fakeGear({ gear: doc({ items: [owned] }), rackets: [owned] }));
+    expect(asks).toHaveLength(2);
+
+    rerender(ui(fakeGear({ gear: doc({ items: [owned], fitArmComfort: 'often_sore' }), rackets: [owned] })));
+    await elapse(REC_REFETCH_DEBOUNCE_MS);
+    expect(racketAsks(asks)).toBe(2);
+    expect(stringAsks(asks)).toBe(2);
+  });
+
   it('a fit-only change re-asks BOTH when the member owns no racket — the string pairs against the recommended frame', async () => {
     const asks = countAsks('recommended');
     const { rerender } = await mounted(fakeGear({ gear: doc({}) }));
