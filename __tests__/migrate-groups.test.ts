@@ -8,6 +8,7 @@ import {
   seedMember,
   seedSession,
   seedPlayer,
+  seedAnnouncement,
   makeRequest,
   adminCookieValue,
   ADMIN_MEMBER_ID,
@@ -208,6 +209,66 @@ describe('the run', () => {
     const second = await runBackfill({ dryRun: false, limit: 2 });
     expect(second.stamped.players).toBe(1);
     expect(second.remaining).not.toContain('players');
+    expect((await backfillStatus()).unstamped.players).toBe(0);
+  });
+
+  it('the BUDGET bounds the whole request, not each container — and names every container left', async () => {
+    // The defect this closes: `limit` is per CONTAINER, and there are 13 of
+    // them. 13 x 2000 is 26,000 rows at two round trips each, inside a 230s
+    // window. The cap that was supposed to guarantee a report was the one
+    // thing that could not bound the request.
+    seedSession('session-2026-09-03', { datetime: '2026-09-03T19:00:00-07:00' });
+    for (const n of ['Lin', 'Viktor', 'Carolina']) seedPlayer('session-2026-09-03', n);
+    seedAnnouncement('session-2026-09-03', 'one');
+    seedAnnouncement('session-2026-09-03', 'two');
+
+    // Generous per container, but only three rows may be touched in total.
+    const run = await runBackfill({ dryRun: false, limit: 1000, budget: 3 });
+
+    expect(run.budget).toBe(3);
+    expect(run.stoppedEarly).toBe('budget');
+    const total = Object.values(run.stamped).reduce((a, b) => a + b, 0);
+    expect(total).toBe(3);
+
+    // Everything still carrying unstamped rows is named, including containers
+    // this run never reached — `remaining` is the whole truth, not a prefix.
+    const status = await backfillStatus();
+    for (const [c, n] of Object.entries(status.unstamped)) {
+      if (n > 0) expect(run.remaining).toContain(c);
+    }
+
+    // And it is resumable: a second run with room finishes the job.
+    const second = await runBackfill({ dryRun: false, limit: 1000, budget: 1000 });
+    expect(second.stoppedEarly).toBeNull();
+    expect(second.remaining).toEqual([]);
+    const after = await backfillStatus();
+    expect(Object.values(after.unstamped).every((n) => n === 0)).toBe(true);
+  });
+
+  it('stops on the soft deadline and reports rather than running into the 504', async () => {
+    seedSession('session-2026-09-03', { datetime: '2026-09-03T19:00:00-07:00' });
+    for (const n of ['Lin', 'Viktor', 'Carolina']) seedPlayer('session-2026-09-03', n);
+
+    // A deadline already past: nothing may be stamped, and the operator still
+    // gets a summary saying so. A 504 would say nothing at all.
+    const run = await runBackfill({ dryRun: false, limit: 1000, deadlineMs: -1 });
+    expect(run.stoppedEarly).toBe('deadline');
+    expect(Object.values(run.stamped).reduce((a, b) => a + b, 0)).toBe(0);
+    expect(run.remaining).toContain('players');
+    expect((getStore()['players'] as { groupId?: string }[]).every((p) => p.groupId === undefined)).toBe(true);
+  });
+
+  it('stamps every row exactly once when they go out concurrently', async () => {
+    // The pool runs 12 in flight; the guarantee is that concurrency changes
+    // the timing and nothing else.
+    seedSession('session-2026-09-03', { datetime: '2026-09-03T19:00:00-07:00' });
+    const names = Array.from({ length: 25 }, (_, i) => `P${i}`);
+    for (const n of names) seedPlayer('session-2026-09-03', n);
+
+    const run = await runBackfill({ dryRun: false, limit: 1000, budget: 1000 });
+    expect(run.stamped.players).toBe(25);
+    const rows = getStore()['players'] as { groupId?: string }[];
+    expect(rows.filter((r) => r.groupId === 'bpm')).toHaveLength(25);
     expect((await backfillStatus()).unstamped.players).toBe(0);
   });
 
