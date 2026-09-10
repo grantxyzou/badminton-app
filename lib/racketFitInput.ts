@@ -1,7 +1,7 @@
 import { getContainer } from './cosmos';
 import { buildProfile } from './racketProfile';
 import { activeRacket, rackets } from './activeRacket';
-import { fitLevel, fitTechniqueCeiling, isScorable, canon, type FitInput } from './racketFit';
+import { fitLevel, isScorable, canon, type FitInput } from './racketFit';
 import type { CatalogItem, PlayerGear } from './types';
 import type { Rating } from './assessment';
 
@@ -37,7 +37,6 @@ export function buildFitInput(
     budgetMaxCad: typeof gear?.budgetMaxCad === 'number' ? gear.budgetMaxCad : undefined,
     level: profile ? fitLevel(profile) : null,
     hasRatings: ratings.length > 0,
-    techniqueCeiling: profile ? fitTechniqueCeiling(profile) : undefined,
   };
 }
 

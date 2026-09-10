@@ -5,7 +5,7 @@ equipment purchases"; Value-Hub Track 2 (Equipment). ROADMAP §4 still says trac
 1–4 stay blocked until the Slice-0 readout; the `VALUE_HUB_SLICE` note in
 `lib/flags.ts` records that the fan-out was made by shipping, not by reading the
 gate. This file says so rather than pretending the readout happened.
-**Status:** in-flight — Phase 0 shipped 2026-09-08 (#335); Phase 1 shipped 2026-09-09 (#337, #344); Phase 2 (the engine, behind `NEXT_PUBLIC_FLAG_RACKET_FIT`) in review (#345); Phase 3 (alternatives, feedback beacons, admin reads) in review
+**Status:** in-flight — Phase 0 shipped 2026-09-08 (#335); Phase 1 shipped 2026-09-09 (#337, #344); Phase 2 (the engine, behind `NEXT_PUBLIC_FLAG_RACKET_FIT`) shipped 2026-09-09 (#345); Phase 3 (alternatives, feedback beacons, admin reads) shipped 2026-09-09 (#346, #350); engine re-weighted on the published evidence as `fit-2` 2026-09-10; Phase 4 waits on ≥5 golden ratings
 **Review on:** 2026-10-19 — ≥5 golden cases rated, and `picks.engagedMembers` ≥ 2 in `GET /api/admin/slice0` (members who ADDED, TRIED or RATED a pick — `pick_served` is the denominator, not engagement)? If not, drop the fit questionnaire.
 
 ## Problem
@@ -104,6 +104,21 @@ because they are correct regardless of uptake.
   Goal alone is not enough: swing sets flex, the injury axis. With none of the
   three the card parks as `needsFit` and opens the sheet — tappable, unlike
   today's `needsCheckIn` dead end.
+- **The weights follow the evidence, not the forum** (2026-09-10, after the
+  owner's first golden rating). Peer-reviewed work says: racket deflection adds
+  head speed only inside the ~60–100 ms of stroke acceleration, so shaft flex is
+  a property of swing timing, not skill level (Kwan 2010, Phomsoupha 2024);
+  swing speed tracks swing-WEIGHT and ignores mass at fixed swing-weight (Cross
+  2006), and experienced players hit the shuttle as fast with heavier-swinging
+  rackets (Towler 2023); lower string tension and lighter rackets reduce elbow
+  and shoulder load (tennis literature), and no badminton study links shaft
+  flex to arm pain. So `fit-2`: the level-derived flex ceiling is gone and an
+  unanswered swing widens tolerance and asks; grams are a tie-break next to
+  balance; comfort caps swing-weight and lowers tension, never flex. **The
+  comfort question stays** — the owner's rule was "if there is no arm-pain
+  evidence, take it out", and there is, for tension and weight. **Tier is
+  price**: a Beginner may still buy Premium (owner), so it is a soft penalty
+  doubled for reaching up, never a cap.
 - **Sequenced ahead of multi-group** (owner, 2026-09-07). Phases 0–3 are what
   unblock that plan's call-site sweep; Phase 4 lands after it.
 

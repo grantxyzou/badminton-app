@@ -23,8 +23,10 @@ inputs, so the design starts by asking what a fitting asks.
 |---|---|---|
 | D1 | Distance model against a target spec, not rule scorers | One place per axis, weights that sum visibly, reasons derived from the smallest distances instead of from whichever scorer fired first. The rule scorers were the defect. |
 | D2 | Current racket is the ANCHOR; the goal is a delta from it | "Happy with it, want more power" is the most predictive fitting question and it uses the kit the member already logged. |
-| D3 | Comfort and swing are CEILINGS, not target moves | A sore arm is a constraint. Rows above a ceiling stay ranked, penalised and warned — a 0-score frame is legible, an excluded one is not. |
-| D4 | Skills demoted: tier from RATED skills only, fallback flex ceiling | No more fourteen 3s. `level` is `null` below 3 rated skills; the target then uses a neutral row and says so. |
+| D3 | Comfort and swing are CEILINGS, not target moves | A sore arm is a constraint. Rows above a ceiling stay ranked, penalised and warned — a 0-score frame is legible, an excluded one is not. **fit-2:** swing is the ONLY input that caps flex; comfort caps weight and head-heaviness and lowers string tension, never flex — the elbow-load evidence is about tension and swing-weight, and no badminton study links shaft flex to arm pain. |
+| D4 | Skills demoted: tier from RATED skills only | No more fourteen 3s. `level` is `null` below 3 rated skills; the target then uses a neutral row and says so. **fit-2 dropped the fallback flex ceiling** derived from consistency/grip/smashes: racket deflection pays off inside the ~60–100 ms of stroke acceleration (Kwan 2010; Phomsoupha 2024), which a skill score does not measure. An unanswered swing now widens the tolerance and asks. |
+| D12 | Tier is price, not fitness for level — a soft penalty, doubled for a Beginner reaching UP | The owner's first golden rating (2026-09-10) marked a Premium frame unacceptable for a Beginner at 91/100; the owner also ruled that a Beginner may still buy a Premium frame. Reorder, never exclude. |
+| D13 | Balance outweighs grams | Swing speed falls with swing-weight and stays flat when mass changes at fixed swing-weight (Cross 2006); heavier-swinging rackets did not slow the shuttle for experienced players (Towler 2023). Grams are a tie-break at 1.2/g, balance carries 22/step. |
 | D5 | Exclude ALL owned rackets, not the active one — by `catalogId` OR by normalised label | The rail masked the old behaviour with an "In your kit" badge. And a bag row added as free text (the stringing sheet's typed racket, and the `fresh-thursday` seed) has no `catalogId`, so id-only exclusion recommended Lin her own Astrox 88D Pro on 2026-09-07 with "Recommended based on your playing style" — the exact defect the register was built to remove, back through a side door. `canon(brand + ' ' + model)` closes it; the ownership badge in `GearPickRail` must use the same match. |
 | D6 | Budget never hard-filters (unchanged from 2026-08-19 D6) | Prices are USD-derived and stale. |
 | D7 | Reasons are i18n keys + params | English-only reasons were a defect. `FIT_REASON_KEYS` is exported and a test asserts every key exists in both locales, because `check-i18n-keys.mjs` cannot see `t(reason.key)`. |
@@ -73,7 +75,7 @@ gone after purge.
 ## Engine — `lib/racketFit.ts` (pure)
 
 ```ts
-export const FIT_ENGINE_VERSION = 'fit-1';
+export const FIT_ENGINE_VERSION = 'fit-2';   // fit-1 = 2026-09-09 launch; fit-2 = the research re-weighting, 2026-09-10
 export interface FitInput {
   anchor: CatalogItem | null;      // active racket, only if its catalogId is a scorable row
   ownedIds: ReadonlySet<string>;   // every non-retired racket catalogId — excluded
@@ -82,7 +84,6 @@ export interface FitInput {
   format: 'singles' | 'doubles' | 'both';
   budgetMaxCad?: number;
   level: 'Beginner' | 'Intermediate' | 'Advanced' | null;   // rated skills only
-  techniqueCeiling?: 1 | 2 | 3 | 4 | 5;                     // old maxFlexDemand, rated only
 }
 export interface FitReason { key: string; params?: Record<string, string | number> }
 export interface FitPick { item: CatalogItem; score: number; reasons: FitReason[]; warnings: FitReason[]; differsBy?: FitReason[] }
@@ -123,21 +124,27 @@ export function recommendFit(input: FitInput, catalog: CatalogItem[]): FitResult
 | happy | 0 | 0 | 0 | anchor's |
 | more_power | +1 | 0 | +2 | Power |
 | more_control | toward2 | +1 | 0 | Control |
-| faster | −1 | 0 | −3 | Speed |
-| less_fatigue | −1 | −1 | −4 | — |
+| faster | −1 | 0 | −2 | Speed |
+| less_fatigue | −1 | 0 | −3 | — |
 
 Clamp balance [1, 3], flex [1, 5], weight [75, 89].
 
-3. **Swing → flex ceiling**: slow `flexCeil = 2`, `target.flex = min(·, 2)`;
-   medium 4; fast 5, `target.flex = max(·, 3)`. Absent → `techniqueCeiling ?? 4`.
-4. **Comfort → ceilings**: sometimes_sore `flexCeil = min(·, 3)`, `weightCeil = 85`;
-   often_sore `flexCeil = min(·, 2)`, `weightCeil = 83`, `balanceCeil = 2`.
-5. **Tolerance** `sigma = anchored ? 1.0 : level ? 1.3 : 1.6`.
+3. **Swing → flex ceiling**, and the target never sits above it: slow
+   `flexCeil = 2`; medium 4; fast 5 with `target.flex = max(·, 3)`; then
+   `target.flex = min(·, flexCeil)`. Absent → `flexCeil = 5` (no cap) and
+   `swingKnown = false`. When the anchor sits ≥ 2 steps above the ceiling,
+   `anchorStifferThanSwing` leads the reasons: the current racket is the problem.
+4. **Comfort → ceilings on swing-weight and tension, never flex**:
+   sometimes_sore `weightCeil = 85`, `tensionDeltaLb = −1`; often_sore
+   `weightCeil = 83`, `balanceCeil = 2`, `tensionDeltaLb = −2`. The delta is
+   applied by `pairTension` inside the frame's rated window.
+5. **Tolerance** `sigma = (anchored ? 1.0 : level ? 1.3 : 1.6) × (swingKnown ? 1 : 1.2)`.
 
 ### Scoring
 
 ```
-penalty   = (22·|Δbalance| + 12·|Δflex| + 2.5·min(|Δweight|, 10) + 6·|Δtier|) / sigma
+penalty   = (22·|Δbalance| + 12·|Δflex| + 1.2·min(|Δweight|, 10) + tierW·|Δtier|) / sigma
+            tierW = 12 when level = Beginner and the row's tier is ABOVE the target's, else 6
 caps      = 10·max(0, flex − flexCeil) + 4·max(0, weight − weightCeil) + 10·[balance > balanceCeil]
 secondary = format (+4 subType match; +3 all-round when 'both')
           + style (+3 preferred)
@@ -163,7 +170,9 @@ comparator is exported and tested on two identical synthetic rows.
 3. Balance/format: `doublesBuilt` / `singlesRear` / `evenVersatile`.
 4. `withinBudget {cad}` / `gripMatch {grip}`.
 
-`unanchored` / `levelOnly` / `anchoredDefault {model}` lead when applicable. The
+`anchorStifferThanSwing {model}` leads whenever it applies; then one of
+`unanchored` / `levelOnly` / `anchoredDefault {model}` / `swingUnanswered`
+(anchored with a goal but no swing). The
 club line in `lib/pickReasons.ts` becomes `{ key: 'reason.clubPlays', params:
 { count } }` with a next-intl plural.
 
@@ -186,7 +195,7 @@ The client joins with `t('diffJoin')`.
 | `anchored` | scorable active racket + `fitGoal` | full model |
 | `anchored_default` | scorable active racket, no goal | goal = happy; `reason.anchoredDefault` leads |
 | `unanchored` | no scorable racket; goal AND swing set | level base (or null row), sigma widened, `reason.unanchored` |
-| `level_only` | no scorable racket; no goal+swing; ratings exist | level base + `techniqueCeiling`; `reason.levelOnly` |
+| `level_only` | no scorable racket; no goal+swing; ratings exist | level base, no flex cap, sigma widened; `reason.levelOnly` |
 | `needsFit` | none of the above | `{ item: null, needsFit: true }`; card parks TAPPABLE → fit sheet |
 
 `needsCheckIn` survives unchanged for strings (the string engine reads skill

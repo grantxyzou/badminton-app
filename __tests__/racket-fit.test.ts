@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   recommendFit, buildTarget, axesOf, scoreFit, compareFit, pickAlternatives, differsBy,
-  resolveFitState, fitLevel, fitTechniqueCeiling, GOAL_DELTA, FIT_REASON_KEYS, canon,
+  resolveFitState, fitLevel, GOAL_DELTA, FIT_REASON_KEYS, canon, comfortTensionDeltaLb, anchorStifferThanSwing,
   type FitInput,
 } from '../lib/racketFit';
+import { pairTension } from '../lib/stringPair';
 import type { PlayerProfile } from '../lib/racketProfile';
 import type { CatalogItem } from '../lib/types';
 import en from '../messages/en.json';
@@ -60,7 +61,7 @@ describe('target — anchor plus goal delta, then ceilings', () => {
   });
 
   it.each(Object.keys(GOAL_DELTA) as Array<keyof typeof GOAL_DELTA>)('applies the %s delta to the anchor', (goal) => {
-    const t = buildTarget(input({ anchor: ANCHOR, goal }), anchorAxes);
+    const t = buildTarget(input({ anchor: ANCHOR, goal, swing: 'fast' }), anchorAxes);
     const d = GOAL_DELTA[goal];
     const expectedBalance = d.balance === 'toward2' ? 2 : Math.max(1, Math.min(3, 3 + d.balance));
     expect(t.balance).toBe(expectedBalance);
@@ -71,29 +72,58 @@ describe('target — anchor plus goal delta, then ceilings', () => {
   });
 
   it('with no anchor, bases on the level and widens the tolerance', () => {
-    expect(buildTarget(input({ level: 'Beginner' }), null)).toMatchObject({ balance: 2, flex: 2, weight: 82, tier: 1, sigma: 1.3 });
-    expect(buildTarget(input({ level: null }), null)).toMatchObject({ balance: 2, flex: 2.5, weight: 84, tier: 2, sigma: 1.6 });
+    expect(buildTarget(input({ level: 'Beginner', swing: 'medium' }), null)).toMatchObject({ balance: 2, flex: 2, weight: 82, tier: 1, sigma: 1.3 });
+    expect(buildTarget(input({ level: null, swing: 'medium' }), null)).toMatchObject({ balance: 2, flex: 2.5, weight: 84, tier: 2, sigma: 1.6 });
   });
 
-  it('swing sets the flex ceiling and nudges the target; absent swing falls back to technique', () => {
-    expect(buildTarget(input({ anchor: ANCHOR, swing: 'slow' }), anchorAxes)).toMatchObject({ flexCeil: 2, flex: 2 });
+  it('swing sets the flex ceiling and the target never sits above it', () => {
+    expect(buildTarget(input({ anchor: ANCHOR, swing: 'slow' }), anchorAxes)).toMatchObject({ flexCeil: 2, flex: 2, swingKnown: true });
     expect(buildTarget(input({ anchor: ANCHOR, swing: 'medium' }), anchorAxes)).toMatchObject({ flexCeil: 4, flex: 4 });
     expect(buildTarget(input({ level: 'Beginner', swing: 'fast' }), null)).toMatchObject({ flexCeil: 5, flex: 3 });
-    expect(buildTarget(input({ techniqueCeiling: 3 }), null).flexCeil).toBe(3);
-    expect(buildTarget(input({}), null).flexCeil).toBe(4);
   });
 
-  it('comfort is a ceiling, never a target move', () => {
-    const sometimes = buildTarget(input({ anchor: ANCHOR, goal: 'more_power', armComfort: 'sometimes_sore' }), anchorAxes);
-    expect(sometimes).toMatchObject({ flexCeil: 3, weightCeil: 85, balanceCeil: null, balance: 3 });
-    const often = buildTarget(input({ anchor: ANCHOR, goal: 'more_power', armComfort: 'often_sore' }), anchorAxes);
-    expect(often).toMatchObject({ flexCeil: 2, weightCeil: 83, balanceCeil: 2, balance: 3 });
+  it('an unanswered swing caps nothing — flex follows the swing, not the check-in — and widens the tolerance', () => {
+    // fit-1 derived a ceiling from consistency/grip/smashes. The deflection
+    // literature says stiffness is a property of stroke timing, which a
+    // skill score does not measure; guessing was the defect.
+    const t = buildTarget(input({ anchor: ANCHOR }), anchorAxes);
+    expect(t).toMatchObject({ flexCeil: 5, flex: 4, swingKnown: false, sigma: 1.2 });
+    expect(buildTarget(input({ level: 'Beginner' }), null).sigma).toBe(1.56);
+    expect(buildTarget(input({ level: 'Beginner', swing: 'medium' }), null).sigma).toBe(1.3);
+  });
+
+  it('comfort caps weight and head-heaviness and lowers tension — it never touches flex or the target', () => {
+    const sometimes = buildTarget(input({ anchor: ANCHOR, goal: 'more_power', swing: 'fast', armComfort: 'sometimes_sore' }), anchorAxes);
+    expect(sometimes).toMatchObject({ flexCeil: 5, weightCeil: 85, balanceCeil: null, balance: 3, tensionDeltaLb: -1 });
+    const often = buildTarget(input({ anchor: ANCHOR, goal: 'more_power', swing: 'fast', armComfort: 'often_sore' }), anchorAxes);
+    expect(often).toMatchObject({ flexCeil: 5, weightCeil: 83, balanceCeil: 2, balance: 3, tensionDeltaLb: -2 });
+    expect(comfortTensionDeltaLb('fine')).toBe(0);
+    expect(comfortTensionDeltaLb(undefined)).toBe(0);
+  });
+
+  it('the comfort delta reaches the string engine, inside the frame’s rated window', () => {
+    const frame = racket('f', { balance: 'Even', flex: 'Medium', tier: 'Mid-range', tensionMinLbs: 20, tensionMaxLbs: 26 });
+    const string = racket('s', { tensionMinLbs: 20, tensionMaxLbs: 30 });
+    const profile = { serves: 5, net_play: 5, clears: 5, drops: 5, drives: 5, smashes: 5, grip: 5, footwork: 5, court_coverage: 5, stamina: 5, game_reading: 5, consistency: 5, rules: 5, mindset: 5, format: 'both', ratedKeys: [] } as unknown as PlayerProfile;
+    const base = pairTension(frame, string, profile)!;
+    expect(pairTension(frame, string, profile, -2)).toBe(Math.max(20, base - 2));
+    expect(pairTension(frame, string, profile, -40)).toBe(20); // never below the overlap
+  });
+
+  it('names the anchor as the problem when it sits two flex steps above the swing', () => {
+    const slow = buildTarget(input({ anchor: ANCHOR, goal: 'happy', swing: 'slow' }), anchorAxes);
+    expect(anchorStifferThanSwing(slow, anchorAxes)).toBe(true);   // Stiff (4) vs ceiling 2
+    const medium = buildTarget(input({ anchor: ANCHOR, goal: 'happy', swing: 'medium' }), anchorAxes);
+    expect(anchorStifferThanSwing(medium, anchorAxes)).toBe(false); // 4 vs 4
+    const unknown = buildTarget(input({ anchor: ANCHOR, goal: 'happy' }), anchorAxes);
+    expect(anchorStifferThanSwing(unknown, anchorAxes)).toBe(false); // no swing, no claim
   });
 });
 
 describe('scoring — one place per axis, ceilings warn and penalise, nothing is hidden', () => {
-  const target = buildTarget(input({ anchor: ANCHOR, goal: 'happy', format: 'doubles', budgetMaxCad: 350 }), axesOf(ANCHOR)!);
-  const inp = input({ anchor: ANCHOR, goal: 'happy', format: 'doubles', budgetMaxCad: 350 });
+  // Swing answered, so sigma is 1.0 and the arithmetic below is the raw table.
+  const inp = input({ anchor: ANCHOR, goal: 'happy', swing: 'fast', format: 'doubles', budgetMaxCad: 350 });
+  const target = buildTarget(inp, axesOf(ANCHOR)!);
 
   it('an identical frame scores the full secondary and no penalty', () => {
     const twin = racket('twin', { model: 'Twin', balance: 'Head-heavy', flex: 'Stiff', tier: 'Premium', playStyle: 'Power', subType: 'doubles' }, 300);
@@ -101,6 +131,13 @@ describe('scoring — one place per axis, ceilings warn and penalise, nothing is
     expect(s.penalty).toBe(0);
     // +4 doubles, +3 style = 107 → clamped to 100.
     expect(s.score).toBe(100);
+    expect(s.reasons.map((r) => r.key)).toEqual(['reason.likeYours', 'reason.flexFitsSwing', 'reason.doublesBuilt', 'reason.withinBudget']);
+  });
+
+  it('says nothing about flex when the swing was not answered', () => {
+    const quiet = input({ anchor: ANCHOR, goal: 'happy', format: 'doubles', budgetMaxCad: 350 });
+    const twin = racket('twin', { model: 'Twin', balance: 'Head-heavy', flex: 'Stiff', tier: 'Premium', playStyle: 'Power', subType: 'doubles' }, 300);
+    const s = scoreFit(twin, axesOf(twin)!, buildTarget(quiet, axesOf(ANCHOR)!), quiet, axesOf(ANCHOR));
     expect(s.reasons.map((r) => r.key)).toEqual(['reason.likeYours', 'reason.doublesBuilt', 'reason.withinBudget']);
   });
 
@@ -111,6 +148,27 @@ describe('scoring — one place per axis, ceilings warn and penalise, nothing is
     expect(scoreFit(evenFrame, axesOf(evenFrame)!, target, inp, null).penalty).toBe(22);
     expect(scoreFit(lightFrame, axesOf(lightFrame)!, target, inp, null).penalty).toBe(44);
     expect(scoreFit(softer, axesOf(softer)!, target, inp, null).penalty).toBe(12);
+  });
+
+  it('ten grams costs 12 — about half a balance step, because swing speed tracks balance, not mass', () => {
+    const heavy = racket('heavy', { balance: 'Head-heavy', flex: 'Stiff', tier: 'Premium', playStyle: 'Power', subType: 'doubles', weightMinG: 93, weightMaxG: 97 });
+    expect(scoreFit(heavy, axesOf(heavy)!, target, inp, null).penalty).toBe(12);
+  });
+
+  it('a Beginner reaching up a tier pays double, and is reordered — never excluded', () => {
+    const beginner = input({ level: 'Beginner', swing: 'medium' });
+    const t = buildTarget(beginner, null); // tier 1
+    const premium = racket('prem', { balance: 'Even', flex: 'Medium', tier: 'Premium', weightMinG: 80, weightMaxG: 84 });
+    const entry = racket('entry', { balance: 'Even', flex: 'Medium', tier: 'Entry-level', weightMinG: 80, weightMaxG: 84 });
+    const sPrem = scoreFit(premium, axesOf(premium)!, t, beginner, null);
+    const sEntry = scoreFit(entry, axesOf(entry)!, t, beginner, null);
+    expect(sPrem.penalty).toBeCloseTo((2 * 12) / 1.3, 5);
+    expect(sEntry.penalty).toBe(0);
+    expect(sPrem.score).toBeGreaterThan(70); // still a real candidate
+    // An Intermediate reaching up pays the ordinary 6 per step (row matched to the Intermediate base on every other axis).
+    const inter = input({ level: 'Intermediate', swing: 'medium' });
+    const premiumMid = racket('prem2', { balance: 'Even', flex: 'Medium-Stiff', tier: 'Premium', weightMinG: 83, weightMaxG: 87 });
+    expect(scoreFit(premiumMid, axesOf(premiumMid)!, buildTarget(inter, null), inter, null).penalty).toBeCloseTo(6 / 1.3, 5);
   });
 
   it('a frame above the flex ceiling is penalised AND warned, never dropped', () => {
@@ -221,6 +279,19 @@ describe('ranking, exclusion and alternatives', () => {
     expect(pickAlternatives([top, alt]).map((s) => s.item.id)).toEqual(['v']);
   });
 
+  it('leads with the swing question when the goal is set and the swing is not', () => {
+    const r = recommendFit(input({ anchor: ANCHOR, goal: 'more_power', ownedIds: new Set(['anchor']) }), catalog);
+    expect(r.top!.reasons[0].key).toBe('reason.swingUnanswered');
+    const withSwing = recommendFit(input({ anchor: ANCHOR, goal: 'more_power', swing: 'fast', ownedIds: new Set(['anchor']) }), catalog);
+    expect(withSwing.top!.reasons.map((x) => x.key)).not.toContain('reason.swingUnanswered');
+  });
+
+  it('leads with the anchor being the problem when it is stiffer than the swing wants', () => {
+    const r = recommendFit(input({ anchor: ANCHOR, goal: 'happy', swing: 'slow', ownedIds: new Set(['anchor']) }), catalog);
+    expect(r.top!.reasons[0]).toEqual({ key: 'reason.anchorStifferThanSwing', params: { model: 'Astrox 88D Pro' } });
+    expect(r.target!.flex).toBe(2);
+  });
+
   it('leads the unanchored and level-only states with a reason that says so', () => {
     expect(recommendFit(input({ goal: 'faster', swing: 'fast' }), catalog).top!.reasons[0].key).toBe('reason.unanchored');
     expect(recommendFit(input({}), catalog).top!.reasons[0].key).toBe('reason.levelOnly');
@@ -238,10 +309,6 @@ describe('level from RATED skills only', () => {
   it('is null below three rated skills, whatever the defaults say', () => {
     expect(fitLevel(p(['smashes', 'drives']))).toBeNull();
     expect(fitLevel(p(['smashes', 'drives', 'clears']))).toBe('Advanced');
-  });
-  it('the technique ceiling needs all three of its inputs rated', () => {
-    expect(fitTechniqueCeiling(p(['consistency', 'grip']))).toBeUndefined();
-    expect(fitTechniqueCeiling(p(['consistency', 'grip', 'smashes'], 2))).toBe(2);
   });
 });
 

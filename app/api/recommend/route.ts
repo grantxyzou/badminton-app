@@ -8,7 +8,7 @@ import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
 import { recommendRacket } from '@/lib/recommend';
 import { buildProfile } from '@/lib/racketProfile';
 import { recommendRackets } from '@/lib/racketRecommend';
-import { recommendFit, FIT_ENGINE_VERSION } from '@/lib/racketFit';
+import { recommendFit, comfortTensionDeltaLb, FIT_ENGINE_VERSION } from '@/lib/racketFit';
 import { fitReasonTexts } from '@/lib/fitReasonText';
 import { pairString, pairTension } from '@/lib/stringPair';
 import { getCanonicalLevel } from '@/lib/levelStore';
@@ -252,7 +252,9 @@ export async function GET(req: NextRequest) {
           // carries those. See `StringPairing.provenance`.
           provenance: pairing.provenance,
           pairedWith: { label: `${frame.brand} ${frame.model}`, source },
-          tensionLbs: pairTension(frame, pairing.item, profile),
+          // A sore arm lowers the tension a pound or two inside the frame's
+          // rated window — the one comfort effect the evidence supports.
+          tensionLbs: pairTension(frame, pairing.item, profile, comfortTensionDeltaLb(gear?.fitArmComfort)),
         });
       }
 

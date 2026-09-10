@@ -543,11 +543,17 @@ function skillMultiplier(s: CatalogItem, rank: number): ScoreResult {
  *
  * Consistency of contact — grip mechanics plus movement — is what earns higher
  * tension, because high tension shrinks the sweet spot.
+ *
+ * `deltaLb` is the fit engine's comfort adjustment (`comfortTensionDeltaLb`):
+ * a sore arm asks for a pound or two less, the one equipment change the
+ * elbow-load literature supports directly. Applied inside the overlap, so it
+ * can never place the string below what the frame is rated for.
  */
 export function pairTension(
   racket: CatalogItem,
   s: CatalogItem,
   profile: PlayerProfile,
+  deltaLb = 0,
 ): number | null {
   const rHi = racket.attributes?.tensionMaxLbs;
   if (typeof rHi !== 'number') return null;
@@ -559,7 +565,8 @@ export function pairTension(
   const a = aceDims(profile);
   const consistency = ((a.grip + a.movement) / 2.0 - 1) / 5.0;
   const placed = lo + (hi - lo) * Math.min(1.0, consistency * 0.9 + 0.1);
-  return Math.round(placed * 2) / 2;
+  const eased = Math.max(lo, Math.min(hi, placed + deltaLb));
+  return Math.round(eased * 2) / 2;
 }
 
 /**

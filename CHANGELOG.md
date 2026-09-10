@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Equipment — the racket fit engine re-weighted on the published evidence (`fit-2`, 2026-09-10)
+
+- **Flex follows the swing, not the check-in.** The level-derived flex ceiling is gone; an unanswered swing widens the tolerance and the pick says "tell us your swing speed" instead of guessing. When the racket on file is two or more flex steps above what the swing wants, the pick says so first and the picks are softer on purpose.
+- **Balance outweighs grams.** Ten grams now costs about half a balance step, and the "faster" and "less fatigue" goals move balance first.
+- **A sore arm steers tension and swing-weight, not flex.** The comfort answer keeps its weight and head-heavy caps, lowers the paired string tension by one or two pounds inside the frame's rated window, and no longer caps shaft flex.
+- **Tier is price, not fitness for level.** A Beginner reaching up a tier pays double so Entry and Mid frames that fit as well rank first — reordered, never excluded.
+
 *Items here are already live on production. A tag just marks the release.*
 
 <!-- Add bullets under the matching subheading as you ship user-facing changes.

@@ -3,7 +3,7 @@
     "purpose": "Expert-rated ground truth for lib/racketFit.ts. Each case is a real (anonymised) or stringer-hypothetical member: their gear doc shape, their raw check-in ratings, and the set of rackets the owner and the club stringer agreed are ACCEPTABLE picks (a set, not one) plus any that would be plainly wrong. The test asserts the engine's top three intersects `acceptable` and avoids `unacceptable`. Populated by hand from `scripts/dump-fit-cases.mjs` skeletons (Phase 3); ids are gNN and carry no names. `ratedBy` says who rated it — mark hypotheticals honestly.",
     "howToAdd": "Copy a case, set gear.items[].catalogId to real catalog ids (the test refuses an id the catalog does not have), fill acceptable/unacceptable, set ratedBy and ratedAt."
   },
-  "engineVersion": "fit-1",
+  "engineVersion": "fit-2",
   "catalog": "scripts/data/equipment-catalog.json",
   "cases": []
 }

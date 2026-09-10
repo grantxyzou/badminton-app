@@ -658,6 +658,8 @@
          "anchoredDefault": "和你的 {model} 很接近——告诉我们想改什么，推荐会更准。",
          "unanchored": "根据你的适配回答，还没登记球拍——加上球拍推荐会更准。",
          "levelOnly": "只根据你的自评——回答适配问题，推荐会更准。",
+         "swingUnanswered": "告诉我们你的挥拍速度，中杆软硬就能配准。",
+         "anchorStifferThanSwing": "你的 {model} 比你的挥拍需要的更硬——这几支特意选得更软。",
          "clubPlays": "俱乐部已有 {count} 人在用。"
        },
        "warn": {
@@ -706,7 +708,7 @@
        "fitArm_fine": "没事",
        "fitArm_sometimes_sore": "偶尔酸痛",
        "fitArm_often_sore": "经常酸痛",
-       "fitArmNote": "可选。只会让推荐更保守——手臂酸痛会排除最硬、最重的拍框。只有你和组织者能看到；随时可以清除。",
+       "fitArmNote": "可选。只会让推荐更保守——手臂酸痛会偏向更轻、头轻的拍框，并稍微调低拉线磅数。只有你和组织者能看到；随时可以清除。",
        "fitClear": "清除",
        "fitGripLabel": "握柄尺寸",
        "fitGrip_G4": "G4",
