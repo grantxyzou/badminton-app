@@ -29,6 +29,7 @@
  */
 import { getContainer } from './cosmos';
 import { pkFieldOf, type ContainerName } from './containers';
+import { listMembershipsForMember, reassignOwnership } from './groups';
 
 /** What an anonymized row says instead of a name. */
 export const TOMBSTONE_NAME = 'Former member';
@@ -89,6 +90,13 @@ const OWNED: readonly PurgeTarget[] = [
      migration link is in flight (lib/authMigration.ts). Also a `const
      CONTAINER` alias, which is why the canary resolves those now. */
   { container: 'authmigration', by: 'memberId' },
+  /* A person's per-group role, and the roster-name reservation that made their
+     name unique in that group — both carry `memberId`, both live under the
+     GROUP's partition key, and `pkFieldOf` reads `groupId` off each row, so
+     one entry clears them in every group at once and frees the names. A group
+     they OWNED is handed on first (`groups`, below), because this loop would
+     otherwise delete the only owner. */
+  { container: 'memberships', by: 'memberId' },
 ];
 
 /** Names only — for the coverage canary, which must not import the table shape. */
@@ -124,11 +132,16 @@ export const CLASSIFIED_ELSEWHERE: Readonly<Record<string, string>> = {
   players: 'shared cost history — `anonymizePlayerRows`',
   gameResults: 'shared match history — `anonymizeGameResults`',
   feedback: 'reports carry a name and an IP — `anonymizeFeedback`',
+  groups: 'a group names its owner — `reassignOwnership` (lib/groups.ts) runs in `purgeMember` before the owned rows go',
 };
 
 export interface PurgeSummary {
   deleted: number;
   anonymized: number;
+  /** Groups the member owned that were handed to someone else. */
+  groupsReassigned: number;
+  /** Groups the member owned alone, closed (`closedAt`) because nobody was left to own them. */
+  groupsClosed: number;
   /** Containers that threw. The purge continues past them — a partial delete
    *  that reports what it missed beats one that gives up holding the rest. */
   failed: string[];
@@ -172,8 +185,34 @@ const sameName = (row: Record<string, unknown>, lower: string) =>
  * is going away, and a container that fails should not strand the rest.
  */
 export async function purgeMember(memberId: string, name: string): Promise<PurgeSummary> {
-  const summary: PurgeSummary = { deleted: 0, anonymized: 0, failed: [] };
+  const summary: PurgeSummary = { deleted: 0, anonymized: 0, groupsReassigned: 0, groupsClosed: 0, failed: [] };
   const lowerName = name.trim().toLowerCase();
+
+  // Ownership FIRST: the loop below deletes their memberships, and a group
+  // whose owner row is gone has nobody `reassignOwnership` can read. Per
+  // group, so one failed handoff neither aborts the others nor lets the loop
+  // delete THAT group's owner row: its memberships are held back, reported
+  // under `failed`, and the group stays resolvable for a hand fix.
+  const heldBack = new Set<string>();
+  let owned: Awaited<ReturnType<typeof listMembershipsForMember>> = [];
+  try {
+    owned = await listMembershipsForMember(memberId);
+  } catch (err) {
+    console.error('[purge] groups (ownership) failed:', err);
+    summary.failed.push('groups:ownership');
+  }
+  for (const m of owned) {
+    if (m.role !== 'owner') continue;
+    try {
+      const r = await reassignOwnership(m.groupId, memberId);
+      if (r.outcome === 'reassigned') summary.groupsReassigned += 1;
+      if (r.outcome === 'closed') summary.groupsClosed += 1;
+    } catch (err) {
+      console.error(`[purge] groups (ownership of ${m.groupId}) failed:`, err);
+      summary.failed.push(`groups:ownership:${m.groupId}`);
+      heldBack.add(m.groupId);
+    }
+  }
 
   for (const t of OWNED) {
     try {
@@ -191,6 +230,7 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
         (row) => (byName ? sameName(row, lowerName) : row[t.by] === memberId),
       );
       for (const row of rows) {
+        if (t.container === 'memberships' && heldBack.has(String(row.groupId))) continue;
         await getContainer(t.container)
           .item(String(row.id), String(row[pkFieldOf(t.container)]))
           .delete();

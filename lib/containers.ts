@@ -54,6 +54,7 @@ export const CONTAINERS = {
   clubSettings: { pk: '/id', scope: 'group', provisioned: true, reason: 'shop sign, stocked strings, rate card — per club, per-group ids' },
   events: { pk: '/memberId', scope: 'group', provisioned: true, reason: "an engagement happens inside one group's tabs; slice0 is a per-group readout" },
   insights: { pk: '/memberId', scope: 'group', provisioned: true, reason: 'narrates group play (partners, kudos); one cache doc per group per member' },
+  memberships: { pk: '/groupId', scope: 'group', provisioned: false, reason: "a person's role and roster name IN ONE GROUP, plus that group's name reservations; the group is the partition" },
   // ── person-scoped ───────────────────────────────────────────────────────
   members: { pk: '/id', scope: 'person', provisioned: true, reason: 'the person: one account, one PIN, one email — many groups' },
   identities: { pk: '/id', scope: 'person', provisioned: true, reason: 'one email maps to one member DB-wide, atomically; that fits one-account-many-groups' },
@@ -67,6 +68,7 @@ export const CONTAINERS = {
   equipmentCatalog: { pk: '/category', scope: 'global', provisioned: true, reason: 'the racket/string catalog; seeded, not user data' },
   releases: { pk: '/id', scope: 'global', provisioned: true, reason: "the app's own changelog" },
   feedback: { pk: '/id', scope: 'global', provisioned: true, reason: 'reports go to the operator, not to a group admin; groupId is context only' },
+  groups: { pk: '/id', scope: 'global', provisioned: false, reason: 'the registry of clubs themselves — a group doc is not inside any group; read by id, never listed to a member' },
 } as const satisfies Readonly<Record<string, ContainerMeta>>;
 
 export type ContainerName = keyof typeof CONTAINERS;

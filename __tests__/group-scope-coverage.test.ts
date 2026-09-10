@@ -25,6 +25,9 @@ const RAW_ACCESS_ALLOWLIST = new Set([
   'lib/groupScope.ts', // the accessor itself
   'lib/cosmos.ts', // the pointer helpers and dev seeds
   'lib/memberPurge.ts', // account deletion spans every group by design (person-level)
+  // The person-side view of memberships ("which clubs am I in?") is cross-group
+  // by definition. ONE raw read; `groups-lib.test.ts` pins the count at one.
+  'lib/groups.ts',
 ]);
 
 /**
@@ -111,5 +114,9 @@ describe('group scoping classifies every container', () => {
     expect(PERSON_SCOPED.playerGear).toBeDefined();
     expect(PERSON_SCOPED.identities).toBeDefined();
     expect(GLOBAL.equipmentCatalog).toBeDefined();
+    // Phase 2: a membership is one person's role IN ONE GROUP (the group is its
+    // partition); the group registry itself is inside no group.
+    expect(GROUP_SCOPED.memberships).toBeDefined();
+    expect(GLOBAL.groups).toBeDefined();
   });
 });

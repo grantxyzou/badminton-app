@@ -96,6 +96,37 @@ export function seedMember(name: string, overrides: Record<string, unknown> = {}
   return member;
 }
 
+/** A raw `groups` doc. Defaults are a plain club owned by `overrides.ownerMemberId ?? 'owner'`. */
+export function seedGroup(id: string, overrides: Record<string, unknown> = {}) {
+  return seedDoc('groups', {
+    id,
+    name: `Group ${id}`,
+    sport: 'badminton',
+    ownerMemberId: 'owner',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    createdBy: 'owner',
+    settings: { skipDates: [], maxPlayers: 12 },
+    ...overrides,
+  });
+}
+
+/** A raw `memberships` doc (no name reservation — seed one with `seedDoc` if the test needs it). */
+export function seedMembership(groupId: string, memberId: string, overrides: Record<string, unknown> = {}) {
+  const name = typeof overrides.name === 'string' ? overrides.name : memberId;
+  return seedDoc('memberships', {
+    id: `${groupId}:${memberId}`,
+    groupId,
+    memberId,
+    name,
+    nameLower: name.trim().toLowerCase(),
+    role: 'member',
+    status: 'active',
+    joinedAt: new Date().toISOString(),
+    joinedVia: 'admin',
+    ...overrides,
+  });
+}
+
 export function seedAlias(appName: string, etransferName: string) {
   const store = getStore();
   if (!store['aliases']) store['aliases'] = [];

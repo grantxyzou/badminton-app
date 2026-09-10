@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations, useFormatter } from 'next-intl';
 import type { Session, Player, Announcement, Release } from '@/lib/types';
+import { defaultMaxPlayers } from '@/lib/defaults';
 import type { DevOverrides } from '@/components/DevPanel';
 import { getIdentity, setIdentity, clearIdentity, resolveStaleIdentity } from '@/lib/identity';
 import { TabSkeleton } from '@/components/primitives/CardSkeleton';
@@ -90,7 +91,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const [setPinOpen, setSetPinOpen] = useState(false);
   const [recoveredName, setRecoveredName] = useState('');
 
-  const maxPlayers = parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12');
+  const maxPlayers = defaultMaxPlayers();
 
   const loadData = useCallback(async () => {
     setLoading(true);
