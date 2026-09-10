@@ -61,7 +61,6 @@ jobs:
           NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: 'true'
           NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE: 'true'
           NEXT_PUBLIC_FLAG_VISUAL_FIELDS: 'true'
-          NEXT_PUBLIC_FLAG_KUDOS: 'true'
           NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: 'true'
           NEXT_PUBLIC_FLAG_RACKET_FIT: 'true'
           # NEXT_PUBLIC_* is baked at build time, so this must live here -- an

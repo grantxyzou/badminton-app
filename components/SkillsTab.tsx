@@ -41,8 +41,6 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: 'home' 
   // the signed-out state at a signed-in member — unknown is not known-absent.
   const { name: activeName, resolved: identResolved } = useActiveName();
 
-  // Kudos — positive-only peer recognition (received in You; give in Play).
-  const kudosOn = isFlagOn('NEXT_PUBLIC_FLAG_KUDOS');
   // Equipment register follows the Value-Hub flag; its kill-criterion gate is
   // still open, so Gear can still be withdrawn without touching the shell.
   const valueHubOn = isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE');
@@ -76,7 +74,7 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: 'home' 
             activeName={activeName}
             promptOpen={promptOpen}
           />
-          {kudosOn && <KudosReceivedCard />}
+          <KudosReceivedCard />
           <ClubConsentSheet
             open={promptOpen}
             saving={privacyState.saving}
@@ -88,7 +86,7 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: 'home' 
         <>
           <YourRecordCard activeName={activeName} />
           <WhoYouPlayWithCard activeName={activeName} />
-          {kudosOn && <GiveKudosCard />}
+          <GiveKudosCard />
         </>
       }
       learnSlot={<LearnRegister activeName={activeName} />}

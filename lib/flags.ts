@@ -18,7 +18,6 @@
 export type FlagName =
   | 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW'
   | 'NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE'
-  | 'NEXT_PUBLIC_FLAG_KUDOS'
   | 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER'
   | 'NEXT_PUBLIC_FLAG_VISUAL_FIELDS'
   | 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS'
@@ -98,17 +97,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: '2026-09-22',
   },
-  NEXT_PUBLIC_FLAG_KUDOS: {
-    description: 'Kudos: positive-only peer recognition that replaces the cut numeric peer rating. A small fixed set of tags, member-cookie-bound writes (rule 12), and a private aggregate (member/admin) of per-tag counts PLUS signed notes. Eligibility is co-play across the last 8 sessions, owned by lib/kudosEligibility.ts. No level coupling — purely social. `kudos` container (PK /recipientMemberId). Live in prod (true in both workflows).',
-    owner: 'grant',
-    // Was the prose form ("after kudos is promoted to stable + lived-in for 2
-    // weeks") — a condition that became impossible on 2026-08-25 when the
-    // second deployment was deleted and there stopped being a promotion event.
-    // Dated from the 2026-08-29 redesign, which is the change worth soaking.
-    // NOTE: `chore/retire-three-flags` is dating every flag in parallel; expect
-    // a one-line conflict here on whichever merges second.
-    plannedRemoval: '2026-09-12',
-  },
   NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: {
     description: 'Skill-scored equipment recommendations: the racket engine (lib/racketRecommend.ts) AND the string pairing engine (lib/stringPair.ts), both reached through GET /api/recommend. On for bpm-next, off on bpm-stable, which falls back to the coarse stage-derived racket pick. Renamed from NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER when string pairing landed and the old name stopped describing what it gates.',
     owner: 'grant',
@@ -130,8 +118,6 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
     case 'NEXT_PUBLIC_FLAG_VISUAL_FIELDS':
       return process.env.NEXT_PUBLIC_FLAG_VISUAL_FIELDS;
-    case 'NEXT_PUBLIC_FLAG_KUDOS':
-      return process.env.NEXT_PUBLIC_FLAG_KUDOS;
     case 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER':
       return process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
     case 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS':

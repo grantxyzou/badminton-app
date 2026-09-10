@@ -13,7 +13,6 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyMemberAuth } from '@/lib/auth';
-import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { getActiveSessionId } from '@/lib/cosmos';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
@@ -25,9 +24,6 @@ export async function GET(req: NextRequest) {
   const ip = getClientIp(req);
   if (!checkRateLimit(`kudos-eligible:${ip}`, 60, 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-  }
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_KUDOS')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   const member = verifyMemberAuth(req);
