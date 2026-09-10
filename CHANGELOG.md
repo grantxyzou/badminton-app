@@ -48,6 +48,12 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Design — the fields stop being a flag (2026-09-10)
+
+- **`NEXT_PUBLIC_FLAG_VISUAL_FIELDS` is retired.** It was `'true'` in both workflows, so nothing changes on screen: the per-tab coloured grounds and the 30px frosted card material are simply the look now. The `data-visual="field"` attribute is gone from `<html>`, the flag is out of the registry and both workflows, and the seven pre-field rules it used to switch away from are deleted.
+- **One selector survived the flag on purpose.** Every field rule was scoped `html[data-visual="field"]`, which is specificity (0,2,1), and two things quietly depend on that weight — the card padding that governs ~124 call sites has to outrank a Tailwind `p-5`, and the field card material has to outrank the Stats-tab `.glass-card` rule 128 lines above it. The rules now read `html:root`, the one substitution that preserves the exact weight. It looks like a leftover and is not; three comments and a canary now say so.
+- **Verified by looking, because nothing else can.** jsdom applies no stylesheet and computes every length as `0px`, so the suite is structurally blind here. Checked in a real browser across all five tabs in both themes: five distinct grounds, padding `15px 18px` rather than Tailwind's `20px`, and the Sign-Ups court etching and Stats dot grid still riding on top of their fields.
+
 ### Equipment — the racket fit engine re-weighted on the published evidence (`fit-2`, 2026-09-10)
 
 - **Flex follows the swing, not the check-in.** The level-derived flex ceiling is gone; an unanswered swing widens the tolerance and the pick says "tell us your swing speed" instead of guessing. When the racket on file is two or more flex steps above what the swing wants, the pick says so first and the picks are softer on purpose.

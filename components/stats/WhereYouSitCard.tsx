@@ -138,7 +138,7 @@ export default function WhereYouSitCard({ activeName, promptOpen = false }: Wher
        has something behind it, so a merely-dimmed card reads as "loading" or
        "disabled" rather than "private". Inert is the honest signal here, and it
        matches the lock pill and unfilled bands already in this branch.
-       No-op unless NEXT_PUBLIC_FLAG_VISUAL_FIELDS is on. */
+       Applies unconditionally since the fields flag retired 2026-09-10. */
     /* flex+gap, not space-y-3: every <p> in here carries an inline
        `margin: '0'` to kill the UA paragraph margin, and an inline style beats
        the utility's `> * + * { margin-top }` -- so the card's rhythm was being

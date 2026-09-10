@@ -19,7 +19,6 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW'
   | 'NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE'
   | 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER'
-  | 'NEXT_PUBLIC_FLAG_VISUAL_FIELDS'
   | 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS'
   | 'NEXT_PUBLIC_FLAG_STRINGING'
   | 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE'
@@ -85,11 +84,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: '2026-11-15',
   },
-  NEXT_PUBLIC_FLAG_VISUAL_FIELDS: {
-    description: 'The "fields and card materials" visual direction (design "Visual Colours", Aug 2026). Replaces the shared aurora with a per-tab FIELD — a coloured radial-gradient ground — and swaps .glass-card for a heavier frosted material at --radius-3xl (30px). Purely presentational: no routing, i18n, aria or API shape changes. Read server-side in app/layout.tsx and stamped as html[data-visual="field"], because CSS cannot call isFlagOn() and a useEffect would flash on the LCP frame. Turning it off restores the current look with zero component changes.',
-    owner: 'grant',
-    plannedRemoval: '2026-09-22',
-  },
   NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: {
     description: 'Skill-scored equipment recommendations: the racket engine (lib/racketRecommend.ts) AND the string pairing engine (lib/stringPair.ts), both reached through GET /api/recommend. On for bpm-next, off on bpm-stable, which falls back to the coarse stage-derived racket pick. Renamed from NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER when string pairing landed and the old name stopped describing what it gates.',
     owner: 'grant',
@@ -109,8 +103,6 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
     case 'NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE':
       return process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE;
-    case 'NEXT_PUBLIC_FLAG_VISUAL_FIELDS':
-      return process.env.NEXT_PUBLIC_FLAG_VISUAL_FIELDS;
     case 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER':
       return process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
     case 'NEXT_PUBLIC_FLAG_AUTH_PROVIDERS':

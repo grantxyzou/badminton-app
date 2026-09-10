@@ -106,7 +106,7 @@ async function get(url, accept = '*/*') {
  * HomeShell.tsx:530 and `<BottomNav>` at :604 — and by NOTHING in
  * `app/layout.tsx`. That is the whole reason they were chosen. When Home
  * throws, `app/error.tsx` replaces the page while the layout keeps rendering,
- * so a layout-level marker (the splash, `data-visual`, the `bpm-build` meta)
+ * so a layout-level marker (the splash, the `bpm-build` meta)
  * stays present and reports healthy through a completely broken screen.
  *
  * Deliberately NOT asserted:

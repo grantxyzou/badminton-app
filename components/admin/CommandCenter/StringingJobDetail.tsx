@@ -618,8 +618,8 @@ export default function StringingJobDetail({ job, onBack, onChanged }: Props) {
                 /* NO inline borderRadius. I added one to match the button
                    beside it and it did the opposite: an inline style beats
                    every selector, so 16px stuck — while "Send" is governed by
-                   `html[data-visual="field"] .glass-card .cc-btn` and renders
-                   at the concentric 12px. Fields are ON in production, so the
+                   `html:root .glass-card .cc-btn` and renders
+                   at the concentric 12px. Fields are unconditional, so the
                    two buttons in one row would have shipped with visibly
                    different corners. globals.css says it directly above that
                    rule: 16 "is not the concentric value" inside a 30px card.

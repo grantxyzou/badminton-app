@@ -143,8 +143,7 @@
 
    Unlike variants 01-06 above, these do NOT mirror hand-copied values: they
    read the live --field-* tokens straight from globals.css. The tokens are
-   declared unconditionally on :root (only the RULES that apply them are
-   behind html[data-visual="field"]), so they resolve here either way. That
+   declared unconditionally on :root, so they resolve here. That
    makes this page drift-proof — retune a field token and the preview moves
    with it, which is the whole point of a comparison surface.
 

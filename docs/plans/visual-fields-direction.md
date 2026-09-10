@@ -1,6 +1,8 @@
 # Visual update: "Fields and card materials" — audit + plan
 
-> **Status (2026-08-26): built, behind `NEXT_PUBLIC_FLAG_VISUAL_FIELDS`.**
+> **Status: shipped 2026-08-26; flag retired 2026-09-10 (the fields are now
+> unconditional). Everything below is the record of the build, written while the
+> flag existed — read it as history, not as current mechanics.**
 > The Stage 4 track gate has been run. **One hue per tab won**; the one-hue-at-
 > five-depths alternative was deleted rather than left behind a second switch.
 >

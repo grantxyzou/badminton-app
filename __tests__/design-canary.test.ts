@@ -172,14 +172,21 @@ describe('design-system canary: globals.css token/class contract', () => {
   /* Three facts the field work depends on that fail SILENTLY rather than
      loudly, which is the only reason they are pinned here. */
   it('keeps the field scoping selector and its light-mode escape hatch', () => {
-    // Rename this selector and every field rule stops matching. Nothing errors;
-    // the app just quietly looks the way it did before.
-    expect(css).toContain('html[data-visual="field"]');
+    // `html:root` is what NEXT_PUBLIC_FLAG_VISUAL_FIELDS' `html[data-visual=
+    // "field"]` became when that flag retired (2026-09-10). It reads like a
+    // vestige and is NOT one: it is the only substitution that preserves the
+    // original (0,2,1), which the field rules need in order to outrank both a
+    // Tailwind utility (0,1,0) and the per-tab `.glass-card` rule at (0,2,1).
+    // Simplify it to a bare class and Stats cards silently revert to their
+    // pre-field material at the padding the utility asks for. NOTHING ELSE CAN
+    // CATCH THAT — jsdom computes every length as 0px, so the rest of this
+    // suite would stay green. Hence a source assertion.
+    expect(css).toContain('html:root .glass-card');
 
     // --sev-low-label lifts to blue-100 on a dark field for AA (4.58:1). Light
     // mode MUST reset it: its card resolves to #eff5fd, where blue-100 measures
     // 1.11:1. This reset is one tidy-up away from being deleted.
-    expect(css).toContain('html[data-visual="field"][data-theme="light"]');
+    expect(css).toContain('html:root[data-theme="light"]');
 
     // The locked material is defined by what it removes.
     const locked = css.slice(css.indexOf('.glass-card.is-locked'));

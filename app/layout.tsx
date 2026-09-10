@@ -5,7 +5,6 @@ import { getLocale, getMessages } from 'next-intl/server';
 import PreviewBanner from '@/components/PreviewBanner';
 import HydrationMark from '@/components/HydrationMark';
 import { APP_TIME_ZONE } from '@/i18n/request';
-import { isFlagOn } from '@/lib/flags';
 import './globals.css';
 
 // Locked type system (design-system bundle v3, subset 2026-05-07):
@@ -144,16 +143,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const messages = await getMessages();
 
   return (
-    /* `data-visual` is read on the SERVER and stamped here, unlike `data-tab`
-       which HomeShell sets in a useEffect. That difference matters: the field
-       is the page's ground colour, so resolving it after hydration would flash
-       on the LCP frame. NEXT_PUBLIC_* vars are inlined at build time on both
-       sides, so this costs nothing. Every field rule is scoped
-       `html[data-visual="field"]`, which is what makes the flag a real off
-       switch — CSS cannot call isFlagOn(). */
+    /* This used to carry `data-visual="field"`, stamped on the SERVER from
+       NEXT_PUBLIC_FLAG_VISUAL_FIELDS so the page's ground colour resolved
+       before the LCP frame rather than in a useEffect like `data-tab`. That
+       flag RETIRED on 2026-09-10 and the fields are now unconditional, so the
+       attribute is gone. The field rules in globals.css kept an `html:root`
+       prefix in its place — that is a SPECIFICITY device, not a leftover;
+       globals.css explains why above the field-card padding rule. */
     <html
       lang={locale}
-      data-visual={isFlagOn('NEXT_PUBLIC_FLAG_VISUAL_FIELDS') ? 'field' : undefined}
       className={`${spaceGrotesk.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable}`}
     >
       <head>
