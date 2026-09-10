@@ -1164,27 +1164,16 @@ html[data-swiping="release"] [data-page-shell] {
   }
 }
 
-/* ── 03 Court — per-tab override for Sign-Ups ──
-   When the user is on the Sign-Ups tab (data-tab="players" on <html>),
-   swap the three drifting aurora blobs for a faint doubles-court etching
-   + soft green floor glow. Per docs/design-system/preview/24-app-background
-   bg-3: static (no animation), embedded SVG lines at ~18% opacity, green
-   glow from below. On-theme for the sport-specific list view. */
-html[data-tab="players"] .aurora-blob-1,
-html[data-tab="players"] .aurora-blob-2,
-html[data-tab="players"] .aurora-blob-3 {
-  /* Hide the aurora blobs entirely — static court backdrop owns the scene. */
-  display: none;
-}
+/* ── 03 Court — the Sign-Ups MOTIF ──
+   A faint doubles-court etching on `.court-bg::before`, per
+   docs/design-system/preview/24-app-background bg-3: static (no animation),
+   embedded SVG lines at ~18% opacity. On-theme for the sport-specific list
+   view.
 
-html[data-tab="players"] .court-bg {
-  /* Soft green floor glow — stronger at the bottom so the court reads as
-     being lit from its baseline (gymnasium floor catching stage light). */
-  background:
-    radial-gradient(ellipse 120% 80% at 50% 115%, rgba(22, 163, 74, 0.18) 0%, transparent 60%),
-    var(--page-bg);
-}
-
+   This used to carry a green floor glow on `background` as well. That half
+   was the pre-field GROUND and is gone — the Sign-Ups field replaced it (see
+   FIELDS below). Ground and motif were always separate declarations, which is
+   exactly what let a field slot UNDER this etching rather than replace it. */
 /* Proper badminton doubles-court diagram viewed from above.
    Real dimensions: 13.40m long × 6.10m wide = ratio 2.197:1 (≈ 100:220).
    Markings at actual proportions:
@@ -1214,34 +1203,21 @@ html[data-tab="players"] .court-bg::before {
   background-repeat: no-repeat;
 }
 
-[data-theme="light"] html[data-tab="players"] .court-bg,
-html[data-tab="players"][data-theme="light"] .court-bg {
-  background:
-    radial-gradient(ellipse 120% 80% at 50% 115%, rgba(22, 163, 74, 0.10) 0%, transparent 60%),
-    var(--page-bg);
-}
 [data-theme="light"] html[data-tab="players"] .court-bg::before,
 html[data-tab="players"][data-theme="light"] .court-bg::before {
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'><g fill='none' stroke='%2316a34a' stroke-width='0.5' opacity='0.20' vector-effect='non-scaling-stroke'><rect x='0' y='0' width='100' height='220'/><line x1='7.54' y1='0' x2='7.54' y2='220'/><line x1='92.46' y1='0' x2='92.46' y2='220'/><line x1='0' y1='77.5' x2='100' y2='77.5'/><line x1='0' y1='142.5' x2='100' y2='142.5'/><line x1='0' y1='12.5' x2='100' y2='12.5'/><line x1='0' y1='207.5' x2='100' y2='207.5'/><line x1='50' y1='0' x2='50' y2='77.5'/><line x1='50' y1='142.5' x2='50' y2='220'/></g><line x1='0' y1='110' x2='100' y2='110' stroke='%2316a34a' stroke-width='0.9' stroke-dasharray='2 2' opacity='0.32' vector-effect='non-scaling-stroke'/></svg>");
 }
 
-/* ── 05 Tempo Field — per-tab override for Stats ──
+/* ── 05 Tempo Field — the Stats MOTIF ──
    Stats tab (data-tab="skills" — id kept for backcompat per CLAUDE.md) gets
    the dot-grid backdrop that extends the BPM logo's tempo-dot motif at a
    42px rhythm. Per docs/design-system/preview/24-app-background bg-5: a
-   single repeating radial-gradient dot, then a soft radial vignette via
-   ::before that fades dots into the page edges so charts at the top/sides
-   stay legible. Static (no animation) — the rhythm comes from the grid. */
-html[data-tab="skills"] .aurora-blob-1,
-html[data-tab="skills"] .aurora-blob-2,
-html[data-tab="skills"] .aurora-blob-3 {
-  display: none;
-}
+   single repeating radial-gradient dot, masked by a soft radial vignette that
+   fades dots into the page edges so charts at the top/sides stay legible.
+   Static (no animation) — the rhythm comes from the grid.
 
-html[data-tab="skills"] .court-bg {
-  background: var(--page-bg);
-}
-
+   Its flat --page-bg ground is gone; the Stats field is the ground now, and
+   the field block re-tunes this dot's alpha .22 -> .14 against it. */
 html[data-tab="skills"] .court-bg::before {
   content: '';
   position: absolute;
@@ -1258,20 +1234,6 @@ html[data-tab="skills"] .court-bg::before {
 html[data-tab="skills"][data-theme="light"] .court-bg::before {
   background-image:
     radial-gradient(circle at 50% 50%, rgba(22, 163, 74, 0.18) 1.5px, transparent 2px);
-}
-
-/* ── Admin tab — flat page-bg ──
-   Admin is a power-user surface, intentionally divorced from the rest of the
-   app's atmospheric chrome (no aurora, no court, no dot field). Sits on the
-   plain --page-bg token so it stays in-theme without competing for attention. */
-html[data-tab="admin"] .aurora-blob-1,
-html[data-tab="admin"] .aurora-blob-2,
-html[data-tab="admin"] .aurora-blob-3 {
-  display: none;
-}
-
-html[data-tab="admin"] .court-bg {
-  background: var(--page-bg);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
