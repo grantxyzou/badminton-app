@@ -48,10 +48,6 @@ describe('/api/push/subscribe — native tokens', () => {
   beforeEach(() => {
     resetMockStore();
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_PUSH_NOTIFY = 'true';
-  });
-  afterEach(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_PUSH_NOTIFY;
   });
 
   it('stores an ios token with platform, no endpoint, hashed like an endpoint', async () => {

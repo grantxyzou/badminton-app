@@ -4,7 +4,6 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { readActiveAnnouncements } from '@/lib/announcements';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
-import { isFlagOn } from '@/lib/flags';
 import { sendPushToAll } from '@/lib/push';
 import { buildAnnouncementPayload } from '@/lib/pushMessages';
 import { randomBytes } from 'crypto';
@@ -108,12 +107,10 @@ export async function POST(req: NextRequest) {
        CREATE only. PATCH upserts an edit, and re-notifying everyone because a
        typo was fixed is exactly the empty interruption that teaches people to
        swipe these away. */
-    if (isFlagOn('NEXT_PUBLIC_FLAG_PUSH_NOTIFY')) {
-      try {
-        await sendPushToAll(buildAnnouncementPayload(announcement));
-      } catch (err) {
-        console.error('[announcements] push failed (announcement still saved):', err);
-      }
+    try {
+      await sendPushToAll(buildAnnouncementPayload(announcement));
+    } catch (err) {
+      console.error('[announcements] push failed (announcement still saved):', err);
     }
 
     return NextResponse.json(resource, { status: 201 });

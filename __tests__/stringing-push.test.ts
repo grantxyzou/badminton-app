@@ -77,7 +77,6 @@ beforeEach(() => {
   resetMockStore();
   sendPushToMembers.mockClear();
   sendPushToAll.mockClear();
-  process.env.NEXT_PUBLIC_FLAG_PUSH_NOTIFY = 'true';
   delete process.env.GMAIL_USER;
   delete process.env.GMAIL_APP_PASSWORD;
 });
@@ -182,14 +181,6 @@ describe('notifyPlayerOfStage — the push arm', () => {
     const out = await notifyPlayerOfStage(job({ memberId: 'ghost' }));
     expect(sendPushToMembers).not.toHaveBeenCalled();
     expect(out.reason).toBe('no_member');
-  });
-
-  it('does not push when the flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_PUSH_NOTIFY = 'false';
-    await seedMember();
-    const out = await notifyPlayerOfStage(job());
-    expect(sendPushToMembers).not.toHaveBeenCalled();
-    expect(out.pushSent).toBe(0);
   });
 
   /**

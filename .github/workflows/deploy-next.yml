@@ -117,7 +117,6 @@ jobs:
           #
           # Nobody is notified until they OPT IN on Profile -> Notifications,
           # and only one trigger is wired: sign-ups opening.
-          NEXT_PUBLIC_FLAG_PUSH_NOTIFY: 'true'
           # The one-time link that carries a signed-in PWA identity into the
           # native shell (docs/plans/native-shell.md, WP5). Gates two
           # credential-minting routes SERVER-side and the "Move to the app"

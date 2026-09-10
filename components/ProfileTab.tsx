@@ -140,7 +140,6 @@ export default function ProfileTab({
   // Owned here (not in PushSheet) so the row's On/Off label and the sheet's
   // button share one state and can't disagree after a toggle.
   const push = usePush();
-  const pushEnabled = isFlagOn('NEXT_PUBLIC_FLAG_PUSH_NOTIFY');
 
   useEffect(() => {
     // The native shell IS the installed app; the "Add to Home Screen" row
@@ -650,7 +649,7 @@ export default function ProfileTab({
           /* Hidden while the probe is unresolved: rendering "Off" before we
              know would be a confirmed negative from an unknown state
              (CLAUDE.md, "Unknown ≠ known-false"). */
-          ...(pushEnabled && push.state.status !== 'loading'
+          ...(push.state.status !== 'loading'
             ? [{
                 icon: 'notifications',
                 label: tSettings('notifications'),
