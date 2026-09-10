@@ -140,8 +140,8 @@ export async function PUT(req: NextRequest) {
       wasClosed && willOpen && notYetNotified;
 
     const now = new Date().toISOString();
-    // Record the first open regardless of the flag — it's plain session
-    // history, and it's the value calculateSignupOpensOffset (advance route)
+    // Record the first open unconditionally — it's plain session history,
+    // and it's the value calculateSignupOpensOffset (advance route)
     // currently hardcodes to 0 for want of it.
     if (wasClosed && willOpen && typeof existing.signupOpenedAt !== 'string') {
       sessionData.signupOpenedAt = now;
