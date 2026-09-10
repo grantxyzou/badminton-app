@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope, type GroupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
+import { defaultMaxPlayers } from '@/lib/defaults';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, setMemberCookie } from '@/lib/auth';
@@ -194,7 +195,7 @@ export async function POST(req: NextRequest) {
     ]);
 
     const maxPlayers =
-      sessionData?.maxPlayers ?? parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12', 10);
+      sessionData?.maxPlayers ?? defaultMaxPlayers();
 
     if (sessionData?.signupOpen === false && !isAdminAuthed(req)) {
       return NextResponse.json({ error: 'Sign-ups are not open yet' }, { status: 403 });
@@ -639,7 +640,7 @@ export async function PATCH(req: NextRequest) {
 
     const sessionDoc = await scope.read<{ id: string; maxPlayers?: number }>('sessions', sessionId, sessionId);
     const maxPlayers =
-      sessionDoc?.maxPlayers ?? parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12', 10);
+      sessionDoc?.maxPlayers ?? defaultMaxPlayers();
 
     // Capacity check when restoring a removed player or promoting a waitlisted player
     if (body.removed === false || body.waitlisted === false) {

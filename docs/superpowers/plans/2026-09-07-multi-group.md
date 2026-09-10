@@ -31,8 +31,8 @@ Goal: every GROUP_SCOPED read/write goes through `groupScope(groupId)` with `res
 
 ## Phase 2 — identity: groups, memberships, cookie claim, roles, backfill
 
-- [ ] `lib/groups.ts`: `ensureContainer` for `groups` `/id` and `memberships` `/groupId`; `createGroup`, `addMembership`, `reserveRosterName`, `readMembership`, `listMemberships`, `reassignOwnership`
-- [ ] SAME PR: `lib/memberPurge.ts` rows (`memberships` + reservations OWNED with `pk: '/groupId'`; `groups` CLASSIFIED_ELSEWHERE) AND `CLAUDE.md`'s Cosmos bullet ("There are 25 containers", `groups` under `/id`, a `/groupId` line) — `docs-canary` fails otherwise; `lib/groupScope.ts` tables gain both
+- [x] (PR 5, 2026-09-10) `lib/groups.ts`: `ensureContainer` for `groups` `/id` and `memberships` `/groupId`; `createGroup`, `addMembership`, `reserveRosterName`, `readMembership`, `listMemberships` (the roster) + `listMembershipsForMember` (the ONE cross-group read; `lib/groups.ts` is allowlisted for it and `groups-lib.test.ts` pins the count), `reassignOwnership` — already run by `purgeMember` so the `groups` purge row is true on the day it is written
+- [x] SAME PR: `lib/memberPurge.ts` rows (`memberships` + reservations OWNED with `pk: '/groupId'`; `groups` CLASSIFIED_ELSEWHERE) AND `CLAUDE.md`'s Cosmos bullet ("There are 25 containers", `groups` under `/id`, a `/groupId` line) — `docs-canary` fails otherwise; `lib/groupScope.ts` tables gain both
 - [ ] `lib/auth.ts`: `SessionPayload.groupId?`; mint functions take `groupId`; `verifyMemberAuth` returns it; `isAdminAuthedWithMember` → membership read when the flag is on; async `requireGroupMember(req)`; `lib/authSession.ts` `completeSignIn(res, member, groupId)`; the four direct mint sites
 - [ ] `lib/memberResolve.ts` `(groupId, name)`; `members` roster = memberships; `members/me` + `lib/useHasPin.ts` probe scoped; `players` invite gate = membership; `admin/route.ts` `ADMIN_NAMES` only for `'bpm'`; `admin/settings` → `groups.settings` with legacy fallback; `SetupPage.tsx` reads the endpoint
 - [ ] No-context PIN sign-in across memberships (exactly-one rule); owner deletion reassigns

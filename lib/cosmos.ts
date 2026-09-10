@@ -2,6 +2,7 @@ import { CosmosClient, Container } from '@azure/cosmos';
 import { randomBytes, scryptSync } from 'node:crypto';
 import equipmentCatalogSeed from '../scripts/data/equipment-catalog.json';
 import { scoreAssessment, placePhase, SKILLS } from './assessment';
+import { defaultMaxPlayers } from './defaults';
 import { matchesGroup, queryToleratesUnstamped, groupDocId, BPM_GROUP_ID } from './groupScope';
 import { pkOf, type ContainerName } from './containers';
 
@@ -684,5 +685,5 @@ export const DEFAULT_SESSION = {
   endDatetime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000).toISOString(),
   deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
   courts: 2,
-  maxPlayers: parseInt(process.env.NEXT_PUBLIC_MAX_PLAYERS ?? '12', 10) || 12,
+  maxPlayers: defaultMaxPlayers(),
 };

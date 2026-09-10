@@ -169,6 +169,13 @@ export interface Group {
   createdAt: string;
   createdBy: string;
   settings: GroupSettings;
+  /**
+   * Set when the last person who could own the group deleted their account.
+   * The doc STAYS: its sessions, players and settings across a dozen
+   * containers carry this `groupId`, and deleting the one doc that resolves
+   * it would orphan them all. Nothing lists or joins a closed group.
+   */
+  closedAt?: string;
 }
 
 /** Container `memberships`, PK `/groupId`; id is `${groupId}:${memberId}`. */
@@ -183,6 +190,21 @@ export interface Membership {
   status: 'active' | 'removed' | 'left';
   joinedAt: string;
   joinedVia: 'create' | 'link' | 'code' | 'backfill' | 'admin';
+}
+
+/**
+ * Also container `memberships`, same partition as the group's membership rows;
+ * id is `${groupId}:name:${nameLower}`. The doc's EXISTENCE is the uniqueness
+ * check for a roster name (Cosmos has no unique index; `items.create` 409s a
+ * duplicate id atomically). `kind` is what tells it from a `Membership`.
+ */
+export interface NameReservation {
+  id: string;
+  groupId: string;
+  kind: 'name';
+  memberId: string;
+  /** The name as reserved (display case); the id carries the lowercase key. */
+  name: string;
 }
 
 export interface Member {
