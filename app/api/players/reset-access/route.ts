@@ -4,6 +4,8 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer } from '@/lib/cosmos';
 import { issueRecoveryCode } from '@/lib/memberRecoveryCode';
 import { appendEvent } from '@/lib/recoveryAudit';
+import { resolveGroupId } from '@/lib/groupContext';
+import { resolveActiveMemberId } from '@/lib/memberResolve';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,14 +37,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid name' }, { status: 400 });
   }
 
+  // THE ADMIN'S OWN GROUP, not a search across clubs. This route is
+  // admin-authed and an admin means the person on THEIR roster; the ambiguity
+  // that `signInCandidates` exists for is a no-context sign-in, which this is
+  // not. It mattered anyway: the code issued here CLEARS a PIN when it is
+  // redeemed, so resolving `members[0]` on a name two clubs share would have
+  // let one club's admin lock the other club's member out.
   const membersContainer = getContainer('members');
-  const { resources: members } = await membersContainer.items
-    .query({
-      query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
-      parameters: [{ name: '@name', value: name }],
-    })
-    .fetchAll();
-  const member = members[0] ?? null;
+  const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
+  const { resource: found } = memberId
+    ? await membersContainer.item(memberId, memberId).read()
+    : { resource: undefined };
+  const member = found ?? null;
   if (!member) {
     return NextResponse.json({ error: 'No account found for that name' }, { status: 404 });
   }

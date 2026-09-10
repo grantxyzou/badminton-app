@@ -110,21 +110,47 @@ export function seedGroup(id: string, overrides: Record<string, unknown> = {}) {
   });
 }
 
-/** A raw `memberships` doc (no name reservation — seed one with `seedDoc` if the test needs it). */
-export function seedMembership(groupId: string, memberId: string, overrides: Record<string, unknown> = {}) {
-  const name = typeof overrides.name === 'string' ? overrides.name : memberId;
-  return seedDoc('memberships', {
+/**
+ * A `memberships` doc AND the name reservation that belongs with it.
+ *
+ * It used to write only the row, and that made seeded state a shape the app
+ * cannot produce: `addMembership` always reserves the name first, and with
+ * groups on a name resolves through the RESERVATION, not by scanning
+ * memberships. A test seeding the row alone therefore had a member who was on
+ * the roster and simultaneously unreachable by name — which reads as a routing
+ * bug in whatever route is under test. Pass `reserveName: false` for the
+ * half-written state deliberately (an interrupted backfill), and note a
+ * `removed` membership holds no reservation in real life either.
+ */
+export function seedMembership(
+  groupId: string,
+  memberId: string,
+  overrides: Record<string, unknown> & { reserveName?: boolean } = {},
+) {
+  const { reserveName, ...rest } = overrides;
+  const name = typeof rest.name === 'string' ? rest.name : memberId;
+  const nameLower = name.trim().toLowerCase();
+  const row = seedDoc('memberships', {
     id: `${groupId}:${memberId}`,
     groupId,
     memberId,
     name,
-    nameLower: name.trim().toLowerCase(),
+    nameLower,
     role: 'member',
     status: 'active',
     joinedAt: new Date().toISOString(),
     joinedVia: 'admin',
-    ...overrides,
+    ...rest,
   });
+  const wantsReservation = reserveName ?? (rest.status ?? 'active') === 'active';
+  if (wantsReservation) {
+    const id = `${groupId}:name:${nameLower}`;
+    const rows = (getStore()['memberships'] ?? []) as { id: string }[];
+    if (!rows.some((r) => r.id === id)) {
+      seedDoc('memberships', { id, groupId, kind: 'name', memberId, nameLower });
+    }
+  }
+  return row;
 }
 
 export function seedAlias(appName: string, etransferName: string) {

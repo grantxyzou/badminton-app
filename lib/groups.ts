@@ -356,11 +356,45 @@ export async function listMemberships(
 }
 
 /**
- * THE ONE CROSS-GROUP READ: every membership a person holds, in every group.
- * Raw access on purpose — the person-side view cannot go through a scope that
- * exists to exclude other groups. Bound to `@memberId` (a name the mock
- * filters on) and re-checked in JS; reservation rows carry a `memberId` too
- * and are dropped.
+ * Every ACTIVE membership holding one roster name, in any group. The SECOND
+ * (and last) cross-group raw read in this file, and it exists for exactly one
+ * caller: signing in by name and PIN with no group context, where the whole
+ * question is "how many people could this be?".
+ *
+ * `groupScope()` cannot express it — the accessor's entire job is to pin a
+ * query to one group, and this one deliberately spans them. It lives here, not
+ * at the call site, so the raw-access gate keeps holding the line;
+ * `groups-lib.test.ts` pins the count of raw reads in this file, so a third
+ * one has to be argued for rather than added.
+ *
+ * The `nameLower` equality is re-checked in JS on every row. The mock filters
+ * by PARAMETER NAME and an unrecognised one applies NO filter, so a typo here
+ * would hand a sign-in every membership row in every group as a candidate —
+ * the mock's destructive direction, and this is a credential path.
+ */
+export async function findMembershipsByRosterName(name: string): Promise<Membership[]> {
+  await ensureReady();
+  const key = rosterNameKey(name);
+  const { resources } = await getContainer('memberships')
+    .items.query({
+      query: 'SELECT * FROM c WHERE c.nameLower = @name AND c.status = @status AND NOT IS_DEFINED(c.kind)',
+      parameters: [
+        { name: '@name', value: key },
+        { name: '@status', value: 'active' },
+      ],
+    })
+    .fetchAll();
+  return ((resources ?? []) as Membership[]).filter(
+    (r) => isMembershipRow(r) && r.nameLower === key && r.status === 'active',
+  );
+}
+
+/**
+ * THE PERSON-SIDE CROSS-GROUP READ: every membership a person holds, in every
+ * group. Raw access on purpose — the person-side view cannot go through a
+ * scope that exists to exclude other groups. Bound to `@memberId` (a name the
+ * mock filters on) and re-checked in JS; reservation rows carry a `memberId`
+ * too and are dropped.
  */
 export async function listMembershipsForMember(memberId: string): Promise<Membership[]> {
   await ensureReady();

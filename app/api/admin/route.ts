@@ -12,6 +12,7 @@ import { getContainer } from '@/lib/cosmos';
 import { verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import type { Member } from '@/lib/types';
 import { resolveGroupId } from '@/lib/groupContext';
+import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { BPM_GROUP_ID } from '@/lib/groupScope';
 import { isFlagOn } from '@/lib/flags';
 import { readGroupAdmin, setMembershipRole, addMembership } from '@/lib/groups';
@@ -71,16 +72,38 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
   }
 
-  // Look up the Member by name (case-insensitive, active).
+  // Look up the Member by name, IN THE GROUP BEING LOGGED INTO.
+  //
+  // This was `resources[0]` off an unscoped `LOWER(c.name)` scan — cross
+  // partition, no ORDER BY — and then a group-admin check against whichever
+  // row came back. With two clubs each holding a Lin the scan can return the
+  // other club's, whose id has no standing here, so the real admin gets a 401
+  // that comes and goes between identical attempts. Not an escalation (the
+  // membership check still holds) but an admin locked out of their own club,
+  // and the same `members[0]` shape this change exists to remove.
   const membersContainer = getContainer('members');
-  const { resources } = await membersContainer.items
-    .query<Member>({
-      query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
-      parameters: [{ name: '@name', value: name }],
-    })
-    .fetchAll();
-  let member = resources[0];
   const groupId = resolveGroupId(req);
+  const memberId = await resolveActiveMemberId(groupId, name);
+  const { resource: found } = memberId
+    ? await membersContainer.item(memberId, memberId).read<Member>()
+    : { resource: undefined };
+  let member = found as Member | undefined;
+
+  // ONE narrow fallback, and only for the bootstrap. `ADMIN_NAMES` names the
+  // people who stood up THIS deployment's first club — before any membership
+  // existed for them to be found through — so the in-group lookup above misses
+  // by construction on the very first login. BPM only, and only for a name the
+  // env var actually holds, so the ambiguity this whole change removes cannot
+  // come back through it: everyone else must be on the roster to sign in.
+  if (!member && groupId === BPM_GROUP_ID && isNameInAdminBootstrap(name)) {
+    const { resources } = await membersContainer.items
+      .query<Member>({
+        query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
+        parameters: [{ name: '@name', value: name }],
+      })
+      .fetchAll();
+    member = resources.length === 1 ? resources[0] : undefined;
+  }
   const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 
   // Bootstrap: name in ADMIN_NAMES + member exists but role !== 'admin' →
