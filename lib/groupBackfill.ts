@@ -51,6 +51,7 @@ import { getContainer } from './cosmos';
 import { CONTAINERS, containersOfScope, pkFieldOf, type ContainerName } from './containers';
 import { BPM_GROUP_ID, groupScope } from './groupScope';
 import {
+  rosterNameKey,
   createGroup,
   readGroup,
   readMembership,
@@ -128,6 +129,43 @@ export interface BackfillStatus {
      */
     mismatched: number;
   };
+  /**
+   * NAMES TWO PEOPLE WANT. A roster name is unique inside a club by
+   * construction — the reservation doc's id IS the name, so the second claim
+   * 409s on insert, which is what stands in for the unique index Cosmos has
+   * not got. That makes a clash impossible to create and therefore invisible
+   * until somebody is standing in front of it:
+   *
+   *   `duplicates`  name groups where two members share the reservation key.
+   *                 Both active cannot happen — the reservation forbids it — so
+   *                 this is a soft-deleted person and a live one.
+   *   `blockedRejoins` the case that actually bites, counted per MEMBER: a
+   *                 REMOVED member whose exact name an ACTIVE member now holds.
+   *                 Removal releases the name, so it was free to be taken.
+   *                 Reactivating them correctly answers 409 rather than
+   *                 resurrecting the wrong person — but they cannot come back
+   *                 under that name until one of the two is renamed, and
+   *                 nothing said so in advance.
+   *   `similar`     ADVISORY, and the only one of the three that is not a claim
+   *                 about system behaviour: name groups that a person would
+   *                 read as one name but the reservation treats as two, because
+   *                 punctuation and spacing differ (`Chris L.` vs `chris l`).
+   *                 Nothing is blocked and nothing is wrong; it is where a
+   *                 double-entered person shows up.
+   *
+   * THE FIRST TWO USE `rosterNameKey`, THE RESERVATION'S OWN KEY, and must.
+   * A first cut folded punctuation away for all three, which broke both ends of
+   * the same rule: `Chris L.` and `chris l` reserve DIFFERENT ids, so it
+   * reported a rejoin as blocked when it was not, and a CJK name folded to the
+   * empty string and was skipped entirely — so a roster where every name is
+   * non-Latin reported a serene zero while the backfill itself refused on the
+   * collision. A report about a constraint has to be keyed the way the
+   * constraint is keyed.
+   *
+   * Counted here rather than in a report nobody opens: this is the number
+   * already being read to decide whether the cutover is safe.
+   */
+  names: { duplicates: number; blockedRejoins: number; similar: number };
   /**
    * Rows carrying no `groupId`, per container. All zeros is the cutover gate,
    * and ZERO IS ALWAYS EXACT — only a large count is capped.
@@ -224,10 +262,53 @@ export async function backfillStatus(opts: { scanCap?: number } = {}): Promise<B
         return ms !== undefined && (ms.status === 'active') !== (m.active === true);
       }).length,
     },
+    names: nameConflicts(members),
     unstamped,
     truncated,
     scanCap,
   };
+}
+
+/**
+ * ADVISORY ONLY — what a PERSON would read as the same name. Folds away
+ * punctuation and spacing on top of the reservation key. Never used to claim
+ * anything is blocked: the reservation does not fold these together, so they
+ * coexist perfectly well.
+ */
+const looseNameKey = (name: string) => rosterNameKey(name).replace(/[^\p{L}\p{N}]/gu, '');
+
+function groupBy(members: Member[], key: (m: Member) => string): Map<string, Member[]> {
+  const out = new Map<string, Member[]>();
+  for (const m of members) {
+    const k = key(m);
+    if (!k) continue;
+    const held = out.get(k);
+    if (held) held.push(m);
+    else out.set(k, [m]);
+  }
+  return out;
+}
+
+function nameConflicts(members: Member[]): { duplicates: number; blockedRejoins: number; similar: number } {
+  // THE RESERVATION'S OWN KEY for anything that claims a behaviour.
+  const exact = groupBy(members, (m) => rosterNameKey(m.name));
+  let duplicates = 0;
+  let blockedRejoins = 0;
+  for (const group of exact.values()) {
+    if (group.length < 2) continue;
+    duplicates += 1;
+    // Per MEMBER: one live `Chris` and two removed ones strands TWO people.
+    if (group.some((m) => m.active === true)) {
+      blockedRejoins += group.filter((m) => m.active !== true).length;
+    }
+  }
+  // Advisory: groups a person reads as one name that the reservation does not.
+  let similar = 0;
+  for (const group of groupBy(members, (m) => looseNameKey(m.name)).values()) {
+    if (group.length < 2) continue;
+    if (new Set(group.map((m) => rosterNameKey(m.name))).size > 1) similar += 1;
+  }
+  return { duplicates, blockedRejoins, similar };
 }
 
 async function allMembers(): Promise<Member[]> {

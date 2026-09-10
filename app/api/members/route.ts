@@ -65,10 +65,43 @@ export async function POST(req: NextRequest) {
     if (groupsOn()) {
       const groupId = resolveGroupId(req);
       if (await resolveActiveMemberId(groupId, trimmedName)) {
-        return NextResponse.json({ error: 'Member already exists' }, { status: 409 });
+        // SAY WHAT IS WRONG AND WHAT TO DO. A roster name is unique inside a
+        // club by construction, so this 409 is the ONLY moment the constraint
+        // is ever visible — it cannot be discovered in advance, because the
+        // clash cannot be created. "Member already exists" left an admin with
+        // no idea whether they had double-added the same person or hit a
+        // genuine name clash between two different ones, and no idea that a
+        // roster name is a per-club thing they are free to change.
+        return NextResponse.json(
+          {
+            error:
+              'Someone on this roster already goes by that name. Roster names have to be unique inside a club — give this person a distinct one, such as adding a last initial.',
+            code: 'roster_name_taken',
+          },
+          { status: 409 },
+        );
       }
-      const { member, created } = await adminAddToRoster(groupId, trimmedName);
-      return NextResponse.json(strip(member as unknown as Record<string, unknown>), { status: created ? 201 : 200 });
+      try {
+        const { member, created } = await adminAddToRoster(groupId, trimmedName);
+        return NextResponse.json(strip(member as unknown as Record<string, unknown>), { status: created ? 201 : 200 });
+      } catch (err) {
+        // THE LOST RACE lands here: `adminAddToRoster` reads the holder first,
+        // but two admins adding the same name concurrently means one of them
+        // loses `reserveRosterName` between that read and the create. Without
+        // this catch it fell through to the generic handler as a 500 — so the
+        // one path where the constraint is genuinely enforced was the one path
+        // that never explained itself, which is the opposite of this change's
+        // whole point.
+        if (!(err instanceof RosterNameTakenError)) throw err;
+        return NextResponse.json(
+          {
+            error:
+              'Someone on this roster already goes by that name. Roster names have to be unique inside a club — give this person a distinct one, such as adding a last initial.',
+            code: 'roster_name_taken',
+          },
+          { status: 409 },
+        );
+      }
     }
 
     // Check for existing member with same name (case-insensitive)
@@ -88,7 +121,10 @@ export async function POST(req: NextRequest) {
         const { pinHash: _ph, recoveryCode: _rc, passwordHash: _pw, emailVerification: _ev, passwordReset: _pr, email: _em, ...safe } = (resource ?? {}) as Record<string, unknown>;
         return NextResponse.json(safe, { status: 200 });
       }
-      return NextResponse.json({ error: 'Member already exists' }, { status: 409 });
+      return NextResponse.json(
+        { error: 'A member with that name already exists.', code: 'member_exists' },
+        { status: 409 },
+      );
     }
 
     const member = {
