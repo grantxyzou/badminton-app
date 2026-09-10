@@ -300,10 +300,9 @@ export default function ComponentsPage() {
       </Row>
 
       {/* ── Field card materials ──────────────────────────────────────────
-          Only renders as designed while NEXT_PUBLIC_FLAG_VISUAL_FIELDS is on
-          (the rules are scoped html[data-visual="field"]). With the flag off
-          these fall back to the current .glass-card, which is itself a useful
-          before/after: toggle the flag and reload to compare. */}
+          Shipped behind NEXT_PUBLIC_FLAG_VISUAL_FIELDS, which retired on
+          2026-09-10; this is now simply how a .glass-card renders. There is no
+          longer a flag to toggle for a before/after. */}
       <Row
         title="FIELD CARD MATERIALS"
         caption="Seven states on one material, at --radius-3xl (30px). Two rules the CSS cannot enforce, so review has to: at most ONE .is-pick per screen (two solid greens and neither reads as the answer), and semantic fills stay rare (three at once means the screen has stopped communicating). Locked is the only one that isn't glass — dropping the backdrop filter is what makes private data read as inert rather than merely dim."
