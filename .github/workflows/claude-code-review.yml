@@ -85,30 +85,41 @@ jobs:
           # All three are read-only. They add no ability to change the repo,
           # post, or run anything, and no new exposure to a hostile PR: the
           # agent already ingests PR-authored text through `gh pr diff`, and
-          # the step above restores .claude/, CLAUDE.md and friends from
-          # origin/main precisely because the PR head is untrusted.
+          # THE ACTION ITSELF — not any step in this file — restores .claude/,
+          # .mcp.json, CLAUDE.md and friends from the base branch before Claude
+          # starts. The run log says it in as many words: "Restoring .claude,
+          # ..., CLAUDE.md, .husky from origin/main (PR head is untrusted)".
+          # That restore is load-bearing here, because this repo TRACKS
+          # .claude/settings.json with a SessionStart hook and two PreToolUse
+          # Bash hooks that run `node scripts/*.mjs`; the checkout is the merge
+          # ref, so without the restore a PR head could register its own. It is
+          # the action's guarantee (see its security.md), not ours.
+          #
+          # `mcp__github_inline_comment__create_inline_comment` IS THE POSTING
+          # MECHANISM, and it is documented. The action starts the inline-comment
+          # MCP server ONLY when --allowedTools names that tool. It had never
+          # been named here, and every run printed "No buffered inline comments"
+          # — 35 of 35. The single run that ever posted (#342) improvised
+          # `gh api .../pulls/342/comments` by hand, which Bash(gh api:*)
+          # happens to permit. That was a workaround, not the mechanism, which
+          # is why posting has been intermittent rather than simply broken.
+          #
+          # `Skill` and `Agent` were added 2026-09-10 and REVERTED the same day.
+          # Neither is a documented allowedTools value for this action, and
+          # allowing them changed nothing measurable: runs 34489909359 and
+          # 34490515068 on PR #355 logged 10 and 18 denials WITH both allowed —
+          # at or above the median — and posted nothing. #342 posted four
+          # correct findings with `Agent` denied 11 times and `Skill` never
+          # attempted. The fan-out was never what stood in the way.
           claude_args: |
-            --allowedTools "Skill,Agent,Read,Grep,Glob,Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*)"
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Read,Grep,Glob,Bash(gh pr comment:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*)"
           #
-          # `Skill` and `Agent` were added 2026-09-10 because WITHOUT THEM THE
-          # REVIEW DOES NOT HAPPEN. The prompt above invokes
-          # `/code-review:code-review`, which needs `Skill` to execute at all —
-          # denied, it surfaces as `tool errors: Execute skill:
-          # code-review:code-review` and sometimes as the CLI fallback
-          # misreading the argument ("no pull requests found for branch
-          # grantxyzou/badminton-app/pull/NNN", 6 of 21 observed runs). And that
-          # command is built ENTIRELY on subagents: three Haiku steps, five
-          # parallel Sonnet reviewers, one Haiku confidence score per issue.
-          # With `Agent` denied, a lone agent improvised the lot — sometimes a
-          # full 50-turn review that found real bugs (#342), sometimes nothing
-          # at all.
-          #
-          # Canary #356 planted five REVIEW.md-named defects (pinHash in a
-          # response, sync isAdminAuthed on two mutating handlers, a lying empty
-          # state, Math.random() for an id, a wrong partition key) and the bot
-          # posted ZERO comments on every surface across TWO runs. That is the
-          # fifth way this job has been quietly not-working, and the first one
-          # caught by a canary rather than by accident.
+          # The canary that produced the reverted theory was #356, and it is the
+          # cautionary tale: it planted five REVIEW.md-named defects but titled
+          # itself "DO NOT MERGE — planted-defect canary" and listed them in the
+          # body, so the plugin's own eligibility step was entitled to skip it.
+          # Zero comments there measured nothing. Plant ONE defect in a genuine
+          # PR instead.
           #
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
