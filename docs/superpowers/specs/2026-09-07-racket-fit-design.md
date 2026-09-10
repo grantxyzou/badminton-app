@@ -26,6 +26,7 @@ inputs, so the design starts by asking what a fitting asks.
 | D3 | Comfort and swing are CEILINGS, not target moves | A sore arm is a constraint. Rows above a ceiling stay ranked, penalised and warned — a 0-score frame is legible, an excluded one is not. **fit-2:** swing is the ONLY input that caps flex; comfort caps weight and head-heaviness and lowers string tension, never flex — the elbow-load evidence is about tension and swing-weight, and no badminton study links shaft flex to arm pain. |
 | D4 | Skills demoted: tier from RATED skills only | No more fourteen 3s. `level` is `null` below 3 rated skills; the target then uses a neutral row and says so. **fit-2 dropped the fallback flex ceiling** derived from consistency/grip/smashes: racket deflection pays off inside the ~60–100 ms of stroke acceleration (Kwan 2010; Phomsoupha 2024), which a skill score does not measure. An unanswered swing now widens the tolerance and asks. |
 | D12 | Tier is price, not fitness for level — a soft penalty, doubled for a Beginner reaching UP past the target's tier (the level row's when unanchored, the anchor's own when anchored, so a Beginner already on Premium is not steered down) | The owner's first golden rating (2026-09-10) marked a Premium frame unacceptable for a Beginner at 91/100; the owner also ruled that a Beginner may still buy a Premium frame. Reorder, never exclude. |
+| D14 | The over-budget penalty ramps, it does not cliff | fit-1 charged the full −20 for $7 over a $200 budget; the owner's own golden rating (g06, 2026-09-10) chose exactly that racket. A budget is a preference: −20 at 25% over, linear below. |
 | D13 | Balance outweighs grams | Swing speed falls with swing-weight and stays flat when mass changes at fixed swing-weight (Cross 2006); heavier-swinging rackets did not slow the shuttle for experienced players (Towler 2023). Grams are a tie-break at 1.2/g, balance carries 22/step. |
 | D5 | Exclude ALL owned rackets, not the active one — by `catalogId` OR by normalised label | The rail masked the old behaviour with an "In your kit" badge. And a bag row added as free text (the stringing sheet's typed racket, and the `fresh-thursday` seed) has no `catalogId`, so id-only exclusion recommended Lin her own Astrox 88D Pro on 2026-09-07 with "Recommended based on your playing style" — the exact defect the register was built to remove, back through a side door. `canon(brand + ' ' + model)` closes it; the ownership badge in `GearPickRail` must use the same match. |
 | D6 | Budget never hard-filters (unchanged from 2026-08-19 D6) | Prices are USD-derived and stale. |
@@ -152,7 +153,7 @@ caps      = 10·max(0, flex − flexCeil) + 4·max(0, weight − weightCeil) + 1
 secondary = format (+4 subType match; +3 all-round when 'both')
           + style (+3 preferred)
           + grip (−6 only when BOTH sides known and no overlap)
-          + budget (−20 when msrp > budgetMaxCad; never excluded)
+          + budget (−20 × min(1, over / (0.25 × budget)); never excluded — D14)
 score     = clamp(100 − penalty − caps + secondary, 0, 100), rounded to 0.1
 ```
 
@@ -184,10 +185,11 @@ club line in `lib/pickReasons.ts` becomes `{ key: 'reason.clubPlays', params:
 
 ### Alternatives and "differs by"
 
-Alternative 1 = first ranked row whose (balance, flex, tier) triple differs from
-the top on ≥1 axis; alternative 2 = first whose triple differs from both. Fall
-back to next-by-rank within the top 10 so the diversity rule never yields fewer
-than two. `differsBy` vs the TOP, at most two fragments, priority: flex
+Alternative 1 = the RUNNER-UP, whatever its spec (fit-2, from golden case g06:
+the owner's own second choice sat at rank 2 on the top's triple and the fit-1
+rule skipped it). Alternative 2 = first row within the top 10 whose (balance,
+flex, tier) triple differs from the top's (and from the runner-up's when one
+exists). Fall back to next-by-rank so the shortlist never has fewer than two. `differsBy` vs the TOP, at most two fragments, priority: flex
 (`diff.stiffer` / `diff.softer`) → balance (`diff.headHeavier` /
 `diff.headLighter`) → weight if |Δ| ≥ 2 g (`diff.lighter {g}` / `diff.heavier`)
 → price if both known and |Δ| ≥ 20 (`diff.cheaper {cad}` / `diff.pricier`) →

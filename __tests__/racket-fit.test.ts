@@ -201,11 +201,17 @@ describe('scoring — one place per axis, ceilings warn and penalise, nothing is
     expect(s.warnings.map((w) => w.key)).toEqual(['warn.weightAboveCeiling', 'warn.headHeavyWithSoreArm']);
   });
 
-  it('budget never excludes: over budget is −20 and the row stays', () => {
+  it('budget never excludes: the penalty ramps to −20 at 25% over, and the row stays', () => {
+    // Budget 350. $7 over is a rounding error, not a twenty-point cliff — the
+    // owner's own golden rating chose a $207 racket against a $200 budget.
+    const nearly = racket('nearly', { balance: 'Head-heavy', flex: 'Stiff', tier: 'Premium', playStyle: 'Power', subType: 'doubles' }, 357);
+    expect(scoreFit(nearly, axesOf(nearly)!, target, inp, null).score).toBe(100); // 107 − 1.6, clamped
     const dear = racket('dear', { balance: 'Head-heavy', flex: 'Stiff', tier: 'Premium', playStyle: 'Power', subType: 'doubles' }, 400);
     const s = scoreFit(dear, axesOf(dear)!, target, inp, null);
-    expect(s.score).toBe(87); // 100 + 7 − 20
+    expect(s.score).toBe(95.6); // 107 − 20 × (50 / 87.5)
     expect(s.reasons.map((r) => r.key)).not.toContain('reason.withinBudget');
+    const way = racket('way', { balance: 'Head-heavy', flex: 'Stiff', tier: 'Premium', playStyle: 'Power', subType: 'doubles' }, 900);
+    expect(scoreFit(way, axesOf(way)!, target, inp, null).score).toBe(87); // the full 20, still ranked
   });
 
   it('grip is neutral when either side is unknown, −6 only on a known miss', () => {
@@ -262,10 +268,13 @@ describe('ranking, exclusion and alternatives', () => {
     expect(r2.top!.item.id).toBe('b');
   });
 
-  it('alternatives differ from the top on at least one of balance/flex/tier, and from each other', () => {
+  it('alternative 1 is the runner-up whatever its spec; alternative 2 differs from the top on balance/flex/tier', () => {
+    // 'a' shares the top's triple and sits at rank 2: fit-1 skipped it for a
+    // contrast and the golden set (g06) showed that costs the owner's own
+    // second choice. Diversity is worth one slot.
     const r = recommendFit(input({ anchor: ANCHOR, goal: 'happy', ownedIds: new Set(['anchor']) }), catalog);
     expect(r.top!.item.id).toBe('b');
-    expect(r.alternatives.map((p) => p.item.id)).toEqual(['c', 'd']);
+    expect(r.alternatives.map((p) => p.item.id)).toEqual(['a', 'c']);
   });
 
   it('falls back to rank order rather than returning fewer than two', () => {
@@ -280,7 +289,8 @@ describe('ranking, exclusion and alternatives', () => {
 
   it('"differs by" names at most two fragments, flex and balance first', () => {
     const r = recommendFit(input({ anchor: ANCHOR, goal: 'happy', ownedIds: new Set(['anchor']) }), catalog);
-    expect(r.alternatives[0].differsBy).toEqual([{ key: 'diff.softer' }, { key: 'diff.headLighter' }]);
+    // The runner-up shares the top's spec, so its only fragment is price.
+    expect(r.alternatives[0].differsBy).toEqual([{ key: 'diff.pricier', params: { cad: 20 } }]);
     expect(r.alternatives[1].differsBy).toEqual([{ key: 'diff.softer' }, { key: 'diff.headLighter' }]);
   });
 

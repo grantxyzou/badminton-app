@@ -54,6 +54,8 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 - **Balance outweighs grams.** Ten grams now costs about half a balance step, and the "faster" and "less fatigue" goals move balance first.
 - **A sore arm steers tension and swing-weight, not flex.** The comfort answer keeps its weight and head-heavy caps, lowers the paired string tension by one or two pounds inside the frame's rated window, and no longer caps shaft flex.
 - **Tier is price, not fitness for level.** A Beginner reaching up past the target's tier pays double so Entry and Mid frames that fit as well rank first — reordered, never excluded. A Beginner already playing a Premium frame is not steered down from it.
+- **The first alternative is the runner-up.** It used to be the first racket that differed from the top on balance, shaft or tier, which skipped the owner's own second choice in the golden set for a softer frame he did not want. The second alternative still shows a contrast.
+- **A few dollars over budget is no longer a twenty-point cliff.** The penalty ramps to its full weight at 25% over; the golden set showed the owner choosing a $207 racket against a $200 budget.
 - **The string card is scored at the tension it names.** The comfort reduction reaches the pairing engine, not only the displayed figure, and a comfort change re-asks the string card even when it is paired with your own racket.
 
 *Items here are already live on production. A tag just marks the release.*

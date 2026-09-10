@@ -340,6 +340,11 @@ const CAP_FLEX = 10;
 const CAP_WEIGHT = 4;
 const CAP_BALANCE = 10;
 const SECONDARY = { format: 4, formatBoth: 3, style: 3, gripMiss: -6, overBudget: -20 } as const;
+/** The over-budget penalty ramps to its full −20 at this fraction over the
+ *  budget. fit-1 charged the full 20 for $7 over $200, and the owner's own
+ *  golden rating (2026-09-10) chose exactly that racket: a budget is a
+ *  preference, and D6 already says it never excludes. */
+export const BUDGET_RAMP = 0.25;
 
 export function scoreFit(item: CatalogItem, axes: Axes, target: TargetSpec, input: FitInput, anchorAxes: Axes | null): Scored {
   const reasons: FitReason[] = [];
@@ -374,7 +379,10 @@ export function scoreFit(item: CatalogItem, axes: Axes, target: TargetSpec, inpu
   if (target.style && canon(axes.style) === canon(target.style)) secondary += SECONDARY.style;
   if (input.grip && axes.grip && !axes.grip.has(input.grip)) secondary += SECONDARY.gripMiss;
   const overBudget = typeof input.budgetMaxCad === 'number' && typeof item.msrp === 'number' && item.msrp > input.budgetMaxCad;
-  if (overBudget) secondary += SECONDARY.overBudget;
+  if (overBudget) {
+    const over = (item.msrp! - input.budgetMaxCad!) / Math.max(1, BUDGET_RAMP * input.budgetMaxCad!);
+    secondary += SECONDARY.overBudget * Math.min(1, over);
+  }
 
   const score = Math.round(clamp(100 - penalty - caps + secondary, 0, 100) * 10) / 10;
 
@@ -443,16 +451,28 @@ export function compareFit(a: Scored, b: Scored): number {
 
 const triple = (s: Scored) => `${s.axes.balance}|${s.axes.flex}|${s.axes.tier}`;
 
+/**
+ * Alternative 1 is the RUNNER-UP, whatever its spec. Alternative 2 is the
+ * first row whose (balance, flex, tier) differs from the top's, so the
+ * shortlist still shows one real contrast.
+ *
+ * fit-1 demanded a different triple of BOTH alternatives, and the golden set
+ * caught what that costs: the owner's own case (g06) had the ArcSaber 7 Pro
+ * at rank 2 on the same triple as the top pick, and the rule skipped it for
+ * a Medium-flex row the owner did not want. The runner-up is the most
+ * defensible alternative there is; diversity is worth one slot, not two.
+ */
 export function pickAlternatives(ranked: Scored[]): Scored[] {
   const [top, ...rest] = ranked;
   if (!top) return [];
   const window = rest.slice(0, 10);
   const out: Scored[] = [];
-  const first = window.find((s) => triple(s) !== triple(top));
-  if (first) out.push(first);
-  const second = window.find((s) => s !== first && triple(s) !== triple(top) && (!first || triple(s) !== triple(first)));
-  if (second) out.push(second);
-  // The diversity rule never yields fewer than two: fall back to rank order.
+  const runnerUp = window[0];
+  if (runnerUp) out.push(runnerUp);
+  const contrast = window.find((s) => s !== runnerUp && triple(s) !== triple(top) && (!runnerUp || triple(s) !== triple(runnerUp)))
+    ?? window.find((s) => s !== runnerUp && triple(s) !== triple(top));
+  if (contrast) out.push(contrast);
+  // Never fewer than two: fall back to rank order.
   for (const s of window) {
     if (out.length >= 2) break;
     if (!out.includes(s)) out.push(s);
