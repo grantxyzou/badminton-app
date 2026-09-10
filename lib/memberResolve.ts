@@ -1,4 +1,8 @@
 import { getContainer } from './cosmos';
+import { isFlagOn } from './flags';
+import { readMembership, nameReservationId } from './groups';
+import { groupScope } from './groupScope';
+import type { NameReservation } from './types';
 
 /**
  * Name → member id. THE single owner of that lookup, and it resolves the
@@ -36,6 +40,11 @@ import { getContainer } from './cosmos';
  *
  * Projection is `SELECT c.id` everywhere: seven of the copies did `SELECT *`,
  * pulling `pinHash` and `recoveryCode` into scope to read one field.
+ *
+ * BOTH ENTRY POINTS TAKE THE GROUP FIRST (multi-group Phase 2). A route cannot
+ * resolve a name unscoped, because with groups on the same name is a
+ * different person in a different club. Flag off, the group is ignored and
+ * the lookup is the `members` scan it always was.
  */
 
 /** What every name-keyed route needs to address a member's data. */
@@ -64,7 +73,27 @@ const synthetic = (trimmed: string): MemberSubject => ({
  * rather than sitting here as unreachable code that reads like an option.
  * Re-adding an unfiltered path means re-running that audit first.
  */
-async function lookupId(name: string): Promise<string | null> {
+/**
+ * WITH GROUPS ON a name means something only inside a group, and the group's
+ * name-reservation doc is a POINT READ that names the member — no
+ * cross-partition scan at all. The membership must still be ACTIVE: a
+ * reservation outlives a removal only until the name is released, and a
+ * removed person's data must not be addressable through their old name.
+ */
+async function lookupIdInGroup(groupId: string, name: string): Promise<string | null> {
+  const held = await groupScope(groupId).read<NameReservation>('memberships', nameReservationId(groupId, name), groupId);
+  if (!held || held.kind !== 'name') return null;
+  const m = await readMembership(groupId, held.memberId);
+  if (!m || m.status !== 'active') return null;
+  // ACTIVE-ONLY holds for the person too: a soft-deleted Member (`active:
+  // false`) must not resolve through a membership nobody updated, exactly as
+  // the flag-off scan filters `c.active = true`.
+  const { resource } = await getContainer('members').item(m.memberId, m.memberId).read<{ active?: boolean }>();
+  return resource?.active === true ? m.memberId : null;
+}
+
+async function lookupId(groupId: string, name: string): Promise<string | null> {
+  if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) return lookupIdInGroup(groupId, name);
   const { resources } = await getContainer('members')
     .items.query({
       query: 'SELECT c.id FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
@@ -80,8 +109,8 @@ async function lookupId(name: string): Promise<string | null> {
  * live at `gear-<id>`) and `stats/insight` (which returns an empty payload for
  * a non-member rather than narrating one).
  */
-export async function resolveActiveMemberId(name: string): Promise<string | null> {
-  return lookupId(name.trim());
+export async function resolveActiveMemberId(groupId: string, name: string): Promise<string | null> {
+  return lookupId(groupId, name.trim());
 }
 
 /**
@@ -89,10 +118,10 @@ export async function resolveActiveMemberId(name: string): Promise<string | null
  * `gear-<memberId>` and so must resolve the SAME id the gear write path used,
  * but still wants to serve a non-member a deterministic recommendation.
  */
-export async function resolveActiveSubject(name: string): Promise<MemberSubject> {
+export async function resolveActiveSubject(groupId: string, name: string): Promise<MemberSubject> {
   const trimmed = name.trim();
   try {
-    const id = await lookupId(trimmed);
+    const id = await lookupId(groupId, trimmed);
     if (id) return { memberId: id, name: trimmed, isMember: true };
   } catch {
     /* a failed read must not 500 a read-only surface — fall through */

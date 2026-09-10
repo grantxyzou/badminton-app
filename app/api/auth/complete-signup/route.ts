@@ -23,6 +23,7 @@ import { readPendingSignup, clearPendingSignup } from '@/lib/pendingSignup';
 import { completeHandoff } from '@/lib/authHandoff';
 import type { Member } from '@/lib/types';
 import { resolveGroupId } from '@/lib/groupContext';
+import { rosterNameHolder, addMembership } from '@/lib/groups';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,7 +91,14 @@ export async function POST(req: NextRequest) {
   // A taken name is a REFUSAL with an instruction, not a silent link. Names are
   // enumerable via GET /api/members, so linking on a name match would be
   // account takeover by anyone who can read that list.
-  if (await resolveActiveMemberId(name)) {
+  // With groups on the WRITE-side check is the reservation itself — a name a
+  // removed member still holds is not free — and the account that follows is
+  // joined to this group, or nothing could ever resolve it.
+  const signupGroupId = resolveGroupId(req);
+  const taken = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')
+    ? (await rosterNameHolder(signupGroupId, name)) !== null
+    : (await resolveActiveMemberId(signupGroupId, name)) !== null;
+  if (taken) {
     return NextResponse.json({ error: 'name_taken' }, { status: 409 });
   }
 
@@ -130,6 +138,9 @@ export async function POST(req: NextRequest) {
       ...(claimEmail ? { email: claimEmail, emailVerified: true } : {}),
     };
     await getContainer('members').items.create(member);
+    if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) {
+      await addMembership({ groupId: signupGroupId, memberId: member.id, name: member.name, joinedVia: 'link' });
+    }
 
     /* The PWA case: this response's cookies are being issued to Safari, so
        park the member the app can collect instead. Without this a brand-new

@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope, type GroupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
+import { isFlagOn } from '@/lib/flags';
+import { resolveActiveMemberId } from '@/lib/memberResolve';
+import { adminAddToRoster } from '@/lib/roster';
+
+const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 import { defaultMaxPlayers } from '@/lib/defaults';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
@@ -127,13 +132,22 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Too many account creation attempts. Try again later.' }, { status: 429 });
       }
       const membersContainer = getContainer('members');
-      const { resources: existingMembers } = await membersContainer.items
-        .query({
-          query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name)',
-          parameters: [{ name: '@name', value: trimmedName }],
-        })
-        .fetchAll();
-      const existingMember = existingMembers[0];
+      const accountGroupId = resolveGroupId(req);
+      // With groups on the invite list is THIS group's roster, so the name is
+      // resolved inside it; flag off, the members scan it always was.
+      const existingMember = await (async () => {
+        if (groupsOn()) {
+          const id = await resolveActiveMemberId(accountGroupId, trimmedName);
+          return id ? (await membersContainer.item(id, id).read()).resource : undefined;
+        }
+        const { resources: existingMembers } = await membersContainer.items
+          .query({
+            query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name)',
+            parameters: [{ name: '@name', value: trimmedName }],
+          })
+          .fetchAll();
+        return existingMembers[0];
+      })();
       // Invite-only: account creation requires the admin to have pre-seeded
       // the name in the members container. Profile copy says "Account
       // creation is invite only — contact admin for inquiries (beta)" so
@@ -159,7 +173,11 @@ export async function POST(req: NextRequest) {
         pinHash,
         lastSeen: new Date().toISOString(),
       };
-      const { resource } = await membersContainer.items.upsert(memberDoc);
+      // An admin creating a fresh account here is adding them to THIS roster:
+      // with groups on the person and their membership come from one helper
+      // (rejoining the name's holder here rather than minting a duplicate).
+      const base = groupsOn() && !existingMember ? (await adminAddToRoster(accountGroupId, trimmedName)).member : null;
+      const { resource } = await membersContainer.items.upsert(base ? { ...base, ...memberDoc, id: base.id, createdAt: base.createdAt } : memberDoc);
       const safe = resource as Record<string, unknown> | undefined;
       // Audit C3: the upsert can return undefined (partial Cosmos response,
       // mock-store quirk). Without this guard the client got
@@ -178,12 +196,18 @@ export async function POST(req: NextRequest) {
     const scope = groupScope(resolveGroupId(req));
     const membersContainer = getContainer('members');
 
-    // Parallelize all 4 reads — session, members, existing player, active count
+    // Parallelize all 4 reads — session, members, existing player, active count.
+    // With groups on the members read is ONE point read via the group's name
+    // reservation (lib/memberResolve), not the whole container.
     const [sessionData, membersRes, existingRes, activeRes] = await Promise.all([
       scope.read<Session>('sessions', sessionId, sessionId),
-      membersContainer.items
-        .query({ query: 'SELECT * FROM c WHERE c.active = true' })
-        .fetchAll(),
+      groupsOn()
+        ? resolveActiveMemberId(scope.groupId, trimmedName).then(async (id) =>
+            id ? { resources: [(await membersContainer.item(id, id).read()).resource].filter(Boolean) } : { resources: [] },
+          )
+        : membersContainer.items
+            .query({ query: 'SELECT * FROM c WHERE c.active = true' })
+            .fetchAll(),
       scope.query<Record<string, unknown>>('players', {
         where: 'c.sessionId = @sessionId AND LOWER(c.name) = LOWER(@name)',
         params: [{ name: '@sessionId', value: sessionId }, { name: '@name', value: trimmedName }],
@@ -206,9 +230,16 @@ export async function POST(req: NextRequest) {
     }
 
     // Members-based identity check
-    const allMembers = membersRes.resources;
+    const allMembers = membersRes.resources as Array<{ id: string; name: string; sessionCount: number; pinHash?: string; [key: string]: unknown }>;
     let matchedMember: { id: string; name: string; sessionCount: number; pinHash?: string; [key: string]: unknown } | null = null;
-    if (allMembers.length > 0) {
+    if (groupsOn()) {
+      // Already resolved inside the group above: one doc or none. A roster
+      // always has at least its owner, so the invite gate always applies.
+      matchedMember = allMembers[0] ?? null;
+      if (!matchedMember && !isAdminAuthed(req)) {
+        return NextResponse.json({ error: 'invite_list_not_found', name: trimmedName }, { status: 403 });
+      }
+    } else if (allMembers.length > 0) {
       matchedMember = allMembers.find(
         (m: { name: string }) => m.name.toLowerCase() === trimmedName.toLowerCase()
       ) ?? null;
@@ -229,7 +260,12 @@ export async function POST(req: NextRequest) {
     // `LOWER(c.name)` query with no ORDER BY picks between them, and that id is
     // the storage key for drills, assessments, kudos and gear. Mirrors the
     // reactivate branch in POST /api/members.
-    if (!matchedMember && isAdminAuthed(req)) {
+    if (!matchedMember && isAdminAuthed(req) && groupsOn()) {
+      // With groups on: rejoin the name's holder here, else a new person —
+      // never the global reactivation scan below, which would resurrect
+      // another club's soft-deleted person onto this roster.
+      matchedMember = (await adminAddToRoster(scope.groupId, trimmedName)).member as unknown as typeof matchedMember;
+    } else if (!matchedMember && isAdminAuthed(req)) {
       const { resources: anyNamed } = await membersContainer.items
         .query({
           query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name)',

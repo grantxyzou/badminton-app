@@ -7,6 +7,7 @@ import { rackets } from '@/lib/activeRacket';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { FIT_GOALS, FIT_SWINGS, FIT_ARM_COMFORTS, FIT_GRIPS, type PlayerGear, type GearItem, type EquipmentCategory } from '@/lib/types';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
+import { resolveGroupId } from '@/lib/groupContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,7 +72,7 @@ async function authorizeBagWrite(req: NextRequest, name: string, bucket: 'bag' |
   if (!checkRateLimit(key, cap, HOUR_MS)) {
     return { error: NextResponse.json({ error: 'rate_limited' }, { status: 429 }) };
   }
-  const memberId = await resolveActiveMemberId(name);
+  const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
   if (!memberId) return { error: NextResponse.json({ error: 'member_not_found' }, { status: 404 }) };
   const caller = verifyMemberAuth(req);
   if (caller?.memberId !== memberId && !(await isAdminAuthedWithMember(req)).authed) {
@@ -212,7 +213,7 @@ export async function GET(req: NextRequest) {
     await ensureGear();
     const name = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50) ?? '';
     if (!name) return NextResponse.json({ gear: null });
-    const memberId = await resolveActiveMemberId(name);
+    const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
     if (!memberId) return NextResponse.json({ gear: null });
 
     const container = getContainer('playerGear');
@@ -504,7 +505,7 @@ export async function PUT(req: NextRequest) {
     if (!VALID_CATEGORIES.has(body.item.category)) {
       return NextResponse.json({ error: 'invalid_category' }, { status: 400 });
     }
-    const memberId = await resolveActiveMemberId(name);
+    const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
     if (!memberId) return NextResponse.json({ error: 'member_not_found' }, { status: 404 });
 
     // Gear is member-scoped: only the member themselves (proven by the

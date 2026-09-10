@@ -5,6 +5,7 @@ import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { verifyMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
 import { SKILLS, scoreAssessment, placePhase, type Rating } from '@/lib/assessment';
 import { resolveActiveSubject } from '@/lib/memberResolve';
+import { resolveGroupId } from '@/lib/groupContext';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
     const ratings = validateRatings(body.ratings);
     if (!ratings) return NextResponse.json({ error: 'ratings_required' }, { status: 400 });
 
-    const subject = await resolveActiveSubject(name);
+    const subject = await resolveActiveSubject(resolveGroupId(req), name);
 
     // Member-scoped write (Security Rule 12): a name that resolves to a real
     // member can only be written by that member's own member_session cookie
@@ -113,7 +114,7 @@ export async function GET(req: NextRequest) {
   if (!name || !name.trim()) return NextResponse.json({ assessments: [] });
   try {
     await ensureAssessments();
-    const subject = await resolveActiveSubject(name);
+    const subject = await resolveActiveSubject(resolveGroupId(req), name);
     const { resources } = await getContainer('assessments')
       .items.query({
         query: 'SELECT * FROM c WHERE c.memberId = @memberId',

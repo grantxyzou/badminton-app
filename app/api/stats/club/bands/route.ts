@@ -6,6 +6,7 @@ import { computeClubBands, MIN_COHORT } from '@/lib/clubBands';
 import { normalizeStatsPrivacy, isComparisonRevealed } from '@/lib/statsPrivacy';
 import type { Rating, StoredAssessment } from '@/lib/assessment';
 import { resolveActiveSubject } from '@/lib/memberResolve';
+import { resolveGroupId } from '@/lib/groupContext';
 
 /**
  * Club comparison bands for one member — private by design, same gate as
@@ -62,15 +63,12 @@ async function latestRatingsByMember(): Promise<Map<string, Rating[]>> {
 
 /** Name → member id. Mirrors `resolveSubject` in app/api/stats/level/route.ts. */
 
-async function readPrivacy(name: string) {
+/** By the RESOLVED id, never by name: the consent gate and the data it gates must be one person. */
+async function readPrivacy(memberId: string) {
   try {
-    const { resources } = await getContainer('members')
-      .items.query({
-        query: 'SELECT c.statsPrivacy FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
-        parameters: [{ name: '@name', value: name }],
-      })
-      .fetchAll();
-    return normalizeStatsPrivacy((resources[0] as { statsPrivacy?: unknown } | undefined)?.statsPrivacy);
+    const { resource } = await getContainer('members').item(memberId, memberId).read<{ statsPrivacy?: unknown; active?: boolean }>();
+    if (!resource || resource.active !== true) return { clubComparison: false, promptedAt: null };
+    return normalizeStatsPrivacy(resource.statsPrivacy);
   } catch {
     // Fail CLOSED: an unreadable preference must not be treated as consent.
     return { clubComparison: false, promptedAt: null };
@@ -91,11 +89,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const [memberId, privacy, byMember] = await Promise.all([
-      (await resolveActiveSubject(name)).memberId,
-      readPrivacy(name),
-      latestRatingsByMember(),
-    ]);
+    const memberId = (await resolveActiveSubject(resolveGroupId(req), name)).memberId;
+    const [privacy, byMember] = await Promise.all([readPrivacy(memberId), latestRatingsByMember()]);
 
     const viewer = byMember.get(memberId) ?? [];
     const others: Rating[][] = [];

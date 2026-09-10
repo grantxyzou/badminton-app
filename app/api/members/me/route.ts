@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
+import { isFlagOn } from '@/lib/flags';
+import { resolveActiveMemberId } from '@/lib/memberResolve';
+import { readMembership } from '@/lib/groups';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import {
@@ -48,16 +51,29 @@ export async function GET(req: NextRequest) {
     // `__tests__/auth-strip-canary.test.ts` enforces both rules, because the
     // usual destructure-based canary cannot fire on a projection at all.
     const container = getContainer('members');
-    const { resources } = await container.items
-      .query({
-        query:
-          'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
-        parameters: [{ name: '@name', value: name }],
-      })
-      .fetchAll();
+    const groupId = resolveGroupId(req);
+    // With groups on, the name is resolved INSIDE the group (a point read of
+    // its reservation) and the person is read by id under the same projection;
+    // the role is the membership's. Flag off: the name scan it always was.
+    const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
+    const groupMemberId = groupsOn ? await resolveActiveMemberId(groupId, name) : null;
+    const probe = groupsOn
+      ? groupMemberId
+        ? {
+            query: 'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy FROM c WHERE c.id = @id AND c.active = true',
+            parameters: [{ name: '@id', value: groupMemberId }],
+          }
+        : null // not on this group's roster: nobody, without a read
+      : {
+          query:
+            'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
+          parameters: [{ name: '@name', value: name }],
+        };
+    const resources = probe ? (await container.items.query(probe).fetchAll()).resources : [];
 
     const me = resources[0];
-    const role = me?.role ?? 'member';
+    const groupRole = groupMemberId ? (await readMembership(groupId, groupMemberId))?.role : undefined;
+    const role = groupRole ? (groupRole === 'member' ? 'member' : 'admin') : (me?.role ?? 'member');
     const hasPin = typeof me?.pinHash === 'string' && me.pinHash.length > 0;
     const createdAt = typeof me?.createdAt === 'string' ? me.createdAt : null;
     const statsPrivacy = normalizeStatsPrivacy(me?.statsPrivacy);
@@ -125,13 +141,11 @@ async function handleStatsPrivacyPatch(req: NextRequest, name: string, raw: unkn
   }
 
   const membersContainer = getContainer('members');
-  const { resources: members } = await membersContainer.items
-    .query({
-      query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
-      parameters: [{ name: '@name', value: name }],
-    })
-    .fetchAll();
-  const member = members[0];
+  // Resolved INSIDE the group (lib/memberResolve) — the probe above is, and a
+  // PIN write must land on the person the probe described, not on whichever
+  // same-named person a cross-partition scan returns first.
+  const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
+  const member = memberId ? (await membersContainer.item(memberId, memberId).read()).resource : undefined;
   if (!member) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
@@ -208,13 +222,11 @@ async function handlePatch(req: NextRequest) {
   }
 
   const membersContainer = getContainer('members');
-  const { resources: members } = await membersContainer.items
-    .query({
-      query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
-      parameters: [{ name: '@name', value: name }],
-    })
-    .fetchAll();
-  const member = members[0];
+  // Resolved INSIDE the group (lib/memberResolve) — the probe above is, and a
+  // PIN write must land on the person the probe described, not on whichever
+  // same-named person a cross-partition scan returns first.
+  const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
+  const member = memberId ? (await membersContainer.item(memberId, memberId).read()).resource : undefined;
 
   if (!member) {
     if (currentPin) await verifyPin(currentPin, FAKE_HASH);

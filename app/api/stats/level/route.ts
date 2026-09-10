@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const subject = await resolveActiveSubject(name);
+    const subject = await resolveActiveSubject(resolveGroupId(req), name);
     const level = await getCanonicalLevel(subject, resolveGroupId(req));
     return NextResponse.json({ level });
   } catch (error) {

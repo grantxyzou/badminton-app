@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const subject = await resolveActiveSubject(name);
+    const subject = await resolveActiveSubject(resolveGroupId(req), name);
     const groupId = resolveGroupId(req);
     const [drills, rotationSeed] = await Promise.all([
       drillPicksFor(subject, groupId),

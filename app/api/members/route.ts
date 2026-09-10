@@ -3,20 +3,25 @@ import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
+import { isFlagOn } from '@/lib/flags';
+import { rosterMembers, adminAddToRoster } from '@/lib/roster';
+import { rosterNameHolder, renameRosterMember, removeFromRoster, RosterNameTakenError } from '@/lib/groups';
+import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { randomBytes } from 'crypto';
+
+const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 
 export async function GET(req: NextRequest) {
   try {
     const isAdmin = isAdminAuthed(req);
     const includeInactive = new URL(req.url).searchParams.get('all') === 'true' && isAdmin;
-    const container = getContainer('members');
-    const { resources } = await container.items
-      .query({
-        query: includeInactive
-          ? 'SELECT * FROM c ORDER BY c.name ASC'
-          : 'SELECT * FROM c WHERE c.active = true ORDER BY c.name ASC',
-      })
-      .fetchAll();
+    // THE ROSTER (lib/roster.ts): every active Member with the flag off; the
+    // group's memberships joined to their Member docs with it on, each under
+    // the name the group knows them by.
+    const entries = await rosterMembers(resolveGroupId(req), { includeInactive });
+    const resources = entries.map((e) =>
+      e.membership ? { ...e.member, active: e.membership.status === 'active' } : e.member,
+    );
     // Non-admin: only return names (no stats or IDs)
     if (!isAdmin) {
       return NextResponse.json(resources.map((m: { name: string; active: boolean }) => ({ name: m.name, active: m.active })));
@@ -25,7 +30,7 @@ export async function GET(req: NextRequest) {
     // Admin clients have no use for the scrypt hash; if they need to verify
     // a PIN, they go through /api/admin (server-side timingSafeEqual).
     return NextResponse.json(
-      (resources as Array<Record<string, unknown>>).map(
+      (resources as unknown as Array<Record<string, unknown>>).map(
         ({ pinHash: _ph, recoveryCode: _rc, passwordHash: _pw, emailVerification: _ev, passwordReset: _pr, email: _em, ...m }) => m,
       ),
     );
@@ -48,6 +53,23 @@ export async function POST(req: NextRequest) {
     }
 
     const container = getContainer('members');
+    const strip = (doc: Record<string, unknown>) => {
+      const { pinHash: _ph, recoveryCode: _rc, passwordHash: _pw, emailVerification: _ev, passwordReset: _pr, email: _em, ...safe } = doc;
+      return safe;
+    };
+
+    // With groups on a name is unique PER GROUP, so the global scan below
+    // would refuse a name another club uses and, worse, reactivate that
+    // club's soft-deleted person onto this roster. `adminAddToRoster` owns
+    // the decision (rejoin the name's holder here, else a new person).
+    if (groupsOn()) {
+      const groupId = resolveGroupId(req);
+      if (await resolveActiveMemberId(groupId, trimmedName)) {
+        return NextResponse.json({ error: 'Member already exists' }, { status: 409 });
+      }
+      const { member, created } = await adminAddToRoster(groupId, trimmedName);
+      return NextResponse.json(strip(member as unknown as Record<string, unknown>), { status: created ? 201 : 200 });
+    }
 
     // Check for existing member with same name (case-insensitive)
     const { resources: existing } = await container.items
@@ -113,7 +135,20 @@ export async function PATCH(req: NextRequest) {
       // resolves by name (lib/memberResolve), a cross-partition `LOWER(c.name)`
       // query with no ORDER BY then picks arbitrarily between them for an id
       // that keys drills, assessments, kudos and gear.
-      if (nextName.toLowerCase() !== String(existing.name ?? '').trim().toLowerCase()) {
+      if (groupsOn()) {
+        // Per-group: the reservation is the clash check, and the membership's
+        // roster name (what `GET /api/members` shows and what sign-up resolves)
+        // moves with the Member's display name.
+        const groupId = resolveGroupId(req);
+        const holder = await rosterNameHolder(groupId, nextName);
+        if (holder && holder !== id) return NextResponse.json({ error: 'name_taken' }, { status: 409 });
+        try {
+          await renameRosterMember(groupId, id, nextName);
+        } catch (err) {
+          if (err instanceof RosterNameTakenError) return NextResponse.json({ error: 'name_taken' }, { status: 409 });
+          throw err;
+        }
+      } else if (nextName.toLowerCase() !== String(existing.name ?? '').trim().toLowerCase()) {
         const { resources: clash } = await container.items
           .query({
             query: 'SELECT c.id FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.id != @id',
@@ -208,6 +243,10 @@ export async function DELETE(req: NextRequest) {
     if (!existing) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
+    // With groups on, this is removal from THIS roster (status `removed`,
+    // name released); `Member.active` is still flipped for the flag-off
+    // readers until Phase 3's per-group route replaces this one.
+    if (groupsOn()) await removeFromRoster(resolveGroupId(req), id);
     const { resource: updated } = await container.items.upsert({ ...existing, active: false });
     const { pinHash: _ph, recoveryCode: _rc, passwordHash: _pw, emailVerification: _ev, passwordReset: _pr, email: _em, ...safe } = (updated ?? {}) as Record<string, unknown>;
     return NextResponse.json(safe);

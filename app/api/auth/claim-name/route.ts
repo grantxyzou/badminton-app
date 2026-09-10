@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     // lookup; then a point read for the full document, since this route needs
     // pinHash and recoveryCode. `__tests__/member-resolve-canary.test.ts`
     // enforces the single owner.
-    const memberId = await resolveActiveMemberId(name);
+    const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
     const member = memberId
       ? ((await container.item(memberId, memberId).read<Member>()).resource ?? null)
       : null;
