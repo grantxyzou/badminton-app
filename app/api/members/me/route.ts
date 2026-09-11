@@ -9,6 +9,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import {
   verifyMemberAuth,
+  isAdminAuthed,
   isAdminAuthedWithMember,
   setMemberCookie,
   clearMemberCookie,
@@ -72,16 +73,46 @@ export async function GET(req: NextRequest) {
     const resources = probe ? (await container.items.query(probe).fetchAll()).resources : [];
 
     const me = resources[0];
-    const groupRole = groupMemberId ? (await readMembership(groupId, groupMemberId))?.role : undefined;
-    const role = groupRole ? (groupRole === 'member' ? 'member' : 'admin') : (me?.role ?? 'member');
     const hasPin = typeof me?.pinHash === 'string' && me.pinHash.length > 0;
     const createdAt = typeof me?.createdAt === 'string' ? me.createdAt : null;
-    const statsPrivacy = normalizeStatsPrivacy(me?.statsPrivacy);
     // Does this device hold a valid member_session cookie for THIS name? If so,
     // the client can drop the PIN field — the sign-up endpoint accepts the
     // cookie as identity proof (skip the per-session PIN re-entry).
     const memberAuth = verifyMemberAuth(req);
     const authed = !!memberAuth && memberAuth.name.toLowerCase() === name.toLowerCase();
+
+    /**
+     * `hasPin` and `createdAt` ARE the anonymous half, and must stay that way:
+     * the adaptive sign-up form reads `createdAt`'s presence as "this member
+     * exists" (lib/useHasPin.ts) and `hasPin` to choose anon / sign-in / create
+     * mode, all before anyone has proved anything.
+     *
+     * `role` and `statsPrivacy` are NOT. The name is the only input and names
+     * are enumerable through `GET /api/members`, so answering them for an
+     * unproven caller turns the public roster into a list of which accounts are
+     * admins — the 4-digit-PIN accounts worth attacking — and which are
+     * unclaimed. `/api/auth/methods` already refuses the same question.
+     *
+     * Withheld reads as UNKNOWN, not as a default: `role: 'member'` is what an
+     * unprivileged caller would see anyway, and `statsPrivacy: null` is the
+     * same unknown the degraded paths above return, which
+     * `shouldPromptForComparison` deliberately declines to act on. So a member
+     * whose 30-day cookie lapsed sees the comparison cards stay hidden — it
+     * does NOT re-fire the consent sheet at someone who already answered.
+     *
+     * Read-only route, so the cheap sync admin check (rule 3).
+     */
+    const privileged = authed || isAdminAuthed(req);
+    const groupRole =
+      privileged && groupMemberId ? (await readMembership(groupId, groupMemberId))?.role : undefined;
+    const role = !privileged
+      ? 'member'
+      : groupRole
+        ? groupRole === 'member'
+          ? 'member'
+          : 'admin'
+        : (me?.role ?? 'member');
+    const statsPrivacy = privileged ? normalizeStatsPrivacy(me?.statsPrivacy) : null;
     return NextResponse.json({ role, hasPin, createdAt, authed, statsPrivacy });
   } catch (error) {
     console.error('GET members/me error:', error);
@@ -134,18 +165,38 @@ async function handleStatsPrivacyPatch(req: NextRequest, name: string, raw: unkn
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
-  const caller = verifyMemberAuth(req);
-  const isSelf = !!caller && caller.name.toLowerCase() === name.toLowerCase();
-  if (!isSelf && !(await isAdminAuthedWithMember(req)).authed) {
-    return NextResponse.json({ error: 'auth_required' }, { status: 401 });
-  }
-
   const membersContainer = getContainer('members');
   // Resolved INSIDE the group (lib/memberResolve) — the probe above is, and a
   // PIN write must land on the person the probe described, not on whichever
   // same-named person a cross-partition scan returns first.
+  //
+  // The resolve moved ABOVE the gate so the gate can compare ids (see below).
   const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
-  const member = memberId ? (await membersContainer.item(memberId, memberId).read()).resource : undefined;
+
+  // A name that resolves to nobody is answered before the gate, exactly as it
+  // was before. There is no one to impersonate, so 404 discloses nothing a
+  // caller could not read straight off the unauthenticated `GET /api/members`
+  // roster — and the alternative would turn "this member was deleted" into a
+  // 401 that reads as "your cookie is bad", which is a worse answer to the
+  // person actually in that state.
+  if (!memberId) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+
+  // COMPARE IDENTITY, NOT DISPLAY TEXT. The cookie carries an immutable
+  // memberId; `name` is mutable, reusable, and — once groups are on — is a
+  // per-club roster name, so the cookie's name and the resolved member's name
+  // live in two different namespaces. Matching the strings let a caller whose
+  // own display name happens to equal a target's roster name in the claimed
+  // group write that target's privacy setting. The id the route already
+  // resolved is the thing that identifies a person.
+  const caller = verifyMemberAuth(req);
+  const isSelf = !!caller && caller.memberId === memberId;
+  if (!isSelf && !(await isAdminAuthedWithMember(req)).authed) {
+    return NextResponse.json({ error: 'auth_required' }, { status: 401 });
+  }
+
+  const member = (await membersContainer.item(memberId, memberId).read()).resource;
   if (!member) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
@@ -199,6 +250,30 @@ async function handlePatch(req: NextRequest) {
     return handleStatsPrivacyPatch(req, name, body.statsPrivacy);
   }
 
+  /**
+   * BOTH LIMITS RUN BEFORE `hashPin`, AND THE COARSE ONE IS WHY.
+   *
+   * `hashPin` is scrypt at ~16 MiB, synchronous enough to block the single
+   * Node event loop on the B1 instance this runs on. It used to be called
+   * during shape validation, ABOVE the limiter, so every anonymous request
+   * carrying any well-formed 4-digit string bought one derivation (rule 4,
+   * violated).
+   *
+   * Moving the per-identifier limit up is not enough on its own: its bucket
+   * key contains the caller-chosen `name`, so a fresh name mints a fresh
+   * 5-per-hour bucket every request and the cut-off is never reached. The
+   * coarse IP-only guard is the one that actually bounds the work, and it is
+   * the shape `auth/signin` and `auth/claim-name` already use — generous
+   * enough to only catch someone hammering the endpoint.
+   */
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`pin-update:ip:${ip}`, 20, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+  if (!checkRateLimit(`pin-update:${name.toLowerCase()}:${ip}`, 5, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+
   // Validate newPin shape: null = clear, '4-digit' = set/change.
   let nextPinHash: string | undefined;
   let clearPin = false;
@@ -214,11 +289,6 @@ async function handlePatch(req: NextRequest) {
     nextPinHash = await hashPin(body.newPin);
   } else {
     return NextResponse.json({ error: 'Invalid PIN format' }, { status: 400 });
-  }
-
-  const ip = getClientIp(req);
-  if (!checkRateLimit(`pin-update:${name.toLowerCase()}:${ip}`, 5, 60 * 60 * 1000)) {
-    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
   const membersContainer = getContainer('members');
@@ -251,9 +321,17 @@ async function handlePatch(req: NextRequest) {
   // (minted at sign-up, PIN sign-in, or recovery-code reset) or an admin.
   // Without this, anyone who knows an enumerable member name (GET /api/members)
   // could claim the account by setting its first PIN, then sign in as them.
+  //
+  // The self-check is on the resolved memberId, NOT on the cookie's name.
+  // A name is mutable and, with groups on, is a per-club roster name, so the
+  // cookie's `name` and this member's name are two different namespaces: an
+  // attacker whose own display name equalled a PIN-less target's roster name
+  // in the claimed group passed a string comparison and set that person's
+  // first PIN — which the response then hands back a session for. The id is
+  // already in hand from the resolve above, so the correct check is free.
   if (!hadPin) {
     const caller = verifyMemberAuth(req);
-    const isSelf = !!caller && caller.name.toLowerCase() === name.toLowerCase();
+    const isSelf = !!caller && caller.memberId === memberId;
     if (!isSelf && !(await isAdminAuthedWithMember(req)).authed) {
       return NextResponse.json({ error: 'auth_required' }, { status: 401 });
     }

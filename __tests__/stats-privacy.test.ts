@@ -86,9 +86,16 @@ describe('GET /api/members/me — statsPrivacy', () => {
     setupAdminPin();
   });
 
+  /** GET carrying this member's own `member_session`. */
+  function asSelf(name: string) {
+    return makeRequest('GET', `${BASE}?name=${encodeURIComponent(name)}`, undefined, {
+      Cookie: `member_session=${memberCookieValue(name)}`,
+    });
+  }
+
   it('returns the never-asked default for a member with no stored setting', async () => {
     seedMember('Lin');
-    const res = await GET(makeRequest('GET', `${BASE}?name=Lin`));
+    const res = await GET(asSelf('Lin'));
     const body = await res.json();
     expect(body.statsPrivacy).toEqual({ clubComparison: true, promptedAt: null });
   });
@@ -97,12 +104,38 @@ describe('GET /api/members/me — statsPrivacy', () => {
     seedMember('Viktor', {
       statsPrivacy: { clubComparison: false, promptedAt: '2026-08-01T00:00:00.000Z' },
     });
-    const res = await GET(makeRequest('GET', `${BASE}?name=Viktor`));
+    const res = await GET(asSelf('Viktor'));
     const body = await res.json();
     expect(body.statsPrivacy).toEqual({
       clubComparison: false,
       promptedAt: '2026-08-01T00:00:00.000Z',
     });
+  });
+
+  it('withholds statsPrivacy from an ANONYMOUS caller — null, not the default', async () => {
+    // The probe is name-keyed and names are enumerable, so answering this for
+    // an unproven caller publishes every member's club-comparison answer. `null`
+    // is the same UNKNOWN the degraded paths return, which
+    // `shouldPromptForComparison` declines to act on — so withholding it does
+    // NOT re-fire the consent sheet at a member whose cookie merely lapsed.
+    seedMember('Carolina', {
+      statsPrivacy: { clubComparison: false, promptedAt: '2026-08-01T00:00:00.000Z' },
+    });
+    const res = await GET(makeRequest('GET', `${BASE}?name=Carolina`));
+    expect(await res.json()).toMatchObject({ statsPrivacy: null });
+  });
+
+  it("withholds statsPrivacy from ANOTHER member's cookie", async () => {
+    seedMember('Akane', {
+      statsPrivacy: { clubComparison: false, promptedAt: '2026-08-01T00:00:00.000Z' },
+    });
+    seedMember('Kento');
+    const res = await GET(
+      makeRequest('GET', `${BASE}?name=Akane`, undefined, {
+        Cookie: `member_session=${memberCookieValue('Kento')}`,
+      }),
+    );
+    expect(await res.json()).toMatchObject({ statsPrivacy: null });
   });
 
   it('returns statsPrivacy: null (UNKNOWN) when no name is given', async () => {

@@ -136,9 +136,13 @@ describe('GET /api/members/me', () => {
     seedMember('Alice', { role: 'admin', active: true });
   });
 
-  it('?name=Alice where Alice is admin → { role: "admin" }', async () => {
-    // ARRANGE
-    const req = makeGetRequest('http://localhost:3000/api/members/me?name=Alice');
+  it('?name=Alice where Alice is admin → { role: "admin" } FOR ALICE HERSELF', async () => {
+    // ARRANGE — the probe is name-keyed, so `role` is answered only to someone
+    // who has proved they are that member (or to an admin).
+    const alice = seedMember('AliceSelf', { role: 'admin', active: true });
+    const req = makeRequest('GET', 'http://localhost:3000/api/members/me?name=AliceSelf', undefined, {
+      Cookie: `member_session=${memberCookie(alice.id, 'AliceSelf')}`,
+    });
 
     // ACT
     const res = await ME_GET(req);
@@ -146,6 +150,17 @@ describe('GET /api/members/me', () => {
 
     // ASSERT
     expect(data.role).toBe('admin');
+  });
+
+  it('withholds role from an ANONYMOUS probe — the roster must not become an admin directory', async () => {
+    // Names are enumerable via `GET /api/members`, so answering `role` here
+    // would name the accounts whose only credential is a 4-digit PIN.
+    const res = await ME_GET(makeGetRequest('http://localhost:3000/api/members/me?name=Alice'));
+    const data = await res.json();
+    expect(data.role).toBe('member');
+    // The sign-up form's half of the response is unchanged.
+    expect(data.hasPin).toBe(false);
+    expect(typeof data.createdAt).toBe('string');
   });
 
   it('returns authed:true when a matching member_session cookie is present', async () => {
