@@ -111,6 +111,17 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
    * a signed-in person for one frame is the unknown-is-not-known-false rule.
    */
   const [hasIdentity, setHasIdentity] = useState<boolean | null>(null);
+  /**
+   * "I already have an account" steps PAST the doors without creating one.
+   *
+   * It needs its own flag because the doors render INSTEAD of the tabs: setting
+   * the active tab behind them changed nothing anybody could see, so the button
+   * fired and the screen sat there — a dead control, which is worse than a
+   * missing one. Not persisted: a reload with still no identity shows the doors
+   * again, which is the right answer for someone who went looking for sign-in,
+   * did not finish, and needs the other two doors back.
+   */
+  const [doorsDismissed, setDoorsDismissed] = useState(false);
   const groupsEnabled = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   const { group, refresh: refreshGroups } = useCurrentGroup();
   /**
@@ -557,7 +568,12 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
   // (e.g. Sign-Ups tab swaps the global aurora for 03 Court markings).
   // The doors depend on whether an identity exists; keep that current.
   useEffect(() => {
-    const read = () => setHasIdentity(getIdentity() !== null);
+    const read = () => {
+      const present = getIdentity() !== null;
+      setHasIdentity(present);
+      // A sign-out puts someone back at the start; the doors are the start.
+      if (!present) setDoorsDismissed(false);
+    };
     read();
     window.addEventListener(IDENTITY_EVENT, read);
     return () => window.removeEventListener(IDENTITY_EVENT, read);
@@ -595,7 +611,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
    * KNOW there is no identity, and no invite sheet is already open (a `?join=`
    * landing should show the club it is offering, not a menu).
    */
-  const showDoors = groupsEnabled && hasIdentity === false && onboarding !== 'join';
+  const showDoors = groupsEnabled && hasIdentity === false && !doorsDismissed && onboarding !== 'join';
 
   return (
     <>
@@ -662,7 +678,12 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
             <WelcomeDoors
               onCreate={() => setOnboarding('create')}
               onJoin={() => setOnboarding('join')}
-              onExisting={() => setActiveTab('profile')}
+              onExisting={() => {
+                // Both, and in this order: the tab is where they are going, and
+                // dismissing is what lets them see it.
+                setActiveTab('profile');
+                setDoorsDismissed(true);
+              }}
             />
           ) : (
           <>

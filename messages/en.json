@@ -1309,7 +1309,7 @@
     "joinDoor": "Join with a link or code",
     "joinDoorHint": "Someone sent you an invite.",
     "existingDoor": "I already have an account",
-    "existingDoorHint": "Sign in with your name and PIN.",
+    "existingDoorHint": "Sign in with your name, email or Google.",
     "create": {
       "title": "Create a group",
       "subtitle": "You'll be the organiser. You can invite people straight after.",

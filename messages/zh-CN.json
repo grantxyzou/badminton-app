@@ -1309,7 +1309,7 @@
     "joinDoor": "用链接或代码加入",
     "joinDoorHint": "有人给你发了邀请。",
     "existingDoor": "我已经有账户",
-    "existingDoorHint": "用名字和 PIN 登录。",
+    "existingDoorHint": "用名字、邮箱或 Google 登录。",
     "create": {
       "title": "创建群组",
       "subtitle": "你将是组织者，创建后可以立即邀请其他人。",
