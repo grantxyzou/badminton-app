@@ -258,6 +258,33 @@ describe('GET /api/groups/mine and /current', () => {
     expect(body.memberCount).toBe(2); // the seeded admin owner plus Grace
   });
 
+  it('never hands the club\'s payment details to a member (rule 10)', async () => {
+    // Seeded ON the group doc, which is where Phase 4 moves it. No earlier test
+    // put it there, which is exactly why the first cut shipped it to everyone.
+    const groups = getStore()['groups'] as Record<string, unknown>[];
+    const bpm = groups.find((g) => g.id === 'bpm')!;
+    bpm.settings = {
+      skipDates: [],
+      maxPlayers: 12,
+      eTransferRecipient: { name: 'Grant', email: 'money@example.com' },
+    };
+
+    const person = seedMember('Grace');
+    seedMembership('bpm', person.id, { name: 'Grace' });
+    const asPlayer = await currentRoute(
+      makeRequest('GET', `${BASE}/current`, undefined, asMember('Grace', person.id)),
+    );
+    const player = await asPlayer.json();
+    expect(player.settings.eTransferRecipient).toBeUndefined();
+    expect(JSON.stringify(player)).not.toContain('money@example.com');
+
+    // And not to the owner either — an admin reads it through /api/admin/settings.
+    const asOwner = await currentRoute(
+      makeRequest('GET', `${BASE}/current`, undefined, asMember('Test Admin', ADMIN_MEMBER_ID)),
+    );
+    expect(JSON.stringify(await asOwner.json())).not.toContain('money@example.com');
+  });
+
   it('refuses someone whose membership was removed, cookie or no cookie', async () => {
     const person = seedMember('Grace');
     seedMembership('bpm', person.id, { name: 'Grace', status: 'removed' });
@@ -280,6 +307,22 @@ describe('POST /api/groups/switch', () => {
     expect(res.status).toBe(200);
     expect((await res.json()).name).toBe('Second Club');
     expect(res.headers.get('set-cookie') ?? '').toContain('member_session=');
+  });
+
+  it('refuses a group id that is not the shape this app mints', async () => {
+    const person = seedMember('Grace');
+    seedMembership('bpm', person.id, { name: 'Grace' });
+
+    // A format specifier and a newline: `groupId` reaches `groupScope()` and the
+    // `[group-leak]` log, and that sentinel is what Phase 5's flag flip is gated
+    // on, so a caller must not be able to write lines into it.
+    for (const bad of ['%s%s%s', 'bpm\nFAKE [group-leak] line', 'invite:' + 'a'.repeat(64), '../bpm']) {
+      const res = await switchRoute(
+        makeRequest('POST', `${BASE}/switch`, { groupId: bad }, asMember('Grace', person.id)),
+      );
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe('invalid_group');
+    }
   });
 
   it('refuses a club the caller is not in — never a silent fallback', async () => {

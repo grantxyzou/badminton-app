@@ -20,7 +20,7 @@ import { completeSignIn } from '@/lib/authSession';
 import { getContainer } from '@/lib/cosmos';
 import { readGroup, readMembership } from '@/lib/groups';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { groupsOn, featureOff, rateLimited, cleanString } from '@/lib/groupRoutes';
+import { groupsOn, featureOff, rateLimited, cleanString, isGroupIdShape } from '@/lib/groupRoutes';
 import type { Member } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -39,8 +39,13 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
   }
+  // The ONE door in this API that takes a group id from a request body, and
+  // therefore the one place the shape has to be checked: from here it reaches
+  // `groupScope()`, a query parameter value and the `[group-leak]` log line.
   const groupId = cleanString((body as Record<string, unknown>)?.groupId, 1, 64);
-  if (!groupId) return NextResponse.json({ error: 'invalid_group' }, { status: 400 });
+  if (!groupId || !isGroupIdShape(groupId)) {
+    return NextResponse.json({ error: 'invalid_group' }, { status: 400 });
+  }
 
   try {
     const membership = await readMembership(groupId, session.memberId);

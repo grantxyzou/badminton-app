@@ -11,11 +11,17 @@
  * The group doc is returned field by field rather than spread. Its siblings
  * carry invite secrets and its own shape will keep growing; a route that
  * spreads a document is a strip-canary waiting to happen.
+ *
+ * THAT APPLIES TO `settings` TOO, and the first cut forgot — it named every
+ * top-level field and then handed the settings object back whole, which meant
+ * `eTransferRecipient` (the organiser's payment details, security rule 10)
+ * reached every member of the club. `memberVisibleSettings` is an allowlist,
+ * so a field added to `GroupSettings` later does not leak by default.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireGroupMember, unauthorized } from '@/lib/auth';
 import { listMemberships, readGroup } from '@/lib/groups';
-import { groupsOn, featureOff } from '@/lib/groupRoutes';
+import { groupsOn, featureOff, memberVisibleSettings } from '@/lib/groupRoutes';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +41,7 @@ export async function GET(req: NextRequest) {
       rosterName: session.name,
       isOwner: group.ownerMemberId === session.memberId,
       memberCount: roster.length,
-      settings: group.settings,
+      settings: memberVisibleSettings(group.settings),
     });
   } catch (error) {
     console.error('GET /api/groups/current:', error);

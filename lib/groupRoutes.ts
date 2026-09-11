@@ -14,6 +14,7 @@
  */
 import { NextResponse } from 'next/server';
 import { isFlagOn } from '@/lib/flags';
+import type { GroupSettings } from '@/lib/types';
 
 export const groupsOn = (): boolean => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 
@@ -46,3 +47,29 @@ export const ROSTER_NAME_MAX = 40;
  * (which resets on every cold start; see CLAUDE.md's in-memory limiter note).
  */
 export const MAX_OWNED_GROUPS = 10;
+
+/**
+ * The shape a group id is allowed to have: `'bpm'`, or the 16 hex characters
+ * `newGroupId()` mints. Checked at the ONE door that takes one from a request
+ * body (`POST /api/groups/switch`), because from there it flows into
+ * `groupScope()` and into log lines — an unconstrained string is how a caller
+ * gets to choose part of a query parameter value and part of a log record.
+ */
+export function isGroupIdShape(value: string): boolean {
+  return /^[a-z0-9]{2,32}$/.test(value);
+}
+
+/**
+ * What a group's settings look like to one of its MEMBERS.
+ *
+ * An ALLOWLIST, not a strip. `GroupSettings` also carries
+ * `eTransferRecipient` — the organiser's name and email, which security rule 10
+ * calls payment data and every other reader of gates behind admin. Spreading
+ * and deleting that one field would be correct today and wrong the next time
+ * the type grows a field, and it grows on roughly every phase of this plan. An
+ * admin reads the whole object through `GET /api/admin/settings`, which is
+ * where it belongs.
+ */
+export function memberVisibleSettings(settings: GroupSettings): Pick<GroupSettings, 'maxPlayers' | 'skipDates'> {
+  return { maxPlayers: settings.maxPlayers, skipDates: settings.skipDates };
+}

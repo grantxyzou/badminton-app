@@ -35,6 +35,7 @@ import {
   ROSTER_NAME_MIN,
   ROSTER_NAME_MAX,
   MAX_OWNED_GROUPS,
+  memberVisibleSettings,
 } from '@/lib/groupRoutes';
 import type { Member } from '@/lib/types';
 
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest) {
 
     const res = NextResponse.json(
       {
-        group: { id: group.id, name: group.name, settings: group.settings },
+        group: { id: group.id, name: group.name, settings: memberVisibleSettings(group.settings) },
         role: 'owner',
         rosterName,
         invite,
