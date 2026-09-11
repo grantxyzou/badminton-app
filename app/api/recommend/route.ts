@@ -5,7 +5,7 @@ import { rosterMemberIds } from '@/lib/roster';
 import { ensureCatalogSeeded } from '@/lib/catalogSeed';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
+import { verifyMemberAuth, ownsNameOrAdmin } from '@/lib/auth';
 import { recommendRacket } from '@/lib/recommend';
 import { buildProfile } from '@/lib/racketProfile';
 import { recommendRackets } from '@/lib/racketRecommend';
@@ -145,11 +145,17 @@ export async function GET(req: NextRequest) {
       // ratings ("smash 3/5"), and member names are enumerable via
       // GET /api/members. The flag-off branch below stays public because it
       // returns only a coarse stage-derived pick.
-      const member = verifyMemberAuth(req);
-      const ownsName = member?.name?.trim().toLowerCase() === name.toLowerCase();
-      if (!name || (!ownsName && !isAdminAuthed(req))) {
+      // The GATE goes through the shared helper, not a local copy of it — see
+      // the note in `ownsNameOrAdmin`: an inlined gate cannot be found by the
+      // grep that asks which name-keyed reads are unguarded.
+      if (!name || !ownsNameOrAdmin(req, name)) {
         return NextResponse.json({ error: 'forbidden' }, { status: 403 });
       }
+      // Still needed separately below: an ADMIN passes the gate but is not the
+      // person being recommended to, and `recordServed` must not attribute a
+      // served item to a member who never saw it.
+      const member = verifyMemberAuth(req);
+      const ownsName = member?.name?.trim().toLowerCase() === name.toLowerCase();
 
       if (!ENGINE_CATEGORIES.includes(category)) {
         // A valid category we cannot score yet. NOT an error: the rail
