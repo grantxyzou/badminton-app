@@ -53,20 +53,24 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!groupsOn()) return featureOff();
   const { memberId } = await params;
 
-  let body: unknown;
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
-  }
-  const role = (body as Record<string, unknown>)?.role;
-  if (role !== 'admin' && role !== 'member') {
-    return NextResponse.json({ error: 'invalid_role' }, { status: 400 });
-  }
-
-  try {
+    // Auth BEFORE body parsing (rule 3). Not only the convention: validating
+    // first would answer 400 for a malformed role and 401 for a well-formed
+    // one, which tells an anonymous caller what this route accepts.
     const checked = await gate(req, memberId);
     if (checked.error) return checked.error;
+
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
+    }
+    const role = (body as Record<string, unknown>)?.role;
+    if (role !== 'admin' && role !== 'member') {
+      return NextResponse.json({ error: 'invalid_role' }, { status: 400 });
+    }
+
     const updated = await setMembershipRole(checked.groupId!, memberId, role);
     if (!updated) return NextResponse.json({ error: 'not_on_roster' }, { status: 404 });
     return NextResponse.json({ memberId, role: updated.role, rosterName: updated.name });

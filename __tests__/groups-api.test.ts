@@ -388,6 +388,25 @@ describe('PATCH|DELETE /api/groups/members/[memberId]', () => {
     expect(invite.token).toBeTruthy();
   });
 
+  it('checks auth before it parses the body (rule 3)', async () => {
+    const person = seedMember('Grace');
+    seedMembership('bpm', person.id, { name: 'Grace' });
+
+    // Anonymous, once with a role this route accepts and once with nonsense.
+    // Both must answer 401. A 400 for the nonsense would tell a caller with no
+    // standing what the route is willing to take.
+    const bogus = await patchMemberRoute(
+      makeRequest('PATCH', `${BASE}/members/${person.id}`, { role: 'bogus' }),
+      params(person.id),
+    );
+    const valid = await patchMemberRoute(
+      makeRequest('PATCH', `${BASE}/members/${person.id}`, { role: 'admin' }),
+      params(person.id),
+    );
+    expect(bogus.status).toBe(401);
+    expect(valid.status).toBe(401);
+  });
+
   it('refuses a member who is not on this roster', async () => {
     const stranger = seedMember('Stranger');
     const res = await patchMemberRoute(

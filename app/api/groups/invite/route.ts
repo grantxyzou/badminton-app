@@ -27,6 +27,11 @@ import { groupsOn, featureOff, rateLimited } from '@/lib/groupRoutes';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+  // Rate-limited like its POST sibling, and for the same reason: the lazy mint
+  // below makes this READ a write path, so an unlimited GET would be an
+  // unlimited regenerate by another name.
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`groups-invite-read:${ip}`, 30, 15 * 60 * 1000)) return rateLimited();
   if (!groupsOn()) return featureOff();
   const auth = await isAdminAuthedWithMember(req);
   if (!auth.authed) return unauthorized();

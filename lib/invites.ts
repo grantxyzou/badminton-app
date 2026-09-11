@@ -204,10 +204,9 @@ export async function resolveInvite(raw: string, kind: 'invite' | 'code'): Promi
   return group.id;
 }
 
-/** Every invite doc a group owns, for the purge when a group is deleted. */
-export async function revokeInvite(groupId: string): Promise<void> {
-  const group = await readGroup(groupId);
-  if (!group) return;
-  if (group.inviteId) await deleteDoc(group.inviteId);
-  if (group.inviteCodeId) await deleteDoc(group.inviteCodeId);
-}
+/**
+ * There is deliberately no `revokeInvite`. A group that closes keeps its
+ * invite docs and they stop working anyway, because `resolveInvite` reads the
+ * group and refuses a `closedAt` one — so deleting them would buy nothing and
+ * add a second answer to "is this link live?". Regeneration is the revocation.
+ */
