@@ -332,14 +332,45 @@ export function adminCookieValue(
 }
 
 /**
+ * The id of the one seeded, active member with this name.
+ *
+ * Falls back to the literal `member-<name>` when the store holds no such member
+ * or holds more than one — an unseeded name is a legitimate test subject (a
+ * cookie for somebody who does not exist), and an ambiguous one must be
+ * disambiguated by the caller rather than guessed at here.
+ */
+function resolveSeededMemberId(name: string): string {
+  const rows = (getStore()['members'] ?? []) as Array<{ id: string; name?: string; active?: boolean }>;
+  const hits = rows.filter(
+    (m) => String(m.name ?? '').toLowerCase() === name.toLowerCase() && m.active !== false,
+  );
+  return hits.length === 1 ? hits[0].id : `member-${name.toLowerCase()}`;
+}
+
+/**
  * Build a valid `member_session` cookie value for a given member identity.
  * Same signed-payload format as the admin cookie (so it exercises the real
  * `verifyMemberAuth` path), but bound to an arbitrary name/id — used to test
  * member-scoped read gates like /api/stats/level.
+ *
+ * THE DEFAULT memberId IS RESOLVED FROM THE STORE, and that matters.
+ *
+ * It used to be the literal `member-<name>`, while `seedMember` mints
+ * `member-<random>`, so the two NEVER agreed. Every test that seeded a member
+ * and then called a route `asMember(thatName)` was passing only because the
+ * route compared the cookie's NAME to the target's — the helper had baked in
+ * the same assumption the routes had, so nothing in this suite could tell
+ * name-auth from id-auth. That is the hole F12 lived in, and it is why no test
+ * caught it.
+ *
+ * Resolving by name keeps `asMember('Lin')` meaning "Lin's own cookie" for the
+ * ordinary case. It deliberately does NOT resolve when the name is ambiguous:
+ * two same-named members in two clubs is a first-class case here, and a test
+ * about impersonation must say WHICH Lin it means by passing the id.
  */
 export function memberCookieValue(
   name: string,
-  memberId = `member-${name.toLowerCase()}`,
+  memberId = resolveSeededMemberId(name),
   /** Seconds until expiry. Negative mints a LAPSED cookie — signature valid,
    *  expiry passed — the state a member is in after the 30-day TTL. */
   ttlSeconds = 60 * 60 * 24 * 30,

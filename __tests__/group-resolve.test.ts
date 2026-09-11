@@ -211,8 +211,14 @@ describe('GET /api/members/me?name= (the sign-up probe)', () => {
     const theirs = seedMember('Lin');
     await addMembership({ groupId: 'bpm', memberId: ours.id, name: 'Lin', role: 'admin', joinedVia: 'backfill' });
     await addMembership({ groupId: 'other', memberId: theirs.id, name: 'Lin', joinedVia: 'link' });
-    const res = await meGet(makeGetRequest('http://x/api/members/me?name=Lin'));
-    expect(await res.json()).toMatchObject({ hasPin: true, role: 'admin' });
+    // `role` is answered only to a caller who has proved they are that member,
+    // so OUR Lin's own cookie is what the probe has to be asked with — and
+    // naming her id is mandatory here, not decorative: two members are called
+    // Lin, so a name alone identifies neither.
+    const asOurs = makeRequest('GET', 'http://x/api/members/me?name=Lin', undefined, {
+      Cookie: `member_session=${memberCookieValue('Lin', ours.id)}`,
+    });
+    expect(await (await meGet(asOurs)).json()).toMatchObject({ hasPin: true, role: 'admin' });
     const nobody = await meGet(makeGetRequest('http://x/api/members/me?name=Unknown'));
     expect(await nobody.json()).toMatchObject({ hasPin: false, role: 'member' });
   });

@@ -55,6 +55,19 @@ interface AssessmentDoc extends StoredAssessment {
  * exactly: a soft-deleted member's assessments count toward the club today.
  * Dropping them is a defensible correction and NOT this change — flag off,
  * nothing observable moves, so it rides in with the cutover.
+ *
+ * A SYNTHETIC SUBJECT IS NOT A CLUB MEMBER, and is excluded unconditionally.
+ * `POST /api/assessments` deliberately stays open to a name matching no member
+ * — anonymous self-assessment is a shipped decision, and a name with no member
+ * record has nobody to impersonate — but it stores those rows under
+ * `memberId = 'name:<lower>'`, and this fold counted them. So an
+ * unauthenticated caller could invent cohort members: post all-5s under a
+ * stream of made-up names, push the cohort past `MIN_COHORT` so bands compute
+ * at all, and move every real member's band. `lib/levelStore.ts` already drops
+ * these rows for exactly this reason; this is the same rule reaching the other
+ * aggregate over the same container. The roster narrowing above does NOT cover
+ * it — that is flag-gated, and the flag is off in production, so nothing else
+ * excludes them today.
  */
 async function latestRatingsByMember(groupId: string, viewerId: string): Promise<Map<string, Rating[]>> {
   await ensureContainer('assessments', '/memberId');
@@ -67,6 +80,9 @@ async function latestRatingsByMember(groupId: string, viewerId: string): Promise
   const latest = new Map<string, Rating[]>();
   for (const doc of resources as AssessmentDoc[]) {
     if (!doc || typeof doc.memberId !== 'string' || typeof doc.takenAt !== 'string') continue;
+    // A synthetic `name:` subject is not a club member and gets no vote on the
+    // median (see the docstring). The viewer keeps their own row.
+    if (doc.memberId !== viewerId && doc.memberId.startsWith('name:')) continue;
     // THE VIEWER IS ALWAYS ADMITTED, roster or not. The filter answers "who is
     // the club", and the viewer's own band is not a club statistic — dropping
     // it renders their own row as "no data" while the cohort around it paints.

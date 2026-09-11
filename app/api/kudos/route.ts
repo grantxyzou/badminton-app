@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto';
 import { ensureContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
-import { isAdminAuthed, verifyMemberAuth } from '@/lib/auth';
+import { isAdminAuthed, verifyMemberAuth, ownsNameOrAdmin } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { aggregateKudos, isKudosTag, normalizeNote, isoWeekKey, visibleNotes, type KudosDoc } from '@/lib/kudos';
 import { SKILLS } from '@/lib/assessment';
@@ -137,9 +137,10 @@ export async function GET(req: NextRequest) {
   if (!name) return NextResponse.json({ error: 'name_required' }, { status: 400 });
 
   // Private: own this name (member cookie) or admin. Same posture as /level.
-  const member = verifyMemberAuth(req);
-  const ownsName = member?.name?.trim().toLowerCase() === name.toLowerCase();
-  if (!ownsName && !isAdminAuthed(req)) {
+  // Through the shared helper, not a local copy of it — an inlined gate is
+  // invisible to the grep that asks which name-keyed reads are unguarded, and
+  // three of these had drifted into three separate spellings of one rule.
+  if (!ownsNameOrAdmin(req, name)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

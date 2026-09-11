@@ -8,6 +8,20 @@ import { resetMockStore, seedPointer, setupAdminPin, seedAdminMember, makeAdminR
 function get(url: string): NextRequest {
   return new NextRequest(new URL(url, 'http://localhost/bpm'));
 }
+/**
+ * GET carrying `name`'s own `member_session`.
+ *
+ * The all-time branch is name-keyed and names are enumerable, so it is gated
+ * on `ownsNameOrAdmin` — reading your own career history needs you to be you.
+ */
+function getAs(name: string, url: string): NextRequest {
+  return new NextRequest(new URL(url, 'http://localhost/bpm'), {
+    headers: {
+      cookie: `member_session=${memberCookieValue(`m-${name.toLowerCase()}`, name)}`,
+      'x-client-ip': `games-get-${Math.random()}`,
+    },
+  });
+}
 function memberCookieValue(memberId: string, name: string): string {
   const r = NextResponse.json({});
   setMemberCookie(r, memberId, name);
@@ -162,7 +176,7 @@ describe('/api/games — sessionId override is admin-only (rule 7)', () => {
 
     it('returns a player\'s games from every session, not just the active one', async () => {
       await seedAcrossSessions();
-      const res = await GET(get('/api/games?all=true&name=Lin'));
+      const res = await GET(getAs('Lin', '/api/games?all=true&name=Lin'));
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.games.map((g: { id: string }) => g.id).sort()).toEqual(['g1', 'g2']);
@@ -171,21 +185,21 @@ describe('/api/games — sessionId override is admin-only (rule 7)', () => {
     it('matches names case-insensitively on either team', async () => {
       await seedAcrossSessions();
       // 'lin' appears lowercased on teamB of g2 — games store names, not ids.
-      const res = await GET(get('/api/games?all=true&name=LIN'));
+      const res = await GET(getAs('LIN', '/api/games?all=true&name=LIN'));
       const body = await res.json();
       expect(body.games.length).toBe(2);
     });
 
     it('excludes games the player was not in', async () => {
       await seedAcrossSessions();
-      const res = await GET(get('/api/games?all=true&name=Lin'));
+      const res = await GET(getAs('Lin', '/api/games?all=true&name=Lin'));
       const body = await res.json();
       expect(body.games.some((g: { id: string }) => g.id === 'g3')).toBe(false);
     });
 
     it('sorts newest-first', async () => {
       await seedAcrossSessions();
-      const res = await GET(get('/api/games?all=true&name=Lin'));
+      const res = await GET(getAs('Lin', '/api/games?all=true&name=Lin'));
       const body = await res.json();
       expect(body.games[0].id).toBe('g2');
     });
@@ -199,9 +213,38 @@ describe('/api/games — sessionId override is admin-only (rule 7)', () => {
 
     it('returns an empty list for a player with no games (not an error)', async () => {
       await seedAcrossSessions();
-      const res = await GET(get('/api/games?all=true&name=Nobody'));
+      const res = await GET(getAs('Nobody', '/api/games?all=true&name=Nobody'));
       expect(res.status).toBe(200);
       expect((await res.json()).games).toEqual([]);
+    });
+
+    /**
+     * The route's own comment used to argue that requiring `name` kept this
+     * narrow — "an anonymous caller gets one player's games, not a dump of the
+     * whole history". It does not: `GET /api/members` hands out every name, so
+     * looping the roster reassembles the club's entire match history, scores
+     * and partner graph included. The social-graph route next door already
+     * refuses the same question.
+     */
+    it('refuses an ANONYMOUS all-time read — the roster is the enumeration', async () => {
+      await seedAcrossSessions();
+      const res = await GET(get('/api/games?all=true&name=Lin'));
+      expect(res.status).toBe(403);
+    });
+
+    it("refuses another member's all-time read", async () => {
+      await seedAcrossSessions();
+      const res = await GET(getAs('Viktor', '/api/games?all=true&name=Lin'));
+      expect(res.status).toBe(403);
+    });
+
+    it('lets an admin read anyone — the admin console needs it', async () => {
+      await seedAcrossSessions();
+      const res = await GET(
+        makeAdminRequest('GET', 'http://localhost/bpm/api/games?all=true&name=Lin'),
+      );
+      expect(res.status).toBe(200);
+      expect((await res.json()).games.map((g: { id: string }) => g.id).sort()).toEqual(['g1', 'g2']);
     });
   });
 });

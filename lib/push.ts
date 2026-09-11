@@ -33,6 +33,7 @@
 import { createHash } from 'crypto';
 import { getContainer, ensureContainer } from './cosmos';
 import { isFcmConfigured, sendFcm } from './fcm';
+import { isSafePushEndpoint } from './pushEndpoint';
 import type { PushSubscriptionDoc } from './types';
 
 export interface PushPayload {
@@ -130,10 +131,21 @@ async function loadWebPush(): Promise<any> {
 type WebSub = PushSubscriptionDoc & { endpoint: string; keys: { p256dh: string; auth: string } };
 type NativeSub = PushSubscriptionDoc & { platform: 'ios' | 'android'; token: string };
 
+/**
+ * The endpoint is re-checked HERE, not only at the subscribe route.
+ *
+ * The sender used to defer entirely to that route ("it validated this on the
+ * way in"), which is a promise about a row's history that the row itself does
+ * not carry: a doc written before the check tightened, by a different route, or
+ * by a hand edit, is indistinguishable at send time. Re-checking makes the
+ * safety a property of what is about to be POSTed rather than of how it
+ * arrived — and a doc that fails is simply not a web sub, so it is dropped by
+ * the same filter that already drops malformed ones, with no new branch.
+ */
 export function isWebSub(d: PushSubscriptionDoc): d is WebSub {
   return (
     (d.platform === undefined || d.platform === 'web') &&
-    typeof d.endpoint === 'string' &&
+    isSafePushEndpoint(d.endpoint) &&
     !!d.keys?.p256dh &&
     !!d.keys?.auth
   );
@@ -285,6 +297,24 @@ async function deliver(subs: PushSubscriptionDoc[], payload: PushPayload): Promi
   const now = new Date().toISOString();
   const web = subs.filter(isWebSub);
   const native = subs.filter(isNativeSub);
+
+  /**
+   * A row that is neither is dropped, and a SILENT drop is the wrong posture
+   * here. The endpoint check in `isWebSub` is new, so the likeliest cause is a
+   * real device whose endpoint this build refuses — and because nothing is
+   * sent, no 410 ever comes back to clean it up, leaving a member quietly
+   * un-notified with nothing anywhere saying so. The endpoint itself is a send
+   * credential and is never logged; the count and the member are enough to find
+   * it. Logged per send rather than once, because it should be rare.
+   */
+  const dropped = subs.length - web.length - native.length;
+  if (dropped > 0) {
+    console.warn('[push] subscription(s) dropped as undeliverable', {
+      dropped,
+      of: subs.length,
+      memberIds: [...new Set(subs.map((s) => s.memberId))].slice(0, 5),
+    });
+  }
 
   if (web.length > 0) {
     if (isWebPushConfigured()) {

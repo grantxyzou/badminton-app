@@ -233,6 +233,66 @@ describe('GET /api/stats/club/bands', () => {
     expect(body.minCohort).toBe(MIN_COHORT);
   });
 
+  /**
+   * `POST /api/assessments` stays open to a name matching no member — that is
+   * a shipped decision, and a name with no member record has nobody to
+   * impersonate. But it files those rows under `memberId = 'name:<lower>'`,
+   * and this fold counted them, so an unauthenticated caller could manufacture
+   * a cohort: post all-5s under a stream of invented names until the club is
+   * past `MIN_COHORT`, and every real member's band moves. The roster
+   * narrowing does not cover this — it is flag-gated and the flag is off in
+   * production.
+   */
+  it('does NOT let synthetic name: rows into the cohort', async () => {
+    seedMember('Lin', {
+      id: 'member-lin',
+      statsPrivacy: { clubComparison: true, promptedAt: '2026-08-01T00:00:00.000Z' },
+    });
+    const store = getStore();
+    store['assessments'] = [
+      { id: 'a-lin', memberId: 'member-lin', takenAt: '2026-08-01T00:00:00.000Z', ratings: TECH.map((k) => ({ skillKey: k, value: 3 })) },
+    ];
+    // Enough invented subjects to clear MIN_COHORT on their own, all maxed out.
+    for (let i = 0; i < MIN_COHORT + 2; i++) {
+      store['assessments'].push({
+        id: `a-ghost-${i}`,
+        memberId: `name:ghost${i}`,
+        takenAt: '2026-08-02T00:00:00.000Z',
+        ratings: TECH.map((k) => ({ skillKey: k, value: 5 })),
+      });
+    }
+    const res = await GET(getAs('Lin'));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    // `cohort` counts the club AROUND the viewer, so with every invented
+    // subject dropped there is nobody left and bands do not compute. Without
+    // the filter this read MIN_COHORT + 2 and every band was computed against
+    // a cohort of all-5s that an anonymous caller had posted.
+    expect(body.cohort).toBe(0);
+    expect(body.skills).toEqual([]);
+  });
+
+  it('keeps the VIEWER’s own synthetic row — an admin viewing an unclaimed player', async () => {
+    seedMember('Ghost', {
+      id: 'name:ghost',
+      statsPrivacy: { clubComparison: true, promptedAt: '2026-08-01T00:00:00.000Z' },
+    });
+    seedClub();
+    const store = getStore();
+    store['assessments'].push({
+      id: 'a-ghost',
+      memberId: 'name:ghost',
+      takenAt: '2026-08-01T00:00:00.000Z',
+      ratings: TECH.map((k) => ({ skillKey: k, value: 5 })),
+    });
+    const res = await GET(getAs('Ghost'));
+    const body = await res.json();
+    // Their row is counted for THEM: the band renders instead of reading as
+    // "no data" inside a cohort that paints fine.
+    expect(body.skills.length).toBeGreaterThan(0);
+    expect(body.skills[0].band).toBe('top');
+  });
+
   it('uses only the LATEST snapshot per member', async () => {
     seedMember('Lin', {
       id: 'member-lin',

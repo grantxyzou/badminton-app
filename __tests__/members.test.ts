@@ -136,9 +136,13 @@ describe('GET /api/members/me', () => {
     seedMember('Alice', { role: 'admin', active: true });
   });
 
-  it('?name=Alice where Alice is admin → { role: "admin" }', async () => {
-    // ARRANGE
-    const req = makeGetRequest('http://localhost:3000/api/members/me?name=Alice');
+  it('?name=Alice where Alice is admin → { role: "admin" } FOR ALICE HERSELF', async () => {
+    // ARRANGE — the probe is name-keyed, so `role` is answered only to someone
+    // who has proved they are that member (or to an admin).
+    const alice = seedMember('AliceSelf', { role: 'admin', active: true });
+    const req = makeRequest('GET', 'http://localhost:3000/api/members/me?name=AliceSelf', undefined, {
+      Cookie: `member_session=${memberCookie(alice.id, 'AliceSelf')}`,
+    });
 
     // ACT
     const res = await ME_GET(req);
@@ -146,6 +150,17 @@ describe('GET /api/members/me', () => {
 
     // ASSERT
     expect(data.role).toBe('admin');
+  });
+
+  it('withholds role from an ANONYMOUS probe — the roster must not become an admin directory', async () => {
+    // Names are enumerable via `GET /api/members`, so answering `role` here
+    // would name the accounts whose only credential is a 4-digit PIN.
+    const res = await ME_GET(makeGetRequest('http://localhost:3000/api/members/me?name=Alice'));
+    const data = await res.json();
+    expect(data.role).toBe('member');
+    // The sign-up form's half of the response is unchanged.
+    expect(data.hasPin).toBe(false);
+    expect(typeof data.createdAt).toBe('string');
   });
 
   it('returns authed:true when a matching member_session cookie is present', async () => {
@@ -221,6 +236,40 @@ describe('PATCH /api/members/me — member-scoped PIN management', () => {
     const data = await res.json();
     expect(data.success).toBe(true);
     expect(data.hasPin).toBe(true);
+  });
+
+  /**
+   * A rejected PIN must not cost the member their hourly budget.
+   *
+   * The scrypt call moved below the rate limiter (it was running before any
+   * throttle, one 16 MiB derivation per anonymous request). The shape and
+   * blocklist checks stayed ABOVE it deliberately: they are free, they
+   * disclose nothing, and `BLOCKLISTED_PINS` holds exactly the PINs someone
+   * reaches for first — so charging for them would mean a member who tries
+   * 1234, then 0000, then 1111 has spent three of five attempts being told to
+   * pick again, and five fumbles lock them out of setting a PIN for an hour.
+   */
+  it('does not spend the rate-limit budget on a rejected PIN', async () => {
+    seedMember('Budget');
+    const attempt = (newPin: string) =>
+      ME_PATCH(
+        makeRequest('POST', 'http://localhost:3000/api/members/me', { name: 'Budget', newPin }, {
+          'X-Client-IP': 'pin-budget-ip',
+        }),
+      );
+
+    // Well past the 5/hr per-(name, IP) limit, all of them refused for shape
+    // or commonness. Every one must still be the 400, never a 429.
+    for (const bad of ['1234', '0000', '1111', '4321', '1212', '12', 'abcd', '1234']) {
+      const res = await attempt(bad);
+      expect(res.status, `${bad} should be a 400, not a throttle`).toBe(400);
+    }
+
+    // And a legitimate PIN still gets through afterwards — the budget is intact.
+    // 401 is the first-PIN identity gate, which is the NEXT check; the point is
+    // that it is reached at all rather than being swallowed by a 429.
+    const ok = await attempt('4827');
+    expect(ok.status).not.toBe(429);
   });
 
   it('rejects an anonymous first-PIN claim — no member cookie + no currentPin → 401', async () => {
