@@ -240,3 +240,80 @@ describe('the Google terminus carries the invite too', () => {
     expect(members().filter((m) => m.name === 'Carolina')).toEqual([]);
   });
 });
+
+/**
+ * THE THIRD CASE: someone signing up INSIDE the create-a-group flow.
+ *
+ * They are about to make their own club and have no business on anyone else's
+ * roster — but with no invite in the body they resolved to BPM and were written
+ * onto it, which is this file's own defect arriving through a different door.
+ * At store-launch volume it would have put every new organiser on BPM's roster
+ * by name.
+ *
+ * The assertions are about the ABSENCE of a membership plus the PRESENCE of a
+ * usable session, because both halves matter: an account with no club is only
+ * correct if it can still go on to create one.
+ */
+describe('noGroup — signing up to create your own club', () => {
+  it('creates the account with NO membership anywhere', async () => {
+    const res = await signupRoute(makeRequest('POST', SIGNUP, body({ noGroup: true })));
+    expect(res.status).toBe(201);
+    expect(membershipsFor('Carolina')).toEqual([]);
+    expect(members().some((m) => m.name === 'Carolina')).toBe(true);
+  });
+
+  it('still mints a session cookie, so they can go on to create the club', async () => {
+    const res = await signupRoute(makeRequest('POST', SIGNUP, body({ noGroup: true })));
+    const cookie = res.headers
+      .getSetCookie()
+      .find((c) => c.startsWith('member_session='))!
+      .split(';')[0]
+      .slice('member_session='.length);
+    // BPM, non-admin — what `completeSignIn` would have fallen back to anyway,
+    // and enough for POST /api/groups, which needs only a live member session.
+    expect(readGroupClaim(cookie)).toBe('bpm');
+  });
+
+  it('does the same on the provider terminal', async () => {
+    const res = await completeSignupRoute(completeReq({ name: 'Carolina', noGroup: true }));
+    expect(res.status).toBe(201);
+    expect(membershipsFor('Carolina')).toEqual([]);
+  });
+
+  it('AN INVITE ALWAYS WINS over noGroup', async () => {
+    const invite = await mintInvite('riverside', ADMIN_MEMBER_ID);
+    const res = await signupRoute(
+      makeRequest('POST', SIGNUP, body({ noGroup: true, inviteToken: invite!.token })),
+    );
+    expect(res.status).toBe(201);
+    expect(membershipsFor('Carolina').map((r) => r.groupId)).toEqual(['riverside']);
+  });
+
+  it('a present-but-unusable invite still REFUSES, noGroup or not', async () => {
+    const res = await signupRoute(
+      makeRequest('POST', SIGNUP, body({ noGroup: true, inviteToken: '' })),
+    );
+    expect(res.status).toBe(404);
+    expect(members().some((m) => m.name === 'Carolina')).toBe(false);
+  });
+
+  it('is ignored with the flag OFF — one club, nothing to opt out of', async () => {
+    delete process.env[FLAG];
+    const res = await signupRoute(makeRequest('POST', SIGNUP, body({ noGroup: true })));
+    expect(res.status).toBe(201);
+    // Flag off nothing writes memberships at all, so the assertion that means
+    // something is that signup still SUCCEEDED rather than refusing.
+    expect(members().some((m) => m.name === 'Carolina')).toBe(true);
+  });
+
+  it('lets two clubs-to-be pick the same name — a roster name is per club', async () => {
+    expect((await signupRoute(makeRequest('POST', SIGNUP, body({ noGroup: true })))).status).toBe(201);
+    const second = await signupRoute(
+      makeRequest('POST', SIGNUP, body({ noGroup: true, email: 'other@example.com' })),
+    );
+    // Not 409 name_taken: neither account is on a roster, and the reservation
+    // that does enforce uniqueness happens when `createGroup` mints the owner's
+    // membership — the only place that knows which club.
+    expect(second.status).toBe(201);
+  });
+});

@@ -23,6 +23,7 @@ import { readPendingSignup, clearPendingSignup } from '@/lib/pendingSignup';
 import { completeHandoff } from '@/lib/authHandoff';
 import type { Member } from '@/lib/types';
 import { signupGroupFor } from '@/lib/inviteSignup';
+import { BPM_GROUP_ID } from '@/lib/groupScope';
 import { rosterNameHolder, addMembership } from '@/lib/groups';
 
 export const dynamic = 'force-dynamic';
@@ -104,7 +105,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invite_not_found' }, { status: 404 });
   }
   const signupGroupId = invited.groupId;
-  const taken = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')
+  // `null` is the create-a-group case: a real account deliberately on no
+  // roster yet (lib/inviteSignup.ts). Three consequences here.
+  //
+  // 1. NO NAME-TAKEN CHECK. A roster name is unique per CLUB, and this account
+  //    is in none — the reservation happens when `createGroup` mints the owner's
+  //    membership, which is the only place that can know the club.
+  // 2. NO MEMBERSHIP WRITE.
+  // 3. The COOKIE still claims BPM, because `completeSignIn` would fall back to
+  //    it anyway: `groupForMember` tolerates a member with no membership and
+  //    never checks BPM itself. Non-admin, and enough for `POST /api/groups`.
+  const joinsAClub = signupGroupId !== null;
+  const cookieGroupId = signupGroupId ?? BPM_GROUP_ID;
+  const taken = !joinsAClub
+    ? false
+    : isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')
     ? (await rosterNameHolder(signupGroupId, name)) !== null
     : (await resolveActiveMemberId(signupGroupId, name)) !== null;
   if (taken) {
@@ -148,7 +163,9 @@ export async function POST(req: NextRequest) {
     };
     await getContainer('members').items.create(member);
     if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) {
-      await addMembership({ groupId: signupGroupId, memberId: member.id, name: member.name, joinedVia: 'link' });
+      if (joinsAClub) {
+        await addMembership({ groupId: signupGroupId, memberId: member.id, name: member.name, joinedVia: 'link' });
+      }
     }
 
     /* The PWA case: this response's cookies are being issued to Safari, so
@@ -173,7 +190,7 @@ export async function POST(req: NextRequest) {
     // leaving a stale admin_session alive for a non-admin. Verified, and
     // pinned by __tests__/auth-cookie-order.test.ts.
     clearPendingSignup(res);
-    await completeSignIn(res, member, signupGroupId);
+    await completeSignIn(res, member, cookieGroupId);
     return res;
   } catch (err) {
     await releaseIdentity(pending.provider, pending.sub);

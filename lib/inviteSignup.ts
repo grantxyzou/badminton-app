@@ -25,6 +25,16 @@
  * providers would need different mechanisms. A body field is the same field in
  * both terminals and is testable without an OAuth round trip.
  *
+ * THE THIRD CASE: NO CLUB AT ALL. Someone signing up INSIDE the create-a-group
+ * flow is about to make their own club and has no business on anyone else's
+ * roster — but with no invite in the body they resolved to BPM and were written
+ * onto it, which is the same defect as above arriving through a different door,
+ * and the one that would have put every new organiser on BPM's roster by name.
+ * `noGroup: true` answers `groupId: null` and the terminals skip the membership
+ * write. It is consulted ONLY where there is no invite at all, so an invite
+ * always wins and a present-but-invalid one still refuses. Forging it buys
+ * nothing: the worst outcome is an account with LESS standing than the default.
+ *
  * A TOKEN THAT DOES NOT RESOLVE IS A REFUSAL, NOT A FALLBACK. Falling back to
  * `resolveGroupId(req)` on a bad token would re-create the exact defect above,
  * quietly, for the person least able to notice. And the refusal says only
@@ -41,11 +51,19 @@ import { resolveInvite } from '@/lib/invites';
 export interface InviteFields {
   inviteToken?: unknown;
   inviteCode?: unknown;
+  /**
+   * "I am about to create my own club — do not join me to anything."
+   * Honoured only with the flag on and no invite present. See the header.
+   */
+  noGroup?: unknown;
 }
 
 export type SignupGroup =
-  /** `invited` is false for an ordinary front-door signup. */
-  | { ok: true; groupId: string; invited: boolean }
+  /**
+   * `invited` is false for an ordinary front-door signup. `groupId: null` is
+   * the create-a-group case: a real account, deliberately on no roster yet.
+   */
+  | { ok: true; groupId: string | null; invited: boolean }
   | { ok: false };
 
 /** A trimmed string of a plausible length, or null. Same bounds as join's. */
@@ -98,7 +116,11 @@ export async function signupGroupFor(req: NextRequest, body: InviteFields): Prom
   // `POST /api/groups/join` refuses the same shape for the same reason.
   if (token && code) return { ok: false };
   if (!token && !code) {
-    return attempted ? { ok: false } : { ok: true, groupId: requestGroup, invited: false };
+    if (attempted) return { ok: false };
+    // Only here, where there is no invite to honour. An invite always wins,
+    // and a present-but-invalid one has already refused above.
+    if (body.noGroup === true) return { ok: true, groupId: null, invited: false };
+    return { ok: true, groupId: requestGroup, invited: false };
   }
 
   const groupId = token
