@@ -145,8 +145,18 @@ export function useInsight(enabled = true): UseInsight {
   /* The two SYNCHRONOUS writes the old effect opened with, adjusted during
      render instead. Neither waits on the network: one is the idle shape for a
      hook with nothing to fetch, the other is "a request for this member is
-     about to start". Leaving them in the effect meant a consumer committed one
-     frame of the PREVIOUS member's insight before the loading flag landed. */
+     about to start".
+
+     WHAT THIS DOES NOT FIX, because the spread is deliberate: on a direct
+     A → B name change the previous member's `data` is carried through the
+     whole fetch, and both consumers (`SummaryGreeting`, `SkillTrendCard`)
+     read `data` without checking `loading` — so B reads A's greeting until
+     the refetch lands. That predates this change and is unchanged by it.
+     Clearing `data` here would fix it and is a visible behaviour change
+     (every refresh would blank the card instead of holding the last good
+     copy), so it belongs to whoever decides which of those two is wanted, not
+     to a lint pass. The `!enabled || !activeName` branch below DOES clear,
+     which is why signing out is already clean. */
   const [prevKey, setPrevKey] = useState({ enabled, activeName });
   if (prevKey.enabled !== enabled || prevKey.activeName !== activeName) {
     setPrevKey({ enabled, activeName });

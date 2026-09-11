@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { readStored, useClientSubscription } from '@/lib/useClientValue';
 
 type Theme = 'dark' | 'light';
@@ -52,7 +52,16 @@ function subscribe(onChange: () => void): () => void {
 }
 
 export default function ThemeToggle() {
-  const theme = useClientSubscription(subscribe, read, 'dark');
+  const stored = useClientSubscription(subscribe, read, 'dark');
+  /* The in-page override, and it is load-bearing in exactly one case: private
+     mode, where `localStorage.setItem` throws and `read()` therefore keeps
+     answering the SYSTEM value. Without it the store never moves, so the icon
+     never flips and `next` is recomputed from the same stale value every tap —
+     the toggle sets the attribute once and can never set it back. Same shape
+     as `InstallBanner` and `SkillDiscoveryCard` in this directory: the stored
+     answer is the durable one, the local one covers the write that failed. */
+  const [override, setOverride] = useState<Theme | null>(null);
+  const theme = override ?? stored;
 
   // The one declarative owner of the attribute. It used to be written from
   // three places, which is how the initial read and the system listener came
@@ -66,8 +75,9 @@ export default function ThemeToggle() {
     try {
       localStorage.setItem(THEME_KEY, next);
     } catch {
-      /* private mode — the toggle still applies for this page view */
+      /* private mode — the override below is what keeps the toggle working */
     }
+    setOverride(next);
     // Paint the change on this tick rather than waiting for the passive
     // effect: the attribute repaints the whole page, and a tap should not be
     // able to show a frame of the old theme.
