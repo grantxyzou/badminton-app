@@ -528,9 +528,9 @@ One deployment, trunk-based: every push to `main` deploys to production. Full de
   `Read`/`Grep` output that replaces the denied call is carried in every later
   turn. **Do not use this gap to justify widening the allowlist** — that is
   precisely what it was used for, and #357 was reverted the same day.
-  ([[feedback_github_gates_that_look_on]] carries the other half: the comment
-  was posted at 11:36 and #357 merged at 14:29, because the check was green and
-  nobody read the comment.)
+  The other half of the lesson is the timing: the bot posted that comment at
+  11:36 and #357 merged at 14:29, because the check was green and nobody opened
+  the comment. **A green `claude-review` is not the review — the comment is.**
 - **A canary that announces itself proves nothing.** The plugin's first step is
   an eligibility check that may skip a PR it judges doesn't need review, and its
   step 6 drops any finding scored under 80. A PR titled "DO NOT MERGE — planted
