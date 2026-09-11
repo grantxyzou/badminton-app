@@ -78,8 +78,26 @@ export async function GET(req: NextRequest) {
     // Does this device hold a valid member_session cookie for THIS name? If so,
     // the client can drop the PIN field — the sign-up endpoint accepts the
     // cookie as identity proof (skip the per-session PIN re-entry).
+    /**
+     * WITH GROUPS ON THIS IS AN ID COMPARISON, for the reason the PATCH
+     * branches are: the cookie's `name` is a display name and the requested
+     * one is a per-club ROSTER name, so two clubs can each have a Lin and a
+     * string match says nothing. `groupMemberId` is the person the probe just
+     * resolved INSIDE the claimed group, so comparing against it asks the only
+     * question that means anything — is the caller that person?
+     *
+     * Flag off there is no id to compare: the branch above is a name scan and
+     * its projection deliberately carries no `c.id` (see the note on widening
+     * it). Flag off the two namespaces are the same one, so the name match is
+     * equivalent rather than merely tolerated — and the correction rides in
+     * with the cutover, like the roster narrowing in `stats/club/bands`.
+     */
     const memberAuth = verifyMemberAuth(req);
-    const authed = !!memberAuth && memberAuth.name.toLowerCase() === name.toLowerCase();
+    const authed = !!memberAuth && (
+      groupsOn
+        ? !!groupMemberId && memberAuth.memberId === groupMemberId
+        : memberAuth.name.toLowerCase() === name.toLowerCase()
+    );
 
     /**
      * `hasPin` and `createdAt` ARE the anonymous half, and must stay that way:
@@ -251,32 +269,19 @@ async function handlePatch(req: NextRequest) {
   }
 
   /**
-   * BOTH LIMITS RUN BEFORE `hashPin`, AND THE COARSE ONE IS WHY.
+   * Validate newPin shape: null = clear, '4-digit' = set/change.
    *
-   * `hashPin` is scrypt at ~16 MiB, synchronous enough to block the single
-   * Node event loop on the B1 instance this runs on. It used to be called
-   * during shape validation, ABOVE the limiter, so every anonymous request
-   * carrying any well-formed 4-digit string bought one derivation (rule 4,
-   * violated).
-   *
-   * Moving the per-identifier limit up is not enough on its own: its bucket
-   * key contains the caller-chosen `name`, so a fresh name mints a fresh
-   * 5-per-hour bucket every request and the cut-off is never reached. The
-   * coarse IP-only guard is the one that actually bounds the work, and it is
-   * the shape `auth/signin` and `auth/claim-name` already use — generous
-   * enough to only catch someone hammering the endpoint.
+   * The two 400s below sit ABOVE the limiter on purpose, and the expensive
+   * sink sits below it. A regex test and a five-entry Set lookup cost nothing
+   * and disclose nothing, so charging a caller's hourly budget for them would
+   * punish the wrong person: `BLOCKLISTED_PINS` holds exactly the PINs someone
+   * reaches for first, so a member picking `1234`, then `0000`, then `1111`
+   * would spend three of five attempts being told to choose again, and five
+   * fumbles would lock them out of setting a PIN for an hour.
    */
-  const ip = getClientIp(req);
-  if (!checkRateLimit(`pin-update:ip:${ip}`, 20, 60 * 60 * 1000)) {
-    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-  }
-  if (!checkRateLimit(`pin-update:${name.toLowerCase()}:${ip}`, 5, 60 * 60 * 1000)) {
-    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-  }
-
-  // Validate newPin shape: null = clear, '4-digit' = set/change.
   let nextPinHash: string | undefined;
   let clearPin = false;
+  let pendingPin: string | null = null;
   if (body.newPin === null) {
     clearPin = true;
   } else if (typeof body.newPin === 'string') {
@@ -286,9 +291,37 @@ async function handlePatch(req: NextRequest) {
     if (BLOCKLISTED_PINS.has(body.newPin)) {
       return NextResponse.json({ error: 'pin_too_common' }, { status: 400 });
     }
-    nextPinHash = await hashPin(body.newPin);
+    pendingPin = body.newPin;
   } else {
     return NextResponse.json({ error: 'Invalid PIN format' }, { status: 400 });
+  }
+
+  /**
+   * BOTH LIMITS RUN BEFORE `hashPin`, AND THE COARSE ONE IS WHY.
+   *
+   * `hashPin` is scrypt at ~16 MiB, synchronous enough to block the single
+   * Node event loop on the B1 instance this runs on. It used to be called
+   * inside the validation above, so every anonymous request carrying any
+   * well-formed 4-digit string bought one derivation before any throttle ran
+   * (rule 4, violated).
+   *
+   * Moving the per-identifier limit up is not enough on its own: its bucket
+   * key contains the caller-chosen `name`, so a fresh name mints a fresh
+   * 5-per-hour bucket every request and the cut-off is never reached. The
+   * coarse IP-only guard is what actually bounds the work, and it is the shape
+   * `auth/signin` and `auth/claim-name` already use — generous enough to only
+   * catch someone hammering the endpoint.
+   */
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`pin-update:ip:${ip}`, 20, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+  if (!checkRateLimit(`pin-update:${name.toLowerCase()}:${ip}`, 5, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+
+  if (pendingPin !== null) {
+    nextPinHash = await hashPin(pendingPin);
   }
 
   const membersContainer = getContainer('members');

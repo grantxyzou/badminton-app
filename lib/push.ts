@@ -298,6 +298,24 @@ async function deliver(subs: PushSubscriptionDoc[], payload: PushPayload): Promi
   const web = subs.filter(isWebSub);
   const native = subs.filter(isNativeSub);
 
+  /**
+   * A row that is neither is dropped, and a SILENT drop is the wrong posture
+   * here. The endpoint check in `isWebSub` is new, so the likeliest cause is a
+   * real device whose endpoint this build refuses — and because nothing is
+   * sent, no 410 ever comes back to clean it up, leaving a member quietly
+   * un-notified with nothing anywhere saying so. The endpoint itself is a send
+   * credential and is never logged; the count and the member are enough to find
+   * it. Logged per send rather than once, because it should be rare.
+   */
+  const dropped = subs.length - web.length - native.length;
+  if (dropped > 0) {
+    console.warn('[push] subscription(s) dropped as undeliverable', {
+      dropped,
+      of: subs.length,
+      memberIds: [...new Set(subs.map((s) => s.memberId))].slice(0, 5),
+    });
+  }
+
   if (web.length > 0) {
     if (isWebPushConfigured()) {
       await deliverWeb(web, payload, tally, now);
