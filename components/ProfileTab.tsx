@@ -31,7 +31,7 @@ import { useStatsPrivacy } from '@/lib/useStatsPrivacy';
 import { isFlagOn } from '@/lib/flags';
 import { useAdminNeedsYou } from '@/lib/useAdminNeedsYou';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
-import GroupsSheet from './profile/GroupsSheet';
+import GroupsPage from './profile/GroupsPage';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -85,7 +85,6 @@ export default function ProfileTab({
   // Multi-group: the switcher's data. Resolves to `group: null` with the flag
   // off (the endpoints 404 by design), so the row simply does not render.
   const { group, groups, error: groupsError } = useCurrentGroup();
-  const [groupsOpen, setGroupsOpen] = useState(false);
   const [identity, setLocalIdentity] = useState<Identity | null>(null);
   /**
    * Which credential the anonymous card is asking for. One form is visible at a
@@ -130,7 +129,7 @@ export default function ProfileTab({
   // pattern (view state + early return + slideInRight + TopBar) is borrowed
   // from AdminDashboard, which is the only place in the app that already does
   // sub-screens.
-  const [view, setView] = useState<'root' | 'stats-privacy'>('root');
+  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups'>('root');
   const [methodsOpen, setMethodsOpen] = useState(false);
   // Read once here so the row's summary and the sheet's body agree.
   //
@@ -549,6 +548,26 @@ export default function ProfileTab({
   // Sub-screen. Early return so the root Profile tree unmounts entirely and
   // TopBar's `position: sticky` resolves against the tall scroll root rather
   // than a short wrapper (see AdminBackHeader's note).
+  if (view === 'groups' && group) {
+    return (
+      <GroupsPage
+        onBack={() => setView('root')}
+        groups={groups}
+        loadError={groupsError}
+        // A switch re-mints both cookies, so every tab has to refetch; this
+        // page cannot do that itself, HomeShell owns the nonce. It also bumps
+        // `refreshNonce`, which remounts ProfileTab and returns `view` to
+        // 'root' for free — no explicit reset on the success path.
+        onSwitched={() => onGroupSwitched?.()}
+        // NOT resetting the view first: backing out of the onboarding page
+        // returns HERE, which is where they came from. `setOnboarding(null)`
+        // does not bump the nonce, so this component keeps its view.
+        onJoinAnother={() => onJoinGroup?.()}
+        onCreateAnother={() => onCreateGroup?.()}
+      />
+    );
+  }
+
   if (view === 'stats-privacy') {
     return <StatsPrivacyScreen onBack={() => setView('root')} state={privacyState} />;
   }
@@ -620,7 +639,7 @@ export default function ProfileTab({
                 icon: 'groups',
                 label: tGroups('yourGroups'),
                 meta: group.name,
-                onClick: () => setGroupsOpen(true),
+                onClick: () => setView('groups'),
               }]
             : []),
           // Was a permanently-expanded card above this list — its own heading,
@@ -759,25 +778,6 @@ export default function ProfileTab({
 
       {migrateOn && !isNative() && <MigrateSheet open={migrateOpen} onClose={() => setMigrateOpen(false)} />}
 
-      {group && (
-        <GroupsSheet
-          open={groupsOpen}
-          onClose={() => setGroupsOpen(false)}
-          groups={groups}
-          loadError={groupsError}
-          // A switch re-mints both cookies, so every tab has to refetch; the
-          // sheet cannot do that itself, HomeShell owns the nonce.
-          onSwitched={() => onGroupSwitched?.()}
-          onJoinAnother={() => {
-            setGroupsOpen(false);
-            onJoinGroup?.();
-          }}
-          onCreateAnother={() => {
-            setGroupsOpen(false);
-            onCreateGroup?.();
-          }}
-        />
-      )}
 
       <DeleteAccountSheet
         open={deleteAccountOpen}

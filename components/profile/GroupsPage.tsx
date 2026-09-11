@@ -2,14 +2,13 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import TopBar from '@/components/primitives/TopBar';
 import type { GroupListEntry } from '@/lib/useCurrentGroup';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 interface Props {
-  open: boolean;
-  onClose: () => void;
+  onBack: () => void;
   groups: GroupListEntry[];
   loadError?: boolean;
   /** Remount the tabs so every card refetches under the new club's cookies. */
@@ -20,6 +19,13 @@ interface Props {
 
 /**
  * "Your groups" — the switcher.
+ *
+ * A PAGE, not a sheet, and deliberately NOT part of HomeShell's onboarding
+ * stack. That stack exists to hide the bottom nav, because its screens belong
+ * to a club the person has no relationship with yet. This one is reached from
+ * Profile and returns to Profile, so the nav stays — which is why it lives in
+ * `ProfileTab`'s own `view` router beside `StatsPrivacyScreen`, the screen it
+ * copies in every structural respect.
  *
  * A SWITCH IS A SIGN-IN, not a preference. The server re-mints both cookies for
  * the new club (`POST /api/groups/switch`), which is also what drops an admin
@@ -36,9 +42,8 @@ interface Props {
  * A LOAD FAILURE IS NOT AN EMPTY LIST. "You're only in one group" rendered over
  * a failed fetch tells someone their club is gone.
  */
-export default function GroupsSheet({
-  open,
-  onClose,
+export default function GroupsPage({
+  onBack,
   groups,
   loadError,
   onSwitched,
@@ -65,7 +70,6 @@ export default function GroupsSheet({
         return;
       }
       onSwitched();
-      onClose();
     } catch {
       setError(t('switchFailed'));
       setBusyId(null);
@@ -76,9 +80,13 @@ export default function GroupsSheet({
     role === 'owner' ? t('roleOwner') : role === 'admin' ? t('roleAdmin') : t('roleMember');
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('yourGroups')}>
-      <BottomSheetHeader>{t('yourGroups')}</BottomSheetHeader>
-      <BottomSheetBody>
+    // NOT wrapped in an element containing only the header — TopBar is
+    // `position: sticky`, and a header-only wrapper shrinks the sticky
+    // containing block so the bar scrolls away instead of condensing.
+    <div className="animate-slideInRight space-y-5">
+      <TopBar title={t('yourGroups')} crumb={t('crumb')} onBack={onBack} backLabel={t('crumb')} />
+
+      <div>
         <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
           <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('yourGroupsHint')}</p>
 
@@ -145,7 +153,7 @@ export default function GroupsSheet({
             </button>
           </div>
         </div>
-      </BottomSheetBody>
-    </BottomSheet>
+      </div>
+    </div>
   );
 }
