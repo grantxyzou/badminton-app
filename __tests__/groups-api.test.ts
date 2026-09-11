@@ -237,6 +237,51 @@ describe('GET /api/groups/mine and /current', () => {
     expect(body.currentGroupId).toBe('bpm');
   });
 
+  /**
+   * Rule 4 — the limit runs BEFORE the auth check, on both of these.
+   *
+   * They were the only two handlers in the group API with no limit at all, and
+   * `/mine` is the costliest read in it: a cross-partition query on
+   * `memberships`, then one `readGroup` point read per club the caller is in,
+   * on a B1 tier. `/current` pays for `requireGroupMember`, which is the one
+   * auth check here that hits Cosmos, and then lists the whole roster.
+   *
+   * The second half is the half that matters: once the bucket is spent the
+   * ANONYMOUS caller from the same IP gets 429 too, not 401. A limit placed
+   * after the auth check can be walked past by dropping the cookie.
+   */
+  it('rate limits /mine before the auth check', async () => {
+    const person = seedMember('Grace');
+    seedMembership('bpm', person.id, { name: 'Grace' });
+    const ip = '203.0.113.41';
+    const authed = { ...asMember('Grace', person.id), 'X-Client-IP': ip };
+
+    let last = await mineRoute(makeRequest('GET', `${BASE}/mine`, undefined, authed));
+    for (let i = 0; i < 80 && last.status !== 429; i += 1) {
+      last = await mineRoute(makeRequest('GET', `${BASE}/mine`, undefined, authed));
+    }
+    expect(last.status).toBe(429);
+
+    const anon = await mineRoute(makeRequest('GET', `${BASE}/mine`, undefined, { 'X-Client-IP': ip }));
+    expect(anon.status).toBe(429);
+  });
+
+  it('rate limits /current before the auth check', async () => {
+    const person = seedMember('Grace');
+    seedMembership('bpm', person.id, { name: 'Grace' });
+    const ip = '203.0.113.42';
+    const authed = { ...asMember('Grace', person.id), 'X-Client-IP': ip };
+
+    let last = await currentRoute(makeRequest('GET', `${BASE}/current`, undefined, authed));
+    for (let i = 0; i < 80 && last.status !== 429; i += 1) {
+      last = await currentRoute(makeRequest('GET', `${BASE}/current`, undefined, authed));
+    }
+    expect(last.status).toBe(429);
+
+    const anon = await currentRoute(makeRequest('GET', `${BASE}/current`, undefined, { 'X-Client-IP': ip }));
+    expect(anon.status).toBe(429);
+  });
+
   it('drops a closed club from the list', async () => {
     const person = seedMember('Grace');
     seedMembership('bpm', person.id, { name: 'Grace' });

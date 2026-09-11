@@ -162,6 +162,14 @@ export interface BackfillStatus {
    * collision. A report about a constraint has to be keyed the way the
    * constraint is keyed.
    *
+   * ALL THREE ARE KEYED THE WAY THE RESERVATION IS KEYED — by this group's
+   * ROSTER name, not by `Member.name`, for anyone who has a membership here.
+   * The reservation id carries the group and holds the roster name, so a count
+   * taken over every `Member` in the deployment reports clashes that cannot
+   * happen (two people called Chris in two different clubs) and misses ones
+   * that can (someone this club renamed). See `rosterNamesOf` for the
+   * pre-backfill fallback and why it cannot reintroduce that.
+   *
    * Counted here rather than in a report nobody opens: this is the number
    * already being read to decide whether the cutover is safe.
    */
@@ -262,7 +270,7 @@ export async function backfillStatus(opts: { scanCap?: number } = {}): Promise<B
         return ms !== undefined && (ms.status === 'active') !== (m.active === true);
       }).length,
     },
-    names: nameConflicts(members),
+    names: nameConflicts(rosterNamesOf(members, byMember)),
     unstamped,
     truncated,
     scanCap,
@@ -277,36 +285,89 @@ export async function backfillStatus(opts: { scanCap?: number } = {}): Promise<B
  */
 const looseNameKey = (name: string) => rosterNameKey(name).replace(/[^\p{L}\p{N}]/gu, '');
 
-function groupBy(members: Member[], key: (m: Member) => string): Map<string, Member[]> {
-  const out = new Map<string, Member[]>();
+/**
+ * One name as the RESERVATION sees it: the roster name, and whether the
+ * membership holding it is live.
+ */
+interface RosterName {
+  name: string;
+  active: boolean;
+}
+
+/**
+ * The names this group's reservations are keyed on — ONE CLUB'S, not the
+ * deployment's.
+ *
+ * This used to run over every `Member` doc in the deployment, which was exactly
+ * right while there was one club and silently wrong the moment there were two:
+ * `rosterNameKey` would bucket a Chris in club A with a different Chris in club
+ * B and call them a within-club duplicate, and a removed Chris here plus an
+ * active Chris there would read as a blocked rejoin that nothing blocks. The
+ * reservation id is `${groupId}:name:${lower}` — the group is IN the key, so a
+ * report about it has to be too.
+ *
+ * The name comes from the MEMBERSHIP, not from `Member.name`: `Member.name` is
+ * the person's default display name and the roster name is what this club calls
+ * them, which is the half the reservation actually holds. Status likewise —
+ * removal releases the name, and `members.mismatched` exists because the
+ * membership and `Member.active` can disagree.
+ *
+ * A member with NO membership here still counts, under `Member.name` — and
+ * that fallback is what keeps the report useful BEFORE the backfill has run,
+ * which is the state it is mainly read in. The backfill's own `POST` refuses on
+ * two active members sharing a name, so a status read that could not see a
+ * clash until after the run would warn nobody in time.
+ *
+ * THE FALLBACK IS SELF-LIMITING, which is why it does not reopen the bug above.
+ * It is populated exactly when no memberships exist yet — and that is the
+ * one-club state, where counting every `Member` is correct. Once the backfill
+ * has run, `withoutMembership` is 0, the fallback is empty, and only this
+ * group's roster names are counted, which is the state a second club can exist
+ * in. The gap between them is a person created while the flag was off (which
+ * moves `Member.active` and writes no membership) — reported by
+ * `withoutMembership` and `mismatched`, and reconciled by a re-run, which is
+ * already the operating procedure.
+ */
+function rosterNamesOf(members: Member[], byMember: Map<string, { name: string; status: string }>): RosterName[] {
+  const out: RosterName[] = [];
   for (const m of members) {
-    const k = key(m);
-    if (!k) continue;
-    const held = out.get(k);
-    if (held) held.push(m);
-    else out.set(k, [m]);
+    const ms = byMember.get(m.id);
+    if (ms) out.push({ name: ms.name || m.name, active: ms.status === 'active' });
+    else out.push({ name: m.name, active: m.active === true });
   }
   return out;
 }
 
-function nameConflicts(members: Member[]): { duplicates: number; blockedRejoins: number; similar: number } {
+function groupBy(names: RosterName[], key: (n: RosterName) => string): Map<string, RosterName[]> {
+  const out = new Map<string, RosterName[]>();
+  for (const n of names) {
+    const k = key(n);
+    if (!k) continue;
+    const held = out.get(k);
+    if (held) held.push(n);
+    else out.set(k, [n]);
+  }
+  return out;
+}
+
+function nameConflicts(names: RosterName[]): { duplicates: number; blockedRejoins: number; similar: number } {
   // THE RESERVATION'S OWN KEY for anything that claims a behaviour.
-  const exact = groupBy(members, (m) => rosterNameKey(m.name));
+  const exact = groupBy(names, (n) => rosterNameKey(n.name));
   let duplicates = 0;
   let blockedRejoins = 0;
   for (const group of exact.values()) {
     if (group.length < 2) continue;
     duplicates += 1;
     // Per MEMBER: one live `Chris` and two removed ones strands TWO people.
-    if (group.some((m) => m.active === true)) {
-      blockedRejoins += group.filter((m) => m.active !== true).length;
+    if (group.some((n) => n.active)) {
+      blockedRejoins += group.filter((n) => !n.active).length;
     }
   }
   // Advisory: groups a person reads as one name that the reservation does not.
   let similar = 0;
-  for (const group of groupBy(members, (m) => looseNameKey(m.name)).values()) {
+  for (const group of groupBy(names, (n) => looseNameKey(n.name)).values()) {
     if (group.length < 2) continue;
-    if (new Set(group.map((m) => rosterNameKey(m.name))).size > 1) similar += 1;
+    if (new Set(group.map((n) => rosterNameKey(n.name))).size > 1) similar += 1;
   }
   return { duplicates, blockedRejoins, similar };
 }

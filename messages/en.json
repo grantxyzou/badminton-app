@@ -870,6 +870,7 @@
       "levelAriaKnown": "Level {level} of 5. Tap to check in again.",
       "levelAriaUnknown": "No level yet. Tap to take a check-in.",
       "levelAriaError": "Level couldn't load. Tap to take a check-in.",
+      "levelAriaLoading": "Level loading. Tap to open the check-in.",
       "loadError": "Couldn't load",
       "baseline": "Your baseline",
       "levelWith": "level with {month}",

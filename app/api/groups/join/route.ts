@@ -99,7 +99,20 @@ export async function POST(req: NextRequest) {
       /** False when they were already on this roster — the sheet says "welcome back". */
       joined: !wasMember,
     });
-    await completeSignIn(res, member, group.id);
+    // PAST THE MEMBERSHIP WRITE, NOTHING RECOVERABLE MAY FAIL THE REQUEST —
+    // the same rule `POST /api/groups` states at its own `completeSignIn`.
+    // Unwrapped, a throw here fell to the catch-all below and answered 500
+    // `join_failed` for a join that had already committed. The retry then found
+    // `addMembership` idempotent, returned the existing row, and came back
+    // `joined: false` — so the sheet said "welcome back" on what was really a
+    // first join, and the cookie was never minted, leaving them pointed at
+    // their old club. A missing cookie is recoverable on the next sign-in; a
+    // lie about which club you are in is not.
+    try {
+      await completeSignIn(res, member, group.id);
+    } catch (err) {
+      console.error('POST /api/groups/join: joined, cookie mint failed (recoverable):', err);
+    }
     return res;
   } catch (error) {
     if (error instanceof RosterNameTakenError) {
