@@ -12,6 +12,8 @@ import {
   makeGetRequest,
   getStore,
   seedAdminMember,
+  seedMember,
+  memberCookieValue,
 } from './helpers';
 
 // ---- HELPERS ----
@@ -247,8 +249,23 @@ describe('PATCH /api/players — pin field', () => {
     expect((stored?.pinHash as string).length).toBeGreaterThan(0);
   });
 
-  it('player self-sets PIN with valid deleteToken', async () => {
-    seedPlayer(SESSION, 'Grant', { id: 'p1', deleteToken: 'self-token' });
+  function findMemberInStore(id: string) {
+    const members = (getStore()['members'] ?? []) as Array<Record<string, unknown>>;
+    return members.find((m) => m.id === id);
+  }
+
+  /**
+   * A `deleteToken` is session-scoped: it proves "this device signed this name
+   * up for this week", never account ownership. This branch writes
+   * `members.pinHash` — what `/api/players/recover` verifies — so accepting
+   * the token here was a claim of any PIN-less account, the exact operation
+   * `PATCH /api/members/me` refuses.
+   */
+  it('refuses a PIN set authorized by deleteToken alone', async () => {
+    // id pinned to the one `memberCookieValue('Lin')` would carry, so the
+    // only reason this 401s is the ABSENT cookie — not an id mismatch.
+    const member = seedMember('Lin', { id: 'member-lin' }); // no pinHash
+    seedPlayer(SESSION, 'Lin', { id: 'p1', deleteToken: 'self-token', memberId: member.id });
     const res = await PATCH(
       makeRequest('PATCH', 'http://localhost/api/players', {
         id: 'p1',
@@ -256,9 +273,63 @@ describe('PATCH /api/players — pin field', () => {
         deleteToken: 'self-token',
       })
     );
+    expect(res.status).toBe(401);
+    expect(findPlayerInStore('p1')?.pinHash).toBeUndefined();
+    expect(findMemberInStore(member.id)?.pinHash).toBeUndefined();
+  });
+
+  it('member sets their own PIN with a member_session cookie', async () => {
+    const member = seedMember('Lin', { id: 'member-lin' });
+    seedPlayer(SESSION, 'Lin', { id: 'p1', deleteToken: 'self-token', memberId: member.id });
+    const res = await PATCH(
+      makeRequest(
+        'PATCH',
+        'http://localhost/api/players',
+        { id: 'p1', pin: '5839' },
+        { Cookie: `member_session=${memberCookieValue('Lin')}` },
+      )
+    );
     expect(res.status).toBe(200);
-    const stored = findPlayerInStore('p1');
-    expect(typeof stored?.pinHash).toBe('string');
+    expect(typeof findPlayerInStore('p1')?.pinHash).toBe('string');
+    expect(typeof findMemberInStore('member-lin')?.pinHash).toBe('string');
+  });
+
+  it('refuses to change an existing PIN without the current one', async () => {
+    const member = seedMember('Lin', { id: 'member-lin', pinHash: 'salt:hash' });
+    seedPlayer(SESSION, 'Lin', { id: 'p1', memberId: member.id });
+    const res = await PATCH(
+      makeRequest(
+        'PATCH',
+        'http://localhost/api/players',
+        { id: 'p1', pin: '5839' },
+        { Cookie: `member_session=${memberCookieValue('Lin')}` },
+      )
+    );
+    expect(res.status).toBe(401);
+    expect((await res.json()).error).toBe('current_pin_required');
+    expect(findMemberInStore('member-lin')?.pinHash).toBe('salt:hash');
+  });
+
+  /**
+   * The whole exploit end to end: an anonymous sign-up for a PIN-less member
+   * hands back a real `deleteToken` (the POST PIN gate only fires once a
+   * member HAS a PIN), and that token used to be enough to choose that
+   * account's PIN and then sign in as them through `/recover`.
+   */
+  it('an anonymous signup token cannot claim the account it signed up', async () => {
+    const member = seedMember('Lin', { id: 'member-lin' }); // no pinHash — claimable
+    const signup = await POST(
+      makeRequest('POST', 'http://localhost/api/players', { name: 'Lin' })
+    );
+    expect(signup.status).toBe(201);
+    const { id, deleteToken } = await signup.json();
+    expect(typeof deleteToken).toBe('string');
+
+    const res = await PATCH(
+      makeRequest('PATCH', 'http://localhost/api/players', { id, pin: '7391', deleteToken })
+    );
+    expect(res.status).toBe(401);
+    expect(findMemberInStore(member.id)?.pinHash).toBeUndefined();
   });
 
   it('rejects non-admin without deleteToken (401)', async () => {

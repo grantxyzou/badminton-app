@@ -318,6 +318,10 @@ export function adminCookieValue(
     memberId: TEST_ADMIN_MEMBER_ID,
     name: TEST_ADMIN_NAME,
     ...(groupId === null ? {} : { groupId }),
+    // The AUDIENCE, mirroring `setAdminCookie`. Without it this is a token no
+    // admin check accepts — which is the point: the cookie NAME is chosen by
+    // the client, so only `typ` says which credential a value is.
+    typ: 'admin',
     iat: now,
     exp: now + 60 * 60 * 8,
   };
@@ -341,9 +345,19 @@ export function memberCookieValue(
   ttlSeconds = 60 * 60 * 24 * 30,
   /** The group claim (multi-group Phase 2). `null` mints a pre-claim cookie, which reads as BPM. */
   groupId: string | null = 'bpm',
+  /** The audience, mirroring `setMemberCookie`. `null` mints a token from
+   *  before the field existed — which still reads as a member session. */
+  typ: 'member' | null = 'member',
 ): string {
   const now = Math.floor(Date.now() / 1000);
-  const payload = { memberId, name, ...(groupId === null ? {} : { groupId }), iat: now - 60, exp: now + ttlSeconds };
+  const payload = {
+    memberId,
+    name,
+    ...(groupId === null ? {} : { groupId }),
+    ...(typ === null ? {} : { typ }),
+    iat: now - 60,
+    exp: now + ttlSeconds,
+  };
   const headerB64 = base64urlEncode(Buffer.from(JSON.stringify(payload), 'utf8'));
   const sig = createHmac('sha256', TEST_SESSION_SECRET).update(headerB64).digest();
   const sigB64 = base64urlEncode(sig);

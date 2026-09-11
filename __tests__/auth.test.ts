@@ -69,7 +69,8 @@ describe('lib/auth — signed-payload cookie', () => {
   it('isAdminAuthed returns false when token is expired', () => {
     // Build a token with exp in the past, signed with the same secret
     const past = Math.floor(Date.now() / 1000) - 100;
-    const payload = { memberId: 'm', name: 'n', iat: past - 60, exp: past };
+    // `typ` present so EXPIRY is the only thing wrong with this token.
+    const payload = { memberId: 'm', name: 'n', typ: 'admin', iat: past - 60, exp: past };
     const headerB64 = Buffer.from(JSON.stringify(payload), 'utf8')
       .toString('base64')
       .replace(/=/g, '')

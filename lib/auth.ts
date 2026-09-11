@@ -99,6 +99,19 @@ function getSessionSecret(): string {
   );
 }
 
+/**
+ * WHICH CREDENTIAL A TOKEN IS.
+ *
+ * One `SESSION_SECRET` signs both session cookies over the identical
+ * `{memberId, name, groupId, iat, exp}` shape, so before this field the only
+ * thing separating a member session from an admin one was the cookie NAME the
+ * client chose to put the value in — and the client chooses that. Any signed-in
+ * member could copy their own `member_session` value, send it back as
+ * `admin_session`, and pass every sync admin check. `typ` binds a token to its
+ * purpose INSIDE the signature, so the two are no longer interchangeable.
+ */
+type SessionKind = 'admin' | 'member';
+
 interface SessionPayload {
   memberId: string;
   name: string;
@@ -109,6 +122,15 @@ interface SessionPayload {
    * which reads as BPM, the only group there was.
    */
   groupId?: string;
+  /**
+   * The audience. Additive and optional, like `groupId`: absent on a token
+   * minted before this field existed, and ignored outright by older code on a
+   * rollback. An absent `typ` reads as `'member'` — which leaves every live
+   * `member_session` working (30-day TTL, deliberately matched to the client's
+   * stored identity) and fails CLOSED for admin: a pre-deploy `admin_session`
+   * no longer passes, and that admin re-PINs once.
+   */
+  typ?: SessionKind;
   iat: number; // seconds
   exp: number; // seconds
 }
@@ -129,7 +151,19 @@ function signPayload(payload: SessionPayload): string {
   return `${headerB64}.${sigB64}`;
 }
 
-function verifyToken(token: string, opts: { ignoreExpiry?: boolean } = {}): SessionPayload | null {
+/**
+ * Verifies signature, shape, AUDIENCE and (unless waived) expiry.
+ *
+ * `expect` is positional and required — a default is how a future caller
+ * silently gets the wrong audience. `'either'` verifies a token's identity
+ * without asking which credential carried it; `readGroupClaim` is its only
+ * caller and says why there.
+ */
+function verifyToken(
+  token: string,
+  expect: SessionKind | 'either',
+  opts: { ignoreExpiry?: boolean } = {},
+): SessionPayload | null {
   const parts = token.split('.');
   if (parts.length !== 2) return null;
   const [headerB64, sigB64] = parts;
@@ -153,6 +187,13 @@ function verifyToken(token: string, opts: { ignoreExpiry?: boolean } = {}): Sess
     ) {
       return null;
     }
+    // The audience check, written as strict equality AT the comparison rather
+    // than through a normalizing helper, so the one place legacy tolerance is
+    // granted is visible: an admin token must SAY `'admin'`, while a member one
+    // may also carry no `typ` at all (a cookie minted before the field existed).
+    // Any other value is neither.
+    if (expect === 'admin' && payload.typ !== 'admin') return null;
+    if (expect === 'member' && payload.typ !== 'member' && payload.typ !== undefined) return null;
     if (!opts.ignoreExpiry && payload.exp < Math.floor(Date.now() / 1000)) return null;
     return payload;
   } catch {
@@ -218,6 +259,7 @@ export function setAdminCookie(res: NextResponse, memberId: string, name: string
     memberId,
     name,
     groupId,
+    typ: 'admin',
     iat: now,
     exp: now + COOKIE_MAX_AGE_S,
   };
@@ -236,9 +278,11 @@ export function clearAdminCookie(res: NextResponse): void {
 
 // ── Member session ──
 // A non-admin "this device is authenticated as <member>" cookie. Same signed
-// payload + flags as the admin cookie, but a DISTINCT name so it NEVER satisfies
-// isAdminAuthed() (that check keys off `admin_session` with no role re-check, so
-// a member cookie under that name would leak admin on read-only routes).
+// payload + flags as the admin cookie, and a DISTINCT name — but the NAME is
+// not what keeps them apart, because the client picks which cookie it sends a
+// value in. What keeps them apart is the `typ` claim inside the signature:
+// `isAdminAuthed` demands `typ === 'admin'`, so a member token replayed as
+// `admin_session` fails the signature-only check it used to pass.
 //
 // Purpose: a PIN'd member proves their PIN once per device (via /recover or the
 // Home sign-in path); this cookie then lets the sign-up endpoint register them
@@ -271,7 +315,14 @@ const COOKIE_OPTS = {
 
 export function setMemberCookie(res: NextResponse, memberId: string, name: string, groupId: string = BPM_GROUP_ID): void {
   const now = Math.floor(Date.now() / 1000);
-  const payload: SessionPayload = { memberId, name, groupId, iat: now, exp: now + COOKIE_MAX_AGE_S };
+  const payload: SessionPayload = {
+    memberId,
+    name,
+    groupId,
+    typ: 'member',
+    iat: now,
+    exp: now + COOKIE_MAX_AGE_S,
+  };
   res.cookies.set(MEMBER_COOKIE_NAME, signPayload(payload), {
     ...COOKIE_OPTS,
     maxAge: COOKIE_MAX_AGE_S,
@@ -310,7 +361,7 @@ const sessionOf = (p: SessionPayload): MemberSession => ({
 export function peekMemberSession(req: NextRequest): MemberSession | null {
   const cookie = req.cookies.get(MEMBER_COOKIE_NAME)?.value;
   if (!cookie) return null;
-  const payload = verifyToken(cookie, { ignoreExpiry: true });
+  const payload = verifyToken(cookie, 'member', { ignoreExpiry: true });
   if (!payload) return null;
   return sessionOf(payload);
 }
@@ -318,7 +369,7 @@ export function peekMemberSession(req: NextRequest): MemberSession | null {
 export function verifyMemberAuth(req: NextRequest): MemberSession | null {
   const cookie = req.cookies.get(MEMBER_COOKIE_NAME)?.value;
   if (!cookie) return null;
-  const payload = verifyToken(cookie);
+  const payload = verifyToken(cookie, 'member');
   if (!payload) return null;
   return sessionOf(payload);
 }
@@ -327,10 +378,19 @@ export function verifyMemberAuth(req: NextRequest): MemberSession | null {
  * The group claim of a raw session token — signature and expiry verified,
  * nothing else — for `lib/groupContext.ts`, which resolves a request's group
  * synchronously from either cookie. `null` for anything that does not verify.
+ *
+ * DELIBERATELY AUDIENCE-AGNOSTIC, and not because "which group" is a lesser
+ * question than "is this an admin": `POST /api/admin` mints ONLY an
+ * `admin_session`, so a device can hold an admin token and no member token at
+ * all, and `resolveGroupId`'s second arm exists to read the claim off exactly
+ * that cookie. Demanding `'member'` here would strand those devices in BPM
+ * once the multi-group flag is on. Nothing is authorized by this function —
+ * the admin decision is `isAdminAuthed` / `isAdminAuthedWithMember`, and both
+ * demand `'admin'`.
  */
 export function readGroupClaim(token: string | null | undefined): string | null {
   if (!token) return null;
-  const payload = verifyToken(token);
+  const payload = verifyToken(token, 'either');
   return payload ? (payload.groupId ?? BPM_GROUP_ID) : null;
 }
 
@@ -366,13 +426,17 @@ export async function requireGroupMember(
 }
 
 /**
- * Sync admin check — verifies the cookie's signature and expiry only. Does
- * NOT re-check the Member's role. Cheaper, used by read-only routes.
+ * Sync admin check — verifies the cookie's signature, AUDIENCE and expiry only.
+ * Does NOT re-check the Member's role. Cheaper, used by read-only routes.
+ *
+ * The audience is what makes "signature valid" mean something here: the cookie
+ * NAME is chosen by the client, so without `typ` this returned true for any
+ * signed-in member who replayed their `member_session` value under this name.
  */
 export function isAdminAuthed(req: NextRequest): boolean {
   const cookie = req.cookies.get(COOKIE_NAME)?.value;
   if (!cookie) return false;
-  return verifyToken(cookie) !== null;
+  return verifyToken(cookie, 'admin') !== null;
 }
 
 /**
@@ -423,7 +487,7 @@ export async function isAdminAuthedWithMember(
 ): Promise<{ authed: true; memberId: string; name: string; groupId: string } | { authed: false }> {
   const cookie = req.cookies.get(COOKIE_NAME)?.value;
   if (!cookie) return { authed: false };
-  const payload = verifyToken(cookie);
+  const payload = verifyToken(cookie, 'admin');
   if (!payload) return { authed: false };
 
   try {
