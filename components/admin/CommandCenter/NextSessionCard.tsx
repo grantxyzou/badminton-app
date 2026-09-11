@@ -2,6 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { fmtSessionLabel as fmtDate, fmtDeadline } from '@/lib/fmt';
+import { shareSignup } from '@/lib/signupShare';
+import { useInviteLink } from '@/lib/useInviteLink';
+import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import type { SettledSnapshot, BirdUsage } from '@/lib/types';
 import { sessionCostTotals } from '@/lib/sessionCost';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
@@ -71,6 +74,8 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   // (it used to sit next to "Edit details") shouldn't trigger it.
   const [confirmingAdvance, setConfirmingAdvance] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const { url: inviteUrl } = useInviteLink();
+  const { group } = useCurrentGroup();
   const [togglingSignup, setTogglingSignup] = useState(false);
 
   // Build a ready-to-paste sign-up invite and share it (native share sheet on
@@ -78,29 +83,22 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   // open, here's the link" to the group chat without hand-writing it.
   const shareSignupLink = useCallback(async () => {
     if (typeof window === 'undefined') return;
-    const url = `${window.location.origin}${BASE}`;
-    let dateLabel = '';
-    if (session?.datetime) {
-      try {
-        dateLabel = ` (${new Date(session.datetime).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })})`;
-      } catch { /* ignore */ }
-    }
-    const text = `🏸 BPM Badminton — next session sign-up is open${dateLabel}! Tap to sign up: ${url}`;
-    const navAny = navigator as Navigator & { share?: (d: { text: string; url: string; title?: string }) => Promise<void> };
-    try {
-      if (navAny.share) {
-        await navAny.share({ title: 'BPM Badminton', text, url });
-        return;
-      }
-    } catch {
-      // dismissed / failed — fall through to copy
-    }
-    try {
-      await navigator.clipboard.writeText(text);
+    // Through `lib/signupShare.ts` rather than a hand-rolled `navigator.share`.
+    // The old version never marked the external excursion, so iOS evicting the
+    // PWA while its share sheet was open returned the admin to Home mid-task —
+    // CLAUDE.md's rule that any new `navigator.share` must mark, missed here.
+    // It also said 'BPM Badminton' out loud, and the link carries the club's
+    // invite now so the chat can forward it to someone with no account.
+    const outcome = await shareSignup({
+      groupName: group?.name,
+      inviteUrl,
+      datetime: session?.datetime,
+    });
+    if (outcome === 'copied') {
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 1500);
-    } catch { /* nothing more we can do */ }
-  }, [session?.datetime]);
+    }
+  }, [session?.datetime, group?.name, inviteUrl]);
 
   const load = useCallback(async () => {
     setLoading(true);

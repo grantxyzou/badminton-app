@@ -1,6 +1,12 @@
 {
   "home": {
-      "groups": {
+      "firstSession": {
+      "title": "No session yet",
+      "adminHint": "Set your first night and people can start signing up.",
+      "playerHint": "Your organiser hasn't set one yet. You'll see it here when they do.",
+      "cta": "Set your first session"
+    },
+    "groups": {
         "session": "This week",
         "account": "Your account"
       },
@@ -1336,6 +1342,12 @@
       "failed": "Couldn't create the group. Try again."
     },
     "join": {
+            "auth": {
+        "body": "You'll need an account to join {name}. It takes a second, and we'll put you straight in.",
+        "or": "or",
+        "haveAccount": "I already have an account",
+        "needAccount": "Create an account instead"
+      },
       "crumb": "Get started",
       "backLabel": "Back to the start",
       "title": "Join a group",

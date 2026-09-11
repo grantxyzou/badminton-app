@@ -1,6 +1,12 @@
 {
   "home": {
-      "groups": {
+      "firstSession": {
+      "title": "还没有安排",
+      "adminHint": "安排第一场，大家就可以开始报名了。",
+      "playerHint": "组织者还没有安排。安排好后会显示在这里。",
+      "cta": "安排第一场"
+    },
+    "groups": {
         "session": "本周",
         "account": "你的账户"
       },
@@ -1336,6 +1342,12 @@
       "failed": "创建失败，请重试。"
     },
     "join": {
+            "auth": {
+        "body": "加入 {name} 需要一个账户。很快，创建后会直接把你加进去。",
+        "or": "或",
+        "haveAccount": "我已经有账户",
+        "needAccount": "改为创建账户"
+      },
       "crumb": "开始使用",
       "backLabel": "返回开始",
       "title": "加入群组",

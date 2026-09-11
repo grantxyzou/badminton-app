@@ -3,7 +3,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { Session, BirdPurchase } from '@/lib/types';
 import { normalizeBirdUsages, totalTubes, totalBirdCost, currentPricePerTube } from '@/lib/birdUsages';
-import { shareTextOrCopy } from '@/lib/shareText';
+import { shareSignup } from '@/lib/signupShare';
+import { useInviteLink } from '@/lib/useInviteLink';
+import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import AdminBackHeader from './AdminBackHeader';
 import DatePicker from '../DatePicker';
 import StatusBanner from '../primitives/StatusBanner';
@@ -143,19 +145,22 @@ export default function AdvanceSessionForm({ onBack }: Props) {
   }
 
   const [shareCopied, setShareCopied] = useState(false);
+  // Admin-only screen, so the invite read is allowed; both resolve to null with
+  // the flag off and the share falls back to the plain app URL.
+  const { url: inviteUrl } = useInviteLink();
+  const { group } = useCurrentGroup();
 
   async function shareSignupLink() {
-    const url = `${window.location.origin}${BASE}`;
-    let dateLabel = '';
-    if (date) {
-      try {
-        dateLabel = ` (${new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })})`;
-      } catch { /* ignore */ }
-    }
-    const text = `🏸 BPM Badminton — next session sign-up is open${dateLabel}! Tap to sign up: ${url}`;
-    // One share path for the browser, the PWA and the native shell — it marks
-    // the excursion itself (iOS may evict the PWA while the sheet is open).
-    const outcome = await shareTextOrCopy({ title: 'BPM Badminton', text, url });
+    // The message and the link are built in `lib/signupShare.ts`, shared with
+    // NextSessionCard — the club's name is not a constant any more, and the URL
+    // carries the club's INVITE so the chat can forward it to someone who has
+    // never opened the app. One share path for browser, PWA and native shell;
+    // it marks the excursion itself (iOS may evict the PWA mid-sheet).
+    const outcome = await shareSignup({
+      groupName: group?.name,
+      inviteUrl,
+      datetime: date ? `${date}T00:00:00` : null,
+    });
     if (outcome === 'copied') {
       setShareCopied(true);
       setTimeout(() => setShareCopied(false), 1500);

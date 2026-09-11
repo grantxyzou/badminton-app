@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations, useFormatter } from 'next-intl';
+import CardHeader from '@/components/primitives/CardHeader';
+import { isFlagOn } from '@/lib/flags';
+import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import type { Session, Player, Announcement, Release } from '@/lib/types';
 import { defaultMaxPlayers } from '@/lib/defaults';
 import type { DevOverrides } from '@/components/DevPanel';
@@ -31,6 +34,12 @@ const TIME_SHORT = { hour: '2-digit', minute: '2-digit' } as const;
 
 interface HomeTabProps {
   onTabChange?: (tab: 'home' | 'players' | 'skills' | 'admin') => void;
+  /**
+   * Whether this person runs the club. Used only to decide whose job it is to
+   * fix an empty week: the organiser gets the action, a player gets told one is
+   * coming rather than a control they cannot use.
+   */
+  isAdmin?: boolean;
   onTitleTap?: () => void;
   devOverrides?: DevOverrides;
   /**
@@ -43,8 +52,24 @@ interface HomeTabProps {
   initialAnnouncement?: Announcement | null;
 }
 
-export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initialAnnouncement = null }: HomeTabProps) {
+export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initialAnnouncement = null, isAdmin = false }: HomeTabProps) {
   const t = useTranslations('home');
+  const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
+  /**
+   * THE CLUB'S OWN NAME IN ITS OWN HEADER.
+   *
+   * It was the literal 'BPM Badminton', which is simply wrong the moment a
+   * second club exists — you finish creating "Thursday Badminton" and the first
+   * screen you land on is titled someone else's club.
+   *
+   * `useCurrentGroup` resolves `null` with the flag off and while signed out,
+   * and the fallback is the deployment's own name, so nothing changes for BPM.
+   * The full rename (manifest, splash, emails, push) is Phase 4's `lib/brand.ts`
+   * — this is only the one place a person reads a club's name and could be told
+   * the wrong one.
+   */
+  const { group: currentGroup } = useCurrentGroup();
+  const clubName = currentGroup?.name || 'BPM Badminton';
   const tStates = useTranslations('home.states');
   const format = useFormatter();
   const online = useOnline();
@@ -111,20 +136,25 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           // Stale identity. Probe /api/members/me to learn if this name is
           // a PIN-protected member (auth survives session boundaries) or
           // anonymous (deleteToken bound to old session, both stale).
-          let hasPin = false;
+          // A PIN is not the only durable credential. `authed` means this
+          // device holds a live `member_session`, which is true for email,
+          // Google and Apple members — all of whom used to be cleared here the
+          // moment the session id moved, and who now move it themselves every
+          // time they join or switch a club.
+          let durable = false;
           try {
             const meRes = await fetch(
               `${BASE}/api/members/me?name=${encodeURIComponent(stored.name)}`,
               { cache: 'no-store' },
             );
             if (meRes.ok) {
-              const me = (await meRes.json()) as { hasPin?: boolean };
-              hasPin = me.hasPin === true;
+              const me = (await meRes.json()) as { hasPin?: boolean; authed?: boolean };
+              durable = me.hasPin === true || me.authed === true;
             }
           } catch {
             // Network failure → resolveStaleIdentity falls through to clear.
           }
-          const decision = resolveStaleIdentity(stored, s.id, hasPin);
+          const decision = resolveStaleIdentity(stored, s.id, durable);
           if (decision.action === 'preserve') {
             setIdentity(decision.identity);
             setCurrentUser(decision.identity.name);
@@ -339,7 +369,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     // generic block then snapping the layout in.
     return (
       <div className="space-y-5">
-        <PageHeader>BPM Badminton</PageHeader>
+        <PageHeader>{clubName}</PageHeader>
         <TabSkeleton />
       </div>
     );
@@ -369,7 +399,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           }}
           style={{ cursor: 'default', userSelect: 'none' }}
         >
-          BPM Badminton
+          {clubName}
         </span>
       </PageHeader>
       <div style={{ marginTop: 'var(--space-1)' }}>
@@ -392,6 +422,35 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       {/* One-time nudge to install to the home screen (mobile browser only). */}
       <InstallBanner />
 
+      {/* A CLUB WITH NO SESSION YET.
+          `GET /api/session` answers 404 for a group with no pointer, which is
+          every club on the day it is created. Rendering the ordinary week
+          against a null session gave a date tile reading "—", two blank
+          location tiles and a sign-up card for nothing: an empty room, as the
+          first thing a new organiser sees after making their club.
+          Flag-gated, because with one club this state means the pointer is
+          MISSING, and the old layout is the honest report of that. */}
+      {groupsOn && !session ? (
+        <section className="bpm-home-group" aria-label={t('groups.session')}>
+          <div className="glass-card p-5 space-y-3">
+            <CardHeader
+              icon="event"
+              title={t('firstSession.title')}
+              subtitle={isAdmin ? t('firstSession.adminHint') : t('firstSession.playerHint')}
+            />
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => onTabChange?.('admin')}
+                className="btn-primary"
+                style={{ width: '100%' }}
+              >
+                {t('firstSession.cta')}
+              </button>
+            )}
+          </div>
+        </section>
+      ) : (
       <section className="bpm-home-group" aria-label={t('groups.session')}>
       {/* Tile row: Location | Date & Time */}
       <div className="grid grid-cols-2 gap-3">
@@ -701,6 +760,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       </div>
 
       </section>
+      )}
 
       <section className="bpm-home-group" aria-label={t('groups.account')}>
       {/* Your balance — what you owe, across sessions and stringing. Sits in
