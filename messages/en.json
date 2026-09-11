@@ -1,6 +1,12 @@
 {
   "home": {
-      "groups": {
+      "firstSession": {
+      "title": "No session yet",
+      "adminHint": "Set your first night and people can start signing up.",
+      "playerHint": "Your organiser hasn't set one yet. You'll see it here when they do.",
+      "cta": "Set your first session"
+    },
+    "groups": {
         "session": "This week",
         "account": "Your account"
       },
