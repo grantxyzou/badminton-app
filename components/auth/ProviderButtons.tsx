@@ -6,7 +6,11 @@ import { markExternalExcursion } from '@/lib/excursion';
 import { isNative, hasNativePlugin } from '@/lib/native';
 import { useTranslations } from 'next-intl';
 import { useOnline } from '@/lib/useOnline';
+import { useClientValue } from '@/lib/useClientValue';
 import GoogleMark from './GoogleMark';
+
+/** Only `false` is a confirmed absence; `null`/unknown must read as present. */
+const readPluginMissing = () => hasNativePlugin('Browser') === false;
 
 /**
  * The native shell cannot navigate its WebView to the provider: Google answers
@@ -101,18 +105,22 @@ export default function ProviderButtons({
      right answer for every browser that keeps one jar. */
   const [handoff, setHandoff] = useState<{ id: string; ref: string } | null>(null);
   /**
-   * `false` until proven otherwise, and never derived during render: this is a
-   * client component that server-renders, and `hasNativePlugin` reads a global
-   * injected only in the shell, so resolving it inline would be a hydration
-   * mismatch. Defaulting to "present" is also the safe direction — an unknown
-   * answer must not disable a working button (see `hasNativePlugin`'s
-   * tri-state contract).
+   * `false` until proven otherwise, and still never resolved during the render
+   * that hydrates: this is a client component that server-renders, and
+   * `hasNativePlugin` reads a global injected only in the shell, so answering
+   * it inline would be a hydration mismatch. The server snapshot below is what
+   * holds that line — `useSyncExternalStore` serves it through hydration and
+   * only then re-reads. Defaulting to "present" is also the safe direction —
+   * an unknown answer must not disable a working button (see
+   * `hasNativePlugin`'s tri-state contract).
    */
-  const [pluginMissing, setPluginMissing] = useState(false);
+  const probedMissing = useClientValue(readPluginMissing, false);
+  // The probe is not the only way to learn this: an open can fail at the moment
+  // it is attempted, on a shell where the plugin looked present. Either source
+  // disables the button, so they are OR'd rather than one overwriting the other.
+  const [openMissing, setOpenMissing] = useState(false);
+  const pluginMissing = probedMissing || openMissing;
   const [openFailed, setOpenFailed] = useState(false);
-  useEffect(() => {
-    setPluginMissing(hasNativePlugin('Browser') === false);
-  }, []);
   useEffect(() => {
     let cancelled = false;
     void mintHandoff().then((pair) => {
@@ -231,7 +239,7 @@ export default function ProviderButtons({
                 void openInSystemBrowser(`${window.location.origin}${startHref}&native=1`).catch(
                   (err: unknown) => {
                     console.error('[ProviderButtons] system browser failed:', err);
-                    if (isPluginMissingError(err)) setPluginMissing(true);
+                    if (isPluginMissingError(err)) setOpenMissing(true);
                     else setOpenFailed(true);
                   },
                 );

@@ -1,8 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from './BottomSheet';
 import { isIOS } from '@/lib/standalone';
+import { useClientValue } from '@/lib/useClientValue';
 
 interface Props {
   open: boolean;
@@ -17,11 +17,8 @@ interface Props {
  */
 export default function InstallSheet({ open, onClose }: Props) {
   const t = useTranslations('install');
-  // Resolve platform after mount (UA isn't available during SSR).
-  const [ios, setIos] = useState(false);
-  useEffect(() => {
-    setIos(isIOS());
-  }, []);
+  // Resolve platform after hydration (UA isn't available during SSR).
+  const ios = useClientValue(isIOS, false);
 
   const steps = ios
     ? [

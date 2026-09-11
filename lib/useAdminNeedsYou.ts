@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -31,63 +31,73 @@ export function useAdminNeedsYou(enabled: boolean): AdminNeedsYou {
   const [needsYou, setNeedsYou] = useState<number | null>(null);
   const [loadError, setLoadError] = useState(false);
 
-  const load = useCallback(async () => {
-    // No `setLoadError(false)` reset here: it initialises false and this runs
-    // once, so the reset was dead — and being the first *synchronous* statement
-    // in an effect-invoked async function, it was the one thing tripping
-    // react-hooks/set-state-in-effect.
-    try {
-      const [playersRes, birdsRes, membersRes] = await Promise.all([
-        fetch(`${BASE}/api/players?all=true`, { cache: 'no-store' }),
-        fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
-        fetch(`${BASE}/api/members`, { cache: 'no-store' }),
-      ]);
-      if (!playersRes.ok || !birdsRes.ok || !membersRes.ok) {
-        setLoadError(true);
-        setNeedsYou(null);
-        return;
-      }
-      const players = (await playersRes.json()) as Array<{ paid?: boolean; removed?: boolean; waitlisted?: boolean }>;
-      const birds = (await birdsRes.json()) as { currentStock?: number; burnPerSession?: number };
-      const members = (await membersRes.json()) as Array<{ active?: boolean; sessionCount?: number; lastSeen?: string }>;
-
-      const active = players.filter((p) => !p.removed && !p.waitlisted);
-      const unpaid = active.filter((p) => p.paid !== true).length;
-
-      // Burn rate comes from the API on a last-60d window, so stock and burn
-      // span the same window (see the mixed-window gotcha in CLAUDE.md).
-      const stock = birds?.currentStock ?? 0;
-      const burn = birds?.burnPerSession ?? 0;
-      const weeksLeft = burn > 0 && stock > 0 ? Math.floor(stock / burn) : null;
-      // No burn data is "unknown", not "fine" — but it is also not an action,
-      // so it does not count. The hero said "Awaiting bird data" here; a row
-      // with room for two words cannot, and a wrong count is worse than none.
-      const birdsLow = weeksLeft !== null && weeksLeft <= 4;
-
-      const sixtyDaysAgo = Date.now() - 60 * 86_400_000;
-      const dormant = Array.isArray(members)
-        ? members.filter((m) => {
-            if (m.active === false) return false;
-            if (!m.sessionCount || m.sessionCount === 0) return true;
-            if (m.lastSeen) {
-              const t = new Date(m.lastSeen).getTime();
-              if (Number.isFinite(t) && t < sixtyDaysAgo) return true;
-            }
-            return false;
-          }).length
-        : 0;
-
-      setNeedsYou([unpaid > 0, birdsLow, dormant > 0].filter(Boolean).length);
-    } catch {
-      setLoadError(true);
-      setNeedsYou(null);
-    }
-  }, []);
-
+  // Inlined into the effect rather than hoisted into a `useCallback` the effect
+  // then calls. Nothing outside this hook ever invoked it, and the indirection
+  // was what tripped `react-hooks/set-state-in-effect`: the rule cannot see
+  // through the callback to tell that every `setState` here sits behind an
+  // `await`, so it reported a synchronous cascade that never existed. Inlining
+  // makes the timing visible to the rule and buys real cancellation, which the
+  // callback version never had — a slow response could land after unmount.
   useEffect(() => {
     if (!enabled) return;
-    void load();
-  }, [enabled, load]);
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const [playersRes, birdsRes, membersRes] = await Promise.all([
+          fetch(`${BASE}/api/players?all=true`, { cache: 'no-store' }),
+          fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
+          fetch(`${BASE}/api/members`, { cache: 'no-store' }),
+        ]);
+        if (cancelled) return;
+        if (!playersRes.ok || !birdsRes.ok || !membersRes.ok) {
+          setLoadError(true);
+          setNeedsYou(null);
+          return;
+        }
+        const players = (await playersRes.json()) as Array<{ paid?: boolean; removed?: boolean; waitlisted?: boolean }>;
+        const birds = (await birdsRes.json()) as { currentStock?: number; burnPerSession?: number };
+        const members = (await membersRes.json()) as Array<{ active?: boolean; sessionCount?: number; lastSeen?: string }>;
+        if (cancelled) return;
+
+        const active = players.filter((p) => !p.removed && !p.waitlisted);
+        const unpaid = active.filter((p) => p.paid !== true).length;
+
+        // Burn rate comes from the API on a last-60d window, so stock and burn
+        // span the same window (see the mixed-window gotcha in CLAUDE.md).
+        const stock = birds?.currentStock ?? 0;
+        const burn = birds?.burnPerSession ?? 0;
+        const weeksLeft = burn > 0 && stock > 0 ? Math.floor(stock / burn) : null;
+        // No burn data is "unknown", not "fine" — but it is also not an action,
+        // so it does not count. The hero said "Awaiting bird data" here; a row
+        // with room for two words cannot, and a wrong count is worse than none.
+        const birdsLow = weeksLeft !== null && weeksLeft <= 4;
+
+        const sixtyDaysAgo = Date.now() - 60 * 86_400_000;
+        const dormant = Array.isArray(members)
+          ? members.filter((m) => {
+              if (m.active === false) return false;
+              if (!m.sessionCount || m.sessionCount === 0) return true;
+              if (m.lastSeen) {
+                const t = new Date(m.lastSeen).getTime();
+                if (Number.isFinite(t) && t < sixtyDaysAgo) return true;
+              }
+              return false;
+            }).length
+          : 0;
+
+        setNeedsYou([unpaid > 0, birdsLow, dormant > 0].filter(Boolean).length);
+      } catch {
+        if (cancelled) return;
+        setLoadError(true);
+        setNeedsYou(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled]);
 
   return { needsYou, loadError };
 }

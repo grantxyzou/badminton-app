@@ -4,10 +4,30 @@ import { useTranslations } from 'next-intl';
 import { setIdentity } from '@/lib/identity';
 import { isNative } from '@/lib/native';
 import ErrorState from './primitives/ErrorState';
+import { useClientValue, useHydrated } from '@/lib/useClientValue';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 type Phase = 'working' | 'no-app' | 'no-code' | 'done' | 'failed';
+
+/**
+ * The code is cached on FIRST read, before the effect below strips it from the
+ * URL. That ordering is the whole reason this is a module-level cache rather
+ * than a plain read: after the strip the query string is gone, so a function
+ * that re-parsed `window.location` on every render would answer `null` from the
+ * second render onward and the page would flip to "no code" mid-claim.
+ *
+ * Caching also satisfies `useSyncExternalStore`, which compares what `read`
+ * returns across renders and loops if it changes on its own.
+ */
+let cachedCode: string | null | undefined;
+
+function readMigrationCode(): string | null {
+  if (cachedCode === undefined) {
+    cachedCode = new URLSearchParams(window.location.search).get('c');
+  }
+  return cachedCode;
+}
 
 /**
  * `/bpm/migrate?c=<code>` — the landing for the migration link.
@@ -24,34 +44,47 @@ type Phase = 'working' | 'no-app' | 'no-code' | 'done' | 'failed';
  */
 export default function MigrateClaim() {
   const t = useTranslations('profile.migrate');
-  const [phase, setPhase] = useState<Phase>('working');
+  const hydrated = useHydrated();
+  const code = useClientValue(readMigrationCode, null);
+  /* Only the outcomes the NETWORK decides are stored. The other two are
+     conclusions about the landing itself — no code in the link, or not running
+     in the shell — and are derived below rather than pushed in from the effect. */
+  const [claimPhase, setClaimPhase] = useState<'done' | 'failed' | null>(null);
   const ran = useRef(false);
+
+  /* `hydrated` is load-bearing: before it flips, `code` is still the server
+     snapshot `null`, which is indistinguishable from a link that carried no
+     code. Showing 'working' until the client has actually read the URL is what
+     stops a valid link flashing "that link had no code" on its first frame. */
+  const phase: Phase =
+    claimPhase ??
+    (!hydrated ? 'working' : !code ? 'no-code' : !isNative() ? 'no-app' : 'working');
 
   useEffect(() => {
     if (ran.current) return;
     ran.current = true;
-    const code = new URLSearchParams(window.location.search).get('c');
+    const claimCode = readMigrationCode();
     // Strip the credential from the URL immediately — history, share sheet,
-    // and the iOS cold-start URL restore would all otherwise keep it.
+    // and the iOS cold-start URL restore would all otherwise keep it. Reading
+    // through the cache above is what keeps the stripped value available.
     window.history.replaceState(window.history.state, '', `${BASE}/migrate`);
-    if (!code) { setPhase('no-code'); return; }
-    if (!isNative()) { setPhase('no-app'); return; }
+    if (!claimCode || !isNative()) return;
 
     void (async () => {
       try {
         const res = await fetch(`${BASE}/api/auth/migrate/claim`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ link: code }),
+          body: JSON.stringify({ link: claimCode }),
           cache: 'no-store',
         });
-        if (!res.ok) { setPhase('failed'); return; }
+        if (!res.ok) { setClaimPhase('failed'); return; }
         const body = (await res.json()) as { name: string; deleteToken: string | null; sessionId: string };
         setIdentity({ name: body.name, token: body.deleteToken ?? undefined, sessionId: body.sessionId });
-        setPhase('done');
+        setClaimPhase('done');
         window.location.replace(`${BASE}/?signedIn=1`);
       } catch {
-        setPhase('failed');
+        setClaimPhase('failed');
       }
     })();
   }, []);

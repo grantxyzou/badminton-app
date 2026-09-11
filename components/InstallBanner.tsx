@@ -1,11 +1,30 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import InstallSheet from './InstallSheet';
 import { isStandalone } from '@/lib/standalone';
 import { isNative } from '@/lib/native';
+import { readStored, useClientValue } from '@/lib/useClientValue';
 
 const DISMISS_KEY = 'bpm_install_hint_dismissed';
+
+/**
+ * Is this device one we should nudge at all? Entirely a question about the
+ * environment, so it is read rather than stored — and `false` is the right
+ * server answer, since `isStandalone()`/`isNative()` both treat `false` as
+ * "unknown" and an unknown must not make the banner appear during hydration.
+ */
+function shouldNudge(): boolean {
+  if (isStandalone() || isNative()) return false; // already installed, or IS the app
+  if (readStored(DISMISS_KEY) === '1') return false; // dismissed before
+  // Only nudge on touch devices (skip desktop, where home-screen install
+  // isn't the mental model).
+  try {
+    return window.matchMedia?.('(pointer: coarse)').matches === true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * One-time, dismissible nudge to add BPM to the home screen. Shown only in a
@@ -17,32 +36,23 @@ const DISMISS_KEY = 'bpm_install_hint_dismissed';
  */
 export default function InstallBanner() {
   const t = useTranslations('install');
-  const [show, setShow] = useState(false);
+  const eligible = useClientValue(shouldNudge, false);
+  // Dismissal is the one piece of genuine local state: the write below is what
+  // makes it stick across visits, but `shouldNudge` is not re-read on a plain
+  // re-render in private mode, where the write is swallowed.
+  const [dismissed, setDismissed] = useState(false);
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    if (isStandalone() || isNative()) return; // already installed, or IS the app
-    try {
-      if (localStorage.getItem(DISMISS_KEY) === '1') return; // dismissed before
-    } catch {
-      /* private mode — fall through, showing once is harmless */
-    }
-    // Only nudge on touch devices (skip desktop, where home-screen install
-    // isn't the mental model).
-    const coarse = window.matchMedia?.('(pointer: coarse)').matches;
-    if (coarse) setShow(true);
-  }, []);
-
   const dismiss = () => {
-    setShow(false);
+    setDismissed(true);
     try {
       localStorage.setItem(DISMISS_KEY, '1');
     } catch {
-      /* ignore */
+      /* private mode — dismissed for this page view only */
     }
   };
 
-  if (!show) return null;
+  if (!eligible || dismissed) return null;
 
   return (
     <>

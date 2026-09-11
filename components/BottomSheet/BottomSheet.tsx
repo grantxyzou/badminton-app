@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useBodyScrollLock } from './useBodyScrollLock';
 import { useFocusTrap } from './useFocusTrap';
 import { registerOpenSheet } from '@/lib/sheetStack';
+import { useHydrated } from '@/lib/useClientValue';
 
 export interface BottomSheetProps {
   open: boolean;
@@ -57,13 +58,9 @@ export default function BottomSheet({
 }: BottomSheetProps) {
   const widthClass =
     width === 'full' ? '' : width === 'narrow' ? 'max-w-sm mx-auto' : 'max-w-lg mx-auto';
-  const [mounted, setMounted] = useState(false);
+  const mounted = useHydrated();
   const [state, setState] = useState<SheetState>('closed');
   const sheetRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // While open, be closable by the Android back button (lib/sheetStack.ts).
   // The cleanup unregisters on close and on unmount alike.
@@ -73,16 +70,25 @@ export default function BottomSheet({
   }, [open, onClose]);
 
   // Drive the state machine off the open prop: request opening/closing.
-  useEffect(() => {
-    if (open && (state === 'closed' || state === 'closing')) {
-      setState('opening');
-      return;
-    }
-    if (!open && (state === 'open' || state === 'opening')) {
-      setState('closing');
-      return;
-    }
-  }, [open, state]);
+  //
+  // Adjusted DURING RENDER rather than in an effect. React re-renders
+  // immediately on a same-component setState here, before anything is
+  // committed, so the sheet never paints a frame in the stale state — the
+  // effect version always did, which is the flash this replaces.
+  //
+  // It must stay a plain conditional, NOT one guarded on `open` having just
+  // changed: the machine has to react to `state` moving under a constant
+  // `open` too. A sheet reopened mid-close lands on open=true/state='closing',
+  // and the closing→closed effect can then take it to 'closed' with `open`
+  // never changing. Guarding on `open` alone would strand it shut.
+  //
+  // It terminates: both targets ('opening', 'closing') fail both conditions on
+  // the next pass, so at most one extra render happens.
+  if (open && (state === 'closed' || state === 'closing')) {
+    setState('opening');
+  } else if (!open && (state === 'open' || state === 'opening')) {
+    setState('closing');
+  }
 
   // 'opening' → 'open' on the next frame so the CSS transition runs from
   // translateY(100%) → translateY(0).

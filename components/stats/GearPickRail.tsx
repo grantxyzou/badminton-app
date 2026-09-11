@@ -208,6 +208,28 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
   // previous member's picks, and the skip rules would otherwise serve their
   // string pick (or their parked card) to whoever signs in next on a shared
   // device.
+  /* eslint-disable react-hooks/set-state-in-effect --
+     The second sanctioned exemption from the compiler-ready pass, and like
+     HomeShell's it is about ORDERING rather than deferred work.
+
+     A different member is a different rail. Every ref below describes the
+     previous member's picks, and the skip rules would otherwise serve their
+     string pick (or their parked card) to whoever signs in next on a shared
+     device.
+
+     This reset MUST run in the same passive flush as the fetch effect's
+     cleanup, and after it. That cleanup is what sets `live = false` and so
+     discards a previous member's in-flight `/api/recommend` response. Moving
+     the two `setState` calls into render — which is what the rest of this pass
+     does — was tried and reverted: passive effects flush asynchronously after
+     commit, so a promise settling in the gap between the render that cleared
+     the rail and the cleanup that cancels it still sees `live === true`, and
+     writes the old member's pick onto the new member's freshly reset rail,
+     carrying their tension out to the parent through `onPairTensionRef`.
+
+     Guarding the handler on the latest name instead needs a ref written during
+     render, which trades this rule for `react-hooks/refs`. Leaving the reset
+     where its ordering is guaranteed is the cheaper correct answer. */
   const prevNameRef = useRef(activeName);
   useEffect(() => {
     if (prevNameRef.current === activeName) return;
@@ -221,6 +243,7 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
     inFlightRef.current.clear();
     setState(initialState());
   }, [activeName]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!activeName || recKey === null) return;

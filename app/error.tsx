@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { looksLikeChunkError } from '@/lib/chunkError';
+import { useClientSubscription } from '@/lib/useClientValue';
 
 /**
  * The app-wide render boundary. Everything inside the root layout that is not
@@ -42,6 +43,18 @@ import { looksLikeChunkError } from '@/lib/chunkError';
 const RELOAD_STAMP = 'bpm_chunk_reload_at';
 const RELOAD_COOLDOWN_MS = 60_000;
 
+/** Only an explicit `false` is offline; an absent `navigator` is unknown. */
+const readOffline = () => typeof navigator !== 'undefined' && navigator.onLine === false;
+
+function subscribeOnline(onChange: () => void): () => void {
+  window.addEventListener('online', onChange);
+  window.addEventListener('offline', onChange);
+  return () => {
+    window.removeEventListener('online', onChange);
+    window.removeEventListener('offline', onChange);
+  };
+}
+
 function mayAutoReload(): boolean {
   try {
     const last = Number(window.sessionStorage.getItem(RELOAD_STAMP) ?? 0);
@@ -58,7 +71,18 @@ function mayAutoReload(): boolean {
 
 export default function AppError({ error }: { error: Error & { digest?: string } }) {
   const isChunk = looksLikeChunkError(error);
-  const [offline, setOffline] = useState(false);
+  // One subscription replaces the mount probe and the listener pair that used
+  // to mirror `navigator.onLine` into state. `false` is the server answer and
+  // the right lean: an unknown connection must not disable the reload button.
+  const offline = useClientSubscription(subscribeOnline, readOffline, false);
+  /* Set ONLY from the button handler, which is a plain event and needs no
+     effect. The AUTOMATIC path deliberately does not raise it: it calls
+     `reload()` on the spot, and the honest thing to show in the instant before
+     the navigation commits is what actually happened ("this page is running an
+     older version"), with a working button still under it. An earlier cut
+     parked this at module scope so the effect could stay out of it; that made
+     the flag outlive the navigation it described, so a LATER unrelated error in
+     the same page load rendered "Reloading…" over itself. */
   const [reloading, setReloading] = useState(false);
 
   useEffect(() => {
@@ -67,24 +91,13 @@ export default function AppError({ error }: { error: Error & { digest?: string }
   }, [error]);
 
   useEffect(() => {
-    const online = typeof navigator === 'undefined' || navigator.onLine !== false;
-    setOffline(!online);
-    if (isChunk && online && mayAutoReload()) {
-      setReloading(true);
-      window.location.reload();
-    }
+    // `mayAutoReload` WRITES the cooldown stamp, so it cannot be lifted into a
+    // render-phase read the way `offline` was — calling it once per render
+    // would re-stamp continuously and the loop guard would never let a second
+    // deploy through.
+    if (!isChunk || readOffline() || !mayAutoReload()) return;
+    window.location.reload();
   }, [isChunk]);
-
-  useEffect(() => {
-    const on = () => setOffline(false);
-    const off = () => setOffline(true);
-    window.addEventListener('online', on);
-    window.addEventListener('offline', off);
-    return () => {
-      window.removeEventListener('online', on);
-      window.removeEventListener('offline', off);
-    };
-  }, []);
 
   return (
     <div

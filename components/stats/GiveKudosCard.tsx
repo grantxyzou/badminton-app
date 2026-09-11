@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
@@ -42,37 +42,69 @@ export default function GiveKudosCard() {
      `__tests__/active-name-canary.test.ts` pins this. */
   const { name: activeName, resolved } = useActiveName();
   const [names, setNames] = useState<string[]>([]);
-  const [load, setLoad] = useState<'loading' | 'ready' | 'error' | 'needsSignIn'>('loading');
+  /* Seeded from the props rather than hardcoded to 'loading', so a card that
+     mounts already knowing the answer does not commit a loading frame it will
+     immediately replace. Pure function of the two inputs, so it is safe as a
+     lazy initialiser. */
+  const [load, setLoad] = useState<'loading' | 'ready' | 'error' | 'needsSignIn'>(
+    () => (resolved && !activeName ? 'ready' : 'loading'),
+  );
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const refresh = useCallback(async () => {
-    // Unknown is not known-absent. Until the identity lookup has actually run,
-    // this is still loading — rendering "play a session and people will show
-    // up here" at a signed-in member on the first paint is the same class of
-    // lie as an empty state built from a failed read.
-    if (!resolved) { setLoad('loading'); return; }
-    // Signed out: the honest empty state, without spending a 401 to learn it.
-    if (!activeName) { setNames([]); setLoad('ready'); return; }
-    setLoad('loading');
-    try {
-      const res = await fetch(`${BASE}/api/kudos/eligible`, { cache: 'no-store' });
-      // A 401 here is NOT "signed out" — that case returned above without
-      // fetching. The only way to reach this line is a `member_session` cookie
-      // that expired past its 30-day TTL while `badminton_identity` persisted,
-      // which is a state CLAUDE.md documents as live. Rendering the empty
-      // state would tell someone who looks signed in that they have played
-      // with nobody — the lying empty state again. Say what is actually wrong.
-      if (res.status === 401) { setNames([]); setLoad('needsSignIn'); return; }
-      if (!res.ok) { setLoad('error'); return; }
-      const data = (await res.json()) as { names?: unknown };
-      setNames(Array.isArray(data.names) ? data.names.filter((n): n is string => typeof n === 'string') : []);
-      setLoad('ready');
-    } catch {
-      setLoad('error');
-    }
-  }, [activeName, resolved]);
+  /* The SYNCHRONOUS half of the old `refresh`, adjusted during render.
+     Neither branch touches the network — both are conclusions drawn straight
+     from the two inputs — so an effect was never the right home for them, and
+     being synchronous they were the part `react-hooks/set-state-in-effect` was
+     genuinely pointing at.
 
-  useEffect(() => { void refresh(); }, [refresh]);
+     Unknown is not known-absent. Until the identity lookup has actually run,
+     this is still loading — rendering "play a session and people will show up
+     here" at a signed-in member on the first paint is the same class of lie as
+     an empty state built from a failed read. Signed out is the honest empty
+     state, reached without spending a 401 to learn it. */
+  const [prevInputs, setPrevInputs] = useState({ activeName, resolved });
+  if (prevInputs.activeName !== activeName || prevInputs.resolved !== resolved) {
+    setPrevInputs({ activeName, resolved });
+    if (resolved && !activeName) {
+      setNames([]);
+      setLoad('ready');
+    } else {
+      setLoad('loading');
+    }
+  }
+
+  /* The ASYNC half. Inlined rather than reached through a `useCallback`, which
+     is what hid from the rule that these writes all sit behind an `await`. */
+  useEffect(() => {
+    if (!resolved || !activeName) return;
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const res = await fetch(`${BASE}/api/kudos/eligible`, { cache: 'no-store' });
+        if (cancelled) return;
+        // A 401 here is NOT "signed out" — that case returns above without
+        // fetching. The only way to reach this line is a `member_session` cookie
+        // that expired past its 30-day TTL while `badminton_identity` persisted,
+        // which is a state CLAUDE.md documents as live. Rendering the empty
+        // state would tell someone who looks signed in that they have played
+        // with nobody — the lying empty state again. Say what is actually wrong.
+        if (res.status === 401) { setNames([]); setLoad('needsSignIn'); return; }
+        if (!res.ok) { setLoad('error'); return; }
+        const data = (await res.json()) as { names?: unknown };
+        if (cancelled) return;
+        setNames(Array.isArray(data.names) ? data.names.filter((n): n is string => typeof n === 'string') : []);
+        setLoad('ready');
+      } catch {
+        if (cancelled) return;
+        setLoad('error');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeName, resolved]);
 
   return (
     <div className="glass-card p-5 space-y-3">

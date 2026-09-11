@@ -71,7 +71,11 @@ export interface UseCheckIn {
  */
 export function useCheckIn(activeName: string | null): UseCheckIn {
   const [snapshots, setSnapshots] = useState<CheckInSnapshot[]>([]);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  /* Seeded from the name: with nobody signed in there is nothing to fetch, so
+     'loading' would be a state this hook could never leave on its own. */
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>(
+    () => (activeName ? 'loading' : 'ready'),
+  );
   const [open, setOpen] = useState(false);
   const [savedAt, setSavedAt] = useState(0);
 
@@ -79,14 +83,31 @@ export function useCheckIn(activeName: string | null): UseCheckIn {
   // the PREVIOUS name must never overwrite a fast one for the current member.
   const opRef = useRef(0);
 
-  const reload = useCallback(() => {
-    if (!activeName) {
+  /* `reload` stays part of the public shape — `onSaved` and the callers use
+     it — but it is now only a REQUEST. Bumping a counter the fetch effect
+     depends on keeps one copy of the fetch, in the effect, where the rule can
+     see that its writes are asynchronous. The previous arrangement put the
+     fetch in a `useCallback` and had the effect invoke it, which is exactly
+     the indirection `react-hooks/set-state-in-effect` cannot see through. */
+  const [reloadTick, setReloadTick] = useState(0);
+  const reload = useCallback(() => setReloadTick((t) => t + 1), []);
+
+  /* The synchronous transitions, adjusted during render: both are conclusions
+     about the inputs, not results of the network. */
+  const [prevKey, setPrevKey] = useState({ activeName, reloadTick });
+  if (prevKey.activeName !== activeName || prevKey.reloadTick !== reloadTick) {
+    setPrevKey({ activeName, reloadTick });
+    if (activeName) {
+      setStatus('loading');
+    } else {
       setSnapshots([]);
       setStatus('ready');
-      return;
     }
+  }
+
+  useEffect(() => {
+    if (!activeName) return;
     const op = ++opRef.current;
-    setStatus('loading');
     fetch(`${BASE}/api/assessments?name=${encodeURIComponent(activeName)}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
@@ -101,9 +122,7 @@ export function useCheckIn(activeName: string | null): UseCheckIn {
         // the caller renders its error state.
         setStatus('error');
       });
-  }, [activeName]);
-
-  useEffect(() => { reload(); }, [reload]);
+  }, [activeName, reloadTick]);
 
   const latest = snapshots[snapshots.length - 1];
 
