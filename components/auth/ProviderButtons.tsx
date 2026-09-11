@@ -75,6 +75,19 @@ interface Props {
    * it needs `linked` from the same endpoint anyway and sits far below the fold.
    */
   available?: Provider[];
+  /**
+   * Called SYNCHRONOUSLY at the tap, immediately before the page leaves.
+   *
+   * For a caller that needs something to survive the excursion — the onboarding
+   * flow records WHICH flow it was, because `lib/oauthCallback.ts` builds its
+   * return URL from scratch and no state of ours comes back. It sits beside
+   * `stageHandoff` and `markExternalExcursion`, in that position, for the same
+   * reason those are there: after the navigation there is no code of ours left
+   * to run, and none of the three can be moved after an await.
+   *
+   * Optional; both existing call sites pass nothing.
+   */
+  onLeave?: () => void;
 }
 
 /**
@@ -95,6 +108,7 @@ export default function ProviderButtons({
   mode = 'signin',
   linked = [],
   available: given,
+  onLeave,
 }: Props) {
   const t = useTranslations('profile.auth');
   const online = useOnline();
@@ -236,6 +250,7 @@ export default function ProviderButtons({
                 // the last tab for three minutes — both harmless.
                 stageHandoff(handoff.id);
                 markExternalExcursion();
+                onLeave?.();
                 void openInSystemBrowser(`${window.location.origin}${startHref}&native=1`).catch(
                   (err: unknown) => {
                     console.error('[ProviderButtons] system browser failed:', err);
@@ -266,6 +281,7 @@ export default function ProviderButtons({
                  mount would overwrite the handoff they came back to collect. */
               if (handoff) stageHandoff(handoff.id);
               markExternalExcursion();
+              onLeave?.();
             }}
             aria-disabled={!online}
             className={className}

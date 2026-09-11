@@ -46,6 +46,7 @@ import { createToken, VERIFICATION_TTL_MS } from '@/lib/authToken';
 import { sendVerificationEmail } from '@/lib/authEmail';
 import { completeSignIn } from '@/lib/authSession';
 import { signupGroupFor } from '@/lib/inviteSignup';
+import { BPM_GROUP_ID } from '@/lib/groupScope';
 import {
   normalizeEmail,
   isPlausibleEmail,
@@ -105,6 +106,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invite_not_found' }, { status: 404 });
   }
   const signupGroupId = invited.groupId;
+  // `null` is the create-a-group case: a real account deliberately on no
+  // roster yet (lib/inviteSignup.ts). Three consequences here.
+  //
+  // 1. NO NAME-TAKEN CHECK. A roster name is unique per CLUB, and this account
+  //    is in none — the reservation happens when `createGroup` mints the owner's
+  //    membership, which is the only place that can know the club.
+  // 2. NO MEMBERSHIP WRITE.
+  // 3. The COOKIE still claims BPM, because `completeSignIn` would fall back to
+  //    it anyway: `groupForMember` tolerates a member with no membership and
+  //    never checks BPM itself. Non-admin, and enough for `POST /api/groups`.
+  const joinsAClub = signupGroupId !== null;
+  const cookieGroupId = signupGroupId ?? BPM_GROUP_ID;
 
   // Is the display name already someone's? A name collision is a REFUSAL, never
   // a silent link. Member names are enumerable via GET /api/members, so
@@ -120,7 +133,9 @@ export async function POST(req: NextRequest) {
   // joined to this group, or nothing could ever resolve it. Note this is now
   // checked against the INVITED club's roster, which is the one the name will
   // actually have to be unique in.
-  const taken = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')
+  const taken = !joinsAClub
+    ? false
+    : isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')
     ? (await rosterNameHolder(signupGroupId, name)) !== null
     : (await resolveActiveMemberId(signupGroupId, name)) !== null;
   if (taken) {
@@ -152,7 +167,9 @@ export async function POST(req: NextRequest) {
     };
     await membersContainer.items.create(member);
     if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) {
-      await addMembership({ groupId: signupGroupId, memberId: member.id, name: member.name, joinedVia: 'link' });
+      if (joinsAClub) {
+        await addMembership({ groupId: signupGroupId, memberId: member.id, name: member.name, joinedVia: 'link' });
+      }
     }
 
     // Best-effort. The account already exists and works, so a mail failure must
@@ -183,7 +200,7 @@ export async function POST(req: NextRequest) {
       { id: memberId, name, email, emailVerified: false, verificationSent: sent },
       { status: 201 },
     );
-    await completeSignIn(res, member, signupGroupId);
+    await completeSignIn(res, member, cookieGroupId);
     return res;
   } catch (err) {
     // Free the address so this person can try again, and so it is not blocked

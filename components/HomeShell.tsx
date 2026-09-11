@@ -4,6 +4,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import ChooseNameSheet from './auth/ChooseNameSheet';
+import WelcomeDoors from './onboarding/WelcomeDoors';
+import CreateGroupPage from './onboarding/CreateGroupPage';
+import JoinGroupPage from './onboarding/JoinGroupPage';
+import { isFlagOn } from '@/lib/flags';
+import { useCurrentGroup } from '@/lib/useCurrentGroup';
+import { consumeOnboardingResume, pruneStaleOnboardingResume } from '@/lib/onboardingResume';
 import ResetPasswordSheet from './auth/ResetPasswordSheet';
 import BottomNav from '@/components/BottomNav';
 import HomeTab from '@/components/HomeTab';
@@ -90,6 +96,37 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
   // `?native=1` — this page is the landing of a sign-in the NATIVE shell
   // started, rendering inside its browser sheet. See the param effect.
   const [nativeReturn, setNativeReturn] = useState(false);
+  /**
+   * MULTI-GROUP (Phase 3). `?join=<token>` is a live invite credential, so it is
+   * consumed and stripped in the param effect exactly like `?reset=` — the iOS
+   * PWA restores the last URL on cold launch and the share sheet would copy it.
+   * The token is kept in state and handed to the join sheet.
+   */
+  const [joinToken, setJoinToken] = useState<string | null>(null);
+  const [onboarding, setOnboarding] = useState<'create' | 'join' | null>(null);
+  /** Whether CreateGroupPage opens on its account step. First paint only. */
+  const [createAuthFirst, setCreateAuthFirst] = useState(true);
+  /**
+   * Whether this device has an identity at all. Read once on mount and kept in
+   * step through IDENTITY_EVENT — the `storage` event only fires in OTHER tabs,
+   * and the doors have to disappear the moment a club is created in this one.
+   * `null` is UNKNOWN (pre-mount), never "signed out": rendering the doors over
+   * a signed-in person for one frame is the unknown-is-not-known-false rule.
+   */
+  const [hasIdentity, setHasIdentity] = useState<boolean | null>(null);
+  /**
+   * "I already have an account" steps PAST the doors without creating one.
+   *
+   * It needs its own flag because the doors render INSTEAD of the tabs: setting
+   * the active tab behind them changed nothing anybody could see, so the button
+   * fired and the screen sat there — a dead control, which is worse than a
+   * missing one. Not persisted: a reload with still no identity shows the doors
+   * again, which is the right answer for someone who went looking for sign-in,
+   * did not finish, and needs the other two doors back.
+   */
+  const [doorsDismissed, setDoorsDismissed] = useState(false);
+  const groupsEnabled = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
+  const { group, refresh: refreshGroups } = useCurrentGroup();
   /**
    * What to say after an auth redirect. One notice at a time: our own redirects
    * only ever carry one result, so last-write-wins is fine and simpler than a
@@ -230,6 +267,48 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
           /* the button remains */
         }
       }, 800);
+    }
+
+    // A LIVE INVITE CREDENTIAL, stripped for the same reasons as `?reset=`
+    // above. Unlike the others this one is also acted on immediately: the join
+    // sheet opens and resolves the club's NAME before anything is joined.
+    const join = params.get('join');
+    if (join) {
+      setJoinToken(join);
+      setOnboarding('join');
+      cleaned.searchParams.delete('join');
+      dirty = true;
+    }
+
+    // RESUMING AN ONBOARDING FLOW ACROSS AN OAUTH HOP.
+    //
+    // `landing()` builds the return URL from scratch, so nothing of ours comes
+    // back in it and every piece of onboarding state above is gone. The record
+    // in localStorage is the only survivor — but IT ALONE NEVER NAVIGATES
+    // ANYBODY. It is half of an AND with a sign-in landing; a cold start
+    // carrying a stale marker must route nobody, which is the difference
+    // between a resume and a trap.
+    const landedFromAuth =
+      params.get('authFlow') === 'name' || params.get('signedIn') === '1' || !!params.get('authError');
+    // The installed-PWA return carries NO params at all: the app is simply in
+    // the foreground again with a staged handoff waiting to be claimed.
+    const armed = landedFromAuth || pendingHandoffId() !== null;
+    // PRUNE, not consume, when we are not armed: an unconditional destructive
+    // read here would have a second tab reloading mid-excursion eat the record
+    // the first tab is about to come back for.
+    const resume = armed ? consumeOnboardingResume() : (pruneStaleOnboardingResume(), null);
+    if (resume && groupsEnabled) {
+      // APPLIED NOW, not when identity arrives. Deferring would mount
+      // ChooseNameSheet while `joinToken` is still null, so the name submit
+      // would fire WITHOUT the invite, land the account on BPM, and only then
+      // join the real club — the two-roster defect, reintroduced by the
+      // mechanism meant to prevent it. `sentInvite` is computed per render, so
+      // a late token is a guaranteed loss rather than a race.
+      if (resume.token) setJoinToken(resume.token);
+      // `signedIn=1` means a member already resolved, so the account step is
+      // behind us and starting there would flash a screen we are leaving.
+      setCreateAuthFirst(params.get('signedIn') !== '1');
+      setOnboarding(resume.intent);
     }
 
     // From /legal/delete-account: land on Profile and open the delete sheet
@@ -521,6 +600,19 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
 
   // Expose the active tab to CSS so per-tab background variants can react
   // (e.g. Sign-Ups tab swaps the global aurora for 03 Court markings).
+  // The doors depend on whether an identity exists; keep that current.
+  useEffect(() => {
+    const read = () => {
+      const present = getIdentity() !== null;
+      setHasIdentity(present);
+      // A sign-out puts someone back at the start; the doors are the start.
+      if (!present) setDoorsDismissed(false);
+    };
+    read();
+    window.addEventListener(IDENTITY_EVENT, read);
+    return () => window.removeEventListener(IDENTITY_EVENT, read);
+  }, []);
+
   useEffect(() => {
     document.documentElement.setAttribute('data-tab', activeTab);
     // Persist to sessionStorage (NOT the URL): an in-app reload restores the
@@ -547,6 +639,22 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
     setRefreshNonce((n) => n + 1);
     await new Promise((r) => setTimeout(r, 600));
   }, []);
+
+  /**
+   * The doors replace the tabs only when all three hold: the feature is on, we
+   * KNOW there is no identity, and no invite sheet is already open (a `?join=`
+   * landing should show the club it is offering, not a menu).
+   */
+  /**
+   * Onboarding takes over the whole screen — doors, then whichever page they
+   * chose. These are first-run tasks with nothing behind them worth preserving,
+   * so they are pages with a `TopBar` and a back chevron, not sheets over a
+   * context the person has no relationship with yet.
+   */
+  const showOnboardingPage = groupsEnabled && onboarding !== null;
+  const showDoors = groupsEnabled && hasIdentity === false && !doorsDismissed && !showOnboardingPage;
+  /** Either takes the full screen, so the tab bar belongs to neither. */
+  const inOnboarding = showDoors || showOnboardingPage;
 
   return (
     <>
@@ -604,6 +712,57 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
                 {tAuth('backToApp')}
               </a>
             </div>
+          ) : showOnboardingPage ? (
+            onboarding === 'create' ? (
+              <CreateGroupPage
+                onBack={() => setOnboarding(null)}
+                onDone={() => setOnboarding(null)}
+                sessionId={profileSession.id}
+                defaultName={getIdentity()?.name}
+                startAtAuth={createAuthFirst}
+                authProviders={authProviders}
+                onCreated={() => {
+                  // A new club means new cookies: remount the tabs so nothing
+                  // keeps showing the old club's roster, session or balance.
+                  setRefreshNonce((n) => n + 1);
+                  void refreshGroups();
+                }}
+              />
+            ) : (
+              <JoinGroupPage
+                onBack={() => {
+                  setOnboarding(null);
+                  setJoinToken(null);
+                }}
+                sessionId={profileSession.id}
+                initialToken={joinToken}
+                defaultName={getIdentity()?.name}
+                hasOtherGroup={!!group}
+                onJoined={() => {
+                  setRefreshNonce((n) => n + 1);
+                  void refreshGroups();
+                }}
+              />
+            )
+          ) : showDoors ? (
+            /* First launch with no identity, multi-group on: three doors and
+               nothing else. The tabs are NOT rendered behind them — a roster and
+               a sign-up card for a club this person has no relationship with is
+               the wrong first screen, and it is what the doors exist to replace.
+               `hasIdentity === null` is UNKNOWN and shows neither. */
+            <WelcomeDoors
+              onCreate={() => {
+                setCreateAuthFirst(true); // the doors render only with no identity
+                setOnboarding('create');
+              }}
+              onJoin={() => setOnboarding('join')}
+              onExisting={() => {
+                // Both, and in this order: the tab is where they are going, and
+                // dismissing is what lets them see it.
+                setActiveTab('profile');
+                setDoorsDismissed(true);
+              }}
+            />
           ) : (
           <>
           {activeTab === 'home' && <div key={`home-${refreshNonce}`} className="animate-fadeIn"><HomeTab onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} /></div>}
@@ -620,6 +779,17 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
                 authProviders={authProviders}
                 deleteIntent={deleteIntent}
                 onDeleteIntentConsumed={() => setDeleteIntent(false)}
+                onGroupSwitched={() => {
+                  setRefreshNonce((n) => n + 1);
+                  void refreshGroups();
+                }}
+                onJoinGroup={() => setOnboarding('join')}
+                onCreateGroup={() => {
+                  // Reachable only where a group exists, so an account does.
+                  setCreateAuthFirst(false);
+                  setOnboarding('create');
+                }}
+                inviteToken={joinToken}
               />
             </div>
           )}
@@ -629,7 +799,11 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
         {devMode && <DevPanel overrides={devOverrides} onChange={setDevOverrides} />}
         {/* No-op on the web (returns before importing anything). */}
         <NativeBridge activeTab={activeTab} onGoHome={() => setActiveTab('home')} />
-        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+        {/* No nav under the doors. Every tab it offers belongs to a club this
+            person has no relationship with yet — a roster they are not on, a
+            session they cannot join — which is the screen the doors exist to
+            replace. "I already have an account" is the route to Profile. */}
+        {!inOnboarding && <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />}
       </div>
       {demoMode && <DemoMode onClose={() => setDemoMode(false)} />}
       {/* Mounted at shell level, not inside a tab: the provider callback lands
@@ -638,6 +812,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
       {/* Keyed on open so the sheet REMOUNTS each time: mode, PIN field and
           error all reset without setState-in-effect. */}
       <ChooseNameSheet
+        inviteToken={joinToken}
         key={chooseNameOpen ? 'choose-name-open' : 'choose-name-closed'}
         open={chooseNameOpen}
         onClose={() => setChooseNameOpen(false)}

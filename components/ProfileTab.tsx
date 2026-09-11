@@ -30,6 +30,8 @@ import StatsPrivacyScreen from './StatsPrivacyScreen';
 import { useStatsPrivacy } from '@/lib/useStatsPrivacy';
 import { isFlagOn } from '@/lib/flags';
 import { useAdminNeedsYou } from '@/lib/useAdminNeedsYou';
+import { useCurrentGroup } from '@/lib/useCurrentGroup';
+import GroupsPage from './profile/GroupsPage';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -53,6 +55,17 @@ interface Props {
    */
   deleteIntent?: boolean;
   onDeleteIntentConsumed?: () => void;
+  /** Remount the tabs after a group switch — HomeShell's `refreshNonce`. */
+  onGroupSwitched?: () => void;
+  /** Open the onboarding sheets, which HomeShell owns. */
+  onJoinGroup?: () => void;
+  onCreateGroup?: () => void;
+  /**
+   * The invite this device arrived on, threaded to the email signup terminal so
+   * a stranger who followed a club's link becomes an account IN THAT CLUB. See
+   * the note on `EmailSignUpSheet`'s prop.
+   */
+  inviteToken?: string | null;
 }
 
 export default function ProfileTab({
@@ -62,8 +75,16 @@ export default function ProfileTab({
   authProviders = [],
   deleteIntent = false,
   onDeleteIntentConsumed,
+  onGroupSwitched,
+  onJoinGroup,
+  onCreateGroup,
+  inviteToken,
 }: Props) {
   const t = useTranslations('profile');
+  const tGroups = useTranslations('groups');
+  // Multi-group: the switcher's data. Resolves to `group: null` with the flag
+  // off (the endpoints 404 by design), so the row simply does not render.
+  const { group, groups, error: groupsError } = useCurrentGroup();
   const [identity, setLocalIdentity] = useState<Identity | null>(null);
   /**
    * Which credential the anonymous card is asking for. One form is visible at a
@@ -108,7 +129,7 @@ export default function ProfileTab({
   // pattern (view state + early return + slideInRight + TopBar) is borrowed
   // from AdminDashboard, which is the only place in the app that already does
   // sub-screens.
-  const [view, setView] = useState<'root' | 'stats-privacy'>('root');
+  const [view, setView] = useState<'root' | 'stats-privacy' | 'groups'>('root');
   const [methodsOpen, setMethodsOpen] = useState(false);
   // Read once here so the row's summary and the sheet's body agree.
   //
@@ -487,6 +508,7 @@ export default function ProfileTab({
           <MigrateCodeSheet open={migrateCodeOpen} onClose={() => setMigrateCodeOpen(false)} />
         )}
         <EmailSignUpSheet
+          inviteToken={inviteToken}
           open={emailSignUpOpen}
           onClose={() => {
             setEmailSignUpOpen(false);
@@ -526,6 +548,26 @@ export default function ProfileTab({
   // Sub-screen. Early return so the root Profile tree unmounts entirely and
   // TopBar's `position: sticky` resolves against the tall scroll root rather
   // than a short wrapper (see AdminBackHeader's note).
+  if (view === 'groups' && group) {
+    return (
+      <GroupsPage
+        onBack={() => setView('root')}
+        groups={groups}
+        loadError={groupsError}
+        // A switch re-mints both cookies, so every tab has to refetch; this
+        // page cannot do that itself, HomeShell owns the nonce. It also bumps
+        // `refreshNonce`, which remounts ProfileTab and returns `view` to
+        // 'root' for free — no explicit reset on the success path.
+        onSwitched={() => onGroupSwitched?.()}
+        // NOT resetting the view first: backing out of the onboarding page
+        // returns HERE, which is where they came from. `setOnboarding(null)`
+        // does not bump the nonce, so this component keeps its view.
+        onJoinAnother={() => onJoinGroup?.()}
+        onCreateAnother={() => onCreateGroup?.()}
+      />
+    );
+  }
+
   if (view === 'stats-privacy') {
     return <StatsPrivacyScreen onBack={() => setView('root')} state={privacyState} />;
   }
@@ -588,6 +630,18 @@ export default function ProfileTab({
       <ProfileEyebrow>{tSettings('title')}</ProfileEyebrow>
       <SettingsList
         rows={[
+          // "Your groups" leads the list when there is more than one club to be
+          // in: it changes what every other screen is about, so it outranks the
+          // per-account rows below it. Absent entirely with the flag off, and
+          // absent when signed out — `group` is null in both cases.
+          ...(group
+            ? [{
+                icon: 'groups',
+                label: tGroups('yourGroups'),
+                meta: group.name,
+                onClick: () => setView('groups'),
+              }]
+            : []),
           // Was a permanently-expanded card above this list — its own heading,
           // a checklist, a bordered provider button and a "Not now", wedged
           // between two one-line rows. It is a row now. The nudge survives as
@@ -723,6 +777,7 @@ export default function ProfileTab({
       </button>
 
       {migrateOn && !isNative() && <MigrateSheet open={migrateOpen} onClose={() => setMigrateOpen(false)} />}
+
 
       <DeleteAccountSheet
         open={deleteAccountOpen}

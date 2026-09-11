@@ -248,11 +248,29 @@ export async function GET(req: NextRequest) {
     try {
       await ensureContainer('playerGear', '/memberId');
       const { resources: gear } = await getContainer('playerGear').items
-        .query({ query: 'SELECT c.memberId, c.items FROM c' })
+        .query({ query: 'SELECT c.memberId, c.name, c.items FROM c' })
         .fetchAll();
-      racketSavers = gear.filter((g) =>
-        Array.isArray(g?.items) && g.items.some((i: { category?: string }) => i?.category === 'racket'),
-      ).length;
+      // NARROWED TO THE ROSTER, like every other count on this page.
+      //
+      // `playerGear` is PERSON-scoped (lib/containers.ts), so a raw read is
+      // correct and `groupScope` would be wrong — but a club AGGREGATE over a
+      // person container has to be narrowed, exactly as the `assessments` block
+      // below and `stats/club/gear` already are. Without this, `racketSavers`
+      // counted every saved racket in the DEPLOYMENT: one club's number moved
+      // when a stranger in another club saved a racket, and the figure only
+      // ever read as "suspiciously healthy" rather than as wrong.
+      //
+      // `c.name` is in the projection for the same reason `rosterKey` takes
+      // one: a row whose `memberId` predates the migration is matched by name.
+      const savers = new Set<string>();
+      for (const g of gear) {
+        if (!Array.isArray(g?.items)) continue;
+        if (!g.items.some((i: { category?: string }) => i?.category === 'racket')) continue;
+        const rk = rosterKey(g?.memberId, g?.name);
+        // Not on this roster: not counted, and not denominated either.
+        if (rk) savers.add(rk);
+      }
+      racketSavers = savers.size;
     } catch (err) {
       console.warn('slice0: gear read failed (treating as zero):', err);
     }

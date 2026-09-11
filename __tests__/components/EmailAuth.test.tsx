@@ -130,7 +130,10 @@ describe('EmailSignUpSheet', () => {
     fill('a good long password');
     fireEvent.click(screen.getByRole('button', { name: 'Create it' }));
     expect(await screen.findByText(/couldn't send the confirmation email/i)).toBeDefined();
-    expect(onSuccess).toHaveBeenCalledWith({ name: 'Carolina' });
+    // The flag TRAVELS, not just the note. A page embedding `EmailSignUpForm`
+    // has nowhere to dismiss to, so it carries this onto its next step — and
+    // reporting `true` here would be the exact lie the note exists to prevent.
+    expect(onSuccess).toHaveBeenCalledWith({ name: 'Carolina', verificationSent: false });
   });
 });
 

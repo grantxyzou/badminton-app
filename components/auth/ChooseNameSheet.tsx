@@ -11,6 +11,19 @@ interface Props {
   open: boolean;
   onClose: () => void;
   sessionId: string;
+/**
+ * The invite this device arrived on, if any.
+ *
+ * A stranger who taps a club's link has no account yet, and the PIN path is
+ * invite-list gated — so email or a provider is how they become one. Both
+ * signup terminals join the new account to a club, and without this they join
+ * the club `resolveGroupId` resolves (BPM), after which `/api/groups/join`
+ * adds the intended one on top and leaves one person on two rosters. Passing
+ * the token means the account lands in the club that invited it. Ignored with
+ * the flag off; an unresolvable token is refused rather than silently
+ * downgraded. See PR #376.
+ */
+  inviteToken?: string | null;
 }
 
 /**
@@ -33,7 +46,7 @@ interface Props {
  * signed, HttpOnly cookie the browser cannot read, and both endpoints take it
  * from there — so all that is posted from here is a name and a credential.
  */
-export default function ChooseNameSheet({ open, onClose, sessionId }: Props) {
+export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken }: Props) {
   const t = useTranslations('profile.auth');
   const [mode, setMode] = useState<'name' | 'claim' | 'expired'>('name');
   const [name, setName] = useState('');
@@ -72,6 +85,16 @@ export default function ChooseNameSheet({ open, onClose, sessionId }: Props) {
     };
   }, [open]);
 
+  /**
+   * ONE expression decides both whether the token is SENT and whether a 404 is
+   * read as "that invite was replaced". The server's `attempted` treats a
+   * present-but-unusable value as an attempt and refuses it, so a guard that
+   * sent `''` while reading `''` as "no invite sent" would show the generic
+   * signup error for a refusal that has specific, actionable advice. Keeping it
+   * to one constant is what stops the two sides drifting apart.
+   */
+  const sentInvite = typeof inviteToken === 'string' && inviteToken.trim().length > 0;
+
   function finish(returnedName: string) {
     // The server already set member_session; mirror the name into localStorage
     // so the rest of the app (which reads `badminton_identity`) sees the same
@@ -89,13 +112,20 @@ export default function ChooseNameSheet({ open, onClose, sessionId }: Props) {
       const res = await fetch(`${BASE}/api/auth/complete-signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name: name.trim(), ...(sentInvite ? { inviteToken } : {}) }),
       });
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+        // The invite was REGENERATED between opening the link and finishing
+        // here. #376 refuses before it writes anything — better than leaving an
+        // account behind with no club and no way to reach one — so nothing was
+        // created and the actionable advice is "ask for a fresh link", not
+        // "try again". Only when we actually sent one: a bare 404 from this
+        // route means something else entirely.
+        if (sentInvite && data.error === 'invite_not_found') setError(t('signUpInviteExpired'));
         // Not a dead end: offer to prove the name is theirs.
-        if (data.error === 'name_taken') setMode('claim');
+        else if (data.error === 'name_taken') setMode('claim');
         else if (data.error === 'no_pending_signup') setMode('expired');
         else if (data.error === 'already_linked') setError(t('alreadyLinked'));
         else if (data.error === 'email_taken') setError(t('emailTaken'));
