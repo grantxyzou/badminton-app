@@ -4,6 +4,7 @@ import { getContainer } from '@/lib/cosmos';
 import { verifyMemberAuth } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ensurePushContainer, hashEndpoint } from '@/lib/push';
+import { isSafePushEndpoint, MAX_PUSH_ENDPOINT_LEN } from '@/lib/pushEndpoint';
 import type { PushSubscriptionDoc } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +13,9 @@ export const dynamic = 'force-dynamic';
  *  than 409ing, so a user who cycles browsers never hits a wall they can't
  *  clear themselves. */
 const MAX_DEVICES_PER_MEMBER = 10;
-const MAX_ENDPOINT_LEN = 1000;
+// The length cap lives with the rest of the endpoint contract, so the two
+// cannot drift into silently disagreeing about what is storable.
+const MAX_ENDPOINT_LEN = MAX_PUSH_ENDPOINT_LEN;
 /** FCM registration tokens are ~160 chars of base64url plus `:` and `-`. */
 const MIN_TOKEN_LEN = 20;
 const MAX_TOKEN_LEN = 4096;
@@ -46,13 +49,11 @@ function parseSubscription(body: unknown): Parsed | null {
   if (typeof b.endpoint !== 'string') return null;
   const endpoint = b.endpoint.trim();
   if (!endpoint || endpoint.length > MAX_ENDPOINT_LEN) return null;
-  // Push services are always https. Rejecting anything else keeps the send path
-  // from being pointed at an arbitrary internal host.
-  try {
-    if (new URL(endpoint).protocol !== 'https:') return null;
-  } catch {
-    return null;
-  }
+  // The https check used to stand alone here, under a comment claiming it kept
+  // the send path off internal hosts. It does not — `https://10.0.0.5/probe`
+  // passes it — and the server POSTs to whatever is stored. See
+  // `lib/pushEndpoint.ts` for what is refused and what is knowingly left.
+  if (!isSafePushEndpoint(endpoint)) return null;
 
   if (!b.keys || typeof b.keys !== 'object') return null;
   const k = b.keys as { p256dh?: unknown; auth?: unknown };

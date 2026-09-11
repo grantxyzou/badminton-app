@@ -33,6 +33,7 @@
 import { createHash } from 'crypto';
 import { getContainer, ensureContainer } from './cosmos';
 import { isFcmConfigured, sendFcm } from './fcm';
+import { isSafePushEndpoint } from './pushEndpoint';
 import type { PushSubscriptionDoc } from './types';
 
 export interface PushPayload {
@@ -130,10 +131,21 @@ async function loadWebPush(): Promise<any> {
 type WebSub = PushSubscriptionDoc & { endpoint: string; keys: { p256dh: string; auth: string } };
 type NativeSub = PushSubscriptionDoc & { platform: 'ios' | 'android'; token: string };
 
+/**
+ * The endpoint is re-checked HERE, not only at the subscribe route.
+ *
+ * The sender used to defer entirely to that route ("it validated this on the
+ * way in"), which is a promise about a row's history that the row itself does
+ * not carry: a doc written before the check tightened, by a different route, or
+ * by a hand edit, is indistinguishable at send time. Re-checking makes the
+ * safety a property of what is about to be POSTed rather than of how it
+ * arrived — and a doc that fails is simply not a web sub, so it is dropped by
+ * the same filter that already drops malformed ones, with no new branch.
+ */
 export function isWebSub(d: PushSubscriptionDoc): d is WebSub {
   return (
     (d.platform === undefined || d.platform === 'web') &&
-    typeof d.endpoint === 'string' &&
+    isSafePushEndpoint(d.endpoint) &&
     !!d.keys?.p256dh &&
     !!d.keys?.auth
   );
