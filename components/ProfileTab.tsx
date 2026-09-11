@@ -30,6 +30,8 @@ import StatsPrivacyScreen from './StatsPrivacyScreen';
 import { useStatsPrivacy } from '@/lib/useStatsPrivacy';
 import { isFlagOn } from '@/lib/flags';
 import { useAdminNeedsYou } from '@/lib/useAdminNeedsYou';
+import { useCurrentGroup } from '@/lib/useCurrentGroup';
+import GroupsSheet from './profile/GroupsSheet';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -53,6 +55,11 @@ interface Props {
    */
   deleteIntent?: boolean;
   onDeleteIntentConsumed?: () => void;
+  /** Remount the tabs after a group switch — HomeShell's `refreshNonce`. */
+  onGroupSwitched?: () => void;
+  /** Open the onboarding sheets, which HomeShell owns. */
+  onJoinGroup?: () => void;
+  onCreateGroup?: () => void;
 }
 
 export default function ProfileTab({
@@ -62,8 +69,16 @@ export default function ProfileTab({
   authProviders = [],
   deleteIntent = false,
   onDeleteIntentConsumed,
+  onGroupSwitched,
+  onJoinGroup,
+  onCreateGroup,
 }: Props) {
   const t = useTranslations('profile');
+  const tGroups = useTranslations('groups');
+  // Multi-group: the switcher's data. Resolves to `group: null` with the flag
+  // off (the endpoints 404 by design), so the row simply does not render.
+  const { group, groups, error: groupsError } = useCurrentGroup();
+  const [groupsOpen, setGroupsOpen] = useState(false);
   const [identity, setLocalIdentity] = useState<Identity | null>(null);
   /**
    * Which credential the anonymous card is asking for. One form is visible at a
@@ -588,6 +603,18 @@ export default function ProfileTab({
       <ProfileEyebrow>{tSettings('title')}</ProfileEyebrow>
       <SettingsList
         rows={[
+          // "Your groups" leads the list when there is more than one club to be
+          // in: it changes what every other screen is about, so it outranks the
+          // per-account rows below it. Absent entirely with the flag off, and
+          // absent when signed out — `group` is null in both cases.
+          ...(group
+            ? [{
+                icon: 'groups',
+                label: tGroups('yourGroups'),
+                meta: group.name,
+                onClick: () => setGroupsOpen(true),
+              }]
+            : []),
           // Was a permanently-expanded card above this list — its own heading,
           // a checklist, a bordered provider button and a "Not now", wedged
           // between two one-line rows. It is a row now. The nudge survives as
@@ -723,6 +750,26 @@ export default function ProfileTab({
       </button>
 
       {migrateOn && !isNative() && <MigrateSheet open={migrateOpen} onClose={() => setMigrateOpen(false)} />}
+
+      {group && (
+        <GroupsSheet
+          open={groupsOpen}
+          onClose={() => setGroupsOpen(false)}
+          groups={groups}
+          loadError={groupsError}
+          // A switch re-mints both cookies, so every tab has to refetch; the
+          // sheet cannot do that itself, HomeShell owns the nonce.
+          onSwitched={() => onGroupSwitched?.()}
+          onJoinAnother={() => {
+            setGroupsOpen(false);
+            onJoinGroup?.();
+          }}
+          onCreateAnother={() => {
+            setGroupsOpen(false);
+            onCreateGroup?.();
+          }}
+        />
+      )}
 
       <DeleteAccountSheet
         open={deleteAccountOpen}

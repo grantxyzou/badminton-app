@@ -4,6 +4,9 @@ import { useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import TopBar from '../../primitives/TopBar';
 import AnomalyFeed from './AnomalyFeed';
+import InviteCard from './InviteCard';
+import { isFlagOn } from '@/lib/flags';
+import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import AccessRequestsCard from './AccessRequestsCard';
 import NextSessionCard from './NextSessionCard';
 import PaymentsCard from './PaymentsCard';
@@ -13,7 +16,6 @@ import ReceiptSheet from './ReceiptSheet';
 import type { AdminView } from '../types';
 import type { ReceiptInput } from '@/lib/receiptTemplate';
 import { sessionCostTotals } from '@/lib/sessionCost';
-import { isFlagOn } from '@/lib/flags';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -36,6 +38,11 @@ interface CommandCenterProps {
  */
 export default function CommandCenter({ refreshKey, setView, onExit }: CommandCenterProps) {
   const pageT = useTranslations('pages.admin');
+  const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
+  // Names the club in the share sheet. `null` with the flag off, which is also
+  // when `InviteCard` renders nothing.
+  const { group } = useCurrentGroup();
+  const groupName = group?.name;
   const [localRefresh, setLocalRefresh] = useState(0);
   const composedRefresh = refreshKey + localRefresh;
 
@@ -144,6 +151,12 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
         refreshKey={composedRefresh}
         onOpenPlayer={openPlayer}
       />
+
+      {/* BELOW the week's work, not above it. Growing the club matters, but an
+          organiser opens this screen to run Thursday — the invite is the thing
+          you come looking for, not the thing you are interrupted by. Renders
+          nothing with the flag off (the endpoint 404s) or for a non-admin. */}
+      <InviteCard enabled={groupsOn} groupName={groupName} />
 
       {/* Profile-style settings list (mirrors ProfileTab's SettingsList).
           Announcements / E-transfer / Skip dates / Ledger / Release notes
