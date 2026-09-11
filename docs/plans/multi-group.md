@@ -102,6 +102,33 @@ don't copy.
   and succeeds only on exactly one PIN match (Phase 2). Most BPM members arrive
   on a new device via the shared sign-up link, which now carries the join token,
   so this path is the exception rather than the door.
+- **Removal does not revoke the cookie, and the Phase 5 gate has to say so**
+  (raised in review of #373, 2026-09-11; OPEN). `DELETE /api/groups/members/
+  [memberId]` flips a membership to `removed` and frees the roster name, but the
+  session cookie it was removed from keeps its `groupId` claim. `resolveGroupId`
+  reads that claim without a database check — deliberately, and the reasoning in
+  `lib/groupContext.ts` is sound: the claim was verified against a membership
+  when it was MINTED, and re-reading on every request buys a Cosmos round trip
+  on every hot path for a check already made. `requireGroupMember` is the only
+  thing that re-checks, and it has one caller (`GET /api/groups/current`). So a
+  removed player's app keeps serving that club's session, roster, announcements
+  and costs for up to the 30-day cookie TTL.
+
+  This is not a defect in #373. It is a documented trade-off meeting a
+  capability that did not exist when it was made: before Phase 3 there was no
+  way to leave a roster, so "verified at mint" and "verified now" could not
+  diverge. Phase 3 is what makes membership revocable, and revoking a stateless
+  signed cookie needs state on the read path — exactly what that comment
+  refuses.
+
+  **Not fixed here, because the fix is a design choice with real cost**, and the
+  three candidates trade differently: a membership read on the hot path (honest,
+  and the thing the architecture rejected); an epoch stamped into the cookie and
+  bumped on removal (one read, but of what, and where); or routing only the
+  genuinely sensitive group reads through `requireGroupMember` (cheap, narrower
+  blast radius, a judgement call per route). **It belongs on the Phase 5 gate
+  next to the clean week of `[group-leak]`** — the flag is off, so nothing is
+  exposed today, and it must be answered before the flip rather than after.
 
 ## Shape
 

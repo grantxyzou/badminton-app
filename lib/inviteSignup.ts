@@ -80,6 +80,14 @@ export async function signupGroupFor(req: NextRequest, body: InviteFields): Prom
   // writing `{ inviteToken: token ?? null }` means "no invite", and refusing
   // that would break an ordinary front-door signup. Anything else is a client
   // that meant to send one and sent something unusable.
+  //
+  // THE EMPTY STRING IS DELIBERATELY NOT ABSENT, and the caller is the one that
+  // has to know it (pinned by "refuses an EMPTY-STRING token"). It is the
+  // tempting third spelling — `searchParams.get('join') ?? ''` and an untouched
+  // controlled input both produce it — and forgiving it here would mean this
+  // function could no longer tell a blank invite field from no invite field,
+  // which is the distinction the whole file turns on. A signup form must send
+  // `undefined`, never `''`.
   const attempted =
     (body.inviteToken !== undefined && body.inviteToken !== null) ||
     (body.inviteCode !== undefined && body.inviteCode !== null);

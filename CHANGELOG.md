@@ -82,6 +82,8 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ### Fixed
 
+- **"Where you sit" no longer disappears when it can't load** — if your check-in history failed to load, the card vanished silently, which looked exactly like the club being too small to compare. It now says it couldn't load, and waits for your history rather than flashing in a moment after the rest of the page.
+- **Screen readers no longer say "no level yet" while your level is loading** — the Level tile announced a confident "no level yet" during the moment before your level arrived. It now says it's loading, matching what the caption underneath already did.
 - **Sign in with Apple from the installed app** — picking Apple on the home-screen app used to sign Safari in and leave the app signed out. It now comes back signed in, the same way Google has since late August.
 
 ### Changed

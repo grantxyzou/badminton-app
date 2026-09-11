@@ -146,6 +146,52 @@ describe('WhereYouSitCard', () => {
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
   });
 
+  /**
+   * THE OTHER SOURCE. The ratings moved onto the shared `useCheckIn` owner but
+   * the card's `status` still tracked only its own bands read, so a failed
+   * HISTORY read collapsed into `ratings: []`, fell through to
+   * `picked.length === 0` and returned `null`. That is the same silent vanish
+   * the test above exists to forbid, arriving through the door the refactor
+   * opened — and indistinguishable from the legitimate below-cohort case.
+   */
+  it('shows an error when the HISTORY read failed, even though bands loaded', async () => {
+    mockFetchByUrl([bandsResponse()]);
+    renderCard(false, { ...stubCheckIn(), status: 'error', latest: undefined, snapshots: [] });
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+  });
+
+  it('waits for the history rather than rendering empty and popping in', async () => {
+    // Bands resolve first in practice. Keyed only on its own status the card
+    // rendered a `null` it then replaced when the history landed — a visible
+    // jump in the middle of the You register.
+    mockFetchByUrl([bandsResponse()]);
+    const { container } = renderCard(false, {
+      ...stubCheckIn(),
+      status: 'loading',
+      latest: undefined,
+      snapshots: [],
+    });
+    await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeNull());
+    expect(screen.queryByText(/top third/)).toBeNull();
+    // A skeleton, not an absence: something holds the slot.
+    expect(container.firstChild).not.toBeNull();
+  });
+
+  it('still renders nothing for a member who simply has no ratings', async () => {
+    // The fix must not turn the honest empty case into an error. `ready` with
+    // no snapshot is a member who has never checked in, and the card is absent
+    // for them by design.
+    mockFetchByUrl([bandsResponse()]);
+    const { container } = renderCard(false, {
+      ...stubCheckIn(),
+      status: 'ready',
+      latest: undefined,
+      snapshots: [],
+    });
+    await waitFor(() => expect(container.querySelector('[role="alert"]')).toBeNull());
+    expect(container.firstChild).toBeNull();
+  });
+
   it('renders one band when the best and worst skill are the same', async () => {
     mockFetchByUrl([bandsResponse({ skills: [{ skillKey: 'consistency', band: 'middle' }] })]);
     // One rated skill, so sharpest and weakest are the same row.

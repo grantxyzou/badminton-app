@@ -164,8 +164,51 @@ export async function createGroup(input: CreateGroupInput): Promise<{ group: Gro
   return { group, membership };
 }
 
-async function replaceGroup(group: Group): Promise<void> {
-  await getContainer('groups').item(group.id, group.id).replace(group);
+/**
+ * EVERY write to a group doc is a read-modify-write under an etag.
+ *
+ * This was a bare `.replace(group)` on a doc the caller had read earlier, and
+ * the group doc is shared by more writers than it looks: `updateGroupSettings`
+ * and `reassignOwnership` here, and `movePointers` in `lib/invites.ts`, which
+ * moves `inviteId` / `inviteCodeId`. A last-write-wins between them is not a
+ * lost settings edit — it is an admin minting a fresh invite, sharing the
+ * link, and a concurrent settings save reverting the doc to the pointers of
+ * the invite docs that mint just DELETED. `resolveInvite` then refuses the
+ * live link with the same silent 404 it gives a forged one, because the
+ * pointer is the authority. `movePointers` already conditioned its side; this
+ * is the other half, and without both the condition buys nothing.
+ *
+ * The mutator runs against the doc as it is ON THIS ATTEMPT, never a copy the
+ * caller read earlier — that is what makes the retry a merge rather than a
+ * replay of a stale value. Three attempts, then give up loudly: the writers
+ * here are all human-paced, so a doc that is still contended after three
+ * rounds is a bug rather than traffic.
+ *
+ * NOTE the mock store's `item().replace(next)` takes no options argument, so
+ * it drops `accessCondition` on the floor and no test in this repo can fail on
+ * a 412. Same class as the partition-key hazard: the mock is laxer than
+ * production, so the conditional path is reasoned, not proven.
+ */
+async function mutateGroup(groupId: string, mutate: (group: Group) => Group): Promise<Group | undefined> {
+  const container = getContainer('groups');
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const { resource } = await container.item(groupId, groupId).read();
+    const current = resource as (Group & { _etag?: string }) | undefined;
+    if (!current) return undefined;
+    const next = mutate(current);
+    try {
+      await container
+        .item(groupId, groupId)
+        .replace(
+          next,
+          current._etag ? { accessCondition: { type: 'IfMatch', condition: current._etag } } : undefined,
+        );
+      return next;
+    } catch (err) {
+      if ((err as { code?: number })?.code !== 412) throw err;
+    }
+  }
+  throw new Error('group_write_contended');
 }
 
 /**
@@ -174,11 +217,7 @@ async function replaceGroup(group: Group): Promise<void> {
  * backfill; until then the admin's Member doc is the only copy).
  */
 export async function updateGroupSettings(groupId: string, patch: Partial<GroupSettings>): Promise<Group | undefined> {
-  const group = await readGroup(groupId);
-  if (!group) return undefined;
-  const next: Group = { ...group, settings: { ...group.settings, ...patch } };
-  await replaceGroup(next);
-  return next;
+  return mutateGroup(groupId, (group) => ({ ...group, settings: { ...group.settings, ...patch } }));
 }
 
 // ---------------------------------------------------------------------------
@@ -486,12 +525,24 @@ export async function reassignOwnership(groupId: string, fromMemberId: string): 
     roster.filter((m) => m.role === 'admin').sort(byTenure)[0] ??
     roster.filter((m) => m.role === 'member').sort(byTenure)[0];
 
+  // Both writes go through `mutateGroup`, which re-reads: the roster listing
+  // above sits between this function's own `readGroup` and here, which is the
+  // widest window any writer of this doc holds open.
+  //
+  // The `ownerMemberId !== fromMemberId` guard above still ran against the
+  // EARLIER read, so an ownership change inside that window is not caught — the
+  // mutator would write the heir over an owner who is no longer `fromMemberId`.
+  // Unchanged from before the etag went in (the stale-read write had the same
+  // hole) and left alone deliberately: the only caller is `purgeMember`, acting
+  // on one person's own deletion, and tightening it means deciding what a
+  // mid-flight handover should do to a purge — a Phase 3 lifecycle question,
+  // not a side effect of conditioning the write.
   if (!heir) {
-    await replaceGroup({ ...group, closedAt: new Date().toISOString() });
+    await mutateGroup(groupId, (g) => ({ ...g, closedAt: new Date().toISOString() }));
     return { outcome: 'closed' };
   }
 
-  await replaceGroup({ ...group, ownerMemberId: heir.memberId });
+  await mutateGroup(groupId, (g) => ({ ...g, ownerMemberId: heir.memberId }));
   await scope.replace('memberships', { ...heir, role: 'owner' }, groupId);
   const old = await readMembership(groupId, fromMemberId);
   if (old && old.role === 'owner') await scope.replace('memberships', { ...old, role: 'admin' }, groupId);

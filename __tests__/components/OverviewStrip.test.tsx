@@ -230,6 +230,22 @@ describe('OverviewStrip', () => {
     await screen.findByRole('button', { name: /Level couldn't load\. Tap to take a check-in\./ });
   });
 
+  it('does not announce "no level yet" while the level is still loading', async () => {
+    // The visible caption has a loading arm that renders blank; the aria chain
+    // had none, so every not-yet-ready state fell through to the confident
+    // negative meant for a member who genuinely has no level. This label
+    // REPLACES label + value + unit + caption on the button, so there is no
+    // surrounding text a screen-reader user could read around it.
+    mockFetchByUrl([
+      ['/api/stats/level', () => new Promise<Response>(() => {})],
+      OK_GAMES,
+      OK_KUDOS,
+    ]);
+    renderStrip('Lin', stubCheckIn([]));
+    await screen.findByRole('button', { name: /Level loading\. Tap to open the check-in\./ });
+    expect(screen.queryByRole('button', { name: /No level yet/ })).toBeNull();
+  });
+
   it('renders a plain tile, not a button, with no owner supplied', async () => {
     mockFetchByUrl([OK_LEVEL, OK_GAMES, OK_KUDOS]);
     renderStrip('Lin');

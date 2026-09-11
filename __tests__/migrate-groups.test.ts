@@ -15,7 +15,8 @@ import {
 } from './helpers';
 import { GET, POST } from '@/app/api/admin/migrate-groups/route';
 import { backfillStatus, runBackfill, stampRow, chooseOwner, STAMPED_CONTAINERS } from '@/lib/groupBackfill';
-import { readGroup, readMembership, listMemberships, reserveRosterName } from '@/lib/groups';
+import { readGroup, readMembership, listMemberships, reserveRosterName, addMembership } from '@/lib/groups';
+import { BPM_GROUP_ID } from '@/lib/groupScope';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { containersOfScope } from '@/lib/containers';
 
@@ -466,6 +467,34 @@ describe('names two people want', () => {
     // the backfill itself refused on the collision.
     seedMember('林丹');
     seedMember('林丹', { active: false });
+    expect((await backfillStatus()).names).toMatchObject({ duplicates: 1, blockedRejoins: 1 });
+  });
+
+  it('counts the ROSTER name, not Member.name — the reservation holds the former', async () => {
+    // Both people are `Chris` on their Member doc; this club calls one of them
+    // Dana, and the reservation holds `Dana`. Keyed on `Member.name` these read
+    // as a clash no constraint could ever produce.
+    //
+    // It is the same mis-keying that matters once a SECOND club exists: a count
+    // taken over every Member in the deployment buckets a Chris here with a
+    // different Chris there and reports a within-club duplicate for two people
+    // who have never shared a roster. This is the gate the Phase 5 flip is read
+    // against, so an inflated number lands on the cutover decision.
+    const chris = seedMember('Chris');
+    const dana = seedMember('Chris');
+    await addMembership({ groupId: BPM_GROUP_ID, memberId: chris.id, name: 'Chris', role: 'member', joinedVia: 'backfill' });
+    await addMembership({ groupId: BPM_GROUP_ID, memberId: dana.id, name: 'Dana', role: 'member', joinedVia: 'backfill' });
+    expect((await backfillStatus()).names).toEqual({ duplicates: 0, blockedRejoins: 0, similar: 0 });
+  });
+
+  it('still sees a clash BEFORE the backfill, when nobody has a membership yet', async () => {
+    // The fallback to `Member.name`, and the reason it exists: the backfill's
+    // own POST refuses on two active namesakes, so a status read that could
+    // only see roster names would warn nobody until after the run it was meant
+    // to gate. It is populated exactly when no memberships exist — the
+    // one-club state, where counting every Member is the correct thing to do.
+    seedMember('Chris');
+    seedMember('chris', { active: false });
     expect((await backfillStatus()).names).toMatchObject({ duplicates: 1, blockedRejoins: 1 });
   });
 

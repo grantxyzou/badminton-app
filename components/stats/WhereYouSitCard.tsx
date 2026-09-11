@@ -62,8 +62,20 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
    *
    * The BANDS read stays here — it is this card's own data, it is consent-gated
    * server-side, and it has to re-run when the member answers that prompt.
+   *
+   * TWO SOURCES, SO TWO STATUSES, AND THE CARD MUST GATE ON BOTH. `status`
+   * below tracks the bands read ONLY. When the ratings lived in the same
+   * `Promise.all` that was the whole story; since they moved onto the owner it
+   * has not been, and reading `latest?.ratings ?? []` collapses "the history
+   * failed" into "no ratings" — which reaches `picked.length === 0` and returns
+   * `null`, the exact silent vanish the error branch below exists to prevent.
+   * The same collapse on the loading side let the card mount empty and pop in
+   * when the history landed. An ABSENT owner still reads as ready: a caller
+   * that passes no `checkIn` has no history to wait for, and that caller's
+   * empty-ratings render is the pre-existing behaviour.
    */
   const ratings: Rating[] = (checkIn?.latest?.ratings ?? []) as Rating[];
+  const historyStatus: Load = checkIn?.status ?? 'ready';
 
   useEffect(() => {
     if (!activeName) return;
@@ -88,11 +100,13 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
   }, [activeName]);
 
   if (!activeName) return null;
-  if (status === 'loading') return <CardSkeleton height={180} />;
-  if (status === 'error') {
+  if (status === 'loading' || historyStatus === 'loading') return <CardSkeleton height={180} />;
+  if (status === 'error' || historyStatus === 'error') {
     // A failed read is NOT the same as "too few people" — say so out loud
     // rather than silently vanishing, which would look identical to the
-    // legitimate below-cohort case.
+    // legitimate below-cohort case. EITHER read failing lands here: without
+    // ratings there is no skill to name and without bands no third to place it
+    // in, so a half-loaded card has nothing honest to draw.
     return (
       <div className="glass-card p-5">
         <ErrorState message={t('error')} />

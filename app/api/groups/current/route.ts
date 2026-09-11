@@ -21,11 +21,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireGroupMember, unauthorized } from '@/lib/auth';
 import { listMemberships, readGroup } from '@/lib/groups';
-import { groupsOn, featureOff, memberVisibleSettings } from '@/lib/groupRoutes';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { groupsOn, featureOff, rateLimited, memberVisibleSettings } from '@/lib/groupRoutes';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+  // Rule 4, and not a formality here: `requireGroupMember` is the EXPENSIVE
+  // auth check (a membership read per call, unlike the sync cookie checks), and
+  // the handler then lists the whole roster. Limiting after it would put the
+  // cost in front of the gate meant to bound it.
+  if (!checkRateLimit(`groups-current:${getClientIp(req)}`, 60, 15 * 60 * 1000)) return rateLimited();
   if (!groupsOn()) return featureOff();
   const session = await requireGroupMember(req);
   if (!session) return unauthorized();

@@ -17,11 +17,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyMemberAuth, unauthorized } from '@/lib/auth';
 import { listMembershipsForMember, readGroup } from '@/lib/groups';
-import { groupsOn, featureOff } from '@/lib/groupRoutes';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { groupsOn, featureOff, rateLimited } from '@/lib/groupRoutes';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+  // Rule 4: the limit comes before the auth check, so a replayed cookie cannot
+  // get past it. This is the costliest read in the group API and the only one
+  // whose cost the CALLER sets — `listMembershipsForMember` is a cross-partition
+  // query on `memberships`, and it is followed by one `readGroup` point read
+  // per club the caller belongs to, on a B1 tier.
+  if (!checkRateLimit(`groups-mine:${getClientIp(req)}`, 60, 15 * 60 * 1000)) return rateLimited();
   if (!groupsOn()) return featureOff();
   const session = verifyMemberAuth(req);
   if (!session) return unauthorized();

@@ -870,6 +870,7 @@
       "levelAriaKnown": "水平 {level}，满分 5。点按可再次自评。",
       "levelAriaUnknown": "还没有水平数据。点按开始自评。",
       "levelAriaError": "水平加载失败。点按开始自评。",
+      "levelAriaLoading": "水平加载中。点按开始自评。",
       "loadError": "加载失败",
       "baseline": "你的起点",
       "levelWith": "与{month}持平",

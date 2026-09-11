@@ -153,12 +153,20 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
   // <button>, so an aria-label REPLACES all of it. A single literal would erase
   // the number from the accessibility tree, and "no level yet" and "couldn't
   // load" are different facts — the same distinction the visible caption makes.
+  // The chain mirrors the caption's tri-state arm for arm, INCLUDING loading.
+  // Without that arm every not-yet-ready state fell through to
+  // `levelAriaUnknown` — so a screen-reader user focusing the tile mid-load was
+  // told "No level yet", a confident negative, while a sighted user saw a blank
+  // caption. Unknown is not known-false, and this label REPLACES the caption
+  // rather than accompanying it, so a gap here cannot be read around.
   const levelAria =
     level.status === 'error'
       ? t('levelAriaError')
-      : level.status === 'ready' && level.data !== null
-        ? t('levelAriaKnown', { level: levelValue })
-        : t('levelAriaUnknown');
+      : level.status === 'loading'
+        ? t('levelAriaLoading')
+        : level.status === 'ready' && level.data !== null
+          ? t('levelAriaKnown', { level: levelValue })
+          : t('levelAriaUnknown');
 
   return (
     <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'stretch' }}>
