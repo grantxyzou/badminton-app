@@ -134,6 +134,25 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
   // double-runs, which is why `?tab=admin` worked there and not on localhost.
   const urlParamsConsumed = useRef(false);
 
+  /* eslint-disable react-hooks/set-state-in-effect --
+     The ONE sanctioned exemption from the compiler-ready pass, and it is
+     structural rather than deferred work.
+
+     This effect consumes the landing URL and STRIPS what it reads in the same
+     pass, so the params cannot be re-read during a later render the way
+     `MigrateClaim` re-reads its code from a cache. More decisively, the tab
+     restore below must read `sessionStorage` AFTER mount — CLAUDE.md makes that
+     a rule, because reading it in a `useState` initialiser runs during SSR and
+     hydration and mismatches — and `consumeRecentExcursion()` WRITES
+     `localStorage`, so it cannot run during render either.
+
+     Laundering the initial tab through a module-scoped store would satisfy the
+     rule while making the state outlive the page load it describes. That was
+     tried for `app/error.tsx`'s reload flag in this same pass and had to be
+     reverted: a flag that outlives its navigation renders over the next,
+     unrelated error.
+
+     Scoped to this effect only, and re-enabled immediately after it. */
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (urlParamsConsumed.current) return;
@@ -257,6 +276,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
       }
     } catch { /* localStorage unavailable — fall back to Home */ }
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Fetch enough session info for ProfileTab's session label + recovery sheet.
   // ProfileTab is allowed to render with empty values (anonymous state).
