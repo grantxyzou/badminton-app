@@ -9,6 +9,7 @@ import CreateGroupPage from './onboarding/CreateGroupPage';
 import JoinGroupPage from './onboarding/JoinGroupPage';
 import { isFlagOn } from '@/lib/flags';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
+import { consumeOnboardingResume, pruneStaleOnboardingResume } from '@/lib/onboardingResume';
 import ResetPasswordSheet from './auth/ResetPasswordSheet';
 import BottomNav from '@/components/BottomNav';
 import HomeTab from '@/components/HomeTab';
@@ -103,6 +104,8 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
    */
   const [joinToken, setJoinToken] = useState<string | null>(null);
   const [onboarding, setOnboarding] = useState<'create' | 'join' | null>(null);
+  /** Whether CreateGroupPage opens on its account step. First paint only. */
+  const [createAuthFirst, setCreateAuthFirst] = useState(true);
   /**
    * Whether this device has an identity at all. Read once on mount and kept in
    * step through IDENTITY_EVENT — the `storage` event only fires in OTHER tabs,
@@ -275,6 +278,37 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
       setOnboarding('join');
       cleaned.searchParams.delete('join');
       dirty = true;
+    }
+
+    // RESUMING AN ONBOARDING FLOW ACROSS AN OAUTH HOP.
+    //
+    // `landing()` builds the return URL from scratch, so nothing of ours comes
+    // back in it and every piece of onboarding state above is gone. The record
+    // in localStorage is the only survivor — but IT ALONE NEVER NAVIGATES
+    // ANYBODY. It is half of an AND with a sign-in landing; a cold start
+    // carrying a stale marker must route nobody, which is the difference
+    // between a resume and a trap.
+    const landedFromAuth =
+      params.get('authFlow') === 'name' || params.get('signedIn') === '1' || !!params.get('authError');
+    // The installed-PWA return carries NO params at all: the app is simply in
+    // the foreground again with a staged handoff waiting to be claimed.
+    const armed = landedFromAuth || pendingHandoffId() !== null;
+    // PRUNE, not consume, when we are not armed: an unconditional destructive
+    // read here would have a second tab reloading mid-excursion eat the record
+    // the first tab is about to come back for.
+    const resume = armed ? consumeOnboardingResume() : (pruneStaleOnboardingResume(), null);
+    if (resume && groupsEnabled) {
+      // APPLIED NOW, not when identity arrives. Deferring would mount
+      // ChooseNameSheet while `joinToken` is still null, so the name submit
+      // would fire WITHOUT the invite, land the account on BPM, and only then
+      // join the real club — the two-roster defect, reintroduced by the
+      // mechanism meant to prevent it. `sentInvite` is computed per render, so
+      // a late token is a guaranteed loss rather than a race.
+      if (resume.token) setJoinToken(resume.token);
+      // `signedIn=1` means a member already resolved, so the account step is
+      // behind us and starting there would flash a screen we are leaving.
+      setCreateAuthFirst(params.get('signedIn') !== '1');
+      setOnboarding(resume.intent);
     }
 
     // From /legal/delete-account: land on Profile and open the delete sheet
@@ -685,6 +719,8 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
                 onDone={() => setOnboarding(null)}
                 sessionId={profileSession.id}
                 defaultName={getIdentity()?.name}
+                startAtAuth={createAuthFirst}
+                authProviders={authProviders}
                 onCreated={() => {
                   // A new club means new cookies: remount the tabs so nothing
                   // keeps showing the old club's roster, session or balance.
@@ -715,7 +751,10 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
                the wrong first screen, and it is what the doors exist to replace.
                `hasIdentity === null` is UNKNOWN and shows neither. */
             <WelcomeDoors
-              onCreate={() => setOnboarding('create')}
+              onCreate={() => {
+                setCreateAuthFirst(true); // the doors render only with no identity
+                setOnboarding('create');
+              }}
               onJoin={() => setOnboarding('join')}
               onExisting={() => {
                 // Both, and in this order: the tab is where they are going, and
@@ -745,7 +784,11 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
                   void refreshGroups();
                 }}
                 onJoinGroup={() => setOnboarding('join')}
-                onCreateGroup={() => setOnboarding('create')}
+                onCreateGroup={() => {
+                  // Reachable only where a group exists, so an account does.
+                  setCreateAuthFirst(false);
+                  setOnboarding('create');
+                }}
                 inviteToken={joinToken}
               />
             </div>

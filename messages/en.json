@@ -1311,6 +1311,12 @@
     "existingDoor": "I already have an account",
     "existingDoorHint": "Sign in with your name, email or Google.",
     "create": {
+      "auth": {
+        "body": "A group needs an owner, so first we'll make you an account. It takes a second.",
+        "or": "or",
+        "haveAccount": "I already have an account",
+        "needAccount": "Create an account instead"
+      },
       "crumb": "Get started",
       "backLabel": "Back to the start",
       "title": "Create a group",
