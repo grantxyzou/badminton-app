@@ -380,6 +380,34 @@ export async function POST(req: NextRequest) {
     }
 
     /**
+     * SIGNING UP IS NOT CHANGING YOUR PIN, and this route must never confuse
+     * the two.
+     *
+     * The clear above only runs inside the verification block, and that block
+     * is skipped whenever the caller already counts as trusted -- a valid
+     * `member_session`, or an admin cookie. So a body `pin` sent alongside a
+     * sign-up by a trusted caller fell straight through to the member upsert
+     * below and REPLACED `members.pinHash`, with nothing having verified the
+     * PIN it was replacing.
+     *
+     * Holding someone's `member_session` -- a shared phone, a device left
+     * signed in -- was therefore enough to set a PIN of your choosing on their
+     * account. That converts a revocable 30-day cookie into a durable
+     * credential that works at `/api/players/recover`, at `/api/admin`, and at
+     * every other PIN gate, while the owner's own PIN silently stops working.
+     * If the target is an admin, it turns a deliberately non-admin credential
+     * into an admin one.
+     *
+     * `PATCH /api/members/me` is the route that changes a PIN, and it demands
+     * `currentPin` for exactly this reason. Here the rule is simpler: an
+     * account that already has a PIN never has it rewritten by a sign-up. The
+     * first-PIN case is untouched and still guarded by the claim check below.
+     */
+    if (matchedMember && typeof matchedMember.pinHash === 'string' && matchedMember.pinHash.length > 0) {
+      pinHash = undefined;
+    }
+
+    /**
      * SETTING A FIRST PIN ON AN EXISTING MEMBER NEEDS PROOF.
      *
      * The gate above only fires when the member ALREADY has a `pinHash`. A

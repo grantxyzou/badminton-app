@@ -272,6 +272,54 @@ describe('a PIN-less member cannot be claimed by anyone who knows the name', () 
     expect(res.status).toBe(201);
   });
 
+  /**
+   * Signing up is not changing your PIN.
+   *
+   * The clear that drops a body `pin` after using it to authenticate lives
+   * INSIDE the verification block, and that block is skipped for a caller who
+   * is already trusted — a valid `member_session`, or an admin. So the hash
+   * built from the body fell through to the member upsert and replaced
+   * `members.pinHash` with nothing having verified the PIN being replaced.
+   *
+   * Holding a borrowed cookie was then enough to mint a durable credential:
+   * the chosen PIN works at `/recover`, at `/api/admin` and at every other PIN
+   * gate, outlives the cookie, and silently stops the owner's own PIN working.
+   */
+  it('does NOT rewrite an existing account PIN on a cookie-trusted sign-up', async () => {
+    resetMockStore();
+    seedPointer('session-2026-06-09');
+    seedSession('session-2026-06-09');
+    const original = await hashPin('2468');
+    const member = seedMember('Lin', { pinHash: original });
+
+    const res = await POST(
+      makeRequest('POST', 'http://x/api/players', { name: 'Lin', pin: '9999' }, {
+        Cookie: `member_session=${memberCookie(member.id, 'Lin')}`,
+      }),
+    );
+    expect(res.status).toBe(201);
+
+    const stored = (getStore()['members'] as Array<{ id: string; pinHash?: string }>).find((m) => m.id === member.id);
+    expect(stored?.pinHash).toBe(original);
+  });
+
+  it('does NOT rewrite an existing account PIN on an ADMIN sign-up either', async () => {
+    resetMockStore();
+    seedPointer('session-2026-06-10');
+    seedSession('session-2026-06-10');
+    const original = await hashPin('2468');
+    const member = seedMember('Viktor', { pinHash: original });
+
+    const { makeAdminRequest } = await import('./helpers');
+    const res = await POST(
+      makeAdminRequest('POST', 'http://x/api/players', { name: 'Viktor', pin: '9999' }),
+    );
+    expect(res.status).toBe(201);
+
+    const stored = (getStore()['members'] as Array<{ id: string; pinHash?: string }>).find((m) => m.id === member.id);
+    expect(stored?.pinHash).toBe(original);
+  });
+
   it('still lets a brand-new name sign up freely', async () => {
     // The gate keys on an EXISTING member. Someone nobody has ever heard of is
     // not claiming anything, and must not be pushed into an approval queue.
