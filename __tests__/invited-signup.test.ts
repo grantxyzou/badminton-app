@@ -164,6 +164,36 @@ describe('a token that does not resolve refuses rather than falling back', () =>
     expect(res.status).toBe(404);
   });
 
+  it('refuses a NON-STRING token instead of reading it as no invite', async () => {
+    // The silent branch: `clean` answers null for absent AND for unusable, so
+    // collapsing them lands a 201 in the wrong club. 404 is the only honest
+    // answer to "you sent an invite I cannot read".
+    const res = await signupRoute(makeRequest('POST', SIGNUP, body({ inviteToken: 12345 })));
+    expect(res.status).toBe(404);
+    expect(membershipsFor('Carolina')).toEqual([]);
+  });
+
+  it('refuses an EMPTY-STRING token', async () => {
+    const res = await signupRoute(makeRequest('POST', SIGNUP, body({ inviteToken: '' })));
+    expect(res.status).toBe(404);
+  });
+
+  it('refuses an OVER-LONG token rather than falling through to BPM', async () => {
+    const res = await signupRoute(
+      makeRequest('POST', SIGNUP, body({ inviteToken: 'a'.repeat(200) })),
+    );
+    expect(res.status).toBe(404);
+    expect(membershipsFor('Carolina')).toEqual([]);
+  });
+
+  it('treats an explicit null as absent — `token ?? null` is an ordinary signup', async () => {
+    const res = await signupRoute(
+      makeRequest('POST', SIGNUP, body({ inviteToken: null, inviteCode: null })),
+    );
+    expect(res.status).toBe(201);
+    expect(membershipsFor('Carolina').map((r) => r.groupId)).toEqual(['bpm']);
+  });
+
   it('refuses a token and a code together, the way join does', async () => {
     const invite = await mintInvite('riverside', ADMIN_MEMBER_ID);
     const res = await signupRoute(

@@ -69,12 +69,29 @@ export async function signupGroupFor(req: NextRequest, body: InviteFields): Prom
     return { ok: true, groupId: requestGroup, invited: false };
   }
 
+  // PRESENT-BUT-INVALID IS NOT ABSENT. `clean` answers `null` for both, and
+  // collapsing them here would reinstate the fallback this file exists to
+  // remove: a non-string or over-long `inviteToken` would read as "no invite
+  // was sent" and join the request's own group. That is the unknown-is-not-
+  // known-false rule, and it is the only branch where getting it wrong is
+  // SILENT — the caller asked to join a club and lands somewhere else at 201.
+  //
+  // `undefined` and `null` are the two honest spellings of absent: a client
+  // writing `{ inviteToken: token ?? null }` means "no invite", and refusing
+  // that would break an ordinary front-door signup. Anything else is a client
+  // that meant to send one and sent something unusable.
+  const attempted =
+    (body.inviteToken !== undefined && body.inviteToken !== null) ||
+    (body.inviteCode !== undefined && body.inviteCode !== null);
+
   const token = clean(body.inviteToken, 128);
   const code = clean(body.inviteCode, 64);
   // Both at once is a malformed request, not a choice to make for the caller —
   // `POST /api/groups/join` refuses the same shape for the same reason.
   if (token && code) return { ok: false };
-  if (!token && !code) return { ok: true, groupId: requestGroup, invited: false };
+  if (!token && !code) {
+    return attempted ? { ok: false } : { ok: true, groupId: requestGroup, invited: false };
+  }
 
   const groupId = token
     ? await resolveInvite(token, 'invite')
