@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto';
 import { ensureContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
-import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth } from '@/lib/auth';
+import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, ownsNameOrAdmin } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import type { GameResult } from '@/lib/types';
@@ -48,6 +48,25 @@ export async function GET(req: NextRequest) {
     if (all) {
       if (!rawName) {
         return NextResponse.json({ error: 'name_required' }, { status: 400 });
+      }
+      /**
+       * "Requiring `name` keeps the widening narrow" does not hold, and the
+       * comment above is why this was missed: an anonymous caller does get one
+       * player's games rather than the whole container, but names are
+       * enumerable through `GET /api/members`, so iterating the roster
+       * reassembles the club's entire match history -- every score, every
+       * partner pairing, for people who never published any of it. The
+       * social-graph route next door refuses exactly this question with a 403.
+       *
+       * Only the all-time branch gates. The default branch below reads the
+       * ACTIVE session's games, which is the shared roster everyone present
+       * can already see, and is what the Sign-Ups screen renders.
+       */
+      if (!checkRateLimit(`games-all:${getClientIp(req)}`, 30, 60 * 1000)) {
+        return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+      }
+      if (!ownsNameOrAdmin(req, rawName)) {
+        return NextResponse.json({ error: 'forbidden' }, { status: 403 });
       }
       // Every game in THIS group — "all-time" stops at the group's edge.
       const every = await scope.query('gameResults');

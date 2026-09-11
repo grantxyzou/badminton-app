@@ -182,7 +182,11 @@ describe('/api/assessments', () => {
         { id: 'a1', memberId: 'name:lin', name: 'Lin', takenAt: '2026-01-01T00:00:00.000Z', ratings: [], overall: 2, dimensionScores: {}, phase: 'exploration' },
         { id: 'b1', memberId: 'name:viktor', name: 'Viktor', takenAt: '2026-01-15T00:00:00.000Z', ratings: [], overall: 4, dimensionScores: {}, phase: 'commitment' },
       ];
-      const res = await GET(makeGetRequest(`${BASE}?name=Lin`));
+      const res = await GET(
+        makeRequest('GET', `${BASE}?name=Lin`, undefined, {
+          Cookie: `member_session=${memberCookieValue('Lin')}`,
+        }),
+      );
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.assessments.map((a: { id: string }) => a.id)).toEqual(['a1', 'a2']);
@@ -192,6 +196,36 @@ describe('/api/assessments', () => {
       const res = await GET(makeGetRequest(BASE));
       const body = await res.json();
       expect(body.assessments).toEqual([]);
+    });
+
+    /**
+     * A self-assessment is private and the name that selects one is public, so
+     * this read is gated the same way its `/api/stats/*` siblings are. It is
+     * the proof that "name-keyed read" and "lives under app/api/stats" are not
+     * the same set — the gate had been applied to the directory, not the shape.
+     */
+    it('refuses an ANONYMOUS read of a named player', async () => {
+      seedMember('Lin');
+      const res = await GET(makeGetRequest(`${BASE}?name=Lin`));
+      expect(res.status).toBe(403);
+    });
+
+    it("refuses another member's cookie", async () => {
+      seedMember('Lin');
+      seedMember('Viktor');
+      const res = await GET(
+        makeRequest('GET', `${BASE}?name=Lin`, undefined, {
+          Cookie: `member_session=${memberCookieValue('Viktor')}`,
+        }),
+      );
+      expect(res.status).toBe(403);
+    });
+
+    it('lets an admin read anyone', async () => {
+      seedAdminMember();
+      seedMember('Lin');
+      const res = await GET(makeAdminRequest('GET', `${BASE}?name=Lin`));
+      expect(res.status).toBe(200);
     });
   });
 });

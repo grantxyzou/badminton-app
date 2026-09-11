@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { verifyMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
+import { verifyMemberAuth, isAdminAuthedWithMember, ownsNameOrAdmin } from '@/lib/auth';
 import { SKILLS, scoreAssessment, placePhase, type Rating } from '@/lib/assessment';
 import { resolveActiveSubject } from '@/lib/memberResolve';
 import { resolveGroupId } from '@/lib/groupContext';
@@ -112,6 +112,31 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const name = new URL(req.url).searchParams.get('name');
   if (!name || !name.trim()) return NextResponse.json({ assessments: [] });
+
+  /**
+   * A self-assessment is private, and the name that selects one is public.
+   *
+   * This read answered any caller who knew a name, and `GET /api/members`
+   * hands out every name, so the whole roster's per-skill 1-5 ratings, overall
+   * scores, phase and internal memberId were walkable by an anonymous client.
+   * It also went around two deliberate privacy controls in the same feature:
+   * `lib/clubBands.ts` coarsens comparisons to thirds because an exact
+   * percentile is de-anonymising, and the bands route withholds a member's own
+   * band until they consent. Reading the raw ratings bypasses both.
+   *
+   * Same gate as its `/api/stats/*` siblings, which is the point of the gate
+   * being a named function rather than a copied snippet -- this route is the
+   * proof that "name-keyed read" is not the same set as "lives under
+   * app/api/stats". Rate limit first (rule 4).
+   */
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`assessments-read:${ip}`, 30, 60 * 1000)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+  if (!ownsNameOrAdmin(req, name)) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+
   try {
     await ensureAssessments();
     const subject = await resolveActiveSubject(resolveGroupId(req), name);
