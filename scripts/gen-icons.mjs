@@ -1,24 +1,40 @@
 #!/usr/bin/env node
 /**
- * Generate the PWA / home-screen icon set from the brand shuttlecock. Output →
- * public/icons/.
+ * Generate the PWA / home-screen icon set from the brand mark. Output →
+ * public/icons/, app/icon.png and native/assets/.
  *
- *   node scripts/gen-icons.mjs
+ *   node scripts/gen-icons.mjs        # web + native/assets sources
+ *   npm run native:assets             # …then fans them out into ios/ + android/
+ *
+ * The mark is the SHUTTLE TRAJECTORY (`public/brand/bpm-trajectory.png`): a
+ * green arc with the shuttle dropping at its end, rendered front-on from
+ * `bpm-shuttle-trajectory-icon.glb` with the model's own tile and inner field
+ * HIDDEN. That omission is the point — every platform draws its own shape
+ * (iOS squircle, Android adaptive mask, the browser's favicon square), so a
+ * tile baked into the pixels lands as a rounded rectangle inside a squircle,
+ * with its own drop shadow cropped off-centre. The mark ships alone on
+ * transparency and the ground is composited here, once, per output.
+ *
+ * It replaced the shuttlecock (`bpm-shuttlecock.png`, still in public/brand/)
+ * on 2026-09-11 for legibility: at the 40px the OS actually draws in a folder
+ * or a notification, the arc still reads as an arc, while the shuttlecock had
+ * become a green blob by 60px.
  *
  * Composition: a soft charcoal radial-gradient tile (lighter center → near-black
- * brand edge) + a strong, blurred dark contact shadow beneath the shuttlecock
- * (so it reads as lifted off the surface — a plain dark shadow is invisible on
- * the near-black brand bg, hence the lighter tile), with the shuttlecock raster
- * composited on top.
+ * brand edge) with the mark composited on top. There is no contact shadow — the
+ * previous mark was a shuttlecock resting on the surface and needed one to lift
+ * off a near-black ground; an arc touches nothing, and the render carries its
+ * own shading.
  *
  * Outputs (all square PNG):
+ *   app/icon.png              512  Next's file-convention favicon
  *   apple-touch-icon-180.png  180  iOS home screen (full-bleed; iOS rounds it)
  *   icon-192.png              192  manifest purpose:any
  *   icon-512.png              512  manifest purpose:any
  *   icon-maskable-512.png     512  manifest purpose:maskable (content in safe zone)
  *
  * Committed to the repo — they deploy via the existing `cp -r public` step in
- * both deploy workflows. Re-run if the brand mark or composition changes.
+ * the deploy workflow. Re-run if the brand mark or composition changes.
  */
 import sharp from 'sharp';
 import { mkdirSync } from 'node:fs';
@@ -26,58 +42,85 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SRC = join(ROOT, 'public/brand/bpm-shuttlecock.png');
+const SRC = join(ROOT, 'public/brand/bpm-trajectory.png');
 const OUT = join(ROOT, 'public/icons');
 
 mkdirSync(OUT, { recursive: true });
 
 /**
- * The tile: charcoal radial gradient + a blurred dark contact-shadow ellipse
- * sitting just under where the (centered) shuttlecock meets the surface.
+ * How wide the mark is drawn, as a fraction of the icon's width.
+ *
+ * The mark is LANDSCAPE (about 1.3:1), so `fit: 'contain'` scales it to this
+ * fraction of the width and roughly 0.77× that in height. The maskable number
+ * is the binding one: a centred landscape box at ratio r has a half-diagonal of
+ * 0.5·r·√(1 + 0.77²) ≈ 0.63·r, so the smallest circle containing it has
+ * diameter ≈ 1.26·r. The maskable safe zone is a centred circle at 80% of the
+ * icon, which caps r at 0.63 — 0.60 keeps a margin for the OEM masks that cut
+ * tighter than the spec.
  */
+const ANY_RATIO = 0.72;
+const MASKABLE_RATIO = 0.6;
+
+/** The tile: a charcoal radial gradient, lighter at the centre. */
 function tileSvg(size) {
-  const cx = size * 0.5;
-  const shadowCy = size * 0.72;
-  const rx = size * 0.24;
-  const ry = size * 0.055;
-  const blur = size * 0.018;
   return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <defs>
     <radialGradient id="bg" cx="50%" cy="42%" r="78%">
       <stop offset="0%" stop-color="#2b2927"/>
       <stop offset="100%" stop-color="#100F0F"/>
     </radialGradient>
-    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="${blur}" />
-    </filter>
   </defs>
   <rect width="${size}" height="${size}" fill="url(#bg)" />
-  <ellipse cx="${cx}" cy="${shadowCy}" rx="${rx}" ry="${ry}" fill="#000000" fill-opacity="0.6" filter="url(#soft)" />
 </svg>`);
 }
 
 /**
- * Render one square icon: tile (gradient + contact shadow) with the shuttlecock
- * scaled to `contentRatio` of the tile, centered. `contentRatio` is smaller for
- * maskable icons so the mark survives Android's circular/squircle mask.
+ * The mark, scaled to `contentRatio` of `size`, as a transparent square buffer.
+ *
+ * Every step below has to be its OWN sharp() call. A single pipeline applies
+ * its operations in sharp's fixed order, not call order — resize runs before
+ * extend, and flatten runs before composite — so chaining them reads correctly
+ * and does something else. This file shipped a 1424px "1024px" foreground for
+ * exactly that reason.
  */
-async function make(size, contentRatio, outFile) {
+async function markSquare(size, contentRatio) {
   const inner = Math.round(size * contentRatio);
-  const fg = await sharp(SRC)
+  const mark = await sharp(SRC)
     .resize(inner, inner, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
     .png()
     .toBuffer();
-  await sharp(tileSvg(size))
-    .composite([{ input: fg, gravity: 'center' }])
+  return sharp({
+    create: { width: size, height: size, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  })
+    .composite([{ input: mark, gravity: 'center' }])
     .png()
-    .toFile(join(OUT, outFile));
+    .toBuffer();
+}
+
+/* Flattened to RGB on purpose. Every output below is a full-bleed tile with
+   nothing to see through, and Apple's App Store icon must carry no alpha
+   channel at all — an all-opaque one still counts. */
+async function make(size, contentRatio, outFile, dir = OUT) {
+  const composed = await sharp(tileSvg(size))
+    .composite([{ input: await markSquare(size, contentRatio), gravity: 'center' }])
+    .png()
+    .toBuffer();
+  await sharp(composed)
+    .flatten({ background: '#100F0F' })
+    .png({ compressionLevel: 9 })
+    .toFile(join(dir, outFile));
   console.log(`[gen-icons] wrote ${outFile} (${size}px, content ${Math.round(contentRatio * 100)}%)`);
 }
 
-await make(180, 0.7, 'apple-touch-icon-180.png');
-await make(192, 0.7, 'icon-192.png');
-await make(512, 0.7, 'icon-512.png');
-await make(512, 0.6, 'icon-maskable-512.png');
+await make(180, ANY_RATIO, 'apple-touch-icon-180.png');
+await make(192, ANY_RATIO, 'icon-192.png');
+await make(512, ANY_RATIO, 'icon-512.png');
+await make(512, MASKABLE_RATIO, 'icon-maskable-512.png');
+
+/* Next's file convention: app/icon.png becomes the favicon link. Square and
+   regenerated here so it cannot drift from the set above — it used to be the
+   raw 942×1021 shuttlecock, which is neither square nor the current mark. */
+await make(512, ANY_RATIO, 'icon.png', join(ROOT, 'app'));
 console.log('[gen-icons] done →', OUT);
 
 /**
@@ -93,26 +136,24 @@ console.log('[gen-icons] done →', OUT);
 const NATIVE = join(ROOT, 'native/assets');
 mkdirSync(NATIVE, { recursive: true });
 
-async function makeNative(size, contentRatio, outFile) {
-  const inner = Math.round(size * contentRatio);
-  const fg = await sharp(SRC)
-    .resize(inner, inner, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .png()
-    .toBuffer();
-  await sharp(tileSvg(size)).composite([{ input: fg, gravity: 'center' }]).png().toFile(join(NATIVE, outFile));
-  console.log(`[gen-icons] wrote native/${outFile} (${size}px)`);
-}
+await make(1024, ANY_RATIO, 'icon.png', NATIVE);
+await sharp(tileSvg(1024)).flatten({ background: '#100F0F' }).png().toFile(join(NATIVE, 'icon-background.png'));
 
-await makeNative(1024, 0.7, 'icon.png');
-await sharp(tileSvg(1024)).png().toFile(join(NATIVE, 'icon-background.png'));
-await sharp(SRC)
-  .resize(Math.round(1024 * 0.55), Math.round(1024 * 0.55), { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-  .extend({ top: 230, bottom: 230, left: 230, right: 230, background: { r: 0, g: 0, b: 0, alpha: 0 } })
-  .resize(1024, 1024)
-  .png()
-  .toFile(join(NATIVE, 'icon-foreground.png'));
+/**
+ * The Android adaptive FOREGROUND, transparent, mark centred.
+ *
+ * How much of it is safe depends on this project's `ic_launcher.xml`, which
+ * wraps both layers in `<inset android:inset="16.7%">`: the bitmap is drawn
+ * into the central 72dp of the 108dp canvas rather than filling it, so the
+ * 66dp guaranteed-visible circle is 66/72 = 92% of the BITMAP, not 61% of it.
+ * A landscape mark at ratio r needs 1.26·r ≤ 0.92, so r ≤ 0.73. If that inset
+ * is ever dropped from the XML, this has to fall to 0.48.
+ */
+const ADAPTIVE_RATIO = 0.7;
+await sharp(await markSquare(1024, ADAPTIVE_RATIO)).toFile(join(NATIVE, 'icon-foreground.png'));
+
 // A launch screen is mostly ground: the mark is small so it does not read as
 // a second, bigger icon.
-await makeNative(2732, 0.18, 'splash.png');
-await makeNative(2732, 0.18, 'splash-dark.png');
+await make(2732, 0.18, 'splash.png', NATIVE);
+await make(2732, 0.18, 'splash-dark.png', NATIVE);
 console.log('[gen-icons] native done →', NATIVE);
