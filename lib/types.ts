@@ -176,6 +176,15 @@ export interface Group {
    * it would orphan them all. Nothing lists or joins a closed group.
    */
   closedAt?: string;
+  /**
+   * Pointers at the group's CURRENT invite docs — `invite:${sha256(token)}` and
+   * `code:${sha256(code)}`, siblings in this same container. The secrets
+   * themselves live on those docs and deliberately not here, so a route that
+   * returns a group verbatim cannot leak a working invite. `lib/invites.ts`
+   * owns both; absent means the group has never minted a pair.
+   */
+  inviteId?: string;
+  inviteCodeId?: string;
 }
 
 /** Container `memberships`, PK `/groupId`; id is `${groupId}:${memberId}`. */

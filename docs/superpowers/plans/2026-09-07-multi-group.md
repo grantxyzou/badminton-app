@@ -43,9 +43,9 @@ Goal: every GROUP_SCOPED read/write goes through `groupScope(groupId)` with `res
 
 ## Phase 3 — group lifecycle API, onboarding, invites (flag on in dev/CI)
 
-- [ ] `app/api/groups/{route,join,preview,switch,mine,invite,current}`, `app/api/groups/members/[memberId]`
+- [x] (PR 11, 2026-09-10) `app/api/groups/{route,join,preview,switch,mine,invite,current}`, `app/api/groups/members/[memberId]`, plus `lib/invites.ts` (the link/code credential, sibling docs of the `Group` keyed by `sha256` of the secret) and `lib/groupRoutes.ts` (the shared flag gate — a 404, not a 403). **The sign-ups-open push narrowing came with it** rather than riding with the UI: it is a one-line move to `rosterMemberIds()` plus the never-unnarrowed test, and it has nothing to do with onboarding. Gates: `__tests__/groups-api.test.ts` (31 cases, including the flag-off sweep over all ten handlers) and the two new cases in `__tests__/session-signup-open-push.test.ts`, both proven against a planted regression
 - [ ] `components/onboarding/{WelcomeDoors,CreateGroupSheet,JoinGroupSheet}.tsx`; `components/profile/GroupsSheet.tsx`; `components/admin/CommandCenter/InviteCard.tsx`; `lib/useInviteLink.ts`, `lib/useCurrentGroup.ts`; i18n `onboarding`, `groups` (restart dev server)
-- [ ] `HomeShell` `?join=` in the URL-param block; doors when flag on and no identity; `Identity.groupId?`; Profile row; `AdvanceSessionForm` + `NextSessionCard` link via `useInviteLink()`; `HomeTab` no-session state; sign-ups-open push → `rosterMemberIds()` (test: never unnarrowed); `lib/sheetStack.ts`; `NativeBridge` `?join=` test
+- [ ] `HomeShell` `?join=` in the URL-param block; doors when flag on and no identity; `Identity.groupId?`; Profile row; `AdvanceSessionForm` + `NextSessionCard` link via `useInviteLink()`; `HomeTab` no-session state; `lib/sheetStack.ts`; `NativeBridge` `?join=` test — the push narrowing moved up into PR 11
 - [ ] Isolation sweep extended to kudos, stringing, birds, aliases, games, stats/club/*, anomalies, owed-audit, slice0
 - [ ] `verify-ui`: create → first session → advance → share → join in a second profile → switch
 
