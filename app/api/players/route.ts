@@ -162,6 +162,40 @@ export async function POST(req: NextRequest) {
       if (existingMember && typeof existingMember.pinHash === 'string' && existingMember.pinHash.length > 0) {
         return NextResponse.json({ error: 'account_exists' }, { status: 409 });
       }
+      /**
+       * SETTING A FIRST PIN ON AN EXISTING MEMBER NEEDS PROOF — the same rule
+       * the session-signup branch below already enforces, and the same one
+       * `PATCH /api/members/me` enforces for its own claim flow.
+       *
+       * The two guards above stop a name that is NOT on the invite list and a
+       * member that ALREADY has a `pinHash`. A pre-seeded member with none fell
+       * straight through: anyone could read a name off `GET /api/members`
+       * (they are enumerable, so the name is not a secret and cannot be
+       * treated as one), pick a PIN, and be handed a `member_session` bound to
+       * that person — full takeover, with the real owner locked out of
+       * claiming their own account. Two branches of one route disagreed about
+       * one rule; this is the laxer one brought into line.
+       *
+       * Accepted proofs, mirroring that branch exactly: an admin cookie, or a
+       * `member_session` already bound to this member (the owner's own device,
+       * minted at sign-up / PIN sign-in / recovery-code reset). Anything else
+       * gets `account_claim_needs_approval`, which is the code the client turns
+       * into the "ask an admin to let me in" flow
+       * (`POST /api/members/access-request` → claim → set a PIN).
+       *
+       * Reached only when `existingMember` has no `pinHash` — the 409 above
+       * owns the other case.
+       */
+      const claimAuth = existingMember ? verifyMemberAuth(req) : null;
+      const ownsExistingMember =
+        !!existingMember &&
+        !!claimAuth &&
+        (claimAuth.memberId === existingMember.id ||
+          (typeof existingMember.name === 'string' &&
+            claimAuth.name.toLowerCase() === existingMember.name.toLowerCase()));
+      if (existingMember && !ownsExistingMember && !isAdminAuthed(req)) {
+        return NextResponse.json({ error: 'account_claim_needs_approval' }, { status: 403 });
+      }
       const memberDoc = {
         ...(existingMember ?? {
           id: randomBytes(12).toString('hex'),
@@ -188,7 +222,11 @@ export async function POST(req: NextRequest) {
       }
       const out = NextResponse.json({ id: safe.id, name: safe.name, deleteToken: null }, { status: 201 });
       // Account just created with a PIN → trust this device for future sign-ups
-      // (unless an admin created it on someone else's behalf).
+      // (unless an admin created it on someone else's behalf). Past the claim
+      // gate above, the only non-admin caller that reaches here is the member's
+      // OWN device — a name with no member row is already refused by the invite
+      // gate — so this re-affirms a cookie that device already holds. It can no
+      // longer mint one for a stranger.
       if (!isAdminAuthed(req)) setMemberCookie(out, safe.id, safe.name, resolveGroupId(req));
       return out;
     }
@@ -487,12 +525,25 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const { id } = body;
 
-    // PIN set/change/remove — admin OR player-self via deleteToken.
-    // Recovery flag retired; PIN management is unconditionally available.
-    // PIN branch supports lookup by `id` (legacy) OR by `{name, sessionId,
-    // deleteToken}` (Batch B M1: avoids the client fetching the full
-    // session roster just to find its own player ID before patching).
+    // PIN set/change/remove — admin OR the member themselves, proven by a
+    // `member_session` cookie. Recovery flag retired; PIN management is
+    // unconditionally available. PIN branch supports lookup by `id` (legacy)
+    // OR by `{name, sessionId}` (Batch B M1: avoids the client fetching the
+    // full session roster just to find its own player ID before patching).
     if (body.pin !== undefined) {
+      // Rule 4: rate limit BEFORE auth — and before the scrypt hash below,
+      // because this branch now VERIFIES a `currentPin`. Same 5/hr per
+      // (target, IP) envelope as `PATCH /api/members/me` and `/recover`, so
+      // the PIN written here can't be guessed at any faster than there.
+      const pinIp = getClientIp(req);
+      const pinTarget =
+        typeof body.name === 'string' ? body.name.trim().toLowerCase()
+        : typeof id === 'string' ? id
+        : '';
+      if (!checkRateLimit(`players-pin:${pinTarget}:${pinIp}`, 5, 60 * 60 * 1000)) {
+        return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+      }
+
       // Pre-validate pin shape (fail fast before DB load)
       let nextPinHash: string | undefined;
       let clearPin = false;
@@ -545,17 +596,78 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: 'Player not found' }, { status: 404 });
       }
 
-      // Auth: admin OR self via deleteToken
-      let allowed = isAdmin;
-      if (!allowed && typeof body.deleteToken === 'string') {
-        const stored = existing.deleteToken;
-        if (stored && typeof stored === 'string' && stored.length === body.deleteToken.length &&
-            timingSafeEqual(Buffer.from(stored), Buffer.from(body.deleteToken))) {
-          allowed = true;
-        }
+      /**
+       * AUTH — A `deleteToken` IS NOT PROOF OF ACCOUNT OWNERSHIP.
+       *
+       * It is session-scoped and proves only "this device signed this name up
+       * for this week". The PIN written below is mirrored onto
+       * `members.pinHash` — the credential `POST /api/players/recover`
+       * verifies and mints a 30-day `member_session` from — so accepting the
+       * token here let anyone sign a PIN-LESS member up anonymously (the POST
+       * gate above only fires for a member that already HAS a PIN), keep the
+       * returned token, and choose that account's PIN.
+       *
+       * That is the exact claim `PATCH /api/members/me` refuses, for the
+       * reason its own comment gives: member names are enumerable via
+       * `GET /api/members`. Two routes disagreed about one rule and the laxer
+       * one was reachable with no cookie at all. So this branch now enforces
+       * the sibling's rule: admin, or a `member_session` bound to this
+       * member — plus a verified `currentPin` when a PIN already exists, so a
+       * live cookie can't silently lock its owner out of their own account.
+       */
+      const caller = isAdmin ? null : verifyMemberAuth(req);
+      if (!isAdmin && !caller) {
+        return NextResponse.json({ error: 'auth_required' }, { status: 401 });
       }
-      if (!allowed) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+      // The Member this PIN belongs to, resolved BEFORE the write because it
+      // is both what the gate binds to and what the mirror writes — binding
+      // the gate to the row the mirror will touch is what stops the two
+      // reasoning about different people.
+      const membersContainer = getContainer('members');
+      const { resources: members } = await membersContainer.items
+        .query({
+          query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
+          parameters: [{ name: '@name', value: existing.name }],
+        })
+        .fetchAll();
+      const member = members[0] as
+        | (Record<string, unknown> & { id: string; name?: string; pinHash?: string })
+        | undefined;
+
+      if (!isAdmin) {
+        // No member row means there is no account to prove ownership of. Fail
+        // closed rather than answering 200 for a write that reaches nothing.
+        const isSelf =
+          !!member &&
+          !!caller &&
+          (caller.memberId === member.id ||
+            caller.name.toLowerCase() === String(member.name ?? '').toLowerCase());
+        if (!isSelf) {
+          return NextResponse.json({ error: 'auth_required' }, { status: 401 });
+        }
+        const hadPin = typeof member.pinHash === 'string' && member.pinHash.length > 0;
+        if (hadPin) {
+          // A SECOND limiter, keyed on the RESOLVED member. The pre-auth one
+          // above is the rule-4 bypass guard, but its key follows how the
+          // caller ADDRESSED the row (`name` or `id`) — two shapes reaching
+          // one player row would otherwise be two budgets against one
+          // credential. This one caps guesses per account however it is
+          // addressed.
+          if (!checkRateLimit(`players-pin-verify:${member.id}:${pinIp}`, 5, 60 * 60 * 1000)) {
+            return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+          }
+          const currentPin = typeof body.currentPin === 'string' ? body.currentPin : null;
+          if (!currentPin) {
+            // Constant-time penalty so "no currentPin sent" and "wrong
+            // currentPin" cost the same wall-clock (as in members/me).
+            await verifyPin('0000', member.pinHash as string);
+            return NextResponse.json({ error: 'current_pin_required' }, { status: 401 });
+          }
+          if (!(await verifyPin(currentPin, member.pinHash as string))) {
+            return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
+          }
+        }
       }
 
       const updatedDoc: Record<string, unknown> = {
@@ -571,27 +683,20 @@ export async function PATCH(req: NextRequest) {
 
       // Mirror pinHash to the matching Member so unified admin auth can
       // verify against it. Best-effort — a Cosmos hiccup here shouldn't fail
-      // the player's PIN write.
-      try {
-        const membersContainer = getContainer('members');
-        const { resources: members } = await membersContainer.items
-          .query({
-            query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
-            parameters: [{ name: '@name', value: existing.name }],
-          })
-          .fetchAll();
-        if (members.length > 0) {
-          const m = members[0];
-          const memberUpdate: Record<string, unknown> = { ...m };
+      // the player's PIN write. (The lookup itself moved above the gate: the
+      // caller is authorized against exactly this row.)
+      if (member) {
+        try {
+          const memberUpdate: Record<string, unknown> = { ...member };
           if (clearPin) {
             delete memberUpdate.pinHash;
           } else {
             memberUpdate.pinHash = nextPinHash;
           }
           await membersContainer.items.upsert(memberUpdate);
+        } catch {
+          // Member mirror is best-effort; player PIN write already succeeded.
         }
-      } catch {
-        // Member mirror is best-effort; player PIN write already succeeded.
       }
 
       const { deleteToken: _dt, pinHash: _ph, ...safe } = updated as typeof existing;

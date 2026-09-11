@@ -7,6 +7,8 @@ import {
   seedMember,
   setupAdminPin,
   makeRequest,
+  makeAdminRequest,
+  memberCookieValue,
   getStore,
 } from './helpers';
 import { verifyPin } from '@/lib/recoveryHash';
@@ -23,9 +25,13 @@ beforeEach(() => {
 
 describe('POST /api/players { sessionSignup: false } — account-only path', () => {
   it('creates a member with pinHash, no session player', async () => {
-    seedMember('Riley'); // pre-seeded by admin (invite-only flow)
+    const member = seedMember('Riley'); // pre-seeded by admin (invite-only flow)
+    // Claiming an invited name needs proof it is yours — here the cookie this
+    // device was minted at sign-up. See the claim-gate cases below.
     const res = await POST(
-      makeRequest('POST', URL_PATH, { name: 'Riley', pin: '4827', sessionSignup: false }),
+      makeRequest('POST', URL_PATH, { name: 'Riley', pin: '4827', sessionSignup: false }, {
+        Cookie: `member_session=${memberCookieValue('Riley', member.id)}`,
+      }),
     );
     expect(res.status).toBe(201);
     const data = await res.json();
@@ -86,11 +92,36 @@ describe('POST /api/players { sessionSignup: false } — account-only path', () 
     expect(casey?.pinHash).toBe('old-hash');
   });
 
-  it('claims a pre-seeded member without pinHash (admin invited the name; user claims by setting first PIN)', async () => {
+  it('refuses a first-PIN set on a pre-seeded member from a device with no proof', async () => {
+    // The name is on the invite list and holds no pinHash, so both guards above
+    // pass — and that used to be the whole gate, which handed anyone who read
+    // the name off GET /api/members a member_session bound to that person.
+    // Same rule as the session-signup branch: claiming needs proof.
     seedMember('Casey'); // no pinHash
 
     const res = await POST(
       makeRequest('POST', URL_PATH, { name: 'Casey', pin: '5821', sessionSignup: false }),
+    );
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe('account_claim_needs_approval');
+    // No cookie was minted for the caller.
+    expect(res.cookies.get('member_session')).toBeUndefined();
+
+    // And nothing was written: the PIN is still unset.
+    const store = getStore();
+    const members = (store['members'] ?? []) as Array<{ name: string; pinHash?: string }>;
+    const caseys = members.filter((m) => m.name === 'Casey');
+    expect(caseys).toHaveLength(1);
+    expect(caseys[0].pinHash ?? '').toBe('');
+  });
+
+  it('claims a pre-seeded member from that member’s own device (cookie already minted)', async () => {
+    const member = seedMember('Casey'); // no pinHash
+
+    const res = await POST(
+      makeRequest('POST', URL_PATH, { name: 'Casey', pin: '5821', sessionSignup: false }, {
+        Cookie: `member_session=${memberCookieValue('Casey', member.id)}`,
+      }),
     );
     expect(res.status).toBe(201);
 
@@ -104,26 +135,36 @@ describe('POST /api/players { sessionSignup: false } — account-only path', () 
     }
   });
 
+  it('an admin may still claim a pre-seeded member on their behalf', async () => {
+    seedMember('Casey'); // no pinHash
+
+    const res = await POST(
+      makeAdminRequest('POST', URL_PATH, { name: 'Casey', pin: '5821', sessionSignup: false }),
+    );
+    expect(res.status).toBe(201);
+    // An admin acting for someone else must not be handed that person's cookie.
+    expect(res.cookies.get('member_session')).toBeUndefined();
+
+    const store = getStore();
+    const members = (store['members'] ?? []) as Array<{ name: string; pinHash?: string }>;
+    expect(members.find((m) => m.name === 'Casey')?.pinHash).toBeDefined();
+  });
+
   it('rate-limits at 3 attempts/hr per (name, IP)', async () => {
-    // Only the FIRST attempt for a pre-seeded name actually creates a
-    // member; subsequent attempts on that name 409 (account_exists) but
-    // still count toward the rate limiter. Seed the names as
-    // admin-invited members first.
+    // Rule 4 — the limiter runs BEFORE any auth check, so every attempt counts
+    // toward the budget whatever the handler would have answered. These names
+    // are seeded but unclaimed, so all three attempts are refused by the claim
+    // gate (403); what the fourth proves is that the limiter, not the gate,
+    // answers once the budget is spent.
     seedMember('Spammer');
     seedMember('Different');
     const ip = { 'X-Client-IP': '10.99.0.1' };
 
-    const first = await POST(
-      makeRequest('POST', URL_PATH, { name: 'Spammer', pin: '4827', sessionSignup: false }, ip),
-    );
-    expect(first.status).toBe(201);
-
-    // attempts 2 + 3 hit account_exists (counts toward limit)
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 3; i++) {
       const res = await POST(
         makeRequest('POST', URL_PATH, { name: 'Spammer', pin: '4827', sessionSignup: false }, ip),
       );
-      expect(res.status).toBe(409);
+      expect(res.status).toBe(403);
     }
 
     const fourth = await POST(
@@ -131,11 +172,12 @@ describe('POST /api/players { sessionSignup: false } — account-only path', () 
     );
     expect(fourth.status).toBe(429);
 
-    // Different name from same IP gets its own bucket
+    // Different name from same IP gets its own bucket — still refused by the
+    // claim gate, but NOT by the limiter.
     const otherName = await POST(
       makeRequest('POST', URL_PATH, { name: 'Different', pin: '4827', sessionSignup: false }, ip),
     );
-    expect(otherName.status).toBe(201);
+    expect(otherName.status).toBe(403);
   });
 
   it('enforces invite list — non-existent name is rejected (admin must pre-seed)', async () => {
