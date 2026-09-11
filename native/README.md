@@ -79,14 +79,83 @@ debug bundle the first time, which Play rejects. The reliable path keeps the
 keystore out of Gradle entirely and signs the bundle afterwards (this is what
 the old wizard did under the hood):
 
+Bump `versionCode` FIRST. Then, **from the repo root** — Android Studio's
+built-in terminal already starts inside `android/`, so the `cd` is wrong there
+and `cd android` fails with "no such file or directory":
+
 ```
 export JAVA_HOME=~/Library/Java/JavaVirtualMachines/jbr-21.0.11/Contents/Home
-cd android && ./gradlew :app:bundleRelease
-cp app/build/outputs/bundle/release/app-release.aab app/release/bpm-<version>-<code>.aab
-"$JAVA_HOME/bin/jarsigner" -keystore ~/Keys/bpm-upload.jks \
-  -sigalg SHA256withRSA -digestalg SHA-256 app/release/bpm-<version>-<code>.aab upload
-"$JAVA_HOME/bin/jarsigner" -verify app/release/bpm-<version>-<code>.aab   # "jar verified."
+cd android \
+  && ./gradlew :app:bundleRelease \
+  && cp app/build/outputs/bundle/release/app-release.aab app/release/bpm-<version>-<code>.aab \
+  && "$JAVA_HOME/bin/jarsigner" -keystore ~/Keys/bpm-upload.jks \
+       -sigalg SHA256withRSA -digestalg SHA-256 app/release/bpm-<version>-<code>.aab upload \
+  && "$JAVA_HOME/bin/jarsigner" -verify app/release/bpm-<version>-<code>.aab   # "jar verified."
 ```
+
+**Every step is chained with `&&`, and that is load-bearing.** As four separate
+lines a failed `cd` skips only the build: the `cp` still runs, from whatever
+directory you are actually in, and copies the PREVIOUS build under the new
+version's name. On 2026-09-11 that produced a `bpm-1.0.0-3.aab` byte-identical
+to the Sep 3 bundle, carrying the old app icon and `versionCode 2`, which
+jarsigner would have happily signed. A stale artifact with a fresh name is worse
+than a failed build, because nothing downstream can tell.
+
+Sanity-check the bundle rather than trusting its filename. Extract the icon and
+LOOK at it:
+
+```
+unzip -p app/release/bpm-<version>-<code>.aab base/res/mipmap-xxxhdpi-v4/ic_launcher.png > /tmp/inbundle.png \
+  && test -s /tmp/inbundle.png \
+  && open /tmp/inbundle.png
+```
+
+**`test -s` is the load-bearing part**, and piping straight into `shasum` is the
+version that lies. `unzip -p` on a missing bundle writes its complaint to stderr
+and prints NOTHING to stdout, and `shasum` hashes that nothing quite happily:
+`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` is the
+SHA-256 of the empty string, and it is worth learning by sight. The two hashes
+then differ and the check appears to have done its job, when it never opened a
+bundle at all. Same shape as the lying empty state CLAUDE.md forbids in the UI:
+a failure that renders identically to a real negative result.
+
+**Do not `cmp` or hash the extracted PNG against the source file.** AAPT2
+re-encodes every PNG resource as it builds, so the bundled bytes are legitimately
+different — on 2026-09-11 the xxxhdpi launcher came out 16,755 bytes against the
+source's 17,199, same 192x192 RGBA and pixel-for-pixel identical. A byte
+comparison reports "differ: char 36, line 3" on a perfectly correct bundle,
+which is a false alarm on the one check that is supposed to settle the question.
+Compare pixels, or just look at the image.
+
+To confirm the version that actually shipped in the bundle rather than the one
+in `build.gradle`:
+
+```
+unzip -p app/release/bpm-<version>-<code>.aab base/manifest/AndroidManifest.xml \
+  | python3 -c 'import sys; d=sys.stdin.buffer.read(); i=d.find(b"versionCode"); j=d.find(b"\x1a",i); print(d[j+2:j+2+d[j+1]].decode())'
+```
+
+**Piping that manifest through `strings` does NOT work**, though it looks like it
+does. Inside an `.aab` the manifest is AAPT2's protobuf `XmlNode`, not binary
+AXML, and the version code is a one-character value (`\x1a\x01` then `3`) sitting
+among binary bytes. `strings` needs a run of four printable characters before it
+prints anything, so it emits the attribute NAMES — `versionCode`, `versionName`
+— and the unchanged `1.0.0`, while silently dropping the only digit you are
+looking for. Output is then byte-identical for a stale `versionCode 2` bundle
+and a correct build 3, which is the same false-confidence shape as the
+`shasum`-of-nothing trap above. Caught by the review bot on #385; the snippet
+above was checked against `bpm-1.0.0-2.aab` and `bpm-1.0.0-3.aab` and prints 2
+and 3 respectively.
+
+`bundletool dump manifest --bundle=… --xpath=/manifest/@android:versionCode` is
+the tidier answer, but bundletool is not installed on this Mac and `aapt2 dump`
+cannot read an `.aab` at all (`could not identify format of APK`), so the above
+is what actually runs here today.
+
+**Type the keystore passphrase only at jarsigner's own prompt.** If the command
+already failed, that prompt is gone and the shell reads the passphrase as a
+command: it is then echoed to the screen and written to `~/.zsh_history`. That
+happened on 2026-09-11.
 
 The upload keystore is `~/Keys/bpm-upload.jks` (alias `upload`, created
 2026-09-03 with `keytool -genkeypair -keyalg RSA -keysize 2048 -validity 10000`);
