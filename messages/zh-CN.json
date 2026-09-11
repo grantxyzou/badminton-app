@@ -999,7 +999,9 @@
       "trendTitle": "你的水平变化",
       "trendOnePoint": "目前只有一次自评 — 再评一次，这里就会连成一条线。",
       "trendAria": "水平变化，共 {count} 次自评，从 {first} 到 {last}。",
-      "trendError": "水平记录加载失败 — 刷新后重试。"
+      "trendError": "水平记录加载失败 — 刷新后重试。",
+      "trendAriaOne": "水平变化，仅一次自评，日期 {date}。",
+      "trendEmpty": "还没有可以绘制的自评记录。"
     }
   },
   "players": {

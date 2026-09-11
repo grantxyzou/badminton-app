@@ -999,7 +999,9 @@
       "trendTitle": "Your level over time",
       "trendOnePoint": "One check-in so far — check in again and this becomes a line.",
       "trendAria": "Level over time, {count} check-ins, from {first} to {last}.",
-      "trendError": "Couldn't load your level history — refresh to retry."
+      "trendError": "Couldn't load your level history — refresh to retry.",
+      "trendAriaOne": "Level over time, one check-in, on {date}.",
+      "trendEmpty": "No check-ins to chart yet."
     }
   },
   "players": {
