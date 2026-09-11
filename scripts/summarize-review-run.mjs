@@ -30,7 +30,7 @@
  *
  * Usage:  node scripts/summarize-review-run.mjs <execution-file> [workflow-file]
  */
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, appendFileSync } from 'node:fs';
 
 const DEFAULT_WORKFLOW = '.github/workflows/claude-code-review.yml';
 
@@ -104,6 +104,45 @@ export function errorResults(messages) {
   return [...new Set(out)];
 }
 
+/**
+ * Does this tool-error body read as a PERMISSION denial rather than an ordinary
+ * failure? A missing file and a refused tool are both `is_error`, and counting
+ * them together would put a number in the header that means nothing.
+ */
+const DENIAL = /requested permissions|permission (?:to use|denied)|has not been granted|not allowed|unable to run this command/i;
+
+/**
+ * How many tool calls were REFUSED, counted from the transcript.
+ *
+ * Not deduped, unlike errorResults() — two identical denials are two denials.
+ *
+ * This exists because the header printed `denials ?` on every real run while the
+ * action's own stdout for the same run carried `permission_denials_count: 14`.
+ * num_turns, total_cost_usd and subtype all resolve from that same result
+ * message, so the field is genuinely absent from the execution file: the
+ * action's summary and the SDK transcript are different serializations, and this
+ * script was reading the one that has no such key. Deriving it from the messages
+ * cannot go stale that way.
+ */
+export function denialCount(messages) {
+  let n = 0;
+  for (const m of messages) {
+    const content = m?.message?.content ?? m?.content;
+    if (!Array.isArray(content)) continue;
+    for (const block of content) {
+      if (block?.type !== 'tool_result' || !block.is_error) continue;
+      const body =
+        typeof block.content === 'string'
+          ? block.content
+          : Array.isArray(block.content)
+            ? block.content.map((c) => c?.text ?? '').join(' ')
+            : '';
+      if (DENIAL.test(body)) n += 1;
+    }
+  }
+  return n;
+}
+
 /** The `--allowedTools "..."` string from the workflow, as a list of patterns. */
 export function allowedPatterns(workflowSrc) {
   const m = /--allowedTools\s+"([^"]+)"/.exec(workflowSrc);
@@ -134,11 +173,59 @@ export function isCovered(label, patterns) {
   });
 }
 
-export function summarize(messages, patterns) {
+/** The tool the action starts an MCP server for, and the only one that posts. */
+const POSTING_TOOL = 'mcp__github_inline_comment__create_inline_comment';
+
+/**
+ * One line saying which of the look-alike outcomes this run actually was.
+ *
+ * A green tick plus "No buffered inline comments" has meant all five of this
+ * job's silent breakages AND a correct, clean review. Nobody can tell those
+ * apart from the PR, so nobody looks, which is how #357 merged three hours after
+ * the bot commented on it. `reviewableFiles` is the count of files in the PR
+ * carrying a text diff — null when the caller did not supply it.
+ */
+export function verdict({ attempted, uncovered, reviewableFiles = null }) {
+  if (attempted.size === 0) {
+    return {
+      label: 'COULD NOT REVIEW',
+      detail: 'it never read the diff; the agent produced no tool calls at all.',
+    };
+  }
+  if (attempted.has(POSTING_TOOL) && uncovered.includes(POSTING_TOOL)) {
+    return {
+      label: 'COULD NOT REPORT',
+      detail: 'it tried to post and the allowlist does not cover the posting tool.',
+    };
+  }
+  if (reviewableFiles === 0) {
+    return {
+      label: 'NOTHING TO REVIEW',
+      detail: 'no file in this PR carries a text diff, so silence here is correct.',
+    };
+  }
+  if (attempted.has(POSTING_TOOL)) {
+    const n = attempted.get(POSTING_TOOL);
+    return { label: 'REVIEWED AND REPORTED', detail: `${n} inline comment(s) posted.` };
+  }
+  return {
+    label: 'REVIEWED, NOTHING REPORTED',
+    detail: 'the agent read the diff and raised nothing above the plugin\'s confidence bar.',
+  };
+}
+
+export function summarize(messages, patterns, reviewableFiles = null) {
   const result = messages.find((m) => m?.type === 'result') ?? {};
   const attempted = attemptedTools(messages);
   const uncovered = [...attempted.keys()].filter((t) => !isCovered(t, patterns));
-  return { result, attempted, errors: errorResults(messages), uncovered };
+  return {
+    result,
+    attempted,
+    errors: errorResults(messages),
+    uncovered,
+    denials: denialCount(messages),
+    verdict: verdict({ attempted, uncovered, reviewableFiles }),
+  };
 }
 
 function main() {
@@ -153,12 +240,26 @@ function main() {
 
   const messages = parseTranscript(readFileSync(file, 'utf8'));
   const patterns = existsSync(workflow) ? allowedPatterns(readFileSync(workflow, 'utf8')) : null;
-  const { result, attempted, errors, uncovered } = summarize(messages, patterns);
+  /* Set by the workflow from `gh api .../pulls/N/files`. Absent is UNKNOWN, not
+     zero — the verdict must not claim "nothing to review" because a lookup
+     failed. */
+  const raw = process.env.REVIEWABLE_FILE_COUNT;
+  const reviewableFiles = raw !== undefined && raw !== '' && Number.isFinite(Number(raw)) ? Number(raw) : null;
+
+  const { result, attempted, errors, uncovered, denials, verdict: v } = summarize(messages, patterns, reviewableFiles);
+
+  /* The count is DERIVED (see denialCount). The reported field is shown only
+     when it is present AND disagrees, because a mismatch between the action's
+     summary and its own transcript is itself worth seeing. */
+  const reported = result.permission_denials_count;
+  const denialText =
+    typeof reported === 'number' && reported !== denials ? `denials ${denials} (${reported} reported)` : `denials ${denials}`;
 
   console.log('── review run ──────────────────────────────────────────');
+  console.log(`  ${v.label} — ${v.detail}`);
   console.log(
     `  turns ${result.num_turns ?? '?'} · $${(result.total_cost_usd ?? 0).toFixed(2)} · ` +
-      `denials ${result.permission_denials_count ?? '?'} · ${result.subtype ?? '?'}`,
+      `${denialText} · ${result.subtype ?? '?'}`,
   );
 
   console.log('\n  tools attempted:');
@@ -185,6 +286,22 @@ function main() {
     console.log('\n  every attempted tool is covered by the allowlist.');
   }
   console.log('────────────────────────────────────────────────────────');
+
+  /* The run page is where a green tick is actually read. A verdict that lives
+     only in the log is a verdict nobody sees. Best-effort: a diagnostic must
+     never be the thing that fails the job. */
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    try {
+      appendFileSync(
+        process.env.GITHUB_STEP_SUMMARY,
+        `### Review bot: ${v.label}\n\n${v.detail}\n\n` +
+          `\`turns ${result.num_turns ?? '?'} · $${(result.total_cost_usd ?? 0).toFixed(2)} · ${denialText}\`\n` +
+          (uncovered.length ? `\nAttempted but not on the allowlist: ${uncovered.join(', ')}\n` : ''),
+      );
+    } catch (err) {
+      console.log(`  (could not write the step summary: ${err.message})`);
+    }
+  }
   process.exit(0);
 }
 

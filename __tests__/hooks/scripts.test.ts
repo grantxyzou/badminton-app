@@ -17,6 +17,7 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
+  readFileSync,
   mkdtempSync,
   rmSync,
   unlinkSync,
@@ -668,10 +669,13 @@ describe('summarize-review-run.mjs (post-review diagnostic)', () => {
     return { script: join(dir, 'scripts/summarize-review-run.mjs'), dir };
   }
 
-  function runIt(entries: unknown[], workflow = WORKFLOW) {
+  function runIt(entries: unknown[], workflow = WORKFLOW, env: Record<string, string> = {}) {
     const { script, dir } = project(entries, workflow);
-    const r = spawnSync('node', [script, join(dir, 'exec.json'), join(dir, 'wf.yml')], { encoding: 'utf8' });
-    return { status: r.status, stdout: r.stdout };
+    const r = spawnSync('node', [script, join(dir, 'exec.json'), join(dir, 'wf.yml')], {
+      encoding: 'utf8',
+      env: { ...process.env, ...env },
+    });
+    return { status: r.status, stdout: r.stdout, dir };
   }
 
   it('names a tool that was attempted but is not on the allowlist', () => {
@@ -721,6 +725,86 @@ describe('summarize-review-run.mjs (post-review diagnostic)', () => {
     const r = spawnSync('node', [join(dir, 'scripts/summarize-review-run.mjs'), join(dir, 'exec.json'), join(dir, 'wf.yml')], { encoding: 'utf8' });
     expect(r.stdout).toMatch(/ReportFindings/);
     expect(r.stdout).toMatch(/NOT ALLOWED/);
+  });
+
+  /**
+   * The header has printed `denials ?` on EVERY real run while the action's own
+   * stdout for the same run carried `permission_denials_count: 14`. num_turns,
+   * total_cost_usd and subtype all resolve from that same object, so the result
+   * message in the execution file genuinely lacks the key — the action's summary
+   * and the SDK transcript are different serializations. A diagnostic whose one
+   * number is always `?` is not a diagnostic.
+   */
+  it('reports a denial count even when the result message omits the field', () => {
+    const noCount = { type: 'result', subtype: 'success', num_turns: 7, total_cost_usd: 0.39 };
+    const r = runIt([
+      use('Read'),
+      errorResult('Claude requested permissions to use Agent, but you have not granted it yet'),
+      errorResult('Claude requested permissions to use Agent, but you have not granted it yet'),
+      noCount,
+    ]);
+    expect(r.stdout).not.toMatch(/denials \?/);
+    expect(r.stdout).toMatch(/denials 2/);
+  });
+
+  it('does not count an ordinary tool error as a denial', () => {
+    const noCount = { type: 'result', subtype: 'success', num_turns: 7, total_cost_usd: 0.39 };
+    const r = runIt([use('Read'), errorResult('File does not exist: /tmp/nope'), noCount]);
+    expect(r.stdout).toMatch(/denials 0/);
+  });
+
+  /**
+   * The five silent breakages all looked identical from the PR: a green tick and
+   * no comments. These three verdicts are the difference between them, and they
+   * are the whole reason this file exists.
+   */
+  it('says COULD NOT REVIEW when the agent made no tool calls at all', () => {
+    const r = runIt([result]);
+    expect(r.stdout).toMatch(/COULD NOT REVIEW/);
+    expect(r.stdout).not.toMatch(/REVIEWED, NOTHING REPORTED/);
+  });
+
+  it('says NOTHING TO REVIEW when no file in the PR has a text diff', () => {
+    // PR #379 was 68 binary PNGs and one script. A zero there is correct, and
+    // used to be indistinguishable from the bot being broken again.
+    const r = runIt([use('Bash', { command: 'gh pr diff 379' }), result], WORKFLOW, {
+      REVIEWABLE_FILE_COUNT: '0',
+    });
+    expect(r.stdout).toMatch(/NOTHING TO REVIEW/);
+  });
+
+  it('distinguishes a review that reported from one that stayed quiet', () => {
+    const quiet = runIt([use('Bash', { command: 'gh pr diff 1' }), result]);
+    expect(quiet.stdout).toMatch(/REVIEWED, NOTHING REPORTED/);
+
+    const allowsPosting =
+      'jobs:\n  x:\n    steps:\n      - run: |\n          --allowedTools "Read,Grep,mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*)"\n';
+    const posted = runIt(
+      [use('Bash', { command: 'gh pr diff 1' }), use('mcp__github_inline_comment__create_inline_comment'), result],
+      allowsPosting,
+    );
+    expect(posted.stdout).toMatch(/REVIEWED AND REPORTED/);
+    expect(posted.stdout).not.toMatch(/NOTHING REPORTED/);
+  });
+
+  it('says COULD NOT REPORT when it tried to post and the allowlist does not cover it', () => {
+    // 35 consecutive runs looked exactly like this and nobody could see it.
+    const r = runIt([
+      use('Bash', { command: 'gh pr diff 1' }),
+      use('mcp__github_inline_comment__create_inline_comment'),
+      result,
+    ]);
+    expect(r.stdout).toMatch(/COULD NOT REPORT/);
+  });
+
+  it('writes the verdict to the GitHub step summary when one is configured', () => {
+    // The run page is where a green tick is read. A verdict only in the log is a
+    // verdict nobody sees -- which is how #357 merged three hours after the bot
+    // commented on it.
+    const summary = join(tmp('revrun-sum-'), 'summary.md');
+    const r = runIt([use('Read'), result], WORKFLOW, { GITHUB_STEP_SUMMARY: summary });
+    expect(r.status).toBe(0);
+    expect(readFileSync(summary, 'utf8')).toMatch(/REVIEWED, NOTHING REPORTED/);
   });
 
   it('never fails the job', () => {
