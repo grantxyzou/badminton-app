@@ -259,7 +259,16 @@ export function groupScope(groupId: string): GroupScope {
       if (row && typeof row === 'object' && matchesGroup(row as { groupId?: unknown }, groupId, tolerate)) {
         out.push(row as T);
       } else {
-        console.error(`[group-leak] ${container}: a row outside group ${groupId} reached the accessor`, {
+        // The message is a CONSTANT and every value rides in the payload.
+        // `console.error(str, obj)` treats `str` as a FORMAT string, so
+        // interpolating `groupId` — which since Phase 3 can arrive in a request
+        // body — let a caller inject `%s`/`%o` or a newline into it. Garbled
+        // output is the harmless half; the real one is that `[group-leak]` is
+        // the sentinel Phase 5's flag flip is gated on, and forged lines in it
+        // would poison that gate. Flagged by CodeQL as js/tainted-format-string.
+        console.error('[group-leak] a row outside its group reached the accessor', {
+          container,
+          groupId,
           id: (row as { id?: unknown } | null)?.id,
         });
       }

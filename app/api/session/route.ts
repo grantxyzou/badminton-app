@@ -4,7 +4,8 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { resolveBirdUsages } from '@/lib/birdWrite';
-import { sendPushToAll } from '@/lib/push';
+import { sendPushToMembers } from '@/lib/push';
+import { rosterMemberIds } from '@/lib/roster';
 import { buildSignupOpenPayload } from '@/lib/pushMessages';
 import type { BirdUsage, ETransferRecipient } from '@/lib/types';
 
@@ -156,7 +157,24 @@ export async function PUT(req: NextRequest) {
     // admin's toggle (same posture as app/api/report/route.ts).
     if (shouldNotify) {
       try {
-        await sendPushToAll(buildSignupOpenPayload(sessionData as Parameters<typeof buildSignupOpenPayload>[0]));
+        // TO THE ROSTER, NOT TO EVERYONE. `pushSubscriptions` is PERSON-scoped —
+        // one doc per device, and a person may be in two clubs — so no `groupId`
+        // on the row could separate these, and `sendPushToAll` would tell every
+        // club in the deployment that THIS one opened sign-ups. Narrowing to
+        // `rosterMemberIds` is the same move the Phase 2 club aggregates made
+        // over the other PERSON containers.
+        //
+        // Flag off this is NEARLY a no-op but not quite: the recipient list
+        // becomes every ACTIVE member, where `sendPushToAll` reached every
+        // subscription doc regardless. So a soft-deleted member whose phone is
+        // still subscribed stops being notified. That is the intended
+        // tightening, and it is written down here because no test can show it —
+        // the mock store ignores the `active = true` clause entirely.
+        const recipients = await rosterMemberIds(scope.groupId);
+        await sendPushToMembers(
+          [...recipients],
+          buildSignupOpenPayload(sessionData as Parameters<typeof buildSignupOpenPayload>[0]),
+        );
       } catch (err) {
         console.error('[session] signup-open push failed (session still saved):', err);
       }
