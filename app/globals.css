@@ -3208,6 +3208,65 @@ button.sheet-row:hover { background: var(--glass-soft-bg); }
 }
 
 /* Primary — the "do the thing" CTA */
+/* ── Onboarding doors ──────────────────────────────────────────────────────
+   The three first-run destinations. ONE shape for all three: same radius,
+   same padding, same two-line anatomy — so the eye reads them as three
+   choices rather than a button and two cards.
+
+   This exists because composing the primary door out of `.cc-btn-lg` was
+   wrong twice over. That class forces `justify-content: center`, which on a
+   grid centres the whole text block and left a floating gap beside
+   left-aligned copy; and it carries its own radius and padding, so the
+   primary door stood a different height from its neighbours.
+
+   Accent is currency (the Home hierarchy rule): the primary is marked by
+   tint, border and text colour ALONE, never by being a different object. */
+.onboarding-door {
+  display: grid;
+  gap: var(--space-hair);
+  width: 100%;
+  text-align: left;
+  padding: var(--space-5);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  cursor: pointer;
+  transition: border-color 120ms var(--ease-glass), background 120ms var(--ease-glass);
+}
+
+.onboarding-door__title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.onboarding-door__hint {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.onboarding-door--primary {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: rgba(34, 197, 94, 0.45);
+}
+
+.onboarding-door--primary .onboarding-door__title {
+  color: #86efac;
+  font-weight: 700;
+}
+
+.onboarding-door--primary .onboarding-door__hint {
+  color: rgba(134, 239, 172, 0.85);
+}
+
+[data-theme='light'] .onboarding-door--primary .onboarding-door__title {
+  color: var(--accent-dark);
+}
+
+[data-theme='light'] .onboarding-door--primary .onboarding-door__hint {
+  color: var(--accent-dark);
+}
+
 .cc-btn-primary {
   background: rgba(34, 197, 94, 0.18);
   border-color: rgba(34, 197, 94, 0.45);
