@@ -528,6 +528,15 @@ export async function reassignOwnership(groupId: string, fromMemberId: string): 
   // Both writes go through `mutateGroup`, which re-reads: the roster listing
   // above sits between this function's own `readGroup` and here, which is the
   // widest window any writer of this doc holds open.
+  //
+  // The `ownerMemberId !== fromMemberId` guard above still ran against the
+  // EARLIER read, so an ownership change inside that window is not caught — the
+  // mutator would write the heir over an owner who is no longer `fromMemberId`.
+  // Unchanged from before the etag went in (the stale-read write had the same
+  // hole) and left alone deliberately: the only caller is `purgeMember`, acting
+  // on one person's own deletion, and tightening it means deciding what a
+  // mid-flight handover should do to a purge — a Phase 3 lifecycle question,
+  // not a side effect of conditioning the write.
   if (!heir) {
     await mutateGroup(groupId, (g) => ({ ...g, closedAt: new Date().toISOString() }));
     return { outcome: 'closed' };
