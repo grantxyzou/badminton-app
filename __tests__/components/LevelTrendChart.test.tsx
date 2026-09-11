@@ -71,14 +71,23 @@ describe('LevelTrendChart', () => {
     expect(screen.getByRole('alert')).toBeTruthy();
   });
 
-  it('renders nothing while loading, and nothing with no history at all', () => {
-    const { container: loading } = renderChart(stub([], 'loading'));
-    expect(loading.querySelector('svg')).toBeNull();
-    cleanup();
-    const { container: empty } = renderChart(stub([]));
-    // The card's own empty branch owns this state and says something more
-    // useful than an empty chart frame would.
-    expect(empty.querySelector('svg')).toBeNull();
+  it('says loaded-empty in the EMPTY voice, never the error voice', () => {
+    renderChart(stub([]));
+    expect(screen.getByText(/No check-ins to chart yet/)).toBeTruthy();
+    // Same reserved box as the error state, deliberately DIFFERENT voice: a
+    // card that confidently reports nothing when the backend is broken is the
+    // failure the house rule names.
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('keeps the same frame in every state so the card never changes height', () => {
+    // Same title, same body box, whatever came back — otherwise the bars and
+    // legends below jump on every read.
+    for (const s of [stub([]), stub([], 'error'), stub([], 'loading'), stub(TWO)]) {
+      const { container } = renderChart(s);
+      expect(container.textContent).toContain('Your level over time');
+      cleanup();
+    }
   });
 
   it('labels the chart for a screen reader — an inline SVG is otherwise invisible', () => {

@@ -41,6 +41,7 @@ describe('design preview route — flag + nav isolation', () => {
       '/design/backgrounds',
       '/design/perf',
       '/design/stats',
+      '/design/level-trend',
     ]);
   });
 

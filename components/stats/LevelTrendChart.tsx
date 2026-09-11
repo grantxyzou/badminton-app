@@ -2,6 +2,7 @@
 
 import { useTranslations, useFormatter } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
+import EmptyState from '@/components/primitives/EmptyState';
 import type { UseCheckIn, CheckInSnapshot } from './useCheckIn';
 
 /**
@@ -39,6 +40,18 @@ const Y_MAX = 5;
 
 const VIEW_W = 300;
 const VIEW_H = 96;
+/**
+ * The height every state reserves: the plot, its gap, and the one-line date
+ * axis under it. NOT just the plot — measured in the browser, reserving only
+ * `VIEW_H` left the empty and failed states 16px shorter than a drawn one,
+ * because the axis row exists in one and not the others. The point of the
+ * reservation is that the card is the same size whatever came back, so the
+ * bars and legends below it do not jump on each read; getting it 16px wrong
+ * just moves the jump somewhere less obvious.
+ */
+const AXIS_ROW_H = 16;
+const BODY_GAP = 6; // --space-2
+const BODY_H = VIEW_H + BODY_GAP + AXIS_ROW_H;
 const PAD_X = 6;
 const PAD_Y = 8;
 
@@ -80,6 +93,35 @@ function layout(rows: Array<{ at: number; overall: number }>): Point[] {
   });
 }
 
+/**
+ * Every state wears the same frame: the title, then a body of exactly one plot
+ * height. The chart must not change the card's size depending on what came
+ * back, or the bars and legends below it jump on every read.
+ *
+ * What the frame does NOT do is make the states look alike. Loaded-empty and
+ * load-failed stay visually distinct — `EmptyState`'s muted body copy against
+ * `ErrorState`'s `role="alert"` — because a card that confidently reports
+ * nothing when the backend is broken is the exact failure the house rule names.
+ * Same box, different message.
+ */
+function Frame({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+      <p className="section-label-muted" style={{ margin: 0 }}>{title}</p>
+      <div
+        style={{
+          minHeight: BODY_H,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function LevelTrendChart({ checkIn }: { checkIn: UseCheckIn }) {
   const t = useTranslations('stats.assess');
   const format = useFormatter();
@@ -87,31 +129,61 @@ export default function LevelTrendChart({ checkIn }: { checkIn: UseCheckIn }) {
   // A failed read is NOT an empty history. Saying "one check-in so far" to a
   // member with years of them, because their network blipped, is exactly the
   // failure the tri-state exists to prevent.
-  if (checkIn.status === 'error') return <ErrorState message={t('trendError')} />;
-  if (checkIn.status === 'loading') return null;
+  if (checkIn.status === 'error') {
+    return <Frame title={t('trendTitle')}><ErrorState message={t('trendError')} /></Frame>;
+  }
+  // Loading reserves the space silently — a spinner for a 96px strip is noise,
+  // and the height is already held.
+  if (checkIn.status === 'loading') return <Frame title={t('trendTitle')}>{null}</Frame>;
 
   const rows = plottable(checkIn.snapshots);
-  // Nothing yet: the card's own empty branch already owns this state and says
-  // something more useful than an empty chart frame would.
-  if (rows.length === 0) return null;
+  if (rows.length === 0) {
+    return (
+      <Frame title={t('trendTitle')}>
+        <EmptyState>{t('trendEmpty')}</EmptyState>
+      </Frame>
+    );
+  }
 
   const pts = layout(rows);
-  const dateOf = (ms: number) => format.dateTime(new Date(ms), { month: 'short', day: 'numeric' });
+
+  /**
+   * The YEAR appears as soon as the history crosses one.
+   *
+   * Month-and-day alone renders a year of check-ins as "Sep 13 … Aug 31", which
+   * reads as running BACKWARDS — a reader has no way to tell those are twelve
+   * months apart rather than two weeks the wrong way round. Found by looking at
+   * it: every structural assertion passed, because the polyline had the right
+   * points and the label was still a string. Only a person reading it can see
+   * that it says the wrong thing.
+   *
+   * Kept off the short ranges deliberately — "Apr 9, 2026" on both ends of a
+   * four-month span is noise that tells the reader nothing they did not have.
+   */
+  const first = new Date(pts[0].at);
+  const last = new Date(pts[pts.length - 1].at);
+  const spansYears = first.getFullYear() !== last.getFullYear();
+  const dateOf = (ms: number) =>
+    format.dateTime(new Date(ms), spansYears
+      ? { year: 'numeric', month: 'short', day: 'numeric' }
+      : { month: 'short', day: 'numeric' });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-      <p className="section-label-muted" style={{ margin: 0 }}>{t('trendTitle')}</p>
-
+    <Frame title={t('trendTitle')}>
       <svg
         viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
         preserveAspectRatio="none"
         style={{ width: '100%', height: 96, display: 'block', overflow: 'visible' }}
         role="img"
-        aria-label={t('trendAria', {
-          count: pts.length,
-          first: dateOf(pts[0].at),
-          last: dateOf(pts[pts.length - 1].at),
-        })}
+        /* One point has no "from … to …" to describe, and the plural form of
+           the count matters to anyone reading by ear. */
+        aria-label={pts.length === 1
+          ? t('trendAriaOne', { date: dateOf(pts[0].at) })
+          : t('trendAria', {
+              count: pts.length,
+              first: dateOf(pts[0].at),
+              last: dateOf(pts[pts.length - 1].at),
+            })}
       >
         {/* Midline at level 3, so the line is read against something. Not a
             full grid: four more rules would out-weigh the one mark that moves. */}
@@ -165,6 +237,6 @@ export default function LevelTrendChart({ checkIn }: { checkIn: UseCheckIn }) {
           <span>{dateOf(pts[pts.length - 1].at)}</span>
         </div>
       )}
-    </div>
+    </Frame>
   );
 }
