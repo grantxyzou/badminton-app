@@ -162,8 +162,14 @@ export async function PUT(req: NextRequest) {
         // on the row could separate these, and `sendPushToAll` would tell every
         // club in the deployment that THIS one opened sign-ups. Narrowing to
         // `rosterMemberIds` is the same move the Phase 2 club aggregates made
-        // over the other PERSON containers, and it is a no-op with the flag off
-        // (every active Member is BPM's roster).
+        // over the other PERSON containers.
+        //
+        // Flag off this is NEARLY a no-op but not quite: the recipient list
+        // becomes every ACTIVE member, where `sendPushToAll` reached every
+        // subscription doc regardless. So a soft-deleted member whose phone is
+        // still subscribed stops being notified. That is the intended
+        // tightening, and it is written down here because no test can show it —
+        // the mock store ignores the `active = true` clause entirely.
         const recipients = await rosterMemberIds(scope.groupId);
         await sendPushToMembers(
           [...recipients],

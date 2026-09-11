@@ -140,60 +140,150 @@ function isNotFound(err: unknown): boolean {
 }
 
 /**
- * Mint a fresh link + code for a group and RETIRE the previous pair.
+ * THE POINTER IS THE AUTHORITY, NOT THE DELETE.
  *
- * Ordering is the revocation guarantee: the new docs are created first, the
- * group's pointers are moved, and only then are the old docs deleted. A
- * failure part-way leaves a group reachable by two pairs rather than none —
- * the safe direction, because the admin can regenerate again, whereas a group
- * with no working invite cannot be joined at all.
+ * The first cut made retirement mean "the old doc was deleted", which put the
+ * whole revocation story on a write that can fail. One 429 on that delete and
+ * the link an admin had just revoked stayed live for good, with nothing able
+ * to notice: a later regenerate reads the NEW pointers and so can never reach
+ * the doc it orphaned.
+ *
+ * So `resolveInvite` requires the doc it found to be the one the group's
+ * pointer currently names. A secret is live exactly while the group points at
+ * it, which is a comparison on READ and therefore cannot fail open. Deleting
+ * the old docs is now housekeeping — nice, not load-bearing.
+ */
+function pointerFor(group: Group, kind: 'invite' | 'code'): string | undefined {
+  return kind === 'invite' ? group.inviteId : group.inviteCodeId;
+}
+
+function isConflict(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && (err as { code?: number }).code === 409;
+}
+
+/**
+ * Create a doc at an id nothing else holds, re-rolling the secret on a 409.
+ *
+ * `items.create`, never `upsert`. The 8-character code lives in a 30^8 space,
+ * so a collision is vanishingly unlikely — but an upsert would resolve one by
+ * silently overwriting the other club's doc, and anyone typing THEIR code
+ * would then be admitted to THIS club. That is a cross-group admission, and
+ * "unlikely" is not the standard for one. The same `items.create` refusal is
+ * what makes roster names unique in `lib/groups.ts`.
+ */
+async function createUnique(make: () => InviteDoc): Promise<InviteDoc> {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const doc = make();
+    try {
+      await getContainer('groups').items.create(doc);
+      return doc;
+    } catch (err) {
+      if (!isConflict(err)) throw err;
+    }
+  }
+  throw new Error('invite_mint_collision');
+}
+
+function tokenDocFor(groupId: string, createdBy: string, createdAt: string): InviteDoc {
+  const token = newToken();
+  return { id: inviteDocId(token), kind: 'invite', groupId, secret: token, createdAt, createdBy };
+}
+
+function codeDocFor(groupId: string, createdBy: string, createdAt: string): InviteDoc {
+  const code = newCode();
+  return { id: codeDocId(code), kind: 'code', groupId, secret: code, createdAt, createdBy };
+}
+
+/**
+ * Move a group's invite pointers under an etag, re-reading on a lost race.
+ *
+ * `IfMatch` because this is a read-modify-write on a doc two admins can touch
+ * at once, and the other writer may be `updateGroupSettings` rather than
+ * another regenerate — a last-write-wins here reverts a club's settings save.
+ * The backfill conditions its writes the same way for the same reason.
+ */
+async function movePointers(groupId: string, inviteId: string, inviteCodeId: string): Promise<void> {
+  const container = getContainer('groups');
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const { resource } = await container.item(groupId, groupId).read();
+    const current = resource as (Group & { _etag?: string }) | undefined;
+    if (!current) return;
+    const next = { ...current, inviteId, inviteCodeId };
+    try {
+      await container
+        .item(groupId, groupId)
+        .replace(next, current._etag ? { accessCondition: { type: 'IfMatch', condition: current._etag } } : undefined);
+      return;
+    } catch (err) {
+      if ((err as { code?: number })?.code !== 412) throw err;
+    }
+  }
+  throw new Error('invite_pointer_contended');
+}
+
+/**
+ * Regenerate: a fresh pair, and the old one stops working.
+ *
+ * The new docs are created first and the pointers moved second, so a failure
+ * part-way leaves the OLD pair live rather than none — the safe direction,
+ * because an admin can regenerate again while a club with no working invite
+ * cannot be joined at all. The old docs are deleted last and best-effort;
+ * `resolveInvite`'s pointer check is what actually retires them.
  */
 export async function mintInvite(groupId: string, createdBy: string): Promise<GroupInvite | null> {
   const group = await readGroup(groupId);
   if (!group || group.closedAt) return null;
 
   const createdAt = new Date().toISOString();
-  const token = newToken();
-  const code = newCode();
-  const tokenDoc: InviteDoc = { id: inviteDocId(token), kind: 'invite', groupId, secret: token, createdAt, createdBy };
-  const codeDoc: InviteDoc = { id: codeDocId(code), kind: 'code', groupId, secret: code, createdAt, createdBy };
-
-  const container = getContainer('groups');
-  await container.items.upsert(tokenDoc);
-  await container.items.upsert(codeDoc);
+  const tokenDoc = await createUnique(() => tokenDocFor(groupId, createdBy, createdAt));
+  const codeDoc = await createUnique(() => codeDocFor(groupId, createdBy, createdAt));
 
   const previous = { token: group.inviteId, code: group.inviteCodeId };
-  const next: Group = { ...group, inviteId: tokenDoc.id, inviteCodeId: codeDoc.id };
-  await container.item(groupId, groupId).replace(next);
+  await movePointers(groupId, tokenDoc.id, codeDoc.id);
 
   if (previous.token && previous.token !== tokenDoc.id) await deleteDoc(previous.token);
   if (previous.code && previous.code !== codeDoc.id) await deleteDoc(previous.code);
 
-  return { token, code, createdAt };
+  return { token: tokenDoc.secret, code: codeDoc.secret, createdAt };
 }
 
 /**
- * The admin's view of the current pair. `null` when the group has never minted
- * one — a group created before this shipped, or one whose docs were deleted
- * out from under the pointers. The caller mints rather than treating it as an
- * error.
+ * The pair to show the admin, MINTING ONLY WHAT IS MISSING.
+ *
+ * Not `readInvite() ?? mintInvite()`, which is what this was. That treated a
+ * half-present pair as no pair and replaced BOTH — so a club that had lost one
+ * of its two docs would have the link it posted in its group chat in January
+ * destroyed by nothing more than an admin opening the invite card. A read verb
+ * must not revoke a working credential, and a repair should repair rather than
+ * start over.
  */
-export async function readInvite(groupId: string): Promise<GroupInvite | null> {
+export async function ensureInvite(groupId: string, createdBy: string): Promise<GroupInvite | null> {
   const group = await readGroup(groupId);
-  if (!group?.inviteId || !group.inviteCodeId) return null;
-  const [tokenDoc, codeDoc] = await Promise.all([readInviteDoc(group.inviteId), readInviteDoc(group.inviteCodeId)]);
-  if (!tokenDoc || !codeDoc) return null;
-  return { token: tokenDoc.secret, code: codeDoc.secret, createdAt: tokenDoc.createdAt };
+  if (!group || group.closedAt) return null;
+
+  const [tokenDoc, codeDoc] = await Promise.all([
+    group.inviteId ? readInviteDoc(group.inviteId) : Promise.resolve(undefined),
+    group.inviteCodeId ? readInviteDoc(group.inviteCodeId) : Promise.resolve(undefined),
+  ]);
+  if (tokenDoc && codeDoc) {
+    return { token: tokenDoc.secret, code: codeDoc.secret, createdAt: tokenDoc.createdAt };
+  }
+
+  const createdAt = new Date().toISOString();
+  const token = tokenDoc ?? (await createUnique(() => tokenDocFor(groupId, createdBy, createdAt)));
+  const code = codeDoc ?? (await createUnique(() => codeDocFor(groupId, createdBy, createdAt)));
+  await movePointers(groupId, token.id, code.id);
+  return { token: token.secret, code: code.secret, createdAt: token.createdAt };
 }
 
 /**
  * Resolve a redemption to a group id, or `null`.
  *
- * ONE `null` FOR EVERY FAILURE — unknown secret, retired secret, closed group.
- * The caller must answer the same way for all three, the way `claimMigration`
- * makes absent, expired and already-used indistinguishable: a probe that can
- * tell "wrong token" from "right token, closed group" is an oracle for which
- * groups exist.
+ * ONE `null` FOR EVERY FAILURE — unknown secret, retired secret, closed group,
+ * a doc whose group no longer points at it. The caller must answer the same way
+ * for all of them, the way `claimMigration` makes absent, expired and
+ * already-used indistinguishable: a probe that can tell "wrong token" from
+ * "right token, closed group" is an oracle for which groups exist.
  */
 export async function resolveInvite(raw: string, kind: 'invite' | 'code'): Promise<string | null> {
   const id = kind === 'invite' ? inviteDocId(raw.trim()) : codeDocId(raw);
@@ -201,6 +291,8 @@ export async function resolveInvite(raw: string, kind: 'invite' | 'code'): Promi
   if (!doc || doc.kind !== kind) return null;
   const group = await readGroup(doc.groupId);
   if (!group || group.closedAt) return null;
+  // Live exactly while the group points at it — see the note above.
+  if (pointerFor(group, kind) !== doc.id) return null;
   return group.id;
 }
 

@@ -21,7 +21,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { mintInvite, readInvite } from '@/lib/invites';
+import { ensureInvite, mintInvite } from '@/lib/invites';
 import { groupsOn, featureOff, rateLimited } from '@/lib/groupRoutes';
 
 export const dynamic = 'force-dynamic';
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
   if (!auth.authed) return unauthorized();
 
   try {
-    const invite = (await readInvite(auth.groupId)) ?? (await mintInvite(auth.groupId, auth.memberId));
+    const invite = await ensureInvite(auth.groupId, auth.memberId);
     if (!invite) return NextResponse.json({ error: 'not_found' }, { status: 404 });
     return NextResponse.json(invite);
   } catch (error) {

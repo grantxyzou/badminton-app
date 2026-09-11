@@ -24,14 +24,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { readGroup, readMembership, removeFromRoster, setMembershipRole } from '@/lib/groups';
-import { groupsOn, featureOff } from '@/lib/groupRoutes';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { groupsOn, featureOff, rateLimited } from '@/lib/groupRoutes';
 
 export const dynamic = 'force-dynamic';
 
 type Params = { params: Promise<{ memberId: string }> };
 
-/** The shared gate: admin of this group, acting on someone who is not them and not the owner. */
+/**
+ * The shared gate: rate limit, then admin of this group, acting on someone who
+ * is not them and not the owner. The limit comes FIRST (rule 4) — admin-gated
+ * or not, a replayed cookie should not be able to churn membership rows and
+ * name reservations at volume.
+ */
 async function gate(req: NextRequest, memberId: string) {
+  if (!checkRateLimit(`groups-roster:${getClientIp(req)}`, 60, 15 * 60 * 1000)) {
+    return { error: rateLimited() };
+  }
   const auth = await isAdminAuthedWithMember(req);
   if (!auth.authed) return { error: unauthorized() };
   if (memberId === auth.memberId) {

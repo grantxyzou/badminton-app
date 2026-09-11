@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   resetMockStore,
+  getStore,
+  seedDoc,
   setupAdminPin,
   seedTestAdminMember,
   seedGroup,
@@ -320,6 +322,38 @@ describe('GET|POST /api/groups/invite', () => {
     expect(old.status).toBe(404);
     expect(oldCode.status).toBe(404);
     expect(fresh.status).toBe(200);
+  });
+
+  it('a retired token stays dead even if its doc survives the delete', async () => {
+    const before = await (await inviteRoute(makeAdminRequest('GET', `${BASE}/invite`))).json();
+    const groups = getStore()['groups'] as Record<string, unknown>[];
+    const oldDoc = groups.find((d) => typeof d.id === 'string' && (d.id as string).startsWith('invite:'));
+    expect(oldDoc).toBeTruthy();
+
+    await regenerateRoute(makeAdminRequest('POST', `${BASE}/invite`));
+
+    // Put the old doc back, standing in for a delete that 429'd. Retirement
+    // must not depend on that write having succeeded — the group's pointer is
+    // the authority, and it no longer names this doc.
+    seedDoc('groups', { ...(oldDoc as Record<string, unknown>) });
+
+    const res = await previewRoute(makeRequest('GET', `${BASE}/preview?token=${before.token}`));
+    expect(res.status).toBe(404);
+  });
+
+  it('repairs a half-lost pair instead of replacing both', async () => {
+    const before = await (await inviteRoute(makeAdminRequest('GET', `${BASE}/invite`))).json();
+    const groups = getStore()['groups'] as Record<string, unknown>[];
+    const codeIdx = groups.findIndex((d) => typeof d.id === 'string' && (d.id as string).startsWith('code:'));
+    expect(codeIdx).toBeGreaterThan(-1);
+    groups.splice(codeIdx, 1); // the code doc goes missing
+
+    const after = await (await inviteRoute(makeAdminRequest('GET', `${BASE}/invite`))).json();
+    // The surviving LINK is untouched — opening the admin card must not revoke
+    // the link a club posted in its group chat months ago.
+    expect(after.token).toBe(before.token);
+    expect(after.code).not.toBe(before.code);
+    expect((await previewRoute(makeRequest('GET', `${BASE}/preview?token=${before.token}`))).status).toBe(200);
   });
 
   it('refuses a non-admin on the READ as well as the write', async () => {

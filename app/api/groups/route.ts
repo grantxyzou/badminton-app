@@ -81,7 +81,19 @@ export async function POST(req: NextRequest) {
     }
 
     const { group } = await createGroup({ name, ownerMemberId: member.id, ownerName: rosterName });
-    const invite = await mintInvite(group.id, member.id);
+
+    // CREATEGROUP IS THE COMMIT POINT. Past here the group doc, the owner's
+    // membership and their name reservation all exist, so a 500 would be a lie:
+    // the caller reads "nothing happened", retries, and ends up owning a second
+    // club while the first still counts against MAX_OWNED_GROUPS. Both remaining
+    // steps are recoverable on their own — the invite card mints lazily, and a
+    // sign-in re-mints cookies — so neither is allowed to fail the request.
+    let invite: Awaited<ReturnType<typeof mintInvite>> = null;
+    try {
+      invite = await mintInvite(group.id, member.id);
+    } catch (err) {
+      console.error('POST /api/groups: club created, invite mint failed (recoverable):', err);
+    }
 
     const res = NextResponse.json(
       {
@@ -92,7 +104,11 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 },
     );
-    await completeSignIn(res, member, group.id);
+    try {
+      await completeSignIn(res, member, group.id);
+    } catch (err) {
+      console.error('POST /api/groups: club created, cookie mint failed (recoverable):', err);
+    }
     return res;
   } catch (error) {
     if (error instanceof RosterNameTakenError) {
