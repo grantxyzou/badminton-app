@@ -45,6 +45,7 @@ import { hashPassword, validatePasswordStrength } from '@/lib/passwordHash';
 import { createToken, VERIFICATION_TTL_MS } from '@/lib/authToken';
 import { sendVerificationEmail } from '@/lib/authEmail';
 import { completeSignIn } from '@/lib/authSession';
+import { signupGroupFor } from '@/lib/inviteSignup';
 import {
   normalizeEmail,
   isPlausibleEmail,
@@ -54,7 +55,6 @@ import {
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { outboundOriginOrNull } from '@/lib/appOrigin';
 import type { Member } from '@/lib/types';
-import { resolveGroupId } from '@/lib/groupContext';
 import { rosterNameHolder, addMembership } from '@/lib/groups';
 
 export const dynamic = 'force-dynamic';
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 3600 }, { status: 429 });
   }
 
-  let body: { name?: unknown; email?: unknown; password?: unknown };
+  let body: { name?: unknown; email?: unknown; password?: unknown; inviteToken?: unknown; inviteCode?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -94,6 +94,18 @@ export async function POST(req: NextRequest) {
 
   const membersContainer = getContainer('members');
 
+  // WHICH CLUB, before anything is checked against one. An invited signup joins
+  // the club the invite names, not the club the request resolves to — a
+  // stranger following a link has no cookie, so `resolveGroupId` would answer
+  // BPM and write them onto its roster on their way elsewhere. A token that
+  // does not resolve REFUSES: falling back here is precisely the bug.
+  // See lib/inviteSignup.ts.
+  const invited = await signupGroupFor(req, body);
+  if (!invited.ok) {
+    return NextResponse.json({ error: 'invite_not_found' }, { status: 404 });
+  }
+  const signupGroupId = invited.groupId;
+
   // Is the display name already someone's? A name collision is a REFUSAL, never
   // a silent link. Member names are enumerable via GET /api/members, so
   // attaching a new credential to an existing name on the strength of the name
@@ -105,8 +117,9 @@ export async function POST(req: NextRequest) {
   // filter on `active`. `__tests__/member-resolve-canary.test.ts` enforces it.
   // With groups on the WRITE-side check is the reservation itself — a name a
   // removed member still holds is not free — and the account that follows is
-  // joined to this group, or nothing could ever resolve it.
-  const signupGroupId = resolveGroupId(req);
+  // joined to this group, or nothing could ever resolve it. Note this is now
+  // checked against the INVITED club's roster, which is the one the name will
+  // actually have to be unique in.
   const taken = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')
     ? (await rosterNameHolder(signupGroupId, name)) !== null
     : (await resolveActiveMemberId(signupGroupId, name)) !== null;
@@ -170,7 +183,7 @@ export async function POST(req: NextRequest) {
       { id: memberId, name, email, emailVerified: false, verificationSent: sent },
       { status: 201 },
     );
-    await completeSignIn(res, member, resolveGroupId(req));
+    await completeSignIn(res, member, signupGroupId);
     return res;
   } catch (err) {
     // Free the address so this person can try again, and so it is not blocked
