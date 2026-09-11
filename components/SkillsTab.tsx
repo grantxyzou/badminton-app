@@ -15,6 +15,8 @@ import { useStatsPrivacy, shouldPromptForComparison } from '@/lib/useStatsPrivac
 import { isFlagOn } from '@/lib/flags';
 import { useActiveName } from '@/lib/useActiveName';
 import { recordEngagement } from '@/lib/engagement';
+import { useCheckIn } from '@/components/stats/useCheckIn';
+import CheckInSheet from '@/components/stats/CheckInSheet';
 
 // Client-only (reads localStorage identity) — these three resolve an active
 // name at mount, so server-rendering them just produces markup the client
@@ -68,6 +70,19 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: 'home' 
     if (identResolved && activeName) void recordEngagement('stats_open');
   }, [identResolved, activeName]);
 
+  /**
+   * SINGLE OWNER of the check-in — its history, its sheet, and the one beacon
+   * that records which door was used. Same invariant as `GearRegister` calling
+   * `useGear` exactly once; see `components/stats/useCheckIn.ts` for what the
+   * three previous mount sites cost.
+   *
+   * It lives HERE rather than in `StatsV2Shell` because the sheet has to be
+   * reachable from the overview strip, which sits above the register switch and
+   * is visible on all four registers. The shell is documented as a stateless
+   * slot-taker and that stays true.
+   */
+  const checkIn = useCheckIn(activeName);
+
   const privacyState = useStatsPrivacy(activeName);
   const promptOpen = shouldPromptForComparison(privacyState);
   const comparisonKey = `${privacyState.privacy?.promptedAt ?? 'unasked'}:${privacyState.privacy?.clubComparison ?? 'unknown'}`;
@@ -78,8 +93,10 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: 'home' 
   }
 
   return (
+    <>
     <StatsV2Shell
       activeName={activeName}
+      checkIn={checkIn}
       // No LevelCard: the overview strip above owns the level, and showing the
       // same number twice on one screen reads as two different facts.
       youSlot={
@@ -91,11 +108,12 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: 'home' 
               — which only returns bands once the prompt is answered.
               Without this the member would answer and see nothing change
               until a reload. */}
-          <SkillTrendCard key={`trend-${comparisonKey}`} />
+          <SkillTrendCard key={`trend-${comparisonKey}`} checkIn={checkIn} />
           <WhereYouSitCard
             key={`sit-${comparisonKey}`}
             activeName={activeName}
             promptOpen={promptOpen}
+            checkIn={checkIn}
           />
           <KudosReceivedCard />
           <ClubConsentSheet
@@ -112,8 +130,22 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: 'home' 
           <GiveKudosCard />
         </>
       }
-      learnSlot={<LearnRegister activeName={activeName} />}
+      learnSlot={<LearnRegister activeName={activeName} checkIn={checkIn} />}
       gearSlot={valueHubOn ? <GearRegister activeName={activeName} /> : undefined}
     />
+    {/* ONE mount, a sibling of the shell rather than inside a register.
+        `BottomSheet` portals to `body`, so position here is irrelevant to where
+        it draws — what matters is that it is outside the register switch, which
+        remounts its subtree on every switch (`key={view}`). Mounted inside one,
+        the sheet would be torn down by a member tapping through to Equipment
+        with it open, and could not be opened from the strip at all. */}
+    <CheckInSheet
+      name={activeName}
+      open={checkIn.open}
+      onClose={checkIn.close}
+      onSaved={checkIn.onSaved}
+      previous={checkIn.previous}
+    />
+    </>
   );
 }

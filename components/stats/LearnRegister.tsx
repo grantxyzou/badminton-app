@@ -7,7 +7,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { BottomSheet, BottomSheetBody, BottomSheetHeader } from '../BottomSheet';
 import { useOnline } from '@/lib/useOnline';
-import CheckInSheet from './CheckInSheet';
+import type { UseCheckIn } from './useCheckIn';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -52,12 +52,15 @@ const SETTING_COLOR: Record<DrillPick['setting'], string> = {
 
 export interface LearnRegisterProps {
   activeName: string | null;
+  /** The single check-in owner (`SkillsTab`). This register no longer mounts
+   *  the sheet — it only asks for it, and names itself as the door. */
+  checkIn?: UseCheckIn;
   /** True when the member has never checked in — no ratings, no picks. */
   needsCheckIn?: boolean;
   onCheckedIn?: () => void;
 }
 
-export default function LearnRegister({ activeName, onCheckedIn }: LearnRegisterProps) {
+export default function LearnRegister({ activeName, checkIn, onCheckedIn }: LearnRegisterProps) {
   const t = useTranslations('stats.learn');
   const online = useOnline();
 
@@ -66,10 +69,7 @@ export default function LearnRegister({ activeName, onCheckedIn }: LearnRegister
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [needsCheckIn, setNeedsCheckIn] = useState(false);
   const [openDrill, setOpenDrill] = useState<DrillPick | null>(null);
-  const [checkInOpen, setCheckInOpen] = useState(false);
   const [saveError, setSaveError] = useState(false);
-  /** Set by the sheet's onSaved, consumed by its onClose — see the sheet. */
-  const savedRef = useRef(false);
 
   const load = useCallback(() => {
     if (!activeName) return;
@@ -90,6 +90,27 @@ export default function LearnRegister({ activeName, onCheckedIn }: LearnRegister
   useEffect(() => {
     load();
   }, [load]);
+
+  /**
+   * Re-derive the drills after a check-in saves anywhere.
+   *
+   * This replaces a `savedRef` that existed only because the sheet USED to be
+   * mounted inside this branch: reloading on save flips `needsCheckIn` false,
+   * which unmounts the branch — and took the sheet with it, destroying the
+   * SAVED screen that exists so fourteen questions don't end in the sheet
+   * vanishing with nothing to show. The sheet now lives in `SkillsTab`, outside
+   * every register, so it survives this branch disappearing underneath it and
+   * the refresh can simply be a dependency.
+   */
+  const savedAt = checkIn?.savedAt ?? 0;
+  const seenSaveRef = useRef(0);
+  useEffect(() => {
+    if (savedAt && savedAt !== seenSaveRef.current) {
+      seenSaveRef.current = savedAt;
+      load();
+      onCheckedIn?.();
+    }
+  }, [savedAt, load, onCheckedIn]);
 
   const toggleDone = useCallback(
     async (drill: DrillPick) => {
@@ -140,29 +161,11 @@ export default function LearnRegister({ activeName, onCheckedIn }: LearnRegister
             type="button"
             className="cc-btn cc-btn-primary cc-btn-lg"
             style={{ width: '100%' }}
-            onClick={() => setCheckInOpen(true)}
+            onClick={() => checkIn?.openFrom('learn')}
           >
             {t('needsCheckInCta')}
           </button>
         </div>
-        <CheckInSheet
-          name={activeName}
-          open={checkInOpen}
-          onClose={() => {
-            setCheckInOpen(false);
-            // Refresh only once the sheet is gone. Reloading on save flips
-            // needsCheckIn false, which unmounts this whole branch — and the
-            // sheet with it — destroying the SAVED step that exists precisely
-            // so fourteen screens of self-assessment don't end in the sheet
-            // vanishing with nothing to show for it.
-            if (savedRef.current) {
-              savedRef.current = false;
-              load();
-              onCheckedIn?.();
-            }
-          }}
-          onSaved={() => { savedRef.current = true; }}
-        />
       </>
     );
   }

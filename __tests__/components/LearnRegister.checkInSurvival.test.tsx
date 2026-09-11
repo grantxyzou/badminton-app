@@ -4,33 +4,26 @@ import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/re
 import { NextIntlClientProvider } from 'next-intl';
 import { OnlineProvider } from '../../lib/useOnline';
 import enMessages from '../../messages/en.json';
+import LearnRegister from '../../components/stats/LearnRegister';
+import type { UseCheckIn } from '../../components/stats/useCheckIn';
 
 /**
- * The check-in sheet must survive its own save.
+ * The check-in sheet must survive its own save — same subject as before, NEW
+ * reason, which is why this file was rewritten rather than deleted.
  *
- * `CheckInSheet` is mounted INSIDE LearnRegister's `if (needsCheckIn)` branch.
- * `onSaved` used to call `load()`, whose response sets
- * `needsCheckIn(picks.length === 0)` — false once ratings exist — unmounting
- * that whole branch and the sheet with it. The SAVED step exists precisely so
- * fourteen screens of self-assessment don't end in the sheet vanishing with
- * nothing to show for it; refreshing on save destroyed it, and the sheet's
- * in-flight level fetch then resolved into an unmounted component.
+ * It used to be mounted INSIDE LearnRegister's `if (needsCheckIn)` branch, and
+ * `onSaved` called `load()`, whose response sets `needsCheckIn(picks.length ===
+ * 0)` — false once ratings exist — unmounting that branch and the sheet with
+ * it. The SAVED step exists precisely so fourteen screens of self-assessment
+ * don't end in the sheet vanishing with nothing to show for it. A `savedRef`
+ * deferred the refresh to close to work around exactly that.
  *
- * The sheet is stubbed rather than driven for real: the fix is about WHEN the
- * parent refreshes relative to the sheet's lifecycle, so the stub exposes the
- * two callbacks directly and keeps the test about that and nothing else.
+ * The sheet now has ONE mount, in `SkillsTab`, outside every register — so the
+ * branch disappearing underneath it cannot touch it, the workaround is gone,
+ * and the refresh is simply a dependency on `savedAt`. What this file pins now:
+ * this register mounts no sheet of its own, names itself as the door, and still
+ * re-derives its drills after a save lands.
  */
-vi.mock('../../components/stats/CheckInSheet', () => ({
-  default: ({ open, onSaved, onClose }: { open: boolean; onSaved: () => void; onClose: () => void }) =>
-    open ? (
-      <div data-testid="check-in-sheet">
-        <button type="button" onClick={onSaved}>stub-save</button>
-        <button type="button" onClick={onClose}>stub-close</button>
-      </div>
-    ) : null,
-}));
-
-const { default: LearnRegister } = await import('../../components/stats/LearnRegister');
 
 const DRILL = {
   id: 'd1',
@@ -58,11 +51,27 @@ function mockFetch(state: { drills: unknown[]; getCount: number }) {
   );
 }
 
-function renderLearn() {
+function stubCheckIn(overrides: Partial<UseCheckIn> = {}): UseCheckIn {
+  return {
+    snapshots: [],
+    status: 'ready',
+    latest: undefined,
+    previous: undefined,
+    open: false,
+    openFrom: () => {},
+    close: () => {},
+    reload: () => {},
+    onSaved: () => {},
+    savedAt: 0,
+    ...overrides,
+  };
+}
+
+function renderLearn(checkIn: UseCheckIn) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
       <OnlineProvider>
-        <LearnRegister activeName="Lin" />
+        <LearnRegister activeName="Lin" checkIn={checkIn} />
       </OnlineProvider>
     </NextIntlClientProvider>,
   );
@@ -71,43 +80,71 @@ function renderLearn() {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe('LearnRegister — the check-in sheet survives its own save', () => {
-  it('keeps the sheet mounted on save and defers the refresh to close', async () => {
+  it('mounts NO sheet of its own — a branch unmount can no longer destroy one', async () => {
     const state = { drills: [] as unknown[], getCount: 0 };
     mockFetch(state);
-    renderLearn();
+    renderLearn(stubCheckIn({ open: true }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start check-in' })).toBeTruthy());
+    // The owner says the sheet is OPEN and this register still renders none:
+    // that is the structural guarantee replacing the old `savedRef` dance.
+    expect(screen.queryByTestId('check-in-sheet')).toBeNull();
+    expect(document.querySelector('.bottom-sheet')).toBeNull();
+  });
+
+  it('names itself as the door rather than opening a sheet directly', async () => {
+    const state = { drills: [] as unknown[], getCount: 0 };
+    mockFetch(state);
+    const opened: string[] = [];
+    renderLearn(stubCheckIn({ openFrom: (src) => opened.push(src) }));
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start check-in' })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Start check-in' }));
+
+    // `source` is the only thing that can say WHICH door a member used, which
+    // is the question the funnel's `entry` ratio exists to answer.
+    expect(opened).toEqual(['learn']);
+  });
+
+  it('re-derives its drills once a save lands, wherever it was opened from', async () => {
+    const state = { drills: [] as unknown[], getCount: 0 };
+    mockFetch(state);
+    const { rerender } = renderLearn(stubCheckIn());
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start check-in' })).toBeTruthy());
     expect(state.getCount).toBe(1);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Start check-in' }));
-    expect(screen.getByTestId('check-in-sheet')).toBeTruthy();
-
-    // The save lands and the engine now has ratings to pick from. The sheet
-    // must still be on screen showing its result — and the register must NOT
-    // have refetched yet, because that refetch is what unmounts the sheet.
+    // The save lands: the engine now has ratings to pick drills from.
     state.drills = [DRILL];
-    fireEvent.click(screen.getByText('stub-save'));
+    rerender(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <OnlineProvider>
+          <LearnRegister activeName="Lin" checkIn={stubCheckIn({ savedAt: 1234 })} />
+        </OnlineProvider>
+      </NextIntlClientProvider>,
+    );
 
-    await waitFor(() => expect(state.getCount).toBe(1));
-    expect(screen.getByTestId('check-in-sheet')).toBeTruthy();
-
-    // Dismissing is what hands control back to the register.
-    fireEvent.click(screen.getByText('stub-close'));
     await waitFor(() => expect(state.getCount).toBe(2));
-    expect(screen.queryByTestId('check-in-sheet')).toBeNull();
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Start check-in' })).toBeNull());
   });
 
-  it('does not refetch on close when nothing was saved', async () => {
+  it('does not refetch when no save has landed', async () => {
     const state = { drills: [] as unknown[], getCount: 0 };
     mockFetch(state);
-    renderLearn();
+    const { rerender } = renderLearn(stubCheckIn());
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Start check-in' })).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: 'Start check-in' }));
-    fireEvent.click(screen.getByText('stub-close'));
+    // An unrelated re-render — opening and closing the sheet, say — must not
+    // re-ask. `savedAt` is unchanged, so nothing was saved.
+    rerender(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <OnlineProvider>
+          <LearnRegister activeName="Lin" checkIn={stubCheckIn({ open: true })} />
+        </OnlineProvider>
+      </NextIntlClientProvider>,
+    );
 
-    await waitFor(() => expect(screen.queryByTestId('check-in-sheet')).toBeNull());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Start check-in' })).toBeTruthy());
     expect(state.getCount).toBe(1);
   });
 });
