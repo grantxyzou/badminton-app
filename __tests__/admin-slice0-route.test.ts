@@ -164,6 +164,14 @@ describe('GET /api/admin/slice0', () => {
 
   it('reports racket saves as a secondary signal', async () => {
     seedCohort();
+    // The gear owners are seeded as real MEMBERS, not just invented ids.
+    // `racketSavers` is narrowed to the roster like every other count on this
+    // page, and `playerGear` carries no name, so a row whose `memberId` belongs
+    // to nobody has no way to be placed on a roster and is dropped. In
+    // production every gear row is written by a signed-in member, so a fixture
+    // that invents ids is testing a shape the app cannot produce.
+    seedMember('Lin', { id: 'member-lin' });
+    seedMember('Viktor', { id: 'member-viktor' });
     const store = getStore();
     store['playerGear'] = [
       { id: 'gear-1', memberId: 'member-lin', items: [{ id: 'i1', category: 'racket', label: 'Astrox 88D' }] },
@@ -171,6 +179,23 @@ describe('GET /api/admin/slice0', () => {
     ];
 
     const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
+    // One racket, one pair of shoes.
+    expect(body.racketSavers).toBe(1);
+  });
+
+  it('does NOT count a racket saved by someone off the roster', async () => {
+    seedCohort();
+    seedMember('Lin', { id: 'member-lin' });
+    const store = getStore();
+    store['playerGear'] = [
+      { id: 'gear-1', memberId: 'member-lin', items: [{ id: 'i1', category: 'racket', label: 'Astrox 88D' }] },
+      // A member who left, or — once the flag is on — someone in another club.
+      { id: 'gear-2', memberId: 'member-stranger', items: [{ id: 'i2', category: 'racket', label: 'Someone else' }] },
+    ];
+
+    const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
+    // The read used to scan the whole container, so this was 2 — and a metric
+    // that is too HIGH reads as a good week rather than as a bug.
     expect(body.racketSavers).toBe(1);
   });
 
