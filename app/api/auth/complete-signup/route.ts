@@ -22,7 +22,7 @@ import { reserveIdentity, releaseIdentity } from '@/lib/authIdentity';
 import { readPendingSignup, clearPendingSignup } from '@/lib/pendingSignup';
 import { completeHandoff } from '@/lib/authHandoff';
 import type { Member } from '@/lib/types';
-import { resolveGroupId } from '@/lib/groupContext';
+import { signupGroupFor } from '@/lib/inviteSignup';
 import { rosterNameHolder, addMembership } from '@/lib/groups';
 
 export const dynamic = 'force-dynamic';
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'no_pending_signup' }, { status: 400 });
   }
 
-  let body: { name?: unknown };
+  let body: { name?: unknown; inviteToken?: unknown; inviteCode?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -94,7 +94,16 @@ export async function POST(req: NextRequest) {
   // With groups on the WRITE-side check is the reservation itself — a name a
   // removed member still holds is not free — and the account that follows is
   // joined to this group, or nothing could ever resolve it.
-  const signupGroupId = resolveGroupId(req);
+  // An invited signup joins the club the invite names, not the one the request
+  // resolves to — a stranger arriving from a link has no cookie, so this would
+  // otherwise answer BPM and put them on its roster on the way elsewhere. The
+  // token travels in the BODY on both signup terminals; see lib/inviteSignup.ts
+  // for why not the OAuth stash. A token that does not resolve REFUSES.
+  const invited = await signupGroupFor(req, body);
+  if (!invited.ok) {
+    return NextResponse.json({ error: 'invite_not_found' }, { status: 404 });
+  }
+  const signupGroupId = invited.groupId;
   const taken = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')
     ? (await rosterNameHolder(signupGroupId, name)) !== null
     : (await resolveActiveMemberId(signupGroupId, name)) !== null;
@@ -164,7 +173,7 @@ export async function POST(req: NextRequest) {
     // leaving a stale admin_session alive for a non-admin. Verified, and
     // pinned by __tests__/auth-cookie-order.test.ts.
     clearPendingSignup(res);
-    await completeSignIn(res, member, resolveGroupId(req));
+    await completeSignIn(res, member, signupGroupId);
     return res;
   } catch (err) {
     await releaseIdentity(pending.provider, pending.sub);
