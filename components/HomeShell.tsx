@@ -738,6 +738,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
                 initialToken={joinToken}
                 defaultName={getIdentity()?.name}
                 hasOtherGroup={!!group}
+                authProviders={authProviders}
                 onJoined={() => {
                   setRefreshNonce((n) => n + 1);
                   void refreshGroups();

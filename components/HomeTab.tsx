@@ -136,20 +136,25 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           // Stale identity. Probe /api/members/me to learn if this name is
           // a PIN-protected member (auth survives session boundaries) or
           // anonymous (deleteToken bound to old session, both stale).
-          let hasPin = false;
+          // A PIN is not the only durable credential. `authed` means this
+          // device holds a live `member_session`, which is true for email,
+          // Google and Apple members — all of whom used to be cleared here the
+          // moment the session id moved, and who now move it themselves every
+          // time they join or switch a club.
+          let durable = false;
           try {
             const meRes = await fetch(
               `${BASE}/api/members/me?name=${encodeURIComponent(stored.name)}`,
               { cache: 'no-store' },
             );
             if (meRes.ok) {
-              const me = (await meRes.json()) as { hasPin?: boolean };
-              hasPin = me.hasPin === true;
+              const me = (await meRes.json()) as { hasPin?: boolean; authed?: boolean };
+              durable = me.hasPin === true || me.authed === true;
             }
           } catch {
             // Network failure → resolveStaleIdentity falls through to clear.
           }
-          const decision = resolveStaleIdentity(stored, s.id, hasPin);
+          const decision = resolveStaleIdentity(stored, s.id, durable);
           if (decision.action === 'preserve') {
             setIdentity(decision.identity);
             setCurrentUser(decision.identity.name);

@@ -1342,6 +1342,12 @@
       "failed": "创建失败，请重试。"
     },
     "join": {
+            "auth": {
+        "body": "加入 {name} 需要一个账户。很快，创建后会直接把你加进去。",
+        "or": "或",
+        "haveAccount": "我已经有账户",
+        "needAccount": "改为创建账户"
+      },
       "crumb": "开始使用",
       "backLabel": "返回开始",
       "title": "加入群组",

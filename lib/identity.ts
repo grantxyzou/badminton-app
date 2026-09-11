@@ -100,11 +100,28 @@ export type StaleIdentityAction =
 export function resolveStaleIdentity(
   stored: Identity | null,
   activeSessionId: string,
-  hasPin: boolean,
+  /**
+   * Does this identity outlive a session? TRUE for anyone holding a credential
+   * that is not the session itself — a PIN, a password, a linked provider, or
+   * simply a live `member_session` on this device.
+   *
+   * IT WAS `hasPin`, AND THAT WAS ONLY EVER HALF THE QUESTION. The rule was
+   * written when a PIN was the only way to be more than an anonymous sign-up,
+   * so an email or Google member looked exactly like a stranger and had their
+   * identity cleared whenever the session id moved.
+   *
+   * MULTI-GROUP TURNED A WEEKLY ANNOYANCE INTO A BROKEN FLOW. A group's active
+   * session id is its own (`<groupId>:session-YYYY-MM-DD`), so JOINING or
+   * SWITCHING a club changes it every single time. Found by walking the join
+   * flow: the server had Priya on the club's roster and the client had wiped
+   * her identity by the time the page rendered, dropping her back on the
+   * welcome doors having just successfully joined.
+   */
+  durable: boolean,
 ): StaleIdentityAction {
   if (!stored || !stored.sessionId) return { action: 'keep' };
   if (stored.sessionId === activeSessionId) return { action: 'keep' };
-  if (hasPin) {
+  if (durable) {
     return {
       action: 'preserve',
       identity: { name: stored.name, sessionId: activeSessionId },

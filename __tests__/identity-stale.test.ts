@@ -47,3 +47,42 @@ describe('resolveStaleIdentity', () => {
     expect(result.action).toBe('preserve');
   });
 });
+
+/**
+ * THE THIRD PARAMETER IS NOT "hasPin" ANY MORE.
+ *
+ * It is "does this identity outlive a session" — true for a PIN, a password, a
+ * linked provider, or simply a live `member_session` on the device. The old
+ * name was only ever half the question, and multi-group turned that half into a
+ * broken flow: a club's active session id is its own, so JOINING or SWITCHING
+ * one changes it every time. An email member would join a club successfully and
+ * be dropped back on the welcome doors, because the server had put them on the
+ * roster and the client had wiped their identity before the page rendered.
+ */
+describe('durable identities survive a session boundary', () => {
+  const stored = { name: 'Priya', sessionId: 'alpha:session-2026-09-11', token: 'tok' };
+
+  it('preserves an email or Google member across a GROUP SWITCH', () => {
+    // The new session id belongs to a different club. Nothing about that says
+    // this person is no longer themselves.
+    expect(resolveStaleIdentity(stored, 'beta:session-2026-09-18', true)).toEqual({
+      action: 'preserve',
+      identity: { name: 'Priya', sessionId: 'beta:session-2026-09-18' },
+    });
+  });
+
+  it('drops the deleteToken when it preserves', () => {
+    // The token was bound to the old session's player row. Carrying it forward
+    // would be a live credential for a spot that no longer exists — the
+    // strip-canary rule at rest.
+    const result = resolveStaleIdentity(stored, 'beta:session-2026-09-18', true);
+    expect(result.action).toBe('preserve');
+    if (result.action === 'preserve') expect(result.identity.token).toBeUndefined();
+  });
+
+  it('still clears a genuinely anonymous sign-up', () => {
+    // No durable credential: the identity WAS the session-player row, and that
+    // row is stale. This half of the rule was always right.
+    expect(resolveStaleIdentity(stored, 'beta:session-2026-09-18', false)).toEqual({ action: 'clear' });
+  });
+});

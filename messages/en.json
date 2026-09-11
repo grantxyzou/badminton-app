@@ -1342,6 +1342,12 @@
       "failed": "Couldn't create the group. Try again."
     },
     "join": {
+            "auth": {
+        "body": "You'll need an account to join {name}. It takes a second, and we'll put you straight in.",
+        "or": "or",
+        "haveAccount": "I already have an account",
+        "needAccount": "Create an account instead"
+      },
       "crumb": "Get started",
       "backLabel": "Back to the start",
       "title": "Join a group",
