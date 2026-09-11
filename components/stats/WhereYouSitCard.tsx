@@ -100,8 +100,19 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
     );
   }
 
-  // Below the cohort minimum the card is absent entirely, not empty.
-  if (!bands || bands.cohort < bands.minCohort) return null;
+  /**
+   * Below the cohort minimum the card is absent entirely, not empty.
+   *
+   * The shape check is not paranoia. A 200 carrying an unexpected body used to
+   * reach the `bands.skills.length` read below and throw, taking the whole
+   * register down with it — and `undefined < undefined` is false, so a missing
+   * `cohort` sailed through this guard rather than being caught by it. Unknown
+   * is not known-false: a payload we cannot read is treated as "no comparison
+   * available", which is what the card already renders for a small club.
+   */
+  if (!bands || !Array.isArray(bands.skills)) return null;
+  if (typeof bands.cohort !== 'number' || typeof bands.minCohort !== 'number') return null;
+  if (bands.cohort < bands.minCohort) return null;
 
   /**
    * THE CONSENT INVARIANT, client side.

@@ -155,6 +155,17 @@ describe('WhereYouSitCard', () => {
     expect(screen.queryByText(/, and the/)).toBeNull();
   });
 
+  it('renders nothing — never throws — on a 200 with an unreadable body', async () => {
+    // A malformed 200 used to reach `bands.skills.length` and throw, taking the
+    // whole You register down with it. `undefined < undefined` is false, so a
+    // missing `cohort` sailed straight through the cohort guard rather than
+    // being caught by it. Unknown is not known-false: a payload we cannot read
+    // is "no comparison available", which is what a small club already sees.
+    mockFetchByUrl([['/api/stats/club/bands', () => jsonResponse({})]]);
+    const { container } = renderCard();
+    await waitFor(() => expect(container.textContent).toBe(''));
+  });
+
   it('renders nothing without an active name', () => {
     mockFetchByUrl([bandsResponse()]);
     const { container } = render(

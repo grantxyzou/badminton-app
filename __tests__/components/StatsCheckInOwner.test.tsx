@@ -55,7 +55,13 @@ describe('SkillsTab — single owner of the check-in history', () => {
               ? { kudos: [] }
               : u.includes('/api/stats/drills')
                 ? { drills: [], done: [] }
-                : {};
+                : u.includes('/api/stats/club/bands')
+                  // A REALISTIC shape. Returning a bare `{}` here is what first
+                  // crashed `WhereYouSitCard` — worth keeping honest, because a
+                  // mock that invents a payload the server never sends tests the
+                  // component against a contract nobody implements.
+                  ? { cohort: 0, minCohort: 5, dimensionMedians: {}, skills: [] }
+                  : {};
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
     }) as unknown as typeof fetch;
   });
