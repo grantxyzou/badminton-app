@@ -686,6 +686,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
                 }}
                 onJoinGroup={() => setOnboarding('join')}
                 onCreateGroup={() => setOnboarding('create')}
+                inviteToken={joinToken}
               />
             </div>
           )}
@@ -744,6 +745,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
       )}
 
       <ChooseNameSheet
+        inviteToken={joinToken}
         key={chooseNameOpen ? 'choose-name-open' : 'choose-name-closed'}
         open={chooseNameOpen}
         onClose={() => setChooseNameOpen(false)}

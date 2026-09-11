@@ -1341,7 +1341,7 @@
       "joining": "Joining…",
       "joined": "You're in",
       "notFound": "That link or code doesn't work. Ask whoever invited you for a fresh one.",
-      "needsAccount": "Create your account first, then open the invite again.",
+      "needsAccount": "You'll need an account first. Sign up with email or Google on Profile — this invite is kept, and you'll land straight in {name}.",
       "nameTaken": "Someone in that group already goes by that name. Pick a different one.",
       "failed": "Couldn't join. Try again."
     }

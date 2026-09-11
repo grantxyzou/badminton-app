@@ -12,6 +12,19 @@ interface Props {
   onClose: () => void;
   /** Account created and signed in. */
   onSuccess: (result: { name: string }) => void;
+/**
+ * The invite this device arrived on, if any.
+ *
+ * A stranger who taps a club's link has no account yet, and the PIN path is
+ * invite-list gated — so email or a provider is how they become one. Both
+ * signup terminals join the new account to a club, and without this they join
+ * the club `resolveGroupId` resolves (BPM), after which `/api/groups/join`
+ * adds the intended one on top and leaves one person on two rosters. Passing
+ * the token means the account lands in the club that invited it. Ignored with
+ * the flag off; an unresolvable token is refused rather than silently
+ * downgraded. See PR #376.
+ */
+  inviteToken?: string | null;
 }
 
 /**
@@ -31,7 +44,7 @@ interface Props {
  * says so plainly rather than closing while implying a mail is on its way; the
  * account is real and usable either way.
  */
-export default function EmailSignUpSheet({ open, onClose, onSuccess }: Props) {
+export default function EmailSignUpSheet({ open, onClose, onSuccess, inviteToken }: Props) {
   const t = useTranslations('profile.auth');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -58,7 +71,12 @@ export default function EmailSignUpSheet({ open, onClose, onSuccess }: Props) {
       const res = await fetch(`${BASE}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), email: email.trim(), password }),
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          ...(inviteToken ? { inviteToken } : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
 

@@ -122,10 +122,12 @@ export default function JoinGroupSheet({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        // 401 is the ONE case that is not a failure of this sheet: joining needs
-        // an account, and an anonymous session sign-up is not one. Say what to
-        // do rather than what went wrong.
-        if (res.status === 401) setError(t('needsAccount'));
+        // Not a failure of this sheet: joining needs an ACCOUNT, and the PIN
+        // path is invite-list gated so a stranger cannot get one that way. The
+        // token rides through the signup terminals (PR #376), so they do not
+        // have to come back and re-open the link — say where to go, and name
+        // the club they will land in.
+        if (res.status === 401) setError(t('needsAccount', { name: found.name }));
         else if (data.error === 'roster_name_taken') setError(t('nameTaken'));
         else if (data.error === 'invite_not_found') setError(t('notFound'));
         else setError(t('failed'));

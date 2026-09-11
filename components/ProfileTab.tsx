@@ -60,6 +60,12 @@ interface Props {
   /** Open the onboarding sheets, which HomeShell owns. */
   onJoinGroup?: () => void;
   onCreateGroup?: () => void;
+  /**
+   * The invite this device arrived on, threaded to the email signup terminal so
+   * a stranger who followed a club's link becomes an account IN THAT CLUB. See
+   * the note on `EmailSignUpSheet`'s prop.
+   */
+  inviteToken?: string | null;
 }
 
 export default function ProfileTab({
@@ -72,6 +78,7 @@ export default function ProfileTab({
   onGroupSwitched,
   onJoinGroup,
   onCreateGroup,
+  inviteToken,
 }: Props) {
   const t = useTranslations('profile');
   const tGroups = useTranslations('groups');
@@ -502,6 +509,7 @@ export default function ProfileTab({
           <MigrateCodeSheet open={migrateCodeOpen} onClose={() => setMigrateCodeOpen(false)} />
         )}
         <EmailSignUpSheet
+          inviteToken={inviteToken}
           open={emailSignUpOpen}
           onClose={() => {
             setEmailSignUpOpen(false);
