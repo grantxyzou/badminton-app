@@ -35,6 +35,16 @@
  * always wins and a present-but-invalid one still refuses. Forging it buys
  * nothing: the worst outcome is an account with LESS standing than the default.
  *
+ * WHAT `groupId: null` DOES AND DOES NOT BUY. It removes a roster ROW — the
+ * membership write — and nothing else. It is not containment: `GET
+ * /api/members`, `/api/session` and `/api/players` resolve their group with
+ * `resolveGroupId(req)` and gate on no membership at all, so a BPM-claiming
+ * cookie with no membership still reads BPM's roster, session and player list.
+ * That is not a hole this opened: `resolveGroupId` answers BPM for a request
+ * with NO cookie either, so such an account sees exactly what a logged-out tab
+ * sees. The honest claim is "no membership, and no more access than a
+ * logged-out visitor" — do not upgrade it to "sees nothing".
+ *
  * A TOKEN THAT DOES NOT RESOLVE IS A REFUSAL, NOT A FALLBACK. Falling back to
  * `resolveGroupId(req)` on a bad token would re-create the exact defect above,
  * quietly, for the person least able to notice. And the refusal says only
