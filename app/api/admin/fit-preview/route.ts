@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
+import { isFlagOn } from '@/lib/flags';
+import { resolveGroupId } from '@/lib/groupContext';
+import { rosterMemberIds } from '@/lib/roster';
 import { ensureCatalogSeeded } from '@/lib/catalogSeed';
 import { recommendFit, FIT_ENGINE_VERSION } from '@/lib/racketFit';
 import { buildFitInput, readGearOrNull } from '@/lib/racketFitInput';
@@ -52,6 +55,14 @@ export async function GET(req: NextRequest) {
 
     const memberId = new URL(req.url).searchParams.get('memberId')?.trim().slice(0, 80) ?? '';
     if (memberId) {
+      // A memberId is caller-supplied, so it must be checked against the
+      // caller's own roster before it reads anyone's ratings — rule 7's lesson
+      // (an id override is admin-only) does not help when every caller here is
+      // an admin of SOMEWHERE. A stranger's id answers 404, not their kit.
+      if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) {
+        const allowed = await rosterMemberIds(resolveGroupId(req));
+        if (!allowed.has(memberId)) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      }
       // The catalog is read only where it is scored.
       await ensureCatalogSeeded();
       const [gear, ratingsByMember, catalogRes] = await Promise.all([
@@ -70,14 +81,28 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Skeletons: every member with a gear doc or a check-in, anonymised.
+    // Skeletons: every member with a gear doc or a check-in, anonymised —
+    // AND ON THIS CLUB'S ROSTER.
+    //
+    // Both containers are PERSON-scoped, so a raw read is correct, but this is
+    // a whole-deployment scan behind an admin gate that only proves you are an
+    // admin SOMEWHERE. With the flag on that meant any club's organiser could
+    // dump every club's check-in ratings and bags. Anonymised ids do not fix
+    // that: skill ratings and someone's racket are the person's, not ours, and
+    // the tuning purpose is served just as well by one club's cases.
+    const roster = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') ? await rosterMemberIds(resolveGroupId(req)) : null;
+    const onRoster = (id: string | undefined): boolean =>
+      !roster || (typeof id === 'string' && roster.has(id));
+
     const [gearRes, ratingsByMember] = await Promise.all([
       getContainer('playerGear').items.query({ query: 'SELECT * FROM c' }).fetchAll(),
       latestByMember(),
     ]);
-    const gearDocs = gearRes.resources as PlayerGear[];
+    const gearDocs = (gearRes.resources as PlayerGear[]).filter((g) => onRoster(g.memberId));
     const gearById = new Map(gearDocs.map((g) => [g.memberId, g]));
-    const memberIds = [...new Set([...gearById.keys(), ...ratingsByMember.keys()])].sort();
+    const memberIds = [...new Set([...gearById.keys(), ...ratingsByMember.keys()])]
+      .filter((id) => onRoster(id))
+      .sort();
     const cases = [];
     let n = 0;
     for (const id of memberIds) {

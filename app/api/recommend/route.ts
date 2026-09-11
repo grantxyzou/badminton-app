@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { resolveGroupId } from '@/lib/groupContext';
+import { rosterMemberIds } from '@/lib/roster';
 import { ensureCatalogSeeded } from '@/lib/catalogSeed';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -68,12 +69,25 @@ const ENGINE_CATEGORIES: EquipmentCategory[] = ['racket', 'string'];
  * equipment-only. That is deliberate and different from the gear read above,
  * which throws: this is grounding, that is the answer.
  */
-async function clubEntriesOrEmpty(): Promise<ClubGearEntry[]> {
+async function clubEntriesOrEmpty(groupId: string): Promise<ClubGearEntry[]> {
   try {
+    // NARROWED TO THE ROSTER. `playerGear` is PERSON-scoped, so a raw read is
+    // correct and `groupScope` would be wrong — but "the club tally" has to
+    // mean THIS club, and without this it counted every bag in the deployment.
+    // Identical to `stats/club/gear`, which was narrowed in Phase 2 while this
+    // caller of the same tally was missed. `c.memberId` is in the projection
+    // for the same reason it is there: without it there is nothing to narrow by.
+    //
+    // It is the REASON STRING that leaks here, not a list — "players around
+    // your level often reach for X" grounded in a club the reader is not in.
+    const roster = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') ? await rosterMemberIds(groupId) : null;
     const { resources: gearDocs } = await getContainer('playerGear').items
-      .query({ query: 'SELECT c.items FROM c' })
+      .query({ query: 'SELECT c.memberId, c.items FROM c' })
       .fetchAll();
-    return tallyClubGear(gearDocs as Pick<PlayerGear, 'items'>[]);
+    const rows = (gearDocs as (Pick<PlayerGear, 'items'> & { memberId?: string })[]).filter(
+      (r) => !roster || (typeof r.memberId === 'string' && roster.has(r.memberId)),
+    );
+    return tallyClubGear(rows);
   } catch {
     return [];
   }
@@ -245,7 +259,7 @@ export async function GET(req: NextRequest) {
         const reasons = buildPickReasons({
           item: pairing.item,
           engineReasons: pairing.reasons,
-          clubEntries: await clubEntriesOrEmpty(),
+          clubEntries: await clubEntriesOrEmpty(resolveGroupId(req)),
         });
 
         return NextResponse.json({
@@ -275,7 +289,7 @@ export async function GET(req: NextRequest) {
           ownsName && member
             ? recordServed(resolveGroupId(req), subject.memberId, member.name, fit.top.item.id, FIT_ENGINE_VERSION)
             : Promise.resolve(),
-          clubEntriesOrEmpty(),
+          clubEntriesOrEmpty(resolveGroupId(req)),
         ]);
         // The club line keeps its reserved last slot on the engine path too —
         // as a KEY, so the rail can say it in the member's locale.
@@ -309,7 +323,7 @@ export async function GET(req: NextRequest) {
       // gets the same unavailable code as a literally-empty query.
       if (!top) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
 
-      const clubEntries: ClubGearEntry[] = await clubEntriesOrEmpty();
+      const clubEntries: ClubGearEntry[] = await clubEntriesOrEmpty(resolveGroupId(req));
 
       const reasons = buildPickReasons({
         item: top.item,
