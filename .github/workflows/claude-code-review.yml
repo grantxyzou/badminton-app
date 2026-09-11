@@ -141,7 +141,22 @@ jobs:
       - name: What the review run was allowed to do
         if: always()
         continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
         run: |
+          # How many files carry a TEXT diff. #379 was 68 binary PNGs and one
+          # script, and a quiet review there is correct rather than a sixth
+          # silent breakage -- but nothing on the PR could say so.
+          #
+          # Left UNSET when the lookup fails. The script reads absent as unknown
+          # and never as zero: a failed API call must not let the summary
+          # announce "nothing to review" over a diff it simply could not count.
+          if n=$(gh api "repos/$REPO/pulls/$PR/files" --paginate \
+                   --jq '.[] | select(.patch != null) | .filename' 2>/dev/null | wc -l); then
+            export REVIEWABLE_FILE_COUNT="$(echo "$n" | tr -d ' ')"
+          fi
           node scripts/summarize-review-run.mjs \
             "${{ steps.claude-review.outputs.execution_file }}" \
             .github/workflows/claude-code-review.yml
