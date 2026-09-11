@@ -1311,6 +1311,8 @@
     "existingDoor": "I already have an account",
     "existingDoorHint": "Sign in with your name, email or Google.",
     "create": {
+      "crumb": "Get started",
+      "backLabel": "Back to the start",
       "title": "Create a group",
       "subtitle": "You'll be the organiser. You can invite people straight after.",
       "nameLabel": "Group name",
@@ -1328,6 +1330,8 @@
       "failed": "Couldn't create the group. Try again."
     },
     "join": {
+      "crumb": "Get started",
+      "backLabel": "Back to the start",
       "title": "Join a group",
       "subtitle": "Paste the link you were sent, or type the code.",
       "codeLabel": "Invite link or code",

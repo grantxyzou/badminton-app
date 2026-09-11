@@ -2,15 +2,15 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import TopBar from '@/components/primitives/TopBar';
 import { setIdentity } from '@/lib/identity';
 import InviteShare from './InviteShare';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 interface Props {
-  open: boolean;
-  onClose: () => void;
+  onBack: () => void;
+  onDone: () => void;
   sessionId: string;
   /** The name this device already goes by, prefilled as the roster name. */
   defaultName?: string;
@@ -18,19 +18,25 @@ interface Props {
 }
 
 /**
- * The "Create a group" door.
+ * The "Create a group" door, as a PAGE.
  *
- * IT DOES NOT CLOSE ON SUCCESS. It swaps to a success step holding the invite
- * link, for the same reason `AdvanceSessionForm` stays on its success screen:
- * the moment a club exists is the moment its organiser wants to invite people,
- * and a sheet that vanishes sends them hunting through Admin for a link they
- * were holding a second ago. "Done" is the dismissal.
+ * It was a bottom sheet and that was wrong. A sheet is a quick action taken
+ * inside a context you are already in and will return to — change a PIN, give
+ * a kudos. Creating your club is the opposite: it is the first-run task, there
+ * is no context behind it worth preserving, and the half-height sheet left the
+ * most important screen in the app peering out from under a scrim.
  *
- * Two fields, because they are genuinely two things: the CLUB's name, and the
- * name this person goes by ON that club's roster. The second is prefilled from
- * the identity this device already has, so the common case is one field.
+ * So: full screen, `TopBar`, and a back chevron to the doors. That header also
+ * brings Escape-to-close and the edge swipe-back gesture, which a sheet's drag
+ * handle only approximates.
+ *
+ * IT DOES NOT LEAVE ON SUCCESS. It swaps to a success step holding the invite
+ * link, the same argument `AdvanceSessionForm`'s success screen makes: the
+ * moment a club exists is the moment its organiser wants to invite people, and
+ * a screen that vanishes sends them hunting through Admin for a link they were
+ * holding a second ago. The back affordance becomes "Done".
  */
-export default function CreateGroupSheet({ open, onClose, sessionId, defaultName, onCreated }: Props) {
+export default function CreateGroupPage({ onBack, onDone, sessionId, defaultName, onCreated }: Props) {
   const t = useTranslations('onboarding.create');
   const [name, setName] = useState('');
   const [rosterName, setRosterName] = useState(defaultName ?? '');
@@ -57,9 +63,7 @@ export default function CreateGroupSheet({ open, onClose, sessionId, defaultName
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         // 401 is the door's real gap, not a server problem: creating a club
-        // needs an ACCOUNT, and an anonymous session sign-up is not one (the
-        // members route refuses to claim an unclaimed account without proof).
-        // Saying "try again" here would be a dead end and a lie.
+        // needs an ACCOUNT, and an anonymous session sign-up is not one.
         if (res.status === 401) setError(t('needsAccount'));
         else if (data.error === 'too_many_groups') setError(t('tooMany'));
         else if (data.error === 'invalid_name') setError(t('nameTooShort'));
@@ -84,20 +88,25 @@ export default function CreateGroupSheet({ open, onClose, sessionId, defaultName
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')}>
-      <BottomSheetHeader>{created ? t('created', { name: created.name }) : t('title')}</BottomSheetHeader>
-      <BottomSheetBody>
+    <div className="animate-fadeIn">
+      <TopBar
+        title={created ? t('created', { name: created.name }) : t('title')}
+        crumb={t('crumb')}
+        // No way back once the club exists — there is nothing to go back TO,
+        // and the only remaining action is to finish.
+        onBack={created ? undefined : onBack}
+        backLabel={t('backLabel')}
+      />
+
+      <div style={{ display: 'grid', gap: 'var(--space-5)', padding: '0 var(--space-5) var(--space-9)' }}>
         {created ? (
-          <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
-            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>
-              {t('createdHint')}
-            </p>
-            {/* The invite the club was just given, not a link to go and find it. */}
+          <>
+            <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>{t('createdHint')}</p>
             <InviteShare token={created.token} code={created.code} groupName={created.name} />
-            <button type="button" onClick={onClose} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
+            <button type="button" onClick={onDone} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
               {t('done')}
             </button>
-          </div>
+          </>
         ) : (
           <form onSubmit={submit} style={{ display: 'grid', gap: 'var(--space-5)' }}>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>{t('subtitle')}</p>
@@ -143,7 +152,7 @@ export default function CreateGroupSheet({ open, onClose, sessionId, defaultName
             </button>
           </form>
         )}
-      </BottomSheetBody>
-    </BottomSheet>
+      </div>
+    </div>
   );
 }

@@ -5,8 +5,8 @@ import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import ChooseNameSheet from './auth/ChooseNameSheet';
 import WelcomeDoors from './onboarding/WelcomeDoors';
-import CreateGroupSheet from './onboarding/CreateGroupSheet';
-import JoinGroupSheet from './onboarding/JoinGroupSheet';
+import CreateGroupPage from './onboarding/CreateGroupPage';
+import JoinGroupPage from './onboarding/JoinGroupPage';
 import { isFlagOn } from '@/lib/flags';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import ResetPasswordSheet from './auth/ResetPasswordSheet';
@@ -611,7 +611,16 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
    * KNOW there is no identity, and no invite sheet is already open (a `?join=`
    * landing should show the club it is offering, not a menu).
    */
-  const showDoors = groupsEnabled && hasIdentity === false && !doorsDismissed && onboarding !== 'join';
+  /**
+   * Onboarding takes over the whole screen — doors, then whichever page they
+   * chose. These are first-run tasks with nothing behind them worth preserving,
+   * so they are pages with a `TopBar` and a back chevron, not sheets over a
+   * context the person has no relationship with yet.
+   */
+  const showOnboardingPage = groupsEnabled && onboarding !== null;
+  const showDoors = groupsEnabled && hasIdentity === false && !doorsDismissed && !showOnboardingPage;
+  /** Either takes the full screen, so the tab bar belongs to neither. */
+  const inOnboarding = showDoors || showOnboardingPage;
 
   return (
     <>
@@ -669,6 +678,36 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
                 {tAuth('backToApp')}
               </a>
             </div>
+          ) : showOnboardingPage ? (
+            onboarding === 'create' ? (
+              <CreateGroupPage
+                onBack={() => setOnboarding(null)}
+                onDone={() => setOnboarding(null)}
+                sessionId={profileSession.id}
+                defaultName={getIdentity()?.name}
+                onCreated={() => {
+                  // A new club means new cookies: remount the tabs so nothing
+                  // keeps showing the old club's roster, session or balance.
+                  setRefreshNonce((n) => n + 1);
+                  void refreshGroups();
+                }}
+              />
+            ) : (
+              <JoinGroupPage
+                onBack={() => {
+                  setOnboarding(null);
+                  setJoinToken(null);
+                }}
+                sessionId={profileSession.id}
+                initialToken={joinToken}
+                defaultName={getIdentity()?.name}
+                hasOtherGroup={!!group}
+                onJoined={() => {
+                  setRefreshNonce((n) => n + 1);
+                  void refreshGroups();
+                }}
+              />
+            )
           ) : showDoors ? (
             /* First launch with no identity, multi-group on: three doors and
                nothing else. The tabs are NOT rendered behind them — a roster and
@@ -721,7 +760,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
             person has no relationship with yet — a roster they are not on, a
             session they cannot join — which is the screen the doors exist to
             replace. "I already have an account" is the route to Profile. */}
-        {!showDoors && <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />}
+        {!inOnboarding && <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />}
       </div>
       {demoMode && <DemoMode onClose={() => setDemoMode(false)} />}
       {/* Mounted at shell level, not inside a tab: the provider callback lands
@@ -729,42 +768,6 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
           regardless of which one that is. */}
       {/* Keyed on open so the sheet REMOUNTS each time: mode, PIN field and
           error all reset without setState-in-effect. */}
-      {groupsEnabled && (
-        <>
-          <CreateGroupSheet
-            // Keyed so every open starts from a blank form rather than the
-            // previous attempt's error — the ChooseNameSheet contract.
-            key={`create-${onboarding === 'create'}`}
-            open={onboarding === 'create'}
-            onClose={() => setOnboarding(null)}
-            sessionId={profileSession.id}
-            defaultName={getIdentity()?.name}
-            onCreated={() => {
-              // A new club means new cookies: remount the tabs so nothing keeps
-              // showing the old club's roster, session or balance.
-              setRefreshNonce((n) => n + 1);
-              void refreshGroups();
-            }}
-          />
-          <JoinGroupSheet
-            key={`join-${onboarding === 'join'}-${joinToken ?? ''}`}
-            open={onboarding === 'join'}
-            onClose={() => {
-              setOnboarding(null);
-              setJoinToken(null);
-            }}
-            sessionId={profileSession.id}
-            initialToken={joinToken}
-            defaultName={getIdentity()?.name}
-            hasOtherGroup={!!group}
-            onJoined={() => {
-              setRefreshNonce((n) => n + 1);
-              void refreshGroups();
-            }}
-          />
-        </>
-      )}
-
       <ChooseNameSheet
         inviteToken={joinToken}
         key={chooseNameOpen ? 'choose-name-open' : 'choose-name-closed'}

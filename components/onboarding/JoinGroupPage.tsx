@@ -2,14 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import TopBar from '@/components/primitives/TopBar';
 import { setIdentity } from '@/lib/identity';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 interface Props {
-  open: boolean;
-  onClose: () => void;
+  onBack: () => void;
   sessionId: string;
   /** Prefilled from `?join=` when a link brought them here. */
   initialToken?: string | null;
@@ -21,14 +20,20 @@ interface Props {
 }
 
 /**
- * The "Join with a link or code" door.
+ * The "Join with a link or code" door, as a PAGE. See `CreateGroupPage` for why
+ * these stopped being bottom sheets.
+ *
+ * TWO STEPS WITH REAL NAVIGATION BETWEEN THEM, which is most of the reason a
+ * sheet was the wrong container. Back from the confirm step returns to the
+ * entry field rather than throwing the whole flow away — a sheet's only
+ * gesture is dismiss, so a mistyped code used to cost you the screen.
  *
  * IT CONFIRMS BEFORE IT JOINS, even when a link brought the person straight
  * here. Joining puts your name on somebody else's roster, and the club sees it;
  * that is not a thing to do to someone because they tapped a URL in a group
- * chat. So the link is resolved to a NAME first (`GET /api/groups/preview`, the
- * one unauthenticated route, which returns the club's name and nothing else),
- * and the actual join waits for a deliberate second tap.
+ * chat. The link resolves to a NAME first (`GET /api/groups/preview`, the one
+ * unauthenticated route, which returns the club's name and nothing else), and
+ * the join waits for a deliberate second tap.
  *
  * ALREADY IN ANOTHER CLUB? It joins and switches, and says so. Both memberships
  * stay; "Your groups" on Profile is the way back. Refusing would be worse —
@@ -38,9 +43,8 @@ interface Props {
  * and are told apart here, because nobody holding an invite thinks of
  * themselves as holding one of two kinds of invite.
  */
-export default function JoinGroupSheet({
-  open,
-  onClose,
+export default function JoinGroupPage({
+  onBack,
   sessionId,
   initialToken,
   defaultName,
@@ -54,14 +58,13 @@ export default function JoinGroupSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // A `?join=` landing resolves the club immediately, so the sheet opens
-  // already saying whose it is rather than asking for something the person is
-  // holding in the URL bar.
+  // A `?join=` landing resolves the club immediately, so the page opens already
+  // saying whose it is rather than asking for what is in the URL bar.
   useEffect(() => {
-    if (!open || !initialToken) return;
+    if (!initialToken) return;
     void resolve(initialToken);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialToken]);
+  }, [initialToken]);
 
   /**
    * A link or a code, out of one box. A link's token is the `?join=` parameter;
@@ -122,11 +125,9 @@ export default function JoinGroupSheet({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        // Not a failure of this sheet: joining needs an ACCOUNT, and the PIN
-        // path is invite-list gated so a stranger cannot get one that way. The
-        // token rides through the signup terminals (PR #376), so they do not
-        // have to come back and re-open the link — say where to go, and name
-        // the club they will land in.
+        // Joining needs an ACCOUNT, and the PIN path is invite-list gated so a
+        // stranger cannot get one that way. The token rides through the signup
+        // terminals, so they do not have to come back and re-open the link.
         if (res.status === 401) setError(t('needsAccount', { name: found.name }));
         else if (data.error === 'roster_name_taken') setError(t('nameTaken'));
         else if (data.error === 'invite_not_found') setError(t('notFound'));
@@ -136,19 +137,35 @@ export default function JoinGroupSheet({
       }
       setIdentity({ name: data.rosterName ?? rosterName.trim(), sessionId });
       onJoined?.();
-      onClose();
+      onBack();
     } catch {
       setError(t('failed'));
       setBusy(false);
     }
   }
 
+  /** Back steps WITHIN the flow before it leaves it — see the header note. */
+  function stepBack() {
+    if (found) {
+      setFound(null);
+      setError(null);
+      return;
+    }
+    onBack();
+  }
+
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')}>
-      <BottomSheetHeader>{found ? t('foundTitle', { name: found.name }) : t('title')}</BottomSheetHeader>
-      <BottomSheetBody>
+    <div className="animate-fadeIn">
+      <TopBar
+        title={found ? t('foundTitle', { name: found.name }) : t('title')}
+        crumb={t('crumb')}
+        onBack={stepBack}
+        backLabel={t('backLabel')}
+      />
+
+      <div style={{ display: 'grid', gap: 'var(--space-5)', padding: '0 var(--space-5) var(--space-9)' }}>
         {found ? (
-          <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
+          <>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>{t('foundHint')}</p>
             {hasOtherGroup && (
               <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>
@@ -182,7 +199,7 @@ export default function JoinGroupSheet({
             >
               {busy ? t('joining') : t('confirm', { name: found.name })}
             </button>
-          </div>
+          </>
         ) : (
           <form
             onSubmit={(e) => {
@@ -224,7 +241,7 @@ export default function JoinGroupSheet({
             </button>
           </form>
         )}
-      </BottomSheetBody>
-    </BottomSheet>
+      </div>
+    </div>
   );
 }

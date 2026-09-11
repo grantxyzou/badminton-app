@@ -1311,6 +1311,8 @@
     "existingDoor": "我已经有账户",
     "existingDoorHint": "用名字、邮箱或 Google 登录。",
     "create": {
+      "crumb": "开始使用",
+      "backLabel": "返回开始",
       "title": "创建群组",
       "subtitle": "你将是组织者，创建后可以立即邀请其他人。",
       "nameLabel": "群组名称",
@@ -1328,6 +1330,8 @@
       "failed": "创建失败，请重试。"
     },
     "join": {
+      "crumb": "开始使用",
+      "backLabel": "返回开始",
       "title": "加入群组",
       "subtitle": "粘贴收到的链接，或输入代码。",
       "codeLabel": "邀请链接或代码",
