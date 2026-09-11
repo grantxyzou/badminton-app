@@ -1323,6 +1323,7 @@
       "done": "Done",
       "tooMany": "You already organise as many groups as one account can. Hand one on before starting another.",
       "nameTooShort": "Give the group a name of at least 2 characters.",
+      "needsAccount": "Create your account first — tap \u201cI already have an account\u201d to sign in or set one up, then come back.",
       "failed": "Couldn't create the group. Try again."
     },
     "join": {

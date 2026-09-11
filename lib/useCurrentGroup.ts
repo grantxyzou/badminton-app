@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { IDENTITY_EVENT } from '@/lib/identity';
+import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -48,6 +48,16 @@ export function useCurrentGroup() {
 
   const refresh = useCallback(async () => {
     setError(false);
+    // No identity means no membership anywhere, so both endpoints would answer
+    // 401. Skipping is not only two fewer requests — it is two fewer on the
+    // COLD-START path, which is the one the doors render on, and it keeps a
+    // pair of red 401s out of the console of anyone debugging a first launch.
+    if (getIdentity() === null) {
+      setGroup(null);
+      setGroups([]);
+      setLoading(false);
+      return;
+    }
     try {
       const [currentRes, mineRes] = await Promise.all([
         fetch(`${BASE}/api/groups/current`, { cache: 'no-store' }),

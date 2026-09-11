@@ -56,7 +56,12 @@ export default function CreateGroupSheet({ open, onClose, sessionId, defaultName
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        if (data.error === 'too_many_groups') setError(t('tooMany'));
+        // 401 is the door's real gap, not a server problem: creating a club
+        // needs an ACCOUNT, and an anonymous session sign-up is not one (the
+        // members route refuses to claim an unclaimed account without proof).
+        // Saying "try again" here would be a dead end and a lie.
+        if (res.status === 401) setError(t('needsAccount'));
+        else if (data.error === 'too_many_groups') setError(t('tooMany'));
         else if (data.error === 'invalid_name') setError(t('nameTooShort'));
         else setError(t('failed'));
         setBusy(false);

@@ -695,7 +695,11 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
         {devMode && <DevPanel overrides={devOverrides} onChange={setDevOverrides} />}
         {/* No-op on the web (returns before importing anything). */}
         <NativeBridge activeTab={activeTab} onGoHome={() => setActiveTab('home')} />
-        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+        {/* No nav under the doors. Every tab it offers belongs to a club this
+            person has no relationship with yet — a roster they are not on, a
+            session they cannot join — which is the screen the doors exist to
+            replace. "I already have an account" is the route to Profile. */}
+        {!showDoors && <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />}
       </div>
       {demoMode && <DemoMode onClose={() => setDemoMode(false)} />}
       {/* Mounted at shell level, not inside a tab: the provider callback lands
