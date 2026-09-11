@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetBody, BottomSheetHeader } from '@/components/BottomSheet';
 import ErrorState from '@/components/primitives/ErrorState';
@@ -52,15 +52,24 @@ export default function GiveKudosSheet({
   const [state, setState] = useState<SendState>('idle');
 
   /* Reset on each OPEN, not on close: closing animates out, and clearing the
-     fields mid-animation shows the form emptying itself on the way. */
-  useEffect(() => {
-    if (!open) return;
-    setWho(recipient);
-    setTag(null);
-    setNote('');
-    setSkillKey('');
-    setState('idle');
-  }, [open, recipient]);
+     fields mid-animation shows the form emptying itself on the way.
+
+     Adjusted during render so the blank form is the FIRST thing committed on
+     open. The effect version painted the previous send's leftovers for one
+     frame as the sheet slid up. Both props are tracked because a recipient
+     handed in while the sheet is already open must re-fix the person, which is
+     what the old dependency array said. */
+  const [prevOpenFor, setPrevOpenFor] = useState({ open, recipient });
+  if (prevOpenFor.open !== open || prevOpenFor.recipient !== recipient) {
+    setPrevOpenFor({ open, recipient });
+    if (open) {
+      setWho(recipient);
+      setTag(null);
+      setNote('');
+      setSkillKey('');
+      setState('idle');
+    }
+  }
 
   const canSend = !!who && !!tag && online && state !== 'sending' && state !== 'sent';
 

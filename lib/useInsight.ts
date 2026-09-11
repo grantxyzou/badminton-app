@@ -112,13 +112,19 @@ export function useInsight(enabled = true): UseInsight {
   // listened for IDENTITY_EVENT only, so signing in from ANOTHER tab left the
   // insight keyed to the departed member while the prop-driven cards moved on.
   const { name: activeName } = useActiveName();
-  const [state, setState] = useState<UseInsight>({
+  /* Seeded from the inputs so a hook that mounts ready to fetch reports
+     `loading` on its very first render, which is what the old effect's
+     synchronous `setState` was really for. `useActiveName` resolves in an
+     effect, so in practice this starts at the idle shape and moves once the
+     name arrives — but a consumer that already has one must not see a frame
+     claiming "not loading, no data". */
+  const [state, setState] = useState<UseInsight>(() => ({
     data: null,
-    loading: false,
+    loading: enabled && activeName !== null,
     error: false,
     forbidden: false,
     serverError: false,
-  });
+  }));
 
   // Force a refresh when the member actually CHANGES. The cache is keyed by
   // name, so a different member can never be *served* stale data — this only
@@ -136,13 +142,24 @@ export function useInsight(enabled = true): UseInsight {
     if (prev != null && prev !== activeName) cache.clear();
   }, [activeName]);
 
-  useEffect(() => {
+  /* The two SYNCHRONOUS writes the old effect opened with, adjusted during
+     render instead. Neither waits on the network: one is the idle shape for a
+     hook with nothing to fetch, the other is "a request for this member is
+     about to start". Leaving them in the effect meant a consumer committed one
+     frame of the PREVIOUS member's insight before the loading flag landed. */
+  const [prevKey, setPrevKey] = useState({ enabled, activeName });
+  if (prevKey.enabled !== enabled || prevKey.activeName !== activeName) {
+    setPrevKey({ enabled, activeName });
     if (!enabled || !activeName) {
       setState({ data: null, loading: false, error: false, forbidden: false, serverError: false });
-      return;
+    } else {
+      setState((s) => ({ ...s, loading: true, error: false, forbidden: false, serverError: false }));
     }
+  }
+
+  useEffect(() => {
+    if (!enabled || !activeName) return;
     let cancelled = false;
-    setState((s) => ({ ...s, loading: true, error: false, forbidden: false, serverError: false }));
     load(activeName).then((res) => {
       if (cancelled) return;
       setState({

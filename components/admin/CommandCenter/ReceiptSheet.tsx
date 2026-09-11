@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useRef, useState, useMemo, useCallback } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import {
   renderGroupText,
@@ -30,7 +30,15 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string>('');
 
-  useEffect(() => {
+  // Reset on open, adjusted during render so the sheet never commits a frame
+  // carrying the previous receipt's mode, selection or stale "Copied" pill.
+  const [prevOpenFor, setPrevOpenFor] = useState({ open, initialMode, initialPlayerName });
+  if (
+    prevOpenFor.open !== open ||
+    prevOpenFor.initialMode !== initialMode ||
+    prevOpenFor.initialPlayerName !== initialPlayerName
+  ) {
+    setPrevOpenFor({ open, initialMode, initialPlayerName });
     if (open) {
       setMode(initialMode);
       setSelectedPlayer(initialPlayerName ?? null);
@@ -38,7 +46,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
       setActionError(null);
       setSaveHint(false);
     }
-  }, [open, initialMode, initialPlayerName]);
+  }
 
   const text = useMemo(() => {
     if (!input) return '';

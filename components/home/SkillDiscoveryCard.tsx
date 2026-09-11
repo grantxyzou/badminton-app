@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { readStored, useClientValue } from '@/lib/useClientValue';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DISMISS_KEY = 'badminton_skill_discovery_dismissed';
@@ -21,17 +22,16 @@ export default function SkillDiscoveryCard({
   onOpen: () => void;
 }) {
   const t = useTranslations('home');
-  const [dismissed, setDismissed] = useState(true); // hidden until checked — no flash
+  // Hidden until checked — no flash. `true` is both the server answer and the
+  // answer for a player we cannot identify, which is what the old effect's
+  // early `return` on a null name left standing.
+  const storedDismissed = useClientValue(
+    () => (name ? readStored(DISMISS_KEY) === '1' : true),
+    true,
+  );
+  const [justDismissed, setJustDismissed] = useState(false);
+  const dismissed = storedDismissed || justDismissed;
   const [hasRated, setHasRated] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    if (!name) return;
-    try {
-      setDismissed(localStorage.getItem(DISMISS_KEY) === '1');
-    } catch {
-      setDismissed(false);
-    }
-  }, [name]);
 
   // Self-retire once the player has rated at least once.
   useEffect(() => {
@@ -49,7 +49,7 @@ export default function SkillDiscoveryCard({
 
   const dismiss = () => {
     try { localStorage.setItem(DISMISS_KEY, '1'); } catch { /* ignore */ }
-    setDismissed(true);
+    setJustDismissed(true);
   };
 
   return (

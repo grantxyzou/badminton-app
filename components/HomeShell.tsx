@@ -25,6 +25,10 @@ import { noticeBanner, noticeTimeoutMs, type AuthNotice } from '@/lib/authNotice
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
 import { consumeRecentExcursion } from '@/lib/excursion';
 import { claimPendingHandoff, pendingHandoffId } from '@/lib/handoffClient';
+import { useClientValue } from '@/lib/useClientValue';
+
+/** `?dev` opens the DevPanel. Never stripped, so it is safe to read on demand. */
+const readDevParam = () => new URLSearchParams(window.location.search).has('dev');
 
 // AdminTab + DemoMode + DevPanel are lazy-loaded — most users never trigger
 // these surfaces (admin requires sign-in, DemoMode is URL-gated, DevPanel
@@ -69,7 +73,10 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
   // resolves — kicking you off the tab you were on. Only bounce once the
   // verdict is actually KNOWN (a successful probe), never on the unknown.
   const [adminKnown, setAdminKnown] = useState(false);
-  const [devMode, setDevMode] = useState(false);
+  /* `?dev` is the one landing param that is NEVER stripped from the URL below,
+     so it stays readable for the life of the page and is a plain read rather
+     than something to capture into state on mount. */
+  const devMode = useClientValue(readDevParam, false);
   const [devOverrides, setDevOverrides] = useState<DevOverrides>({});
   const [profileSession, setProfileSession] = useState<{ id: string; label: string }>({ id: '', label: '' });
   // Set when a provider callback bounced back with ?authFlow=name -- i.e. an
@@ -132,7 +139,6 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
     if (urlParamsConsumed.current) return;
     urlParamsConsumed.current = true;
     const params = new URLSearchParams(window.location.search);
-    if (params.has('dev')) setDevMode(true);
 
     // ── Auth redirect results ────────────────────────────────────────────
     // ALL of these must be read BEFORE the tab-precedence branches below,
@@ -487,9 +493,11 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
   // Reset tab only on a KNOWN loss of admin access — never on the
   // not-yet-determined initial state (that race ate the admin tab on
   // reload before the probe could resolve).
-  useEffect(() => {
-    if (activeTab === 'admin' && adminKnown && !showAdmin) setActiveTab('home');
-  }, [showAdmin, adminKnown, activeTab]);
+  // Adjusted during render, not in an effect: the effect version committed one
+  // frame of the admin tab to a demoted user before bouncing them. Deliberately
+  // unguarded by a "did it just change" check — the condition IS the guard, and
+  // it stops holding the moment `setActiveTab` lands, so this runs at most once.
+  if (activeTab === 'admin' && adminKnown && !showAdmin) setActiveTab('home');
 
   // Expose the active tab to CSS so per-tab background variants can react
   // (e.g. Sign-Ups tab swaps the global aurora for 03 Court markings).

@@ -61,25 +61,35 @@ export default function AskAccessSheet({
 
   // Never leave a poll running behind a closed sheet.
   useEffect(() => stop, [stop]);
+  /**
+   * The state half of "the sheet just opened or closed", adjusted during
+   * render.
+   *
+   * On OPEN, re-sync the name. `useState(initialName)` reads the prop once, at
+   * first render — and both parents mount this permanently and only toggle
+   * `open`, so at that moment the name is still ''. The signup path that lands
+   * here has just watched someone type their name and says "straight into the
+   * ask flow with the name already filled"; without this it opened blank and
+   * asked them to type it again, on the one screen whose job is to unblock
+   * someone stuck.
+   *
+   * On CLOSE, drop back to `idle`.
+   */
+  const [prevOpenFor, setPrevOpenFor] = useState({ open, initialName });
+  if (prevOpenFor.open !== open || prevOpenFor.initialName !== initialName) {
+    setPrevOpenFor({ open, initialName });
+    if (open) setName(initialName);
+    else setPhase('idle');
+  }
+
+  // The imperative half stays an effect: clearing the interval and dropping
+  // the secret are side effects, and must not run during a render that React
+  // may discard.
   useEffect(() => {
-    if (!open) {
-      stop();
-      setPhase('idle');
-      secret.current = null;
-      return;
-    }
-    /**
-     * Re-sync the name every time the sheet OPENS.
-     *
-     * `useState(initialName)` reads the prop once, at first render — and both
-     * parents mount this permanently and only toggle `open`, so at that moment
-     * the name is still ''. The signup path that lands here has just watched
-     * someone type their name and says "straight into the ask flow with the
-     * name already filled"; without this it opened blank and asked them to
-     * type it again, on the one screen whose job is to unblock someone stuck.
-     */
-    setName(initialName);
-  }, [open, stop, initialName]);
+    if (open) return;
+    stop();
+    secret.current = null;
+  }, [open, stop]);
 
   const poll = useCallback(async () => {
     if (!secret.current) return;

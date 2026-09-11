@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -22,53 +22,68 @@ export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashT
   const [data, setData] = useState<TileData | null>(null);
   const [loadError, setLoadError] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoadError(false);
-    try {
-      const [birdsRes, membersRes] = await Promise.all([
-        fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
-        fetch(`${BASE}/api/members`, { cache: 'no-store' }),
-      ]);
-      if (!birdsRes.ok || !membersRes.ok) {
+  // Inlined into the effect rather than called through a `useCallback`.
+  // Nothing else invoked `load`, and the indirection hid the timing from
+  // `react-hooks/set-state-in-effect`, which assumed a synchronous cascade.
+  // The old `setLoadError(false)` on entry is gone with it: the state
+  // initialises false and this runs once, so the reset only ever re-set a
+  // value that was already false — and being the one genuinely SYNCHRONOUS
+  // setState here, it was the only part the rule was right about.
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const [birdsRes, membersRes] = await Promise.all([
+          fetch(`${BASE}/api/birds`, { cache: 'no-store' }),
+          fetch(`${BASE}/api/members`, { cache: 'no-store' }),
+        ]);
+        if (cancelled) return;
+        if (!birdsRes.ok || !membersRes.ok) {
+          setLoadError(true);
+          setData(null);
+          return;
+        }
+        const birds = await birdsRes.json() as { currentStock?: number; burnPerSession?: number };
+        const members = await membersRes.json() as Array<{ active?: boolean; sessionCount?: number; lastSeen?: string }>;
+        if (cancelled) return;
+
+        let weeksLeft: number | null = null;
+        const stock = birds?.currentStock ?? 0;
+        const burn = birds?.burnPerSession ?? 0;
+        if (burn > 0 && stock > 0) {
+          weeksLeft = Math.floor(stock / burn);
+        }
+
+        const activeList = Array.isArray(members) ? members.filter((m) => m.active !== false) : [];
+        const sixtyDaysAgo = Date.now() - 60 * 86_400_000;
+        const dormant = activeList.filter((m) => {
+          if (!m.sessionCount || m.sessionCount === 0) return true;
+          if (m.lastSeen) {
+            const t = new Date(m.lastSeen).getTime();
+            if (Number.isFinite(t) && t < sixtyDaysAgo) return true;
+          }
+          return false;
+        }).length;
+
+        setData({
+          birdStock: birds?.currentStock ?? 0,
+          birdWeeksLeft: weeksLeft,
+          activeMembers: activeList.length - dormant,
+          totalMembers: activeList.length,
+          dormantMembers: dormant,
+        });
+      } catch {
+        if (cancelled) return;
         setLoadError(true);
         setData(null);
-        return;
       }
-      const birds = await birdsRes.json() as { currentStock?: number; burnPerSession?: number };
-      const members = await membersRes.json() as Array<{ active?: boolean; sessionCount?: number; lastSeen?: string }>;
+    })();
 
-      let weeksLeft: number | null = null;
-      const stock = birds?.currentStock ?? 0;
-      const burn = birds?.burnPerSession ?? 0;
-      if (burn > 0 && stock > 0) {
-        weeksLeft = Math.floor(stock / burn);
-      }
-
-      const activeList = Array.isArray(members) ? members.filter((m) => m.active !== false) : [];
-      const sixtyDaysAgo = Date.now() - 60 * 86_400_000;
-      const dormant = activeList.filter((m) => {
-        if (!m.sessionCount || m.sessionCount === 0) return true;
-        if (m.lastSeen) {
-          const t = new Date(m.lastSeen).getTime();
-          if (Number.isFinite(t) && t < sixtyDaysAgo) return true;
-        }
-        return false;
-      }).length;
-
-      setData({
-        birdStock: birds?.currentStock ?? 0,
-        birdWeeksLeft: weeksLeft,
-        activeMembers: activeList.length - dormant,
-        totalMembers: activeList.length,
-        dormantMembers: dormant,
-      });
-    } catch {
-      setLoadError(true);
-      setData(null);
-    }
+    return () => {
+      cancelled = true;
+    };
   }, []);
-
-  useEffect(() => { void load(); }, [load]);
 
   if (loadError) {
     return (

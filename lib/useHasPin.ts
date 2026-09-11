@@ -35,13 +35,20 @@ export interface MemberProbe {
 export function useMemberProbe(name: string, debounceMs = 500): MemberProbe | null {
   const [probe, setProbe] = useState<MemberProbe | null>(null);
 
+  /* Clearing the previous answer is a conclusion about the NAME, not a result
+     of the probe, so it is adjusted during render. It also used to be written
+     twice — once per branch, with identical arguments — which is how the same
+     line came to be reported by `react-hooks/set-state-in-effect` at two
+     different places in one effect. */
+  const [prevInputs, setPrevInputs] = useState({ name, debounceMs });
+  if (prevInputs.name !== name || prevInputs.debounceMs !== debounceMs) {
+    setPrevInputs({ name, debounceMs });
+    setProbe(null);
+  }
+
   useEffect(() => {
     const trimmed = name.trim();
-    if (trimmed.length < 2) {
-      setProbe(null);
-      return;
-    }
-    setProbe(null);
+    if (trimmed.length < 2) return;
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {

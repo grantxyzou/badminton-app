@@ -208,18 +208,29 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
   // previous member's picks, and the skip rules would otherwise serve their
   // string pick (or their parked card) to whoever signs in next on a shared
   // device.
+  // The STATE half, adjusted during render, so the rail never commits a frame
+  // of the previous member's picks to the new one.
+  const [prevName, setPrevName] = useState(activeName);
+  if (prevName !== activeName) {
+    setPrevName(activeName);
+    setParkReasons({});
+    setState(initialState());
+  }
+
+  // The REF half stays an effect. Both are keyed on the same change, and the
+  // effect ordering is what makes that safe: this one is declared above the
+  // fetch effect below, so the refs are cleared before anything reads them in
+  // the same commit.
   const prevNameRef = useRef(activeName);
   useEffect(() => {
     if (prevNameRef.current === activeName) return;
     prevNameRef.current = activeName;
     statusRef.current = initialStatuses();
     parkReasonRef.current = {} as Record<EquipmentCategory, ParkReason | null>;
-    setParkReasons({});
     stringSourceRef.current = null;
     prevKeyRef.current = null;
     cancelledRef.current.clear();
     inFlightRef.current.clear();
-    setState(initialState());
   }, [activeName]);
 
   useEffect(() => {

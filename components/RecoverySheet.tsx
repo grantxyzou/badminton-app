@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from './BottomSheet';
 import SignInForm from './SignInForm';
@@ -29,9 +29,13 @@ export default function RecoverySheet({ open, onClose, sessionId, onForgotPin }:
   const [success, setSuccess] = useState<string | null>(null);
 
   // Reset success state when the sheet closes so reopening shows the form.
-  useEffect(() => {
+  // Adjusted during render on the open→closed edge, so the cleared form is
+  // never committed while the sheet is still animating out.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (!open) setSuccess(null);
-  }, [open]);
+  }
 
   function handleSuccess({ name, token }: { name: string; token?: string }) {
     setIdentity({ name, token, sessionId });

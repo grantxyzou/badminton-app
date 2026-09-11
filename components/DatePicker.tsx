@@ -38,12 +38,20 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
   const btnRef = useRef<HTMLButtonElement>(null);
   const calRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  // Snap the visible month back to `value` whenever it changes. Adjusted
+  // during render rather than in an effect: the effect version committed one
+  // frame showing the month the user had browsed to before jumping, and the
+  // guard has to compare the PREVIOUS value rather than run unconditionally,
+  // because the user may page away from `value`'s month and must not be
+  // dragged back on every unrelated re-render.
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
     if (value) {
       setViewYear(parseInt(value.slice(0, 4)));
       setViewMonth(parseInt(value.slice(5, 7)) - 1);
     }
-  }, [value]);
+  }
 
   // Close on outside click
   useEffect(() => {
