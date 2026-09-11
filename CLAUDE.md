@@ -513,11 +513,24 @@ One deployment, trunk-based: every push to `main` deploys to production. Full de
   built-in Bash safety (`multiple operations`, output redirection, `mkdir`),
   which **no allowlist entry can grant** — the diagnostic's "Add them to
   `--allowedTools`" advice is wrong for those.
-- **Denials cost money even when they are correct.** Holding turns roughly
-  constant, runs with ≥10 denials cost **$0.220 per turn** against **$0.074**
-  for runs with ≤2, because a refused call burns a turn and returns nothing
-  before the agent routes around it. Total across the 45 runs of 2026-09-06 to
-  09-09: **$114.34**, mean $2.54 a review.
+- **High-denial runs cost more per turn, and NOBODY HAS ESTABLISHED WHY.**
+  Holding turns roughly constant, runs with ≥10 denials cost **$0.220 per turn**
+  against **$0.074** for runs with ≤2. Total across the 45 runs of 2026-09-06 to
+  09-09: **$114.34**, mean $2.54 a review. The numbers check out; the mechanism
+  first written here did not, and the correction is worth keeping because of how
+  it arrived. This file used to say the gap was "because a refused call burns a
+  turn and returns nothing". **The review bot itself refuted that, inline on
+  #351**: per-turn cost is `total_cost_usd / num_turns`, which is dominated by
+  INPUT CONTEXT SIZE, and a refused call adds almost no tokens — so it should be
+  CHEAPER per turn, not three times dearer. The stated cause predicted the
+  opposite sign from the gap it was explaining. A likelier driver, still
+  unmeasured, is context inflation from routing AROUND the refusal: the
+  `Read`/`Grep` output that replaces the denied call is carried in every later
+  turn. **Do not use this gap to justify widening the allowlist** — that is
+  precisely what it was used for, and #357 was reverted the same day.
+  ([[feedback_github_gates_that_look_on]] carries the other half: the comment
+  was posted at 11:36 and #357 merged at 14:29, because the check was green and
+  nobody read the comment.)
 - **A canary that announces itself proves nothing.** The plugin's first step is
   an eligibility check that may skip a PR it judges doesn't need review, and its
   step 6 drops any finding scored under 80. A PR titled "DO NOT MERGE — planted
