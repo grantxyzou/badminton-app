@@ -81,7 +81,14 @@ export default function EmailSignUpSheet({ open, onClose, onSuccess, inviteToken
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        if (res.status === 429) setError(t('signUpRateLimited'));
+        // The invite was REGENERATED between opening the link and finishing
+        // here. #376 refuses before it writes anything — better than leaving an
+        // account behind with no club and no way to reach one — so nothing was
+        // created and the actionable advice is "ask for a fresh link", not
+        // "try again". Only when we actually sent one: a bare 404 from this
+        // route means something else entirely.
+        if (inviteToken && data.error === 'invite_not_found') setError(t('signUpInviteExpired'));
+        else if (res.status === 429) setError(t('signUpRateLimited'));
         else if (data.error === 'name_taken') setError(t('signUpNameTaken'));
         else if (data.error === 'email_taken') setError(t('signUpEmailTaken'));
         else if (data.error === 'weak_password') setError(t('passwordTooCommon'));

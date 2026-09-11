@@ -247,6 +247,7 @@
       "signUpEmailTaken": "That email already has an account. Sign in, or use another address.",
       "signUpInvalidEmail": "That doesn't look like an email address.",
       "signUpRateLimited": "Let's give it a rest for an hour, then try again.",
+      "signUpInviteExpired": "That invite has been replaced, so we didn't create the account. Ask whoever invited you for a fresh link, then sign up again.",
       "signUpFailed": "Couldn't create that — give it another go.",
       "verifyMailUnsent": "You're all set. We couldn't send the confirmation email just now, so you can confirm your address later from Profile.",
       "forgotTitle": "Forgot your password?",

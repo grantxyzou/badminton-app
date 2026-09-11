@@ -247,6 +247,7 @@
       "signUpEmailTaken": "这个邮箱已有账号。请登录，或换一个邮箱。",
       "signUpInvalidEmail": "这看起来不像一个邮箱地址。",
       "signUpRateLimited": "先歇一小时，然后再试。",
+      "signUpInviteExpired": "这个邀请已被更换，账户没有创建。请向邀请你的人要一个新链接，然后重新注册。",
       "signUpFailed": "没能创建 — 请再试一次。",
       "verifyMailUnsent": "都设置好了。我们暂时没能发送确认邮件，你可以稍后在“我的”页面确认邮箱。",
       "forgotTitle": "忘记密码？",

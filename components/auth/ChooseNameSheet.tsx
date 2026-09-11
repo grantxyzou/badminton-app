@@ -107,8 +107,15 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken 
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
+        // The invite was REGENERATED between opening the link and finishing
+        // here. #376 refuses before it writes anything — better than leaving an
+        // account behind with no club and no way to reach one — so nothing was
+        // created and the actionable advice is "ask for a fresh link", not
+        // "try again". Only when we actually sent one: a bare 404 from this
+        // route means something else entirely.
+        if (inviteToken && data.error === 'invite_not_found') setError(t('signUpInviteExpired'));
         // Not a dead end: offer to prove the name is theirs.
-        if (data.error === 'name_taken') setMode('claim');
+        else if (data.error === 'name_taken') setMode('claim');
         else if (data.error === 'no_pending_signup') setMode('expired');
         else if (data.error === 'already_linked') setError(t('alreadyLinked'));
         else if (data.error === 'email_taken') setError(t('emailTaken'));
