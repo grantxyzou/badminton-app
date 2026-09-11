@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useEffect } from 'react';
 import StatsV2Shell from '@/components/stats/StatsV2Shell';
 import WhereYouSitCard from '@/components/stats/WhereYouSitCard';
 import ClubConsentSheet from '@/components/stats/ClubConsentSheet';
@@ -13,6 +14,7 @@ import StatsSignedOut from '@/components/stats/StatsSignedOut';
 import { useStatsPrivacy, shouldPromptForComparison } from '@/lib/useStatsPrivacy';
 import { isFlagOn } from '@/lib/flags';
 import { useActiveName } from '@/lib/useActiveName';
+import { recordEngagement } from '@/lib/engagement';
 
 // Client-only (reads localStorage identity) — these three resolve an active
 // name at mount, so server-rendering them just produces markup the client
@@ -44,6 +46,27 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: 'home' 
   // Equipment register follows the Value-Hub flag; its kill-criterion gate is
   // still open, so Gear can still be withdrawn without touching the shell.
   const valueHubOn = isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE');
+
+  /**
+   * "Did anyone open Stats at all?" — the question nothing in the app could
+   * answer, and the one the whole skill readout rests on. Every other ratio in
+   * `slice0.skill` is conditioned on this one.
+   *
+   * Keyed on the RESOLVED identity, not on mount. This component returns `null`
+   * while `identResolved` is false, so a mount-time beacon would fire for an
+   * unresolved viewer and then again for the real one.
+   *
+   * It counts MEMBERS, never events, on the reader side — `HomeShell` keys this
+   * tab's wrapper on `refreshNonce`, so a pull-to-refresh remounts and fires
+   * again. That is a property of the metric, not a caveat on it.
+   *
+   * Fire-and-forget by design: an anonymous viewer holds no `member_session`,
+   * gets a 401, and is correctly uncounted. Nothing the member sees depends on
+   * this call.
+   */
+  useEffect(() => {
+    if (identResolved && activeName) void recordEngagement('stats_open');
+  }, [identResolved, activeName]);
 
   const privacyState = useStatsPrivacy(activeName);
   const promptOpen = shouldPromptForComparison(privacyState);

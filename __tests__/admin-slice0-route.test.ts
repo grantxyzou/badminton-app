@@ -7,6 +7,7 @@ import {
   setupAdminPin,
   seedAdminMember,
   seedPlayer,
+  seedMember,
   makeGetRequest,
 } from './helpers';
 
@@ -195,5 +196,97 @@ describe('GET /api/admin/slice0', () => {
     // and both acted — but a third who was only served would not count.
     expect(body.picks.engagedMembers).toBe(2);
   });
-});
 
+  /**
+   * The skill funnel. Its denominator is the ROSTER, not attendance — the two
+   * blocks on this route are deliberately not comparable, and these cases are
+   * what stop someone silently making them so again.
+   */
+  describe('skill block', () => {
+    const AT = '2026-07-02T10:00:00.000Z';
+    function seedSkillEvent(memberId: string, name: string, kind: string, source?: string) {
+      const store = getStore();
+      if (!store['events']) store['events'] = [];
+      store['events'].push({ id: `sk-${store['events'].length}`, memberId, name, kind, at: AT, ...(source ? { source } : {}) });
+    }
+    function seedAssessment(memberId: string, name: string, takenAt: string, ratingCount = 14) {
+      const store = getStore();
+      if (!store['assessments']) store['assessments'] = [];
+      const ratings: Record<string, number> = {};
+      for (let i = 0; i < ratingCount; i += 1) ratings[`skill_${i}`] = 3;
+      store['assessments'].push({ id: `as-${store['assessments'].length}`, memberId, name, takenAt, ratings });
+    }
+
+    it('denominates on the ROSTER, not on attendance', async () => {
+      // Four on the roster; only one of them turned up since the cutoff.
+      const lin = seedMember('Lin');
+      seedMember('Viktor');
+      seedMember('Carolina');
+      seedPlayer('session-2026-07-02', 'Lin');
+      seedSkillEvent(lin.id, 'Lin', 'stats_open');
+
+      const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
+      expect(body.cohortSize).toBe(1);              // attendance
+      expect(body.skill.rosterSize).toBe(4);        // roster (3 + the seeded admin)
+      expect(body.skill.statsOpeners).toBe(1);
+      expect(body.skill.rates.reach).toBeCloseTo(1 / 4, 3);
+    });
+
+    it('drops an event from someone who is not on the roster', async () => {
+      seedMember('Lin');
+      seedSkillEvent('member-ghost', 'Ghost', 'stats_open');
+
+      const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
+      expect(body.skill.statsOpeners).toBe(0);
+    });
+
+    it('reports a ratio on an empty denominator as NULL, never 0', async () => {
+      seedMember('Lin');
+      // Nobody opened Stats, so `entry` and `finish` have no denominator. A
+      // confident 0 there points the reader at the wrong stage of the funnel.
+      const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
+      expect(body.skill.rates.entry).toBeNull();
+      expect(body.skill.rates.finish).toBeNull();
+      expect(body.skill.rates.reach).toBe(0);   // this one HAS a denominator
+    });
+
+    it('counts openBySource as EVENTS and checkInOpeners as MEMBERS', async () => {
+      const lin = seedMember('Lin');
+      seedSkillEvent(lin.id, 'Lin', 'checkin_open', 'strip');
+      seedSkillEvent(lin.id, 'Lin', 'checkin_open', 'strip');
+      seedSkillEvent(lin.id, 'Lin', 'checkin_open', 'trend');
+
+      const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
+      expect(body.skill.checkInOpeners).toBe(1);
+      expect(body.skill.openBySource).toEqual({ strip: 2, trend: 1, learn: 0, unknown: 0 });
+    });
+
+    it('files an event with no source under unknown rather than dropping it', async () => {
+      const lin = seedMember('Lin');
+      seedSkillEvent(lin.id, 'Lin', 'checkin_open');
+      const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
+      expect(body.skill.openBySource.unknown).toBe(1);
+      expect(body.skill.checkInOpeners).toBe(1);
+    });
+
+    it('reads completions from the assessments container, all-time and in-window', async () => {
+      const lin = seedMember('Lin');
+      const vik = seedMember('Viktor');
+      seedAssessment(lin.id, 'Lin', '2026-01-01T00:00:00.000Z');   // before the window
+      seedAssessment(lin.id, 'Lin', '2026-07-05T00:00:00.000Z');   // in window -> Lin repeats
+      seedAssessment(vik.id, 'Viktor', '2026-01-02T00:00:00.000Z'); // before only
+
+      const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
+      expect(body.skill.everCheckedIn).toBe(2);      // both, all-time
+      expect(body.skill.repeatCheckedIn).toBe(1);    // Lin only
+      expect(body.skill.checkedInWindow).toBe(1);    // Lin only
+    });
+
+    it('counts a partial save as partial', async () => {
+      const lin = seedMember('Lin');
+      seedAssessment(lin.id, 'Lin', '2026-07-05T00:00:00.000Z', 3);
+      const body = await (await GET(makeGetRequest(URL_FIXTURES, true))).json();
+      expect(body.skill.partialSaves).toBe(1);
+    });
+  });
+});

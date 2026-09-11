@@ -13,25 +13,73 @@ import type { EngagementEvent } from './types';
  * records for `memberResolve.ts`: when told "we already do that", check WHERE.
  *
  * The kinds live here too, ONCE, split by who may write them. The route's
- * allowlist, the client beacon's type and the Slice-0 reader all derive from
- * these lists, so a kind cannot be added to the type without the server
- * accepting it, or accepted by the server without a reader counting it.
+ * allowlist and the client beacon's type both derive from these lists, so a
+ * kind cannot be added to the type without the server accepting it.
+ *
+ * The other half of that sentence used to claim a kind could not be "accepted
+ * by the server without a reader counting it". NOTHING ENFORCED THAT. Slice-0
+ * matched the literal `rec_card_tap` and `PICK_KINDS`, so a kind added here
+ * would have been validated, stored, group-scoped and tallied by nobody —
+ * indistinguishable from a feature nobody used. That is now a build gate:
+ * `__tests__/events-reader-coverage.test.ts` seeds one event of every kind and
+ * fails if the Slice-0 body does not move.
  */
-export const CLIENT_KINDS = ['rec_card_tap', 'pick_added', 'pick_tried', 'pick_rated'] as const;
+export const CLIENT_KINDS = [
+  'rec_card_tap',
+  'pick_added',
+  'pick_tried',
+  'pick_rated',
+  'stats_open',
+  'checkin_open',
+] as const;
 /** Written by the server only; `POST /api/events` refuses them. */
 export const SERVER_KINDS = ['pick_served'] as const;
 export const PICK_KINDS = ['pick_served', 'pick_added', 'pick_tried', 'pick_rated'] as const;
 
+/**
+ * Kinds whose SURFACE is gated by NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE, and which
+ * therefore keep the "flag off leaves no live write endpoint behind" posture.
+ *
+ * The skill-funnel kinds are deliberately NOT here. `POST /api/events` used to
+ * 404 wholesale on that flag, and the flag is dated for retirement — a
+ * measurement that switches itself off on a date is not a measurement.
+ */
+export const VALUE_HUB_KINDS = [
+  'rec_card_tap',
+  'pick_added',
+  'pick_tried',
+  'pick_rated',
+  'pick_served',
+] as const;
+
+/** Where a check-in was opened FROM. Bounded like `category`, never free text:
+ *  the whole point is to tell which door the member actually used. */
+export const CHECKIN_SOURCES = ['strip', 'trend', 'learn'] as const;
+export type CheckInSource = (typeof CHECKIN_SOURCES)[number];
+
 export type ClientKind = (typeof CLIENT_KINDS)[number];
 export type ServerKind = (typeof SERVER_KINDS)[number];
 
+export function isCheckInSource(v: unknown): v is CheckInSource {
+  return typeof v === 'string' && (CHECKIN_SOURCES as readonly string[]).includes(v);
+}
+
+export function isValueHubKind(v: string): boolean {
+  return (VALUE_HUB_KINDS as readonly string[]).includes(v);
+}
+
 /** Which optional payload fields each client kind may carry. Anything else
  *  is dropped: an open payload turns the container into a free-text sink. */
-export const CLIENT_PAYLOAD: Record<ClientKind, ReadonlyArray<'catalogId' | 'engineVersion' | 'rating' | 'category'>> = {
+export const CLIENT_PAYLOAD: Record<
+  ClientKind,
+  ReadonlyArray<'catalogId' | 'engineVersion' | 'rating' | 'category' | 'source'>
+> = {
   rec_card_tap: [],
   pick_added: ['catalogId', 'engineVersion', 'category'],
   pick_tried: ['catalogId', 'engineVersion', 'category'],
   pick_rated: ['catalogId', 'engineVersion', 'rating', 'category'],
+  stats_open: [],
+  checkin_open: ['source'],
 };
 
 export function isClientKind(v: unknown): v is ClientKind {
