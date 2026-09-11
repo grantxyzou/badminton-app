@@ -62,6 +62,16 @@ export default function EmailSignUpSheet({ open, onClose, onSuccess, inviteToken
     password.length >= PASSWORD_MIN_LENGTH &&
     !tooCommon;
 
+  /**
+   * ONE expression decides both whether the token is SENT and whether a 404 is
+   * read as "that invite was replaced". The server's `attempted` treats a
+   * present-but-unusable value as an attempt and refuses it, so a guard that
+   * sent `''` while reading `''` as "no invite sent" would show the generic
+   * signup error for a refusal that has specific, actionable advice. Keeping it
+   * to one constant is what stops the two sides drifting apart.
+   */
+  const sentInvite = typeof inviteToken === 'string' && inviteToken.trim().length > 0;
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
@@ -75,7 +85,7 @@ export default function EmailSignUpSheet({ open, onClose, onSuccess, inviteToken
           name: name.trim(),
           email: email.trim(),
           password,
-          ...(inviteToken ? { inviteToken } : {}),
+          ...(sentInvite ? { inviteToken } : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -87,7 +97,7 @@ export default function EmailSignUpSheet({ open, onClose, onSuccess, inviteToken
         // created and the actionable advice is "ask for a fresh link", not
         // "try again". Only when we actually sent one: a bare 404 from this
         // route means something else entirely.
-        if (inviteToken && data.error === 'invite_not_found') setError(t('signUpInviteExpired'));
+        if (sentInvite && data.error === 'invite_not_found') setError(t('signUpInviteExpired'));
         else if (res.status === 429) setError(t('signUpRateLimited'));
         else if (data.error === 'name_taken') setError(t('signUpNameTaken'));
         else if (data.error === 'email_taken') setError(t('signUpEmailTaken'));
