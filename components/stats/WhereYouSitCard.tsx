@@ -7,6 +7,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { SKILLS, topStrengths, workOnNext, type Rating } from '@/lib/assessment';
 import type { Band } from '@/lib/clubBands';
+import type { UseCheckIn } from './useCheckIn';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -31,11 +32,6 @@ interface ClubBands {
   skills: { skillKey: string; band: Band }[];
 }
 
-interface Snapshot {
-  takenAt: string;
-  ratings: Rating[];
-}
-
 type Load = 'loading' | 'ready' | 'error';
 
 const SKILL_LABEL = new Map(SKILLS.map((s) => [s.key, s.label]));
@@ -47,13 +43,27 @@ export interface WhereYouSitCardProps {
    * unrevealed state then — see the note on `revealed` below.
    */
   promptOpen?: boolean;
+  /** The single check-in owner — supplies this card's own ratings without a
+   *  second read of the history. See the note at the call site. */
+  checkIn?: UseCheckIn;
 }
 
-export default function WhereYouSitCard({ activeName, promptOpen = false }: WhereYouSitCardProps) {
+export default function WhereYouSitCard({ activeName, promptOpen = false, checkIn }: WhereYouSitCardProps) {
   const t = useTranslations('stats.club');
   const [bands, setBands] = useState<ClubBands | null>(null);
-  const [ratings, setRatings] = useState<Rating[]>([]);
   const [status, setStatus] = useState<Load>('loading');
+
+  /**
+   * The member's own ratings come from the single owner, not from a second
+   * read of `/api/assessments`. This card used to fetch it alongside the bands
+   * in one `Promise.all`; `OverviewStrip` and `SkillTrendCard` each fetched it
+   * too, so one visit to Stats read the same history three times and the cards
+   * could disagree mid-flight. Pinned by `StatsCheckInOwner.test.tsx`.
+   *
+   * The BANDS read stays here — it is this card's own data, it is consent-gated
+   * server-side, and it has to re-run when the member answers that prompt.
+   */
+  const ratings: Rating[] = (checkIn?.latest?.ratings ?? []) as Rating[];
 
   useEffect(() => {
     if (!activeName) return;
@@ -64,12 +74,10 @@ export default function WhereYouSitCard({ activeName, promptOpen = false }: Wher
         r.ok ? r.json() : Promise.reject(new Error(String(r.status))),
       );
 
-    Promise.all([get(`/api/stats/club/bands?name=${n}`), get(`/api/assessments?name=${n}`)])
-      .then(([b, a]) => {
+    get(`/api/stats/club/bands?name=${n}`)
+      .then((b) => {
         if (!live) return;
         setBands(b as ClubBands);
-        const snaps = (a?.assessments ?? []) as Snapshot[];
-        setRatings(snaps[snaps.length - 1]?.ratings ?? []);
         setStatus('ready');
       })
       .catch(() => live && setStatus('error'));
@@ -92,8 +100,19 @@ export default function WhereYouSitCard({ activeName, promptOpen = false }: Wher
     );
   }
 
-  // Below the cohort minimum the card is absent entirely, not empty.
-  if (!bands || bands.cohort < bands.minCohort) return null;
+  /**
+   * Below the cohort minimum the card is absent entirely, not empty.
+   *
+   * The shape check is not paranoia. A 200 carrying an unexpected body used to
+   * reach the `bands.skills.length` read below and throw, taking the whole
+   * register down with it — and `undefined < undefined` is false, so a missing
+   * `cohort` sailed through this guard rather than being caught by it. Unknown
+   * is not known-false: a payload we cannot read is treated as "no comparison
+   * available", which is what the card already renders for a small club.
+   */
+  if (!bands || !Array.isArray(bands.skills)) return null;
+  if (typeof bands.cohort !== 'number' || typeof bands.minCohort !== 'number') return null;
+  if (bands.cohort < bands.minCohort) return null;
 
   /**
    * THE CONSENT INVARIANT, client side.

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useActiveName } from '@/lib/useActiveName';
 import DimensionBars from './DimensionBars';
@@ -9,7 +9,8 @@ import { useInsight } from '@/lib/useInsight';
 import InsightChip from '@/components/stats/InsightChip';
 import StatCard, { type StatTone } from '@/components/stats/StatCard';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
-import CheckInSheet from './CheckInSheet';
+import LevelTrendChart from './LevelTrendChart';
+import type { UseCheckIn } from './useCheckIn';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
@@ -66,34 +67,22 @@ function Delta({ value }: { value: number }) {
   );
 }
 
-export default function SkillTrendCard() {
+export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   const t = useTranslations('stats');
   // Shared owner of the identity → preview-name chain. Subscribing (rather
   // than resolving once at mount) is what keeps this card from rendering the
   // PREVIOUS member's trend beside the new member's other cards after a
   // name-to-name sign-in — nothing remounts this island on an identity change.
   const { name: activeName } = useActiveName();
-  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
-  const [loaded, setLoaded] = useState(false);
-  const [loadError, setLoadError] = useState(false);
   const [sheetSkill, setSheetSkill] = useState<string | null>(null);
-  const [checkInOpen, setCheckInOpen] = useState(false);
+  // History and the sheet both come from the single owner now (`useCheckIn` in
+  // `SkillsTab`). This card used to fetch `/api/assessments` itself and mount
+  // `CheckInSheet` TWICE — once per branch, with different props.
+  const snapshots = (checkIn?.snapshots ?? []) as Snapshot[];
+  const loaded = checkIn ? checkIn.status !== 'loading' : true;
+  const loadError = checkIn?.status === 'error';
   // Distributed AI insight — a short, non-obvious chip about the skill trend.
   const { data: insight } = useInsight();
-
-  const load = useCallback(() => {
-    if (!activeName) return;
-    fetch(`${BASE}/api/assessments?name=${encodeURIComponent(activeName)}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d) => {
-        setSnapshots((d.assessments ?? []) as Snapshot[]);
-        setLoaded(true);
-        setLoadError(false);
-      })
-      .catch(() => { setLoadError(true); setLoaded(true); });
-  }, [activeName]);
-
-  useEffect(() => { load(); }, [load]);
 
   const latest = snapshots[snapshots.length - 1];
   const prev = snapshots.length > 1 ? snapshots[snapshots.length - 2] : undefined;
@@ -146,7 +135,7 @@ export default function SkillTrendCard() {
         icon="trending_up"
         title={t('assess.heroTitle')}
         action={latest ? (
-          <button type="button" onClick={() => setCheckInOpen(true)} className="cc-btn cc-btn-ghost" style={{ whiteSpace: 'nowrap' }}>
+          <button type="button" onClick={() => checkIn?.openFrom('trend')} className="cc-btn cc-btn-ghost" style={{ whiteSpace: 'nowrap' }}>
             {t('assess.reRate')}
           </button>
         ) : undefined}
@@ -161,11 +150,10 @@ export default function SkillTrendCard() {
       <>
         <Frame>
           <EmptyState icon="trending_up">{t('assess.empty')}</EmptyState>
-          <button type="button" onClick={() => setCheckInOpen(true)} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
+          <button type="button" onClick={() => checkIn?.openFrom('trend')} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
             {t('assess.rateSkills')}
           </button>
         </Frame>
-        <CheckInSheet name={activeName} open={checkInOpen} onClose={() => setCheckInOpen(false)} onSaved={load} />
       </>
     );
   }
@@ -192,6 +180,13 @@ export default function SkillTrendCard() {
           />
         ))}
       </div>
+
+      {/* Your level over time. Placed directly under the three dimension
+          tiles and above the bars: the level is the headline number, so its
+          history belongs beside it rather than at the foot of the card. It
+          renders nothing at all when there is no usable history — see the
+          component for the four states it distinguishes. */}
+      {checkIn && <LevelTrendChart checkIn={checkIn} />}
 
       {/* Dimension bars, full width — replaces the 14-axis radar. */}
       <DimensionBars
@@ -227,7 +222,7 @@ export default function SkillTrendCard() {
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           <button
             type="button"
-            onClick={() => setCheckInOpen(true)}
+            onClick={() => checkIn?.openFrom('trend')}
             className="cc-btn cc-btn-ghost"
             style={{ flex: 1, justifyContent: 'center', whiteSpace: 'nowrap' }}
           >
@@ -262,7 +257,6 @@ export default function SkillTrendCard() {
         <SkillAnchorSheet skillKey={sheetSkill} value={nowMap.get(sheetSkill) ?? 0} onClose={() => setSheetSkill(null)} />
       )}
 
-      <CheckInSheet name={activeName} open={checkInOpen} onClose={() => setCheckInOpen(false)} onSaved={load} previous={nowMap} />
     </div>
   );
 }

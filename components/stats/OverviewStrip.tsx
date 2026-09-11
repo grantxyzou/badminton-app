@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import StatCard from './StatCard';
+import type { UseCheckIn } from './useCheckIn';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
@@ -28,22 +29,27 @@ type Tile<T> = { status: 'loading' | 'ready' | 'error'; data: T | null };
 
 const PENDING = { status: 'loading' as const, data: null };
 
-interface Snapshot {
-  takenAt?: string;
-  overall?: number | null;
-}
-
 export interface OverviewStripProps {
   /** The name Stats is rendering for. Null renders nothing. */
   activeName: string | null;
+  /**
+   * The check-in owner. Supplies the history this strip used to fetch itself,
+   * and makes the level tile a DOOR.
+   *
+   * Optional so the strip still renders standalone (its three tiles are
+   * independent by design and two of them do not need this at all) — but
+   * without it the tile is the dead text it was: the app's most persistent
+   * prompt, visible above every register, saying "Take a check-in" with no way
+   * to take one.
+   */
+  checkIn?: UseCheckIn;
 }
 
-export default function OverviewStrip({ activeName }: OverviewStripProps) {
+export default function OverviewStrip({ activeName, checkIn }: OverviewStripProps) {
   const t = useTranslations('stats.overview');
   const locale = useLocale();
 
   const [level, setLevel] = useState<Tile<number | null>>(PENDING);
-  const [trend, setTrend] = useState<Tile<Snapshot[]>>(PENDING);
   const [games, setGames] = useState<Tile<number>>(PENDING);
   const [kudos, setKudos] = useState<Tile<number>>(PENDING);
 
@@ -66,13 +72,14 @@ export default function OverviewStrip({ activeName }: OverviewStripProps) {
       })
       .catch(() => live && setLevel({ status: 'error', data: null }));
 
-    // The level number and its delta come from different places: the canonical
-    // level folds games and legacy stage, while the "since April" comparison
-    // needs the raw check-in history. A failed trend read degrades the caption
-    // to the baseline line — it never blanks the number.
-    get(`/api/assessments?name=${n}`)
-      .then((d) => live && setTrend({ status: 'ready', data: (d?.assessments ?? []) as Snapshot[] }))
-      .catch(() => live && setTrend({ status: 'error', data: null }));
+    // The check-in history is NOT read here any more. The level number and its
+    // delta still come from different places — the canonical level folds games
+    // and legacy stage, while the "since April" comparison needs the raw
+    // history — but that history now arrives from `useCheckIn`, the single
+    // owner. This card, `SkillTrendCard` and the sheet were each reading
+    // `/api/assessments` separately and could disagree mid-flight. The
+    // independence that matters is preserved: a failed history still only
+    // degrades the CAPTION, never the number.
 
     get(`/api/games?all=true&name=${n}`)
       .then((d) => live && setGames({ status: 'ready', data: (d?.games ?? []).length }))
@@ -112,7 +119,10 @@ export default function OverviewStrip({ activeName }: OverviewStripProps) {
     levelCaption = t('loadError');
   } else if (level.status === 'ready' && level.data !== null) {
     levelValue = level.data.toFixed(1);
-    const snaps = trend.data ?? [];
+    // Gate on the OWNER's status, never on a null-coalesced length: a failed
+    // history and an empty one both read as `[]`, and the caption below makes a
+    // claim about which it is.
+    const snaps = checkIn?.status === 'ready' ? checkIn.snapshots : [];
     const prev = snaps.length > 1 ? snaps[snaps.length - 2] : undefined;
     const latest = snaps[snaps.length - 1];
     const month = monthOf(prev?.takenAt);
@@ -139,6 +149,17 @@ export default function OverviewStrip({ activeName }: OverviewStripProps) {
     levelCaption = '';
   }
 
+  // `StatCard`'s button path wraps label + value + unit + caption in ONE
+  // <button>, so an aria-label REPLACES all of it. A single literal would erase
+  // the number from the accessibility tree, and "no level yet" and "couldn't
+  // load" are different facts — the same distinction the visible caption makes.
+  const levelAria =
+    level.status === 'error'
+      ? t('levelAriaError')
+      : level.status === 'ready' && level.data !== null
+        ? t('levelAriaKnown', { level: levelValue })
+        : t('levelAriaUnknown');
+
   return (
     <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'stretch' }}>
       {/* Left tile is wider — the level is the headline of the three. */}
@@ -150,6 +171,19 @@ export default function OverviewStrip({ activeName }: OverviewStripProps) {
           value={levelValue}
           unit={levelValue === t('noValue') ? undefined : t('ofFive')}
           caption={levelCaption}
+          /**
+           * THE DOOR. This strip sits above the register switch, so it is the
+           * one element visible on all four registers — and it was purely
+           * presentational: it told every member the single most useful thing
+           * they could do ("Take a check-in") and gave them no way to do it.
+           *
+           * Tappable in EVERY state, the failed one included. Direct precedent
+           * in `components/stats/CLAUDE.md`: the kit card's "Your fit" row
+           * lives outside the error fork because opening a sheet is not a
+           * mutation, and on the day the read fails it is the only door.
+           */
+          onClick={checkIn ? () => checkIn.openFrom('strip') : undefined}
+          ariaLabel={checkIn ? levelAria : undefined}
         />
       </div>
       <GlassTile

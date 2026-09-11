@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import PageHeader from '@/components/primitives/PageHeader';
 import OverviewStrip from './OverviewStrip';
+import type { UseCheckIn } from './useCheckIn';
 
 /**
  * Stats v2 shell — the You / Play / Learn / Gear arrangement.
@@ -29,6 +30,10 @@ const VIEWS: StatsView[] = ['you', 'play', 'learn', 'gear'];
 
 export interface StatsV2ShellProps {
   activeName: string | null;
+  /** The check-in owner, forwarded to `OverviewStrip` so the level tile can be
+   *  a door from EVERY register. The shell holds no state of its own beyond the
+   *  register switch and does not gain any here — it only passes this through. */
+  checkIn?: UseCheckIn;
   youSlot?: ReactNode;
   playSlot?: ReactNode;
   learnSlot?: ReactNode;
@@ -37,6 +42,7 @@ export interface StatsV2ShellProps {
 
 export default function StatsV2Shell({
   activeName,
+  checkIn,
   youSlot,
   playSlot,
   learnSlot,
@@ -62,7 +68,7 @@ export default function StatsV2Shell({
         {t('subheadV2')}
       </p>
 
-      <OverviewStrip activeName={activeName} />
+      <OverviewStrip activeName={activeName} checkIn={checkIn} />
 
       {/* Full width, unlike v1's `maxWidth: 360`. NOTE: `.segment-control` is
           shared with AdminTab (globals.css still calls it "Admin segment

@@ -4,6 +4,7 @@ import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import WhereYouSitCard from '../../components/stats/WhereYouSitCard';
 import enMessages from '../../messages/en.json';
+import type { UseCheckIn } from '../../components/stats/useCheckIn';
 
 function jsonResponse(body: unknown, ok = true) {
   return Promise.resolve({ ok, status: ok ? 200 : 500, json: async () => body } as Response);
@@ -27,10 +28,31 @@ const RATINGS = [
   { skillKey: 'drops', value: 1 },
   { skillKey: 'smashes', value: 3 },
 ];
-const ASSESSMENTS = [
-  '/api/assessments',
-  () => jsonResponse({ assessments: [{ takenAt: '2026-08-01T00:00:00.000Z', ratings: RATINGS }] }),
-] as const;
+/**
+ * The member's own ratings arrive as a PROP now, not as this card's own read.
+ *
+ * `useCheckIn` in `SkillsTab` is the single owner: this card, `OverviewStrip`
+ * and `SkillTrendCard` each used to fetch `/api/assessments`, so one visit read
+ * the same history three times and the cards could disagree mid-flight
+ * (`StatsCheckInOwner.test.tsx` is the canary). The BANDS read stays this
+ * card's own — it is consent-gated server-side and must re-run when the member
+ * answers that prompt.
+ */
+function stubCheckIn(ratings: Array<{ skillKey: string; value: number }> = RATINGS): UseCheckIn {
+  const latest = { takenAt: '2026-08-01T00:00:00.000Z', ratings };
+  return {
+    snapshots: [latest],
+    status: 'ready',
+    latest,
+    previous: undefined,
+    open: false,
+    openFrom: () => {},
+    close: () => {},
+    reload: () => {},
+    onSaved: () => {},
+    savedAt: 0,
+  };
+}
 
 function bandsResponse(over: Record<string, unknown> = {}) {
   return [
@@ -49,10 +71,10 @@ function bandsResponse(over: Record<string, unknown> = {}) {
   ] as const;
 }
 
-function renderCard(promptOpen = false) {
+function renderCard(promptOpen = false, checkIn: UseCheckIn = stubCheckIn()) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <WhereYouSitCard activeName="Lin" promptOpen={promptOpen} />
+      <WhereYouSitCard activeName="Lin" promptOpen={promptOpen} checkIn={checkIn} />
     </NextIntlClientProvider>,
   );
 }
@@ -64,7 +86,7 @@ describe('WhereYouSitCard', () => {
   });
 
   it('names the sharpest and weakest rated skills', async () => {
-    mockFetchByUrl([bandsResponse(), ASSESSMENTS]);
+    mockFetchByUrl([bandsResponse()]);
     renderCard();
     await waitFor(() => expect(screen.getByText('Where you sit')).toBeTruthy());
     expect(screen.getByText(/top third/)).toBeTruthy();
@@ -72,7 +94,7 @@ describe('WhereYouSitCard', () => {
   });
 
   it('shows the reassuring footnote when revealed', async () => {
-    mockFetchByUrl([bandsResponse(), ASSESSMENTS]);
+    mockFetchByUrl([bandsResponse()]);
     renderCard();
     await waitFor(() =>
       expect(screen.getByText(/No names, no leaderboard/)).toBeTruthy(),
@@ -81,7 +103,7 @@ describe('WhereYouSitCard', () => {
 
   // ── Cohort minimum ──────────────────────────────────────────────────────
   it('does not render at all below the cohort minimum', async () => {
-    mockFetchByUrl([bandsResponse({ cohort: 3, skills: [] }), ASSESSMENTS]);
+    mockFetchByUrl([bandsResponse({ cohort: 3, skills: [] })]);
     const { container } = renderCard();
     await waitFor(() => expect(container.querySelector('.glass-card')).toBeNull());
     expect(screen.queryByText('Where you sit')).toBeNull();
@@ -92,7 +114,7 @@ describe('WhereYouSitCard', () => {
     // Server returns skills: [] for an unasked or opted-out member. The card
     // must still render — the member owns their sharpest/weakest skills, and
     // vanishing would make "Keep it private" look like it deleted something.
-    mockFetchByUrl([bandsResponse({ skills: [] }), ASSESSMENTS]);
+    mockFetchByUrl([bandsResponse({ skills: [] })]);
     renderCard();
     await waitFor(() => expect(screen.getByText('Where you sit')).toBeTruthy());
     expect(screen.getByText('Private')).toBeTruthy();
@@ -107,7 +129,7 @@ describe('WhereYouSitCard', () => {
   it('never paints a band while the consent prompt is open', async () => {
     // Even with bands in hand, promptOpen must suppress them — the card sits
     // behind a translucent backdrop and would leak the answer being asked for.
-    mockFetchByUrl([bandsResponse(), ASSESSMENTS]);
+    mockFetchByUrl([bandsResponse()]);
     renderCard(true);
     await waitFor(() => expect(screen.getByText('Where you sit')).toBeTruthy());
     expect(screen.queryByText(/top third/)).toBeNull();
@@ -119,33 +141,33 @@ describe('WhereYouSitCard', () => {
   it('shows an explicit error rather than vanishing like the below-cohort case', async () => {
     mockFetchByUrl([
       ['/api/stats/club/bands', () => jsonResponse({ error: 'load_failed' }, false)],
-      ASSESSMENTS,
     ]);
     renderCard();
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
   });
 
   it('renders one band when the best and worst skill are the same', async () => {
-    mockFetchByUrl([
-      bandsResponse({ skills: [{ skillKey: 'consistency', band: 'middle' }] }),
-      [
-        '/api/assessments',
-        () =>
-          jsonResponse({
-            assessments: [
-              { takenAt: '2026-08-01T00:00:00.000Z', ratings: [{ skillKey: 'consistency', value: 3 }] },
-            ],
-          }),
-      ],
-    ]);
-    renderCard();
+    mockFetchByUrl([bandsResponse({ skills: [{ skillKey: 'consistency', band: 'middle' }] })]);
+    // One rated skill, so sharpest and weakest are the same row.
+    renderCard(false, stubCheckIn([{ skillKey: 'consistency', value: 3 }]));
     await waitFor(() => expect(screen.getByText(/middle third/)).toBeTruthy());
     // The lede must be the single-skill sentence, not "and the ... at ...".
     expect(screen.queryByText(/, and the/)).toBeNull();
   });
 
+  it('renders nothing — never throws — on a 200 with an unreadable body', async () => {
+    // A malformed 200 used to reach `bands.skills.length` and throw, taking the
+    // whole You register down with it. `undefined < undefined` is false, so a
+    // missing `cohort` sailed straight through the cohort guard rather than
+    // being caught by it. Unknown is not known-false: a payload we cannot read
+    // is "no comparison available", which is what a small club already sees.
+    mockFetchByUrl([['/api/stats/club/bands', () => jsonResponse({})]]);
+    const { container } = renderCard();
+    await waitFor(() => expect(container.textContent).toBe(''));
+  });
+
   it('renders nothing without an active name', () => {
-    mockFetchByUrl([bandsResponse(), ASSESSMENTS]);
+    mockFetchByUrl([bandsResponse()]);
     const { container } = render(
       <NextIntlClientProvider locale="en" messages={enMessages}>
         <WhereYouSitCard activeName={null} />
