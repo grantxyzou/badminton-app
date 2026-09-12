@@ -3,7 +3,15 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import InstallSheet from '../../components/InstallSheet';
-import enMessages from '../../messages/en.json';
+import rawMessages from '../../messages/en.json';
+import { brandMessages } from '../../i18n/request';
+
+/* The provider is handed BRANDED messages, because that is what production
+   hands it: `app/layout.tsx` passes `getMessages()`, which comes from
+   `getRequestConfig` with `brandMessages` already applied. Rendering the raw
+   JSON here would assert against copy no user ever sees -- the literal
+   `%APP_SHORT%` sentinel rather than the product's name. */
+const enMessages = brandMessages(rawMessages);
 
 afterEach(() => {
   cleanup();

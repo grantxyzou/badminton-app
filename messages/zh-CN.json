@@ -324,7 +324,7 @@
       "claimDifferentName": "换一个名字",
           "continueGoogle": "使用 Google 继续",
           "continueApple": "使用 Apple 继续",
-          "backToApp": "返回 BPM 应用",
+          "backToApp": "返回 %APP_SHORT% 应用",
           "nativeReturnBody": "已登录。请返回应用 — 如果没有自动打开，点击下方按钮，然后关闭此窗口。",
           "connectGoogle": "连接 Google",
           "connectApple": "连接 Apple",
@@ -428,9 +428,9 @@
     "migrate": {
       "row": "迁移到应用",
       "rowEnterCode": "有网页版给的验证码？",
-      "title": "迁移到 BPM 应用",
+      "title": "迁移到 %APP_SHORT% 应用",
       "help": "无需 PIN，直接以你的身份登录新应用。在这部手机上打开链接，或在应用里输入验证码。",
-      "openInApp": "在 BPM 应用中打开",
+      "openInApp": "在 %APP_SHORT% 应用中打开",
       "orCode": "或在应用中输入此验证码",
       "codeLabel": "迁移验证码",
       "codeHelp": "仅可使用一次",
@@ -452,11 +452,11 @@
       "pageTitle": "正在迁移",
       "pageWorking": "正在登录…",
       "pageDone": "完成 — 正在返回首页。",
-      "pageNoApp": "这个链接是给 BPM 应用用的，你似乎在浏览器里打开了它。",
+      "pageNoApp": "这个链接是给 %APP_SHORT% 应用用的，你似乎在浏览器里打开了它。",
       "pageNoAppBody": "如果已安装应用，请回到网页版，改为输入六位验证码。如果没有安装，你的账户就在网页版里 — 什么都没变。",
       "pageNoCode": "这个链接里没有验证码。",
       "pageFailed": "链接无效 — 可能已过期或已被使用。请从网页版重新获取。",
-      "pageHome": "返回 BPM"
+      "pageHome": "返回 %APP_SHORT%"
     },
     "deleteAccount": {
       "link": "删除账户",
@@ -479,10 +479,10 @@
       "turnOn": "开启通知",
       "turnOff": "关闭通知",
       "working": "稍等片刻…",
-      "blocked": "浏览器设置中已禁用 BPM 的通知。需要在那里手动允许 — 应用无法再次请求。",
-      "iosNeedsInstall": "在 iPhone 上，需要先将 BPM 添加到主屏幕才能接收通知。添加后从主屏幕打开，再回到这里。",
+      "blocked": "浏览器设置中已禁用 %APP_SHORT% 的通知。需要在那里手动允许 — 应用无法再次请求。",
+      "iosNeedsInstall": "在 iPhone 上，需要先将 %APP_SHORT% 添加到主屏幕才能接收通知。添加后从主屏幕打开，再回到这里。",
       "iosInstallCta": "查看方法",
-      "unsupported": "此浏览器不支持通知。安卓请用 Chrome，iPhone 请将 BPM 添加到主屏幕。",
+      "unsupported": "此浏览器不支持通知。安卓请用 Chrome，iPhone 请将 %APP_SHORT% 添加到主屏幕。",
       "notConfigured": "服务器尚未配置通知功能。你无需做任何操作。",
       "offlineHint": "当前离线 — 连接后才能修改。",
       "errorAuth": "请先登录，再开启通知。",
@@ -511,23 +511,23 @@
     "close": "关闭"
   },
   "install": {
-    "title": "把 BPM 添加到主屏幕",
-    "intro": "把 BPM 保存到主屏幕，它会像普通 App 一样全屏打开。",
+    "title": "把 %APP_SHORT% 添加到主屏幕",
+    "intro": "把 %APP_SHORT% 保存到主屏幕，它会像普通 App 一样全屏打开。",
     "done": "知道了",
     "close": "关闭",
-    "bannerTitle": "把 BPM 添加到主屏幕",
+    "bannerTitle": "把 %APP_SHORT% 添加到主屏幕",
     "bannerCta": "怎么操作 →",
     "dismiss": "关闭",
     "ios": {
       "step1": "点按 Safari 工具栏里的分享按钮。",
       "step2": "向下滑动，点按「添加到主屏幕」。",
-      "step3": "点按「添加」——BPM 就会出现在主屏幕上。",
+      "step3": "点按「添加」——%APP_SHORT% 就会出现在主屏幕上。",
       "note": "在 Android 上，打开浏览器菜单（⋮），点按「添加到主屏幕」。"
     },
     "android": {
       "step1": "点按浏览器工具栏里的菜单（⋮）。",
       "step2": "点按「添加到主屏幕」（或「安装应用」）。",
-      "step3": "确认——BPM 就会出现在主屏幕上。",
+      "step3": "确认——%APP_SHORT% 就会出现在主屏幕上。",
       "note": "在 iPhone 上，点按 Safari 的分享按钮，再选「添加到主屏幕」。"
     }
   },
@@ -1189,7 +1189,7 @@
         "saveError": "没保存成功 — 再试一次。",
         "newJob": "新工单",
         "who": "谁的球拍？",
-        "whoHint": "任何有 BPM 账号的人 — 临时来的也算。",
+        "whoHint": "任何有 %APP_SHORT% 账号的人 — 临时来的也算。",
         "membersError": "成员列表加载失败 — 刷新重试。",
         "change": "更换",
         "searchMembers": "按名字搜索",
@@ -1405,7 +1405,7 @@
   },
   "legal": {
     "common": {
-      "back": "返回 BPM",
+      "back": "返回 %APP_SHORT%",
       "updated": "最后更新：{date}"
     },
     "privacy": {
@@ -1415,7 +1415,7 @@
         {
           "h": "我们是谁",
           "p": [
-            "BPM Badminton 是温哥华一个业余羽毛球小组的报名表，由组织者 Grant Zou 以个人身份运营，不是公司。适用的隐私法律是加拿大的 PIPEDA 和 BC 省的《个人信息保护法》。"
+            "%APP% 是温哥华一个业余羽毛球小组的报名表，由组织者 Grant Zou 以个人身份运营，不是公司。适用的隐私法律是加拿大的 PIPEDA 和 BC 省的《个人信息保护法》。"
           ]
         },
         {
@@ -1483,7 +1483,7 @@
         {
           "h": "这是什么",
           "p": [
-            "BPM Badminton 是一个小组用来组织每周羽毛球活动的免费工具。使用它意味着你是该小组的成员，或由成员邀请。它由志愿者按现状提供，可能随时停机或变更，恕不另行通知。"
+            "%APP% 是一个小组用来组织每周羽毛球活动的免费工具。使用它意味着你是该小组的成员，或由成员邀请。它由志愿者按现状提供，可能随时停机或变更，恕不另行通知。"
           ]
         },
         {
@@ -1560,15 +1560,15 @@
     "deleteAccount": {
       "title": "删除你的账户",
       "updated": "2026 年 9 月 3 日",
-      "intro": "你可以自己在应用内删除 BPM Badminton 账户。大约十秒钟，且无法撤销。",
+      "intro": "你可以自己在应用内删除 %APP% 账户。大约十秒钟，且无法撤销。",
       "stepsTitle": "在应用内",
       "steps": [
-        "打开 BPM，进入「个人资料」标签页。",
+        "打开 %APP_SHORT%，进入「个人资料」标签页。",
         "如果尚未登录，请先登录。",
         "滚动到底部，点击「删除账户」。",
         "确认。"
       ],
-      "cta": "在 BPM 中打开个人资料",
+      "cta": "在 %APP_SHORT% 中打开个人资料",
       "whatTitle": "会删除什么",
       "what": [
         "你的 PIN 以及任何 Google、Apple 或邮箱登录。",

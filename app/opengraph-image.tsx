@@ -4,6 +4,16 @@ import { BPM_GROUP_ID, groupScope } from '@/lib/groupScope';
 import { ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * THIS CARD NAMES A CLUB, NOT THE PRODUCT, so it does not follow `APP_NAME`.
+ *
+ * It is the share card for the app's ONE public URL, which is BPM's — the same
+ * reason this file hardcodes `BPM_GROUP_ID` below. A per-group card needs a
+ * per-group URL first, and there isn't one. Until then the card shows the club
+ * whose URL it is, and swapping in the product name would make it advertise
+ * software to people being invited to a badminton night.
+ */
 export const alt = 'BPM Badminton';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';

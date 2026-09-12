@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
+import { APP_NAME } from '@/lib/brand';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import LegalDoc from '../_LegalDoc';
 
-export const metadata: Metadata = { title: 'Support — BPM Badminton' };
+export const metadata: Metadata = { title: `Support — ${APP_NAME}` };
 
 export default async function SupportPage() {
   const t = await getTranslations('legal.support');

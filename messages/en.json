@@ -324,7 +324,7 @@
       "claimDifferentName": "Use a different name",
           "continueGoogle": "Continue with Google",
           "continueApple": "Continue with Apple",
-          "backToApp": "Back to the BPM app",
+          "backToApp": "Back to the %APP_SHORT% app",
           "nativeReturnBody": "You're signed in. Head back to the app — if it didn't open by itself, tap below, then close this window.",
           "connectGoogle": "Connect Google",
           "connectApple": "Connect Apple",
@@ -428,9 +428,9 @@
     "migrate": {
       "row": "Move to the app",
       "rowEnterCode": "Have a code from the web app?",
-      "title": "Move to the BPM app",
+      "title": "Move to the %APP_SHORT% app",
       "help": "Sign in to the new app as yourself, without a PIN. Open the link on this phone, or type the code into the app.",
-      "openInApp": "Open in the BPM app",
+      "openInApp": "Open in the %APP_SHORT% app",
       "orCode": "Or type this code in the app",
       "codeLabel": "Migration code",
       "codeHelp": "One use only",
@@ -452,11 +452,11 @@
       "pageTitle": "Moving you over",
       "pageWorking": "Signing you in…",
       "pageDone": "Done — taking you home.",
-      "pageNoApp": "This link is for the BPM app, and it looks like you opened it in a browser.",
+      "pageNoApp": "This link is for the %APP_SHORT% app, and it looks like you opened it in a browser.",
       "pageNoAppBody": "If the app is installed, go back to the web app and type the six-digit code instead. If it isn't, your account is right here on the web — nothing has changed.",
       "pageNoCode": "There's no code in this link.",
       "pageFailed": "That link didn't work — it may have expired or already been used. Get a fresh one from the web app.",
-      "pageHome": "Back to BPM"
+      "pageHome": "Back to %APP_SHORT%"
     },
     "deleteAccount": {
       "link": "Delete account",
@@ -479,10 +479,10 @@
       "turnOn": "Turn on notifications",
       "turnOff": "Turn off notifications",
       "working": "Just a moment…",
-      "blocked": "Notifications are blocked for BPM in your browser settings. You'll need to allow them there — the app can't ask again.",
-      "iosNeedsInstall": "On iPhone, notifications only work once BPM is on your Home Screen. Add it, reopen from the Home Screen, then come back here.",
+      "blocked": "Notifications are blocked for %APP_SHORT% in your browser settings. You'll need to allow them there — the app can't ask again.",
+      "iosNeedsInstall": "On iPhone, notifications only work once %APP_SHORT% is on your Home Screen. Add it, reopen from the Home Screen, then come back here.",
       "iosInstallCta": "Show me how",
-      "unsupported": "This browser can't do notifications. Try Chrome on Android, or add BPM to your Home Screen on iPhone.",
+      "unsupported": "This browser can't do notifications. Try Chrome on Android, or add %APP_SHORT% to your Home Screen on iPhone.",
       "notConfigured": "Notifications aren't set up on this server yet. Nothing to do on your end.",
       "offlineHint": "You're offline — reconnect to change this.",
       "errorAuth": "Sign in first, then turn notifications on.",
@@ -511,23 +511,23 @@
     "close": "Close"
   },
   "install": {
-    "title": "Add BPM to your home screen",
-    "intro": "Save BPM to your home screen and it opens full-screen, like a normal app.",
+    "title": "Add %APP_SHORT% to your home screen",
+    "intro": "Save %APP_SHORT% to your home screen and it opens full-screen, like a normal app.",
     "done": "Got it",
     "close": "Close",
-    "bannerTitle": "Add BPM to your home screen",
+    "bannerTitle": "Add %APP_SHORT% to your home screen",
     "bannerCta": "Show me how →",
     "dismiss": "Dismiss",
     "ios": {
       "step1": "Tap the Share button in Safari's toolbar.",
       "step2": "Scroll down and tap \"Add to Home Screen\".",
-      "step3": "Tap \"Add\" — BPM lands on your home screen.",
+      "step3": "Tap \"Add\" — %APP_SHORT% lands on your home screen.",
       "note": "On Android, open the browser menu (⋮) and tap \"Add to Home screen\" instead."
     },
     "android": {
       "step1": "Tap the menu (⋮) in your browser's toolbar.",
       "step2": "Tap \"Add to Home screen\" (or \"Install app\").",
-      "step3": "Confirm — BPM lands on your home screen.",
+      "step3": "Confirm — %APP_SHORT% lands on your home screen.",
       "note": "On iPhone, tap the Share button in Safari, then \"Add to Home Screen\" instead."
     }
   },
@@ -1189,7 +1189,7 @@
         "saveError": "Couldn't save that — give it another go.",
         "newJob": "New job",
         "who": "Whose racket?",
-        "whoHint": "Anyone with a BPM account — walk-ups included.",
+        "whoHint": "Anyone with a %APP_SHORT% account — walk-ups included.",
         "membersError": "Couldn't load members — refresh to retry.",
         "change": "Change",
         "searchMembers": "Search by name",
@@ -1405,7 +1405,7 @@
   },
   "legal": {
     "common": {
-      "back": "Back to BPM",
+      "back": "Back to %APP_SHORT%",
       "updated": "Last updated {date}"
     },
     "privacy": {
@@ -1415,7 +1415,7 @@
         {
           "h": "Who we are",
           "p": [
-            "BPM Badminton is a sign-up sheet for one casual badminton group in Vancouver, BC. It is run by the group's organiser, Grant Zou, as an individual — not a company. The privacy law that applies is Canada's PIPEDA and BC's Personal Information Protection Act."
+            "%APP% is a sign-up sheet for one casual badminton group in Vancouver, BC. It is run by the group's organiser, Grant Zou, as an individual — not a company. The privacy law that applies is Canada's PIPEDA and BC's Personal Information Protection Act."
           ]
         },
         {
@@ -1483,7 +1483,7 @@
         {
           "h": "What this is",
           "p": [
-            "BPM Badminton is a free tool one group uses to organise weekly badminton. Using it means you're a member of that group, or were invited by one. It's provided as-is, by a volunteer, and can go down or change without notice."
+            "%APP% is a free tool one group uses to organise weekly badminton. Using it means you're a member of that group, or were invited by one. It's provided as-is, by a volunteer, and can go down or change without notice."
           ]
         },
         {
@@ -1560,15 +1560,15 @@
     "deleteAccount": {
       "title": "Delete your account",
       "updated": "3 September 2026",
-      "intro": "You can delete your BPM Badminton account yourself, from inside the app. It takes about ten seconds and can't be undone.",
+      "intro": "You can delete your %APP% account yourself, from inside the app. It takes about ten seconds and can't be undone.",
       "stepsTitle": "In the app",
       "steps": [
-        "Open BPM and go to the Profile tab.",
+        "Open %APP_SHORT% and go to the Profile tab.",
         "Sign in if you aren't already.",
         "Scroll to the bottom and tap “Delete account”.",
         "Confirm."
       ],
-      "cta": "Open Profile in BPM",
+      "cta": "Open Profile in %APP_SHORT%",
       "whatTitle": "What gets deleted",
       "what": [
         "Your PIN and any Google, Apple or email sign-in.",

@@ -15,6 +15,7 @@
  * Copy follows the friend-voice principle — this is a badminton group, not a
  * bank.
  */
+import { APP_NAME } from './brand';
 export interface AuthMailResult {
   sent: boolean;
 }
@@ -46,7 +47,7 @@ async function send(to: string, subject: string, text: string): Promise<AuthMail
   const transport = nodemailer.createTransport({ service: 'gmail', auth: { user, pass } });
 
   await transport.sendMail({
-    from: `BPM Badminton <${user}>`,
+    from: `${APP_NAME} <${user}>`,
     to,
     subject,
     text,
@@ -62,14 +63,14 @@ export async function sendVerificationEmail(
   const body = [
     `Hi ${name},`,
     '',
-    'Tap this link to confirm your email address for BPM Badminton:',
+    `Tap this link to confirm your email address for ${APP_NAME}:`,
     url,
     '',
     "It works for the next 24 hours. If you didn't sign up, you can ignore this.",
     '',
-    '— BPM Badminton',
+    `— ${APP_NAME}`,
   ].join('\n');
-  const result = await send(to, 'Confirm your email — BPM Badminton', body);
+  const result = await send(to, `Confirm your email — ${APP_NAME}`, body);
   if (!result.sent) logUnsentLinkInDev('verification', to, url);
   return result;
 }
@@ -82,14 +83,14 @@ export async function sendPasswordResetEmail(
   const body = [
     `Hi ${name},`,
     '',
-    'Someone asked to reset your BPM Badminton password. Tap here to pick a new one:',
+    `Someone asked to reset your ${APP_NAME} password. Tap here to pick a new one:`,
     url,
     '',
     "This link works for one hour and can only be used once. If it wasn't you, ignore this — your password hasn't changed.",
     '',
-    '— BPM Badminton',
+    `— ${APP_NAME}`,
   ].join('\n');
-  const result = await send(to, 'Reset your password — BPM Badminton', body);
+  const result = await send(to, `Reset your password — ${APP_NAME}`, body);
   if (!result.sent) logUnsentLinkInDev('password reset', to, url);
   return result;
 }
