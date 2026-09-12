@@ -11,6 +11,7 @@
  * `GMAIL_USER`, `GMAIL_APP_PASSWORD`, and optionally `REPORT_EMAIL_TO` (defaults
  * to the sending account) in Azure App Settings.
  */
+import { APP_NAME, APP_SHORT_NAME } from './brand';
 export interface ReportNotification {
   message: string;
   name?: string;
@@ -44,9 +45,9 @@ export async function notifyReport(report: ReportNotification): Promise<{ sent: 
     .join('\n');
 
   await transport.sendMail({
-    from: `BPM Badminton <${user}>`,
+    from: `${APP_NAME} <${user}>`,
     to,
-    subject: `[BPM] Problem report${report.name ? ` from ${report.name}` : ''}`,
+    subject: `[${APP_SHORT_NAME}] Problem report${report.name ? ` from ${report.name}` : ''}`,
     text: body,
   });
 

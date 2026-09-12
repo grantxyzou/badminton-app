@@ -26,6 +26,7 @@
 import { getContainer } from '@/lib/cosmos';
 import { buildPlayerNotice, shouldNotify, type PlayerNotice } from '@/lib/stringingNotify';
 import { sendStringingNotice } from '@/lib/stringingNotifyEmail';
+import { readGroup } from '@/lib/groups';
 import { sendPushToMembers } from '@/lib/push';
 import { buildStringingPayload, buildPendingEditPayload } from '@/lib/pushMessages';
 import type { StringingJob, Member } from '@/lib/types';
@@ -94,7 +95,14 @@ export async function notifyPlayerOfStage(job: StringingJob): Promise<NotifyOutc
       return { attempted: true, emailSent: false, pushSent, reason: 'no_email' };
     }
 
-    const { sent } = await sendStringingNotice(notice, member.email, member.name);
+    /* The sign-off names the CLUB that strung the racket, not the product.
+       A point read, and a failure to resolve it is not a reason to withhold
+       the email — `sendStringingNotice` falls back to the product name, which
+       is true rather than merely vague. `job.groupId` is absent on every row
+       written before the backfill, which reads as BPM and is correct for
+       them. */
+    const club = job.groupId ? (await readGroup(job.groupId))?.name : undefined;
+    const { sent } = await sendStringingNotice(notice, member.email, member.name, club);
     return sent
       ? { attempted: true, emailSent: true, pushSent }
       : { attempted: true, emailSent: false, pushSent, reason: 'send_failed' };

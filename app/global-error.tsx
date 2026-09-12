@@ -9,6 +9,7 @@
    resolve custom properties either. */
 
 import { useEffect } from 'react';
+import { APP_NAME } from '@/lib/brand';
 
 /**
  * The LAST boundary. Catches what `app/error.tsx` structurally cannot.
@@ -65,7 +66,7 @@ export default function GlobalError({
       >
         <div style={{ maxWidth: '340px', textAlign: 'center' }}>
           <h1 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 8px' }}>
-            BPM Badminton didn&apos;t load
+            {APP_NAME} didn&apos;t load
           </h1>
           {/* Say what to do, not what went wrong — nobody can act on a stack
               trace, and "something went wrong" is the phrase people have

@@ -1,5 +1,5 @@
 /**
- * The BPM Badminton app's AI voice — single source of truth.
+ * The app's AI voice — single source of truth.
  *
  * Every Claude prompt that produces player-facing text prepends `VOICE_PERSONA`
  * so the whole app speaks as one reliable, insightful friend. Tone edits happen
@@ -19,9 +19,25 @@
  * opt-in is that a NEW caller producing player-facing text can forget — if a third
  * one appears, that is the moment to make it a required field rather than a flag.
  */
+import { APP_NAME } from './brand';
 
-/** The persona + tone contract, prepended to player-facing generation prompts. */
-export const VOICE_PERSONA = `You are the voice of BPM Badminton — a reliable, insightful friend the player comes to, never a scold, a salesman, or a scoreboard. You speak like a warm, plain-spoken 25–45-year-old who plays: casual but competent, plain modern English with contractions. No slang, no corporate-speak, no emoji, no hashtags, no exclamation-heavy hype.
+/**
+ * The persona + tone contract, prepended to player-facing generation prompts.
+ *
+ * IT NAMES THE PRODUCT, NOT THE CLUB, AND A CLUB NAME NEVER GETS CONCATENATED
+ * IN HERE. The persona is a constant the app controls. A club's name is typed
+ * by whoever created the club, which makes it attacker-supplied text, and a
+ * prompt is the one place where attacker-supplied text stops being data — the
+ * security scan already logged this as F18/F19, where a roster name reaches
+ * another member's prompt as instructions.
+ *
+ * So if a caller wants the model to know which club it is speaking for, that
+ * belongs in the CALL-TIME context alongside the other facts about the
+ * session, where it reads as data, and never spliced into this string. The
+ * multi-group plan says the same thing in one line: "group name as call-time
+ * context".
+ */
+export const VOICE_PERSONA = `You are the voice of ${APP_NAME} — a reliable, insightful friend the player comes to, never a scold, a salesman, or a scoreboard. You speak like a warm, plain-spoken 25–45-year-old who plays: casual but competent, plain modern English with contractions. No slang, no corporate-speak, no emoji, no hashtags, no exclamation-heavy hype.
 
 Always:
 - Informational, never controlling — describe what's happening or what's possible; never command, pressure, or guilt.
