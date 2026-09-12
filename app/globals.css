@@ -143,7 +143,15 @@
   --pill-unpaid-bg: rgba(var(--glass-tint), 0.06);
   --pill-unpaid-text: rgba(255, 255, 255, 0.35);
   --pill-waitlist-bg: rgba(251, 146, 60, 0.15);
-  --pill-waitlist-text: #fb923c;
+  /* --sev-high-text, not the #fb923c this tint is built from. That hue is the
+     one the field remap further down already logs at 4.44 on the admin field
+     card (#563d28) against a 4.5 bar, and the only consumer of this token is
+     StringingPage's due/received/strung chips, which render at 10-12px on
+     exactly that card. Reusing the severity ramp is the pattern that block
+     established for --orange and --red-soft rather than inventing a lighter
+     orange. Resolves to #fdba74 dark and #9a3412 light -- the latter being
+     what the light block below already declares, so the two agree. */
+  --pill-waitlist-text: var(--sev-high-text);
   --pill-admin-bg: rgba(167, 139, 250, 0.15);
   --pill-admin-text: #c4b5fd;
 
