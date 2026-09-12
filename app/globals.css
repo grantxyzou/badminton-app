@@ -1332,9 +1332,20 @@ html[data-tab="skills"][data-theme="light"] .court-bg::before {
    because the pane class ties with `[data-theme="light"]` at (0,1,0) and this
    block is later in the file, which is the same order of precedence html:root
    already wins by on the real element. */
+/* --sev-low-label is deliberately NOT shared with the pane. It is the only
+   token in this block with an `html:root[data-theme="light"]` corrective
+   below, and that selector is one a wrapper div can never match — so putting
+   the dark-field value on the pane would pin #dbeafe there with no way to
+   correct it, and a light page would render it at 1.11:1. Left on html:root
+   alone it simply inherits, which is right for the current-theme pane; the
+   forced-light pane gets the light value from the companion rule after this
+   block. Everything else here is theme-agnostic and shares safely. */
+html:root {
+  --sev-low-label: #dbeafe;
+}
+
 html:root,
 .design-theme-pane {
-  --sev-low-label: #dbeafe;
   --highlight-green: rgba(74, 222, 128, 0.22);
   --highlight-amber: rgba(251, 191, 36, 0.22);
 
@@ -1355,6 +1366,18 @@ html:root,
    rule in CLAUDE.md is about separating list items, which this doesn't do. */
 /* Light mode keeps the dark blue — see the note above. */
 html:root[data-theme="light"] {
+  --sev-low-label: var(--sev-low-text);
+}
+
+/* The same correction for /design/components' forced-light pane, which cannot
+   match the html-anchored rule above it. Kept adjacent so the pair is edited
+   together.
+   The other five `html:root[data-theme="light"]` rules in this file style
+   `.cc-pill-*` and `.rail-bar` — components, not tokens — so a pane cannot
+   correct them by re-declaring a variable, and none of them appear on that
+   page today. If one is ever added as a specimen, its light pane will show
+   the dark value until it gets a companion here. */
+.design-theme-pane[data-theme="light"] {
   --sev-low-label: var(--sev-low-text);
 }
 
