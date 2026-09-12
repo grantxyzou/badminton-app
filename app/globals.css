@@ -1320,7 +1320,20 @@ html[data-tab="skills"][data-theme="light"] .court-bg::before {
    the existing #1e40af already measures 7.96:1 and blue-100 would be 1.11:1. */
 :root { --sev-low-label: var(--sev-low-text); }
 
-html:root {
+/* `.design-theme-pane` rides along because /design/components renders a
+   forced-light specimen inside a WRAPPER DIV, and `html:root` is a selector a
+   wrapper can never match — html cannot be a descendant of the div wrapping
+   it. Without this the pane falls through to the bare `[data-theme="light"]`
+   values (--highlight-green at 0.06 rather than the 0.22 the field re-tunes it
+   to) and misrepresents the two specimens this block exists for: the player
+   highlight rows and the list-row tinted headers.
+   Sharing the block rather than duplicating it is the point — nine tokens
+   copied into a second home is nine tokens that drift. Specificity works out
+   because the pane class ties with `[data-theme="light"]` at (0,1,0) and this
+   block is later in the file, which is the same order of precedence html:root
+   already wins by on the real element. */
+html:root,
+.design-theme-pane {
   --sev-low-label: #dbeafe;
   --highlight-green: rgba(74, 222, 128, 0.22);
   --highlight-amber: rgba(251, 191, 36, 0.22);

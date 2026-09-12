@@ -13,11 +13,18 @@ import EmptyState from '@/components/primitives/EmptyState';
 /**
  * One specimen on one ground.
  *
- * `forceLight` stamps `data-theme="light"`, which works because all 85 light
- * rules in globals.css are BARE attribute selectors — `[data-theme="light"]`,
- * never `html[data-theme="light"]` — so the wrapper genuinely re-declares the
- * tokens and the palette-class overrides for its own subtree. The light pane
- * is the real light palette, not an approximation.
+ * `forceLight` stamps `data-theme="light"`, which works for the 75 light rules
+ * in globals.css written as BARE attribute selectors: `[data-theme="light"]`
+ * matches the wrapper itself, so it genuinely re-declares those tokens and
+ * palette-class overrides for its own subtree.
+ *
+ * SIX ARE NOT BARE. They are anchored on `html:root[data-theme="light"]`, and
+ * a wrapper can never match them — html cannot be a descendant of the div
+ * wrapping it. The same is true of the theme-agnostic `html:root` field block,
+ * which re-tunes --highlight-* and --list-* upward for the coloured grounds.
+ * Left alone, the pane showed those two specimens at the pre-field values and
+ * quietly misrepresented them. `.design-theme-pane` is on the pane so that
+ * block declares them here too; see the note at its definition in globals.css.
  *
  * THE REVERSE DOES NOT WORK, and that is the thing to know before touching
  * this file. There is no `[data-theme="dark"]` block anywhere in globals.css:
@@ -35,9 +42,23 @@ import EmptyState from '@/components/primitives/EmptyState';
 function ThemePane({ forceLight, children }: { forceLight?: boolean; children: React.ReactNode }) {
   return (
     <div
+      className="design-theme-pane"
       {...(forceLight ? { 'data-theme': 'light' } : {})}
       style={{
-        background: 'var(--page-bg)',
+        /* The field gradient, not a flat fill. `.court-bg` paints --field-home
+           behind the real page, and .glass-card is 5-8% white over a backdrop
+           filter — so that gradient IS most of a card's visible colour, and a
+           flat fill would composite every specimen against a ground it never
+           actually sits on.
+           The base layer is --page-bg and NOT --field-base, which would be the
+           obvious choice and is wrong: --field-base is declared as
+           `var(--page-bg)` on :root, and a custom property's var() is
+           substituted where it is DECLARED, not where it is used. It therefore
+           inherits into this pane as the already-resolved dark #100F0F no
+           matter what data-theme the pane carries, and the light pane renders
+           a light gradient over a dark ground. --page-bg is a literal in both
+           theme blocks, so it follows the pane. Measured, not assumed. */
+        background: 'var(--field-home), var(--page-bg)',
         color: 'var(--text-primary)',
         border: '1px solid var(--divider)',
         borderRadius: 'var(--radius-lg, 12px)',
