@@ -125,11 +125,27 @@
   --banner-orange-bg: rgba(251, 146, 60, 0.08);
   --banner-orange-border: rgba(251, 146, 60, 0.2);
 
-  /* ── Pills ── */
+  /* ── Pills ──
+     All four pairs live here AND in the light block. The waitlist and admin
+     pairs were light-only until 2026-09-12, which meant `.pill-waitlist` and
+     `.pill-admin` resolved `var()` to nothing in the DEFAULT theme: no
+     background at all and text falling back to --text-primary, so a waitlisted
+     player's pill was indistinguishable from plain text on the Sign-Ups
+     roster. Phantom tokens again, the same class the design audit cleared ten
+     of — and invisible to the suite, because jsdom computes no stylesheet.
+     Found by the side-by-side panes on /design/components the day they were
+     added. Keep every pill token defined in BOTH blocks.
+     Values follow the pair above: a 0.15 tint of the hue, the bright shade as
+     text. Orange matches --banner-orange-bg, violet is the shade already used
+     for the admin_panel_settings icon. */
   --pill-paid-bg: rgba(74, 222, 128, 0.15);
   --pill-paid-text: #4ade80;
   --pill-unpaid-bg: rgba(var(--glass-tint), 0.06);
   --pill-unpaid-text: rgba(255, 255, 255, 0.35);
+  --pill-waitlist-bg: rgba(251, 146, 60, 0.15);
+  --pill-waitlist-text: #fb923c;
+  --pill-admin-bg: rgba(167, 139, 250, 0.15);
+  --pill-admin-text: #c4b5fd;
 
   /* ── Player highlights ── */
   --highlight-green: rgba(74, 222, 128, 0.07);
