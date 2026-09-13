@@ -90,10 +90,20 @@ function clean(raw: unknown, max: number): string | null {
  * the invite surface 404s, and a token in the body means a client talking to a
  * deployment that does not have the feature. Ignoring it rather than refusing
  * keeps the flag-off path byte-identical to what shipped.
+ *
+ * MEMBERS ONLY OVERRIDES THAT (`NEXT_PUBLIC_FLAG_MEMBERS_ONLY`,
+ * docs/plans/members-only.md): a new account must carry a valid invite, on both
+ * terminals, whichever way multi-group is set. Without this, "a signed-out
+ * visitor sees nothing" protects nothing — anyone could make an account with an
+ * email address and be a signed-in member of the only club there is. The one
+ * exception is multi-group's `noGroup` (creating your own club): that account
+ * joins no roster and the read gate refuses it for BPM, so it buys nothing.
  */
 export async function signupGroupFor(req: NextRequest, body: InviteFields): Promise<SignupGroup> {
   const requestGroup = resolveGroupId(req);
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) {
+  const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
+  const membersOnly = isFlagOn('NEXT_PUBLIC_FLAG_MEMBERS_ONLY');
+  if (!groupsOn && !membersOnly) {
     return { ok: true, groupId: requestGroup, invited: false };
   }
 
@@ -129,7 +139,10 @@ export async function signupGroupFor(req: NextRequest, body: InviteFields): Prom
     if (attempted) return { ok: false };
     // Only here, where there is no invite to honour. An invite always wins,
     // and a present-but-invalid one has already refused above.
-    if (body.noGroup === true) return { ok: true, groupId: null, invited: false };
+    if (groupsOn && body.noGroup === true) return { ok: true, groupId: null, invited: false };
+    // Members only: no invite, no account. The same one refusal a bad token
+    // gets, so the answer never says which of the two it was.
+    if (membersOnly) return { ok: false };
     return { ok: true, groupId: requestGroup, invited: false };
   }
 
@@ -137,5 +150,9 @@ export async function signupGroupFor(req: NextRequest, body: InviteFields): Prom
     ? await resolveInvite(token, 'invite')
     : await resolveInvite(code!, 'code');
   if (!groupId) return { ok: false };
+  // With groups OFF there is one club, so an invite is either BPM's or it is
+  // not a usable invite here. Refusing a foreign group's token keeps a leftover
+  // multi-group invite from minting a BPM account.
+  if (!groupsOn && groupId !== requestGroup) return { ok: false };
   return { ok: true, groupId, invited: true };
 }

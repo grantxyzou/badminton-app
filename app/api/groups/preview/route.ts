@@ -25,7 +25,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readGroup } from '@/lib/groups';
 import { resolveInvite } from '@/lib/invites';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { groupsOn, featureOff, rateLimited } from '@/lib/groupRoutes';
+import { invitesOn, featureOff, rateLimited } from '@/lib/groupRoutes';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +37,7 @@ function noSuchInvite(): NextResponse {
 export async function GET(req: NextRequest) {
   const ip = getClientIp(req);
   if (!checkRateLimit(`groups-preview:${ip}`, 20, 10 * 60 * 1000)) return rateLimited();
-  if (!groupsOn()) return featureOff();
+  if (!invitesOn()) return featureOff();
 
   const token = req.nextUrl.searchParams.get('token');
   const code = req.nextUrl.searchParams.get('code');

@@ -415,7 +415,13 @@ export async function requireGroupMember(
       // read `isAdminAuthedWithMember` makes, so a BPM admin is an admin here too.
       const { resource } = await getContainer('members').item(session.memberId, session.memberId).read<Member>();
       if (!resource || resource.active !== true) return null;
-      return { ...session, groupId: BPM_GROUP_ID, role: resource.role === 'admin' ? 'admin' : 'member' };
+      // The CURRENT name, not the one baked into a cookie that can be 30 days
+      // old. A caller that keys anything on this name — the members-only
+      // sign-up in `POST /api/players` — would otherwise refuse a renamed
+      // member as a stranger. With groups on, the membership read below
+      // already returns the roster name.
+      const name = typeof resource.name === 'string' && resource.name ? resource.name : session.name;
+      return { ...session, name, groupId: BPM_GROUP_ID, role: resource.role === 'admin' ? 'admin' : 'member' };
     }
     const m = await readMembership(session.groupId, session.memberId);
     if (!m || m.status !== 'active') return null;

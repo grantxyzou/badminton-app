@@ -38,7 +38,11 @@ A sign-up day on which a regular cannot get in and no admin is reachable to appr
 4. **Link previews keep session details** (Grant). The share card is the one sanctioned public surface.
 5. **Everything is behind `NEXT_PUBLIC_FLAG_MEMBERS_ONLY`, read server-side.** A client flag cannot protect a route, and the flip has to wait until the list of members with no way to sign in is short.
 6. **`app/page.tsx` server-renders nothing club-related while the flag is on.** It had been reading the announcement for every visitor and passing it to `HomeShell` as a prop, which serializes it into the HTML — so gating the API route alone left it readable with `curl`. Caught by the review bot on #395. Part 3 restores the server render for signed-in members once the page itself knows who is signed in.
-7. **The gate re-reads the Member** (`requireGroupMember`) rather than trusting the cookie's signature alone. A removed member's 30-day cookie must stop working at once. One point read per request.
+7. **A new account's invite is checked in ONE place, `signupGroupFor`,** which both account terminals already called for multi-group. Beat: a check in each route — this repo has been bitten by a rule added to a shared function that a caller had reimplemented. Multi-group's `noGroup` (create your own club) stays allowed with groups on, because that account joins no roster and the read gate refuses it for BPM.
+8. **A session sign-up takes the name from the account, not the body.** Beat: checking the body name matches the cookie. Ignoring it removes the question entirely, and retires for a signed-in caller every name-only answer (`invite_list_not_found`, `pin_required`, `account_claim_needs_approval`) that told a stranger something about an account.
+9. **Two sign-up rate limits, not one re-keyed limit.** Re-keying to the member would mean checking auth before the rate limit, breaking security rule 4. A per-IP limit still runs first, raised to 60/min because an unauthenticated flood now costs one HMAC check; the real limit is 10/min per member.
+10. **The gate returns the member's CURRENT name**, not the one baked into a cookie up to 30 days old — or a renamed member would be refused as a stranger.
+11. **The gate re-reads the Member** (`requireGroupMember`) rather than trusting the cookie's signature alone. A removed member's 30-day cookie must stop working at once. One point read per request.
 
 ## Shape
 
@@ -48,3 +52,7 @@ A sign-up day on which a regular cannot get in and no admin is reachable to appr
 | The gate | `requireMember` in `lib/auth.ts` |
 | Coverage canary | `__tests__/members-only-coverage.test.ts` |
 | Smoke test's Cosmos proof | `scripts/smoke-prod.mjs` → `GET /api/releases` |
+| An account needs an invite | `signupGroupFor` in `lib/inviteSignup.ts` |
+| Invite surfaces with one club | `invitesOn()` in `lib/groupRoutes.ts`; `InviteCard` in `CommandCenter` |
+| A sign-up needs an account | `POST` in `app/api/players/route.ts` |
+| Tests for both | `__tests__/members-only-accounts.test.ts` |
