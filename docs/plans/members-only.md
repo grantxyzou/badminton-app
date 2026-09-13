@@ -47,7 +47,9 @@ A sign-up day on which a regular cannot get in and no admin is reachable to appr
 13. **The Log in page does not probe `members/me`.** The PIN hint it drove ("this name has no PIN") is the account oracle members-only closes; "I play here already" sits under the form instead. Found by looking at the page — the probe's 401 showed in the console.
 14. **`POST /api/players/recover` takes `sessionId` as optional**, resolving the active session server-side. Beat: giving the signed-out page the session id, which would publish its date.
 15. **Home's sign-up card is locked to the verified member**, and `HomeShell` reconciles localStorage identity to them. The server ignores a typed name, so a name field would be a control that does nothing.
-16. **The gate re-reads the Member** (`requireGroupMember`) rather than trusting the cookie's signature alone. A removed member's 30-day cookie must stop working at once. One point read per request.
+16. **The flip is gated on a list, not a date.** `GET /api/admin/sign-in-readiness` and the admin's Sign-in readiness card name every active member with no PIN, password or Google. Before the flip it always renders — "nobody would be locked out" is the go-ahead — and a failed load is an error, never a confident zero, because zero is the answer that gets the flag flipped. It sits below the week's work, beside the invite card, not above it.
+17. **Players are warned on Home before the flip**, only for a name with no PIN and no live session on this device, with the way in ("Ask to be let in", which is the access request) and where email/Google members go instead. The probe cannot see a password, so an email member whose cookie lapsed also matches; the second line covers them rather than adding a new public oracle to `members/me`.
+18. **The gate re-reads the Member** (`requireGroupMember`) rather than trusting the cookie's signature alone. A removed member's 30-day cookie must stop working at once. One point read per request.
 
 ## Shape
 
@@ -66,3 +68,20 @@ A sign-up day on which a regular cannot get in and no admin is reachable to appr
 | Shared iOS-PWA sign-in collection | `lib/useHandoffCollect.ts` |
 | Home card locked to the member | `components/HomeTab.tsx` (`memberName`) |
 | Tests | `__tests__/components/SignedOutShell.test.tsx`, `__tests__/components/HomeTab.membersOnly.test.tsx` |
+| Who would be locked out | `lib/signInReadiness.ts`, `GET /api/admin/sign-in-readiness`, `SignInReadinessCard` |
+| The warning before the flip | `components/HomeTab.tsx` (`needsSignInSetup`) |
+| Tests | `__tests__/sign-in-readiness.test.ts`, `__tests__/components/SignInReadinessCard.test.tsx` |
+
+## How to flip it
+
+This is Grant's call; everything above ships with the flag off.
+
+1. **Work the list down.** Admin console → Sign-in readiness. Each name there has no PIN, password or Google. They see a warning on Home and can tap "Ask to be let in"; approve them under Sign-in requests. Flip when the list is short enough that the stragglers can be let in by hand on a Thursday.
+2. **Make sure new people can get an invite.** Admin console → the invite card holds the club's link and code. Regenerating it retires the old one.
+3. **Flip:** one PR changing `NEXT_PUBLIC_FLAG_MEMBERS_ONLY: 'false'` to `'true'` in `.github/workflows/deploy-next.yml`. It is read server-side but baked at build time, so it needs the deploy.
+4. **Check production, read-only**, once `smoke-prod.mjs --sha <full sha>` passes (its session check accepts the members-only 401):
+   - `curl -s -o /dev/null -w '%{http_code}' https://bpm.grantzou.com/bpm/api/players` → `401` (likewise `/api/session`, `/api/members`)
+   - the home page HTML carries no announcement text and no member names
+   - a link preview of the sign-up URL still shows session details (decision 4)
+5. **Back out** by flipping the value back. Nothing is migrated, so the flag is the whole rollback.
+6. **Retire the flag** two weeks after: delete the OFF branches (the anonymous sign-up modes and PIN probe on Home, `signupGroupFor`'s uninvited branch, the name-only paths in `POST /api/players`) and the readiness card's pre-flip state.

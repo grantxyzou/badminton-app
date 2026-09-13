@@ -10,6 +10,12 @@
         "session": "This week",
         "account": "Your account"
       },
+    "signInSetup": {
+      "title": "Set up a way to sign in",
+      "body": "Soon you'll need to log in to see sessions, and this name has no PIN, password or Google yet.",
+      "action": "Ask to be let in",
+      "haveOne": "Already use email or Google? Log in on Profile."
+    },
     "stringing": {
         "viewPricing": "View pricing",
       "stringerTitle": "Rackets to string",

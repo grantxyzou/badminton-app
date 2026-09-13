@@ -232,6 +232,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     : false;
 
   const isFull = activePlayers.length >= (session?.maxPlayers ?? maxPlayers);
+  const needsSignInSetup =
+    !memberName &&
+    !!currentUser &&
+    name.trim().toLowerCase() === currentUser.toLowerCase() &&
+    memberProbe?.exists === true &&
+    !memberProbe.hasPin &&
+    !memberProbe.authed;
   const suggestions = name.trim().length > 0
     ? memberNames.filter(n => n.toLowerCase().includes(name.toLowerCase().trim()))
     : [];
@@ -797,6 +804,39 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       )}
 
       <section className="bpm-home-group" aria-label={t('groups.account')}>
+      {/* MEMBERS ONLY, THE WARNING BEFORE THE FLIP (docs/plans/members-only.md).
+          Grant's decision was "warn first, then request access": once members
+          only is on, a name with no PIN, password or Google reaches the welcome
+          screen with no way past it. This shows only BEFORE the flip (no
+          verified `memberName`) and only for the name this device is signed
+          in as, when the probe knows it has no PIN and this device holds no
+          live session. An email or Google member whose cookie lapsed would
+          match too — the probe cannot see a password — so the second line
+          says where they go instead. */}
+      {needsSignInSetup && (
+        <StatusBanner
+          tone="warn"
+          icon="key"
+          title={t('signInSetup.title')}
+          body={
+            /* The action gets its own row: `.link-quiet` keeps a 44px tap
+               target, and set inline it stretched one line of the paragraph
+               taller than the rest. */
+            <span style={{ display: 'grid', gap: 'var(--space-1)', justifyItems: 'start' }}>
+              <span>{t('signInSetup.body')}</span>
+              <button
+                type="button"
+                className="link-quiet"
+                style={{ paddingInline: 0, fontWeight: 600 }}
+                onClick={() => setAskAccessOpen(true)}
+              >
+                {t('signInSetup.action')}
+              </button>
+              <span>{t('signInSetup.haveOne')}</span>
+            </span>
+          }
+        />
+      )}
       {/* Your balance — what you owe, across sessions and stringing. Sits in
           the ACCOUNT group rather than above sign-up: as a one-line row
           carrying its own figure it no longer needs the top slot to be read,
