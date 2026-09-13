@@ -201,19 +201,50 @@ before forwarding to Anthropic.
 
 ## 5. Auth Model
 
-Admin auth uses an HTTP-only cookie:
+Admin auth is **per-player**: a member signs in with their own name and PIN, and
+`role: 'admin'` on their Member record is what authorizes them. It was once a
+single shared `ADMIN_PIN` hashed to a static cookie value — that cookie carried
+no identity, so it could not be revoked for one person.
 
-1. `POST /api/admin` verifies the PIN with `timingSafeEqual`
-2. On success, sets cookie `admin_session = SHA-256("badminton-admin:<PIN>")`
-3. Cookie is `HttpOnly`, `SameSite=Strict`, `Secure` in production, 8-hour TTL
-4. Protected routes call `isAdminAuthed(req)` to verify the cookie
+1. `POST /api/admin` resolves the member by name and verifies the PIN with
+   `verifyPin` (scrypt) against `member.pinHash`. A name that matches nobody is
+   still compared against `FAKE_HASH`, so a wrong name costs the same time as a
+   wrong PIN
+2. On success, sets cookie `admin_session` to a signed payload
+   `{ memberId, name, groupId, typ: 'admin', iat, exp }`, HMAC-SHA256 with
+   `SESSION_SECRET`. The cookie proves IDENTITY; the Member's role is the
+   authorization, so demoting someone revokes them on their next request
+3. Cookie is `HttpOnly`, `SameSite=Lax`, `Secure` in production, **30-day** TTL,
+   scoped to path `/bpm`. `Strict` is not an option: the OAuth callback arrives
+   as a cross-site navigation and a Strict cookie is silently withheld from it
+4. **Read-only** routes call the sync `isAdminAuthed(req)` — signature, audience
+   and expiry only, no Cosmos round trip. **Mutating** routes must
+   `await isAdminAuthedWithMember(req)`, which re-reads the Member so a
+   demotion or deactivation takes effect on the very next request
 5. `DELETE /api/admin` clears the cookie (logout)
+
+The `typ: 'admin'` claim is load-bearing. The client chooses which cookie name
+it sends a value in, so without an audience check any signed-in member could
+replay their own `member_session` value as `admin_session` and pass a
+signature-only check.
 
 Rate limit on login: **5 attempts / 15 min per client IP**.
 
-> `getClientIp` reads `X-Client-IP` first (Azure's dedicated real-client header),
-> falling back to the first entry in `X-Forwarded-For`. Do NOT use the last
-> entry — on Azure App Service that is the proxy IP, making the limit global.
+> `getClientIp` reads the FIRST entry of `X-Forwarded-For`, which App Service
+> overwrites with the address it saw on the socket. Do NOT use the last entry —
+> nothing appends after Azure, so there is no proxy hop to skip and keying on it
+> would make the limit global.
+>
+> **It does NOT read `X-Client-IP`, and that must not be added back.** This
+> paragraph used to call that header "Azure's dedicated real-client header".
+> Both halves were false: Azure sets no such header — its vocabulary is
+> `X-Forwarded-For` / `X-Forwarded-Host` / `X-Azure-*` — and because it does not
+> set the header it does not strip it either, so a caller's value arrived intact
+> and was trusted ahead of the real one. Measured against production on
+> 2026-09-12: one changed byte bought a fresh allowance on every per-IP limit in
+> the app, the sign-in throttle included. Fixed in #389. `TRUSTED_IP_HEADER`
+> names a single header to trust instead, for a deployment behind a different
+> proxy (`cf-connecting-ip` behind Cloudflare).
 
 ### Self-cancellation auth (players)
 

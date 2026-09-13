@@ -112,11 +112,11 @@ public/brand/              SVG + PNG brand assets (shuttlecock, wordmark)
 
 ## Auth Model
 
-- Admin PIN stored in `ADMIN_PIN` env var (use 8+ chars, letters + numbers)
-- `POST /api/admin` → verifies with `timingSafeEqual` on SHA-256 hash, sets HTTP-only cookie
-- Cookie: `HttpOnly`, `SameSite=Strict`, `Secure` in production, 8-hour TTL
-- All admin routes call `isAdminAuthed(req)` before any other logic
-- Rate limit on login: **5 attempts / 15 min per client IP** (reads `X-Client-IP` header first — Azure's real-client header — not `X-Forwarded-For` tail)
+- Admin auth is **per-player**: a member signs in with their own name and PIN, and `role: 'admin'` on their Member record is what authorizes them. The shared `ADMIN_PIN` is gone (`ADMIN_NAMES` only bootstraps the first admin)
+- `POST /api/admin` → verifies the PIN with `verifyPin` (scrypt) against `member.pinHash`, then sets an HTTP-only cookie carrying a signed `{ memberId, name, groupId, typ: 'admin' }` payload (HMAC-SHA256 over `SESSION_SECRET`)
+- Cookie: `HttpOnly`, `SameSite=Lax`, `Secure` in production, **30-day** TTL, scoped to path `/bpm`
+- **Read-only** admin routes call the sync `isAdminAuthed(req)`; **mutating** routes `await isAdminAuthedWithMember(req)`, which re-reads the Member so a demotion takes effect on the next request
+- Rate limit on login: **5 attempts / 15 min per client IP** — keyed on the first `X-Forwarded-For` entry, which App Service overwrites. `X-Client-IP` is NOT read (see Security Notes)
 
 ### Self-cancellation
 
@@ -229,7 +229,7 @@ Full runbook + rollback procedure: [`docs/deployment-model.md`](docs/deployment-
 
 - All datetimes stored with ISO 8601 offset; displayed in `America/Vancouver` via `next-intl` `useFormatter`
 - `deleteToken` is stripped from every API response after creation (it's only returned once at sign-up)
-- Rate limiter reads `X-Client-IP` first (Azure's real-client header); falls back to the first `X-Forwarded-For` entry. Never uses the last entry (that's Azure's proxy IP).
+- Rate limiter keys on the **first** `X-Forwarded-For` entry, which App Service overwrites with the address it saw on the socket. Never the last entry — nothing appends after Azure, so keying on it would make the limit global. **`X-Client-IP` is deliberately NOT read**: Azure never set that header, so it arrived caller-controlled, and forging it reset every per-IP limit in the app (fixed in #389). `TRUSTED_IP_HEADER` names one header to trust instead, behind a different proxy.
 - `NEXT_PUBLIC_*` vars are baked at build time — set in `.env.local` for dev and in Azure App Settings per environment for production
 - Security headers (CSP, HSTS, X-Frame-Options, etc.) set in `next.config.js`
 - Same-origin architecture — frontend and API share the same App Service, no CORS needed
