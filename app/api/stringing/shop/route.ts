@@ -31,7 +31,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { ensureClubSettings, readShopOpen, shopDocId, type ShopDoc } from '@/lib/stringingShop';
-import { isAdminAuthedWithMember } from '@/lib/auth';
+import { isAdminAuthedWithMember, requireMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 
@@ -50,9 +50,13 @@ export async function GET(req: NextRequest) {
     // to a capability, where the confident answer is the harmful one.
     return NextResponse.json({ open: null });
   }
+  const gate = await requireMember(req);
+  if (!gate.ok) return gate.response;
 
-  // Deliberately readable without auth: the sign is for players, and whether
-  // this club strings rackets is not a secret. Nothing else is exposed.
+  // Readable by any member, and by anyone at all while members-only is off:
+  // the sign is for players. With members-only on, whether this club strings
+  // rackets is club information like everything else, and `requireMember`
+  // above is what keeps it from a signed-out visitor. Nothing else is exposed.
   // Shared with the request route so the two cannot disagree about "open".
   return NextResponse.json({ open: await readShopOpen(resolveGroupId(req)) });
 }

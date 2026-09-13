@@ -35,7 +35,7 @@ const ORIGIN = new URL(BASE).origin;
 const WANT_SHA = opt('sha');
 const SKIP_WELL_KNOWN = has('skip-well-known');
 // CI builds have no Cosmos, so the app runs on the in-memory mock store. The
-// session endpoint must still answer, but `_rid` is the thing that PROVES real
+// endpoints must still answer, but `_rid` is the thing that PROVES real
 // Cosmos and the mock deliberately never writes it — so demanding it there
 // would fail every PR, and relaxing it everywhere would give up the one check
 // that catches a production misconfiguration.
@@ -219,23 +219,58 @@ async function main() {
   else fail('static chunk loads', 'no chunk URL found in the HTML');
   await checkOk(`${BASE}/sw.js`, 'sw.js served (public/ copied)');
 
-  // Cosmos, honestly. `/api/session` CATCHES and returns DEFAULT_SESSION with
-  // a 200, and an unset COSMOS_CONNECTION_STRING silently activates the mock
-  // store in production — so "200 with a sessionId" is exactly what the
-  // misconfigured-but-empty case looks like. `_rid` is written by real Cosmos
-  // and never by the mock, which makes it the only honest discriminator. It is
-  // also what this repo's own incident notes say to check first.
+  // Cosmos, honestly. `_rid` is written by real Cosmos and never by the mock
+  // store, which makes it the only honest discriminator — an unset
+  // COSMOS_CONNECTION_STRING silently activates the mock in production, and a
+  // swallowed error returns a plausible default with a 200. It is also what
+  // this repo's own incident notes say to check first.
+  //
+  // It is read from `/api/releases`, NOT `/api/session`, and that is not
+  // arbitrary. This check used to read `_rid` off an unauthenticated session
+  // GET. Members-only (docs/plans/members-only.md) makes every club-data route
+  // answer 401 to a signed-out caller, and this script is deliberately
+  // signed-out — so the day the flag flipped, every deploy would have failed
+  // its smoke test. `releases` is app data, stays public, returns raw documents
+  // and answers 503 rather than an empty 200 when the read fails.
   await checkJson(
-    `${BASE}/api/session`,
-    MOCK ? 'session endpoint answers (mock store)' : 'session is real Cosmos data (_rid)',
+    `${BASE}/api/releases`,
+    MOCK ? 'releases endpoint answers (mock store)' : 'Cosmos is real (_rid on releases)',
     (d) => {
-      if (!d || typeof d.sessionId !== 'string') return 'no sessionId in the response';
+      if (!Array.isArray(d)) return 'releases is not a list';
       if (MOCK) return null;
-      return typeof d._rid === 'string' && d._rid.length > 0
+      if (d.length === 0) return 'no release rows to prove Cosmos with — cannot tell real data from the mock';
+      return d.some((r) => r && typeof r._rid === 'string' && r._rid.length > 0)
         ? null
         : 'no _rid — mock store in production, or a swallowed Cosmos error';
     },
   );
+
+  // The session endpoint must ANSWER, in one of exactly two shapes: a 200
+  // carrying a session (members-only off), or the members-only 401. Anything
+  // else — a 5xx, an Azure page, a 200 that is not a session — is a failure.
+  // This script cannot tell which the flag is, and does not need to: which
+  // callers may read the session is the route tests' job, not a smoke test's.
+  {
+    const label = 'session endpoint answers (open, or members-only 401)';
+    try {
+      const { res, text } = await get(`${BASE}/api/session`, 'application/json');
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        fail(label, res.ok ? 'not valid JSON' : `HTTP ${res.status}`, text);
+        data = undefined;
+      }
+      if (data !== undefined) {
+        if (res.status === 401 && data?.error === 'Unauthorized') pass(label);
+        else if (!res.ok) fail(label, `HTTP ${res.status}`, text);
+        else if (!data || typeof data.sessionId !== 'string') fail(label, 'no sessionId in the response', text);
+        else pass(label);
+      }
+    } catch (err) {
+      fail(label, String(err?.message ?? err));
+    }
+  }
 
   // Native-critical, and silently breakable by a next.config.js rewrite. NOTE:
   // these are served from App Settings env, not from the deployed bundle — a

@@ -118,6 +118,11 @@ jobs:
           # off means every request resolves to group "bpm" and nothing
           # changes. Flip in Phase 5, after the backfill status shows zeros.
           NEXT_PUBLIC_FLAG_MULTI_GROUP: 'false'
+          # OFF. Members only (docs/plans/members-only.md): on, a signed-out
+          # visitor sees no club data and every group-data route 401s. Read
+          # server-side. Flip only once the admin "can't sign in yet" list is
+          # short — turning it on locks those members out until approved.
+          NEXT_PUBLIC_FLAG_MEMBERS_ONLY: 'false'
           # NOT a secret: the browser needs it for
           # pushManager.subscribe({ applicationServerKey }). It must live HERE
           # and not only in Azure App Settings, because NEXT_PUBLIC_* is inlined

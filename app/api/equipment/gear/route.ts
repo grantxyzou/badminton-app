@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
-import { verifyMemberAuth, peekMemberSession, isAdminAuthedWithMember } from '@/lib/auth';
+import { verifyMemberAuth, peekMemberSession, isAdminAuthedWithMember, requireMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { rackets } from '@/lib/activeRacket';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -209,6 +209,8 @@ export async function GET(req: NextRequest) {
   if (!isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
+  const gate = await requireMember(req);
+  if (!gate.ok) return gate.response;
   try {
     await ensureGear();
     const name = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50) ?? '';

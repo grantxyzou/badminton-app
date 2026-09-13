@@ -23,7 +23,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_STRINGING'
   | 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE'
   | 'NEXT_PUBLIC_FLAG_MULTI_GROUP'
-  | 'NEXT_PUBLIC_FLAG_RACKET_FIT';
+  | 'NEXT_PUBLIC_FLAG_RACKET_FIT'
+  | 'NEXT_PUBLIC_FLAG_MEMBERS_ONLY';
 
 interface FlagMeta {
   description: string;
@@ -78,6 +79,13 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     plannedRemoval: '2026-12-15',
     note: 'About two weeks after the intended Phase 5 cutover. Retiring it means deleting the "resolve to bpm" branch AND flipping TOLERATE_UNSTAMPED off in lib/groupScope.ts (only after the migrate-groups status read shows zero unstamped rows for a week), not just removing the switch.',
   },
+  NEXT_PUBLIC_FLAG_MEMBERS_ONLY: {
+    description:
+      'A signed-out visitor sees no club data at all — only Sign up / Log in (docs/plans/members-only.md). Read SERVER-SIDE: on, every group-data read requires a signed-in active member (requireMember in lib/auth.ts), new accounts need an invite, and a session sign-up needs an account. Off, every gate is a pass-through and nothing observable changes. Ships dark; the flip waits until the admin list of members with no way to sign in is short, because turning it on locks those people out until an admin approves them.',
+    owner: 'grant',
+    plannedRemoval: '2026-11-01',
+    note: 'Retiring it means deleting the OFF branches, not just the switch: the anonymous and body-PIN paths in POST /api/players, the flag-off branch of signupGroupFor, and the adaptive anon/sign-in/create modes of the Home sign-up card.',
+  },
   NEXT_PUBLIC_FLAG_STRINGING: {
     description:
       'The stringing service (design "Stringing", Aug 2026). Stage 1 is the BENCH only: the stringingJobs container plus the admin-side job list, job detail and intake form. Gates the /api/stringing/* routes server-side as well as the UI, because the price a stringer charges is admin-only data and a client flag cannot protect it. The player side landed too: the Home card, the request sheet, and the admin-controlled shop sign. It is behind this flag TRANSITIVELY rather than directly -- StringingCard never calls isFlagOn; it reads GET /api/stringing/shop, which 404s when the flag is off, which the card treats as UNKNOWN and renders as the "Coming soon" state. That indirection is load-bearing: tidying up the 404 handling in that card would silently un-gate the feature. Turning this off hides the bench and 404s the routes; no player-visible surface changes either way.',
@@ -115,6 +123,8 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
     case 'NEXT_PUBLIC_FLAG_RACKET_FIT':
       return process.env.NEXT_PUBLIC_FLAG_RACKET_FIT;
+    case 'NEXT_PUBLIC_FLAG_MEMBERS_ONLY':
+      return process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY;
     default: {
       // Exhaustiveness guard. Adding a flag to `FlagName` without adding its
       // `case` above used to be silently legal — `readFlag` just returned
