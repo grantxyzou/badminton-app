@@ -813,13 +813,21 @@ h1, h2, h3, h4 {
    transparent; on `.scrolled` (scrollY > 8) the bar gets a frosted
    backdrop, hairline divider, the crumb collapses, and the title
    shrinks. `--topbar-bg-scrolled` defaults to dark; light-theme
-   override below uses a cream tint that reads on light backgrounds. */
+   override below uses a cream tint that reads on light backgrounds.
+
+   DENSE ENOUGH THAT WHAT SCROLLS UNDER IT CANNOT BE READ. At 0.72 / 0.78
+   with a 14px blur, a card title passing beneath stayed legible and read as
+   a second heading overlapping the bar's own ("Admin" over "Payments" in the
+   2026-09-13 flow audit). The opacity does the work, not the blur: at 0.9 the
+   title still ghosted through wherever backdrop-filter is not rendered (it is
+   not in some WebViews and headless captures). A hint of the field tint
+   remains; text does not. */
 :root {
-  --topbar-bg-scrolled: rgba(20, 20, 20, 0.72);
+  --topbar-bg-scrolled: rgba(20, 20, 20, 0.96);
   --topbar-border-scrolled: rgba(255, 255, 255, 0.06);
 }
 [data-theme="light"] {
-  --topbar-bg-scrolled: rgba(248, 246, 240, 0.78);
+  --topbar-bg-scrolled: rgba(248, 246, 240, 0.97);
   --topbar-border-scrolled: rgba(20, 30, 50, 0.08);
 }
 
@@ -860,8 +868,8 @@ h1, h2, h3, h4 {
 }
 .bpm-topbar.scrolled {
   background: var(--topbar-bg-scrolled);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
   border-bottom-color: var(--topbar-border-scrolled);
   padding-top: var(--space-3);
   padding-bottom: var(--space-3);
@@ -956,8 +964,8 @@ h1, h2, h3, h4 {
 }
 .bpm-page-header.scrolled {
   background: var(--topbar-bg-scrolled);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
   border-bottom-color: var(--topbar-border-scrolled);
   padding-top: var(--space-3);
   padding-bottom: var(--space-3);

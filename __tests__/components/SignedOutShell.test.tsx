@@ -252,3 +252,26 @@ describe('signing in hands control to the server', () => {
     expect(sessionStorage.getItem(RELOAD_MARK)).toBe(first);
   });
 });
+
+/**
+ * 2026-09-13 flow audit, finding 1: an admin approval signs someone in with no
+ * credential. This screen leaves a one-shot marker so Home opens the PIN sheet.
+ */
+describe('after an admin lets someone in', () => {
+  it('leaves the "offer a PIN" marker when they have no PIN', () => {
+    renderShell();
+    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
+    const onSignedIn = captured.AskAccessSheet?.onSignedIn as (r: { name: string; hasPin: boolean }) => void;
+    onSignedIn({ name: 'Kento', hasPin: false });
+    expect(sessionStorage.getItem('badminton_offer_pin')).toBe('1');
+  });
+
+  it('leaves no marker when they already have one', () => {
+    renderShell();
+    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
+    const onSignedIn = captured.AskAccessSheet?.onSignedIn as (r: { name: string; hasPin: boolean }) => void;
+    onSignedIn({ name: 'Lin', hasPin: true });
+    expect(sessionStorage.getItem('badminton_offer_pin')).toBeNull();
+  });
+});
+

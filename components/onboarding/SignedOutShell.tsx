@@ -27,6 +27,7 @@ import {
   clearOnboardingResume,
 } from '@/lib/onboardingResume';
 import { isFlagOn } from '@/lib/flags';
+import { OFFER_PIN_KEY } from '@/lib/offerPin';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -372,7 +373,19 @@ function LogInView({
         onClose={() => setAskOpen(false)}
         sessionId=""
         initialName={staleName}
-        onSignedIn={() => setAskOpen(false)}
+        onSignedIn={({ hasPin }) => {
+          setAskOpen(false);
+          // An approval signs them in with no credential. The reload the sign-in
+          // triggers is async, so this lands before the page goes — Home then
+          // opens the PIN sheet instead of letting them leave with nothing.
+          if (!hasPin) {
+            try {
+              window.sessionStorage.setItem(OFFER_PIN_KEY, '1');
+            } catch {
+              /* Home still shows the card */
+            }
+          }
+        }}
       />
       <ForgotPasswordSheet open={forgotOpen} onClose={() => setForgotOpen(false)} />
     </div>

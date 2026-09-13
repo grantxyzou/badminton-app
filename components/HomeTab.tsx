@@ -21,6 +21,7 @@ import StatusBanner from '@/components/primitives/StatusBanner';
 import PageHeader from '@/components/primitives/PageHeader';
 import EnterCodeSheet from './EnterCodeSheet';
 import AskAccessSheet from './AskAccessSheet';
+import { OFFER_PIN_KEY } from '@/lib/offerPin';
 import RecoveryPinSheet from './RecoveryPinSheet';
 import PinInput from './PinInput';
 import NameAutocompleteInput from './home/NameAutocompleteInput';
@@ -101,7 +102,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     // accepts the cookie as identity proof. Same form shape as anon.
     memberProbe?.hasPin && memberProbe?.authed ? 'anon'
     : memberProbe?.hasPin ? 'sign-in'
-    : memberProbe?.exists ? 'create'
+    // A member with NO PIN on a device that cannot prove it is theirs signs up
+    // by NAME, as the server has always allowed. 'create' used to be shown
+    // here, and the PIN it collected was then refused as
+    // `account_claim_needs_approval` (first-PIN set needs a session) — so the
+    // name-only sign-up regulars rely on failed on every new phone (2026-09-13
+    // flow audit). The pre-flip warning below then tells them to set up a
+    // sign-in. 'create' stays for a device that holds their session, where
+    // choosing a PIN actually succeeds.
+    : memberProbe?.exists ? (memberProbe.authed ? 'create' : 'anon')
     : 'anon';
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -125,6 +134,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
      a replacement is how they ended up PIN-less without being told. */
   const [setPinOpen, setSetPinOpen] = useState(false);
   const [recoveredName, setRecoveredName] = useState('');
+  /**
+   * MEMBERS ONLY: does the verified member have any way to sign in again —
+   * a PIN, a password or a linked provider? Tri-state: `null` is unknown and
+   * shows nothing. A member let in by an admin (an access request) is signed in
+   * with a 30-day session and no credential at all, and would be locked out
+   * again when it lapses (2026-09-13 flow audit).
+   */
+  const [hasCredential, setHasCredential] = useState<boolean | null>(null);
 
   const maxPlayers = defaultMaxPlayers();
 
@@ -220,6 +237,52 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     loadData();
   }, [loadData, memberName]);
 
+  // Ask the server what the verified member can sign in with. `auth/methods`
+  // answers for the cookie's own member (PIN, password, providers); where that
+  // route is off, `members/me` for the member's own name still knows the PIN.
+  useEffect(() => {
+    if (!memberName) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${BASE}/api/auth/methods`, { cache: 'no-store' });
+        if (res.ok) {
+          const m = (await res.json()) as { hasPin?: boolean; hasPassword?: boolean; linked?: string[] };
+          if (cancelled) return;
+          const has = m.hasPin === true || m.hasPassword === true || (Array.isArray(m.linked) && m.linked.length > 0);
+          setHasCredential(has);
+          return;
+        }
+        const me = await fetch(`${BASE}/api/members/me?name=${encodeURIComponent(memberName)}`, { cache: 'no-store' });
+        if (!me.ok || cancelled) return;
+        const d = (await me.json()) as { hasPin?: boolean; createdAt?: string | null };
+        if (typeof d.createdAt === 'string' && !cancelled) setHasCredential(d.hasPin === true);
+      } catch {
+        /* unknown — show nothing */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [memberName]);
+
+  // Straight after an admin let this member in, open the PIN sheet rather than
+  // only showing the card: the approval is the moment they are thinking about
+  // how they got in. SignedOutShell leaves the one-shot marker before reloading.
+  useEffect(() => {
+    if (!memberName || hasCredential !== false) return;
+    let offer = false;
+    try {
+      offer = window.sessionStorage.getItem(OFFER_PIN_KEY) === '1';
+      window.sessionStorage.removeItem(OFFER_PIN_KEY);
+    } catch {
+      /* storage unavailable — the card still shows */
+    }
+    if (!offer) return;
+    setRecoveredName(memberName);
+    setSetPinOpen(true);
+  }, [memberName, hasCredential]);
+
   const activePlayers = players.filter(p => !p.waitlisted);
   const waitlistPlayers = players.filter(p => p.waitlisted);
 
@@ -232,6 +295,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     : false;
 
   const isFull = activePlayers.length >= (session?.maxPlayers ?? maxPlayers);
+  const needsCredential = !!memberName && hasCredential === false;
   const needsSignInSetup =
     !memberName &&
     !!currentUser &&
@@ -813,6 +877,31 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           live session. An email or Google member whose cookie lapsed would
           match too — the probe cannot see a password — so the second line
           says where they go instead. */}
+      {/* MEMBERS ONLY: signed in, but nothing to sign in WITH next time — the
+          state an admin-approved access request leaves. One tap to a PIN. */}
+      {needsCredential && (
+        <StatusBanner
+          tone="warn"
+          icon="key"
+          title={t('signInSetup.noneTitle')}
+          body={
+            <span style={{ display: 'grid', gap: 'var(--space-1)', justifyItems: 'start' }}>
+              <span>{t('signInSetup.noneBody')}</span>
+              <button
+                type="button"
+                className="link-quiet"
+                style={{ paddingInline: 0, fontWeight: 600 }}
+                onClick={() => {
+                  setRecoveredName(memberName ?? '');
+                  setSetPinOpen(true);
+                }}
+              >
+                {t('signInSetup.noneAction')}
+              </button>
+            </span>
+          }
+        />
+      )}
       {needsSignInSetup && (
         <StatusBanner
           tone="warn"
@@ -909,7 +998,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         /* The redemption minted a member_session, so the first-set guard is
            satisfied — `true`, not the tri-state unknown. */
         authed
-        onSaved={() => setSetPinOpen(false)}
+        onSaved={() => {
+          setSetPinOpen(false);
+          // A PIN now exists; the "no way back in" card has nothing left to say.
+          if (memberName) setHasCredential(true);
+        }}
       />
       )}
       </div>
