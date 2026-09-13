@@ -8,6 +8,7 @@ import InviteCard from './InviteCard';
 import { isFlagOn } from '@/lib/flags';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import AccessRequestsCard from './AccessRequestsCard';
+import SignInReadinessCard from './SignInReadinessCard';
 import NextSessionCard from './NextSessionCard';
 import PaymentsCard from './PaymentsCard';
 import AdminDashTiles from './AdminDashTiles';
@@ -160,6 +161,13 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
           you come looking for, not the thing you are interrupted by. Renders
           nothing with the flag off (the endpoint 404s) or for a non-admin. */}
       <InviteCard enabled={invitesOn} groupName={groupName} />
+
+      {/* Members only (docs/plans/members-only.md): who would be locked out.
+          BELOW the week's work, beside the invite, for the invite card's own
+          reason — it is a checklist worked through over weeks before the flip,
+          not something to be interrupted by every Thursday. Access requests,
+          which are someone waiting, stay at the top. */}
+      <SignInReadinessCard refreshKey={composedRefresh} />
 
       {/* Profile-style settings list (mirrors ProfileTab's SettingsList).
           Announcements / E-transfer / Skip dates / Ledger / Release notes

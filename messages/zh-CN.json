@@ -10,6 +10,12 @@
         "session": "本周",
         "account": "你的账户"
       },
+    "signInSetup": {
+      "title": "设置一种登录方式",
+      "body": "很快需要登录才能看到场次，而这个名字还没有 PIN、密码或 Google 登录。",
+      "action": "请求加入",
+      "haveOne": "已经用邮箱或 Google？在个人页登录。"
+    },
     "stringing": {
         "viewPricing": "查看价格",
       "stringerTitle": "待穿线的球拍",

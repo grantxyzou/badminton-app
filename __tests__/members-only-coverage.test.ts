@@ -77,6 +77,7 @@ const ROUTES: Record<string, Entry> = {
   'admin/owed-audit': admin(),
   'admin/settings': admin('isAdminAuthedWithMember'),
   'admin/slice0': admin(),
+  'admin/sign-in-readiness': admin('isAdminAuthedWithMember'),
   aliases: admin(),
   birds: admin(),
   'members/[id]/history': admin(),
