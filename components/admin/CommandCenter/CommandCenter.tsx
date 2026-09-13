@@ -39,6 +39,9 @@ interface CommandCenterProps {
 export default function CommandCenter({ refreshKey, setView, onExit }: CommandCenterProps) {
   const pageT = useTranslations('pages.admin');
   const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
+  // Members only needs the invite card even with one club: a new account can
+  // only be made with an invite (docs/plans/members-only.md).
+  const invitesOn = groupsOn || isFlagOn('NEXT_PUBLIC_FLAG_MEMBERS_ONLY');
   // Names the club in the share sheet. `null` with the flag off, which is also
   // when `InviteCard` renders nothing.
   const { group } = useCurrentGroup();
@@ -156,7 +159,7 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
           organiser opens this screen to run Thursday — the invite is the thing
           you come looking for, not the thing you are interrupted by. Renders
           nothing with the flag off (the endpoint 404s) or for a non-admin. */}
-      <InviteCard enabled={groupsOn} groupName={groupName} />
+      <InviteCard enabled={invitesOn} groupName={groupName} />
 
       {/* Profile-style settings list (mirrors ProfileTab's SettingsList).
           Announcements / E-transfer / Skip dates / Ledger / Release notes

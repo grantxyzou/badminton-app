@@ -10,7 +10,7 @@ const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 import { defaultMaxPlayers } from '@/lib/defaults';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, setMemberCookie, requireMember } from '@/lib/auth';
+import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, setMemberCookie, requireMember, requireGroupMember, membersOnlyOn, unauthorized } from '@/lib/auth';
 import { hashPin, verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import { appendEvent } from '@/lib/recoveryAudit';
 import { isOverCapacity, ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
@@ -92,7 +92,35 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
-  if (!checkRateLimit(`signup:${ip}`, 10, 60 * 1000)) {
+  const membersOnly = membersOnlyOn();
+  // Rule 4: the per-IP limit stays first, before any auth. It is looser under
+  // members-only because it is no longer the only limit: every caller past it
+  // must hold a verified cookie (an unauthenticated flood costs one HMAC check
+  // and no Cosmos read), and the real limit is PER MEMBER below. At 10/min per
+  // address a gym full of friends on one Wi-Fi could not all tap "I'm in".
+  if (!checkRateLimit(`signup:${ip}`, membersOnly ? 60 : 10, 60 * 1000)) {
+    return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
+  }
+
+  /**
+   * MEMBERS ONLY: YOU SIGN UP AS YOURSELF, WITH AN ACCOUNT
+   * (docs/plans/members-only.md). Grant: "People shouldn't be allowed to sign
+   * up when they don't have an account."
+   *
+   * A non-admin must be a signed-in ACTIVE member, and the name comes from that
+   * account — the body's `name` is ignored — so nobody can put someone else on
+   * the list. That also retires, for this caller, every branch below that
+   * answered a name-only request: `invite_list_not_found`, `pin_required`,
+   * `pin_incorrect` and `account_claim_needs_approval` each told a stranger
+   * something about an account (does it exist, does it have a PIN) and none
+   * can be reached with a verified cookie for the same member. They stay for
+   * the flag-off path and go when the flag is retired.
+   *
+   * Admins keep signing up anyone by name, as before.
+   */
+  const signedIn = membersOnly && !isAdminAuthed(req) ? await requireGroupMember(req) : null;
+  if (membersOnly && !isAdminAuthed(req) && !signedIn) return unauthorized();
+  if (signedIn && !checkRateLimit(`signup:member:${signedIn.memberId}`, 10, 60 * 1000)) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
   }
 
@@ -102,7 +130,7 @@ export async function POST(req: NextRequest) {
       ? body.sessionId
       : await getActiveSessionId(resolveGroupId(req));
     if (!sessionId) return noActiveSession();
-    const { name } = body;
+    const name = signedIn ? signedIn.name : body.name;
     const joinWaitlist = body.waitlist === true;
 
     const trimmedName = typeof name === 'string' ? name.trim() : '';
