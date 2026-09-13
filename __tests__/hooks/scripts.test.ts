@@ -754,6 +754,37 @@ describe('summarize-review-run.mjs (post-review diagnostic)', () => {
   });
 
   /**
+   * PR #388's real run: the header printed `denials 0` while the action's own
+   * JSON summary (visible only in the raw job log — confirmed via the action's
+   * declared outputs, which name no `permission_denials_count` field, so there
+   * is no sibling file to read it from instead) carried `permission_denials_count: 20`.
+   * The nine distinct denial bodies from that run, captured verbatim, share NONE
+   * of the phrasing the old DENIAL regex looked for ("permission", "not allowed",
+   * "has not been granted") — Claude Code's own built-in Bash safety guardrails
+   * (compound commands, redirection, mkdir outside the working directory) speak
+   * in "was blocked" and "contains multiple operations" instead, a second
+   * denial vocabulary the regex never saw. This is that vocabulary, not a guess.
+   */
+  it('counts a Claude-Code built-in Bash-safety refusal as a denial (PR #388 regression)', () => {
+    const noCount = { type: 'result', subtype: 'success', num_turns: 10, total_cost_usd: 2.66 };
+    const r = runIt([
+      use('Bash', { command: 'gh pr diff 388 --repo x > /tmp/pr388.diff' }),
+      errorResult(
+        'This Bash command contains multiple operations. The following parts require approval: gh pr diff 388 --repo grantxyzou/badminton-app, wc -l /tmp/pr388.diff',
+      ),
+      errorResult(
+        "Output redirection to '/tmp/pr388.diff' was blocked. For security, Claude Code may only write to files in the allowed working directories for this session: '/home/runner/work/badminton-app/badminton-app'.",
+      ),
+      errorResult(
+        "mkdir in '/home/runner/work/badminton-app/badminton-app/.tmp_review' was blocked. For security, Claude Code may only create directories in the allowed working directories for this session: '/home/runner/work/badminton-app/badminton-app'.",
+      ),
+      noCount,
+    ]);
+    expect(r.stdout).not.toMatch(/denials 0/);
+    expect(r.stdout).toMatch(/denials 3/);
+  });
+
+  /**
    * The five silent breakages all looked identical from the PR: a green tick and
    * no comments. These three verdicts are the difference between them, and they
    * are the whole reason this file exists.
