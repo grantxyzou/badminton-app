@@ -120,6 +120,7 @@
       "genericFailure": "没报上 — 再试一次吧。",
       "waitlistFailure": "没加上 — 再试一次候补吧。",
       "namePlaceholder": "输入您的姓名",
+      "signingUpAs": "以 {name} 的身份报名",
       "nameAriaLabel": "您的姓名",
       "joining": "正在加入…",
       "submitting": "正在报名…",
@@ -1306,6 +1307,38 @@
     "budget_350": "$200–350",
     "budget_none": "不限",
     "needsCheckIn": "做个自评，我们就能推荐球拍。"
+  },
+  "signedOut": {
+    "tagline": "和朋友们每周打羽毛球。",
+    "signUp": "注册",
+    "logIn": "登录",
+    "back": "返回",
+    "login": {
+      "title": "登录",
+      "body": "欢迎回来。登录后查看本周的场次。",
+      "or": "或",
+      "playHereAlready": "我已经在这里打球",
+      "forgotPassword": "忘记密码？",
+      "useEmail": "改用邮箱",
+      "usePin": "改用名字和 PIN",
+      "newHere": "第一次来？注册"
+    },
+    "signup": {
+      "title": "注册",
+      "body": "%APP_SHORT% 仅限受邀加入。粘贴你收到的链接，或输入邀请码。",
+      "codeLabel": "邀请链接或邀请码",
+      "codePlaceholder": "链接或 8 位邀请码",
+      "continue": "继续",
+      "checking": "正在检查…",
+      "notFound": "这个链接或邀请码无效。请向邀请你的人要一个新的。",
+      "failed": "检查失败，请再试一次。",
+      "noInvite": "没有邀请？请让俱乐部里的人把链接发给你。",
+      "accountTitle": "加入 {name}",
+      "accountBody": "创建你的账户，只需片刻。",
+      "or": "或",
+      "haveAccount": "已经有账户？登录",
+      "noProviders": "暂时无法注册。请让管理员把你加进来。"
+    }
   },
   "onboarding": {
     "welcome": "欢迎",

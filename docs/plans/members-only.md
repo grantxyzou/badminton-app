@@ -42,7 +42,12 @@ A sign-up day on which a regular cannot get in and no admin is reachable to appr
 8. **A session sign-up takes the name from the account, not the body.** Beat: checking the body name matches the cookie. Ignoring it removes the question entirely, and retires for a signed-in caller every name-only answer (`invite_list_not_found`, `pin_required`, `account_claim_needs_approval`) that told a stranger something about an account.
 9. **Two sign-up rate limits, not one re-keyed limit.** Re-keying to the member would mean checking auth before the rate limit, breaking security rule 4. A per-IP limit still runs first, raised to 60/min because an unauthenticated flood now costs one HMAC check; the real limit is 10/min per member.
 10. **The gate returns the member's CURRENT name**, not the one baked into a cookie up to 30 days old — or a renamed member would be refused as a stranger.
-11. **The gate re-reads the Member** (`requireGroupMember`) rather than trusting the cookie's signature alone. A removed member's 30-day cookie must stop working at once. One point read per request.
+11. **The page decides server-side and renders a different shell**, rather than gating inside `HomeShell`. A child's effects run before its parent's, so tabs under a client-side gate fetch the roster before the gate decides. `app/page.tsx` calls the same `requireMember` on a request built from its cookie header.
+12. **Signing in reloads.** Beat: a success callback per form. Every way in already ended in `setIdentity`; one IDENTITY_EVENT listener reloads (guarded against a loop if a cookie never lands), and the server renders the app, so no client copy of "signed in" can drift from the cookie.
+13. **The Log in page does not probe `members/me`.** The PIN hint it drove ("this name has no PIN") is the account oracle members-only closes; "I play here already" sits under the form instead. Found by looking at the page — the probe's 401 showed in the console.
+14. **`POST /api/players/recover` takes `sessionId` as optional**, resolving the active session server-side. Beat: giving the signed-out page the session id, which would publish its date.
+15. **Home's sign-up card is locked to the verified member**, and `HomeShell` reconciles localStorage identity to them. The server ignores a typed name, so a name field would be a control that does nothing.
+16. **The gate re-reads the Member** (`requireGroupMember`) rather than trusting the cookie's signature alone. A removed member's 30-day cookie must stop working at once. One point read per request.
 
 ## Shape
 
@@ -56,3 +61,8 @@ A sign-up day on which a regular cannot get in and no admin is reachable to appr
 | Invite surfaces with one club | `invitesOn()` in `lib/groupRoutes.ts`; `InviteCard` in `CommandCenter` |
 | A sign-up needs an account | `POST` in `app/api/players/route.ts` |
 | Tests for both | `__tests__/members-only-accounts.test.ts` |
+| The page's server decision | `app/page.tsx` |
+| The signed-out screens | `components/onboarding/SignedOutShell.tsx` |
+| Shared iOS-PWA sign-in collection | `lib/useHandoffCollect.ts` |
+| Home card locked to the member | `components/HomeTab.tsx` (`memberName`) |
+| Tests | `__tests__/components/SignedOutShell.test.tsx`, `__tests__/components/HomeTab.membersOnly.test.tsx` |

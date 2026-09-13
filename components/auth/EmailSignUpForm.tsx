@@ -24,6 +24,12 @@ interface Props {
    */
   inviteToken?: string | null;
   /**
+   * The same invite as a typed CODE. Sent only when no token is — the server
+   * refuses a body carrying both. The members-only sign-up page reaches this
+   * with a code whenever someone typed one rather than tapping a link.
+   */
+  inviteCode?: string | null;
+  /**
    * "I am about to create my own club — do not join me to anything." Without it
    * a signup with no invite resolves to BPM and writes a membership there, so
    * every new organiser would appear on BPM's roster (`lib/inviteSignup.ts`).
@@ -55,7 +61,7 @@ interface Props {
  * "that address is spoken for" — and a shared "couldn't create that" would
  * leave them guessing which.
  */
-export default function EmailSignUpForm({ onSuccess, inviteToken, noGroup, onDismiss }: Props) {
+export default function EmailSignUpForm({ onSuccess, inviteToken, inviteCode, noGroup, onDismiss }: Props) {
   const t = useTranslations('profile.auth');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -82,6 +88,7 @@ export default function EmailSignUpForm({ onSuccess, inviteToken, noGroup, onDis
    * to one constant is what stops the two sides drifting apart.
    */
   const sentInvite = typeof inviteToken === 'string' && inviteToken.trim().length > 0;
+  const sentCode = !sentInvite && typeof inviteCode === 'string' && inviteCode.trim().length > 0;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -97,6 +104,7 @@ export default function EmailSignUpForm({ onSuccess, inviteToken, noGroup, onDis
           email: email.trim(),
           password,
           ...(sentInvite ? { inviteToken } : {}),
+          ...(sentCode ? { inviteCode } : {}),
           ...(noGroup ? { noGroup: true } : {}),
         }),
       });

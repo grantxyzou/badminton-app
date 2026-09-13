@@ -19,6 +19,15 @@ interface SignInFormProps {
    *  button. Click invokes the callback (typically opens EnterCodeSheet
    *  or navigates to the recovery surface). */
   onForgotPin?: () => void;
+  /**
+   * Whether to ask the server if the typed name has a PIN, to say so rather
+   * than "That didn't match". Default true. The members-only signed-out screen
+   * passes false: telling a stranger whether a name has a PIN is exactly the
+   * account oracle members-only closes, and the server refuses the probe there
+   * anyway (docs/plans/members-only.md). "I play here already" sits under the
+   * form as the way in for a member with no PIN.
+   */
+  probeName?: boolean;
 }
 
 /**
@@ -33,7 +42,7 @@ interface SignInFormProps {
  * - RecoverySheet (wraps in a modal + welcome-back animation)
  * - ProfileTab anonymous view (renders directly in the card)
  */
-export default function SignInForm({ sessionId, onSuccess, onForgotPin }: SignInFormProps) {
+export default function SignInForm({ sessionId, onSuccess, onForgotPin, probeName = true }: SignInFormProps) {
   const t = useTranslations('recovery');
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
@@ -48,7 +57,7 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin }: SignIn
    * That is a large share of the "what was my PIN?" messages, and it is a copy
    * bug rather than a missing feature.
    */
-  const probe = useMemberProbe(name.trim());
+  const probe = useMemberProbe(probeName ? name.trim() : '');
   const knownNoPin = probe?.exists === true && probe.hasPin === false;
   const [submitting, setSubmitting] = useState(false);
 
