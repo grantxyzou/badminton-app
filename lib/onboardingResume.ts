@@ -52,6 +52,12 @@ export interface OnboardingResume {
   intent: OnboardingIntent;
   /** The invite token, for a JOIN resume only. See the header. */
   token?: string;
+  /**
+   * A typed invite CODE, for a JOIN resume only — the members-only sign-up
+   * accepts either, and a code has no token to fall back on: the preview never
+   * reveals the token behind a code.
+   */
+  code?: string;
   at: number;
 }
 
@@ -69,6 +75,7 @@ function parse(raw: string | null): OnboardingResume | null {
       intent: v.intent,
       at: v.at,
       ...(typeof v.token === 'string' && v.token.length > 0 ? { token: v.token } : {}),
+      ...(typeof v.code === 'string' && v.code.length > 0 ? { code: v.code } : {}),
     };
   } catch {
     return null;
@@ -80,9 +87,14 @@ function parse(raw: string | null): OnboardingResume | null {
  * the same rule `stageHandoff` and `markExternalExcursion` already follow,
  * because after the navigation there is no code of ours left to run.
  */
-export function markOnboardingResume(intent: OnboardingIntent, token?: string): void {
+export function markOnboardingResume(intent: OnboardingIntent, token?: string, code?: string): void {
   try {
-    const record: OnboardingResume = { intent, at: Date.now(), ...(token ? { token } : {}) };
+    const record: OnboardingResume = {
+      intent,
+      at: Date.now(),
+      ...(token ? { token } : {}),
+      ...(!token && code ? { code } : {}),
+    };
     window.localStorage.setItem(KEY, JSON.stringify(record));
   } catch {
     /* Private mode or storage disabled: no resume, which is today's behaviour. */

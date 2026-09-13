@@ -120,6 +120,7 @@
       "genericFailure": "That didn't go through — give it another try.",
       "waitlistFailure": "That didn't go through — try the waitlist again.",
       "namePlaceholder": "Enter your name",
+      "signingUpAs": "Signing up as {name}",
       "nameAriaLabel": "Your name",
       "joining": "Joining…",
       "submitting": "Signing up…",
@@ -1306,6 +1307,38 @@
     "budget_350": "$200–350",
     "budget_none": "No limit",
     "needsCheckIn": "Do the check-in and we'll suggest a racket."
+  },
+  "signedOut": {
+    "tagline": "Weekly badminton with your crew.",
+    "signUp": "Sign up",
+    "logIn": "Log in",
+    "back": "Back",
+    "login": {
+      "title": "Log in",
+      "body": "Welcome back. Log in to see this week's session.",
+      "or": "or",
+      "playHereAlready": "I play here already",
+      "forgotPassword": "Forgot password?",
+      "useEmail": "Use email instead",
+      "usePin": "Use name and PIN instead",
+      "newHere": "New here? Sign up"
+    },
+    "signup": {
+      "title": "Sign up",
+      "body": "%APP_SHORT% is invite-only. Paste the link you were sent, or type your code.",
+      "codeLabel": "Invite link or code",
+      "codePlaceholder": "Link or 8-character code",
+      "continue": "Continue",
+      "checking": "Checking…",
+      "notFound": "That link or code doesn't work. Ask whoever invited you for a fresh one.",
+      "failed": "Couldn't check that. Try again.",
+      "noInvite": "No invite? Ask someone in the club to send you the link.",
+      "accountTitle": "Join {name}",
+      "accountBody": "Create your account. It takes a second.",
+      "or": "or",
+      "haveAccount": "Already have an account? Log in",
+      "noProviders": "Sign-up isn't available yet. Ask an admin to add you."
+    }
   },
   "onboarding": {
     "welcome": "Welcome",

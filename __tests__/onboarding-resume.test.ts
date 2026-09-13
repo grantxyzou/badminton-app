@@ -35,6 +35,18 @@ describe('mark and consume', () => {
     expect(consumeOnboardingResume()).toMatchObject({ intent: 'create' });
   });
 
+  it('carries a typed invite CODE for a join (members-only sign-up)', () => {
+    markOnboardingResume('join', undefined, 'ABCD2345');
+    expect(consumeOnboardingResume()).toMatchObject({ intent: 'join', code: 'ABCD2345' });
+  });
+
+  it('keeps only the token when both are given — the server refuses a body carrying both', () => {
+    markOnboardingResume('join', 'a'.repeat(32), 'ABCD2345');
+    const out = consumeOnboardingResume();
+    expect(out?.token).toBe('a'.repeat(32));
+    expect(out).not.toHaveProperty('code');
+  });
+
   it('carries the invite token for a join', () => {
     markOnboardingResume('join', 'a'.repeat(32));
     expect(consumeOnboardingResume()).toMatchObject({ intent: 'join', token: 'a'.repeat(32) });

@@ -51,9 +51,16 @@ interface HomeTabProps {
    * background to keep things fresh on long-lived tabs.
    */
   initialAnnouncement?: Announcement | null;
+  /**
+   * MEMBERS ONLY: the signed-in member's name, as the server verified it. When
+   * set, the sign-up card signs up THIS person — no name field, no PIN field,
+   * no probe — because the server takes the name from the account and ignores
+   * anything typed (docs/plans/members-only.md). `null` with the flag off.
+   */
+  memberName?: string | null;
 }
 
-export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initialAnnouncement = null, isAdmin = false }: HomeTabProps) {
+export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initialAnnouncement = null, isAdmin = false, memberName = null }: HomeTabProps) {
   const t = useTranslations('home');
   const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   /**
@@ -76,16 +83,19 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const [session, setSession] = useState<Session | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [announcement, setAnnouncement] = useState<Announcement | null>(initialAnnouncement);
-  const [currentUser, setCurrentUser] = useState<string | null>(null);
-  const [name, setName] = useState('');
+  const [currentUser, setCurrentUser] = useState<string | null>(memberName);
+  const [name, setName] = useState(memberName ?? '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Unified sign-up form auth state. PIN inputs reveal inline based on
   // the member probe — no separate sign-in card, no Create Account sheet
   // on Home. (Per Figma 138 + 139, supersedes #89.)
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
-  const memberProbe = useMemberProbe(name);
+  // An empty name makes the probe a no-op: with the name LOCKED to the account
+  // there is nothing to find out about it, and asking would only publish it.
+  const memberProbe = useMemberProbe(memberName ? '' : name);
   const authMode: 'anon' | 'sign-in' | 'create' =
+    memberName ? 'anon' :
     // Trusted device: the PIN was already proven here (member_session cookie),
     // so render one-tap sign-up (no PIN field) and POST { name } — the server
     // accepts the cookie as identity proof. Same form shape as anon.
@@ -96,7 +106,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [memberNames, setMemberNames] = useState<string[]>([]);
-  const [hasIdentity, setHasIdentity] = useState(false);
+  const [hasIdentity, setHasIdentity] = useState(!!memberName);
   // Sign up = session signup only (auth taxonomy split). PIN is no longer
   // collected here — it's an opt-in identity primitive, set via Profile →
   // Create account / Set PIN. Returning players who already have a PIN can
@@ -132,7 +142,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         const s: Session = await sRes.json();
         setSession(s);
         const stored = getIdentity();
-        if (stored && stored.sessionId && stored.sessionId !== s.id) {
+        // Members only: the server verified who this is before rendering the
+        // app, so a stale LOCAL record is not evidence about anyone — and on a
+        // shared phone it can name the previous person, whose probe would fail
+        // and wrongly sign this one out. HomeShell reconciles the record.
+        if (!memberName && stored && stored.sessionId && stored.sessionId !== s.id) {
           // Stale identity. Probe /api/members/me to learn if this name is
           // a PIN-protected member (auth survives session boundaries) or
           // anonymous (deleteToken bound to old session, both stale).
@@ -181,9 +195,17 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [memberName]);
 
   useEffect(() => {
+    // Members only: the server-verified member IS the user, and the state above
+    // was initialised from it. localStorage may not have caught up yet —
+    // HomeShell reconciles it, but its effect runs after this child's — so it
+    // must not be allowed to override that here.
+    if (memberName) {
+      loadData();
+      return;
+    }
     const id = getIdentity();
     setHasIdentity(id !== null);
     if (id) {
@@ -196,7 +218,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       setName(id.name);
     }
     loadData();
-  }, [loadData]);
+  }, [loadData, memberName]);
 
   const activePlayers = players.filter(p => !p.waitlisted);
   const waitlistPlayers = players.filter(p => p.waitlisted);
@@ -244,7 +266,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     // Legible-fail: refuse the mutation with a clear reason instead of
     // firing a fetch that throws and leaves the form in limbo.
     if (!online) { setError(t('signup.offline')); return; }
-    const trimmed = name.trim();
+    const trimmed = (memberName ?? name).trim();
     if (!trimmed) { setError(t('signup.nameRequired')); return; }
 
     // Per-mode pre-flight validation. The probe drives form shape but the
@@ -587,15 +609,21 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
             </div>
             <StatusBanner tone="warn" icon="lock" title={t('signup.full')} body={t('signup.allSpotsTaken', { total: spotsTotal })} />
             <form onSubmit={handleJoinWaitlist} className="space-y-3">
-              <NameAutocompleteInput
-                id="waitlist-name"
-                value={name}
-                onValueChange={(v) => { setName(v); setError(''); }}
-                suggestions={suggestions}
-                placeholder={t('signup.namePlaceholder')}
-                ariaLabel={t('signup.nameAriaLabel')}
-                errorId={error ? 'signup-error' : undefined}
-              />
+              {memberName ? (
+                <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                  {t('signup.signingUpAs', { name: memberName })}
+                </p>
+              ) : (
+                <NameAutocompleteInput
+                  id="waitlist-name"
+                  value={name}
+                  onValueChange={(v) => { setName(v); setError(''); }}
+                  suggestions={suggestions}
+                  placeholder={t('signup.namePlaceholder')}
+                  ariaLabel={t('signup.nameAriaLabel')}
+                  errorId={error ? 'signup-error' : undefined}
+                />
+              )}
               {/* PIN inputs — same adaptive reveal as the open-signup form, so a
                   PIN-protected member can authenticate while joining the waitlist
                   (the server enforces the PIN on waitlist sign-ups too). */}
@@ -630,7 +658,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <button
                 type="submit"
                 disabled={
-                  isSubmitting || !name.trim() || !online
+                  isSubmitting || !(memberName ?? name).trim() || !online
                   || (authMode === 'sign-in' && pin.length !== 4)
                   || (authMode === 'create' && (pin.length !== 4 || confirmPin.length !== 4))
                 }
@@ -674,15 +702,21 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               </p>
             </div>
             <form onSubmit={handleSignUp} className="space-y-3">
-              <NameAutocompleteInput
-                id="signup-name"
-                value={name}
-                onValueChange={(v) => { setName(v); setError(''); }}
-                suggestions={suggestions}
-                placeholder={t('signup.namePlaceholder')}
-                ariaLabel={t('signup.nameAriaLabel')}
-                errorId={error ? 'signup-error' : undefined}
-              />
+              {memberName ? (
+                <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                  {t('signup.signingUpAs', { name: memberName })}
+                </p>
+              ) : (
+                <NameAutocompleteInput
+                  id="signup-name"
+                  value={name}
+                  onValueChange={(v) => { setName(v); setError(''); }}
+                  suggestions={suggestions}
+                  placeholder={t('signup.namePlaceholder')}
+                  ariaLabel={t('signup.nameAriaLabel')}
+                  errorId={error ? 'signup-error' : undefined}
+                />
+              )}
               {/* PIN inputs — revealed inline based on the member probe.
                   sign-in: single PIN field.
                   create:  PIN + Confirm PIN.
@@ -718,7 +752,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <button
                 type="submit"
                 disabled={
-                  isSubmitting || !name.trim() || !online
+                  isSubmitting || !(memberName ?? name).trim() || !online
                   || (authMode === 'sign-in' && pin.length !== 4)
                   || (authMode === 'create' && (pin.length !== 4 || confirmPin.length !== 4))
                 }
