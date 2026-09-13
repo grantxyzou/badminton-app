@@ -7,6 +7,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   test: {
     environment: 'node',
+    // Every API test gets its own rate-limit bucket by sending a unique
+    // `X-Client-IP` (see `__tests__/helpers.ts`). Production deliberately does
+    // NOT read that header any more — Azure never set it, so it arrived
+    // caller-controlled and forging it reset every per-IP limit in the app.
+    // Naming it here is what keeps the suite's isolation working while
+    // `getClientIp` ignores it everywhere else. Point it at a header a real
+    // proxy guarantees, never back at this one.
+    env: { TRUSTED_IP_HEADER: 'x-client-ip' },
     // Never scan git worktrees under .claude/ — they carry their own copy of
     // __tests__, which double-counts the suite and surfaces failures from
     // unrelated branches. (Defaults already exclude node_modules, dist, etc.)
