@@ -125,11 +125,35 @@
   --banner-orange-bg: rgba(251, 146, 60, 0.08);
   --banner-orange-border: rgba(251, 146, 60, 0.2);
 
-  /* ── Pills ── */
+  /* ── Pills ──
+     All four pairs live here AND in the light block. The waitlist and admin
+     pairs were light-only until 2026-09-12, which meant `.pill-waitlist` and
+     `.pill-admin` resolved `var()` to nothing in the DEFAULT theme: no
+     background at all and text falling back to --text-primary, so a waitlisted
+     player's pill was indistinguishable from plain text on the Sign-Ups
+     roster. Phantom tokens again, the same class the design audit cleared ten
+     of — and invisible to the suite, because jsdom computes no stylesheet.
+     Found by the side-by-side panes on /design/components the day they were
+     added. Keep every pill token defined in BOTH blocks.
+     Values follow the pair above: a 0.15 tint of the hue, the bright shade as
+     text. Orange matches --banner-orange-bg, violet is the shade already used
+     for the admin_panel_settings icon. */
   --pill-paid-bg: rgba(74, 222, 128, 0.15);
   --pill-paid-text: #4ade80;
   --pill-unpaid-bg: rgba(var(--glass-tint), 0.06);
   --pill-unpaid-text: rgba(255, 255, 255, 0.35);
+  --pill-waitlist-bg: rgba(251, 146, 60, 0.15);
+  /* --sev-high-text, not the #fb923c this tint is built from. That hue is the
+     one the field remap further down already logs at 4.44 on the admin field
+     card (#563d28) against a 4.5 bar, and the only consumer of this token is
+     StringingPage's due/received/strung chips, which render at 10-12px on
+     exactly that card. Reusing the severity ramp is the pattern that block
+     established for --orange and --red-soft rather than inventing a lighter
+     orange. Resolves to #fdba74 dark and #9a3412 light -- the latter being
+     what the light block below already declares, so the two agree. */
+  --pill-waitlist-text: var(--sev-high-text);
+  --pill-admin-bg: rgba(167, 139, 250, 0.15);
+  --pill-admin-text: #c4b5fd;
 
   /* ── Player highlights ── */
   --highlight-green: rgba(74, 222, 128, 0.07);
@@ -1304,8 +1328,32 @@ html[data-tab="skills"][data-theme="light"] .court-bg::before {
    the existing #1e40af already measures 7.96:1 and blue-100 would be 1.11:1. */
 :root { --sev-low-label: var(--sev-low-text); }
 
+/* `.design-theme-pane` rides along because /design/components renders a
+   forced-light specimen inside a WRAPPER DIV, and `html:root` is a selector a
+   wrapper can never match — html cannot be a descendant of the div wrapping
+   it. Without this the pane falls through to the bare `[data-theme="light"]`
+   values (--highlight-green at 0.06 rather than the 0.22 the field re-tunes it
+   to) and misrepresents the two specimens this block exists for: the player
+   highlight rows and the list-row tinted headers.
+   Sharing the block rather than duplicating it is the point — nine tokens
+   copied into a second home is nine tokens that drift. Specificity works out
+   because the pane class ties with `[data-theme="light"]` at (0,1,0) and this
+   block is later in the file, which is the same order of precedence html:root
+   already wins by on the real element. */
+/* --sev-low-label is deliberately NOT shared with the pane. It is the only
+   token in this block with an `html:root[data-theme="light"]` corrective
+   below, and that selector is one a wrapper div can never match — so putting
+   the dark-field value on the pane would pin #dbeafe there with no way to
+   correct it, and a light page would render it at 1.11:1. Left on html:root
+   alone it simply inherits, which is right for the current-theme pane; the
+   forced-light pane gets the light value from the companion rule after this
+   block. Everything else here is theme-agnostic and shares safely. */
 html:root {
   --sev-low-label: #dbeafe;
+}
+
+html:root,
+.design-theme-pane {
   --highlight-green: rgba(74, 222, 128, 0.22);
   --highlight-amber: rgba(251, 191, 36, 0.22);
 
@@ -1326,6 +1374,18 @@ html:root {
    rule in CLAUDE.md is about separating list items, which this doesn't do. */
 /* Light mode keeps the dark blue — see the note above. */
 html:root[data-theme="light"] {
+  --sev-low-label: var(--sev-low-text);
+}
+
+/* The same correction for /design/components' forced-light pane, which cannot
+   match the html-anchored rule above it. Kept adjacent so the pair is edited
+   together.
+   The other five `html:root[data-theme="light"]` rules in this file style
+   `.cc-pill-*` and `.rail-bar` — components, not tokens — so a pane cannot
+   correct them by re-declaring a variable, and none of them appear on that
+   page today. If one is ever added as a specimen, its light pane will show
+   the dark value until it gets a companion here. */
+.design-theme-pane[data-theme="light"] {
   --sev-low-label: var(--sev-low-text);
 }
 

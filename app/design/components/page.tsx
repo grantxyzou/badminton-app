@@ -10,11 +10,108 @@ import AIBadge from '@/components/primitives/AIBadge';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 
+/**
+ * One specimen on one ground.
+ *
+ * `forceLight` stamps `data-theme="light"`, which works for the 75 light rules
+ * in globals.css written as BARE attribute selectors: `[data-theme="light"]`
+ * matches the wrapper itself, so it genuinely re-declares those tokens and
+ * palette-class overrides for its own subtree.
+ *
+ * SIX ARE NOT BARE. They are anchored on `html:root[data-theme="light"]`, and
+ * a wrapper can never match them — html cannot be a descendant of the div
+ * wrapping it. The same is true of the theme-agnostic `html:root` field block,
+ * which re-tunes --highlight-* and --list-* upward for the coloured grounds.
+ * Left alone, the pane showed those two specimens at the pre-field values and
+ * quietly misrepresented them. `.design-theme-pane` is on the pane so that
+ * block declares them here too; see the note at its definition in globals.css.
+ *
+ * THE REVERSE DOES NOT WORK, and that is the thing to know before touching
+ * this file. There is no `[data-theme="dark"]` block anywhere in globals.css:
+ * dark is declared on `:root` and light is an OVERRIDE of it. So a
+ * `data-theme="dark"` wrapper declares nothing at all, and inside a page the
+ * viewer has toggled to light it renders light while claiming to be dark —
+ * a specimen that lies, which is worse than the missing variant #77 was
+ * opened about. Hence one forced direction and one honest label.
+ *
+ * The pane paints `--page-bg` itself. That is load-bearing, not decoration:
+ * without it the light specimen sits on the dark page ground and every
+ * contrast judgement made from it is wrong in exactly the direction this page
+ * exists to check.
+ */
+function ThemePane({ forceLight, children }: { forceLight?: boolean; children: React.ReactNode }) {
+  return (
+    <div
+      className="design-theme-pane"
+      {...(forceLight ? { 'data-theme': 'light' } : {})}
+      style={{
+        /* The field gradient, not a flat fill. `.court-bg` paints --field-home
+           behind the real page, and .glass-card is 5-8% white over a backdrop
+           filter — so that gradient IS most of a card's visible colour, and a
+           flat fill would composite every specimen against a ground it never
+           actually sits on.
+           The base layer is --page-bg and NOT --field-base, which would be the
+           obvious choice and is wrong: --field-base is declared as
+           `var(--page-bg)` on :root, and a custom property's var() is
+           substituted where it is DECLARED, not where it is used. It therefore
+           inherits into this pane as the already-resolved dark #100F0F no
+           matter what data-theme the pane carries, and the light pane renders
+           a light gradient over a dark ground. --page-bg is a literal in both
+           theme blocks, so it follows the pane. Measured, not assumed. */
+        background: 'var(--field-home), var(--page-bg)',
+        color: 'var(--text-primary)',
+        border: '1px solid var(--divider)',
+        borderRadius: 'var(--radius-lg, 12px)',
+        padding: 'var(--space-4)',
+        display: 'grid',
+        gap: 'var(--space-3)',
+      }}
+    >
+      <span
+        className="bpm-mono"
+        style={{
+          fontSize: 'var(--fs-2xs)',
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color: 'var(--text-muted)',
+        }}
+      >
+        {forceLight ? 'light' : 'current theme'}
+      </span>
+      <div className="glass-card" style={{ padding: 'var(--space-6)', display: 'grid', gap: 'var(--space-4)' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Every specimen renders twice: once on the page's own theme, once forced to
+ * light.
+ *
+ * The layout already carries a ThemeToggle, so light mode was reachable — but
+ * one theme at a time, which meant proving parity required toggling and then
+ * remembering what the other half had looked like. A light-mode bug you have
+ * to remember to go looking for is one that reaches production, which is what
+ * #77 was opened about.
+ *
+ * Doing this in `Row` rather than per-component is deliberate. The original
+ * complaint was that SOME specimens had a light variant and the rest did not,
+ * and a list of which ones get both is a list that drifts. Here a specimen
+ * cannot be added without one.
+ *
+ * Stacked, not side by side: halving the column to ~340px reflows the
+ * field-card and icon grids, and a specimen shown at a width it never occupies
+ * in the app is its own kind of wrong answer.
+ */
 function Row({ title, caption, children }: { title: string; caption?: string; children: React.ReactNode }) {
   return (
     <section style={{ display: 'grid', gap: 'var(--space-3)' }}>
       <h2 className="bpm-section-label">{title}</h2>
-      <div className="glass-card" style={{ padding: 'var(--space-6)', display: 'grid', gap: 'var(--space-4)' }}>{children}</div>
+      <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+        <ThemePane>{children}</ThemePane>
+        <ThemePane forceLight>{children}</ThemePane>
+      </div>
       {caption && <p className="bpm-caption" style={{ color: 'var(--text-muted)', margin: '0' }}>{caption}</p>}
     </section>
   );
@@ -48,6 +145,14 @@ export default function ComponentsPage() {
         <p className="bpm-body" style={{ color: 'var(--text-secondary)', marginTop: 'var(--space-1)' }}>
           Canonical renderings of each component, mirroring{' '}
           <code className="bpm-mono">docs/design-system/preview/*</code>.
+        </p>
+        <p className="bpm-caption" style={{ color: 'var(--text-muted)', marginTop: 'var(--space-2)' }}>
+          Every specimen is shown twice: on the page&apos;s own theme, and forced to light. Palette
+          colours are theme-aware through per-class{' '}
+          <code className="bpm-mono">[data-theme=&quot;light&quot;]</code> overrides rather than tokens, so a
+          component can be correct in one theme and unreadable in the other — and jsdom computes no
+          stylesheet, so nothing in the test suite can see the difference. Leave the toggle on dark
+          to read this page as a comparison.
         </p>
       </div>
 
