@@ -37,7 +37,8 @@ A sign-up day on which a regular cannot get in and no admin is reachable to appr
 3. **Welcome screen is two buttons**, Sign up and Log in (Grant; the Wealthsimple pattern). Beat: Airbnb's single "log in or sign up" sheet.
 4. **Link previews keep session details** (Grant). The share card is the one sanctioned public surface.
 5. **Everything is behind `NEXT_PUBLIC_FLAG_MEMBERS_ONLY`, read server-side.** A client flag cannot protect a route, and the flip has to wait until the list of members with no way to sign in is short.
-6. **The gate re-reads the Member** (`requireGroupMember`) rather than trusting the cookie's signature alone. A removed member's 30-day cookie must stop working at once. One point read per request.
+6. **`app/page.tsx` server-renders nothing club-related while the flag is on.** It had been reading the announcement for every visitor and passing it to `HomeShell` as a prop, which serializes it into the HTML — so gating the API route alone left it readable with `curl`. Caught by the review bot on #395. Part 3 restores the server render for signed-in members once the page itself knows who is signed in.
+7. **The gate re-reads the Member** (`requireGroupMember`) rather than trusting the cookie's signature alone. A removed member's 30-day cookie must stop working at once. One point read per request.
 
 ## Shape
 

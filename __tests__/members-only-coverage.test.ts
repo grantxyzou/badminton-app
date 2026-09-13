@@ -188,6 +188,22 @@ describe('the source matches the classification', () => {
   }
 });
 
+describe('server-rendered pages do not bypass the gate', () => {
+  // A route gate is worthless if a page reads the same data and hands it to a
+  // client component as a prop: the prop is serialized into the HTML for every
+  // visitor. `app/page.tsx` did exactly this with the announcement, caught by
+  // the review bot on #395 after the route itself was gated.
+  it('app/page.tsx reads the announcement only when members-only is off', () => {
+    const source = readFileSync(join(process.cwd(), 'app', 'page.tsx'), 'utf8');
+    const read = source.indexOf('readActiveAnnouncements(');
+    expect(read, 'app/page.tsx no longer reads announcements — update this test').toBeGreaterThan(-1);
+    const guard = source.lastIndexOf('membersOnlyOn()', read);
+    expect(guard, 'app/page.tsx reads announcements without a membersOnlyOn() guard').toBeGreaterThan(-1);
+    // The guard must be the ternary that owns this read, not a mention elsewhere.
+    expect(source.slice(guard, read)).toMatch(/membersOnlyOn\(\)\s*\?\s*null\s*:/);
+  });
+});
+
 describe('behaviour of the gated routes', () => {
   const FLAGS = ['NEXT_PUBLIC_FLAG_MEMBERS_ONLY', 'NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE', 'NEXT_PUBLIC_FLAG_STRINGING'] as const;
   const saved: Record<string, string | undefined> = {};

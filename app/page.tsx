@@ -5,6 +5,7 @@ import { readActiveAnnouncements } from '@/lib/announcements';
 import { resolveGroupIdFromCookieHeader } from '@/lib/groupContext';
 import { configuredProviders } from '@/lib/oauthProviders';
 import { isFlagOn } from '@/lib/flags';
+import { membersOnlyOn } from '@/lib/auth';
 
 // Force dynamic rendering — the announcement read hits Cosmos at request
 // time, which Next.js would otherwise statically cache by default. We want
@@ -28,8 +29,17 @@ export const dynamic = 'force-dynamic';
  */
 export default async function Page() {
   const groupId = resolveGroupIdFromCookieHeader((await headers()).get('cookie'));
-  const announcements = await readActiveAnnouncements(groupId);
-  const initialAnnouncement = announcements[0] ?? null;
+  // MEMBERS ONLY: this page renders for EVERY visitor, signed in or not, and a
+  // prop handed to a client component is serialized into the HTML — so reading
+  // the announcement here published it to anyone with `curl`, however carefully
+  // `GET /api/announcements` was gated. With the flag on nothing is read here at
+  // all; HomeTab fetches the announcement on mount, through the gate. That costs
+  // the announcement its server render (the LCP win above) until part 3 of
+  // docs/plans/members-only.md teaches this page who is signed in.
+  // `__tests__/members-only-coverage.test.ts` pins the guard.
+  const initialAnnouncement = membersOnlyOn()
+    ? null
+    : ((await readActiveAnnouncements(groupId))[0] ?? null);
   // Which sign-in providers this deployment has credentials for. Pure env
   // reads — no Cosmos, no network — so it costs nothing here, and resolving it
   // on the server is what lets the provider buttons LEAD the anonymous Profile
