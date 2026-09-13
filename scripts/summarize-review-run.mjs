@@ -105,11 +105,26 @@ export function errorResults(messages) {
 }
 
 /**
- * Does this tool-error body read as a PERMISSION denial rather than an ordinary
- * failure? A missing file and a refused tool are both `is_error`, and counting
- * them together would put a number in the header that means nothing.
+ * Does this tool-error body read as a REFUSAL rather than an ordinary failure?
+ * A missing file and a refused tool are both `is_error`, and counting them
+ * together would put a number in the header that means nothing.
+ *
+ * TWO vocabularies, both matched, because #388 proved they are two different
+ * mechanisms. The custom `--allowedTools` system speaks in "permission" /
+ * "not allowed" / "has not been granted". Claude Code's own BUILT-IN Bash
+ * safety guardrails (compound commands, redirection outside the working
+ * directory, mkdir outside it) speak in "was blocked" and "contains multiple
+ * operations" instead — a second vocabulary this regex never looked for.
+ * #388's real run printed `denials 0` here while the action's own JSON
+ * summary (visible only in the raw job log — its declared outputs name no
+ * `permission_denials_count` field, so there is no sibling file to read it
+ * from instead) carried `permission_denials_count: 20`, and every one of its
+ * nine distinct denial bodies used the second vocabulary alone. See
+ * `__tests__/hooks/scripts.test.ts`'s "(PR #388 regression)" case for the
+ * verbatim text this was fit to.
  */
-const DENIAL = /requested permissions|permission (?:to use|denied)|has not been granted|not allowed|unable to run this command/i;
+const DENIAL =
+  /requested permissions|permission (?:to use|denied)|has not been granted|not allowed|unable to run this command|was blocked|contains multiple operations|requires? approval/i;
 
 /**
  * How many tool calls were REFUSED, counted from the transcript.
