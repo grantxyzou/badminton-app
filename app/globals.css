@@ -184,6 +184,35 @@
   --dropdown-bg: rgba(30, 40, 30, 0.97);
   --overlay-bg: rgba(0, 0, 0, 0.65);
 
+  /* TONE WASHES — the tinted fill and edge of a status pill, a selected chip or
+     a gauge stop on the admin surfaces. They existed as ~30 hand-typed rgba()
+     literals in components/admin/CommandCenter with NO light-theme value, so on
+     the cream ground every one rendered the dark-theme lime/amber at dark-theme
+     alpha. Dark values here are those literals exactly (dark mode is unchanged);
+     light values are derived from the light families already defined for the
+     same hue (--pill-paid, --pill-waitlist, --pill-admin, --banner-red,
+     --list-amber). #75. */
+  --tone-green-bg: rgba(74, 222, 128, 0.13);
+  --tone-green-border: rgba(74, 222, 128, 0.25);
+  --tone-green-border-strong: rgba(74, 222, 128, 0.3);
+  --tone-green-strong: rgba(74, 222, 128, 0.4);
+  --tone-amber-bg: rgba(251, 191, 36, 0.12);
+  --tone-amber-border: rgba(251, 191, 36, 0.25);
+  --tone-amber-strong: rgba(251, 191, 36, 0.4);
+  --tone-orange-bg: rgba(251, 146, 60, 0.13);
+  --tone-orange-border: rgba(251, 146, 60, 0.28);
+  --tone-red-bg: rgba(239, 68, 68, 0.06);
+  --tone-red-border: rgba(239, 68, 68, 0.2);
+  --tone-red-strong: rgba(248, 113, 113, 0.4);
+  --tone-violet-bg: rgba(167, 139, 250, 0.13);
+  --tone-violet-border: rgba(167, 139, 250, 0.28);
+  /* INK ON A COLOURED SURFACE — tick marks across a gauge and the ring that
+     lifts a marker off it. Deliberately the SAME in both themes (no light
+     override): the surface underneath is a coloured gradient in either theme,
+     and black ink is what reads on it. Not --glass-tint, which flips to white. */
+  --ink-tick: rgba(0, 0, 0, 0.18);
+  --ink-shadow: rgba(0, 0, 0, 0.4);
+
   /* ── Dividers ── */
   --divider: rgba(255, 255, 255, 0.05);
 
@@ -302,6 +331,21 @@
 
   --dropdown-bg: rgba(255, 255, 255, 0.97);
   --overlay-bg: rgba(0, 0, 0, 0.3);
+
+  --tone-green-bg: rgba(22, 163, 74, 0.1);
+  --tone-green-border: rgba(22, 163, 74, 0.25);
+  --tone-green-border-strong: rgba(22, 163, 74, 0.3);
+  --tone-green-strong: rgba(22, 163, 74, 0.4);
+  --tone-amber-bg: rgba(217, 119, 6, 0.12);
+  --tone-amber-border: rgba(217, 119, 6, 0.3);
+  --tone-amber-strong: rgba(217, 119, 6, 0.4);
+  --tone-orange-bg: rgba(234, 88, 12, 0.14);
+  --tone-orange-border: rgba(234, 88, 12, 0.3);
+  --tone-red-bg: rgba(239, 68, 68, 0.08);
+  --tone-red-border: rgba(220, 38, 38, 0.4);
+  --tone-red-strong: rgba(220, 38, 38, 0.4);
+  --tone-violet-bg: rgba(124, 58, 237, 0.12);
+  --tone-violet-border: rgba(124, 58, 237, 0.28);
 
   --divider: rgba(0, 0, 0, 0.06);
 

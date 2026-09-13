@@ -441,7 +441,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           padding: 'var(--space-6)',
           overflow: 'hidden',
           position: 'relative',
-          background: 'linear-gradient(160deg, rgba(74,222,128,0.08), rgba(var(--glass-tint), 0.02))',
+          background: 'linear-gradient(160deg, var(--banner-green-bg), rgba(var(--glass-tint), 0.02))',
         }}
       >
         <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: '0' }}>Runs out in</p>
@@ -473,9 +473,9 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                 fontWeight: 600,
                 fontFamily: 'var(--font-display, "Space Grotesk")',
                 letterSpacing: '0.02em',
-                background: reorderPill.tone === 'green' ? 'rgba(74,222,128,0.13)' : reorderPill.tone === 'amber' ? 'rgba(251,191,36,0.12)' : 'rgba(251,146,60,0.13)',
+                background: reorderPill.tone === 'green' ? 'var(--tone-green-bg)' : reorderPill.tone === 'amber' ? 'var(--tone-amber-bg)' : 'var(--tone-orange-bg)',
                 color: reorderPill.tone === 'green' ? 'var(--accent)' : reorderPill.tone === 'amber' ? 'var(--amber)' : 'var(--orange)',
-                border: `1px solid ${reorderPill.tone === 'green' ? 'rgba(74,222,128,0.25)' : reorderPill.tone === 'amber' ? 'rgba(251,191,36,0.25)' : 'rgba(251,146,60,0.28)'}`,
+                border: `1px solid ${reorderPill.tone === 'green' ? 'var(--tone-green-border)' : reorderPill.tone === 'amber' ? 'var(--tone-amber-border)' : 'var(--tone-orange-border)'}`,
               }}
             >
               {reorderPill.label}
@@ -525,7 +525,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
               height: TIMELINE_BAR_H,
               position: 'relative',
               borderRadius: 'var(--radius-sm)',
-              background: 'linear-gradient(to right, rgba(74,222,128,0.4) 0%, rgba(251,191,36,0.4) 60%, rgba(248,113,113,0.4) 100%)',
+              background: 'linear-gradient(to right, var(--tone-green-strong) 0%, var(--tone-amber-strong) 60%, var(--tone-red-strong) 100%)',
               overflow: 'hidden',
             }}
           >
@@ -538,7 +538,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                   top: 0,
                   bottom: 0,
                   width: 1,
-                  background: 'rgba(0,0,0,0.18)',
+                  background: 'var(--ink-tick)',
                 }}
               />
             ))}
@@ -552,7 +552,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                 width: 3,
                 background: 'var(--text-primary)',
                 borderRadius: 2,
-                boxShadow: '0 0 0 2px rgba(0,0,0,0.4)',
+                boxShadow: '0 0 0 2px var(--ink-shadow)',
               }}
               aria-label="now"
             />
@@ -816,7 +816,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                     <span
                       className="material-icons"
                       style={{
-                        fontSize: 24,
+                        fontSize: 'var(--icon-lg)',
                         color: i <= formQuality ? 'var(--amber)' : 'rgba(var(--glass-tint), 0.18)',
                       }}
                     >

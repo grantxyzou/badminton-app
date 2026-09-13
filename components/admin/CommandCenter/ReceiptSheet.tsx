@@ -206,7 +206,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
                         aspectRatio: '390 / 520',
                         borderRadius: 'var(--radius-lg)',
                         background: 'var(--input-bg)',
-                        border: '1px solid var(--input-border, rgba(255,255,255,0.08))',
+                        border: '1px solid var(--input-border)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -246,7 +246,7 @@ export default function ReceiptSheet({ open, onClose, input, error, initialMode 
                     padding: 'var(--space-4)',
                     borderRadius: 'var(--radius-lg)',
                     background: 'var(--input-bg)',
-                    border: '1px solid var(--input-border, rgba(255,255,255,0.08))',
+                    border: '1px solid var(--input-border)',
                     color: 'var(--text-primary)',
                   }}
                 >
