@@ -327,7 +327,7 @@ The chain is `docs/plans/<slug>.md` → `docs/superpowers/specs/*-design.md` →
 3. **Auth before DB.** Admin check at top of every admin route, before body parsing. **Mutating** handlers use `await isAdminAuthedWithMember(req)` (role re-check); read-only handlers may use sync `isAdminAuthed(req)`.
 4. **Rate limit before auth.** Rate limiting first in handler so it can't be bypassed.
 5. **`POST /api/claude` is admin-only.** Unauthenticated access would expose API key budget.
-6. **`getClientIp(req)` for IP.** Reads `X-Client-IP` then `X-Forwarded-For`. Never `req.ip` (returns Azure proxy IP).
+6. **`getClientIp(req)` for IP.** Reads the FIRST `X-Forwarded-For` entry, which App Service overwrites with the socket address. Never `req.ip` (returns Azure proxy IP), and never the LAST entry (nothing appends after Azure, so keying on it makes the limit global). **It does NOT read `X-Client-IP` and must not again** — this rule asserted it did until 2026-09-12, on a comment claiming Azure set that header and stripped any caller-supplied value. Azure sets no such header, so it strips nothing: the caller's value arrived intact and was trusted ahead of the real one, and one changed byte bought a fresh allowance on every per-IP limit in the app. The only writer of `X-Client-IP` in this repo is the TEST SUITE, for per-test bucket isolation — production was trusting a test fixture. Fixed in #389; the suite keeps its isolation through `TRUSTED_IP_HEADER` (set in `vitest.config.ts`), which names the single header to trust and is also how a deployment behind another proxy points at `cf-connecting-ip`.
 7. **`sessionId` override is admin-only.** Gate `?sessionId=` and body `sessionId` with auth check.
 8. **Capacity-check restores and promotions.** `removed: false` or `waitlisted: false` must check active count first → 409 if full.
 9. **`purgeAll: true` is irreversible.** Hard-deletes all records including soft-deleted.
@@ -544,7 +544,7 @@ One deployment, trunk-based: every push to `main` deploys to production. Full de
 
 ## Testing
 
-Tests use the in-memory mock store — no DB needed. Helpers in `__tests__/helpers.ts`. Each test gets a unique IP via `X-Client-IP` to avoid rate limiter collisions.
+Tests use the in-memory mock store — no DB needed. Helpers in `__tests__/helpers.ts`. Each test gets a unique IP via `X-Client-IP` to avoid rate limiter collisions — which works ONLY because `vitest.config.ts` sets `TRUSTED_IP_HEADER: 'x-client-ip'`. Production ignores that header (security rule 6); don't remove the env line, and don't conclude from these helpers that the app reads it.
 ```bash
 npm test              # run all tests (vitest)
 npm run test:watch    # watch mode
