@@ -22,6 +22,7 @@
  * browser — and is translated properly.
  */
 import type { PlayerNotice } from './stringingNotify';
+import { APP_NAME } from './brand';
 
 export interface MailResult {
   sent: boolean;
@@ -41,14 +42,17 @@ async function send(to: string, subject: string, text: string): Promise<MailResu
 
   const nodemailer = (await import('nodemailer')).default;
   const transport = nodemailer.createTransport({ service: 'gmail', auth: { user, pass } });
-  await transport.sendMail({ from: `BPM Badminton <${user}>`, to, subject, text });
+  // The SENDER is the product: one mailbox serves every club, and the From
+  // name is what a mail client shows in the inbox list. The sign-off inside
+  // the body is the CLUB — see `composeEmail`.
+  await transport.sendMail({ from: `${APP_NAME} <${user}>`, to, subject, text });
   return { sent: true };
 }
 
 /** Subject + body per stage. Only `being_strung` and `ready_for_you` reach
  *  here — `shouldNotify` filters the rest, because telling someone about a
  *  racket they are holding is how an app teaches people to ignore it. */
-export function composeEmail(notice: PlayerNotice, playerName: string): { subject: string; text: string } | null {
+export function composeEmail(notice: PlayerNotice, playerName: string, clubName: string = APP_NAME): { subject: string; text: string } | null {
   const racket = `${notice.racketLabel} (${notice.jobNo})`;
   const price = notice.priceRange ? `\nEstimate: ${notice.priceRange}` : '';
 
@@ -59,7 +63,7 @@ export function composeEmail(notice: PlayerNotice, playerName: string): { subjec
       text:
         `Hi ${playerName},\n\n` +
         `${racket} is strung and ready to pick up.${when}${price}\n\n` +
-        `See you on the court.\n— BPM Badminton`,
+        `See you on the court.\n— ${clubName}`,
     };
   }
 
@@ -70,7 +74,7 @@ export function composeEmail(notice: PlayerNotice, playerName: string): { subjec
       text:
         `Hi ${playerName},\n\n` +
         `${racket} is being strung now.${when}${price}\n\n` +
-        `We'll let you know when it's ready.\n— BPM Badminton`,
+        `We'll let you know when it's ready.\n— ${clubName}`,
     };
   }
 
@@ -90,9 +94,20 @@ export async function sendStringingNotice(
   notice: PlayerNotice,
   to: string | null | undefined,
   playerName: string,
+  /**
+   * The club whose stringer did the work, for the sign-off.
+   *
+   * Optional, defaulting to the product name, because the alternative is
+   * worse in a specific way: a racket strung by one club must never be signed
+   * with another club's name, and a required parameter that every caller
+   * satisfies with whatever is in scope is how that happens. Absent means "we
+   * do not know which club", and the product name is the honest answer to
+   * that — it names the software the person is using, which is true.
+   */
+  clubName?: string,
 ): Promise<MailResult> {
   if (!to || !notice.channels.includes('email')) return { sent: false };
-  const copy = composeEmail(notice, playerName);
+  const copy = composeEmail(notice, playerName, clubName ?? APP_NAME);
   if (!copy) return { sent: false };
   try {
     return await send(to, copy.subject, copy.text);

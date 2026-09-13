@@ -1,6 +1,7 @@
 'use client';
 
 import { shareTextOrCopy, type ShareTextOutcome } from '@/lib/shareText';
+import { APP_NAME } from '@/lib/brand';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -12,7 +13,7 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  * been bitten by before — a rule added to a shared function is worthless if a
  * caller reimplemented it — and it had already cost two real differences:
  *
- *   - the club name was the string 'BPM Badminton' in four places, which stops
+ *   - the club name was a hardcoded string in four places, which stops
  *     being true the moment a second club exists;
  *   - `NextSessionCard` called `navigator.share` by hand and never marked the
  *     external excursion, so iOS evicting the PWA while that sheet was open
@@ -36,8 +37,14 @@ export interface SignupShareInput {
   datetime?: string | null;
 }
 
-/** The deployment's name, until `lib/brand.ts` lands in Phase 4. */
-const DEFAULT_CLUB = 'BPM Badminton';
+/**
+ * The fallback when the caller knows of no club — a non-admin, or the flag off.
+ *
+ * The PRODUCT's name, not a club's, and that is the honest answer rather than a
+ * convenient one: if we cannot say which club this session belongs to, naming
+ * some particular club would be a guess, and naming the app is simply true.
+ */
+const DEFAULT_CLUB = APP_NAME;
 
 export function buildSignupShare(input: SignupShareInput): { title: string; text: string; url: string } {
   const club = input.groupName?.trim() || DEFAULT_CLUB;

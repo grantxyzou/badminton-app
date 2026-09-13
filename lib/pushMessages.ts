@@ -15,6 +15,7 @@
 import type { Session } from './types';
 import { safeTag, type PushPayload } from './push';
 import { shouldNotify, type PlayerNotice } from './stringingNotify';
+import { APP_SHORT_NAME } from './brand';
 import { formatReadyBy } from './stringingDue';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
@@ -63,7 +64,7 @@ export function buildSignupOpenPayload(session: Partial<Session>): PushPayload {
 /** Fixed payload for the admin transport self-test. */
 export function buildTestPayload(): PushPayload {
   return {
-    title: 'BPM test notification',
+    title: `${APP_SHORT_NAME} test notification`,
     body: 'Push is working on this device.',
     url: `${BASE}/`,
     tag: 'bpm-test',
@@ -186,7 +187,7 @@ export function buildPendingEditPayload(job: {
   const racket = job.racketLabel?.trim() || 'your racket';
   return {
     title: 'A change to confirm',
-    body: `Something changed on ${racket}. Open BPM to have a look.`,
+    body: `Something changed on ${racket}. Open ${APP_SHORT_NAME} to have a look.`,
     url: `${BASE}/`,
     // Job first, same reasoning as the stage payload above.
     tag: safeTag(`str-${job.jobNo}-edit`),

@@ -481,6 +481,11 @@ export async function runBackfill(opts: {
       try {
         ({ group } = await createGroup({
           id: BPM_GROUP_ID,
+          // DATA, NOT BRAND — deliberately not `APP_NAME`. This names the CLUB
+          // the backfill is creating, and it is written once into a durable
+          // document. Wiring it to the product constant would mean a future
+          // rename silently rewrote what Grant's club is called, in a row this
+          // code may never touch again.
           name: 'BPM Badminton',
           ownerMemberId: owner.id,
           ownerName: owner.name,

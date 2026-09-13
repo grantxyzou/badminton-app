@@ -5,6 +5,7 @@ import { getLocale, getMessages } from 'next-intl/server';
 import PreviewBanner from '@/components/PreviewBanner';
 import HydrationMark from '@/components/HydrationMark';
 import { APP_TIME_ZONE } from '@/i18n/request';
+import { APP_NAME, APP_SHORT_NAME } from '@/lib/brand';
 import './globals.css';
 
 // Locked type system (design-system bundle v3, subset 2026-05-07):
@@ -85,15 +86,15 @@ export const metadata: Metadata = {
   //
   // Not a secret: it names a commit in a public repo.
   other: { 'bpm-build': process.env.NEXT_PUBLIC_GIT_SHA ?? 'dev' },
-  title: 'BPM Badminton',
+  title: APP_NAME,
   description: 'Sign up for weekly badminton sessions',
   // PWA: installable standalone home-screen app. The manifest link is
   // auto-injected from app/manifest.ts (basePath-prefixed by Next); these
   // fields add the iOS home-screen behavior + icons (paths prefixed by hand).
-  applicationName: 'BPM Badminton',
+  applicationName: APP_NAME,
   appleWebApp: {
     capable: true,
-    title: 'BPM',
+    title: APP_SHORT_NAME,
     statusBarStyle: 'black-translucent',
   },
   icons: {
@@ -104,15 +105,15 @@ export const metadata: Metadata = {
     apple: [{ url: `${BASE}/icons/apple-touch-icon-180.png`, sizes: '180x180', type: 'image/png' }],
   },
   openGraph: {
-    title: 'BPM Badminton',
+    title: APP_NAME,
     description: 'Sign up for weekly badminton sessions',
     url: CANONICAL_URL,
-    siteName: 'BPM Badminton',
+    siteName: APP_NAME,
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'BPM Badminton',
+    title: APP_NAME,
     description: 'Sign up for weekly badminton sessions',
   },
 };
@@ -182,7 +183,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Cold-start splash — hidden by CSS once HydrationMark sets data-hydrated */}
         <div className="splash" aria-hidden="true">
           <div className="splash-shuttle ring-spinner" />
-          <h1 className="splash-title">BPM Badminton</h1>
+          <h1 className="splash-title">{APP_NAME}</h1>
           <p className="splash-tagline">Weekly sessions</p>
         </div>
         {/* Badminton court background */}

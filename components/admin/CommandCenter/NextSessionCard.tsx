@@ -87,7 +87,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
     // The old version never marked the external excursion, so iOS evicting the
     // PWA while its share sheet was open returned the admin to Home mid-task —
     // CLAUDE.md's rule that any new `navigator.share` must mark, missed here.
-    // It also said 'BPM Badminton' out loud, and the link carries the club's
+    // It also said the club name out loud, and the link carries the club's
     // invite now so the chat can forward it to someone with no account.
     const outcome = await shareSignup({
       groupName: group?.name,

@@ -1,6 +1,7 @@
 import { cookies, headers } from 'next/headers';
 import { getRequestConfig } from 'next-intl/server';
 import { match } from '@formatjs/intl-localematcher';
+import { applyBrand } from '../lib/brand';
 
 export const SUPPORTED_LOCALES = ['en', 'zh-CN'] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
@@ -78,6 +79,38 @@ export function deepMerge(base: MessageTree, override: MessageTree): MessageTree
   return out;
 }
 
+/**
+ * Substitute the brand sentinels through a whole message tree.
+ *
+ * Runs AFTER `deepMerge`, so a Chinese string and the English one it falls back
+ * to are branded by the same pass and cannot disagree about the app's name.
+ *
+ * ARRAYS ARE WALKED, NOT SPREAD — the same trap `deepMerge` documents above.
+ * The legal pages hold their copy as arrays read with `t.raw`, and the brand
+ * appears inside those arrays, so an implementation that treated an array as a
+ * plain object would turn it into an index-keyed map and `.map()` would throw
+ * on the page rather than on any test.
+ *
+ * Only strings are rewritten, and only by `applyBrand`. Nothing here parses or
+ * re-serialises JSON: `messages/*.json` contains DUPLICATE SIBLING KEYS, and a
+ * round trip through `JSON.parse`/`stringify` silently drops one of each pair.
+ * The tree arrives already parsed by the bundler's `import`, and this walks the
+ * object it was handed.
+ */
+export function brandMessages(tree: MessageTree): MessageTree {
+  const walk = (node: MessageNode): MessageNode => {
+    if (typeof node === 'string') return applyBrand(node);
+    if (Array.isArray(node)) return node.map(walk);
+    if (node && typeof node === 'object') {
+      const out: MessageTree = {};
+      for (const k of Object.keys(node)) out[k] = walk(node[k]);
+      return out;
+    }
+    return node;
+  };
+  return walk(tree) as MessageTree;
+}
+
 export default getRequestConfig(async () => {
   const cookieStore = await cookies();
   const headerStore = await headers();
@@ -93,7 +126,7 @@ export default getRequestConfig(async () => {
       ? enMessages
       : ((await import(`../messages/${locale}.json`)).default as MessageTree);
 
-  const messages = deepMerge(enMessages, localeMessages);
+  const messages = brandMessages(deepMerge(enMessages, localeMessages));
 
   return { locale, messages, timeZone: APP_TIME_ZONE };
 });

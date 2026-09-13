@@ -15,7 +15,12 @@ describe('renderGroupText', () => {
     const text = renderGroupText(baseInput);
     expect(text).toMatch(/^Badminton on .* was \$9 each\./);
     expect(text).toContain('E-transfer me at grant@example.com');
-    expect(text).toMatch(/Memo: BPM .* - \{your name\}/);
+    // No club supplied, so `{club}` collapses and the memo is date-and-name.
+    // A memo naming some OTHER club would be worse than a terse one: it goes in
+    // a bank transfer, next to money, read by someone deciding whether they
+    // recognise the payment.
+    expect(text).toMatch(/Memo: \w+ \d+ - \{your name\}/);
+    expect(text).not.toContain('{club}');
     expect(text).toContain('3 courts · 3 of us · $108 total');
   });
 
@@ -53,7 +58,18 @@ describe('renderIndividualText', () => {
     const text = renderIndividualText({ ...baseInput, playerName: 'Daisy' });
     expect(text).toMatch(/^Hey Daisy — badminton on .* was \$9\./);
     expect(text).toContain('E-transfer me at grant@example.com');
-    expect(text).toContain('Memo: BPM');
+    expect(text).toMatch(/Memo: \w+ \d+ - Daisy/);
+  });
+
+  it('puts the CLUB in the memo when one is known', () => {
+    // The club, never the product: the payer is being told what they are
+    // paying for, not which software the organiser happens to use.
+    const text = renderIndividualText({
+      ...baseInput,
+      playerName: 'Daisy',
+      clubName: 'Thursday Badminton',
+    });
+    expect(text).toMatch(/Memo: Thursday Badminton \w+ \d+ - Daisy/);
   });
 
   it('interpolates {name} into the memo template with the player name', () => {

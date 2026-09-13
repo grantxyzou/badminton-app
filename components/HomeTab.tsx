@@ -5,6 +5,7 @@ import { useTranslations, useFormatter } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import { isFlagOn } from '@/lib/flags';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
+import { APP_NAME } from '@/lib/brand';
 import type { Session, Player, Announcement, Release } from '@/lib/types';
 import { defaultMaxPlayers } from '@/lib/defaults';
 import type { DevOverrides } from '@/components/DevPanel';
@@ -58,18 +59,17 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   /**
    * THE CLUB'S OWN NAME IN ITS OWN HEADER.
    *
-   * It was the literal 'BPM Badminton', which is simply wrong the moment a
-   * second club exists — you finish creating "Thursday Badminton" and the first
-   * screen you land on is titled someone else's club.
+   * It was a hardcoded club name, which is simply wrong the moment a second
+   * club exists — you finish creating "Thursday Badminton" and the first screen
+   * you land on is titled someone else's club.
    *
    * `useCurrentGroup` resolves `null` with the flag off and while signed out,
-   * and the fallback is the deployment's own name, so nothing changes for BPM.
-   * The full rename (manifest, splash, emails, push) is Phase 4's `lib/brand.ts`
-   * — this is only the one place a person reads a club's name and could be told
-   * the wrong one.
+   * and the fallback is the PRODUCT's name rather than any particular club's:
+   * if we cannot say whose club this is, naming one would be a guess, while
+   * naming the app is true. Flag off that reads exactly as it always has.
    */
   const { group: currentGroup } = useCurrentGroup();
-  const clubName = currentGroup?.name || 'BPM Badminton';
+  const clubName = currentGroup?.name || APP_NAME;
   const tStates = useTranslations('home.states');
   const format = useFormatter();
   const online = useOnline();
@@ -384,7 +384,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       {/* PageHeader must be a DIRECT child of this space-y-5 scroll root so its
           position:sticky containing block is the full tab. Wrapping it (with the
           release trigger) in a short <div> made the containing block ~43px tall,
-          so the "BPM Badminton" bar un-stuck instantly and scrolled off instead
+          so the club-name bar un-stuck instantly and scrolled off instead
           of condensing like every other tab. The version stamp stays tight under
           the title via inline marginTop (beats the space-y-5 gap).
           The easter-egg `onTitleTap` lives on the inner span so PageHeader owns

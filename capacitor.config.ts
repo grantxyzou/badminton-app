@@ -1,4 +1,5 @@
 import type { CapacitorConfig } from '@capacitor/cli';
+import { APP_NAME } from './lib/brand';
 
 /**
  * The App Store / Google Play shell.
@@ -15,7 +16,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
  */
 const config: CapacitorConfig = {
   appId: 'com.motioncraft.bpm',
-  appName: 'BPM Badminton',
+  appName: APP_NAME,
   webDir: 'native/www',
   server: {
     url: 'https://bpm.grantzou.com/bpm',

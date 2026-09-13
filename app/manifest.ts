@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next';
+import { APP_NAME, APP_SHORT_NAME } from '@/lib/brand';
 
 /**
  * Web App Manifest — makes BPM installable ("Add to Home Screen") and launch
@@ -26,8 +27,8 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'BPM Badminton',
-    short_name: 'BPM',
+    name: APP_NAME,
+    short_name: APP_SHORT_NAME,
     description: 'Sign up for weekly badminton sessions',
     start_url: `${BASE}/`,
     scope: `${BASE}/`,

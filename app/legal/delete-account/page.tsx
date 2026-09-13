@@ -1,9 +1,10 @@
 import { rawList } from '@/lib/rawList';
 import type { Metadata } from 'next';
+import { APP_NAME } from '@/lib/brand';
 import { getTranslations } from 'next-intl/server';
 import { LegalList } from '../_LegalDoc';
 
-export const metadata: Metadata = { title: 'Delete your account — BPM Badminton' };
+export const metadata: Metadata = { title: `Delete your account — ${APP_NAME}` };
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 

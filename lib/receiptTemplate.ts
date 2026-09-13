@@ -19,8 +19,16 @@ export interface ReceiptInput {
   playerNames: string[];
   /** E-transfer recipient. */
   recipient: { name: string; email: string };
-  /** Memo template. `{date}` and `{name}` are interpolated. */
+  /** Memo template. `{date}`, `{name}` and `{club}` are interpolated. */
   memoTemplate?: string;
+  /**
+   * The club this bill is from, for `{club}` in the memo.
+   *
+   * Optional and additive: absent means the token collapses to nothing, which
+   * is what every caller written before multi-group does. It is the CLUB and
+   * never the product — see `DEFAULT_MEMO`.
+   */
+  clubName?: string;
   /** Optional admin note. */
   note?: string;
 }
@@ -43,7 +51,7 @@ function fmtDate(iso: string): string {
   }
 }
 
-function fmtMemo(template: string, dateIso: string, name: string): string {
+function fmtMemo(template: string, dateIso: string, name: string, clubName?: string): string {
   const dateShort = (() => {
     if (!dateIso) return '';
     try {
@@ -54,10 +62,32 @@ function fmtMemo(template: string, dateIso: string, name: string): string {
   })();
   return template
     .replace(/\{date\}/g, dateShort)
-    .replace(/\{name\}/g, name);
+    .replace(/\{name\}/g, name)
+    // An unknown club collapses to nothing rather than to a placeholder or to
+    // some other club's name — a memo reading "Sep 12 - Lin" is merely terse,
+    // where one naming the wrong club is wrong about who is being paid. The
+    // tidy-up keeps the leading space from surviving the substitution.
+    .replace(/\{club\}/g, clubName?.trim() ?? '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 
-const DEFAULT_MEMO = 'BPM {date} - {name}';
+/**
+ * The memo when a club has not set one, and the leading word is a CLUB name.
+ *
+ * This string ends up in someone's bank transfer, next to money, read by a
+ * person deciding whether they recognise the payment. That makes it the club's
+ * name and never the product's: "Acme Badminton 09-12 - Lin" tells the payer
+ * what they are paying for, while the app's name tells them which software the
+ * organiser happens to use, which they have no reason to care about.
+ *
+ * The club normally supplies its own through `recipient.memo`, which an admin
+ * edits in settings; this is only the fallback for a club that never set one.
+ * `{club}` is substituted by `fmtMemo` alongside `{date}` and `{name}`, so a
+ * caller that knows the club gets it and one that does not falls back to the
+ * bare date-and-name form rather than printing another club's name.
+ */
+const DEFAULT_MEMO = '{club} {date} - {name}';
 
 /** Group-format text: posted to the friend-group chat once the bill is sent.
  *  Lead with the headline ("$X each"), keep the bookkeeping in a parenthetical
@@ -65,7 +95,7 @@ const DEFAULT_MEMO = 'BPM {date} - {name}';
  *  load-bearing should be before that line. */
 export function renderGroupText(input: ReceiptInput): string {
   const { datetime, costPerPerson, courts, totalCost, playerNames, recipient, memoTemplate, note } = input;
-  const memo = fmtMemo(memoTemplate ?? DEFAULT_MEMO, datetime, '{your name}');
+  const memo = fmtMemo(memoTemplate ?? DEFAULT_MEMO, datetime, '{your name}', input.clubName);
   const courtLabel = `${courts} court${courts === 1 ? '' : 's'}`;
   const playerLabel = `${playerNames.length} of us`;
   const lines = [
@@ -85,7 +115,7 @@ export function renderGroupText(input: ReceiptInput): string {
 /** Individual-format text: friendly nudge for a single player. */
 export function renderIndividualText(input: IndividualReceiptInput): string {
   const { datetime, costPerPerson, recipient, memoTemplate, playerName, note } = input;
-  const memo = fmtMemo(memoTemplate ?? DEFAULT_MEMO, datetime, playerName);
+  const memo = fmtMemo(memoTemplate ?? DEFAULT_MEMO, datetime, playerName, input.clubName);
   const lines = [
     `Hey ${playerName} — badminton on ${fmtDate(datetime)} was $${costPerPerson}.`,
     '',
@@ -164,7 +194,7 @@ export function renderGroupCanvas(input: ReceiptInput, canvas: HTMLCanvasElement
   ctx.fillText('MEMO', 24, 286);
   ctx.fillStyle = '#f3f4f6';
   ctx.font = '500 14px "JetBrains Mono", monospace';
-  ctx.fillText(fmtMemo(input.memoTemplate ?? DEFAULT_MEMO, input.datetime, '{your name}'), 24, 308);
+  ctx.fillText(fmtMemo(input.memoTemplate ?? DEFAULT_MEMO, input.datetime, '{your name}', input.clubName), 24, 308);
 
   // Players list (truncated to fit)
   if (input.playerNames.length > 0) {

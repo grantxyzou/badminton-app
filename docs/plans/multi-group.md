@@ -3,7 +3,7 @@
 **Track:** Reach (ROADMAP track 4). This is the *explicit choice* the LOCKED
 block reserved for Stage-2 (#81): multi-GROUP inside the one deployment, not the
 SaaS the April memo costed — no billing, no marketing site, no super-admin plane.
-**Status:** in-flight (Phases 0–1 landed, bpm-only and flag-independent; phases 2–6 in `docs/superpowers/plans/2026-09-07-multi-group.md`)
+**Status:** in-flight (Phases 0–4 landed and the production backfill has run — BPM is group #1, 72/72 memberships, `mismatched: 0`. The flag is still OFF, so nothing is observable yet. Phases 5–6 in `docs/superpowers/plans/2026-09-07-multi-group.md`)
 **Review on:** 2026-10-05 — Has the Stats racket-fit rebuild merged and Phase 1 (the sweep) started, or is the sequencing decision stale? And is the store listing still the driver?
 
 ## Problem
@@ -129,6 +129,33 @@ don't copy.
   blast radius, a judgement call per route). **It belongs on the Phase 5 gate
   next to the clean week of `[group-leak]`** — the flag is off, so nothing is
   exposed today, and it must be answered before the flip rather than after.
+- **An app string and a club string are different things, and the test for
+  which is who the sentence is about** (Phase 4). "Add X to your home screen"
+  is about the software; "you owe X $12" and the memo on an e-transfer are
+  about the people you play with. The product resolves from `lib/brand.ts`, the
+  club from `Group.name`, and where a caller cannot say which club it is, the
+  fallback is the PRODUCT name rather than any particular club's — naming a
+  club we are not sure of is a guess, while naming the app is simply true.
+  Four sites are deliberately exempt because they are club DATA, not brand:
+  the dev seed and the backfill both write group #1's own name into a durable
+  document, and the OG card renders the club whose public URL it is.
+  `__tests__/i18n/brand-canary.test.ts` holds the line.
+- **The name itself is still Grant's, and Phase 4 did not invent one** (Phase
+  4). `APP_NAME` reads `'BPM Badminton'` because that is the honest status quo;
+  a placeholder chosen here would ship a name nobody picked. Everything else in
+  the phase is what makes the rename a one-line edit rather than a sweep.
+- **The legal copy's "one group" claims are NOT a brand edit and were left
+  alone** (Phase 4). `messages/*.json` tells a reader the app "is a sign-up
+  sheet for one casual badminton group in Vancouver, BC", "run by the group's
+  organiser, Grant Zou, as an individual — not a company", and "a free tool one
+  group uses". Those are factual claims in a privacy policy and terms of use,
+  and each becomes false at the cutover. Rewriting who the data controller is
+  once strangers' clubs share one deployment is a decision for Grant and
+  possibly a lawyer, not a string substitution — so Phase 4 swapped the product
+  NAME through the sentinel and changed no claim. **It belongs on the Phase 5
+  gate**, next to the "what does a person in no club see" question: the flag is
+  off, so every claim is still true today, and both stop being true on the same
+  day.
 
 ## Shape
 
