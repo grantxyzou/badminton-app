@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getActiveSessionId, DEFAULT_SESSION } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
-import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
+import { isAdminAuthed, isAdminAuthedWithMember, unauthorized, requireMember } from '@/lib/auth';
 import { resolveBirdUsages } from '@/lib/birdWrite';
 import { sendPushToMembers } from '@/lib/push';
 import { rosterMemberIds } from '@/lib/roster';
@@ -48,6 +48,8 @@ function stripForPublic<T extends Record<string, unknown>>(session: T) {
 }
 
 export async function GET(req: NextRequest) {
+  const gate = await requireMember(req);
+  if (!gate.ok) return gate.response;
   try {
     const scope = groupScope(resolveGroupId(req));
     const sessionId = await getActiveSessionId(scope.groupId);

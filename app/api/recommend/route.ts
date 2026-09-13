@@ -5,7 +5,7 @@ import { rosterMemberIds } from '@/lib/roster';
 import { ensureCatalogSeeded } from '@/lib/catalogSeed';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { verifyMemberAuth, ownsNameOrAdmin } from '@/lib/auth';
+import { verifyMemberAuth, ownsNameOrAdmin, requireMember } from '@/lib/auth';
 import { recommendRacket } from '@/lib/recommend';
 import { buildProfile } from '@/lib/racketProfile';
 import { recommendRackets } from '@/lib/racketRecommend';
@@ -124,6 +124,11 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(`recommend:${ip}`, 10, 60 * 1000)) {
     return NextResponse.json({ item: null, reason: null });
   }
+  // Members only, on BOTH engine branches. The GEAR_RECOMMENDER branch below
+  // already demands the caller own the name; the flag-off branch was public by
+  // design, which members-only no longer allows.
+  const gate = await requireMember(req);
+  if (!gate.ok) return gate.response;
   try {
     const name = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50) ?? '';
 

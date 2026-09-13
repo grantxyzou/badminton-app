@@ -3,12 +3,14 @@ import { getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
 import { readActiveAnnouncements } from '@/lib/announcements';
-import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized, requireMember } from '@/lib/auth';
 import { sendPushToAll } from '@/lib/push';
 import { buildAnnouncementPayload } from '@/lib/pushMessages';
 import { randomBytes } from 'crypto';
 
 export async function GET(req: NextRequest) {
+  const gate = await requireMember(req);
+  if (!gate.ok) return gate.response;
   // Delegates to the shared lib so the server-rendered home page
   // (`app/page.tsx`) and this REST endpoint stay in lockstep.
   const resources = await readActiveAnnouncements(resolveGroupId(req));
