@@ -231,9 +231,21 @@ signature-only check.
 Rate limit on login: **5 attempts / 15 min per client IP**.
 
 > `getClientIp` reads the FIRST entry of `X-Forwarded-For`, which App Service
-> overwrites with the address it saw on the socket. Do NOT use the last entry —
-> nothing appends after Azure, so there is no proxy hop to skip and keying on it
-> would make the limit global.
+> overwrites with the address it saw on the socket, **and strips the `:port`
+> App Service appends to it**. Do NOT use the last entry — nothing appends after
+> Azure, so there is no proxy hop to skip and keying on it would make the limit
+> global.
+>
+> The port matters more than it looks. App Service writes
+> `X-Forwarded-For: <client-ip>:<source-port>`, and the source port changes with
+> every TCP connection, so keying on the raw entry handed every new connection a
+> fresh bucket. Measured 2026-09-13: four separate connections each got a clean
+> 30 of a 30/min limit, while 40 requests sharing one connection throttled at
+> exactly 30. This predates the `X-Client-IP` removal — no browser ever sent
+> that header, so real traffic always fell through here. The long-window gates
+> were the exposed ones (`auth-signin` 5/hr, `admin` 5/15min, `auth-signup`
+> 5/hr, `reset-access` 10/hr): a browser holds one connection for a page
+> session, so the per-minute limits were roughly enforced already.
 >
 > **It does NOT read `X-Client-IP`, and that must not be added back.** This
 > paragraph used to call that header "Azure's dedicated real-client header".
