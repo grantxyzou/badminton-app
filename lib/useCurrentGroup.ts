@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { getIdentity, IDENTITY_EVENT } from '@/lib/identity';
+import { isFlagOn } from '@/lib/flags';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -33,9 +34,13 @@ export interface GroupListEntry {
  * gone. `loading` stays true until the first answer lands, so nothing renders a
  * confident empty state in the meantime.
  *
- * FLAG OFF the endpoints 404 by design, and that is NOT an error — there is one
- * club and the concept is absent. It resolves to `group: null, error: false`, so
- * every consumer renders nothing without special-casing the flag client-side.
+ * FLAG OFF it does not ask at all. The server flag is still the authority —
+ * every `/api/groups/*` route 404s when it is off — but the client bundle is
+ * built from the same env, so asking only produced two red 404s per consumer
+ * per identity change in every member's console (six consumers mount this
+ * hook). It resolves to `group: null, error: false` either way, so no consumer
+ * special-cases the flag. The 404 branch below stays for a build whose client
+ * and server env disagree.
  *
  * Subscribes to `IDENTITY_EVENT` because a sign-in, a sign-out or a group switch
  * all change the answer inside the same tab, where `storage` events never fire.
@@ -48,6 +53,12 @@ export function useCurrentGroup() {
 
   const refresh = useCallback(async () => {
     setError(false);
+    if (!isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) {
+      setGroup(null);
+      setGroups([]);
+      setLoading(false);
+      return;
+    }
     // No identity means no membership anywhere, so both endpoints would answer
     // 401. Skipping is not only two fewer requests — it is two fewer on the
     // COLD-START path, which is the one the doors render on, and it keeps a
