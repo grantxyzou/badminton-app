@@ -83,7 +83,7 @@ export default function SetupShareSheet({ open, onClose, share, racketCatalogId 
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('shareTitle')} maxHeight="88dvh">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={t('shareTitle')}>
       <BottomSheetHeader>
         <span className="fs-stat" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.015em' }}>
           {t('shareTitle')}

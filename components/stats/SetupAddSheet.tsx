@@ -223,7 +223,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
   }
 
   return (
-    <BottomSheet open={open} onClose={() => { void finish(); }} ariaLabel={heading} maxHeight="92dvh">
+    <BottomSheet open={open} onClose={() => { void finish(); }} ariaLabel={heading}>
       <BottomSheetHeader>
         <span className="fs-stat" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.015em' }}>
           {heading}

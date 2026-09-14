@@ -64,7 +64,7 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={title} maxHeight="88dvh">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={title}>
       <BottomSheetHeader>
         <div style={{ minWidth: 0 }}>
           <p className="setup-eyebrow">{label}</p>
