@@ -446,7 +446,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   // of the lying empty state.
   if (!item) {
     return (
-      <BottomSheet open={open} onClose={close} ariaLabel={heading} maxHeight="88dvh">
+      <BottomSheet open={open} onClose={close} ariaLabel={heading}>
         {header}
         <BottomSheetBody>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
@@ -463,7 +463,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
     .filter((r): r is { labelKey: string; value: string } => Boolean(r.value));
 
   return (
-    <BottomSheet open={open} onClose={close} ariaLabel={heading} maxHeight="88dvh">
+    <BottomSheet open={open} onClose={close} ariaLabel={heading}>
       {header}
 
       <BottomSheetBody>

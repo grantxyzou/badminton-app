@@ -439,7 +439,7 @@ function DrillSheet({
 }) {
   const t = useTranslations('stats.learn');
   return (
-    <BottomSheet open={!!drill} onClose={onClose} ariaLabel={drill?.title ?? ''} maxHeight="75vh">
+    <BottomSheet open={!!drill} onClose={onClose} ariaLabel={drill?.title ?? ''}>
       <BottomSheetHeader>
         <h2 className="bpm-h3" style={{ margin: '0' }}>
           {drill?.title}

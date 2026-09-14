@@ -329,7 +329,6 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
         open={confirmingCancel}
         onClose={() => setConfirmingCancel(false)}
         ariaLabel={imWaitlisted ? t('leaveSheetTitle') : t('cancelConfirm')}
-        width="narrow"
       >
         <BottomSheetBody>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>

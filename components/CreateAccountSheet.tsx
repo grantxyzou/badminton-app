@@ -92,7 +92,7 @@ export default function CreateAccountSheet({ open, onClose, sessionId }: Props) 
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')} maxHeight="75vh">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')}>
       <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('title')}</span>
         <button

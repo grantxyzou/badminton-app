@@ -166,7 +166,7 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
   }
 
   return (
-    <BottomSheet open={open} onClose={close} ariaLabel={t('fitTitle')} maxHeight="88dvh">
+    <BottomSheet open={open} onClose={close} ariaLabel={t('fitTitle')}>
       <BottomSheetHeader>
         <span
           className="fs-2xs"

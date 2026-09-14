@@ -42,7 +42,6 @@ export default function ClubConsentSheet({ open, saving = false, onAnswer }: Clu
       onClose={() => {}}
       closeOnEscape={false}
       ariaLabel={t('title')}
-      maxHeight="75vh"
     >
       <BottomSheetBody bare>
         <div

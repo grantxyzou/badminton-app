@@ -623,6 +623,14 @@ body {
      Every card is two layers, not one: a 160deg tint gradient and an
      inset top highlight. Note --fcard-shadow is byte-identical to
      --glass-shadow, which .glass-card defines and has never applied. */
+  /* ── Sheet size ──
+     ONE size for every <BottomSheet> (Grant, 2026-09-14: "Action sheet are
+     not the same size app wide"). Sheets had three widths and nine height
+     caps chosen per call site. Height still follows content up to the cap;
+     dvh so the iOS toolbar cannot push a tall sheet's footer off-screen.
+     __tests__/sheet-size-canary.test.ts refuses a size set anywhere else. */
+  --sheet-max-w: 32rem;
+  --sheet-max-h: 88dvh;
   --fcard-radius:     var(--radius-3xl);
   /* Padding comes from the design source, not from a derivation. An earlier
      pass here reasoned from optical uniformity -- at a rounded corner the arc
@@ -3123,6 +3131,12 @@ html[data-hydrated="true"] .splash {
 .bottom-sheet {
   background: var(--page-bg);
   border-top: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
+  /* The one sheet size (tokens above). The element is fixed at left:0/right:0,
+     so an auto inline margin under a max-width centres it on a wide screen. */
+  max-width: var(--sheet-max-w);
+  max-height: 88vh;
+  max-height: var(--sheet-max-h);
+  margin-inline: auto;
 }
 
 /* ── Sheets inherit their tab's field ──     [fields — flag retired 2026-09-10]

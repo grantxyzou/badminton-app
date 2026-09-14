@@ -163,7 +163,7 @@ export default function PushSheet({ open, onClose, onOpenInstall, push, isAdmin 
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')} className="max-w-lg mx-auto">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')}>
       <BottomSheetHeader className="flex items-center justify-between p-4">
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('title')}</span>
         <button

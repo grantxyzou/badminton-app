@@ -724,8 +724,6 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         ariaLabel={editingId ? 'Edit purchase' : 'Log purchase'}
-        maxHeight="80vh"
-        width="narrow"
       >
         <BottomSheetHeader>
           <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{editingId ? 'Edit purchase' : 'Log purchase'}</span>
@@ -928,8 +926,6 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         open={reconcileOpen}
         onClose={() => setReconcileOpen(false)}
         ariaLabel="Reconcile count"
-        maxHeight="70vh"
-        width="narrow"
       >
         <BottomSheetHeader>
           <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>Reconcile count</span>
