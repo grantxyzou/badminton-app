@@ -17,7 +17,7 @@ import enMessages from '../../messages/en.json';
  */
 vi.mock('@/components/HomeTab', () => ({ default: () => <div data-testid="home-tab" /> }));
 vi.mock('@/components/PlayersTab', () => ({ default: () => null }));
-vi.mock('@/components/SkillsTab', () => ({ default: () => null }));
+vi.mock('@/components/SkillsTab', () => ({ default: () => <div data-testid="skills-tab" /> }));
 vi.mock('@/components/ProfileTab', () => ({ default: () => null }));
 vi.mock('@/components/BottomNav', () => ({ default: () => null }));
 vi.mock('@/components/GlassPhysics', () => ({ default: () => null }));
@@ -61,18 +61,40 @@ function renderShell() {
 const BANNER_TITLE = enMessages.stats.signInAgainTitle;
 
 describe('HomeShell — a swallowed 403 left the member with no signal at all', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
     localStorage.clear();
+    sessionStorage.clear();
   });
 
-  it('raises the sign-in banner when the owner-gated prewarm is refused', async () => {
+  /** Restore the Stats tab the way an in-app reload does. */
+  function onStats() {
+    sessionStorage.setItem('badminton_active_tab', 'skills');
+  }
+
+  it('raises the sign-in banner on Stats when the owner-gated prewarm is refused', async () => {
+    signIn('Lin');
+    onStats();
+    mockFetch(() => json({ error: 'forbidden' }, 403));
+    renderShell();
+    await waitFor(() => expect(screen.getByTestId('skills-tab')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(BANNER_TITLE)).toBeTruthy());
+  });
+
+  // Home carries its own account messaging; the stats banner stacked on top of
+  // the "set up a way to sign in" warning there (2026-09-13 flow audit).
+  it('does NOT raise it on Home, where the account card already speaks', async () => {
     signIn('Lin');
     mockFetch(() => json({ error: 'forbidden' }, 403));
     renderShell();
-    await waitFor(() => expect(screen.getByText(BANNER_TITLE)).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('home-tab')).toBeTruthy());
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByText(BANNER_TITLE)).toBeNull();
   });
 
   it('shows no banner when the prewarm succeeds', async () => {

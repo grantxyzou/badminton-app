@@ -49,7 +49,14 @@ A sign-up day on which a regular cannot get in and no admin is reachable to appr
 15. **Home's sign-up card is locked to the verified member**, and `HomeShell` reconciles localStorage identity to them. The server ignores a typed name, so a name field would be a control that does nothing.
 16. **The flip is gated on a list, not a date.** `GET /api/admin/sign-in-readiness` and the admin's Sign-in readiness card name every active member with no PIN, password or Google. Before the flip it always renders — "nobody would be locked out" is the go-ahead — and a failed load is an error, never a confident zero, because zero is the answer that gets the flag flipped. It sits below the week's work, beside the invite card, not above it.
 17. **Players are warned on Home before the flip**, only for a name with no PIN and no live session on this device, with the way in ("Ask to be let in", which is the access request) and where email/Google members go instead. The probe cannot see a password, so an email member whose cookie lapsed also matches; the second line covers them rather than adding a new public oracle to `members/me`.
-18. **The gate re-reads the Member** (`requireGroupMember`) rather than trusting the cookie's signature alone. A removed member's 30-day cookie must stop working at once. One point read per request.
+18. **Fixes from the 2026-09-13 flow audit** (recorded flows in a browser, published as an artifact):
+    - *An approved regular had no way to sign in again.* An access request signs them in with a 30-day session and no credential. Home now shows "Set a PIN so you can get back in" for a verified member with no PIN, password or provider, and opens the PIN sheet straight after an approval.
+    - *A no-PIN regular on a new phone could not sign up by name* (today's app). The form showed "Create a PIN" and the server refused it; with no session on the device it now signs up by name.
+    - *Two sign-in messages stacked on Home.* The stats "sign in again" banner no longer shows on Home, which has its own account messaging.
+    - *The suggestion list covered the PIN field.* It closes once the name matches a suggestion exactly.
+    - *The access sheet said "Grant … his phone".* The sign-in and access copy now says "an admin" in both languages. Stringing copy still names Grant, because he is the stringer; the privacy page names him because it is legally accurate.
+    - *The scrolled header was see-through.* Its background is dense enough (0.96 dark / 0.97 light, 22px blur) that text passing under it cannot be read, even where the blur is not rendered.
+19. **The gate re-reads the Member** (`requireGroupMember`) rather than trusting the cookie's signature alone. A removed member's 30-day cookie must stop working at once. One point read per request.
 
 ## Shape
 

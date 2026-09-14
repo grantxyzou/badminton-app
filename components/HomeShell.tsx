@@ -667,7 +667,13 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
               />
             </div>
           )}
-          {signInExpired && online && (
+          {/* NOT on Home. The banner's own words are "sign in to see your
+              stats", and Home already carries its own account messaging — the
+              sign-in form, the "set up a way to sign in" warning — so on Home
+              it stacked directly above that warning and said the same thing
+              twice (2026-09-13 flow audit). Stats and Profile, where the
+              refused reads actually show, keep it. */}
+          {signInExpired && online && activeTab !== 'home' && (
             <div className="mb-3">
               <StatusBanner
                 tone="warn"

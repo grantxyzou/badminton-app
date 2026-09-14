@@ -145,3 +145,93 @@ describe('the pre-flip sign-in warning', () => {
     expect(screen.queryByText('Set up a way to sign in')).toBeNull();
   });
 });
+
+/**
+ * 2026-09-13 flow audit, finding 1: an admin-approved access request signs a
+ * member in with a 30-day session and NO credential. Home must say so and hand
+ * them a PIN, or they are locked out again when the session lapses.
+ */
+describe('signed in with nothing to sign in with next time', () => {
+  function methods(m: Record<string, unknown>) {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/api/auth/methods')) return ok(m);
+      if (url.includes('/api/session')) return ok(session);
+      if (url.includes('/api/players/unpaid')) return ok({ totalOwed: 0, sessionCount: 0, mostRecent: null, sessions: [] });
+      if (url.includes('/api/stringing/shop')) return ok({ open: false });
+      return ok([]);
+    });
+  }
+
+  afterEach(() => sessionStorage.clear());
+
+  it('shows "Set a PIN" when the account has no PIN, password or provider', async () => {
+    methods({ hasPin: false, hasPassword: false, linked: [] });
+    renderHome('Kento');
+    expect(await screen.findByText('Set a PIN so you can get back in')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Set a PIN' })).toBeDefined();
+  });
+
+  it.each([
+    ['a PIN', { hasPin: true, hasPassword: false, linked: [] }],
+    ['a password', { hasPin: false, hasPassword: true, linked: [] }],
+    ['Google', { hasPin: false, hasPassword: false, linked: ['google'] }],
+  ])('shows nothing for a member with %s', async (_label, m) => {
+    methods(m);
+    renderHome('Lin');
+    await screen.findByText('Signing up as Lin');
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByText('Set a PIN so you can get back in')).toBeNull();
+  });
+
+  it('opens the PIN sheet by itself right after an approval, and uses the marker once', async () => {
+    sessionStorage.setItem('badminton_offer_pin', '1');
+    methods({ hasPin: false, hasPassword: false, linked: [] });
+    renderHome('Kento');
+    await screen.findByText('Set a PIN so you can get back in');
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeDefined());
+    expect(sessionStorage.getItem('badminton_offer_pin')).toBeNull();
+  });
+
+  it('does not open the sheet without the marker', async () => {
+    methods({ hasPin: false, hasPassword: false, linked: [] });
+    renderHome('Kento');
+    await screen.findByText('Set a PIN so you can get back in');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+});
+
+/**
+ * 2026-09-13 flow audit, finding 2 (members only OFF, today's app): typing a
+ * no-PIN regular's name on a phone that holds no session used to switch the
+ * form to "Create a PIN" — and that PIN was refused. They sign up by name.
+ */
+describe('a no-PIN regular on a new phone, before the flip', () => {
+  function probe(me: Record<string, unknown>) {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/api/session')) return ok(session);
+      if (url.includes('/api/members/me')) return ok(me);
+      return ok([]);
+    });
+  }
+
+  it('asks for no PIN — the name is enough, as the server allows', async () => {
+    probe({ createdAt: '2026-01-01', hasPin: false, authed: false });
+    renderHome(null);
+    const input = (await screen.findByLabelText('Your name')) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Kento' } });
+    await new Promise((r) => setTimeout(r, 700)); // past the probe debounce
+    expect(screen.queryByLabelText('Create a PIN')).toBeNull();
+    expect((screen.getByRole('button', { name: /I'm in this week/i }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('still offers "Create a PIN" on a phone that holds their session, where it works', async () => {
+    probe({ createdAt: '2026-01-01', hasPin: false, authed: true });
+    renderHome(null);
+    const input = (await screen.findByLabelText('Your name')) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Kento' } });
+    expect(await screen.findByLabelText('Create a PIN', {}, { timeout: 2000 })).toBeDefined();
+  });
+});
+
