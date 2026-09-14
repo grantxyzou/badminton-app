@@ -30,6 +30,7 @@ function fakeGear(overrides: Partial<UseGear> = {}): UseGear {
     active: null,
     loaded: true,
     loadError: false,
+    forbidden: false,
     busy: false,
     online: true,
     reload: vi.fn(),
@@ -154,6 +155,7 @@ function renderRailWithBag() {
     fakeGear({
       loaded: true,
       loadError: false,
+      forbidden: false,
       gear: {
         name: 'Lin',
         items: [{ id: 'i1', catalogId: 'r1', category: 'racket', label: 'Yonex Astrox 99 Pro' }],

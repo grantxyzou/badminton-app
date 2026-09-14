@@ -34,6 +34,7 @@ function fakeGear(doc: PlayerGear, overrides: Partial<UseGear> = {}): UseGear {
     active: activeRacket(doc),
     loaded: true,
     loadError: false,
+    forbidden: false,
     busy: false,
     online: true,
     reload: vi.fn(),
@@ -389,5 +390,21 @@ describe('YourKitCard — a pick confirms itself in place', () => {
     expect(screen.queryByRole('button', { name: 'Yonex Astrox 88D Pro' })).toBeNull();
     // ...while the sheet is still standing.
     expect(screen.getByRole('dialog')).toBeTruthy();
+  });
+});
+
+describe('YourKitCard — a refused read locks, it does not show or error', () => {
+  afterEach(cleanup);
+
+  // A device that only remembers a name (a stale identity, a lapsed cookie, a
+  // shared phone) used to see that person's bag. The route now answers 403 and
+  // this card must neither show a bag nor offer a Retry that cannot help.
+  it('renders the locked card with Sign in, no rows to tap and no retry', () => {
+    const empty = { id: 'gear-x', memberId: 'm-x', items: [] } as unknown as PlayerGear;
+    renderCard(fakeGear(empty, { gear: null, loaded: true, loadError: true, forbidden: true }));
+    expect(screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === 'Sign in to see and manage your equipment.')).toBeTruthy();
+    expect(screen.queryByText(/Couldn't load your equipment/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /Racket —/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /retry/i })).toBeNull();
   });
 });

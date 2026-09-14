@@ -591,6 +591,7 @@
       "catShoe": "球鞋",
       "catShuttle": "羽毛球",
       "kitError": "无法加载你的装备。",
+      "kitLocked": "<link>登录</link>后查看和管理你的装备。",
       "pickError": "无法加载这个推荐。",
       "retry": "重试",
       "tensionTitle": "拉线磅数",

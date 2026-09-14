@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
-import { verifyMemberAuth, peekMemberSession, isAdminAuthedWithMember, requireMember } from '@/lib/auth';
+import { verifyMemberAuth, peekMemberSession, isAdminAuthed, isAdminAuthedWithMember, requireMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { rackets } from '@/lib/activeRacket';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -215,17 +215,32 @@ export async function GET(req: NextRequest) {
     await ensureGear();
     const name = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50) ?? '';
     if (!name) return NextResponse.json({ gear: null });
+    // OWNER OR ADMIN. This read used to be public by name, so a device that
+    // merely remembered a name (a lapsed cookie, a stale localStorage identity,
+    // a shared phone) showed that person's whole bag while every other Stats
+    // card locked. It gates on memberId equality rather than on the name — an
+    // id is neither mutable nor per-club. 403, not 401: the client renders the
+    // locked card with Sign in, the same contract as `ownsNameOrAdmin` routes.
+    // The club tally has its own endpoint (`stats/club/gear`) and never read this.
+    const caller = verifyMemberAuth(req);
+    const admin = isAdminAuthed(req);
+    if (!caller && !admin) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
-    if (!memberId) return NextResponse.json({ gear: null });
+    if (!memberId) {
+      return admin ? NextResponse.json({ gear: null }) : NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    }
+    if (caller?.memberId !== memberId && !admin) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    }
 
     const container = getContainer('playerGear');
     const { resource } = await container.item(`gear-${memberId}`, memberId).read();
     const gear = (resource as PlayerGear | undefined) ?? null;
-    // This GET is public by name — a racket preference is low-sensitivity to
-    // read, and the club tally depends on that. The arm-or-shoulder answer is
-    // not: it is health-adjacent and the privacy policy says only the member
-    // sees it. Stripped for anyone who is not the owner or an admin, in the
-    // same shape as the pinHash/deleteToken strip-canary elsewhere.
+    // Past the gate above only the owner or an admin reads this doc. The
+    // arm-or-shoulder answer is health-adjacent and the privacy policy says
+    // only the member sees it, so it is still stripped for anyone who is not
+    // the owner or a FRESHLY re-checked admin — the sync gate above trusts an
+    // admin cookie that a demotion has not yet expired.
     //
     // Tested by VALUE, not by key: `writeGearDoc` writes every field
     // explicitly, so a doc with no answer carries `fitArmComfort: undefined`

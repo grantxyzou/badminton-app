@@ -304,17 +304,23 @@ racket and never excluded what they owned).
   shows them read-only. A `null` option ("Not sure", "No limit") is a CLEAR and
   never lights — the doc cannot tell "answered: not sure" from "never asked".
   Five rules that are easy to break:
-  - **`fitArmComfort` is health-adjacent.** The gear GET is public by name, so
-    the route strips it for anyone but the owner or an admin — with the FRESH
+  - **`fitArmComfort` is health-adjacent.** The gear GET is owner-or-admin
+    (since 2026-09-14 — it was public by name, so a device that merely
+    remembered a name showed that person's bag; a refused read renders
+    `YourKitCard`'s locked state via `useGear().forbidden`), and the route
+    still strips this field for anyone but the owner or a FRESHLY re-checked
+    admin — with the FRESH
     role re-check on that cold path, so a demoted admin's live cookie does not
     read it for 30 days (same shape as the pinHash strip-canary, tested by
     VALUE not by key — the mock keeps an explicit `undefined`, production JSON
     drops it); it is disclosed in
     `legal.privacy` in both locales (pinned by the `'arm or shoulder'` needle
     in `__tests__/legal-pages.test.ts`) and purged with the doc. **A strip
-    sets `fitArmComfortRedacted: true`** (response-only, never stored): the
-    OWNER on a lapsed 30-day `member_session` reads by name like anyone else,
-    and without the marker the sheet would show "not answered" for a value
+    sets `fitArmComfortRedacted: true`** (response-only, never stored). It was
+    written for the OWNER on a lapsed 30-day `member_session`, who used to read
+    by name like anyone else; that reader is now refused outright, so the
+    marker is reached only by a lapsed owner who also holds a sync-valid admin
+    cookie. Without the marker the sheet would show "not answered" for a value
     Cosmos still holds — the lying-empty-state rule, produced by the strip
     itself. What leaks is that SOME answer exists, never which. A `Clear`
     link renders only while an answer is stored — a Clear that clears nothing

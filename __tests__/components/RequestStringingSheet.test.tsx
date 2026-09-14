@@ -239,6 +239,7 @@ function fakeGear(over: Partial<UseGear> = {}): UseGear {
     active: null,
     loaded: true,
     loadError: false,
+    forbidden: false,
     busy: false,
     online: true,
     reload: async () => {},

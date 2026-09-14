@@ -36,6 +36,7 @@ function fakeGear(overrides: Partial<UseGear> = {}): UseGear {
     active: null,
     loaded: true,
     loadError: false,
+    forbidden: false,
     busy: false,
     online: true,
     reload: vi.fn(),
