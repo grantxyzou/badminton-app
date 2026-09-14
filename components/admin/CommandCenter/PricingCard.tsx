@@ -6,7 +6,7 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
-import { MAX_SERVICES, formatServicePrice, type ServicePrice } from '@/lib/stringingPricing';
+import { MAX_SERVICES, formatServicePrice, type ServicePrice } from '@/lib/stringingRateCard';
 import { moveItem, canMove } from '@/lib/reorder';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';

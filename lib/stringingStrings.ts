@@ -22,8 +22,8 @@ export const STRINGS_DOC_ID = 'stringing-strings';
 export function stringsDocId(groupId: string): string {
   return groupDocId(groupId, STRINGS_DOC_ID);
 }
-export const MAX_OFFERED = 24;
-export const MAX_LABEL_LEN = 60;
+export { MAX_OFFERED, MAX_LABEL_LEN } from './stringingLimits';
+import { MAX_OFFERED, MAX_LABEL_LEN } from './stringingLimits';
 
 export interface OfferedStringsDoc {
   id: string;

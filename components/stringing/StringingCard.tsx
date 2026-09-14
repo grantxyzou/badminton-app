@@ -11,7 +11,7 @@ import { useGear } from '@/components/stats/useGear';
 import { useActiveName } from '@/lib/useActiveName';
 import ConfirmChangeSheet from './ConfirmChangeSheet';
 import StringingSteps, { stepForStage } from './StringingSteps';
-import { formatServicePrice, type ServicePrice } from '@/lib/stringingPricing';
+import { formatServicePrice, type ServicePrice } from '@/lib/stringingRateCard';
 import type { PlayerStage } from '@/lib/stringing';
 import type { PlayerStringingJob } from '@/lib/types';
 
