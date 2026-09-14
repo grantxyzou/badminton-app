@@ -42,7 +42,7 @@ describe('LockedCard', () => {
     const buttons = screen.getAllByRole('button');
     expect(buttons).toHaveLength(1);
     expect(buttons[0].textContent).toBe('Sign in');
-    expect(buttons[0].className).toContain('locked-link');
+    expect(buttons[0].className).toContain('state-link');
     fireEvent.click(buttons[0]);
     expect(onSignIn).toHaveBeenCalledTimes(1);
   });
