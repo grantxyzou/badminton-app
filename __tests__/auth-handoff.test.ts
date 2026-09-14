@@ -88,7 +88,7 @@ describe('the full bridge — start in one context, finish in another', () => {
     expect(parked?.codeVerifier).toBe(V);
     expect(handoffStateMatches(parked!.state, S)).toBe(true);
 
-    expect(await completeHandoff(ref, 'member-1')).toBe(true);
+    expect(await completeHandoff(ref, 'member-1')).toEqual({ returnCode: null });
 
     const claim = await claimHandoff(id);
     expect(claim).toEqual({ status: 'ready', memberId: 'member-1' });
@@ -150,13 +150,13 @@ describe('the full bridge — start in one context, finish in another', () => {
   });
 
   it('will not complete a ref that was never begun', async () => {
-    expect(await completeHandoff(handoffRef(createHandoffId()), 'member-1')).toBe(false);
+    expect(await completeHandoff(handoffRef(createHandoffId()), 'member-1')).toBeNull();
   });
 
   it('rejects a malformed ref everywhere rather than touching the store', async () => {
     expect(await beginHandoff('nope', { state: S, codeVerifier: V })).toBe(false);
     expect(await readHandoff('nope')).toBeNull();
-    expect(await completeHandoff('nope', 'm')).toBe(false);
+    expect(await completeHandoff('nope', 'm')).toBeNull();
   });
 
   /**
@@ -200,7 +200,7 @@ describe('handoff through the name step', () => {
     expect(await claimHandoff(id)).toEqual({ status: 'pending' });
 
     // The name step creates the member and completes it.
-    expect(await completeHandoff(ref, 'brand-new-member')).toBe(true);
+    expect(await completeHandoff(ref, 'brand-new-member')).toEqual({ returnCode: null });
     expect(await claimHandoff(id)).toEqual({ status: 'ready', memberId: 'brand-new-member' });
   });
 
@@ -212,7 +212,7 @@ describe('handoff through the name step', () => {
 
     // Picking a name takes a moment; still claimable a few minutes later.
     const later = t0 + 5 * 60 * 1000;
-    expect(await completeHandoff(ref, 'm', later)).toBe(true);
+    expect(await completeHandoff(ref, 'm', later)).toEqual({ returnCode: null });
     expect(await claimHandoff(id, later)).toEqual({ status: 'ready', memberId: 'm' });
   });
 });
@@ -244,5 +244,52 @@ describe('the stash carries the GROUP across the cookie-jar split', () => {
     // No `groupId` key at all, so the claim route falls back to BPM the way
     // every pre-claim device already resolves.
     expect(await claimHandoff(id)).toEqual({ status: 'ready', memberId: 'member-lin' });
+  });
+});
+
+/**
+ * GUARANTEE 3 — a NATIVE stash is not claimable with the preimage alone.
+ *
+ * The preimage proves who STARTED a sign-in (security scan F4). A `&native=1`
+ * link handed to someone else still parks their member; what the link's author
+ * lacks is the return code, which only the completing browser ever sees.
+ */
+describe('the native return code', () => {
+  let id: string;
+  let ref: string;
+
+  beforeEach(async () => {
+    id = createHandoffId();
+    ref = handoffRef(id);
+    await beginHandoff(ref, { state: S, codeVerifier: V, native: true });
+  });
+
+  it('mints a code on completion, and stores only its hash', async () => {
+    const done = await completeHandoff(ref, 'member-1');
+    expect(done?.returnCode).toMatch(/^[0-9a-f]{64}$/);
+    const doc = await readHandoff(ref);
+    expect(doc?.returnCodeHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(JSON.stringify(doc)).not.toContain(done!.returnCode!);
+  });
+
+  it('holding the preimage WITHOUT the code is pending, and does not burn the stash', async () => {
+    const done = await completeHandoff(ref, 'member-1');
+    expect(await claimHandoff(id)).toEqual({ status: 'pending' });
+    // The app's first poll routinely beats the deep link; the code still works.
+    expect(await claimHandoff(id, Date.now(), done!.returnCode)).toEqual({ status: 'ready', memberId: 'member-1' });
+  });
+
+  it('a WRONG code is terminal — the stash is gone', async () => {
+    const done = await completeHandoff(ref, 'member-1');
+    expect(await claimHandoff(id, Date.now(), 'f'.repeat(64))).toEqual({ status: 'none' });
+    expect(await claimHandoff(id, Date.now(), done!.returnCode)).toEqual({ status: 'none' });
+  });
+
+  it('a PWA stash still needs no code', async () => {
+    const pwaId = createHandoffId();
+    const pwaRef = handoffRef(pwaId);
+    await beginHandoff(pwaRef, { state: S, codeVerifier: V });
+    expect(await completeHandoff(pwaRef, 'member-2')).toEqual({ returnCode: null });
+    expect(await claimHandoff(pwaId)).toEqual({ status: 'ready', memberId: 'member-2' });
   });
 });

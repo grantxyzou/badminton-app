@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { isNative } from '@/lib/native';
 import { closeTopSheet } from '@/lib/sheetStack';
+import { rememberReturnCode } from '@/lib/handoffClient';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const HOST = 'bpm.grantzou.com';
@@ -111,8 +112,12 @@ export default function NativeBridge({ activeTab, onGoHome }: Props) {
             }
             if (u.protocol === 'bpm:') {
               // `bpm://auth/return` — the OAuth landing's way home. Close the
-              // browser sheet and let the claim run.
+              // browser sheet and let the claim run. `c` is the return code a
+              // native stash will not be claimed without (lib/authHandoff.ts);
+              // it is stored BEFORE the resume so the claim that fires sends it.
               if (u.host === 'auth') {
+                const c = u.searchParams.get('c');
+                if (c) rememberReturnCode(c);
                 void Browser?.close().catch(() => undefined);
                 resume();
                 return;

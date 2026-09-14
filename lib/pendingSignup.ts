@@ -53,6 +53,14 @@ export interface PendingSignup {
    * callback had no member to park yet. See lib/authHandoff.ts.
    */
   handoff?: string | null;
+  /**
+   * The callback was validated on the PARKED state, not this browser's cookie
+   * (lib/oauthCallback.ts, `viaParkedState`). Nothing proves this browser
+   * started the flow, so `complete-signup` must not sign it in (security scan
+   * F3). `claim-name` does NOT yet refuse it — see the known gap there.
+   * Additive: absent means an ordinary cookie-path flow.
+   */
+  parked?: boolean;
 }
 
 export function setPendingSignup(res: NextResponse, value: PendingSignup): void {

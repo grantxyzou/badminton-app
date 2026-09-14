@@ -171,17 +171,31 @@ export async function POST(req: NextRequest) {
     /* The PWA case: this response's cookies are being issued to Safari, so
        park the member the app can collect instead. Without this a brand-new
        Google account signs in everywhere EXCEPT the app that started it —
-       the same jar split as the sign-in path, one step later. */
+       the same jar split as the sign-in path, one step later.
+
+       The callback put a ref in the pending cookie only when the stash was
+       genuinely needed (lib/oauthCallback.ts), so this cannot park an ordinary
+       browser's new account for a link's author. A NATIVE stash hands back a
+       return code, which the name sheet forwards home via bpm://auth/return. */
+    let returnCode: string | null = null;
     if (pending.handoff) {
       try {
-        await completeHandoff(pending.handoff, memberId);
+        returnCode = (await completeHandoff(pending.handoff, memberId))?.returnCode ?? null;
       } catch (err) {
         console.error('handoff complete (signup) failed:', err);
       }
     }
 
     const res = NextResponse.json(
-      { id: memberId, name, email: claimEmail, provider: pending.provider },
+      {
+        id: memberId,
+        name,
+        email: claimEmail,
+        provider: pending.provider,
+        ...(returnCode ? { returnCode } : {}),
+        // Tells the name sheet this browser was NOT signed in, and why.
+        ...(pending.parked ? { handedOff: true } : {}),
+      },
       { status: 201 },
     );
     // ORDER: every `cookies.set` must happen BEFORE completeSignIn. Its
@@ -190,7 +204,11 @@ export async function POST(req: NextRequest) {
     // leaving a stale admin_session alive for a non-admin. Verified, and
     // pinned by __tests__/auth-cookie-order.test.ts.
     clearPendingSignup(res);
-    await completeSignIn(res, member, cookieGroupId);
+    /* A PARKED flow is non-authenticating, one step later (security scan F3).
+       Otherwise an attacker's captured callback, opened by a victim who then
+       picks a name, signs the victim into an account bound to the ATTACKER's
+       provider identity. The app holding the preimage collects it instead. */
+    if (!pending.parked) await completeSignIn(res, member, cookieGroupId);
     return res;
   } catch (err) {
     await releaseIdentity(pending.provider, pending.sub);

@@ -39,23 +39,40 @@
  *   CLAIM    the PWA presents the PREIMAGE, same-origin, and gets a session
  *            cookie minted in its own jar.
  *
- * WHY THIS DOES NOT REOPEN LOGIN CSRF
- * -----------------------------------
- * `lib/oauthState.ts` argues that server-side state keyed by a random id is
- * unbindable, because anyone holding the id could complete the flow. That is
- * true here too — and it does not matter, because completing the flow is not
- * the win. Redeeming it is, and redemption requires the PREIMAGE, which exists
- * only inside the PWA that generated it. An attacker who completes their own
- * authorization parks a session under a ref they control; the victim's app
- * claims with its own ref, matches nothing, and signs no one in.
+ * WHAT KEEPS THIS FROM BEING A LOGIN-CSRF / TAKEOVER BRIDGE
+ * ---------------------------------------------------------
+ * The first version argued that the preimage contained the attack: completing a
+ * flow is not the win, redeeming it is, and only the PWA holds the preimage.
+ * The 2026-09-11 security scan (F3, F4, F13) showed that argument was false.
+ * THE PREIMAGE PROVES WHO STARTED A SIGN-IN, NEVER WHO FINISHED IT. The ref is
+ * chosen by whoever calls `/start`, so an attacker can mint a pair, hand the
+ * victim a link, let the victim finish, and redeem the victim's session.
  *
- * The residual attack needs an attacker to (a) observe the victim's ref in
- * flight and (b) win a write race against the victim's own `/start`.
- * `beginHandoff` refuses to overwrite a live ref for exactly (b), and (a) is
- * the same exposure the `state` parameter has always had.
+ * What the code now guarantees, and where:
+ *   1. A stash is COMPLETED only when the callback actually needed it — the
+ *      state cookie was absent and the parked state stood in for it — or the
+ *      stash says the native shell started the flow. A single-jar browser that
+ *      merely carries `?hr=` (every web flow does) parks nothing, so a crafted
+ *      link opened in an ordinary browser yields nothing claimable (F4).
+ *   2. A callback validated through the PARKED state is NON-AUTHENTICATING.
+ *      Nothing about that browser proves it started the flow, so it gets no
+ *      `member_session`, and its own session is never read as "link this
+ *      provider to me" (F3, and F13 — the Apple callback shares the helper).
+ *   3. A NATIVE stash needs a RETURN CODE to claim. The code is minted at
+ *      completion and handed only to the browser that completed it — in the
+ *      landing URL's fragment, which the landing forwards through
+ *      `bpm://auth/return?c=`. Whoever holds the preimage still cannot claim
+ *      without it, so a `&native=1` link sent to a victim is dead too.
  *
- * The cookie path is UNCHANGED and still preferred — see the callback. This
- * only runs when the cookies are absent, which is the jar split's signature.
+ * WHAT IS STILL OPEN, deliberately (Grant, 2026-09-14): the installed iOS PWA
+ * path in (1). Its completing browser is Safari and iOS gives Safari no way
+ * back into a home-screen app, so there is no channel for a return code short
+ * of the person typing one. An attacker who runs `/start?hr=` themselves and
+ * sends a victim the PROVIDER's authorization URL still gets the victim's
+ * memberId parked under the attacker's ref. Closing it is a product decision:
+ * a typed code on that path, or no Google/Apple inside the installed PWA.
+ *
+ * The cookie path is UNCHANGED and still preferred — see the callback.
  */
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
@@ -124,6 +141,13 @@ export interface HandoffDoc {
   groupId?: string;
   /** Set by `completeHandoff` once the provider handshake resolves a member. */
   memberId?: string;
+  /**
+   * sha256 of the RETURN CODE a native completion minted. Present means the
+   * claim must present the code as well as the preimage — see guarantee 3 in
+   * the docblock. The code itself is never stored. Additive: absent means no
+   * code is required, which is every PWA stash.
+   */
+  returnCodeHash?: string;
   createdAt: string;
   expiresAt: string;
 }
@@ -196,18 +220,40 @@ export function handoffStateMatches(parked: string, callbackState: string | null
   return timingSafeEqual(a, b);
 }
 
-/** Attach the resolved member so the PWA can collect it. */
+/** What a completion hands back to the browser that performed it. */
+export interface CompletedHandoff {
+  /**
+   * The code the claim must present, for a stash the NATIVE shell started;
+   * `null` for every other stash. It goes to the completing browser only —
+   * never into a log, a query string or the store.
+   */
+  returnCode: string | null;
+}
+
+function hashReturnCode(code: string): string {
+  return createHash('sha256').update(code, 'utf8').digest('hex');
+}
+
+/**
+ * Attach the resolved member so the app can collect it. `null` when the stash
+ * is absent or expired.
+ */
 export async function completeHandoff(
   ref: string,
   memberId: string,
   now: number = Date.now(),
-): Promise<boolean> {
-  if (!isHandoffRef(ref)) return false;
+): Promise<CompletedHandoff | null> {
+  if (!isHandoffRef(ref)) return null;
   await containerReady();
   const doc = await readDoc(ref);
-  if (!live(doc, now)) return false;
-  await getContainer(CONTAINER).items.upsert({ ...doc, memberId });
-  return true;
+  if (!live(doc, now)) return null;
+  const returnCode = doc.native ? randomBytes(32).toString('hex') : null;
+  await getContainer(CONTAINER).items.upsert({
+    ...doc,
+    memberId,
+    ...(returnCode ? { returnCodeHash: hashReturnCode(returnCode) } : {}),
+  });
+  return { returnCode };
 }
 
 /**
@@ -227,6 +273,7 @@ export type HandoffClaim =
 export async function claimHandoff(
   handoffId: string,
   now: number = Date.now(),
+  returnCode: string | null = null,
 ): Promise<HandoffClaim> {
   const ref = handoffRef(handoffId);
   await containerReady();
@@ -237,6 +284,26 @@ export async function claimHandoff(
   // can find it — deleting here would strand a sign-in that was still in
   // flight, which on a slow phone is the common case, not the rare one.
   if (!doc.memberId) return { status: 'pending' };
+
+  /* A native stash wants its return code. ABSENT is `pending`, not a failure:
+     the app polls on every foreground, and on a real phone that poll routinely
+     beats the `bpm://auth/return` that carries the code — burning the stash
+     then would strand the very sign-in the code was on its way to finish.
+     WRONG is terminal: only a preimage holder can send one, and a legitimate
+     app never has a code for a different stash. */
+  if (doc.returnCodeHash) {
+    if (!returnCode) return { status: 'pending' };
+    const a = Buffer.from(doc.returnCodeHash, 'utf8');
+    const b = Buffer.from(hashReturnCode(returnCode), 'utf8');
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      try {
+        await getContainer(CONTAINER).item(ref, ref).delete();
+      } catch {
+        /* expires on its own */
+      }
+      return { status: 'none' };
+    }
+  }
 
   // Delete FIRST. If the delete fails we must not hand out the session, or a
   // replay could redeem the same stash twice.

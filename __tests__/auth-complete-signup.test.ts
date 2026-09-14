@@ -4,6 +4,7 @@ import { resetMockStore, seedMember, getStore } from './helpers';
 import { POST } from '../app/api/auth/complete-signup/route';
 import { setPendingSignup, PENDING_COOKIE, type PendingSignup } from '../lib/pendingSignup';
 import { lookupIdentity, reserveIdentity } from '../lib/authIdentity';
+import { createHandoffId, handoffRef, beginHandoff, claimHandoff } from '../lib/authHandoff';
 
 const URL_ = 'http://localhost:3000/bpm/api/auth/complete-signup';
 let ipSeq = 0;
@@ -130,5 +131,59 @@ describe('POST /api/auth/complete-signup', () => {
     process.env.NEXT_PUBLIC_FLAG_AUTH_PROVIDERS = 'false';
     const res = await POST(req({ name: 'Carolina' }, pendingCookie()));
     expect(res.status).toBe(404);
+  });
+});
+
+/**
+ * The native name step. The account is created inside the system browser
+ * sheet, so the app needs the return code to claim it — and the only place the
+ * sheet can learn it is this response (lib/authHandoff.ts, guarantee 3).
+ */
+describe('POST /api/auth/complete-signup — handoff return code', () => {
+  it('hands back the return code for a native stash, and the claim needs it', async () => {
+    const id = createHandoffId();
+    const ref = handoffRef(id);
+    await beginHandoff(ref, { state: 's', codeVerifier: 'v', native: true });
+
+    const res = await POST(req({ name: 'Carolina' }, pendingCookie({ handoff: ref })));
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.returnCode).toMatch(/^[0-9a-f]{64}$/);
+
+    expect(await claimHandoff(id)).toEqual({ status: 'pending' });
+    expect((await claimHandoff(id, Date.now(), data.returnCode)).status).toBe('ready');
+  });
+
+  it('returns no code for a PWA stash', async () => {
+    const id = createHandoffId();
+    const ref = handoffRef(id);
+    await beginHandoff(ref, { state: 's', codeVerifier: 'v' });
+
+    const res = await POST(req({ name: 'Carolina' }, pendingCookie({ handoff: ref })));
+    expect(res.status).toBe(201);
+    expect((await res.json()).returnCode).toBeUndefined();
+    expect((await claimHandoff(id)).status).toBe('ready');
+  });
+});
+
+describe('POST /api/auth/complete-signup — parked flows', () => {
+  it('creates the account for the app but signs THIS browser in as nobody', async () => {
+    const id = createHandoffId();
+    const ref = handoffRef(id);
+    await beginHandoff(ref, { state: 's', codeVerifier: 'v' });
+
+    const res = await POST(req({ name: 'Akane' }, pendingCookie({ handoff: ref, parked: true })));
+
+    expect(res.status).toBe(201);
+    expect((await res.json()).handedOff).toBe(true);
+    expect(res.headers.getSetCookie().some((c) => /^member_session=[^;]+;/.test(c))).toBe(false);
+    expect((await claimHandoff(id)).status).toBe('ready');
+  });
+
+  it('an ordinary flow still signs in and says nothing about a handoff', async () => {
+    const res = await POST(req({ name: 'Kento' }, pendingCookie()));
+    expect(res.status).toBe(201);
+    expect((await res.json()).handedOff).toBeUndefined();
+    expect(res.headers.getSetCookie().some((c) => /^member_session=[^;]+;/.test(c))).toBe(true);
   });
 });

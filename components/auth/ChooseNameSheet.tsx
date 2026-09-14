@@ -26,6 +26,14 @@ interface Props {
   inviteToken?: string | null;
   /** The same invite as a typed code; sent only when no token is. */
   inviteCode?: string | null;
+  /**
+   * The native shell's name step. When the account was created inside the
+   * system browser sheet, the server hands back a RETURN CODE the app needs to
+   * claim it (lib/authHandoff.ts); the shell forwards it through
+   * `bpm://auth/return`. Signing the sheet itself in would be pointless — and
+   * on the signed-out shell it reloads, which would lose the code.
+   */
+  onReturnCode?: (code: string) => void;
 }
 
 /**
@@ -48,7 +56,7 @@ interface Props {
  * signed, HttpOnly cookie the browser cannot read, and both endpoints take it
  * from there — so all that is posted from here is a name and a credential.
  */
-export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken, inviteCode }: Props) {
+export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken, inviteCode, onReturnCode }: Props) {
   const t = useTranslations('profile.auth');
   const [mode, setMode] = useState<'name' | 'claim' | 'expired'>('name');
   const [name, setName] = useState('');
@@ -138,6 +146,21 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken,
         else if (data.error === 'email_taken') setError(t('emailTaken'));
         else setError(t('genericError'));
         setBusy(false);
+        return;
+      }
+      if (typeof data.returnCode === 'string' && onReturnCode) {
+        onReturnCode(data.returnCode);
+        onClose();
+        return;
+      }
+      // The account exists but THIS browser was deliberately not signed in —
+      // it belongs to the app on this device. Both shells already read this
+      // landing param, so the explanation lives in one place.
+      if (data.handedOff === true) {
+        // A full load on purpose: both shells read landing params once, on
+        // mount, so a client-side push would render no explanation at all.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.assign(`${BASE}/?handedOff=1`);
         return;
       }
       finish(data.name);

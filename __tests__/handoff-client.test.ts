@@ -6,6 +6,9 @@ import {
   pendingHandoffId,
   clearHandoff,
   claimPendingHandoff,
+  rememberReturnCode,
+  nativeReturnHref,
+  readReturnCodeFromHash,
 } from '@/lib/handoffClient';
 
 /** Mint AND commit, which is what a tap does. */
@@ -195,5 +198,56 @@ describe('claimPendingHandoff', () => {
     mockFetch(() => json({ status: 'ready' }));
 
     expect(await claimPendingHandoff()).toEqual({ status: 'none' });
+  });
+});
+
+/**
+ * The native return code (lib/authHandoff.ts, guarantee 3): minted in the
+ * system browser sheet, carried home in `bpm://auth/return?c=`, and sent with
+ * the claim from the APP's storage.
+ */
+describe('the native return code', () => {
+  const CODE = 'ab'.repeat(32);
+
+  it('is sent with the claim once NativeBridge has remembered it', async () => {
+    await beginHandoff();
+    rememberReturnCode(CODE);
+    const spy = mockFetch(() => json({ status: 'pending' }));
+    await claimPendingHandoff();
+    expect(JSON.parse(String(spy.mock.calls[0][1]?.body)).returnCode).toBe(CODE);
+  });
+
+  it('is not sent when there is none, and a malformed one is never stored', async () => {
+    await beginHandoff();
+    rememberReturnCode('not-hex');
+    const spy = mockFetch(() => json({ status: 'pending' }));
+    await claimPendingHandoff();
+    expect(JSON.parse(String(spy.mock.calls[0][1]?.body))).not.toHaveProperty('returnCode');
+  });
+
+  it('a new flow drops the previous flow\'s code, and so does clearing', async () => {
+    await beginHandoff();
+    rememberReturnCode(CODE);
+    await beginHandoff();
+    const spy = mockFetch(() => json({ status: 'pending' }));
+    await claimPendingHandoff();
+    expect(JSON.parse(String(spy.mock.calls[0][1]?.body))).not.toHaveProperty('returnCode');
+
+    rememberReturnCode(CODE);
+    clearHandoff();
+    expect(localStorage.length).toBe(0);
+  });
+
+  it('builds the way home with and without a code', () => {
+    expect(nativeReturnHref(CODE)).toBe(`bpm://auth/return?c=${CODE}`);
+    expect(nativeReturnHref(null)).toBe('bpm://auth/return');
+    expect(nativeReturnHref('<script>')).toBe('bpm://auth/return');
+  });
+
+  it('reads the code from a landing fragment only in its exact shape', () => {
+    expect(readReturnCodeFromHash(`#hc=${CODE}`)).toBe(CODE);
+    expect(readReturnCodeFromHash('')).toBeNull();
+    expect(readReturnCodeFromHash('#hc=short')).toBeNull();
+    expect(readReturnCodeFromHash(`#hc=${CODE}ff`)).toBeNull();
   });
 });

@@ -37,6 +37,17 @@ export interface ProviderClaims {
    * against this ref for the app to collect instead. See lib/authHandoff.ts.
    */
   handoff?: string | null;
+  /**
+   * The state check passed on the PARKED copy, not on this browser's cookie —
+   * the jar-split signature. REQUIRED, so no caller can forget to say.
+   *
+   * Such a callback proves nothing about which browser STARTED the flow, so it
+   * is non-authenticating: no session cookie on this response, and this
+   * browser's own `member_session` is never taken as a request to link. Both
+   * were an account takeover (security scan F3; F13 for Apple). The app that
+   * holds the preimage gets its session from the claim route instead.
+   */
+  viaParkedState: boolean;
 }
 
 /**
@@ -62,9 +73,9 @@ export interface ProviderClaims {
  * in __tests__/oauth-landing-scope.test.ts asserts the invariant directly
  * instead — that this URL is inside the manifest's own scope.
  */
-function landing(origin: string, params: Record<string, string>): string {
+function landing(origin: string, params: Record<string, string>, fragment?: string): string {
   const qs = new URLSearchParams(params).toString();
-  return `${origin}/bpm/?${qs}`;
+  return `${origin}/bpm/?${qs}${fragment ? `#${fragment}` : ''}`;
 }
 
 /**
@@ -113,6 +124,20 @@ export async function finishOAuthCallback(
   const stash = claims.handoff ? await readHandoff(claims.handoff) : null;
   const nativeParam: Record<string, string> = stash?.native ? { native: '1' } : {};
 
+  /* The callback read this stash moments ago to validate state. If it expired
+     in between, there is nothing to park into, and a parked-state callback may
+     not fall back to signing this browser in. */
+  if (claims.viaParkedState && !stash) return oauthFailure(origin, 'state_mismatch');
+
+  /* THE STASH IS HONOURED ONLY WHEN THIS CALLBACK NEEDS IT (security scan F4).
+     Every web flow carries `?hr=`, and the ref is chosen by whoever called
+     `/start`, so completing on the cookie path would let a crafted sign-in link
+     park an ordinary browser's session for the link's author to claim. Two
+     cases genuinely need it: the jar split (the parked state stood in), and the
+     native shell, whose sheet keeps the cookie but is not the app. The native
+     case is protected by the return code `completeHandoff` mints instead. */
+  const handoff = stash && (claims.viaParkedState || stash.native) ? claims.handoff! : null;
+
   const existing = await lookupIdentity(claims.provider, claims.sub);
 
   // Only a VERIFIED address on our side may be used to link. An unverified
@@ -133,7 +158,9 @@ export async function finishOAuthCallback(
 
   const action = resolveOAuthIdentity({
     existingIdentityMemberId: existing?.memberId ?? null,
-    sessionMemberId: verifyMemberAuth(req)?.memberId ?? null,
+    // Never on a parked-state callback: this browser did not start the flow,
+    // so its session is not a request to link anything to it (F3).
+    sessionMemberId: claims.viaParkedState ? null : (verifyMemberAuth(req)?.memberId ?? null),
     providerEmail: email,
     providerEmailVerified: claims.emailVerified,
     memberIdByVerifiedEmail,
@@ -151,8 +178,10 @@ export async function finishOAuthCallback(
       emailVerified: claims.emailVerified,
       suggestedName: claims.suggestedName,
       // A NEW account has no member to park yet, so the ref rides along to
-      // complete-signup, which is where one first exists.
-      handoff: claims.handoff ?? null,
+      // complete-signup, which is where one first exists — under the same
+      // condition as the sign-in path below, or the name step reopens F4.
+      handoff,
+      ...(claims.viaParkedState ? { parked: true } : {}),
     });
     clearOAuthCookies(res);
     return res;
@@ -180,28 +209,38 @@ export async function finishOAuthCallback(
     void touchIdentity(claims.provider, claims.sub);
   }
 
-  /* THE JAR SPLIT. `completeSignIn` below sets `member_session` on THIS
-     response — which, for a PWA-initiated flow, is being issued to Safari. The
-     cookie would land in the wrong jar and the app would stay signed out, which
-     is the actual reported symptom ("still shows the safari shell").
+  /* THE JAR SPLIT. A session cookie on this response lands in the browser that
+     COMPLETED the flow — Safari for a PWA, the system sheet for the native
+     shell — not in the app. So the resolved member is parked for the app to
+     collect.
 
-     So park the resolved member against the ref instead. The cookies are still
-     set: this response is a real browser session too, and signing Safari in as
-     well costs nothing. The landing tells the person to go back to the app,
-     because nothing on iOS will do it for them. */
-  if (claims.handoff) {
-    const parked = await completeHandoff(claims.handoff, member.id);
-    if (parked) {
+     A parked-state callback gets NO cookie of its own: it is non-authenticating
+     (see `viaParkedState`), so the landing says "go back to the app" instead of
+     "you're in". The native sheet still passed its own state cookie, so it is
+     signed in as before, and it carries the return code home in the fragment —
+     never the query, which reaches our logs. */
+  if (handoff) {
+    const completed = await completeHandoff(handoff, member.id);
+    if (completed) {
+      /* ONE message per path. A native landing's card already says "back to
+         the app", so it never gets `handedOff` (whose copy points at the Home
+         Screen), and a parked native sheet holds no session, so it does not
+         get `signedIn` either. */
+      const params: Record<string, string> = { provider: claims.provider, ...nativeParam };
+      if (!claims.viaParkedState) params.signedIn = '1';
+      else if (!stash?.native) params.handedOff = '1';
       const res = seeOther(
-        landing(origin, { signedIn: '1', provider: claims.provider, ...nativeParam }),
+        landing(origin, params, completed.returnCode ? `hc=${completed.returnCode}` : undefined),
       );
       clearOAuthCookies(res);
-      await completeSignIn(res, member, resolveGroupId(req));
+      if (!claims.viaParkedState) await completeSignIn(res, member, resolveGroupId(req));
       return res;
     }
-    // Parking failed (expired or swept). Fall through: Safari is still signed
-    // in, which is better than an error, and the app will simply not collect.
+    // Parking failed (expired or swept). A native sheet passed its own cookie,
+    // so signing that sheet in is still honest. A parked-state callback may not.
   }
+
+  if (claims.viaParkedState) return oauthFailure(origin, 'state_mismatch');
 
   const res = seeOther(landing(origin, { signedIn: '1', provider: claims.provider }));
   // ORDER: every `cookies.set` must happen BEFORE completeSignIn. Its

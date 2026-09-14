@@ -91,6 +91,15 @@ export async function POST(req: NextRequest) {
   // with its own rate limit and its own audit gaps.
   const pending = readPendingSignup(req);
   if (!pending) return NextResponse.json({ error: 'no_pending_signup' }, { status: 400 });
+  /* KNOWN GAP, kept open on purpose (Grant, 2026-09-14). A `pending.parked`
+     flow is one nothing ties to this browser, and this route LINKS the pending
+     provider identity to whoever proves a name — so a victim who opens an
+     attacker's captured callback and types their own name and PIN attaches the
+     attacker's Google account to themselves. Refusing here was tried and
+     reverted before merge: on the installed iOS PWA every PIN-only member's
+     first Google sign-in comes through exactly this path, so the refusal
+     locked nearly the whole roster out of adding Google. The planned fix moves
+     the PIN proof into the app that holds the handoff preimage. */
 
   try {
     const container = getContainer('members');

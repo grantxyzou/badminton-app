@@ -38,6 +38,7 @@ export type AuthErrorReason = (typeof AUTH_ERROR_REASONS)[number];
 export type AuthNoticeKind =
   | 'signedIn'
   | 'signInUnconfirmed'
+  | 'handedOff'
   | 'verified'
   | 'notVerified'
   | 'passwordReset'
@@ -52,6 +53,8 @@ export interface AuthNotice {
 /** Params this app strips from the URL after reading them. */
 export const AUTH_PARAMS = [
   'signedIn',
+  /** A sign-in parked for an app on this device; this browser holds no session. */
+  'handedOff',
   'provider',
   'authError',
   'verified',
@@ -130,6 +133,14 @@ export function noticeBanner(notice: AuthNotice): NoticeBanner {
         icon: 'warning',
         titleKey: 'noticeNotVerifiedTitle',
         bodyKey: 'noticeNotVerifiedBody',
+        celebrate: false,
+      };
+    case 'handedOff':
+      return {
+        tone: 'success',
+        icon: 'check_circle',
+        titleKey: 'noticeHandedOffTitle',
+        bodyKey: 'noticeHandedOffBody',
         celebrate: false,
       };
     case 'signInUnconfirmed':

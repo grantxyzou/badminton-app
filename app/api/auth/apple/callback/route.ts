@@ -128,6 +128,8 @@ export async function POST(req: NextRequest) {
 
     return await finishOAuthCallback(req, origin, {
       handoff,
+      // Only reachable as `cookie_absent`: every other failure returned above.
+      viaParkedState: stateCheck !== 'ok',
       provider: 'apple',
       sub: claims.sub,
       email: claims.email,
