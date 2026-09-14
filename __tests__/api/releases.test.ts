@@ -75,6 +75,25 @@ describe('/api/releases', () => {
     expect(data[1].version).toBe('v0.1.0');
   });
 
+  it('GET shows a note whatever deployment stamped it — there is one deployment now', async () => {
+    // Notes published while this app was built as `next` (until 2026-08-19)
+    // carry env "next"; production builds as `stable`. A filter on env hid them.
+    const prev = process.env.NEXT_PUBLIC_ENV;
+    process.env.NEXT_PUBLIC_ENV = 'next';
+    try {
+      await POST(makePostRequest({ ...validBody, version: 'v1.8' }));
+    } finally {
+      process.env.NEXT_PUBLIC_ENV = 'stable';
+    }
+    try {
+      const data = await (await GET(makeGetRequest())).json();
+      expect(data.map((r: { version: string }) => r.version)).toContain('v1.8');
+      expect(data.find((r: { version: string }) => r.version === 'v1.8').env).toBe('next');
+    } finally {
+      if (prev === undefined) delete process.env.NEXT_PUBLIC_ENV; else process.env.NEXT_PUBLIC_ENV = prev;
+    }
+  });
+
   it('DELETE removes release with admin auth', async () => {
     const created = await (await POST(makePostRequest(validBody))).json();
     const delRes = await DELETE(makeDeleteRequest(created.id));

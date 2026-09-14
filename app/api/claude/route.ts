@@ -5,6 +5,7 @@ import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { describeAiFailure } from '@/lib/aiError';
 import { PROSE_MODEL } from '@/lib/aiModels';
 import { VOICE_PERSONA } from '@/lib/aiPersona';
+import { MAX_OUTPUT_TOKENS, MAX_PROMPT_CHARS } from '@/lib/claudeLimits';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
   // interpolates arbitrary pasted notes, so it is the caller nearest this limit.
   // Capping the composed prompt would reject a request for being too long because
   // of text the server added.
-  if (prompt.length > 4000) {
+  if (prompt.length > MAX_PROMPT_CHARS) {
     return NextResponse.json({ error: 'Prompt too long' }, { status: 400 });
   }
 
@@ -56,12 +57,26 @@ export async function POST(req: NextRequest) {
   try {
     const message = await anthropic.messages.create({
       model: PROSE_MODEL,
-      max_tokens: 1024,
+      max_tokens: MAX_OUTPUT_TOKENS,
       messages: [{ role: 'user', content }],
     });
 
-    const block = message.content[0];
-    const text = block?.type === 'text' ? block.text : '';
+    // The answer is the TEXT blocks, wherever they sit. `PROSE_MODEL` thinks
+    // before it writes, so `content[0]` is a thinking block — reading only that
+    // returned `{ text: '' }` with a 200, which the release form reported as
+    // "couldn't be parsed" and the announcement polish as an empty draft.
+    const text = message.content
+      .map((b) => (b.type === 'text' ? b.text : ''))
+      .join('')
+      .trim();
+    if (!text) {
+      // Never a 200 with nothing in it. Out of room is the one cause seen in
+      // practice (thinking spent the budget on a long release-note prompt).
+      const error = message.stop_reason === 'max_tokens'
+        ? 'The AI ran out of room before it wrote anything. Trim the notes and try again.'
+        : 'The AI returned no text. Try again.';
+      return NextResponse.json({ error }, { status: 502 });
+    }
     return NextResponse.json({ text });
   } catch (error) {
     console.error('Claude API error:', error);
