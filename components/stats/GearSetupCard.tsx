@@ -12,6 +12,7 @@ import type { UseGearPicks } from './useGearPicks';
 import type { UseClubGear } from './useClubGear';
 import { gearFailureMessage } from '@/lib/gearFailureMessage';
 import {
+  blankStringPairing,
   clubOthers,
   indexCatalog,
   racketSpecLine,
@@ -96,13 +97,9 @@ export default function GearSetupCard({ activeName, gear, picks, club, onOpenLin
     return [spec, others ? ts('othersPlay', { count: others }) : null].filter(Boolean).join(' · ') || null;
   }
 
-  // The pairing for a BLANK strings line, once there is a frame to pair with.
-  // Only a READY pick is quoted: a parked or errored string card has nothing
-  // to say here, and the line falls back to its plain "Tap to name it".
-  const stringPick = picks.view.string;
-  const pairing = racket && !string && stringPick.status === 'ready' && stringPick.pick
-    ? stringPick.pick
-    : null;
+  // The pairing for a BLANK strings line — one rule, shared with the
+  // register's tension stand-down (see `tensionOnScreen`).
+  const pairing = blankStringPairing({ racket, spares, string, filled }, picks.view.string);
   const pairingText = pairing
     ? (typeof pairing.tensionLbs === 'number'
         ? ts('pairSuggestion', { string: pairing.item.model, lb: pairing.tensionLbs })

@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
+  blankStringPairing,
   clubOthers,
   isMine,
   racketSpecLine,
   setupLines,
   stringSpecLine,
+  tensionOnScreen,
 } from '../lib/gearSetup';
 import { tallyClubGear, CLUB_GEAR_MIN_COHORT } from '../lib/clubGear';
 import type { CatalogItem, GearItem, PlayerGear } from '../lib/types';
@@ -104,5 +106,38 @@ describe('isMine', () => {
     expect(isMine(doc([{ ...R1, retiredAt: '2026-01-01' }]), entry)).toBe(false);
     expect(isMine(doc([{ ...R1, category: 'string' }]), entry)).toBe(false);
     expect(isMine(null, entry)).toBe(false);
+  });
+});
+
+describe('tensionOnScreen — the level card stands down only for a number the CARD shows', () => {
+  const ready = { status: 'ready', pick: { item: { model: 'BG85' }, tensionLbs: 23 } };
+
+  it('no racket: the pairing is against a frame the card never names, so no number is on screen', () => {
+    // The 2026-09-14 bug: a ready string pick with a tension, no racket in the
+    // bag, and the level card suppressed — leaving no tension anywhere.
+    const lines = setupLines(doc([]));
+    expect(blankStringPairing(lines, ready)).toBeNull();
+    expect(tensionOnScreen(lines, ready)).toBe(false);
+  });
+
+  it('a racket and no string: the blank line quotes the pairing, so its number IS on screen', () => {
+    const lines = setupLines(doc([R1], 'r1'));
+    expect(blankStringPairing(lines, ready)?.item.model).toBe('BG85');
+    expect(tensionOnScreen(lines, ready)).toBe(true);
+  });
+
+  it('a pairing with no tension puts no number on screen', () => {
+    const lines = setupLines(doc([R1], 'r1'));
+    expect(tensionOnScreen(lines, { status: 'ready', pick: { item: { model: 'BG85' }, tensionLbs: null } })).toBe(false);
+  });
+
+  it('a parked or errored pick quotes nothing', () => {
+    const lines = setupLines(doc([R1], 'r1'));
+    expect(tensionOnScreen(lines, { status: 'error', pick: null })).toBe(false);
+  });
+
+  it('the member\'s own recorded tension counts; a string without one does not', () => {
+    expect(tensionOnScreen(setupLines(doc([R1, S2], 'r1')), ready)).toBe(true);
+    expect(tensionOnScreen(setupLines(doc([R1, S1], 'r1')), ready)).toBe(false);
   });
 });

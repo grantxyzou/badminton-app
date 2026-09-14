@@ -14,7 +14,7 @@ import { useGear } from './useGear';
 import { useGearPicks } from './useGearPicks';
 import { useClubGear } from './useClubGear';
 import { isFlagOn } from '@/lib/flags';
-import type { SetupCategory } from '@/lib/gearSetup';
+import { setupLines, tensionOnScreen, type SetupCategory } from '@/lib/gearSetup';
 
 /**
  * The Gear register: what we'd suggest per category (the pick rail), what you
@@ -114,9 +114,8 @@ function LegacyRegister({ activeName }: GearRegisterProps) {
 function SetupRegister({ activeName }: GearRegisterProps) {
   const t = useTranslations('stats.gear');
   const gear = useGear(activeName);
-  const [pairTension, setPairTension] = useState<number | null>(null);
   const [openFit, setOpenFit] = useState(false);
-  const picks = useGearPicks(activeName, gear, { onPairTension: setPairTension, holdFitRefetch: openFit });
+  const picks = useGearPicks(activeName, gear, { holdFitRefetch: openFit });
   const club = useClubGear();
   // Which line's picker is open. PR 1 routes both lines to the existing
   // catalog sheet; the Set-up add and manage sheets replace it.
@@ -138,7 +137,11 @@ function SetupRegister({ activeName }: GearRegisterProps) {
       <StringTensionCard
         activeName={activeName}
         gear={gear}
-        suppressed={pairTension !== null && !gear.loadError}
+        // Stand down only while the CARD shows a tension number. Not "the
+        // pairing has one": with no racket the pairing is against a
+        // recommended frame the card never names, and the register would show
+        // no number at all.
+        suppressed={!gear.loadError && tensionOnScreen(setupLines(gear.gear), picks.view.string)}
       />
       <ClubGearCard club={club} mine={gear.loaded && !gear.loadError ? gear.gear : undefined} />
       <GearFitSheet open={openFit} onClose={() => setOpenFit(false)} gear={gear} />

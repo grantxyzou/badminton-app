@@ -123,3 +123,38 @@ export function isMine(gear: PlayerGear | null, entry: ClubGearEntry): boolean {
     (i) => !!i && !i.retiredAt && categoryOf(i) === entry.category && normalise(i.label) === key,
   );
 }
+
+/** The part of a recommend pick the card reads — structural, so this file
+ *  stays free of component imports. */
+export interface SetupStringPick {
+  status: string;
+  pick: { item: { model: string }; tensionLbs?: number | null } | null;
+}
+
+/**
+ * The pairing the BLANK strings line quotes, or null.
+ *
+ * Only once there is a racket to pair with (the design's "for this frame"),
+ * only while there is no string yet, and only from a READY pick — a parked or
+ * errored card has nothing to say here.
+ */
+export function blankStringPairing(lines: SetupLines, stringPick: SetupStringPick): SetupStringPick['pick'] {
+  if (!lines.racket || lines.string) return null;
+  return stringPick.status === 'ready' ? stringPick.pick : null;
+}
+
+/**
+ * Whether the card is showing a string TENSION number — the pairing's, on the
+ * blank line, or the member's own, on a filled one.
+ *
+ * `StringTensionCard` stands down exactly when this is true, and must read it
+ * from HERE, not from "the pairing has a number". Those are different: with no
+ * racket in the bag the string engine still pairs against the RECOMMENDED
+ * frame and returns a tension, the card quotes nothing (there is no frame on
+ * the card), and keying the stand-down on the pick alone left the register
+ * with no tension number anywhere on screen. Found by looking, 2026-09-14.
+ */
+export function tensionOnScreen(lines: SetupLines, stringPick: SetupStringPick): boolean {
+  if (typeof lines.string?.tensionLbs === 'number') return true;
+  return typeof blankStringPairing(lines, stringPick)?.tensionLbs === 'number';
+}
