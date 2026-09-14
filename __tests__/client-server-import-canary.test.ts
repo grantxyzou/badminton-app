@@ -49,7 +49,7 @@ function runtimeImports(file: string): string[] {
   const staticRe = /^\s*(?:import|export)\s+(?!type\s)([^;]*?)\s+from\s+['"]([^'"]+)['"]/gm;
   for (const m of src.matchAll(staticRe)) {
     // `import { type A, type B } from` is erased just like `import type`.
-    if (/^\{\s*(?:type\s+\w+\s*,?\s*)+\}$/.test(m[1].trim())) continue;
+    if (isTypeOnlyNamed(m[1])) continue;
     specs.push(m[2]);
   }
   for (const m of src.matchAll(/^\s*import\s+['"]([^'"]+)['"]/gm)) specs.push(m[1]);
@@ -58,8 +58,33 @@ function runtimeImports(file: string): string[] {
   return specs;
 }
 
-const isClient = (f: string) =>
-  /^(?:\s*(?:\/\/[^\n]*\n|\/\*[\s\S]*?\*\/))*\s*['"]use client['"]/.test(readFileSync(f, 'utf8'));
+// Plain string scans rather than regexes: the obvious patterns for both of
+// these backtrack exponentially on hostile input, and CodeQL flags them.
+function isTypeOnlyNamed(clause: string): boolean {
+  const c = clause.trim();
+  if (!c.startsWith('{') || !c.endsWith('}')) return false;
+  const parts = c.slice(1, -1).split(',').map((p) => p.trim()).filter(Boolean);
+  return parts.length > 0 && parts.every((p) => p.startsWith('type '));
+}
+
+function isClient(file: string): boolean {
+  let src = readFileSync(file, 'utf8');
+  for (;;) {
+    src = src.trimStart();
+    if (src.startsWith('//')) {
+      const nl = src.indexOf('\n');
+      if (nl === -1) return false;
+      src = src.slice(nl + 1);
+    } else if (src.startsWith('/*')) {
+      const end = src.indexOf('*/', 2);
+      if (end === -1) return false;
+      src = src.slice(end + 2);
+    } else {
+      break;
+    }
+  }
+  return src.startsWith("'use client'") || src.startsWith('"use client"');
+}
 
 describe('client files stay off the server layer', () => {
   const files = SCAN.flatMap((d) => walk(join(ROOT, d)));
