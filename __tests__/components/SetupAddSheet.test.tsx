@@ -285,3 +285,32 @@ describe('SetupAddSheet — a racket the catalog does not have', () => {
     expect(screen.queryByRole('button', { name: /Add “/ })).toBeNull();
   });
 });
+
+describe('SetupAddSheet — search leads, filters narrow', () => {
+  it('an applied chip narrows the rows, the header counts matches, and removing it restores them', async () => {
+    render(<Harness category="racket" initial={doc([])} picks={picksWith({})} />);
+    await screen.findByRole('button', { name: 'Yonex Nanoflare 800' });
+    fireEvent.click(screen.getByRole('button', { name: /^Balance/ }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Balance' })).getByRole('button', { name: 'Even balance' }));
+    // Only the even-balance frame survives; the header counts what is shown.
+    expect(screen.queryByRole('button', { name: 'Yonex Nanoflare 800' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Li-Ning Air Force 79' })).toBeTruthy();
+    expect(screen.getByText('Li-Ning · 1 match')).toBeTruthy();
+    expect(screen.getByText('1 of 2 rackets')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove filter: Even balance' }));
+    expect(await screen.findByRole('button', { name: 'Yonex Nanoflare 800' })).toBeTruthy();
+    expect(screen.queryByText(/of 2 rackets/)).toBeNull();
+  });
+
+  it('filters that match nothing say so, and Clear filters brings the list back', async () => {
+    render(<Harness category="racket" initial={doc([])} picks={picksWith({})} />);
+    await screen.findByRole('button', { name: 'Yonex Nanoflare 800' });
+    fireEvent.click(screen.getByRole('button', { name: /^Brand/ }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Brand' })).getByRole('button', { name: 'Yonex' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Balance/ }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Balance' })).getByRole('button', { name: 'Even balance' }));
+    expect(screen.getByText('Nothing matches those filters.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    expect(await screen.findByRole('button', { name: 'Li-Ning Air Force 79' })).toBeTruthy();
+  });
+});

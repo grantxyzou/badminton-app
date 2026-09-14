@@ -3314,6 +3314,66 @@ html:root[data-tab="admin"] .bottom-sheet {
   -webkit-appearance: none;
 }
 .sheet-search input::placeholder { color: var(--text-muted); }
+/* Clears the query; a 44px target around an 18px glyph. */
+.sheet-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-3)) calc(-1 * var(--space-4)) 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.sheet-search-clear .material-icons { font-size: var(--icon-md); }
+
+/* Catalog filters (design 2a screen 02): applied chips are green and carry a
+   remove glyph; unset facets are quiet and carry a disclosure glyph. One row,
+   scrolling sideways — a second row of chips would push the list off screen. */
+.filter-chips {
+  display: flex;
+  gap: var(--space-2);
+  min-height: 44px;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.filter-chips::-webkit-scrollbar { display: none; }
+.filter-options { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.filter-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 100ms var(--ease-glass);
+}
+.filter-chip:active { transform: scale(0.97); }
+.filter-chip .material-icons { font-size: var(--icon-sm); }
+.filter-chip--applied {
+  background: var(--segment-active-bg);
+  border-color: transparent;
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+.filter-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
 .sheet-search > .material-icons {
   flex: 0 0 auto;
   font-size: var(--icon-md);

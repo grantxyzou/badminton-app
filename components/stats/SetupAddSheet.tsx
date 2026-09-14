@@ -14,6 +14,7 @@ import { useCatalog } from './useCatalog';
 import type { UseGear } from './useGear';
 import type { UseGearPicks } from './useGearPicks';
 import { searchCatalog } from '@/lib/gearSearch';
+import { FACETS, applyFilters, facetValues, hasFilters, type Applied, type Facet } from '@/lib/catalogFilters';
 import { isOffered } from '@/lib/catalogOffer';
 import { gearFailureMessage } from '@/lib/gearFailureMessage';
 import { blankStringPairing, racketRowSpec, racketSpecLine, setupLines, stringSpecLine, type SetupCategory } from '@/lib/gearSetup';
@@ -43,6 +44,14 @@ export interface SetupAddSheetProps {
   replacesId?: string;
 }
 
+const FACET_LABEL: Record<Facet, string> = {
+  brand: 'filterBrand',
+  weight: 'filterWeight',
+  balance: 'filterBalance',
+  flex: 'filterShaft',
+  type: 'filterType',
+};
+
 /** `pendingId` while a typed name is being saved; no catalog id looks like it. */
 const TYPED_PENDING = ':typed';
 
@@ -65,6 +74,13 @@ const TYPED_PENDING = ':typed';
  */
 export default function SetupAddSheet({ open, onClose, category, gear, picks, makeActive, replacesId }: SetupAddSheetProps) {
   const t = useTranslations('stats.gear.setup');
+  /** A chip's words for a facet value. Catalog values stay as the catalog
+   *  spells them; "Even" alone reads as a number, so it says what it is. */
+  function chipLabel(facet: Facet, value: string): string {
+    if (facet === 'balance' && value === 'Even') return t('chipEvenBalance');
+    if (facet === 'flex') return t('chipShaft', { value });
+    return value;
+  }
   const tGear = useTranslations('stats.gear');
   const tHub = useTranslations('valueHub');
   const tRecovery = useTranslations('recovery');
@@ -80,7 +96,9 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
   const offered = useMemo(() => catalog.items.filter(isOffered), [catalog.items]);
 
   const [query, setQuery] = useState('');
-  const [brand, setBrand] = useState<string | null>(null);
+  const [applied, setApplied] = useState<Applied>({});
+  /** The facet whose options are open under the chip row, if any. */
+  const [openFacet, setOpenFacet] = useState<Facet | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -105,19 +123,38 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
       : !i.catalogId && i.label.trim().toLowerCase() === saved.label.trim().toLowerCase())) ?? null
     : null;
 
-  const brands = useMemo(() => {
-    const seen: string[] = [];
-    for (const c of offered) if (!seen.includes(c.brand)) seen.push(c.brand);
-    return seen;
-  }, [offered]);
-
+  // Search and filters compose: the query narrows the catalog, then every
+  // applied chip narrows that. Counts, headers and rows all read `models`, so
+  // they cannot disagree with the chips.
   const models = useMemo(() => {
-    if (!query.trim()) return brand === null ? offered : offered.filter((c) => c.brand === brand);
-    return searchCatalog(offered, query, (c) => {
-      const series = typeof c.attributes?.series === 'string' ? c.attributes.series : '';
-      return `${c.brand} ${c.model} ${series}`;
+    const searched = query.trim()
+      ? searchCatalog(offered, query, (c) => {
+        const series = typeof c.attributes?.series === 'string' ? c.attributes.series : '';
+        return `${c.brand} ${c.model} ${series}`;
+      })
+      : offered;
+    return applyFilters(searched, applied);
+  }, [offered, applied, query]);
+  const facets = FACETS[category];
+  const narrowing = hasFilters(applied) || query.trim().length > 0;
+
+  function applyFacet(facet: Facet, value: string) {
+    setApplied((a) => ({ ...a, [facet]: value }));
+    setOpenFacet(null);
+    recordEngagement('catalog_filter_applied', { category });
+  }
+  function removeFacet(facet: Facet) {
+    setApplied((a) => {
+      const next = { ...a };
+      delete next[facet];
+      return next;
     });
-  }, [offered, brand, query]);
+  }
+  function clearFilters() {
+    setApplied({});
+    setOpenFacet(null);
+    setQuery('');
+  }
 
   const groups = useMemo(() => {
     const order: string[] = [];
@@ -345,21 +382,43 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
               placeholder={searchPlaceholder}
               aria-label={searchPlaceholder}
             />
+            {query && (
+              <button type="button" className="sheet-search-clear" onClick={() => setQuery('')} aria-label={t('clearSearch')}>
+                <span className="material-icons" aria-hidden="true">close</span>
+              </button>
+            )}
           </div>
-          {!query.trim() && brands.length > 0 && (
-            <div className="segment-control flex" role="tablist" aria-label={heading}>
-              {[null, ...brands].map((b) => (
-                <button
-                  key={b ?? 'all'}
-                  type="button"
-                  role="tab"
-                  aria-selected={brand === b}
-                  className={`flex-1 flex items-center justify-center fs-sm ${brand === b ? 'segment-tab-active' : 'segment-tab-inactive'}`}
-                  onClick={() => setBrand(b)}
-                >
-                  {b ?? tGear('brandAll')}
+          {/* Applied chips first, then the facets still unset. One row that
+              scrolls sideways; it never wraps into a second. */}
+          <div className="filter-chips" role="group" aria-label={t('filters')}>
+            {facets.filter((f) => applied[f] !== undefined).map((f) => (
+              <button key={f} type="button" className="filter-chip filter-chip--applied" aria-pressed="true"
+                onClick={() => removeFacet(f)} aria-label={t('removeFilter', { value: chipLabel(f, applied[f]!) })}>
+                {chipLabel(f, applied[f]!)}
+                <span className="material-icons" aria-hidden="true">close</span>
+              </button>
+            ))}
+            {facets.filter((f) => applied[f] === undefined).map((f) => (
+              <button key={f} type="button" className="filter-chip" aria-expanded={openFacet === f}
+                onClick={() => setOpenFacet(openFacet === f ? null : f)}>
+                {t(FACET_LABEL[f])}
+                <span className="material-icons" aria-hidden="true">{openFacet === f ? 'expand_less' : 'expand_more'}</span>
+              </button>
+            ))}
+          </div>
+          {openFacet && (
+            <div className="filter-options" role="group" aria-label={t(FACET_LABEL[openFacet])}>
+              {facetValues(offered, openFacet).map((v) => (
+                <button key={v} type="button" className="filter-chip" onClick={() => applyFacet(openFacet, v)}>
+                  {chipLabel(openFacet, v)}
                 </button>
               ))}
+            </div>
+          )}
+          {narrowing && (
+            <div className="filter-result">
+              <span>{t(category === 'string' ? 'resultCountString' : 'resultCountRacket', { shown: models.length, total: offered.length })}</span>
+              <button type="button" className="setup-link" onClick={clearFilters}>{t('clearFilters')}</button>
             </div>
           )}
         </div>
@@ -379,7 +438,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
                 ? <ErrorState message={tHub('catalogError')} />
                 : offered.length === 0
                   ? <EmptyState>{tHub('racketCatalogEmpty')}</EmptyState>
-                  : <EmptyState>{tHub('searchNoMatches')}</EmptyState>}
+                  : <EmptyState>{hasFilters(applied) ? t('noFilterMatches') : tHub('searchNoMatches')}</EmptyState>}
             </div>
           )}
 
@@ -433,7 +492,10 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
             <div aria-busy={pendingId !== null || undefined}>
               {groups.map((g) => (
                 <section className="sheet-group" key={g.brand}>
-                  <p className="section-label-muted sheet-group-label">{g.brand} · {g.items.length}</p>
+                  {/* While anything narrows the list, the header counts what is SHOWN. */}
+                  <p className="section-label-muted sheet-group-label">
+                    {narrowing ? t('groupMatch', { brand: g.brand, count: g.items.length }) : `${g.brand} · ${g.items.length}`}
+                  </p>
                   <ul className="sheet-list">
                     {g.items.map((c) => {
                       const owned = ownedIds.has(c.id);
