@@ -8,8 +8,13 @@ import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateC
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 interface Waiting {
+  memberId: string;
   name: string;
   at: number;
+  /** How many devices have an open request under this name. */
+  count: number;
+  /** Set only when `count` is 1 — the one request that can be approved. */
+  requestId: string | null;
 }
 
 /**
@@ -46,16 +51,18 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
 
   useEffect(() => { void load(); }, [load, refreshKey]);
 
-  async function decide(name: string, decision: 'approve' | 'decline') {
+  async function decide(r: Waiting, decision: 'approve' | 'decline') {
     if (busy || !online) return;
-    setBusy(name);
+    setBusy(r.memberId);
     try {
       const res = await fetch(`${BASE}/api/admin/access-requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, decision }),
+        body: JSON.stringify({ memberId: r.memberId, requestId: r.requestId, decision }),
       });
-      if (!res.ok) throw new Error(`decide ${res.status}`);
+      // 409: someone else asked under this name since the list loaded. Not a
+      // failure — reloading shows the count, and the approve button goes.
+      if (!res.ok && res.status !== 409) throw new Error(`decide ${res.status}`);
       await load();
     } catch {
       setLoadError(true);
@@ -88,45 +95,70 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
         subtitle="They can't sign in and asked to be let in."
       />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-        {waiting.map((r) => (
-          <div
-            key={r.name}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-3)',
-              padding: 'var(--space-4)',
-              borderRadius: 'var(--radius-lg)',
-              background: 'var(--inner-card-bg)',
-              border: '1px solid var(--inner-card-border)',
-            }}
-          >
-            <span className="fs-md" style={{ flex: 1, fontWeight: 600, minWidth: 0 }}>
-              {r.name}
-            </span>
-            {/* No device string, no IP, no location. They would be theatre —
-                unverifiable detail beside an approve button makes a decision
-                feel checked when it was not. The request is device-bound by a
-                secret, so approving admits the person who ASKED and nobody
-                else; that is what actually makes one tap safe. */}
-            <button
-              type="button"
-              className="cc-btn cc-btn-ghost"
-              disabled={busy !== null || !online}
-              onClick={() => void decide(r.name, 'decline')}
+        {waiting.map((r) => {
+          const several = r.count > 1 || !r.requestId;
+          return (
+            <div
+              key={r.memberId}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-3)',
+                padding: 'var(--space-4)',
+                borderRadius: 'var(--radius-lg)',
+                background: 'var(--inner-card-bg)',
+                border: '1px solid var(--inner-card-border)',
+              }}
             >
-              Ignore
-            </button>
-            <button
-              type="button"
-              className="cc-btn cc-btn-primary"
-              disabled={busy !== null || !online}
-              onClick={() => void decide(r.name, 'approve')}
-            >
-              {busy === r.name ? 'Letting in…' : 'Let them in'}
-            </button>
-          </div>
-        ))}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span className="fs-md" style={{ display: 'block', fontWeight: 600 }}>
+                  {r.name}
+                </span>
+                {several && (
+                  <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
+                    {r.count} devices asked. Clear them, then have {r.name} ask again with you there.
+                  </span>
+                )}
+              </div>
+              {/* No device string, no IP, no location. They would be theatre —
+                  unverifiable detail beside an approve button makes a decision
+                  feel checked when it was not. The request is device-bound by a
+                  secret, so approving admits the device that ASKED and nobody
+                  else; that is what makes one tap safe. It is also why two
+                  requests get no approve button: they cannot be told apart, so
+                  either tap could let in the wrong one. */}
+              {several ? (
+                <button
+                  type="button"
+                  className="cc-btn cc-btn-secondary"
+                  disabled={busy !== null || !online}
+                  onClick={() => void decide(r, 'decline')}
+                >
+                  {busy === r.memberId ? 'Clearing…' : 'Clear'}
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="cc-btn cc-btn-ghost"
+                    disabled={busy !== null || !online}
+                    onClick={() => void decide(r, 'decline')}
+                  >
+                    Ignore
+                  </button>
+                  <button
+                    type="button"
+                    className="cc-btn cc-btn-primary"
+                    disabled={busy !== null || !online}
+                    onClick={() => void decide(r, 'approve')}
+                  >
+                    {busy === r.memberId ? 'Letting in…' : 'Let them in'}
+                  </button>
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
     </section>
   );

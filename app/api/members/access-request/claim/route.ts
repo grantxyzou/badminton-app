@@ -5,14 +5,15 @@
  * secret proves this is that device, and `approvedAt` proves a human said yes.
  * Neither alone is enough, which is what keeps a blind one-tap approval safe.
  *
- * Single use — the request is cleared on success, so a replayed secret finds
- * nothing.
+ * Single use — every open request for the person is cleared on success, so a
+ * replayed secret finds nothing.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
-import { canClaim, isPending } from '@/lib/accessRequest';
+import { findBySecret } from '@/lib/accessRequest';
+import { updateAccessRequests } from '@/lib/accessRequestStore';
 import { setMemberCookie } from '@/lib/auth';
 import type { Member } from '@/lib/types';
 import { resolveGroupId } from '@/lib/groupContext';
@@ -72,13 +73,25 @@ export async function POST(req: NextRequest) {
     const { resource: member } = await container.item(memberId, memberId).read<Member>();
     if (!member) return NextResponse.json({ status: 'none' });
 
-    const stored = member.accessRequest;
+    // The entry THIS secret created. Another device's request for the same
+    // name is invisible from here: its approval, or its mere existence.
+    const mine = findBySecret(member, secret);
 
-    if (canClaim(stored, secret)) {
-      // Burn it BEFORE signing anyone in, so a replay finds nothing even if
-      // the response is lost in flight.
-      const { accessRequest: _used, ...rest } = member;
-      await container.items.upsert(rest);
+    if (mine && typeof mine.approvedAt === 'number') {
+      /**
+       * Burn it BEFORE signing anyone in, so a replay finds nothing even if the
+       * response is lost in flight — and burn EVERY open request for this
+       * person, not just this one. Once the real Lin is in, a stranger's
+       * request still waiting under her name is not hers, and leaving it on
+       * the admin's list invites a second, mistaken approval.
+       *
+       * Conditioned on the etag: if two claims race, only the one whose entry
+       * is still there when it writes gets a session.
+       */
+      const burned = await updateAccessRequests(memberId, (open) =>
+        open.some((r) => r.id === mine.id && typeof r.approvedAt === 'number') ? [] : null,
+      );
+      if (!burned) return NextResponse.json({ status: 'none' });
 
       const res = NextResponse.json({
         status: 'approved',
@@ -92,9 +105,14 @@ export async function POST(req: NextRequest) {
       return res;
     }
 
-    // Still waiting, expired, or the wrong secret — all one answer, because a
-    // probe must not be able to tell them apart.
-    return NextResponse.json({ status: isPending(stored) ? 'pending' : 'none' });
+    /**
+     * `pending` only for the device whose own request is still waiting. The old
+     * answer said `pending` whenever ANY request for the name was open, so a
+     * probe with a made-up secret could learn that someone was asking to be let
+     * in as Lin. Every other case — expired, cleared, a stranger's secret, no
+     * request at all — is the one answer `none`.
+     */
+    return NextResponse.json({ status: mine ? 'pending' : 'none' });
   } catch (err) {
     console.error('POST /api/members/access-request/claim failed:', err);
     return NextResponse.json({ error: 'claim_failed' }, { status: 503 });

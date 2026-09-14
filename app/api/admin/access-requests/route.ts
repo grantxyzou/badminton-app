@@ -1,6 +1,6 @@
 /**
  * GET  /api/admin/access-requests — who is waiting to be let in.
- * POST /api/admin/access-requests — approve or decline one, by name.
+ * POST /api/admin/access-requests — let one request in, or clear a person's.
  *
  * Approval is deliberately BLIND: no device string, no IP, no location. Those
  * would be theatre — Grant has no way to verify any of them, and showing
@@ -8,15 +8,26 @@
  * when it was not. What actually secures this is that he knows his club and the
  * request arrives while the person is usually standing in front of him.
  *
- * The safety net is elsewhere: the request is device-bound by a secret, so
- * approving lets in the person who ASKED and nobody else, and it expires in an
+ * The safety net is elsewhere: each request is device-bound by a secret, so
+ * approving lets in the device that ASKED and nobody else, and it expires in an
  * hour.
+ *
+ * TWO REQUESTS FOR ONE PERSON CANNOT BE APPROVED (security finding F2).
+ * Blind approval is only safe when there is exactly one thing to approve. If a
+ * stranger asked under Lin's name as well, the two rows are indistinguishable —
+ * by design, per the paragraph above — so an approve button on either is a coin
+ * flip over who gets Lin's account. The list says how many devices asked, and
+ * the only action on more than one is to clear them all and have the person ask
+ * again. Counted over OPEN requests, approved-but-unclaimed included: a second
+ * ask landing in the seconds between Grant's tap and Lin's phone collecting it
+ * must not read as a fresh single request.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { isAdminAuthed, isAdminAuthedWithMember } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { isPending } from '@/lib/accessRequest';
+import { openRequests, pendingRequests } from '@/lib/accessRequest';
+import { updateAccessRequests } from '@/lib/accessRequestStore';
 import type { Member } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -37,7 +48,9 @@ export async function GET(req: NextRequest) {
   try {
     const { resources } = await getContainer('members')
       .items.query<Member>({
-        query: 'SELECT * FROM c WHERE IS_DEFINED(c.accessRequest)',
+        // Both fields: a doc written before one-per-device still carries the
+        // single `accessRequest`, and Cosmos would not return it otherwise.
+        query: 'SELECT * FROM c WHERE IS_DEFINED(c.accessRequest) OR IS_DEFINED(c.accessRequests)',
         parameters: [],
       })
       .fetchAll();
@@ -48,8 +61,17 @@ export async function GET(req: NextRequest) {
        test. Expiry has to be evaluated here regardless: it is a timestamp
        comparison, not a field the query can express. */
     const waiting = resources
-      .filter((m) => isPending(m.accessRequest))
-      .map((m) => ({ name: m.name, at: m.accessRequest!.expiresAt }))
+      .map((m) => ({ m, open: openRequests(m), pending: pendingRequests(m) }))
+      .filter(({ pending }) => pending.length > 0)
+      .map(({ m, open, pending }) => ({
+        memberId: m.id,
+        name: m.name,
+        at: Math.min(...pending.map((r) => r.expiresAt)),
+        count: open.length,
+        // Only a lone request is approvable, so only a lone request has an id
+        // to approve by.
+        requestId: open.length === 1 ? pending[0].id : null,
+      }))
       .sort((a, b) => a.at - b.at);
 
     return NextResponse.json({ requests: waiting });
@@ -72,42 +94,43 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => null);
-  const name = body && typeof body.name === 'string' ? body.name.trim() : '';
+  const memberId = body && typeof body.memberId === 'string' ? body.memberId : '';
+  const requestId = body && typeof body.requestId === 'string' ? body.requestId : '';
   const decision = body?.decision;
-  if (!name || (decision !== 'approve' && decision !== 'decline')) {
+  if (
+    !memberId ||
+    (decision !== 'approve' && decision !== 'decline') ||
+    (decision === 'approve' && !requestId)
+  ) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
 
   try {
-    const container = getContainer('members');
-    const { resources } = await container.items
-      .query<Member>({
-        query: 'SELECT * FROM c WHERE c.name = @name',
-        parameters: [{ name: '@name', value: name }],
-      })
-      .fetchAll();
+    let refusal: 'not_found' | 'several_requests' | null = null;
 
-    // Re-check in JS: the mock store's `@name` filter is case-insensitive and
-    // this is an authorisation decision, so the exact row is worth confirming.
-    const member = resources.find((m) => m.name === name && isPending(m.accessRequest));
-    if (!member) {
+    const result = await updateAccessRequests(memberId, (open) => {
+      if (decision === 'decline') {
+        // Declining clears every open request for the person. The asking
+        // devices then poll into `none` and are told to try again or find
+        // Grant in person — there is no "you were refused" state, because
+        // there is nothing useful to do with one.
+        if (open.length === 0) { refusal = 'not_found'; return null; }
+        return [];
+      }
+      const target = open.find((r) => r.id === requestId && r.approvedAt === undefined);
+      if (!target) { refusal = 'not_found'; return null; }
+      // Re-checked at write time, not trusted from the list the admin saw: a
+      // second ask may have landed since.
+      if (open.length > 1) { refusal = 'several_requests'; return null; }
+      return [{ ...target, approvedAt: Date.now() }];
+    });
+
+    if (refusal === 'several_requests') {
+      return NextResponse.json({ error: 'several_requests' }, { status: 409 });
+    }
+    if (!result) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
-
-    if (decision === 'approve') {
-      await container.items.upsert({
-        ...member,
-        accessRequest: { ...member.accessRequest!, approvedAt: Date.now() },
-      });
-    } else {
-      // Declining removes the request outright. The asking device then polls
-      // into `none` and is told to try again or find Grant in person — there
-      // is no "you were refused" state, because there is nothing useful to do
-      // with one.
-      const { accessRequest: _dropped, ...rest } = member;
-      await container.items.upsert(rest);
-    }
-
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('POST /api/admin/access-requests failed:', err);
