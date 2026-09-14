@@ -341,7 +341,10 @@ export async function POST(req: NextRequest) {
             && i.label.trim().toLowerCase() === incomingKey)
         : undefined;
       if (typed) {
-        const items = existing.map((i) => (i.id === typed.id ? { ...i, catalogId, category: incomingCategory, label } : i));
+        // A catalog row has real specs, so the member's feel answers for the
+        // typed name are dropped rather than stored beside them.
+        const { feel: _feel, ...keep } = typed;
+        const items = existing.map((i) => (i.id === typed.id ? { ...keep, catalogId, category: incomingCategory, label } : i));
         const activeRacketId = body.makeActive === true && incomingCategory === 'racket'
           ? typed.id
           : prior?.activeRacketId;

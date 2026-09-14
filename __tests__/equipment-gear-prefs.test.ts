@@ -228,6 +228,16 @@ describe('typed racket feel', () => {
     expect(res.status).toBe(404);
   });
 
+  it('is dropped when the typed racket is later picked from the catalog', async () => {
+    const id = await addTyped('Yonex Astrox 88D Pro');
+    await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', itemFeel: { itemId: id, balance: 'Even', flex: 'Medium' } }, cookie));
+    await POST(makeRequest('POST', BASE, { name: 'Lin', item: { catalogId: 'racket-yonex-astrox-88d-pro', category: 'racket', label: 'Yonex Astrox 88D Pro' } }, cookie));
+    const item = (await read()).items[0];
+    expect(item.id).toBe(id);
+    expect(item.catalogId).toBe('racket-yonex-astrox-88d-pro');
+    expect(item.feel).toBeUndefined();
+  });
+
   it('survives a PUT of the same racket, which rebuilds the item from the wire', async () => {
     const id = await addTyped();
     await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', itemFeel: { itemId: id, balance: 'Even', flex: 'Medium', weight: '4U' } }, cookie));
