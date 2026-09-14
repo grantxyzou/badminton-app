@@ -5,6 +5,19 @@ interface Entry {
 
 const store = new Map<string, Entry>();
 
+/**
+ * In-memory, on purpose: friend-group scale, no real attackers today (#80).
+ * The accepted cost is real and stays real — a 20-minute Azure B1 cold start
+ * gets anyone a fresh allowance, and it does not survive >1 instance — so the
+ * mitigation is not fixing that, it is making an attempt that relies on it
+ * VISIBLE. Every refusal is logged below, not a sample of them: the lowest
+ * limits in this app are 3-5/hr (`auth-forgot`, `admin`, `signup`,
+ * `auth-reset`, `member-delete`, `groups-create`), and a debounced or sampled
+ * line would show nothing on a bucket that size. Revisit persistence (Cosmos
+ * or Redis) if `[rate-limit] refused` ever shows a real pattern in the logs;
+ * until then this is the deliberate choice, not an oversight.
+ */
+
 /** Returns true if the request is allowed, false if rate-limited. */
 export function checkRateLimit(key: string, maxRequests: number, windowMs: number): boolean {
   const now = Date.now();
@@ -23,7 +36,16 @@ export function checkRateLimit(key: string, maxRequests: number, windowMs: numbe
     return true;
   }
 
-  if (entry.count >= maxRequests) return false;
+  if (entry.count >= maxRequests) {
+    // The message is a CONSTANT and every value rides in the payload object.
+    // `console.warn(str, obj)` treats `str` as a FORMAT string, and `key` can
+    // carry a caller-controlled name or email (`recover:${name}:${ip}`,
+    // `auth-signin:${email}:${ip}`) — interpolating it would let that value
+    // inject %s/%o or a newline. Same guard as `[group-leak]` in
+    // lib/groupScope.ts, same reason.
+    console.warn('[rate-limit] refused', { key, maxRequests, windowMs, count: entry.count });
+    return false;
+  }
   entry.count++;
   return true;
 }
