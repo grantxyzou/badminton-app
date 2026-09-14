@@ -11,9 +11,36 @@ import type { ReactNode } from 'react';
  */
 export interface ErrorStateProps {
   message: ReactNode;
+  /**
+   * A way out — usually "Try again" as a `cc-btn cc-btn-ghost`. With one, the
+   * message stands centred with the button beneath it, the same standing
+   * layout `<EmptyState>` uses, so a card saying "that failed" and a card
+   * saying "nothing here" are placed alike and differ only in colour. Red
+   * stays: this is the failure state, and red means failure.
+   */
+  action?: ReactNode;
 }
 
-export default function ErrorState({ message }: ErrorStateProps) {
+export default function ErrorState({ message, action }: ErrorStateProps) {
+  if (action) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 'var(--space-3)',
+          padding: '0 var(--space-4)',
+          textAlign: 'center',
+        }}
+      >
+        <p className="field-error" role="alert" style={{ margin: '0', maxWidth: '32ch' }}>
+          {message}
+        </p>
+        {action}
+      </div>
+    );
+  }
   return (
     <p className="field-error" role="alert" style={{ margin: '0' }}>
       {message}

@@ -15,6 +15,8 @@
       "body": "很快需要登录才能看到场次，而这个名字还没有 PIN、密码或 Google 登录。",
       "action": "请求加入",
       "haveOne": "已经用邮箱或 Google？在个人页登录。",
+      "signedUpTitle": "{name}，本周已报名",
+      "signedUpBody": "很快需要账户才能登录，而你的名字还没有 PIN、密码或 Google 登录。",
       "noneTitle": "设置 PIN，方便下次登录",
       "noneBody": "你已在这台手机上登录，但账户还没有 PIN、密码或 Google 登录。没有的话，下次还得请管理员放你进来。",
       "noneAction": "设置 PIN"
@@ -24,7 +26,8 @@
       "stringerTitle": "待穿线的球拍",
       "stringerSubtitle": "指派给你的。",
       "stringerFor": "给 {name}",
-      "stringerError": "没能读取你的工单 \u2014 下拉刷新。",
+      "stringerError": "没能读取你的工单。",
+      "stringerRetry": "重试",
       "stringerAdvance": "标记为{status}",
       "stringerSaveError": "没能保存 \u2014 再试一次。",
         "confirm": {
@@ -199,7 +202,10 @@
         "groupStringing": "穿线",
       "title": "余额",
       "total": "合计",
-      "paidUp": "你已全部付清"
+      "paidUp": "你已全部付清",
+      "signedOut": "登录后查看欠款。",
+      "signIn": "登录",
+      "retry": "重试"
     },
     "releases": {
       "whatsNew": "{version} 有新内容",
@@ -432,7 +438,7 @@
     "unpaid": {
       "title": "待付款",
       "total": "合计",
-      "loadError": "加载失败——请刷新重试。",
+      "loadError": "没能读取欠款。",
       "signInAgain": "请在“我的”页面登录以查看欠款。"
     },
     "migrate": {

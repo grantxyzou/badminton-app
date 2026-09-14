@@ -38,14 +38,27 @@ export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean
   const online = useOnline();
   const [jobs, setJobs] = useState<StringerJob[] | null>(null);
   const [loadError, setLoadError] = useState(false);
+  // Refused, not failed: a device with no session for this name (most
+  // name-only regulars) is answered 401/403. That says nothing about whether
+  // they string rackets — and someone who does has signed in — so it renders
+  // nothing, the same as an empty bench. It used to fall into the load-error
+  // branch and put a red "couldn't load your jobs" card in front of players
+  // who have never strung anything.
+  const [refused, setRefused] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [saveError, setSaveError] = useState(false);
 
   const load = useCallback(async () => {
     if (!hasIdentity) return;
     setLoadError(false);
+    setRefused(false);
     try {
       const res = await fetch(`${BASE}/api/stringing/jobs?view=stringer`, { cache: 'no-store' });
+      if (res.status === 401 || res.status === 403) {
+        setJobs(null);
+        setRefused(true);
+        return;
+      }
       if (!res.ok) throw new Error(`stringer jobs ${res.status}`);
       const data = await res.json();
       setJobs(Array.isArray(data.jobs) ? data.jobs : []);
@@ -78,12 +91,23 @@ export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean
     }
   }
 
-  if (!hasIdentity) return null;
+  if (!hasIdentity || refused) return null;
+  /* `compact`, like Balance and Stringing service beside it: on Home a card
+     NAMES its subject in the section-label style with a muted icon. The
+     default header — an 18px heading and an accent-green glyph — is the Stats
+     treatment, and here it spent Home's accent on a label. */
   if (loadError) {
     return (
       <section className="glass-card p-5 space-y-3" aria-label="Rackets to string">
-        <CardHeader icon="sports_tennis" title={t('stringerTitle')} />
-        <ErrorState message={t('stringerError')} />
+        <CardHeader compact icon="sports_tennis" title={t('stringerTitle')} />
+        <ErrorState
+          message={t('stringerError')}
+          action={
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={() => void load()}>
+              {t('stringerRetry')}
+            </button>
+          }
+        />
       </section>
     );
   }
@@ -94,6 +118,7 @@ export default function StringerJobsCard({ hasIdentity }: { hasIdentity: boolean
   return (
     <section className="glass-card p-5 space-y-3" aria-label="Rackets to string">
       <CardHeader
+        compact
         icon="sports_tennis"
         title={t('stringerTitle')}
         subtitle={t('stringerSubtitle')}

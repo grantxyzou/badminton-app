@@ -15,6 +15,8 @@
       "body": "Soon you'll need to log in to see sessions, and this name has no PIN, password or Google yet.",
       "action": "Ask to be let in",
       "haveOne": "Already use email or Google? Log in on Profile.",
+      "signedUpTitle": "{name}, you're in this week",
+      "signedUpBody": "Soon you'll need an account to sign in, and your name has no PIN, password or Google yet.",
       "noneTitle": "Set a PIN so you can get back in",
       "noneBody": "You're signed in on this phone, but your account has no PIN, password or Google. Without one, you'll need an admin to let you in again next time.",
       "noneAction": "Set a PIN"
@@ -24,7 +26,8 @@
       "stringerTitle": "Rackets to string",
       "stringerSubtitle": "Assigned to you.",
       "stringerFor": "for {name}",
-      "stringerError": "Couldn't load your jobs \u2014 pull to refresh.",
+      "stringerError": "Couldn't load your jobs.",
+      "stringerRetry": "Try again",
       "stringerAdvance": "Mark {status}",
       "stringerSaveError": "That didn't save \u2014 try again.",
         "confirm": {
@@ -199,7 +202,10 @@
         "groupStringing": "Stringing",
       "title": "Balance",
       "total": "Total",
-      "paidUp": "You're all paid up"
+      "paidUp": "You're all paid up",
+      "signedOut": "Sign in to see what you owe.",
+      "signIn": "Sign in",
+      "retry": "Try again"
     },
     "releases": {
       "whatsNew": "What's new in {version}",
@@ -432,7 +438,7 @@
     "unpaid": {
       "title": "Outstanding payments",
       "total": "Total",
-      "loadError": "Couldn't load — refresh to retry.",
+      "loadError": "Couldn't load what you owe.",
       "signInAgain": "Sign in on Profile to see what you owe."
     },
     "migrate": {

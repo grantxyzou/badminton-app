@@ -48,6 +48,12 @@ interface Props {
    * and pads tighter so it sits smaller than the sign-up card below it.
    */
   variant?: 'profile' | 'home';
+  /**
+   * Where "Sign in" goes when this device has no session for the name. Home
+   * passes a jump to Profile; Profile, which IS where you sign in, passes
+   * nothing and keeps the sentence alone.
+   */
+  onSignIn?: () => void;
 }
 
 /**
@@ -59,7 +65,7 @@ interface Props {
  * never a silent "you owe nothing". On `home`, a brief pre-load gap is
  * preferred over flashing "paid up" before the first response.
  */
-export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props) {
+export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn }: Props) {
   const t = useTranslations('profile.unpaid');
   const tBal = useTranslations('home.balance');
   const tPay = useTranslations('home.payment');
@@ -232,10 +238,30 @@ export default function UnpaidSessionsCard({ name, variant = 'profile' }: Props)
       {(!collapsible || open) && (
       <>
 
+      {/* Signed out is not a failure, so it is not red: nothing went wrong, this
+          device just is not allowed to ask. Muted copy and a ghost button to
+          where you sign in. A real load failure keeps the red — and gets a
+          button, because "refresh to retry" was an instruction with no
+          control attached. */}
       {forbidden ? (
-        <ErrorState message={t('signInAgain')} />
+        <EmptyState
+          action={onSignIn ? (
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={onSignIn}>
+              {tBal('signIn')}
+            </button>
+          ) : undefined}
+        >
+          {onSignIn ? tBal('signedOut') : t('signInAgain')}
+        </EmptyState>
       ) : loadError ? (
-        <ErrorState message={t('loadError')} />
+        <ErrorState
+          message={t('loadError')}
+          action={
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setRefreshNonce((n) => n + 1)}>
+              {tBal('retry')}
+            </button>
+          }
+        />
       ) : showPaidUp ? (
         <EmptyState icon="check_circle">{tBal('paidUp')}</EmptyState>
       ) : (

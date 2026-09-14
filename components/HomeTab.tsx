@@ -35,7 +35,7 @@ const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
 const TIME_SHORT = { hour: '2-digit', minute: '2-digit' } as const;
 
 interface HomeTabProps {
-  onTabChange?: (tab: 'home' | 'players' | 'skills' | 'admin') => void;
+  onTabChange?: (tab: 'home' | 'players' | 'skills' | 'admin' | 'profile') => void;
   /**
    * Whether this person runs the club. Used only to decide whose job it is to
    * fix an empty week: the organiser gets the action, a player gets told one is
@@ -296,6 +296,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
   const isFull = activePlayers.length >= (session?.maxPlayers ?? maxPlayers);
   const needsCredential = !!memberName && hasCredential === false;
+  /* MEMBERS ONLY, THE WARNING BEFORE THE FLIP (docs/plans/members-only.md).
+     Grant's decision was "warn first, then request access": once members only
+     is on, a name with no PIN, password or Google reaches the welcome screen
+     with no way past it. True only BEFORE the flip (no verified `memberName`)
+     and only for the name this device is signed in as, when the probe knows it
+     has no PIN and this device holds no live session. An email or Google
+     member whose cookie lapsed would match too — the probe cannot see a
+     password — so the banner's last line says where they go instead. Shown in
+     the sign-up card, where the player is already looking. */
   const needsSignInSetup =
     !memberName &&
     !!currentUser &&
@@ -303,6 +312,35 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     memberProbe?.exists === true &&
     !memberProbe.hasPin &&
     !memberProbe.authed;
+  /* The warning's body, shared by both places it can stand in the sign-up
+     card. The action gets its own row: `.link-quiet` keeps a 44px tap target,
+     and set inline it stretched one line of the paragraph taller than the
+     rest. */
+  const signInSetupBody = (body: string) => (
+    <span style={{ display: 'grid', gap: 'var(--space-1)', justifyItems: 'start' }}>
+      <span>{body}</span>
+      <button
+        type="button"
+        className="link-quiet"
+        style={{ paddingInline: 0, fontWeight: 600 }}
+        onClick={() => setAskAccessOpen(true)}
+      >
+        {t('signInSetup.action')}
+      </button>
+      <span>{t('signInSetup.haveOne')}</span>
+    </span>
+  );
+  /* Every sign-up state that is not "signed up" carries the same warning: a
+     regular who hits a closed, full or finished week (or joins the waitlist)
+     is as locked out after the flip as one who signs up. */
+  const signInSetupBanner = needsSignInSetup ? (
+    <StatusBanner
+      tone="warn"
+      icon="key"
+      title={t('signInSetup.title')}
+      body={signInSetupBody(t('signInSetup.body'))}
+    />
+  ) : null;
   const suggestions = name.trim().length > 0
     ? memberNames.filter(n => n.toLowerCase().includes(name.toLowerCase().trim()))
     : [];
@@ -609,12 +647,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           <div className="space-y-4">
             <p className="bpm-h2">{t('signup.heading')}</p>
             <StatusBanner tone="success" icon="celebration" title={tStates('finishedTitle')} body={tStates('finishedBody')} />
+            {signInSetupBanner}
           </div>
         ) : isSignupClosed && !effectiveIsSignedUp && !isWaitlisted ? (
           /* ── State: Sign-ups opening soon ── */
           <div className="space-y-4">
             <p className="bpm-h2">{t('signup.heading')}</p>
             <StatusBanner tone="warn" icon="watch_later" title={tStates('openingSoonTitle')} body={tStates('openingSoonBody')} />
+            {signInSetupBanner}
           </div>
         ) : isDeadlinePast && !effectiveIsSignedUp && !isWaitlisted ? (
           /* ── State: Deadline passed ── */
@@ -626,6 +666,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               title={tStates('closedTitle')}
               body={t('signup.closedPreviously', { date: format.dateTime(new Date(session!.deadline), DAY_LONG) })}
             />
+            {signInSetupBanner}
           </div>
         ) : effectiveIsSignedUp ? (
           /* ── State 1: Active sign-up ── */
@@ -638,13 +679,27 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <p className="bpm-h2">{t('signup.heading')}</p>
               <p key={spotsTotal - activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
             </div>
-            <StatusBanner
-              tone="success"
-              icon="check_circle"
-              title={currentUser ? tStates('signedUpTitle', { name: currentUser }) : tStates('signedUpTitleGeneric')}
-              body={tStates('signedUpBody')}
-              celebrate={justSignedUp}
-            />
+            {/* MEMBERS ONLY, THE WARNING BEFORE THE FLIP: a name with no PIN,
+                password or Google is in THIS week, but will reach a welcome
+                screen with no way past it once members only is on. The
+                confirmation itself says so, in amber, rather than a green
+                "see you soon" with the catch in a separate card below. */}
+            {needsSignInSetup ? (
+              <StatusBanner
+                tone="warn"
+                icon="key"
+                title={t('signInSetup.signedUpTitle', { name: currentUser ?? '' })}
+                body={signInSetupBody(t('signInSetup.signedUpBody'))}
+              />
+            ) : (
+              <StatusBanner
+                tone="success"
+                icon="check_circle"
+                title={currentUser ? tStates('signedUpTitle', { name: currentUser }) : tStates('signedUpTitleGeneric')}
+                body={tStates('signedUpBody')}
+                celebrate={justSignedUp}
+              />
+            )}
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
               {t('signup.viewList')}
             </button>
@@ -667,6 +722,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               title={tStates('waitlistTitle')}
               body={`${tStates('waitlistPositionLabel', { position: waitlistPosition, total: waitlistPlayers.length })} · ${t('signup.confirmed', { name: currentUser ?? '' })}`}
             />
+            {signInSetupBanner}
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
               {t('signup.viewList')}
             </button>
@@ -679,6 +735,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <p key={activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsFull', { count: activePlayers.length })}</p>
             </div>
             <StatusBanner tone="warn" icon="lock" title={t('signup.full')} body={t('signup.allSpotsTaken', { total: spotsTotal })} />
+            {signInSetupBanner}
             <form onSubmit={handleJoinWaitlist} className="space-y-3">
               {memberName ? (
                 <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)' }}>
@@ -860,6 +917,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 </p>
               )}
             </form>
+            {/* Not signed up yet: the same warning, under the button it is
+                about. Signing up swaps it for the amber confirmation above. */}
+            {signInSetupBanner}
           </div>
         )}
       </div>
@@ -868,15 +928,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       )}
 
       <section className="bpm-home-group" aria-label={t('groups.account')}>
-      {/* MEMBERS ONLY, THE WARNING BEFORE THE FLIP (docs/plans/members-only.md).
-          Grant's decision was "warn first, then request access": once members
-          only is on, a name with no PIN, password or Google reaches the welcome
-          screen with no way past it. This shows only BEFORE the flip (no
-          verified `memberName`) and only for the name this device is signed
-          in as, when the probe knows it has no PIN and this device holds no
-          live session. An email or Google member whose cookie lapsed would
-          match too — the probe cannot see a password — so the second line
-          says where they go instead. */}
       {/* MEMBERS ONLY: signed in, but nothing to sign in WITH next time — the
           state an admin-approved access request leaves. One tap to a PIN. */}
       {needsCredential && (
@@ -902,35 +953,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           }
         />
       )}
-      {needsSignInSetup && (
-        <StatusBanner
-          tone="warn"
-          icon="key"
-          title={t('signInSetup.title')}
-          body={
-            /* The action gets its own row: `.link-quiet` keeps a 44px tap
-               target, and set inline it stretched one line of the paragraph
-               taller than the rest. */
-            <span style={{ display: 'grid', gap: 'var(--space-1)', justifyItems: 'start' }}>
-              <span>{t('signInSetup.body')}</span>
-              <button
-                type="button"
-                className="link-quiet"
-                style={{ paddingInline: 0, fontWeight: 600 }}
-                onClick={() => setAskAccessOpen(true)}
-              >
-                {t('signInSetup.action')}
-              </button>
-              <span>{t('signInSetup.haveOne')}</span>
-            </span>
-          }
-        />
-      )}
       {/* Your balance — what you owe, across sessions and stringing. Sits in
           the ACCOUNT group rather than above sign-up: as a one-line row
           carrying its own figure it no longer needs the top slot to be read,
           and most weeks it says $0. */}
-      {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" />}
+      {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" onSignIn={() => onTabChange?.('profile')} />}
 
       {/* Stringing service. Still "Coming soon" by default — the card only goes
           live once an admin has opened the shop, and an UNKNOWN answer keeps
