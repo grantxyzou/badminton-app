@@ -17,7 +17,9 @@ const items = (catalog as unknown as { items: CatalogItem[] }).items.filter(
 
 describe('v2 racket import', () => {
   it('merges by prefixed id rather than duplicating', () => {
-    expect(items).toHaveLength(71);
+    // 71 after the v2 import; 157 after the catalog check of 2026-09-14 added
+    // 86 current (2024–2026) models through this importer.
+    expect(items).toHaveLength(157);
     const ids = items.map((i) => i.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const raw of source as RacketDatabaseV2Record[]) {
@@ -40,7 +42,8 @@ describe('v2 racket import', () => {
     expect(astrox!.attributes!.tier).toBe('Premium');
     expect(astrox!.attributes!.weightMaxG).toBe(88);
     expect(astrox!.skillRange).toEqual([4, 6]);
-    expect(astrox!.msrp).toBe(Math.round(220 * 1.38));
+    // A row with no curated price gets its CAD msrp from the USD floor.
+    expect(astrox!.msrp).toBe(Math.round((astrox!.attributes!.priceMinUSD as number) * 1.38));
   });
 
   // Regression pin: the merge used to do `existing.attributes = mapped.attributes`,

@@ -15,7 +15,8 @@ const AF79: CatalogItem = { id: 'rk-af79', category: 'racket', brand: 'Li-Ning',
 const NF800: CatalogItem = { id: 'rk-nf800', category: 'racket', brand: 'Yonex', model: 'Nanoflare 800', skillRange: [1, 3], attributes: { weight: '4U', balance: 'Head-light' } };
 const BG65: CatalogItem = { id: 'st-bg65', category: 'string', brand: 'Yonex', model: 'BG65 Ti', skillRange: [1, 3], attributes: { gaugeMm: 0.7, stringType: 'Durability' } };
 const AERO: CatalogItem = { id: 'st-ab', category: 'string', brand: 'Yonex', model: 'Aerobite', skillRange: [1, 3], attributes: { gaugeMm: 0.67, stringType: 'Control' } };
-const CATALOG: Record<string, CatalogItem[]> = { racket: [AF79, NF800], string: [BG65, AERO] };
+const GHOST: CatalogItem = { id: 'rk-ghost', category: 'racket', brand: 'Victor', model: 'NitroLite 80X', skillRange: [1, 3], attributes: { balance: 'Even', flex: 'Stiff', unlisted: 'not_a_model' } };
+const CATALOG: Record<string, CatalogItem[]> = { racket: [AF79, NF800, GHOST], string: [BG65, AERO] };
 
 function doc(items: GearItem[], activeRacketId?: string): PlayerGear {
   return { id: 'gear-m1', memberId: 'm1', items, activeRacketId, updatedAt: '' } as PlayerGear;
@@ -192,5 +193,16 @@ describe('SetupAddSheet — "Change the string" replaces', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Yonex Aerobite' }));
     expect(await screen.findByText('Saved')).toBeTruthy();
     expect(remove).not.toHaveBeenCalled();
+  });
+});
+
+describe('SetupAddSheet — a withdrawn catalog row is not offered', () => {
+  it('lists and counts only offered rackets, and a search cannot find the withdrawn one', async () => {
+    render(<Harness category="racket" initial={doc([])} picks={picksWith({})} />);
+    expect(await screen.findByRole('button', { name: 'Li-Ning Air Force 79' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Victor NitroLite 80X' })).toBeNull();
+    const search = screen.getByRole('searchbox', { name: /2 rackets/ });
+    fireEvent.change(search, { target: { value: 'nitrolite' } });
+    expect(screen.queryByRole('button', { name: 'Victor NitroLite 80X' })).toBeNull();
   });
 });

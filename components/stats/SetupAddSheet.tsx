@@ -12,6 +12,7 @@ import { useCatalog } from './useCatalog';
 import type { UseGear } from './useGear';
 import type { UseGearPicks } from './useGearPicks';
 import { searchCatalog } from '@/lib/gearSearch';
+import { isOffered } from '@/lib/catalogOffer';
 import { gearFailureMessage } from '@/lib/gearFailureMessage';
 import { blankStringPairing, racketRowSpec, racketSpecLine, setupLines, stringSpecLine, type SetupCategory } from '@/lib/gearSetup';
 import type { CatalogItem, GearItem } from '@/lib/types';
@@ -61,6 +62,9 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
   const tHub = useTranslations('valueHub');
   const tRecovery = useTranslations('recovery');
   const catalog = useCatalog(category);
+  // The browse list and its count: a withdrawn row stays resolvable (a saved
+  // racket still finds its specs) but is never offered to someone new.
+  const offered = useMemo(() => catalog.items.filter(isOffered), [catalog.items]);
 
   const [query, setQuery] = useState('');
   const [brand, setBrand] = useState<string | null>(null);
@@ -82,17 +86,17 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
 
   const brands = useMemo(() => {
     const seen: string[] = [];
-    for (const c of catalog.items) if (!seen.includes(c.brand)) seen.push(c.brand);
+    for (const c of offered) if (!seen.includes(c.brand)) seen.push(c.brand);
     return seen;
-  }, [catalog.items]);
+  }, [offered]);
 
   const models = useMemo(() => {
-    if (!query.trim()) return brand === null ? catalog.items : catalog.items.filter((c) => c.brand === brand);
-    return searchCatalog(catalog.items, query, (c) => {
+    if (!query.trim()) return brand === null ? offered : offered.filter((c) => c.brand === brand);
+    return searchCatalog(offered, query, (c) => {
       const series = typeof c.attributes?.series === 'string' ? c.attributes.series : '';
       return `${c.brand} ${c.model} ${series}`;
     });
-  }, [catalog.items, brand, query]);
+  }, [offered, brand, query]);
 
   const groups = useMemo(() => {
     const order: string[] = [];
@@ -185,9 +189,9 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
 
   const heading = category === 'string' ? t('addString') : t('addRacket');
   const searchPlaceholder = category === 'string'
-    ? tHub('searchCountString', { count: catalog.items.length })
-    : tHub('searchCountRacket', { count: catalog.items.length });
-  const showControls = catalog.loaded && !catalog.loadError && catalog.items.length > 0;
+    ? tHub('searchCountString', { count: offered.length })
+    : tHub('searchCountRacket', { count: offered.length });
+  const showControls = catalog.loaded && !catalog.loadError && offered.length > 0;
   // A string's suggested starting point: the pairing's own figure, never an
   // invented one. A racket panel has no tension (tension is stored on strings).
   // Only for the string the pairing was FOR: BG85's 23 lb is not a starting
@@ -293,11 +297,11 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
 
       <BottomSheetBody bare>
         <div style={{ paddingBottom: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          {(catalog.loadError || (catalog.loaded && catalog.items.length === 0) || (showControls && models.length === 0)) && (
+          {(catalog.loadError || (catalog.loaded && offered.length === 0) || (showControls && models.length === 0)) && (
             <div style={{ padding: '0 var(--space-6)' }}>
               {catalog.loadError
                 ? <ErrorState message={tHub('catalogError')} />
-                : catalog.items.length === 0
+                : offered.length === 0
                   ? <EmptyState>{tHub('racketCatalogEmpty')}</EmptyState>
                   : <EmptyState>{tHub('searchNoMatches')}</EmptyState>}
             </div>
