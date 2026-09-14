@@ -178,9 +178,13 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
           : t('levelAriaUnknown');
 
   return (
-    <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'stretch' }}>
-      {/* Left tile is wider — the level is the headline of the three. */}
-      <div style={{ flex: 1.2, minWidth: 0 }}>
+    // A grid, not flex: `flex: 1` on tiles with different padding shares out
+    // the space unevenly (the level's wrapper has none, the glass tiles have
+    // 16px a side), so "equal" flex tiles measured 102/138/138px.
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-3)', alignItems: 'stretch' }}>
+      {/* Three equal tiles (Grant, 2026-09-14). The level still leads by its
+          filled accent material, not by being wider. */}
+      <div style={{ minWidth: 0 }}>
         <StatCard
           tone="accent"
           size="tile"
