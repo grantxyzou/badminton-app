@@ -52,9 +52,10 @@ describe('checkRateLimit monitoring', () => {
     for (let i = 0; i < 10; i++) checkRateLimit(key, 1, 60_000); // 10 refusals
 
     expect(warnSpy).toHaveBeenCalledTimes(4);
-    const payloads = warnSpy.mock.calls.map((c) => c[1] as { refusedThisWindow: number; keyHash: string });
-    expect(payloads.map((p) => p.refusedThisWindow)).toEqual([1, 2, 4, 8]);
-    expect(new Set(payloads.map((p) => p.keyHash)).size).toBe(1);
+    type Logged = { refusedThisWindow: number; keyHash: string };
+    const payloads: Logged[] = warnSpy.mock.calls.map((c: unknown[]) => c[1] as Logged);
+    expect(payloads.map((p: Logged) => p.refusedThisWindow)).toEqual([1, 2, 4, 8]);
+    expect(new Set(payloads.map((p: Logged) => p.keyHash)).size).toBe(1);
   });
 
   it('never interpolates the key into the message string', () => {
