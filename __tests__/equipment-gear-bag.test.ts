@@ -208,6 +208,23 @@ describe('POST /api/equipment/gear', () => {
     expect((await readGear())?.items).toHaveLength(1);
   });
 
+  // The other order: typed first (the restring sheet adds whatever was typed,
+  // and it is the only path when the kit is empty), catalog pick later. The
+  // pickers key "owned" on catalogId, so that row is tappable — refusing it
+  // would say "already in your bag" about a row shown as not owned. The typed
+  // entry is UPGRADED in place instead: same id, so its tension and the
+  // active-racket pointer survive.
+  it('upgrades a typed racket in place when the matching catalog racket is added', async () => {
+    await POST(bagRequest('POST', { name: NAME, item: { catalogId: null, category: 'racket', label: 'yonex astrox 100zz' } }));
+    const typedId = (await readGear())?.items[0].id;
+    const res = await POST(bagRequest('POST', { name: NAME, makeActive: true, item: RACKET_A }));
+    expect(res.status).toBe(200);
+    const gear = await readGear();
+    expect(gear?.items).toHaveLength(1);
+    expect(gear?.items[0]).toMatchObject({ id: typedId, catalogId: RACKET_A.catalogId, label: RACKET_A.label });
+    expect(gear?.activeRacketId).toBe(typedId);
+  });
+
   it('still allows a free-text item whose label matches a catalog item in ANOTHER category', async () => {
     await POST(bagRequest('POST', { name: NAME, item: { catalogId: 'string-x', category: 'string', label: 'Same Name' } }));
     const res = await POST(bagRequest('POST', { name: NAME, item: { catalogId: null, category: 'racket', label: 'Same Name' } }));

@@ -310,10 +310,31 @@ export async function POST(req: NextRequest) {
       if (isDuplicate) {
         return { ok: false, response: NextResponse.json({ error: 'duplicate_racket' }, { status: 409 }) };
       }
+      const incomingCategory = body.item.category as EquipmentCategory;
+
+      // The reverse order: a racket TYPED earlier (the restring sheet's
+      // addCustom, the only path when the kit is empty) and the matching catalog
+      // item picked now. The pickers key "owned" on catalogId, so that row is
+      // tappable; a 409 would call it "already in your bag" while showing it as
+      // not owned. Upgrade the typed entry in place instead — same id, so its
+      // tension and the active-racket pointer survive, and no cap is spent.
+      const typed = catalogId
+        ? existing.find((i) =>
+            !i.catalogId
+            && (i.category ?? 'racket') === incomingCategory
+            && i.label.trim().toLowerCase() === incomingKey)
+        : undefined;
+      if (typed) {
+        const items = existing.map((i) => (i.id === typed.id ? { ...i, catalogId, category: incomingCategory, label } : i));
+        const activeRacketId = body.makeActive === true && incomingCategory === 'racket'
+          ? typed.id
+          : prior?.activeRacketId;
+        return { ok: true, next: { items, activeRacketId } };
+      }
+
       // Counted within the incoming item's OWN category. Rackets keep their
       // existing limit and their existing 'bag_full' error code, so nothing that
       // handles that response has to change.
-      const incomingCategory = body.item.category as EquipmentCategory;
       const sameCategory = existing.filter(
         (i) => ((i.category ?? 'racket') as EquipmentCategory) === incomingCategory,
       );
