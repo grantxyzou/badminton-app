@@ -29,7 +29,7 @@ import { getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
 import { noticeBanner, noticeTimeoutMs, type AuthNotice } from '@/lib/authNotice';
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
 import { consumeRecentExcursion } from '@/lib/excursion';
-import { pendingHandoffId } from '@/lib/handoffClient';
+import { nativeReturnHref, pendingHandoffId, readReturnCodeFromHash } from '@/lib/handoffClient';
 import { useHandoffCollect } from '@/lib/useHandoffCollect';
 import { useClientValue } from '@/lib/useClientValue';
 
@@ -102,6 +102,8 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   // `?native=1` — this page is the landing of a sign-in the NATIVE shell
   // started, rendering inside its browser sheet. See the param effect.
   const [nativeReturn, setNativeReturn] = useState(false);
+  /** The native return code from the landing's `#hc=`, or from the name step. */
+  const [returnCode, setReturnCode] = useState<string | null>(null);
   /**
    * MULTI-GROUP (Phase 3). `?join=<token>` is a live invite credential, so it is
    * consumed and stripped in the param effect exactly like `?reset=` — the iOS
@@ -223,6 +225,17 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
       dirty = true;
     }
 
+    // A sign-in that finished in THIS browser for an app on this device (the
+    // installed-PWA jar split). The callback deliberately signed this browser
+    // in as nobody — security scan F3 — so the only honest thing to say here
+    // is where the session went.
+    if (params.get('handedOff') === '1') {
+      setAuthNotice({ kind: 'handedOff' });
+      cleaned.searchParams.delete('handedOff');
+      cleaned.searchParams.delete('provider');
+      dirty = true;
+    }
+
     const failure = params.get('authError');
     if (failure) {
       setAuthNotice({ kind: 'authError', reason: failure });
@@ -256,13 +269,20 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
       setNativeReturn(true);
       cleaned.searchParams.delete('native');
       dirty = true;
+      // The code the app cannot claim without. A live credential: stripped in
+      // this same replaceState, never left in history.
+      const code = readReturnCodeFromHash(window.location.hash);
+      if (code) {
+        setReturnCode(code);
+        cleaned.hash = '';
+      }
       // Try to hand back without a tap. From a Safari sheet a custom-scheme
       // navigation prompts "Open in BPM?"; if the person declines or it is
       // swallowed, the button rendered below is the fallback. Short delay so
       // the page paints first — the prompt over a blank sheet reads as a bug.
       window.setTimeout(() => {
         try {
-          window.location.assign('bpm://auth/return');
+          window.location.assign(nativeReturnHref(code));
         } catch {
           /* the button remains */
         }
@@ -671,7 +691,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
               <p className="fs-md" style={{ color: 'var(--text-primary)', lineHeight: 'var(--lh-normal)', margin: '0 0 var(--space-5)' }}>
                 {tAuth('nativeReturnBody')}
               </p>
-              <a href="bpm://auth/return" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+              <a href={nativeReturnHref(returnCode)} className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
                 {tAuth('backToApp')}
               </a>
             </div>
@@ -781,6 +801,10 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
         open={chooseNameOpen}
         onClose={() => setChooseNameOpen(false)}
         sessionId={profileSession.id}
+        onReturnCode={(code) => {
+          setReturnCode(code);
+          window.location.assign(nativeReturnHref(code));
+        }}
       />
       {/* Shell level for the same reason as ChooseNameSheet: a reset link lands
           on /bpm at whatever tab the app restores. Keyed so the fields reset on

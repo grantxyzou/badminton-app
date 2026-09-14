@@ -311,6 +311,8 @@
       "noticeNotVerifiedBody": "可能已经用过或已过期。如果你的邮箱已确认，就不用再做什么了。",
       "noticeUnconfirmedTitle": "差一点 — 我们没能确认",
       "noticeUnconfirmedBody": "登录没有在这台设备上完成。再试一次吧。",
+      "noticeHandedOffTitle": "已登录 — 请回到应用",
+      "noticeHandedOffBody": "从主屏幕打开 %APP_SHORT% 即可完成登录。此页面可以关闭。",
       "noticeErrorTitle": "这次登录没有完成",
       "noticeErrorGeneric": "中间出了点状况。再试一次吧。",
       "noticeErrorMisconfigured": "我们这边的登录设置有问题。请告诉管理员一声。",

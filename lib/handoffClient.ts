@@ -14,6 +14,8 @@
  * precisely when we need to read it.
  */
 const KEY = 'badminton_auth_handoff';
+/** The native return code, written by NativeBridge when `bpm://auth/return?c=` opens the app. */
+const RETURN_KEY = 'badminton_auth_handoff_return';
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /** Mirrors the server's regex — a malformed value should never reach a fetch. */
@@ -61,6 +63,8 @@ export async function mintHandoff(): Promise<{ id: string; ref: string } | null>
 export function stageHandoff(id: string): void {
   try {
     localStorage.setItem(KEY, id);
+    // A code belongs to the flow that minted it; a new flow must not send it.
+    localStorage.removeItem(RETURN_KEY);
   } catch {
     /* privacy mode — the flow degrades to the cookie path */
   }
@@ -78,9 +82,55 @@ export function pendingHandoffId(): string | null {
 export function clearHandoff(): void {
   try {
     localStorage.removeItem(KEY);
+    localStorage.removeItem(RETURN_KEY);
   } catch {
     /* nothing to do — a stash we cannot clear expires server-side anyway */
   }
+}
+
+/**
+ * THE NATIVE RETURN CODE. A stash the native shell started cannot be claimed
+ * with the preimage alone (lib/authHandoff.ts, guarantee 3); the code is minted
+ * in the system browser sheet that completed the sign-in and travels home in
+ * `bpm://auth/return?c=`. NativeBridge hands it here, in the APP's storage.
+ */
+export function rememberReturnCode(code: string): void {
+  if (!HEX64.test(code)) return;
+  try {
+    localStorage.setItem(RETURN_KEY, code);
+  } catch {
+    /* the claim stays pending and the stash expires */
+  }
+}
+
+function pendingReturnCode(): string | null {
+  try {
+    const v = localStorage.getItem(RETURN_KEY);
+    return v && HEX64.test(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The link from the sheet's landing back into the app, carrying the return
+ * code when this sign-in minted one. Both signed-in and signed-out shells, and
+ * the name step, build it here so the three cannot disagree on the shape.
+ */
+export function nativeReturnHref(code: string | null): string {
+  return code && HEX64.test(code) ? `bpm://auth/return?c=${code}` : 'bpm://auth/return';
+}
+
+/**
+ * The return code a landing carries in its fragment (`#hc=`). Fragment, not
+ * query, because a query reaches the server's logs. PURE on purpose: both
+ * landing effects rebuild the URL from a copy taken at their start, so the
+ * caller strips it (`cleaned.hash = ''`) in that same single `replaceState` —
+ * stripping here would be undone by theirs.
+ */
+export function readReturnCodeFromHash(hash: string): string | null {
+  const match = /(?:^#|&)hc=([0-9a-f]{64})(?:&|$)/.exec(hash);
+  return match ? match[1] : null;
 }
 
 export type ClaimOutcome =
@@ -98,11 +148,12 @@ export type ClaimOutcome =
 export async function claimPendingHandoff(): Promise<ClaimOutcome> {
   const handoffId = pendingHandoffId();
   if (!handoffId) return { status: 'none' };
+  const returnCode = pendingReturnCode();
   try {
     const res = await fetch(`${BASE}/api/auth/handoff/claim`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ handoffId }),
+      body: JSON.stringify({ handoffId, ...(returnCode ? { returnCode } : {}) }),
       cache: 'no-store',
     });
     if (!res.ok) {

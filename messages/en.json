@@ -311,6 +311,8 @@
       "noticeNotVerifiedBody": "It may have already been used or expired. If your email is already confirmed, there's nothing more to do.",
       "noticeUnconfirmedTitle": "Almost — we couldn't confirm it",
       "noticeUnconfirmedBody": "The sign-in didn't quite land on this device. Give it another go.",
+      "noticeHandedOffTitle": "Signed in — now back to the app",
+      "noticeHandedOffBody": "Open %APP_SHORT% from your Home Screen to finish. You can close this tab.",
       "noticeErrorTitle": "That sign-in didn't finish",
       "noticeErrorGeneric": "Something got in the way. Give it another go.",
       "noticeErrorMisconfigured": "Sign-in isn't set up properly on our end. Let an admin know.",

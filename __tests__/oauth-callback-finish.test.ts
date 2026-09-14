@@ -10,6 +10,7 @@ import {
 import { finishOAuthCallback } from '../lib/oauthCallback';
 import { lookupIdentity, reserveIdentity } from '../lib/authIdentity';
 import { PENDING_COOKIE } from '../lib/pendingSignup';
+import { createHandoffId, handoffRef, beginHandoff, claimHandoff } from '../lib/authHandoff';
 
 /**
  * Exercises everything a provider callback does AFTER the code exchange, which
@@ -47,6 +48,7 @@ function claims(over: Record<string, unknown> = {}) {
     email: 'lin@example.com',
     emailVerified: true,
     suggestedName: null,
+    viaParkedState: false,
     ...over,
   };
 }
@@ -165,5 +167,60 @@ describe('finishOAuthCallback', () => {
     await reserveIdentity('google', 'sub-gone', m.id);
     const res = await finishOAuthCallback(req(), ORIGIN, claims({ sub: 'sub-gone' }));
     expect(res.headers.get('location')).toContain('authError=account_unavailable');
+  });
+});
+
+/**
+ * A callback validated through the PARKED state (security scan F3; F13 for
+ * Apple, which calls this same helper). Nothing proves this browser started the
+ * flow, so it must neither receive a session nor be treated as asking to link.
+ */
+describe('finishOAuthCallback — a parked-state callback is non-authenticating', () => {
+  async function parked() {
+    const id = createHandoffId();
+    const ref = handoffRef(id);
+    await beginHandoff(ref, { state: 's'.repeat(64), codeVerifier: 'v' });
+    return { id, ref };
+  }
+  const sessionCookie = (res: Response) =>
+    res.headers.getSetCookie().find((c) => /^member_session=[^;]+;/.test(c));
+
+  it('sets NO member_session, says where the session went, and still parks for the app', async () => {
+    const m = seedMember('Lin');
+    await reserveIdentity('google', 'sub-1', m.id);
+    const { id, ref } = await parked();
+
+    const res = await finishOAuthCallback(req(), ORIGIN, claims({ handoff: ref, viaParkedState: true }));
+
+    expect(sessionCookie(res)).toBeUndefined();
+    expect(res.headers.get('location')).toContain('handedOff=1');
+    expect(res.headers.get('location')).not.toContain('signedIn=1');
+    // The app that holds the preimage is unaffected.
+    expect(await claimHandoff(id)).toEqual({ status: 'ready', memberId: m.id });
+  });
+
+  it("never links the provider to this browser's signed-in member (the F3 takeover)", async () => {
+    const victim = seedMember('Viktor', { pinHash: 'x' });
+    const { ref } = await parked();
+
+    const res = await finishOAuthCallback(
+      req(`member_session=${memberCookieValue('Viktor', victim.id)}`),
+      ORIGIN,
+      claims({ sub: 'attacker-sub', email: 'attacker@example.com', handoff: ref, viaParkedState: true }),
+    );
+
+    expect(stored(victim.id).linkedProviders).toBeUndefined();
+    expect(await lookupIdentity('google', 'attacker-sub')).toBeNull();
+    expect(res.headers.get('location')).toContain('authFlow=name');
+  });
+
+  it('fails rather than signing this browser in when the stash is gone', async () => {
+    const m = seedMember('Lin');
+    await reserveIdentity('google', 'sub-1', m.id);
+    const ref = handoffRef(createHandoffId()); // never begun
+
+    const res = await finishOAuthCallback(req(), ORIGIN, claims({ handoff: ref, viaParkedState: true }));
+    expect(res.headers.get('location')).toContain('authError=state_mismatch');
+    expect(sessionCookie(res)).toBeUndefined();
   });
 });

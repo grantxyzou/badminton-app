@@ -19,7 +19,7 @@ import ChooseNameSheet from '@/components/auth/ChooseNameSheet';
 import ResetPasswordSheet from '@/components/auth/ResetPasswordSheet';
 import { getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
 import { noticeBanner, noticeTimeoutMs, type AuthNotice } from '@/lib/authNotice';
-import { pendingHandoffId } from '@/lib/handoffClient';
+import { nativeReturnHref, pendingHandoffId, readReturnCodeFromHash } from '@/lib/handoffClient';
 import { useHandoffCollect } from '@/lib/useHandoffCollect';
 import {
   markOnboardingResume,
@@ -70,6 +70,8 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
   const [view, setView] = useState<View>('welcome');
   const [notice, setNotice] = useState<AuthNotice | null>(null);
   const [nativeReturn, setNativeReturn] = useState(false);
+  /** The native return code from the landing's `#hc=`, or from the name step. */
+  const [returnCode, setReturnCode] = useState<string | null>(null);
   const [resetRequest, setResetRequest] = useState<{ token: string; email: string } | null>(null);
   const [chooseName, setChooseName] = useState<{ open: boolean; invite: Invite }>({ open: false, invite: {} });
   const [initialInvite, setInitialInvite] = useState<Invite | null>(null);
@@ -128,6 +130,11 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
       if (pendingHandoffId() === null) setNotice({ kind: 'signInUnconfirmed' });
       strip('signedIn', 'provider');
     }
+    // Where the session went — see HomeShell's twin.
+    if (params.get('handedOff') === '1') {
+      setNotice({ kind: 'handedOff' });
+      strip('handedOff', 'provider');
+    }
     const failure = params.get('authError');
     if (failure) {
       setNotice({ kind: 'authError', reason: failure });
@@ -153,9 +160,15 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
     if (params.get('native') === '1') {
       setNativeReturn(true);
       strip('native');
+      // The code the app cannot claim without — see HomeShell's twin.
+      const code = readReturnCodeFromHash(window.location.hash);
+      if (code) {
+        setReturnCode(code);
+        cleaned.hash = '';
+      }
       window.setTimeout(() => {
         try {
-          window.location.assign('bpm://auth/return');
+          window.location.assign(nativeReturnHref(code));
         } catch {
           /* the button remains */
         }
@@ -196,7 +209,7 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
             <p className="fs-md" style={{ color: 'var(--text-primary)', lineHeight: 'var(--lh-normal)', margin: '0 0 var(--space-5)' }}>
               {tAuth('nativeReturnBody')}
             </p>
-            <a href="bpm://auth/return" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+            <a href={nativeReturnHref(returnCode)} className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}>
               {tAuth('backToApp')}
             </a>
           </div>
@@ -228,6 +241,10 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
         sessionId=""
         inviteToken={chooseName.invite.token}
         inviteCode={chooseName.invite.code}
+        onReturnCode={(code) => {
+          setReturnCode(code);
+          window.location.assign(nativeReturnHref(code));
+        }}
       />
       <ResetPasswordSheet
         key={resetRequest ? 'reset-open' : 'reset-closed'}

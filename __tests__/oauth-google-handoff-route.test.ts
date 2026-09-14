@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
-import { resetMockStore, setupAdminPin } from './helpers';
+import { resetMockStore, setupAdminPin, seedMember, memberCookieValue, getStore } from './helpers';
 import { setOAuthCookies, STATE_COOKIE, VERIFIER_COOKIE, createState } from '../lib/oauthState';
-import { createHandoffId, handoffRef, beginHandoff, readHandoff } from '../lib/authHandoff';
+import { createHandoffId, handoffRef, beginHandoff, readHandoff, claimHandoff } from '../lib/authHandoff';
+import { reserveIdentity, lookupIdentity } from '../lib/authIdentity';
+import { PENDING_COOKIE, readPendingSignup } from '../lib/pendingSignup';
 
 /**
  * THE DEVICE CONDITION, AS A TEST.
@@ -41,6 +43,7 @@ vi.mock('@/lib/oauthProviders', async (orig) => {
 });
 
 const URL_ = 'https://bpm.grantzou.com/bpm/api/auth/google/callback';
+const CALLBACK_URL = URL_;
 let ipSeq = 0;
 
 async function callback(qs: Record<string, string>, cookie?: string) {
@@ -167,5 +170,105 @@ describe('google callback — the iOS PWA jar split', () => {
     // The stash is still sitting there unconsumed — the cookie path never
     // touched it.
     expect(await readHandoff(ref)).not.toBeNull();
+  });
+});
+
+/**
+ * SECURITY SCAN F3 / F4 — through the real google callback.
+ *
+ * The handoff ref is chosen by whoever calls `/start`, so it proves who STARTED
+ * a sign-in, never who finished it. These pin the three rules that follow from
+ * that (lib/authHandoff.ts): no parking on the cookie path unless the native
+ * shell started it; a parked-state callback is non-authenticating; a native
+ * park needs a return code.
+ */
+describe('google callback — the handoff cannot be turned against the person who finishes it', () => {
+  const sessionCookie = (res: Response) =>
+    res.headers.getSetCookie().find((c) => /^member_session=[^;]+;/.test(c));
+
+  it('F4: a single-jar browser that carries someone else\'s ref parks NOTHING claimable', async () => {
+    const victim = seedMember('Carolina');
+    await reserveIdentity('google', 'google-sub-1', victim.id);
+    // The attacker minted this pair and sent the victim `/start?hr=<ref>`.
+    const attackerId = createHandoffId();
+    const ref = handoffRef(attackerId);
+    const state = createState();
+    await beginHandoff(ref, { state, codeVerifier: 'v' });
+
+    const res = await callback({ code: 'abc', state: `${state}~${ref}` }, oauthCookies(state, 'cookie-verifier'));
+
+    // The victim is signed in, in their own browser, as themselves...
+    expect(locOf(res).searchParams.get('signedIn')).toBe('1');
+    expect(sessionCookie(res)).toBeTruthy();
+    // ...and the attacker's preimage redeems nothing.
+    expect((await readHandoff(ref))?.memberId).toBeUndefined();
+    expect((await claimHandoff(attackerId)).status).not.toBe('ready');
+  });
+
+  it('F4, name step: the cookie path does not carry the ref into complete-signup', async () => {
+    const ref = handoffRef(createHandoffId());
+    const state = createState();
+    await beginHandoff(ref, { state, codeVerifier: 'v' });
+
+    const res = await callback({ code: 'abc', state: `${state}~${ref}` }, oauthCookies(state, 'cookie-verifier'));
+    expect(reachedResolution(res)).toBe(true);
+    const pending = res.headers.getSetCookie().find((c) => c.startsWith(`${PENDING_COOKIE}=`))!;
+    const parsed = readPendingSignup(
+      new NextRequest(CALLBACK_URL, { headers: { Cookie: pending.split(';')[0] } }),
+    );
+    expect(parsed).not.toBeNull();
+    expect(parsed!.handoff ?? null).toBeNull();
+  });
+
+  it('F3: a cookie-less callback signs THIS browser in as nobody, and the app still collects', async () => {
+    const m = seedMember('Akane');
+    await reserveIdentity('google', 'google-sub-1', m.id);
+    const id = createHandoffId();
+    const ref = handoffRef(id);
+    const state = createState();
+    await beginHandoff(ref, { state, codeVerifier: 'v' });
+
+    const res = await callback({ code: 'abc', state: `${state}~${ref}` });
+
+    expect(sessionCookie(res)).toBeUndefined();
+    expect(locOf(res).searchParams.get('handedOff')).toBe('1');
+    expect(await claimHandoff(id)).toEqual({ status: 'ready', memberId: m.id });
+  });
+
+  it('F3: a cookie-less callback never links the provider to a session this browser holds', async () => {
+    const victim = seedMember('Kento', { pinHash: 'x' });
+    const ref = handoffRef(createHandoffId());
+    const state = createState();
+    await beginHandoff(ref, { state, codeVerifier: 'v' });
+
+    await callback(
+      { code: 'abc', state: `${state}~${ref}` },
+      `member_session=${memberCookieValue('Kento', victim.id)}`,
+    );
+
+    expect(await lookupIdentity('google', 'google-sub-1')).toBeNull();
+    const stored = (getStore()['members'] as Array<Record<string, unknown>>).find((x) => x.id === victim.id)!;
+    expect(stored.linkedProviders).toBeUndefined();
+  });
+
+  it('native: the sheet keeps its cookie, and the app needs the return code from the landing', async () => {
+    const m = seedMember('Sindhu');
+    await reserveIdentity('google', 'google-sub-1', m.id);
+    const id = createHandoffId();
+    const ref = handoffRef(id);
+    const state = createState();
+    await beginHandoff(ref, { state, codeVerifier: 'v', native: true });
+
+    const res = await callback({ code: 'abc', state: `${state}~${ref}` }, oauthCookies(state, 'cookie-verifier'));
+
+    const loc = locOf(res);
+    expect(loc.searchParams.get('native')).toBe('1');
+    // In the FRAGMENT — a query string would reach the server's logs.
+    expect(loc.search).not.toContain('hc=');
+    const code = /hc=([0-9a-f]{64})/.exec(loc.hash)?.[1];
+    expect(code).toBeTruthy();
+
+    expect(await claimHandoff(id)).toEqual({ status: 'pending' });
+    expect(await claimHandoff(id, Date.now(), code!)).toEqual({ status: 'ready', memberId: m.id });
   });
 });

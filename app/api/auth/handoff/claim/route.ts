@@ -36,16 +36,23 @@ export async function POST(req: NextRequest) {
   }
 
   let handoffId: unknown;
+  let returnCode: unknown;
   try {
-    ({ handoffId } = await req.json());
+    ({ handoffId, returnCode } = await req.json());
   } catch {
     return NextResponse.json({ error: 'bad_request' }, { status: 400 });
   }
   if (typeof handoffId !== 'string' || !/^[0-9a-f]{64}$/.test(handoffId)) {
     return NextResponse.json({ error: 'bad_request' }, { status: 400 });
   }
+  // Optional: only a stash the native shell started asks for one (see
+  // lib/authHandoff.ts). Malformed is refused rather than silently dropped, so
+  // a client bug reads as a 400 and not as a sign-in that never finishes.
+  if (returnCode !== undefined && returnCode !== null && (typeof returnCode !== 'string' || !/^[0-9a-f]{64}$/.test(returnCode))) {
+    return NextResponse.json({ error: 'bad_request' }, { status: 400 });
+  }
 
-  const claim = await claimHandoff(handoffId);
+  const claim = await claimHandoff(handoffId, Date.now(), typeof returnCode === 'string' ? returnCode : null);
 
   /* `pending` is reported so the app can keep polling. It is the COMMON state,
      not a rare one: the person is still on Google's consent screen. Collapsing
