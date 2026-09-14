@@ -350,7 +350,18 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
         </div>
       </section>
 
-      {gear.loadError && <ErrorState message={t('kitError')} />}
+      {/* A sheet switches pull-to-refresh off, so "refresh" was an instruction
+          with nothing that could carry it out. */}
+      {gear.loadError && (
+        <ErrorState
+          message={t('kitError')}
+          action={
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={gear.reload}>
+              {t('retry')}
+            </button>
+          }
+        />
+      )}
       {prefError && <ErrorState message={prefError} />}
     </>
   ) : null;
@@ -435,7 +446,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   // of the lying empty state.
   if (!item) {
     return (
-      <BottomSheet open={open} onClose={close} ariaLabel={heading} maxHeight="88dvh">
+      <BottomSheet open={open} onClose={close} ariaLabel={heading}>
         {header}
         <BottomSheetBody>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
@@ -452,7 +463,7 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
     .filter((r): r is { labelKey: string; value: string } => Boolean(r.value));
 
   return (
-    <BottomSheet open={open} onClose={close} ariaLabel={heading} maxHeight="88dvh">
+    <BottomSheet open={open} onClose={close} ariaLabel={heading}>
       {header}
 
       <BottomSheetBody>

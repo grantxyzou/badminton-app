@@ -108,7 +108,7 @@ export default function GiveKudosSheet({
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('giveTitle')} maxHeight="88vh">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={t('giveTitle')}>
       <BottomSheetHeader>
         <h2 className="bpm-h3 m-0">{t('giveTitle')}</h2>
         <button type="button" onClick={onClose} className="cc-btn cc-btn-ghost" aria-label={t('close')}>

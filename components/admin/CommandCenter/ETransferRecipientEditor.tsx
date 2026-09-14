@@ -2,6 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import EmptyState from '@/components/primitives/EmptyState';
+import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
+import CardHeader from '@/components/primitives/CardHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -17,6 +20,11 @@ export default function ETransferRecipientEditor() {
   const [recipient, setRecipient] = useState<Recipient | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  /* 'failed' and 'refused' are NOT "no recipient". Rendering "Not set" off a
+     dead fetch was a lying empty state, and its "Add recipient" button opened a
+     blank form whose Save would PATCH over the real recipient. While either is
+     set, neither the details nor the Edit button render. */
+  const [loadState, setLoadState] = useState<'ok' | 'failed' | 'refused'>('ok');
 
   // Edit-form state
   const [draftName, setDraftName] = useState('');
@@ -29,12 +37,19 @@ export default function ETransferRecipientEditor() {
     setLoading(true);
     try {
       const res = await fetch(`${BASE}/api/admin/settings`, { cache: 'no-store' });
-      if (res.ok) {
-        const data = (await res.json()) as { eTransferRecipient?: Recipient | null };
-        setRecipient(data.eTransferRecipient ?? null);
+      if (res.status === 401 || res.status === 403) {
+        setLoadState('refused');
+        return;
       }
+      if (!res.ok) {
+        setLoadState('failed');
+        return;
+      }
+      const data = (await res.json()) as { eTransferRecipient?: Recipient | null };
+      setRecipient(data.eTransferRecipient ?? null);
+      setLoadState('ok');
     } catch {
-      // ignore — null state renders the empty-state copy
+      setLoadState('failed');
     } finally {
       setLoading(false);
     }
@@ -95,16 +110,44 @@ export default function ETransferRecipientEditor() {
 
   if (loading) return <CardSkeleton height={120} />;
 
+  // A failed load tints the whole card (StateCard) and hides its controls, so
+  // nothing is written against data that did not load.
+  if (loadState === 'failed') {
+    return (
+      <StateCard
+        tone="danger"
+        icon="payments"
+        title="E-transfer recipient"
+        subtitle="Used by the Share cost button on the Next Session card."
+        message={<>Couldn&apos;t load your e-transfer recipient. <StateLink onClick={() => void load()}>Try again</StateLink></>}
+      >
+        <PreviewRow width="40%" value="" />
+        <PreviewRow width="58%" value="" />
+      </StateCard>
+    );
+  }
+
   return (
     <section className="glass-card p-4 space-y-3 animate-fadeIn" aria-label="E-transfer recipient">
-      <header>
-        <h3 className="bpm-h3">E-transfer recipient</h3>
-        <p className="fs-sm text-gray-400 mt-0.5">
-          Used by the Share cost button on the Next Session card.
-        </p>
-      </header>
+      <CardHeader
+        icon="payments"
+        title="E-transfer recipient"
+        subtitle="Used by the Share cost button on the Next Session card."
+      />
 
-      {!editing && (
+      {loadState === 'refused' && (
+        <EmptyState
+          action={
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={() => void load()}>
+              Try again
+            </button>
+          }
+        >
+          Sign in as an admin to see the e-transfer recipient.
+        </EmptyState>
+      )}
+
+      {loadState === 'ok' && !editing && (
         <>
           {recipient ? (
             <div className="fs-md space-y-1">
@@ -136,7 +179,7 @@ export default function ETransferRecipientEditor() {
         </>
       )}
 
-      {editing && (
+      {loadState === 'ok' && editing && (
         <div className="space-y-3">
           <Field label="Name">
             <input

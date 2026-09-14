@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import EmptyState from '@/components/primitives/EmptyState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 import { announceBalanceChanged } from '@/lib/balanceRefresh';
@@ -98,8 +99,6 @@ export default function ConfirmChangeSheet({
       open={open}
       onClose={onClose}
       ariaLabel={t('confirm.title')}
-      maxHeight="70vh"
-      width="narrow"
     >
       <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('confirm.title')}</span>
@@ -118,11 +117,24 @@ export default function ConfirmChangeSheet({
             {t('confirm.intro', { racket: job.racketLabel })}
           </p>
 
-          {error && (
+          {/* Gone is not a failure — the stringer withdrew or already applied
+              the change, and there is nothing left to answer. It said "Pull to
+              refresh" in red, inside a sheet, where pulling does nothing. */}
+          {error === 'gone' ? (
+            <EmptyState
+              action={
+                <button type="button" className="cc-btn cc-btn-ghost" onClick={onClose}>
+                  {t('confirm.close')}
+                </button>
+              }
+            >
+              {t('confirm.gone')}
+            </EmptyState>
+          ) : error ? (
             <p className="field-error" role="alert">
-              {t(error === 'gone' ? 'confirm.gone' : 'confirm.error')}
+              {t('confirm.error')}
             </p>
-          )}
+          ) : null}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {rows.map((r) => (

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import EmptyState from '@/components/primitives/EmptyState';
 import BpmWordmark from '@/components/BpmWordmark';
 import TopBar from '@/components/primitives/TopBar';
 import StatusBanner from '@/components/primitives/StatusBanner';
@@ -470,7 +471,8 @@ function SignUpView({
           <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('signup.accountBody')}</p>
 
           {!providersOn ? (
-            <p className="field-error">{t('signup.noProviders')}</p>
+            // A configuration fact, not a failure the visitor caused or can retry.
+            <EmptyState>{t('signup.noProviders')}</EmptyState>
           ) : (
             <div className="glass-card" style={{ display: 'grid', gap: 'var(--space-4)', padding: 'var(--space-5)' }}>
               {authProviders.length > 0 && (

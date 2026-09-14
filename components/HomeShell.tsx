@@ -18,7 +18,6 @@ import SkillsTab from '@/components/SkillsTab';
 import ProfileTab from '@/components/ProfileTab';
 import NativeBridge from '@/components/NativeBridge';
 import type { Provider as AuthProvider } from '@/components/auth/ProviderButtons';
-import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import StatusBanner from '@/components/primitives/StatusBanner';
@@ -154,21 +153,12 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   /** Guards the once-only whoami fetch. See the effect below. */
   const signedInHandledRef = useRef(false);
   const [demoMode, setDemoMode] = useState(false);
-  // KNOWN-refused, never merely unknown: set only by an actual 403 from an
-  // owner-gated read (see the insight prewarm below), cleared by any other
-  // outcome. A network failure must not raise it — that is the offline
-  // banner's job, and telling someone to sign in again over a dropped wifi
-  // packet is the same class of lie as a lying empty state.
-  const [signInExpired, setSignInExpired] = useState(false);
   // Connectivity is one app-wide signal now (lib/useOnline). `online` is
   // "server believed reachable" — NEVER conflated with "user is not an
   // admin": a failed probe must not masquerade as a confirmed negative
   // (the auth twin of the forbidden `catch { setX([]) }` lying-empty).
   const online = useOnline();
   const reportFetchFailure = useReportFetchFailure();
-  // Only the sign-in-expired banner is translated here; the adjacent offline
-  // banner predates this and stays as it is (not this task's file to churn).
-  const t = useTranslations('stats');
   const tAuth = useTranslations('profile.auth');
 
   // The URL-param effect below strips what it reads, so it must run ONCE.
@@ -535,28 +525,15 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   // generated/cached server-side BEFORE the user reaches the Stats tab. The
   // endpoint dedupes by (member, active session), so this is at most one Claude
   // call per member per session-cycle no matter how often it's pinged. No CTA.
-  //
-  // Fire-and-forget for network failures ONLY. A 403 is not a failed prewarm,
-  // it is the server saying this device does not own the identity in
-  // localStorage — the `member_session` cookie (30-day TTL) expired or was
-  // never minted, while `badminton_identity` persists indefinitely. Every
-  // owner-gated Stats read will refuse for the same reason, and swallowing it
-  // here left the member with no signal anywhere: cards that used to have
-  // content simply stopped having any. Unknown ≠ known-false, so only the
-  // KNOWN refusal raises the banner; a network error leaves it alone.
+  // Its 403 once drove a "sign in to see your stats" banner; the refusal now
+  // lives on each locked Stats card instead, where the member is looking.
   useEffect(() => {
     function prewarmInsight() {
       const name = getIdentity()?.name;
-      if (!name) {
-        setSignInExpired(false);
-        return;
-      }
-      fetch(`${BASE}/api/stats/insight?name=${encodeURIComponent(name)}`, { cache: 'no-store' })
-        .then((r) => setSignInExpired(r.status === 403))
-        .catch(() => {
-          /* network failure — unknown, not a refusal. The offline banner owns
-             this case and the Stats cards retry on view. */
-        });
+      if (!name) return;
+      // Warm-up only: nothing renders from the answer. A refusal is shown by
+      // the Stats cards themselves, a network failure by the offline banner.
+      fetch(`${BASE}/api/stats/insight?name=${encodeURIComponent(name)}`, { cache: 'no-store' }).catch(() => {});
     }
     prewarmInsight();
     window.addEventListener(IDENTITY_EVENT, prewarmInsight);
@@ -653,7 +630,6 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     <>
       <PullToRefresh onRefresh={handlePullRefresh} />
       <div className="min-h-screen pb-32">
-        <GlassPhysics />
         <ThemeToggle />
         <LanguageToggle />
         <main data-page-shell className="max-w-lg mx-auto px-4 page-shell-top">
@@ -667,22 +643,10 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
               />
             </div>
           )}
-          {/* NOT on Home. The banner's own words are "sign in to see your
-              stats", and Home already carries its own account messaging — the
-              sign-in form, the "set up a way to sign in" warning — so on Home
-              it stacked directly above that warning and said the same thing
-              twice (2026-09-13 flow audit). Stats and Profile, where the
-              refused reads actually show, keep it. */}
-          {signInExpired && online && activeTab !== 'home' && (
-            <div className="mb-3">
-              <StatusBanner
-                tone="warn"
-                icon="lock_clock"
-                title={t('signInAgainTitle')}
-                body={t('signInAgainBody')}
-              />
-            </div>
-          )}
+          {/* No "sign in to see your stats" banner (removed 2026-09-14). Each
+              Stats card a device may not fill now locks itself with its own
+              Sign in button (components/stats/LockedCard.tsx), and Profile
+              shows the sign-in screen when this device holds no session. */}
           {authNotice && (
             <div className="mb-3">
               <StatusBanner

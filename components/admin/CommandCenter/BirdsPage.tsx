@@ -4,6 +4,7 @@ import { todayIso } from '@/lib/stringingDue';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import AdminBackHeader from '../AdminBackHeader';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
+import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import AssignUsageSheet from '../AssignUsageSheet';
 import { fmtShortDate as fmtDate } from '@/lib/fmt';
@@ -414,17 +415,15 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
     return (
       <div className="animate-slideInRight space-y-3">
         <AdminBackHeader onBack={onBack} title="Birds" />
-        <div role="alert" style={{ padding: 'var(--space-9) var(--space-7)', textAlign: 'center', color: 'var(--text-muted)' }}>
-          <p style={{ fontWeight: 600, color: 'var(--text)' }}>Couldn&apos;t load birds</p>
-          <p style={{ fontSize: 'var(--fs-base)', marginTop: 'var(--space-2)' }}>You may be offline. Reconnect, then retry.</p>
-          <button
-            type="button"
-            className="cc-btn cc-btn-ghost"
-            style={{ marginTop: 'var(--space-4)' }}
-            onClick={() => void load()}
-          >
-            Retry
-          </button>
+        <div style={{ padding: 'var(--space-9) var(--space-7)' }}>
+          <ErrorState
+            message="Couldn't load birds."
+            action={
+              <button type="button" className="cc-btn cc-btn-ghost" onClick={() => void load()}>
+                Try again
+              </button>
+            }
+          />
         </div>
       </div>
     );
@@ -725,8 +724,6 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         ariaLabel={editingId ? 'Edit purchase' : 'Log purchase'}
-        maxHeight="80vh"
-        width="narrow"
       >
         <BottomSheetHeader>
           <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{editingId ? 'Edit purchase' : 'Log purchase'}</span>
@@ -929,8 +926,6 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         open={reconcileOpen}
         onClose={() => setReconcileOpen(false)}
         ariaLabel="Reconcile count"
-        maxHeight="70vh"
-        width="narrow"
       >
         <BottomSheetHeader>
           <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>Reconcile count</span>

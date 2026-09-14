@@ -17,6 +17,7 @@ import { useActiveName } from '@/lib/useActiveName';
 import { recordEngagement } from '@/lib/engagement';
 import { useCheckIn } from '@/components/stats/useCheckIn';
 import CheckInSheet from '@/components/stats/CheckInSheet';
+import { StatsSignInContext } from '@/components/stats/LockedCard';
 
 // Client-only (reads localStorage identity) — these three resolve an active
 // name at mount, so server-rendering them just produces markup the client
@@ -92,8 +93,11 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: 'home' 
     return <StatsSignedOut onSignIn={onTabChange ? () => onTabChange('profile') : undefined} />;
   }
 
+  // Where every locked card's Sign in goes (LockedCard reads it from context).
+  const goSignIn = onTabChange ? () => onTabChange('profile') : null;
+
   return (
-    <>
+    <StatsSignInContext.Provider value={goSignIn}>
     <StatsV2Shell
       activeName={activeName}
       checkIn={checkIn}
@@ -146,6 +150,6 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: 'home' 
       onSaved={checkIn.onSaved}
       previous={checkIn.previous}
     />
-    </>
+    </StatsSignInContext.Provider>
   );
 }

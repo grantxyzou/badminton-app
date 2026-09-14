@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import ErrorState from '@/components/primitives/ErrorState';
 import TopBar from '@/components/primitives/TopBar';
 import type { GroupListEntry } from '@/lib/useCurrentGroup';
 
@@ -11,6 +12,8 @@ interface Props {
   onBack: () => void;
   groups: GroupListEntry[];
   loadError?: boolean;
+  /** Ask again after a failed load — a sub-page has no pull-to-refresh. */
+  onRetry?: () => void;
   /** Remount the tabs so every card refetches under the new club's cookies. */
   onSwitched: () => void;
   onJoinAnother: () => void;
@@ -46,6 +49,7 @@ export default function GroupsPage({
   onBack,
   groups,
   loadError,
+  onRetry,
   onSwitched,
   onJoinAnother,
   onCreateAnother,
@@ -91,7 +95,14 @@ export default function GroupsPage({
           <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('yourGroupsHint')}</p>
 
           {loadError ? (
-            <p className="field-error">{t('loadFailed')}</p>
+            <ErrorState
+              message={t('loadFailed')}
+              action={onRetry ? (
+                <button type="button" className="cc-btn cc-btn-ghost" onClick={onRetry}>
+                  {t('retry')}
+                </button>
+              ) : undefined}
+            />
           ) : (
             <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
               {groups.map((g) => (

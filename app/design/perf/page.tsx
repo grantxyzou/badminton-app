@@ -93,7 +93,7 @@ const ALREADY_STRONG: string[] = [
   'prefers-reduced-motion honored everywhere (aurora, motion, loader).',
   'prefers-reduced-transparency hook added (iOS low-power mode).',
   'content-visibility: auto + contain: strict on aurora container.',
-  'GlassPhysics skips touch devices; DatePicker scroll is RAF-coalesced.',
+  'No pointer-tracking listeners (GlassPhysics removed); DatePicker scroll is RAF-coalesced.',
   'Splash has a 5s failsafe so a stalled hydration cannot loop the GPU.',
   'Tokens are CSS variables — theme switch without re-render.',
 ];

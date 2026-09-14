@@ -12,21 +12,15 @@ export interface BottomSheetProps {
   onClose: () => void;
   ariaLabel: string;
   children: React.ReactNode;
-  maxHeight?: string;
   triggerRef?: React.RefObject<HTMLElement>;
-  className?: string;
   /**
-   * How wide the sheet is allowed to get on a large screen. Every consumer used
-   * to hand-write this as `className="max-w-lg mx-auto"` or `max-w-sm mx-auto`;
-   * it is a real variant, so it gets a prop rather than a string.
-   *
-   * `default` (max-w-lg) is the reading/form width. `narrow` (max-w-sm) is for
-   * confirmations and receipts. `full` is unconstrained — one consumer,
-   * `ReleaseNotesSheet`, whose terminal styling spans the viewport.
-   *
-   * No effect on a phone: both caps are wider than the viewport there.
+   * Styling hooks only (e.g. `terminal-sheet`). NOT a size: width and height
+   * belong to `.bottom-sheet` in globals.css so every sheet is the same size,
+   * and `__tests__/sheet-size-canary.test.ts` refuses a size class here. The
+   * per-call-site width and height-cap props this replaced gave the app three
+   * widths and nine height caps.
    */
-  width?: 'default' | 'narrow' | 'full';
+  className?: string;
   /**
    * Escape-to-dismiss. Defaults to true, which is every existing consumer.
    *
@@ -50,14 +44,10 @@ export default function BottomSheet({
   onClose,
   ariaLabel,
   children,
-  maxHeight = '80vh',
   triggerRef,
   className,
-  width = 'default',
   closeOnEscape = true,
 }: BottomSheetProps) {
-  const widthClass =
-    width === 'full' ? '' : width === 'narrow' ? 'max-w-sm mx-auto' : 'max-w-lg mx-auto';
   const mounted = useHydrated();
   const [state, setState] = useState<SheetState>('closed');
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -156,10 +146,10 @@ export default function BottomSheet({
       <div
         ref={sheetRef}
         data-state={state}
-        className={['bottom-sheet fixed bottom-0 left-0 right-0 rounded-t-2xl overflow-hidden flex flex-col', widthClass, className]
+        className={['bottom-sheet fixed bottom-0 left-0 right-0 rounded-t-2xl overflow-hidden flex flex-col', className]
           .filter(Boolean)
           .join(' ')}
-        style={{ zIndex: 60, maxHeight }}
+        style={{ zIndex: 60 }}
         role="dialog"
         aria-label={ariaLabel}
       >

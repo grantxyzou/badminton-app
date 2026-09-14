@@ -99,12 +99,19 @@ describe('ProfileTab — hierarchy pass', () => {
 
   // #4 — seven rows in three groups, and "Admin access" is cut because it and
   // the console row were two doors to one place.
-  it('groups settings under ACCOUNT and APP, with no Admin access row', async () => {
+  it('groups settings under ACCOUNT, PRIVACY, APP and HELP, with no Admin access row', async () => {
     signedIn();
     renderWith({ isAdmin: true });
     await screen.findByText('Michael');
-    expect(screen.getByText(enMessages.profile.settings.title)).toBeDefined();
-    expect(screen.getByText(enMessages.profile.settings.appGroup)).toBeDefined();
+    const s = enMessages.profile.settings;
+    for (const eyebrow of [s.title, s.privacyGroup, s.appGroup, s.helpGroup]) {
+      expect(screen.getByText(eyebrow)).toBeDefined();
+    }
+    // Rows that answer the same question share one list (2026-09-14 regroup).
+    const listOf = (label: string) => screen.getByText(label).closest('ul');
+    expect(listOf(s.statsPrivacy)).toBe(listOf(s.privacyPolicy));
+    expect(listOf(s.releaseNotes)).toBe(listOf(s.reportProblem));
+    expect(listOf(s.statsPrivacy)).not.toBe(listOf(s.releaseNotes));
     expect(screen.queryByText(/Admin access/i)).toBeNull();
   });
 
@@ -142,7 +149,7 @@ describe('ProfileTab — hierarchy pass', () => {
 
   // Legible-fail: a dead signal fetch must not render "0 need you", which is
   // the lying-empty-state pattern. The row still opens admin.
-  it('shows no count when the signal fetch fails, never a zero', async () => {
+  it('says the check failed when the signal fetch fails, never a zero', async () => {
     signedIn();
     mockAdminFetch({ fail: true });
     renderWith({ isAdmin: true });
@@ -154,6 +161,9 @@ describe('ProfileTab — hierarchy pass', () => {
     await new Promise((r) => setTimeout(r, 120));
     expect(screen.queryByText(/need you/i)).toBeNull();
     expect(screen.queryByText(enMessages.profile.admin.allClear)).toBeNull();
+    // ...but it says the check failed, rather than looking like a row that
+    // never had a count. (`profile.admin.checkFailed`.)
+    expect(screen.getByText("Couldn't check")).toBeDefined();
     // The row still works — the count is decoration, opening admin is the job.
     expect(screen.getByRole('button', { name: /Admin console/ })).toBeDefined();
   });

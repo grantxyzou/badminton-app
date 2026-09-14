@@ -7,6 +7,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import type { ClubGearEntry } from '@/lib/clubGear';
+import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -19,8 +20,10 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  */
 export default function ClubGearCard() {
   const t = useTranslations('stats.gear');
+  const signInLink = useSignInLink();
   const [entries, setEntries] = useState<ClubGearEntry[]>([]);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'forbidden'>('loading');
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -31,13 +34,24 @@ export default function ClubGearCard() {
         setEntries((d?.entries ?? []) as ClubGearEntry[]);
         setStatus('ready');
       })
-      .catch(() => live && setStatus('error'));
+      .catch((e: Error) => live && setStatus(e?.message === '401' || e?.message === '403' ? 'forbidden' : 'error'));
     return () => {
       live = false;
     };
-  }, []);
+  }, [attempt]);
 
   if (status === 'loading') return <CardSkeleton height={180} />;
+  // Refused (this device holds no session for the name): the card stays, as
+  // its own shape with nothing in it, and Sign in carries the weight.
+  if (status === 'forbidden') {
+    return (
+      <LockedCard icon="groups" title={t('clubTitle')} subtitle={t('clubSubtitle')} message={t.rich('clubLocked', { link: signInLink })}>
+        <PreviewRow width="52%" />
+        <PreviewRow width="40%" />
+        <PreviewRow width="30%" />
+      </LockedCard>
+    );
+  }
 
   const top = entries.slice(0, 3);
   const max = top[0]?.count ?? 0;
@@ -46,7 +60,14 @@ export default function ClubGearCard() {
     <div className="glass-card p-5 space-y-3">
       <CardHeader icon="groups" title={t('clubTitle')} subtitle={t('clubSubtitle')} />
       {status === 'error' ? (
-        <ErrorState message={t('clubError')} />
+        <ErrorState
+          message={t('clubError')}
+          action={
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={() => { setStatus('loading'); setAttempt((n) => n + 1); }}>
+              {t('retry')}
+            </button>
+          }
+        />
       ) : top.length === 0 ? (
         <EmptyState>{t('clubEmpty')}</EmptyState>
       ) : (

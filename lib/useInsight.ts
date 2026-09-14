@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useActiveName } from '@/lib/useActiveName';
 
 /**
@@ -99,6 +99,8 @@ export interface UseInsight {
    * because a 429 or a flag-off 404 cannot be explained without guessing.
    */
   serverError: boolean;
+  /** Ask again, past the memo — the "Try again" behind a failed read. */
+  reload: () => void;
 }
 
 /**
@@ -118,7 +120,8 @@ export function useInsight(enabled = true): UseInsight {
      effect, so in practice this starts at the idle shape and moves once the
      name arrives — but a consumer that already has one must not see a frame
      claiming "not loading, no data". */
-  const [state, setState] = useState<UseInsight>(() => ({
+  const [nonce, setNonce] = useState(0);
+  const [state, setState] = useState<Omit<UseInsight, 'reload'>>(() => ({
     data: null,
     loading: enabled && activeName !== null,
     error: false,
@@ -186,7 +189,16 @@ export function useInsight(enabled = true): UseInsight {
     return () => {
       cancelled = true;
     };
-  }, [enabled, activeName]);
+  }, [enabled, activeName, nonce]);
 
-  return state;
+  const reload = useCallback(() => {
+    if (!activeName) return;
+    // A failure is memoized by name like a success, so asking again has to
+    // drop the entry first or it would replay the same failed promise.
+    cache.delete(activeName.toLowerCase());
+    setState((s) => ({ ...s, loading: true, error: false, forbidden: false, serverError: false }));
+    setNonce((n) => n + 1);
+  }, [activeName]);
+
+  return { ...state, reload };
 }

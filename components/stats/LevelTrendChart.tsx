@@ -124,13 +124,26 @@ function Frame({ title, children }: { title: string; children: React.ReactNode }
 
 export default function LevelTrendChart({ checkIn }: { checkIn: UseCheckIn }) {
   const t = useTranslations('stats.assess');
+  const tStats = useTranslations('stats');
   const format = useFormatter();
 
   // A failed read is NOT an empty history. Saying "one check-in so far" to a
   // member with years of them, because their network blipped, is exactly the
   // failure the tri-state exists to prevent.
+  if (checkIn.status === 'forbidden') return null;
   if (checkIn.status === 'error') {
-    return <Frame title={t('trendTitle')}><ErrorState message={t('trendError')} /></Frame>;
+    return (
+      <Frame title={t('trendTitle')}>
+        <ErrorState
+          message={t('trendError')}
+          action={
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={checkIn.reload}>
+              {tStats('retry')}
+            </button>
+          }
+        />
+      </Frame>
+    );
   }
   // Loading reserves the space silently — a spinner for a 96px strip is noise,
   // and the height is already held.

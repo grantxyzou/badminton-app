@@ -6,6 +6,7 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import { recommendTension, formatForToggle, MIN_LB, MAX_LB, type PlayFormat } from '@/lib/tension';
 import type { UseGear } from './useGear';
+import LockedCard, { useSignInLink } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -41,6 +42,7 @@ export interface StringTensionCardProps {
 
 export default function StringTensionCard({ activeName, gear, suppressed }: StringTensionCardProps) {
   const t = useTranslations('stats.gear');
+  const signInLink = useSignInLink();
   const tStats = useTranslations('stats');
   // The bag-write failure vocabulary, shared with both gear sheets so one
   // refusal cannot be described two different ways on one tab.
@@ -55,6 +57,7 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
   // docstring above is right that a second source of truth is the bug. This
   // holds only the reason the stored value did not move.
   const [prefError, setPrefError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   // `levelStatus` gates on the LEVEL read alone. The gear doc only decides
   // which toggle is lit; this card's render/no-render rule has always been "do
@@ -83,18 +86,26 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
     return () => {
       live = false;
     };
-  }, [activeName]);
+  }, [activeName, attempt]);
 
   const format = (gear.gear?.playFormat ?? 'doubles') as PlayFormat;
   const advice = recommendTension(level, format);
 
   /** Card shell carrying one legible-fail line instead of a number. */
-  const failed = (message: string) => (
+  const failed = (message: string, retry: () => void) => (
     <div className="glass-card p-5 space-y-3">
       <CardHeader icon="science" title={t('tensionTitle')} subtitle={t('tensionSubtitle')} />
-      <ErrorState message={message} />
+      <ErrorState
+        message={message}
+        action={
+          <button type="button" className="cc-btn cc-btn-ghost" onClick={retry}>
+            {tStats('retry')}
+          </button>
+        }
+      />
     </div>
   );
+  const retryLevel = () => { setLevelStatus('loading'); setAttempt((n) => n + 1); };
 
   // D2: the string pairing produced a number for this exact frame-and-string,
   // which beats round(21 + level). Stand down rather than offer the member a
@@ -105,8 +116,20 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
 
   // Order is deliberate, and each branch answers a different question.
   if (levelStatus === 'loading') return null;
-  if (levelStatus === 'forbidden') return failed(tStats('signInAgain'));
-  if (levelStatus === 'error') return failed(t('tensionError'));
+  // Refused (this device holds no session for the name): the card stays, as
+  // its own shape with nothing in it, and Sign in carries the weight.
+  if (levelStatus === 'forbidden') {
+    return (
+      <LockedCard icon="science" title={t('tensionTitle')} subtitle={t('tensionSubtitle')} message={t.rich('tensionLocked', { link: signInLink })}>
+        <div className="segment-control flex w-full">
+          <span className="flex-1 flex items-center justify-center fs-sm segment-tab-inactive">{t('doubles')}</span>
+          <span className="flex-1 flex items-center justify-center fs-sm segment-tab-inactive">{t('singles')}</span>
+        </div>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-stat-lg)' }}>— {t('lb')}</span>
+      </LockedCard>
+    );
+  }
+  if (levelStatus === 'error') return failed(t('tensionError'), retryLevel);
 
   // Read succeeded and the member genuinely has no level yet: render nothing,
   // as before. This is the one honest silence and must not become an error.
@@ -117,7 +140,7 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
   // member's stored preference and printed a doubles number at a singles
   // player — a recommendation with nothing behind it, which this card's
   // docstring forbids. `useGear` sets `loadError` for exactly this.
-  if (gear.loadError) return failed(t('tensionError'));
+  if (gear.loadError) return failed(t('tensionError'), gear.reload);
 
   const selected = formatForToggle(format);
 

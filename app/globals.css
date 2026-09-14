@@ -623,6 +623,14 @@ body {
      Every card is two layers, not one: a 160deg tint gradient and an
      inset top highlight. Note --fcard-shadow is byte-identical to
      --glass-shadow, which .glass-card defines and has never applied. */
+  /* ── Sheet size ──
+     ONE size for every <BottomSheet> (Grant, 2026-09-14: "Action sheet are
+     not the same size app wide"). Sheets had three widths and nine height
+     caps chosen per call site. Height still follows content up to the cap;
+     dvh so the iOS toolbar cannot push a tall sheet's footer off-screen.
+     __tests__/sheet-size-canary.test.ts refuses a size set anywhere else. */
+  --sheet-max-w: 32rem;
+  --sheet-max-h: 88dvh;
   --fcard-radius:     var(--radius-3xl);
   /* Padding comes from the design source, not from a derivation. An earlier
      pass here reasoned from optical uniformity -- at a rounded corner the arc
@@ -1467,7 +1475,7 @@ html:root .court-bg::after {
 
 
 /* ── Stats-tab glass highlight ──
-   On Stats, the cursor-tracked highlight uses a desaturated neutral grey at
+   On Stats, the centre highlight uses a desaturated neutral grey at
    ~half the global alpha so the cards read as ambient-lit, not spotlit.
    Other tabs keep the canonical .glass-card highlight (line 634-639). */
 html[data-tab="skills"] .glass-card {
@@ -1507,7 +1515,7 @@ html[data-tab="skills"] .glass-card {
 }
 
 @media (hover: hover) {
-  html[data-tab="skills"] .glass-card:hover {
+  html[data-tab="skills"] :is(button, a, [role="button"]).glass-card:hover {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.24),
       inset 0 -1px 1px rgba(0, 0, 0, 0.20);
@@ -1538,8 +1546,8 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
 }
 
 @media (hover: hover) {
-  [data-theme="light"] html[data-tab="skills"] .glass-card:hover,
-  html[data-tab="skills"][data-theme="light"] .glass-card:hover {
+  [data-theme="light"] html[data-tab="skills"] :is(button, a, [role="button"]).glass-card:hover,
+  html[data-tab="skills"][data-theme="light"] :is(button, a, [role="button"]).glass-card:hover {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.85),
       inset 0 -1px 1px rgba(22, 33, 27, 0.08);
@@ -1551,7 +1559,8 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
   /* Canonical per docs/design-system/preview/14-glass-card.html —
      radius 16 (corner ladder caps rectangular surfaces at 16), blur via
      --glass-blur token (10 dark / 16 light), saturate 180%. The radial
-     mouse-tracked highlight (GlassPhysics) lays over the base glass tint. */
+     highlight (fixed at centre since GlassPhysics was removed) lays over the
+     base glass tint. */
   background:
     radial-gradient(
       ellipse at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
@@ -1569,8 +1578,11 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
               transform var(--duration-normal) var(--ease-glass);
 }
 
+/* Hover lifts only a card you can press. A static card that rose and
+   brightened under the pointer read as a control that did nothing ("the cards
+   move and shine when mouse hover on it. weird", Grant 2026-09-14). */
 @media (hover: hover) {
-  .glass-card:hover {
+  :is(button, a, [role="button"]).glass-card:hover {
     transform: translateY(-2px);
     box-shadow:
       inset 0 1px 0 var(--glass-inset-hover);
@@ -1603,8 +1615,10 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
    has defined since v1 and .glass-card has never applied.
    ══════════════════════════════════════════════════════════════════════════ */
 html:root .glass-card {
-  /* Keep the GlassPhysics mouse-tracked highlight layered over the new tint —
-     it is the app's signature interaction and costs nothing here. */
+  /* The radial highlight rests at the card's centre (--mx/--my default 0.5).
+     It used to follow the mouse via GlassPhysics, deleted 2026-09-14: cards
+     shimmering under the pointer read as controls. Every device now sees the
+     still light phones always saw. */
   background:
     radial-gradient(
       ellipse at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
@@ -1623,7 +1637,7 @@ html:root .glass-card {
 }
 
 @media (hover: hover) {
-  html:root .glass-card:hover {
+  html:root :is(button, a, [role="button"]).glass-card:hover {
     box-shadow: var(--fcard-inset), var(--glass-shadow-hover);
   }
 }
@@ -1667,7 +1681,7 @@ html:root .cc-dcard.warn  { background: var(--fcard-wait-bg); }
    the same inset-brightening the field card already uses, so admin hover and
    app hover are one behaviour. */
 @media (hover: hover) {
-  html:root .cc-dcard:hover {
+  html:root :is(button, a, [role="button"]).cc-dcard:hover {
     border-color: transparent;
     box-shadow: inset 0 1px 0 var(--glass-inset-hover), var(--glass-shadow-hover);
   }
@@ -1964,6 +1978,95 @@ html:root .glass-card.is-locked {
     transform: none;
     box-shadow: none;
   }
+}
+
+/* ── Locked card (components/stats/LockedCard.tsx) ──
+   A card this device may not fill: signed out, so the server refused it.
+   Principle: show the card's SHAPE with nothing in it, and give the one
+   action real weight. Values never appear — not even invented ones — so the
+   preview is dashes and empty bars at reduced ink, and the way in is the
+   words "Sign in" in the card's sentence, as a link. A full-width button per
+   card and then a chip per header were both tried and read as too loud down a
+   whole tab (Grant, 2026-09-14). */
+html:root .state-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  color: var(--text-muted);
+  opacity: 0.7;
+  pointer-events: none;
+  user-select: none;
+}
+html:root .state-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+html:root .state-line {
+  display: block;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+html:root .state-bar {
+  display: block;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+html:root .state-dash {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+}
+/* ── Tinted state card (components/primitives/StateCard.tsx) ──
+   The glass carries the status, not the text (Grant, 2026-09-14: "the card
+   itself is a glass that refracts colour and light, why not have the card
+   show red when there is an error and other status"). A tone washes its
+   colour through the field-card gradient, with no border; the blur and
+   the pointer highlight stay, so it is still the same material, lit red.
+   `--tone` is the wash, `--tone-ink` the readable text colour on top of it.
+   Specificity (0,3,1) outranks both `html:root .glass-card` and the Stats
+   tab's `html[data-tab="skills"] .glass-card`. */
+html:root .glass-card[data-tone],
+html:root .cc-dcard[data-tone] {
+  background:
+    radial-gradient(
+      ellipse at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
+      rgba(var(--glass-tint), 0.07) 0%,
+      transparent 65%
+    ),
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--tone) 22%, transparent),
+      color-mix(in srgb, var(--tone) 8%, transparent)
+    ),
+    var(--fcard-bg);
+  /* No rim: the colour is in the glass, not drawn around it (Grant: "status
+     card should have the colour but borderless"). */
+  box-shadow: var(--fcard-inset), var(--fcard-shadow);
+}
+html:root [data-tone="danger"]  { --tone: var(--color-red);   --tone-ink: var(--sev-crit-text); }
+html:root [data-tone="warn"]    { --tone: var(--color-amber); --tone-ink: var(--sev-med-text); }
+html:root [data-tone="success"] { --tone: var(--accent);      --tone-ink: var(--sev-good-text); }
+html:root .state-message { color: var(--text-primary); }
+html:root .state-link {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--tone-ink, var(--accent));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+html:root .state-link:focus-visible {
+  outline: 2px solid var(--tone-ink, var(--accent));
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 /* On-card ink helpers, so call sites don't hand-type the alphas. */
@@ -3028,6 +3131,12 @@ html[data-hydrated="true"] .splash {
 .bottom-sheet {
   background: var(--page-bg);
   border-top: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
+  /* The one sheet size (tokens above). The element is fixed at left:0/right:0,
+     so an auto inline margin under a max-width centres it on a wide screen. */
+  max-width: var(--sheet-max-w);
+  max-height: 88vh;
+  max-height: var(--sheet-max-h);
+  margin-inline: auto;
 }
 
 /* ── Sheets inherit their tab's field ──     [fields — flag retired 2026-09-10]
@@ -3361,9 +3470,13 @@ button.sheet-row:hover { background: var(--glass-soft-bg); }
   }
 }
 
-/* Ghost — for cancel / dismiss */
+/* Ghost — for cancel / dismiss, and the one action under an empty or error
+   state. The faint border is what makes it read as a control: without it
+   "Try again" centred under a message looked like a second line of copy
+   (Grant, 2026-09-14). No fill, so it still sits below secondary. */
 .cc-btn-ghost {
   color: var(--text-muted, #9ca3af);
+  border-color: var(--border);
 }
 @media (hover: hover) {
   .cc-btn-ghost:hover:not(:disabled) {
@@ -3827,7 +3940,7 @@ html:root[data-theme="light"] {
   cursor: pointer;
   transition: border-color 120ms ease;
 }
-.cc-dcard:hover { border-color: rgba(255, 255, 255, 0.22); }
+:is(button, a, [role="button"]).cc-dcard:hover { border-color: rgba(255, 255, 255, 0.22); }
 .cc-dcard .htitle {
   font-family: var(--font-display, 'Space Grotesk'), system-ui, sans-serif;
   font-size: 12px;
@@ -3868,7 +3981,7 @@ html:root[data-theme="light"] {
 [data-theme="light"] .cc-dcard .htitle { color: var(--text-secondary); }
 [data-theme="light"] .cc-dcard .big { color: var(--text-primary); }
 [data-theme="light"] .cc-dcard .small { color: var(--text-secondary); }
-[data-theme="light"] .cc-dcard:hover { border-color: rgba(0, 0, 0, 0.18); }
+[data-theme="light"] :is(button, a, [role="button"]).cc-dcard:hover { border-color: rgba(0, 0, 0, 0.18); }
 [data-theme="light"] .cc-dcard.alert {
   border-color: rgba(234, 88, 12, 0.30);
   background: linear-gradient(160deg, rgba(234, 88, 12, 0.06), rgba(0, 0, 0, 0.01));

@@ -172,15 +172,46 @@ const config = [
     },
   },
   {
-    // The OG image renders through Satori, which does NOT resolve CSS custom
-    // properties: var(--space-4) there evaluates to nothing, so a raw pixel
-    // number is the correct code and the spacing rule must not ask for a token.
-    // It keeps the colour/type guardrails, which are advisory here anyway.
-    // Listed LAST so it wins for this file; the per-area error blocks above do
-    // not match it.
-    files: ['app/opengraph-image.tsx'],
+    // WHERE A TOKEN CANNOT RESOLVE, OR IS THE SUBJECT.
+    //
+    // These four files are OFF rather than narrowed, and the distinction that
+    // earns it is what the LINE does, not which directory it lives in. A raw
+    // literal here is the correct code, so a warning on it can only ever be
+    // noise -- and 61 permanent warnings are how a backlog stops being read.
+    //
+    //   app/opengraph-image.tsx  Satori resolves NO custom property: a colour,
+    //                            a size and a spacing all evaluate to nothing.
+    //                            This block previously kept the colour/type
+    //                            halves, which was half an exemption for a
+    //                            whole problem -- all 20 remaining warnings
+    //                            were things Satori equally cannot resolve.
+    //   lib/receiptTemplate.ts   Draws to a <canvas>: `ctx.fillStyle` takes a
+    //                            colour STRING, and var() means nothing there.
+    //   lib/avatar.ts            A fixed 8-pair avatar palette keyed by a name's
+    //                            first character. That is DATA -- there is no
+    //                            sensible `--avatar-4`, and theming it would
+    //                            make the same person change colour per theme.
+    //   app/design/tokens/page   DOCUMENTS the tokens: `{ name: '--bpm-night',
+    //                            value: '#100F0F' }`. The literal is the
+    //                            content. Replacing it with the var() it names
+    //                            would make the page document itself and show
+    //                            the reader nothing.
+    //
+    // NOT exempt, and deliberately left warning: the other `app/design/*`
+    // specimen pages and `components/DevPanel.tsx`. Living outside the product
+    // is not the same as needing a raw value -- sampling them found ordinary
+    // drift (`const DANGER = '#ef4444'`, `fontSize: 22` beside a perfectly good
+    // `color: var(--accent)`), which is lower priority, not exempt. See #75.
+    //
+    // Listed LAST so these win; the per-area error blocks above do not match.
+    files: [
+      'app/opengraph-image.tsx',
+      'lib/receiptTemplate.ts',
+      'lib/avatar.ts',
+      'app/design/tokens/page.tsx',
+    ],
     rules: {
-      'no-restricted-syntax': ['warn', ...DESIGN_TOKEN_SELECTORS, ...EXTRA_TOKEN_SELECTORS],
+      'no-restricted-syntax': 'off',
     },
   },
 ];

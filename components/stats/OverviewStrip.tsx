@@ -25,7 +25,14 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
  * Cosmos misconfiguration stayed invisible.
  */
 
-type Tile<T> = { status: 'loading' | 'ready' | 'error'; data: T | null };
+/** `forbidden` is a 403 — this device does not own the name. A dash with a
+ *  blank caption: "couldn't load" would call a refusal a failure, and the
+ *  locked cards below each say how to sign in. */
+
+/** A caption line with nothing to say still holds its height, so the strip
+ *  does not grow when a caption arrives after load (Grant, 2026-09-14). */
+const BLANK = '\u00A0';
+type Tile<T> = { status: 'loading' | 'ready' | 'error' | 'forbidden'; data: T | null };
 
 const PENDING = { status: 'loading' as const, data: null };
 
@@ -70,7 +77,7 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
         const raw = d?.level?.level;
         setLevel({ status: 'ready', data: typeof raw === 'number' ? raw : null });
       })
-      .catch(() => live && setLevel({ status: 'error', data: null }));
+      .catch((e: Error) => live && setLevel({ status: e?.message === '403' ? 'forbidden' : 'error', data: null }));
 
     // The check-in history is NOT read here any more. The level number and its
     // delta still come from different places — the canonical level folds games
@@ -83,7 +90,7 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
 
     get(`/api/games?all=true&name=${n}`)
       .then((d) => live && setGames({ status: 'ready', data: (d?.games ?? []).length }))
-      .catch(() => live && setGames({ status: 'error', data: null }));
+      .catch((e: Error) => live && setGames({ status: e?.message === '403' ? 'forbidden' : 'error', data: null }));
 
     get(`/api/kudos?name=${n}`)
       .then((d) => {
@@ -96,7 +103,7 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
           data: counts.reduce((sum, c) => sum + (typeof c.count === 'number' ? c.count : 0), 0),
         });
       })
-      .catch(() => live && setKudos({ status: 'error', data: null }));
+      .catch((e: Error) => live && setKudos({ status: e?.message === '403' ? 'forbidden' : 'error', data: null }));
 
     return () => {
       live = false;
@@ -117,6 +124,8 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
   let levelCaption: string = t('takeCheckIn');
   if (level.status === 'error') {
     levelCaption = t('loadError');
+  } else if (level.status === 'forbidden') {
+    levelCaption = BLANK;
   } else if (level.status === 'ready' && level.data !== null) {
     levelValue = level.data.toFixed(1);
     // Gate on the OWNER's status, never on a null-coalesced length: a failed
@@ -146,7 +155,7 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
       levelCaption = t('baseline');
     }
   } else if (level.status === 'loading') {
-    levelCaption = '';
+    levelCaption = BLANK;
   }
 
   // `StatCard`'s button path wraps label + value + unit + caption in ONE
@@ -169,9 +178,13 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
           : t('levelAriaUnknown');
 
   return (
-    <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'stretch' }}>
-      {/* Left tile is wider — the level is the headline of the three. */}
-      <div style={{ flex: 1.2, minWidth: 0 }}>
+    // A grid, not flex: `flex: 1` on tiles with different padding shares out
+    // the space unevenly (the level's wrapper has none, the glass tiles have
+    // 16px a side), so "equal" flex tiles measured 102/138/138px.
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-3)', alignItems: 'stretch' }}>
+      {/* Three equal tiles (Grant, 2026-09-14). The level still leads by its
+          filled accent material, not by being wider. */}
+      <div style={{ minWidth: 0 }}>
         <StatCard
           tone="accent"
           size="tile"
@@ -190,19 +203,20 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
            * lives outside the error fork because opening a sheet is not a
            * mutation, and on the day the read fails it is the only door.
            */
-          onClick={checkIn ? () => checkIn.openFrom('strip') : undefined}
-          ariaLabel={checkIn ? levelAria : undefined}
+          // Not a door while signed out: the check-in it opens would be refused.
+          onClick={checkIn && level.status !== 'forbidden' ? () => checkIn.openFrom('strip') : undefined}
+          ariaLabel={checkIn && level.status !== 'forbidden' ? levelAria : undefined}
         />
       </div>
       <GlassTile
         label={t('games')}
         value={countText(games, t('noValue'))}
-        caption={games.status === 'error' ? t('loadError') : t('gamesCaption')}
+        caption={games.status === 'error' ? t('loadError') : games.status === 'ready' ? t('gamesCaption') : BLANK}
       />
       <GlassTile
         label={t('kudos')}
         value={countText(kudos, t('noValue'))}
-        caption={kudos.status === 'error' ? t('loadError') : t('kudosCaption')}
+        caption={kudos.status === 'error' ? t('loadError') : kudos.status === 'ready' ? t('kudosCaption') : BLANK}
         valueColor="var(--accent-amber)"
       />
     </div>

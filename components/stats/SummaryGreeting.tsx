@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import { useInsight } from '@/lib/useInsight';
 import AIBadge from '@/components/primitives/AIBadge';
 import ErrorState from '@/components/primitives/ErrorState';
+import LockedCard, { useSignInLink } from './LockedCard';
 
 /**
  * The single plain-language AI takeaway at the top of the Stats Summary — the
@@ -39,11 +40,35 @@ import ErrorState from '@/components/primitives/ErrorState';
  */
 export default function SummaryGreeting() {
   const t = useTranslations('stats');
-  const { data, forbidden, serverError } = useInsight(true);
+  const signInLink = useSignInLink();
+  const { data, forbidden, serverError, reload } = useInsight(true);
   const greeting = data?.greeting ?? null;
 
-  if (forbidden) return <ErrorState message={t('signInAgain')} />;
-  if (serverError) return <ErrorState message={t('insightUnavailable')} />;
+  // Refused (no session on this device): the greeting's own shape, locked, with
+  // Sign in — the same treatment as every other Stats card (LockedCard).
+  if (forbidden) {
+    return (
+      <LockedCard message={t.rich('summaryGreeting.locked', { link: signInLink })}>
+        <div className="state-row">
+          <AIBadge label={t('insightChip.aiGenerated')}>{t('summaryGreeting.ai')}</AIBadge>
+          <span className="state-line" style={{ width: '70%' }} />
+        </div>
+        <span className="state-line" style={{ width: '52%' }} />
+      </LockedCard>
+    );
+  }
+  if (serverError) {
+    return (
+      <ErrorState
+        message={t('insightUnavailable')}
+        action={
+          <button type="button" className="cc-btn cc-btn-ghost" onClick={reload}>
+            {t('retry')}
+          </button>
+        }
+      />
+    );
+  }
   if (!greeting) return null;
 
   return (

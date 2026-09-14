@@ -11,7 +11,7 @@ function addAs(name: string, item: Record<string, unknown>) {
 }
 
 async function itemsFor(name: string) {
-  const res = await GET(makeRequest('GET', `${URL}?name=${encodeURIComponent(name)}`));
+  const res = await GET(makeRequest('GET', `${URL}?name=${encodeURIComponent(name)}`, undefined, { Cookie: `member_session=${memberCookieValue(name)}` }));
   const body = await res.json();
   return (body?.gear?.items ?? []) as { category?: string; label: string }[];
 }
@@ -86,7 +86,7 @@ describe('gear — string selection', () => {
   // ── The active pointer stays racket-only ────────────────────────────────
   it('does not let a string claim the active-racket pointer', async () => {
     await POST(addAs('Lin', { catalogId: 'string-yx-bg65', category: 'string', label: 'Yonex BG65' }));
-    const res = await GET(makeRequest('GET', `${URL}?name=Lin`));
+    const res = await GET(makeRequest('GET', `${URL}?name=Lin`, undefined, { Cookie: `member_session=${memberCookieValue('Lin')}` }));
     const body = await res.json();
     // activeRacketId means "which racket am I playing with" — a string must
     // never end up there, or activeRacket() resolves to a spool of string.
@@ -96,7 +96,7 @@ describe('gear — string selection', () => {
   it('still claims the pointer for a first racket', async () => {
     await POST(addAs('Lin', { catalogId: 'string-yx-bg65', category: 'string', label: 'Yonex BG65' }));
     await POST(addAs('Lin', { catalogId: 'racket-a', category: 'racket', label: 'Astrox' }));
-    const res = await GET(makeRequest('GET', `${URL}?name=Lin`));
+    const res = await GET(makeRequest('GET', `${URL}?name=Lin`, undefined, { Cookie: `member_session=${memberCookieValue('Lin')}` }));
     const body = await res.json();
     expect(body?.gear?.activeRacketId).toBeTruthy();
   });

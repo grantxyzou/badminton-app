@@ -6,6 +6,13 @@ import YourRecordCard from '../../components/stats/YourRecordCard';
 import { OnlineProvider } from '../../lib/useOnline';
 import enMessages from '../../messages/en.json';
 
+/** A locked card's sentence, matched whole: its "Sign in" is a link element, so
+ *  the text is split across nodes and a plain text query cannot see it. */
+const sentence = (raw: string) => {
+  const plain = raw.replace(/<\/?link>/g, '');
+  return (_: string, el: Element | null) => el?.tagName === 'P' && el.textContent === plain;
+};
+
 function jsonResponse(body: unknown, ok = true) {
   return Promise.resolve({ ok, status: ok ? 200 : 500, json: async () => body } as Response);
 }
@@ -140,5 +147,17 @@ describe('YourRecordCard', () => {
       </NextIntlClientProvider>,
     );
     expect(container.textContent).toBe('');
+  });
+
+  it('refused (403): keeps the card with the lock copy and no Add button that would be refused too', async () => {
+    mockFetchByUrl([
+      SESSION,
+      PLAYERS,
+      ['/api/games', () => Promise.resolve({ ok: false, status: 403, json: async () => ({ error: 'forbidden' }) } as Response)],
+    ]);
+    renderCard();
+    expect(await screen.findByText(sentence(enMessages.stats.record.locked))).toBeDefined();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('button', { name: enMessages.stats.record.add })).toBeNull();
   });
 });

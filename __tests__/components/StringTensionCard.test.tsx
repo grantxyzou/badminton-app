@@ -6,6 +6,13 @@ import StringTensionCard from '../../components/stats/StringTensionCard';
 import type { UseGear } from '../../components/stats/useGear';
 import enMessages from '../../messages/en.json';
 
+/** A locked card's sentence, matched whole: its "Sign in" is a link element, so
+ *  the text is split across nodes and a plain text query cannot see it. */
+const sentence = (raw: string) => {
+  const plain = raw.replace(/<\/?link>/g, '');
+  return (_: string, el: Element | null) => el?.tagName === 'P' && el.textContent === plain;
+};
+
 function fakeGear(overrides: Partial<UseGear> = {}): UseGear {
   return {
     gear: null,
@@ -13,6 +20,7 @@ function fakeGear(overrides: Partial<UseGear> = {}): UseGear {
     active: null,
     loaded: true,
     loadError: false,
+    forbidden: false,
     busy: false,
     online: true,
     reload: vi.fn(),
@@ -81,11 +89,15 @@ describe('StringTensionCard — no number without something behind it', () => {
     expect(screen.getByRole('alert').textContent).toBe(TENSION_ERROR);
   });
 
-  it('renders the sign-in state when the level read is refused (403)', async () => {
+  it('keeps the card on a refused level read (403): the lock copy, no number, no alert', async () => {
+    // State rule (2026-09-14): a refusal is not a failure and is not red. Grant
+    // wanted the card kept, saying what signing in shows, so the tab does not
+    // look empty; the tab banner carries the Sign in button.
     mockLevel(403, { error: 'forbidden' });
     renderCard();
-    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
-    expect(screen.getByRole('alert').textContent).toBe(SIGN_IN_COPY);
+    expect(await screen.findByText(sentence(enMessages.stats.gear.tensionLocked))).toBeDefined();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('button', { name: enMessages.stats.gear.doubles })).toBeNull();
   });
 
   // ── B1: a failed gear read used to print a doubles number at a singles

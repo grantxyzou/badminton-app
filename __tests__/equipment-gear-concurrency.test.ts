@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { POST, DELETE, GET } from '../app/api/equipment/gear/route';
 import {
-  resetMockStore, seedMember, memberCookieValue, makeRequest, makeGetRequest, setupAdminPin, getStore,
+  resetMockStore, seedMember, memberCookieValue, makeRequest, setupAdminPin, getStore,
 } from './helpers';
 import { getContainer } from '../lib/cosmos';
 import type { PlayerGear } from '../lib/types';
@@ -36,7 +36,9 @@ function authed(method: string, url: string, body?: Record<string, unknown>) {
 const URL_BASE = 'http://localhost/api/equipment/gear';
 
 async function readGear(): Promise<PlayerGear | null> {
-  const res = await GET(makeGetRequest(`${URL_BASE}?name=${NAME}`));
+  const res = await GET(makeRequest('GET', `${URL_BASE}?name=${NAME}`, undefined, {
+    Cookie: `member_session=${memberCookieValue(NAME, MEMBER_ID)}`,
+  }));
   return (await res.json()).gear;
 }
 

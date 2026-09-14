@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import EmptyState from '@/components/primitives/EmptyState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from './BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 import ErrorState from './primitives/ErrorState';
@@ -97,7 +98,8 @@ export default function MigrateSheet({ open, onClose }: Props) {
           </p>
 
           {!online && <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0' }}>{t('offline')}</p>}
-          {failure === 'auth' && <ErrorState message={t('errorAuth')} />}
+          {/* Signed out is a refusal, not a failure — muted, not red. */}
+          {failure === 'auth' && <EmptyState>{t('errorAuth')}</EmptyState>}
           {failure === 'rate_limited' && <ErrorState message={t('errorRateLimited')} />}
           {failure === 'server' && <ErrorState message={t('errorServer')} />}
 
