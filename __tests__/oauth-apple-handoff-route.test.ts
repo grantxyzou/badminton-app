@@ -136,6 +136,23 @@ describe('apple callback — the jar split', () => {
     expect(locOf(res).searchParams.get('native')).toBe('1');
   });
 
+  it('a cookie-less NATIVE landing says only "back to the app" — never the Home Screen copy', async () => {
+    const m = seedMember('Viktor');
+    await reserveIdentity('apple', 'apple-sub-1', m.id);
+    const ref = handoffRef(createHandoffId());
+    const state = createState();
+    await beginHandoff(ref, { state, codeVerifier: '', native: true });
+
+    const res = await callback({ code: 'abc', state: `${state}~${ref}` });
+    const loc = locOf(res);
+    expect(loc.searchParams.get('native')).toBe('1');
+    expect(loc.searchParams.get('handedOff')).toBeNull();
+    // The sheet holds no session on this path, so it must not claim one.
+    expect(loc.searchParams.get('signedIn')).toBeNull();
+    expect(res.headers.getSetCookie().some((c) => /^member_session=[^;]+;/.test(c))).toBe(false);
+    expect(loc.hash).toMatch(/^#hc=[0-9a-f]{64}$/);
+  });
+
   it('does not add native=1 for a PWA handoff', async () => {
     const ref = handoffRef(createHandoffId());
     const state = createState();

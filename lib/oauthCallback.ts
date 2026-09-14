@@ -221,9 +221,13 @@ export async function finishOAuthCallback(
   if (handoff) {
     const completed = await completeHandoff(handoff, member.id);
     if (completed) {
-      const params = claims.viaParkedState
-        ? { handedOff: '1', provider: claims.provider, ...nativeParam }
-        : { signedIn: '1', provider: claims.provider, ...nativeParam };
+      /* ONE message per path. A native landing's card already says "back to
+         the app", so it never gets `handedOff` (whose copy points at the Home
+         Screen), and a parked native sheet holds no session, so it does not
+         get `signedIn` either. */
+      const params: Record<string, string> = { provider: claims.provider, ...nativeParam };
+      if (!claims.viaParkedState) params.signedIn = '1';
+      else if (!stash?.native) params.handedOff = '1';
       const res = seeOther(
         landing(origin, params, completed.returnCode ? `hc=${completed.returnCode}` : undefined),
       );
