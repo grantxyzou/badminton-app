@@ -194,6 +194,26 @@ describe('POST /api/equipment/gear', () => {
     expect((await res.json()).error).toBe('duplicate_racket');
   });
 
+  // The restring request adds a TYPED racket to the kit. Deduping free text only
+  // against other free text let "Li-Ning Aeronaut 9000" land beside the catalog
+  // Aeronaut 9000 already in the bag — found in a real member's kit.
+  it('rejects a free-text racket whose label matches a catalog racket already in the bag', async () => {
+    await POST(bagRequest('POST', { name: NAME, item: RACKET_A }));
+    const res = await POST(bagRequest('POST', {
+      name: NAME,
+      item: { catalogId: null, category: 'racket', label: '  yonex astrox 100zz ' },
+    }));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe('duplicate_racket');
+    expect((await readGear())?.items).toHaveLength(1);
+  });
+
+  it('still allows a free-text item whose label matches a catalog item in ANOTHER category', async () => {
+    await POST(bagRequest('POST', { name: NAME, item: { catalogId: 'string-x', category: 'string', label: 'Same Name' } }));
+    const res = await POST(bagRequest('POST', { name: NAME, item: { catalogId: null, category: 'racket', label: 'Same Name' } }));
+    expect(res.status).toBe(200);
+  });
+
   // The limiter is keyed on name+IP and is module-level in-memory state that
   // resetMockStore() does NOT clear. Every other test here gets a unique IP
   // from makeRequest and so never trips it; this one pins a dedicated IP that

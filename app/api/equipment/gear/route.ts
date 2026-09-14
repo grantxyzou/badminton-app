@@ -297,10 +297,16 @@ export async function POST(req: NextRequest) {
       // Primary dedupe key is catalogId. Free-text ("Other") entries have no
       // catalogId, so without a fallback a caller could add the same racket
       // repeatedly by omitting it — dedupe those on the normalized label
-      // against other catalogId-less entries.
+      // against other catalogId-less entries AND against catalog items of the
+      // same category. The restring request adds whatever racket was TYPED, and
+      // checking free text only against free text let "Li-Ning Aeronaut 9000"
+      // sit in a real member's bag beside the catalog Aeronaut 9000.
+      const incomingKey = label.trim().toLowerCase();
       const isDuplicate = catalogId
         ? existing.some((i) => i.catalogId === catalogId)
-        : existing.some((i) => !i.catalogId && i.label.trim().toLowerCase() === label.trim().toLowerCase());
+        : existing.some((i) =>
+            i.label.trim().toLowerCase() === incomingKey
+            && (!i.catalogId || (i.category ?? 'racket') === body.item.category));
       if (isDuplicate) {
         return { ok: false, response: NextResponse.json({ error: 'duplicate_racket' }, { status: 409 }) };
       }
