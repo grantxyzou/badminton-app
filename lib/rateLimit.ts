@@ -1,6 +1,10 @@
+import { createHash } from 'node:crypto';
+
 interface Entry {
   count: number;
   resetAt: number;
+  /** Refusals in this window, for the log below. */
+  refused: number;
 }
 
 const store = new Map<string, Entry>();
@@ -10,13 +14,38 @@ const store = new Map<string, Entry>();
  * The accepted cost is real and stays real — a 20-minute Azure B1 cold start
  * gets anyone a fresh allowance, and it does not survive >1 instance — so the
  * mitigation is not fixing that, it is making an attempt that relies on it
- * VISIBLE. Every refusal is logged below, not a sample of them: the lowest
- * limits in this app are 3-5/hr (`auth-forgot`, `admin`, `signup`,
- * `auth-reset`, `member-delete`, `groups-create`), and a debounced or sampled
- * line would show nothing on a bucket that size. Revisit persistence (Cosmos
+ * VISIBLE. See `logRefusal` for what is logged and how often. Revisit persistence (Cosmos
  * or Redis) if `[rate-limit] refused` ever shows a real pattern in the logs;
  * until then this is the deliberate choice, not an oversight.
  */
+
+/**
+ * One `[rate-limit] refused` line — but not for every refusal, and never the
+ * raw key.
+ *
+ * WHAT: the key's first segment (`auth-signin`, `pin-update`) names the bucket;
+ * the rest is replaced by a short sha256. Keys carry an email or a roster name
+ * next to an IP (`auth-signin:${email}:${ip}`, `pin-update:${name}:${ip}`), and
+ * writing those to App Service logs on every refusal is personal data kept for
+ * no reason (PIPEDA). The hash is stable, so repeated refusals of one key still
+ * line up in the logs without saying whose they are.
+ *
+ * HOW OFTEN: on the 1st, 2nd, 4th, 8th… refusal in a window. Small buckets are
+ * the reason logging exists at all — a 3/hr limit's first refusal is the whole
+ * signal, and it is always logged — while a flood against a 60/min bucket
+ * writes log2(n) lines instead of n, and `refusedThisWindow` still says how
+ * big it got.
+ *
+ * The message is a CONSTANT; every value rides in the payload object, because
+ * `console.warn(str, obj)` treats `str` as a FORMAT string. Same guard as
+ * `[group-leak]` in lib/groupScope.ts.
+ */
+function logRefusal(key: string, maxRequests: number, windowMs: number, refused: number): void {
+  if ((refused & (refused - 1)) !== 0) return;
+  const bucket = key.split(':')[0];
+  const keyHash = createHash('sha256').update(key).digest('hex').slice(0, 12);
+  console.warn('[rate-limit] refused', { bucket, keyHash, maxRequests, windowMs, refusedThisWindow: refused });
+}
 
 /** Returns true if the request is allowed, false if rate-limited. */
 export function checkRateLimit(key: string, maxRequests: number, windowMs: number): boolean {
@@ -32,18 +61,13 @@ export function checkRateLimit(key: string, maxRequests: number, windowMs: numbe
   const entry = store.get(key);
 
   if (!entry || now > entry.resetAt) {
-    store.set(key, { count: 1, resetAt: now + windowMs });
+    store.set(key, { count: 1, resetAt: now + windowMs, refused: 0 });
     return true;
   }
 
   if (entry.count >= maxRequests) {
-    // The message is a CONSTANT and every value rides in the payload object.
-    // `console.warn(str, obj)` treats `str` as a FORMAT string, and `key` can
-    // carry a caller-controlled name or email (`recover:${name}:${ip}`,
-    // `auth-signin:${email}:${ip}`) — interpolating it would let that value
-    // inject %s/%o or a newline. Same guard as `[group-leak]` in
-    // lib/groupScope.ts, same reason.
-    console.warn('[rate-limit] refused', { key, maxRequests, windowMs, count: entry.count });
+    entry.refused++;
+    logRefusal(key, maxRequests, windowMs, entry.refused);
     return false;
   }
   entry.count++;

@@ -3,12 +3,9 @@ import { checkRateLimit } from '../lib/rateLimit';
 
 /**
  * #80's decided shape: accept the in-memory limiter's cold-start reset (friend-
- * group scale, no real attackers today), but make a real attempt VISIBLE.
- *
- * The lowest limits in this app are 3-5/hr (`auth-forgot`, `admin`, `signup`,
- * `password-reset`, `member-delete`, `groups-create`). A sampled or debounced
- * log line would show nothing on a bucket that size — three or five refused
- * requests IS the whole signal. So every refusal logs, not a rate of them.
+ * group scale, no real attackers today), but make a real attempt VISIBLE —
+ * without writing personal data to the logs, and without a flood writing one
+ * line per request.
  */
 describe('checkRateLimit monitoring', () => {
   let warnSpy: ReturnType<typeof vi.spyOn>;
@@ -22,48 +19,49 @@ describe('checkRateLimit monitoring', () => {
   });
 
   it('does not log an allowed request', () => {
-    const ok = checkRateLimit('mon-allowed-key', 5, 60_000);
-    expect(ok).toBe(true);
+    expect(checkRateLimit('mon-allowed-key', 5, 60_000)).toBe(true);
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it('logs a refusal, naming the key and the limit — not a format string', () => {
-    const key = 'mon-refused-key';
+  it('logs the first refusal with the bucket, the limit and a hash — a 3/hr bucket loses nothing', () => {
+    const key = 'mon-first:lin@example.com:203.0.113.9';
     expect(checkRateLimit(key, 1, 60_000)).toBe(true);
     expect(checkRateLimit(key, 1, 60_000)).toBe(false);
 
     expect(warnSpy).toHaveBeenCalledTimes(1);
     const [msg, payload] = warnSpy.mock.calls[0];
     expect(msg).toBe('[rate-limit] refused');
-    expect(payload).toMatchObject({ key, maxRequests: 1, windowMs: 60_000 });
+    expect(payload).toMatchObject({ bucket: 'mon-first', maxRequests: 1, windowMs: 60_000, refusedThisWindow: 1 });
+    expect((payload as { keyHash: string }).keyHash).toMatch(/^[0-9a-f]{12}$/);
   });
 
-  it('logs EVERY refusal, not just the first — a 3/hr bucket has no room to sample', () => {
-    const key = 'mon-repeat-key';
-    checkRateLimit(key, 1, 60_000); // consumes the one allowed slot
-    checkRateLimit(key, 1, 60_000); // refusal 1
-    checkRateLimit(key, 1, 60_000); // refusal 2
-    checkRateLimit(key, 1, 60_000); // refusal 3
+  // Keys carry an email or a roster name next to an IP. Logging them on every
+  // refusal writes personal data to App Service logs for no reason.
+  it('never logs the email, name or IP inside a key', () => {
+    const key = 'auth-signin:lin@example.com:203.0.113.9';
+    checkRateLimit(key, 1, 60_000);
+    checkRateLimit(key, 1, 60_000);
+    const logged = JSON.stringify(warnSpy.mock.calls);
+    expect(logged).not.toContain('lin@example.com');
+    expect(logged).not.toContain('203.0.113.9');
+  });
 
-    expect(warnSpy).toHaveBeenCalledTimes(3);
-    for (const call of warnSpy.mock.calls) {
-      expect(call[0]).toBe('[rate-limit] refused');
-      expect(call[1]).toMatchObject({ key });
-    }
+  it('a sustained flood logs on refusals 1, 2, 4, 8 — not once per request — with a stable hash', () => {
+    const key = 'mon-flood:198.51.100.7';
+    checkRateLimit(key, 1, 60_000); // the one allowed request
+    for (let i = 0; i < 10; i++) checkRateLimit(key, 1, 60_000); // 10 refusals
+
+    expect(warnSpy).toHaveBeenCalledTimes(4);
+    const payloads = warnSpy.mock.calls.map((c) => c[1] as { refusedThisWindow: number; keyHash: string });
+    expect(payloads.map((p) => p.refusedThisWindow)).toEqual([1, 2, 4, 8]);
+    expect(new Set(payloads.map((p) => p.keyHash)).size).toBe(1);
   });
 
   it('never interpolates the key into the message string', () => {
-    // A key can carry a name or email the caller controls (e.g.
-    // `recover:${name}:${ip}`). console.warn(str, obj) treats `str` as a
-    // FORMAT string, so a key landing inside it — rather than in the payload
-    // object — would let that name inject %s/%o or a newline. Same class of
-    // bug __tests__/group-leak logging guards against.
     const key = 'mon-injection-key:%s:%o';
     checkRateLimit(key, 1, 60_000);
     checkRateLimit(key, 1, 60_000);
-
     const [msg] = warnSpy.mock.calls[0];
     expect(msg).toBe('[rate-limit] refused');
-    expect(msg).not.toContain('%s');
   });
 });
