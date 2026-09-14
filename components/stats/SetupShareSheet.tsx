@@ -4,7 +4,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '../BottomSheet';
-import { RACKET_STANDIN_SRC } from './RacketThumb';
+import { racketSrc } from '@/lib/racketLook';
 import { shareOrSaveImage } from '@/lib/shareImage';
 import { drawSetupShareCanvas } from '@/lib/setupShareCanvas';
 import { setupShareText, type SetupShare } from '@/lib/gearSetup';
@@ -14,6 +14,9 @@ export interface SetupShareSheetProps {
   onClose: () => void;
   /** Gear only, by type — see `SetupShare`. */
   share: SetupShare;
+  /** The racket in play's catalog id, for its drawing. Kept off `SetupShare`,
+   *  whose fields are exactly what the card and the text say. */
+  racketCatalogId?: string | null;
 }
 
 /**
@@ -29,7 +32,7 @@ export interface SetupShareSheetProps {
  * iOS offers "Save to Photos" on when a programmatic save is not possible.
  * `shareOrSaveImage` marks the external excursion before any hand-off.
  */
-export default function SetupShareSheet({ open, onClose, share }: SetupShareSheetProps) {
+export default function SetupShareSheet({ open, onClose, share, racketCatalogId }: SetupShareSheetProps) {
   const t = useTranslations('stats.gear.setup');
   const tGear = useTranslations('stats.gear');
   const tRecovery = useTranslations('recovery');
@@ -57,8 +60,8 @@ export default function SetupShareSheet({ open, onClose, share }: SetupShareShee
       const fonts = (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready ?? Promise.resolve();
       fonts.then(paint).catch(paint);
     };
-    img.src = RACKET_STANDIN_SRC;
-  }, [share, labels]);
+    img.src = racketSrc(racketCatalogId);
+  }, [share, labels, racketCatalogId]);
 
   async function saveImage() {
     setError(null);

@@ -163,8 +163,10 @@ each owns different hooks and a hook cannot be conditional.
   `rec_card_tap` beacon the rail card carries on the other branch.
 - **`SetupShareSheet`**: preview is the exported PNG (`lib/setupShareCanvas.ts`,
   callback-ref draw); `SetupShare` is gear-only by type.
-- **The stand-in racket is `public/brand/racket-standin.svg`**, one image for
-  every model; `CatalogItem` has no image field and must not grow one for it.
+- **Racket drawings are `lib/racketLook.ts`**: one SVG drawing painted per
+  catalog id from researched colourways (`RACKET_LOOKS`), with an isometric head,
+  served as a data URL. It is presentation, so it stays off `CatalogItem` (a
+  colour change must not refresh seeded rows); an unknown id draws `DEFAULT_LOOK`.
 
 ### Racket FIT engine (`NEXT_PUBLIC_FLAG_RACKET_FIT`, Phase 2, 2026-09-09)
 

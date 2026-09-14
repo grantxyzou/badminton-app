@@ -214,6 +214,7 @@ function SetupRegister({ activeName }: GearRegisterProps) {
           open
           onClose={() => setShareOpen(false)}
           share={share}
+          racketCatalogId={gear.active?.catalogId}
         />
       )}
       {sheet?.kind === 'line' && (

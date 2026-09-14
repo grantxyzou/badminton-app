@@ -1,20 +1,17 @@
 'use client';
 
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-
-/** The one stand-in render every racket row shares (`public/brand/racket-standin.svg`). */
-export const RACKET_STANDIN_SRC = `${BASE}/brand/racket-standin.svg`;
+import { racketSrc } from '@/lib/racketLook';
 
 /**
- * The stand-in racket on a tile. ONE image for every model — it is not a
- * claim that any two frames look alike, which is why `CatalogItem` has no
- * image field and must not grow one for this.
+ * A catalog racket on a tile, drawn in that model's colours
+ * (`lib/racketLook.ts`). A racket with no catalog id gets the app's own
+ * graphite-and-green drawing.
  */
-export default function RacketThumb({ saved = false }: { saved?: boolean }) {
+export default function RacketThumb({ catalogId, saved = false }: { catalogId?: string | null; saved?: boolean }) {
   return (
     <span className={`setup-thumb${saved ? ' setup-thumb--saved' : ''}`} aria-hidden="true">
-      {/* eslint-disable-next-line @next/next/no-img-element -- a 2 KB static SVG stand-in, shown at 24px; next/image would add a loader round trip per row for nothing. */}
-      <img src={RACKET_STANDIN_SRC} alt="" />
+      {/* eslint-disable-next-line @next/next/no-img-element -- an inline SVG data URL shown at 24px; next/image cannot optimise a data URL and would add nothing. */}
+      <img src={racketSrc(catalogId)} alt="" />
     </span>
   );
 }

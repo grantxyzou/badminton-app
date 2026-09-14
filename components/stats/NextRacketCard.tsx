@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
-import { RACKET_STANDIN_SRC } from './RacketThumb';
+import { racketSrc } from '@/lib/racketLook';
 import type { UseGear } from './useGear';
 import type { UseGearPicks } from './useGearPicks';
 import { setupLines } from '@/lib/gearSetup';
@@ -83,8 +83,8 @@ export default function NextRacketCard({ gear, picks, onOpen, onOpenFit }: NextR
     <div className="glass-card p-5" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
       <p className="setup-eyebrow">{t('nextTitle')}</p>
       <button type="button" className="setup-next-row" onClick={onOpen} aria-label={`${pick.item.brand} ${pick.item.model} — ${t('nextOpen')}`}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- the shared 2 KB SVG stand-in; see RacketThumb. */}
-        <img src={RACKET_STANDIN_SRC} alt="" className="setup-next-img" />
+        {/* eslint-disable-next-line @next/next/no-img-element -- the model's drawing as an SVG data URL; see lib/racketLook.ts. */}
+        <img src={racketSrc(pick.item.id)} alt="" className="setup-next-img" />
         <span className="setup-next-body">
           <span className="fs-lg" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{pick.item.model}</span>
           {sub && <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{sub}</span>}

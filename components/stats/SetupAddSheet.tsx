@@ -187,7 +187,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
       <div className="setup-saved" key={c.id}>
         <div className="setup-saved-head">
           <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--accent)' }}>check_circle</span>
-          {category === 'racket' && <RacketThumb saved />}
+          {category === 'racket' && <RacketThumb catalogId={c.id} saved />}
           <span className="fs-lg" style={{ flex: 1, minWidth: 0, fontWeight: 600 }}>{c.model}</span>
           <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('saved')}</span>
         </div>
@@ -299,7 +299,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
               <p className="setup-eyebrow setup-eyebrow--accent">{t('fromCheckIn')}</p>
               {confirming ? (
                 <div className="setup-suggest" role="group" aria-label={t('confirmSuggestion')}>
-                  {category === 'racket' && <RacketThumb />}
+                  {category === 'racket' && <RacketThumb catalogId={suggestion.item.id} />}
                   <span className="setup-suggest-body">
                     <span className="fs-lg" style={{ color: 'var(--text-primary)' }}>{suggestion.item.model}</span>
                     <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('confirmSuggestion')}</span>
@@ -315,7 +315,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
                 </div>
               ) : (
                 <button type="button" className="setup-suggest" onClick={() => setConfirming(true)} disabled={!gear.online}>
-                  {category === 'racket' && <RacketThumb />}
+                  {category === 'racket' && <RacketThumb catalogId={suggestion.item.id} />}
                   <span className="setup-suggest-body">
                     <span className="fs-lg" style={{ color: 'var(--text-primary)' }}>{suggestion.item.model}</span>
                     <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -345,7 +345,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
                         <li key={c.id}>
                           {owned ? (
                             <div className="sheet-row sheet-row--owned">
-                              {category === 'racket' && <RacketThumb />}
+                              {category === 'racket' && <RacketThumb catalogId={c.id} />}
                               <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--space-05)' }}>
                                 <span className="fs-lg">{c.model}</span>
                                 <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{tGear('railInKit')}</span>
@@ -362,7 +362,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
                               disabled={pendingId === c.id || !gear.online}
                               style={pendingId === c.id ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
                             >
-                              {category === 'racket' && <RacketThumb />}
+                              {category === 'racket' && <RacketThumb catalogId={c.id} />}
                               <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--space-05)' }}>
                                 <span className="fs-lg">{c.model}</span>
                                 {spec && <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{spec}</span>}
