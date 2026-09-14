@@ -994,7 +994,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           live once an admin has opened the shop, and an UNKNOWN answer keeps
           the modest version too. See StringingCard for why unknown is not
           treated as closed-but-shown. */}
-      <StringingCard hasIdentity={hasIdentity} onSignIn={() => onTabChange?.('profile')} />
+      <StringingCard hasIdentity={hasIdentity} />
       {/* Only renders for someone with work assigned — which is nobody, for
           everyone who is not a stringer. Sits under the player's own card
           because doing the stringing is the rarer role, and the person's own

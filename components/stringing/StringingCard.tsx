@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl';
 import StatusBanner from '@/components/primitives/StatusBanner';
 import CardHeader from '@/components/primitives/CardHeader';
 import StatusBadge from '@/components/primitives/StatusBadge';
-import EmptyState from '@/components/primitives/EmptyState';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
 import RequestStringingSheet from './RequestStringingSheet';
@@ -31,8 +30,6 @@ function fmtMoney(n: number): string {
 interface Props {
   /** Whether anyone is signed in. A request has to belong to somebody. */
   hasIdentity: boolean;
-  /** Where "Sign in" goes when the server will not list this device's rackets. */
-  onSignIn?: () => void;
 }
 
 /**
@@ -55,7 +52,7 @@ interface Props {
  * data, and the same shape as `ProviderButtons`: unknown renders the modest
  * thing, never the confident one.
  */
-export default function StringingCard({ hasIdentity, onSignIn }: Props) {
+export default function StringingCard({ hasIdentity }: Props) {
   /* The kit's ONE owner in this tree, handed to the request sheet as a prop.
      `useGear` is single-owner by rule — four components once read the gear
      endpoint independently and raced each other's responses. `useActiveName`
@@ -335,17 +332,9 @@ export default function StringingCard({ hasIdentity, onSignIn }: Props) {
           </div>
         )}
 
-        {jobsProblem === 'refused' && (
-          <EmptyState
-            action={onSignIn ? (
-              <button type="button" className="cc-btn cc-btn-ghost" onClick={onSignIn}>
-                {t('jobsSignIn')}
-              </button>
-            ) : undefined}
-          >
-            {t('jobsSignedOut')}
-          </EmptyState>
-        )}
+        {/* Refused renders nothing here: the Balance card directly above already
+            says "Sign in", and two stacked sign-in prompts read as two problems.
+            The request CTA below is disabled, which is this card's half of it. */}
         {jobsProblem === 'failed' && (
           <ErrorState
             message={t('jobsError')}

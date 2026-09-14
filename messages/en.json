@@ -50,8 +50,6 @@
         },
         "pricingEmpty": "Grant hasn't posted prices yet — he'll confirm when he takes the racket.",
         "pricingUnavailable": "Couldn't load prices just now.",
-        "jobsSignedOut": "Sign in to see your rackets.",
-        "jobsSignIn": "Sign in",
         "jobsError": "Couldn't load your rackets.",
         "retry": "Try again",
         "pricingAsk": "Ask",
@@ -1059,6 +1057,7 @@
     "sheetKeep": "Never mind",
     "cancelFailure": "That didn't go through — give it another try.",
     "loadError": "Couldn't load the list.",
+    "sessionLoadError": "Couldn't load this week's session details.",
     "retry": "Try again"
   },
   "admin": {

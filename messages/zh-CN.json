@@ -50,8 +50,6 @@
         },
         "pricingEmpty": "Grant 还没公布价格 — 收到拍子时他会确认。",
         "pricingUnavailable": "暂时没能读取价格。",
-        "jobsSignedOut": "登录后查看你的球拍。",
-        "jobsSignIn": "登录",
         "jobsError": "没能读取你的球拍。",
         "retry": "重试",
         "pricingAsk": "面议",
@@ -1059,6 +1057,7 @@
     "sheetKeep": "再想想",
     "cancelFailure": "没取消成功 — 再试一次吧。",
     "loadError": "暂时加载不出名单。",
+    "sessionLoadError": "暂时加载不出本周活动的详情。",
     "retry": "重试"
   },
   "admin": {

@@ -178,7 +178,7 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
           the date above it is the part that is missing. */}
       {loadError && (
         <ErrorState
-          message={t('loadError')}
+          message={t('sessionLoadError')}
           action={
             <button type="button" onClick={() => loadPlayers()} className="cc-btn cc-btn-ghost">{t('retry')}</button>
           }

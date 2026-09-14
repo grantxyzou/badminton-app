@@ -294,12 +294,14 @@ describe('when the racket list is not there', () => {
     return fetchMock;
   }
 
-  it('refused: muted sign-in copy, not an alert, and no request button that would fail', async () => {
+  it('refused: says nothing (Balance above already asks to sign in), no alert, and no request button that would fail', async () => {
     answer(401);
     wrap();
-    expect(await screen.findByText('Sign in to see your rackets.')).toBeDefined();
+    await waitFor(() =>
+      expect((screen.getByRole('button', { name: /Submit a request/ }) as HTMLButtonElement).disabled).toBe(true),
+    );
     expect(screen.queryByRole('alert')).toBeNull();
-    expect((screen.getByRole('button', { name: /Submit a request/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Sign in' })).toBeNull();
   });
 
   it('failed: an alert with Try again that asks again', async () => {
