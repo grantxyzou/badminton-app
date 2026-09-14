@@ -4697,12 +4697,15 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
    numeric input drawn in its focused state, so it reads as something to type
    into rather than a value. The field is the one place green edges a control
    before it is touched: the keypad is already open on it. */
-.setup-saved-indent--stack { flex-direction: column; align-items: stretch; gap: var(--space-3); }
-.setup-action--stack { flex-direction: column; align-items: stretch; gap: var(--space-3); }
-.setup-tension-label { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
-.setup-tension { display: flex; flex-direction: column; gap: var(--space-2); }
-.setup-tension-row { display: flex; align-items: stretch; gap: var(--space-3); }
-.setup-tension-step {
+/* `nowrap`: the base indent wraps, and a wrapping column sizes its line to the
+   widest child, so the field shrank to its content instead of the panel. */
+.setup-saved-indent.setup-saved-indent--stack { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: var(--space-3); }
+/* Doubled class: `.setup-action` is declared below this block and would otherwise win. */
+.setup-action.setup-action--stack { flex-direction: column; align-items: stretch; gap: var(--space-3); }
+.tension-field-label { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.tension-field { display: flex; flex-direction: column; gap: var(--space-2); width: 100%; }
+.tension-field-row { display: flex; align-items: stretch; gap: var(--space-3); }
+.tension-field-step {
   flex: 0 0 44px;
   display: flex;
   align-items: center;
@@ -4715,10 +4718,10 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
   cursor: pointer;
   transition: transform 100ms var(--ease-glass);
 }
-.setup-tension-step--up { background: var(--highlight-green); border-color: var(--inner-card-green-border); color: var(--accent); }
-.setup-tension-step:active { transform: scale(0.97); }
-.setup-tension-step:disabled { opacity: 0.5; pointer-events: none; }
-.setup-tension-field {
+.tension-field-step--up { background: var(--highlight-green); border-color: var(--inner-card-green-border); color: var(--accent); }
+.tension-field-step:active { transform: scale(0.97); }
+.tension-field-step:disabled { opacity: 0.5; pointer-events: none; }
+.tension-field-box {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -4732,12 +4735,18 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
   box-shadow: 0 0 0 3px var(--input-focus-ring);
   cursor: text;
 }
-.setup-tension-field input {
+.tension-field-box input,
+.tension-field-box input:focus {
   width: 3ch;
+  min-height: 0;
   padding: 0;
   border: none;
+  border-radius: 0;
   outline: none;
   background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   text-align: right;
   font-family: var(--font-mono);
   font-size: var(--fs-stat-lg);
@@ -4746,10 +4755,10 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
   color: var(--text-primary);
   caret-color: var(--accent);
 }
-.setup-tension-field input::placeholder { color: var(--text-muted); font-weight: 400; }
-.setup-tension-unit { font-size: var(--fs-base); color: var(--text-secondary); }
-.setup-tension-hint { margin: 0; font-size: var(--fs-xs); line-height: var(--lh-normal); color: var(--text-muted); }
-.setup-tension-warn { color: var(--sev-warn); }
+.tension-field-box input::placeholder { color: var(--text-muted); font-weight: 400; }
+.tension-field-unit { font-size: var(--fs-base); color: var(--text-secondary); }
+.tension-field-hint { margin: 0; font-size: var(--fs-xs); line-height: var(--lh-normal); color: var(--text-muted); }
+.tension-field-warn { color: var(--sev-warn); }
 
 /* One management action per row in a line sheet. */
 .setup-actions { display: flex; flex-direction: column; gap: var(--space-2); }

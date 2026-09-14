@@ -121,7 +121,7 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
               ) : (
                 <>
                   <div className="setup-action setup-action--stack">
-                    <span className="setup-tension-label">
+                    <span className="tension-field-label">
                       <span className="setup-action-label">{t('tension')}</span>
                       <button
                         type="button"

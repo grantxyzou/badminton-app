@@ -179,9 +179,13 @@ export function drawSetupShareCanvas(
     ctx.moveTo(PAD, ruleY);
     ctx.lineTo(W - PAD, ruleY);
     ctx.stroke();
-    const colW = (W - PAD * 2 - 30) / 4;
-    c.facts.slice(0, 4).forEach((f, i) => {
-      const x = PAD + i * (colW + 10);
+    // Columns for the facts actually shown: two facts get halves, not the
+    // first two quarters of a grid with nothing in the rest.
+    const facts = c.facts.slice(0, 4);
+    const GAP = 10;
+    const colW = (W - PAD * 2 - GAP * (facts.length - 1)) / facts.length;
+    facts.forEach((f, i) => {
+      const x = PAD + i * (colW + GAP);
       ctx.fillStyle = INK.text;
       ctx.globalAlpha = 0.6;
       ctx.font = `700 10px ${sans}`;

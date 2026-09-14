@@ -313,7 +313,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
         {category === 'string' ? (
           <>
             <div className="setup-saved-indent setup-saved-indent--stack">
-              <span className="setup-tension-label">
+              <span className="tension-field-label">
                 <span className="fs-sm" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{t('strungAt')}</span>
                 <button type="button" className="setup-link" onClick={() => { setTension(null); recordEngagement('tension_skipped', { catalogId: saved?.catalogId ?? undefined }); onClose(); }} disabled={gear.busy}>
                   {t('dontKnow')}

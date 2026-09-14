@@ -38,6 +38,8 @@ export interface ShareCardInput {
   clubName: string | null;
   gear: PlayerGear | null;
   racketRow: CatalogItem | null;
+  /** The newest string's catalog row, for its model name ("BG65 Ti"). */
+  stringRow?: CatalogItem | null;
   clubEntries: ClubGearEntry[];
   band: ClubTensionBand | null;
 }
@@ -88,7 +90,7 @@ export function buildShareCard(input: ShareCardInput): ShareCard {
       : null,
     restrings,
     tensionVsClub,
-    string: string?.label ?? null,
+    string: string ? (input.stringRow?.model ?? string.label) : null,
     tensionLbs,
     grip: typeof gear?.fitGrip === 'string' ? gear.fitGrip : null,
     clubCount,

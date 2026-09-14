@@ -68,13 +68,13 @@ export default function TensionField({ value, suggested = null, onChange, rated 
   const clubLine = club ? t('tensionClubHint', { low: club.low, high: club.high }) : null;
 
   return (
-    <div className="setup-tension">
-      <div className="setup-tension-row">
-        <button type="button" className="setup-tension-step" onClick={() => step(-1)}
+    <div className="tension-field">
+      <div className="tension-field-row">
+        <button type="button" className="tension-field-step" onClick={() => step(-1)}
           disabled={disabled || (value !== null && value <= lo)} aria-label={t('tensionLower')}>
           <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)' }}>remove</span>
         </button>
-        <label className="setup-tension-field">
+        <label className="tension-field-box">
           <input
             ref={inputRef}
             type="text"
@@ -88,17 +88,17 @@ export default function TensionField({ value, suggested = null, onChange, rated 
             onChange={(e) => commit(e.target.value)}
             disabled={disabled}
           />
-          <span className="setup-tension-unit">{t('lbUnit')}</span>
+          <span className="tension-field-unit">{t('lbUnit')}</span>
         </label>
-        <button type="button" className="setup-tension-step setup-tension-step--up" onClick={() => step(1)}
+        <button type="button" className="tension-field-step tension-field-step--up" onClick={() => step(1)}
           disabled={disabled || (value !== null && value >= hi)} aria-label={t('tensionRaise')}>
           <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)' }}>add</span>
         </button>
       </div>
       {(outOfRange || clubLine) && (
-        <p id={hintId} className="setup-tension-hint">
+        <p id={hintId} className="tension-field-hint">
           {outOfRange && rated
-            ? <span className="setup-tension-warn">{t('tensionOutOfRange', { low: rated[0], high: rated[1] })}</span>
+            ? <span className="tension-field-warn">{t('tensionOutOfRange', { low: rated[0], high: rated[1] })}</span>
             : clubLine}
         </p>
       )}

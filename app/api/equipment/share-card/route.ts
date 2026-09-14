@@ -60,6 +60,17 @@ export async function GET(req: NextRequest) {
       } catch { racketRow = null; }
     }
 
+    // The string's model name reads better on the card than brand + model.
+    let stringRow: CatalogItem | null = null;
+    const latestString = [...(gear?.items ?? [])].reverse().find((i) => i && !i.retiredAt && i.category === 'string');
+    if (latestString?.catalogId) {
+      try {
+        await ensureCatalogSeeded();
+        const { resource } = await getContainer('equipmentCatalog').item(latestString.catalogId, 'string').read();
+        stringRow = (resource as CatalogItem | undefined) ?? null;
+      } catch { stringRow = null; }
+    }
+
     let joinedAt: string | null = null;
     try {
       if (isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) joinedAt = (await readMembership(groupId, memberId))?.joinedAt ?? null;
@@ -80,7 +91,7 @@ export async function GET(req: NextRequest) {
       band = racket?.catalogId ? clubTensionFor(docs, racket.catalogId) : null;
     } catch { /* the club facts drop; the card does not */ }
 
-    return NextResponse.json({ card: buildShareCard({ name, joinedAt, clubName, gear, racketRow, clubEntries, band }) });
+    return NextResponse.json({ card: buildShareCard({ name, joinedAt, clubName, gear, racketRow, stringRow, clubEntries, band }) });
   } catch (error) {
     console.error('GET equipment/share-card error:', error);
     return NextResponse.json({ error: 'load_failed' }, { status: 500 });
