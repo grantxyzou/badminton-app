@@ -28,6 +28,8 @@ interface SignInFormProps {
    * form as the way in for a member with no PIN.
    */
   probeName?: boolean;
+  /** Prefill: Profile knows the name this device already carries. */
+  initialName?: string;
 }
 
 /**
@@ -42,9 +44,9 @@ interface SignInFormProps {
  * - RecoverySheet (wraps in a modal + welcome-back animation)
  * - ProfileTab anonymous view (renders directly in the card)
  */
-export default function SignInForm({ sessionId, onSuccess, onForgotPin, probeName = true }: SignInFormProps) {
+export default function SignInForm({ sessionId, onSuccess, onForgotPin, probeName = true, initialName = '' }: SignInFormProps) {
   const t = useTranslations('recovery');
-  const [name, setName] = useState('');
+  const [name, setName] = useState(initialName);
   const [pin, setPin] = useState('');
   const [error, setError] = useState<'invalid' | 'rate_limited' | 'admin_logged_in' | 'network' | null>(null);
   /**

@@ -6,6 +6,7 @@ import CardHeader from '@/components/primitives/CardHeader';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
+import LockedCard, { PreviewRow } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -72,8 +73,17 @@ export default function WhoYouPlayWithCard({ activeName }: WhoYouPlayWithCardPro
   }, [activeName, attempt]);
 
   if (!activeName) return null;
-  // Refused: the Stats tab's sign-in banner already says so, with the button.
-  if (status === 'forbidden') return null;
+  // Refused (this device holds no session for the name): the card stays, as
+  // its own shape with nothing in it, and Sign in carries the weight.
+  if (status === 'forbidden') {
+    return (
+      <LockedCard icon="group" title={t('title')} subtitle={t('subtitle')} message={t('locked')}>
+        <PreviewRow icon="person" width="58%" />
+        <PreviewRow icon="person" width="44%" />
+        <PreviewRow icon="person" width="32%" />
+      </LockedCard>
+    );
+  }
   if (status === 'loading') return <CardSkeleton height={160} />;
 
   const top = partners.slice(0, TOP);

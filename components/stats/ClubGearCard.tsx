@@ -7,6 +7,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import type { ClubGearEntry } from '@/lib/clubGear';
+import LockedCard, { PreviewRow } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -39,8 +40,17 @@ export default function ClubGearCard() {
   }, [attempt]);
 
   if (status === 'loading') return <CardSkeleton height={180} />;
-  // Refused (members only, no session): the tab's sign-in banner says why.
-  if (status === 'forbidden') return null;
+  // Refused (this device holds no session for the name): the card stays, as
+  // its own shape with nothing in it, and Sign in carries the weight.
+  if (status === 'forbidden') {
+    return (
+      <LockedCard icon="groups" title={t('clubTitle')} subtitle={t('clubSubtitle')} message={t('clubLocked')}>
+        <PreviewRow width="52%" />
+        <PreviewRow width="40%" />
+        <PreviewRow width="30%" />
+      </LockedCard>
+    );
+  }
 
   const top = entries.slice(0, 3);
   const max = top[0]?.count ?? 0;

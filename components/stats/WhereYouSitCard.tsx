@@ -8,6 +8,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { SKILLS, topStrengths, workOnNext, type Rating } from '@/lib/assessment';
 import type { Band } from '@/lib/clubBands';
 import type { UseCheckIn } from './useCheckIn';
+import LockedCard, { PreviewMeter } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -102,8 +103,15 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
   }, [activeName, attempt]);
 
   if (!activeName) return null;
-  // Refused: the Stats tab's sign-in banner already says so, with the button.
-  if (status === 'forbidden' || historyStatus === 'forbidden') return null;
+  // Refused (this device holds no session for the name): the card stays, as
+  // its own shape with nothing in it, and Sign in carries the weight.
+  if (status === 'forbidden' || historyStatus === 'forbidden') {
+    return (
+      <LockedCard icon="groups" title={t('title')} message={t('locked')}>
+        {SKILLS.slice(0, 2).map((s) => <PreviewMeter key={s.key} label={s.label} />)}
+      </LockedCard>
+    );
+  }
   if (status === 'loading' || historyStatus === 'loading') return <CardSkeleton height={180} />;
   if (status === 'error' || historyStatus === 'error') {
     // A failed read is NOT the same as "too few people" — say so out loud

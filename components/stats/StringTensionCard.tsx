@@ -6,6 +6,7 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import { recommendTension, formatForToggle, MIN_LB, MAX_LB, type PlayFormat } from '@/lib/tension';
 import type { UseGear } from './useGear';
+import LockedCard from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -114,9 +115,19 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
 
   // Order is deliberate, and each branch answers a different question.
   if (levelStatus === 'loading') return null;
-  // Refused: the Stats tab's sign-in banner already says so, with the button —
-  // and silence matches this card's own answer for "no level yet".
-  if (levelStatus === 'forbidden') return null;
+  // Refused (this device holds no session for the name): the card stays, as
+  // its own shape with nothing in it, and Sign in carries the weight.
+  if (levelStatus === 'forbidden') {
+    return (
+      <LockedCard icon="science" title={t('tensionTitle')} subtitle={t('tensionSubtitle')} message={t('tensionLocked')}>
+        <div className="segment-control flex w-full">
+          <span className="flex-1 flex items-center justify-center fs-sm segment-tab-inactive">{t('doubles')}</span>
+          <span className="flex-1 flex items-center justify-center fs-sm segment-tab-inactive">{t('singles')}</span>
+        </div>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-stat-lg)' }}>— {t('lb')}</span>
+      </LockedCard>
+    );
+  }
   if (levelStatus === 'error') return failed(t('tensionError'), retryLevel);
 
   // Read succeeded and the member genuinely has no level yet: render nothing,

@@ -8,6 +8,7 @@ import EmptyState from '@/components/primitives/EmptyState';
 import { BottomSheet, BottomSheetBody, BottomSheetHeader } from '../BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 import type { UseCheckIn } from './useCheckIn';
+import LockedCard, { PreviewRow } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -139,8 +140,16 @@ export default function LearnRegister({ activeName, checkIn, onCheckedIn }: Lear
 
   if (!activeName) return null;
   if (status === 'loading') return <CardSkeleton height={320} />;
-  // Refused: the Stats tab's sign-in banner already says so, with the button.
-  if (status === 'forbidden') return null;
+  // Refused (this device holds no session for the name): the card stays, as
+  // its own shape with nothing in it, and Sign in carries the weight.
+  if (status === 'forbidden') {
+    return (
+      <LockedCard title={t('twoTitle')} message={t('locked')}>
+        <PreviewRow icon="school" width="70%" value="" />
+        <PreviewRow icon="school" width="56%" value="" />
+      </LockedCard>
+    );
+  }
   // Standalone, not a card holding only an error (the state rule).
   if (status === 'error') {
     return (
