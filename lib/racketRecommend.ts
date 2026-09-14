@@ -1,4 +1,5 @@
 import type { CatalogItem } from './types';
+import { isOffered } from './catalogOffer';
 import type { PlayerProfile } from './racketProfile';
 
 export interface Recommendation {
@@ -347,6 +348,7 @@ export function recommendRackets(
   for (const item of catalog) {
     if (item.category !== category) continue;
     if (!isScorable(item)) continue;
+    if (!isOffered(item)) continue;
     if (profile.currentRacketId && item.id === profile.currentRacketId) continue;
 
     results.push(scoreItem(item, profile));

@@ -163,6 +163,7 @@ each owns different hooks and a hook cannot be conditional.
   `rec_card_tap` beacon the rail card carries on the other branch.
 - **`SetupShareSheet`**: preview is the exported PNG (`lib/setupShareCanvas.ts`,
   callback-ref draw); `SetupShare` is gear-only by type.
+- **A catalog row can be withdrawn without deleting it**: `attributes.unlisted` (a reason string) makes `isOffered()` (`lib/catalogOffer.ts`) false, and both recommenders plus both add sheets skip it, while a bag pointing at it still resolves. Deleting a row from the seed JSON would not remove it from Cosmos, since seeding never deletes. See `docs/catalog-check-2026-09-14.md`.
 - **Racket drawings are `lib/racketLook.ts`**: one SVG drawing painted per
   catalog id from researched colourways (`RACKET_LOOKS`), with an isometric head,
   served as a data URL. It is presentation, so it stays off `CatalogItem` (a

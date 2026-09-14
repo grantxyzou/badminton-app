@@ -49,7 +49,7 @@
       "id": "racket-yonex-astrox-88s-pro",
       "category": "racket",
       "brand": "Yonex",
-      "model": "Astrox 88S Pro",
+      "model": "Astrox 88S Pro (2nd Gen)",
       "msrp": 309,
       "skillRange": [
         4,
@@ -84,7 +84,7 @@
       "id": "racket-yonex-astrox-99-pro",
       "category": "racket",
       "brand": "Yonex",
-      "model": "Astrox 99 Pro",
+      "model": "Astrox 99 Pro (2nd Gen)",
       "msrp": 329,
       "skillRange": [
         4,
@@ -135,7 +135,8 @@
         "tier": "Premium",
         "weightMinG": 80,
         "weightMaxG": 84,
-        "lastVerified": "2026-08-21"
+        "lastVerified": "2026-09-14",
+        "unlisted": "discontinued"
       },
       "sources": [
         {
@@ -218,7 +219,7 @@
       "id": "racket-victor-thruster-falcon",
       "category": "racket",
       "brand": "Victor",
-      "model": "Thruster Falcon",
+      "model": "Thruster K Falcon Enhanced Edition",
       "msrp": 189,
       "skillRange": [
         4,
@@ -229,7 +230,7 @@
         "balance": "Head-heavy",
         "flex": "Stiff",
         "playStyle": "Power",
-        "notes": "entry-level attack",
+        "notes": "Enhanced edition of the Thruster K Falcon",
         "subType": "all-round",
         "tier": "Premium",
         "weightMinG": 80,
@@ -285,7 +286,7 @@
       "id": "racket-victor-jetspeed-12",
       "category": "racket",
       "brand": "Victor",
-      "model": "Jetspeed 12",
+      "model": "Jetspeed S 12 II",
       "msrp": 259,
       "skillRange": [
         4,
@@ -400,7 +401,8 @@
         "tier": "Premium",
         "weightMinG": 85,
         "weightMaxG": 89,
-        "lastVerified": "2026-08-21"
+        "lastVerified": "2026-09-14",
+        "unlisted": "duplicate"
       },
       "sources": [
         {
@@ -1219,7 +1221,8 @@
         "tensionMaxLbs": 27,
         "priceMinUSD": 130,
         "priceMaxUSD": 160,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-08-19",
+        "unlisted": "not_a_model"
       },
       "seeded": true,
       "msrp": 179
@@ -1576,7 +1579,8 @@
         "tensionMaxLbs": 26,
         "priceMinUSD": 140,
         "priceMaxUSD": 170,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-08-19",
+        "unlisted": "not_a_model"
       },
       "seeded": true,
       "msrp": 193
@@ -1609,7 +1613,8 @@
         "tensionMaxLbs": 24,
         "priceMinUSD": 60,
         "priceMaxUSD": 90,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-08-19",
+        "unlisted": "not_a_model"
       },
       "seeded": true,
       "msrp": 83
@@ -2275,7 +2280,8 @@
         "priceMinUSD": 90,
         "priceMaxUSD": 120,
         "lastVerified": "2026-08-19",
-        "notes": "Retailer-classified club/mid-range series, sits between entry and Turbo Charging tiers"
+        "notes": "Retailer-classified club/mid-range series, sits between entry and Turbo Charging tiers",
+        "unlisted": "discontinued"
       },
       "seeded": true,
       "msrp": 124

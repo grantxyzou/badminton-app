@@ -7,6 +7,7 @@ import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet'
 import type { GearResult } from './useGear';
 import type { CatalogItem, EquipmentCategory, GearItem } from '@/lib/types';
 import { searchCatalog } from '@/lib/gearSearch';
+import { isOffered } from '@/lib/catalogOffer';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -148,7 +149,8 @@ export default function GearSheet({
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
         if (!live) return;
-        const items = (d.items ?? []) as CatalogItem[];
+        // This sheet only ever lists rows to pick, so a withdrawn row is dropped here.
+        const items = ((d.items ?? []) as CatalogItem[]).filter(isOffered);
         setCatalog(items);
         setLoaded(true);
         setLoadError(false);

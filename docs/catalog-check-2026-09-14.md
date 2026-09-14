@@ -1,6 +1,6 @@
 # Racket catalog check — 2026-09-14
 
-Grant asked for the racket catalog to be checked against real listings and for the missing current models to be added. The catalog went from 71 rackets to 157. Every racket still passes `isScorable`, so all 157 can be recommended.
+Grant asked for the racket catalog to be checked against real listings and for the missing current models to be added. The catalog went from 71 rackets to 157. Every racket still passes `isScorable`. Six rows are withdrawn with `unlisted` (below), so 151 are offered.
 
 ## How
 - One research pass per brand (Yonex, Victor, Li-Ning), with the same rules for each:
@@ -20,7 +20,15 @@ Grant asked for the racket catalog to be checked against real listings and for t
 
 ## Decisions for Grant
 
-### Not a real model — still in the catalog AND still recommendable until decided
+### Withdrawn with `attributes.unlisted` (Grant, 2026-09-14)
+
+`lib/catalogOffer.ts` `isOffered()` drops these rows from both recommenders and from every "Add a racket" list. Each row stays in place, so a bag that points at one still shows its name and specs. The flag records its reason:
+
+- **`not_a_model`:** NitroLite 80X, Halberd 900, G-Force Superlite.
+- **`duplicate`:** AxForce 90 Dragon (the Dragon Max is the real row).
+- **`discontinued`:** plain Nanoflare 700, Air Force 79. These did exist, so the reason says so.
+
+### What the check found for each
 | Row | What the check found |
 |---|---|
 | `racket-victor-nitrolite-80x` | Not a racket. NitroLite is Victor's shoe foam, and no racket in Victor's catalog carries the name. |
@@ -30,11 +38,18 @@ Grant asked for the racket catalog to be checked against real listings and for t
 | `racket-li-ning-air-force-79` | Not sold anywhere now. |
 | `racket-yonex-nanoflare-700` | The original is discontinued. The current line is 700 Pro/Tour/Game/Play, now in the catalog. |
 
-### Duplicates (two rows, one racket)
-- `racket-yonex-astrox-88s-pro` = `racket-yonex-astrox-88s-pro-3rd-gen`
-- `racket-yonex-astrox-99-pro` = `racket-yonex-astrox-99-pro-3rd-gen`
-- `racket-victor-thruster-falcon` = `racket-victor-thruster-k-falcon` (both are the Thruster F)
-- `racket-victor-jetspeed-12` = `racket-victor-jetspeed-s-12` (both are the JS-12)
+### Pairs the research called duplicates: renamed instead (Grant, 2026-09-14)
+
+The research merged generations and editions of each pair into one "current" racket. A member may own the older one, so both rows stay, and the names now say which is which. The ids are unchanged.
+
+| Row | Was | Now |
+|---|---|---|
+| `racket-yonex-astrox-88s-pro` | Astrox 88S Pro | Astrox 88S Pro (2nd Gen) — the 2021 model; 3rd Gen is its own row |
+| `racket-yonex-astrox-99-pro` | Astrox 99 Pro | Astrox 99 Pro (2nd Gen) |
+| `racket-victor-thruster-falcon` | Thruster Falcon | Thruster K Falcon Enhanced Edition |
+| `racket-victor-jetspeed-12` | Jetspeed 12 | Jetspeed S 12 II — the successor; Jetspeed S 12 is the original |
+
+Both 2nd-generation Yonex rows took their corrected specs and current US price from Yonex's current (3rd-generation) pages, because the older model has no page of its own now. The specs match; the price is the successor's.
 
 ### Real, but old or no longer sold
 - **Victor:** HyperNano X 800 (2015), Brave Sword 1500, Arrow Speed 88.

@@ -1,4 +1,5 @@
 import type { CatalogItem, FitGoal, FitSwing, FitArmComfort, FitGrip } from './types';
+import { isOffered } from './catalogOffer';
 import type { PlayerProfile } from './racketProfile';
 
 /**
@@ -528,6 +529,7 @@ export function recommendFit(input: FitInput, catalog: CatalogItem[]): FitResult
   for (const item of catalog) {
     if (item.category !== 'racket') continue;
     if (!isScorable(item)) continue;
+    if (!isOffered(item)) continue;
     if (input.ownedIds.has(item.id)) continue;
     if (input.ownedLabels.has(canon(`${item.brand} ${item.model}`)) || input.ownedLabels.has(canon(item.model))) continue;
     const axes = axesOf(item);
