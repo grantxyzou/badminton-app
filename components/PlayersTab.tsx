@@ -9,6 +9,7 @@ import SkillDiscoveryCard from './home/SkillDiscoveryCard';
 import type { Tab } from './HomeShell';
 import ShuttleIcon from '@/components/ShuttleIcon';
 import EmptyState from '@/components/primitives/EmptyState';
+import ErrorState from '@/components/primitives/ErrorState';
 import PageHeader from '@/components/primitives/PageHeader';
 import { BottomSheet, BottomSheetBody } from '@/components/BottomSheet';
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
@@ -132,9 +133,15 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
             convention's space-y-3 instead of a hand-rolled h-3 spacer. The
             empty-state branch below was routed through <EmptyState> for
             exactly this reason; its error-state twin was left behind. */}
-        <div className="py-12 px-6 text-center space-y-3">
-          <p className="fs-md text-gray-400" role="alert">{t('loadError')}</p>
-          <button type="button" onClick={() => loadPlayers()} className="cc-btn cc-btn-ghost">{t('retry')}</button>
+        <div className="py-12 px-6">
+          {/* Red: this one IS a failure. It was muted grey carrying
+              role="alert", which is the colour of "nothing here". */}
+          <ErrorState
+            message={t('loadError')}
+            action={
+              <button type="button" onClick={() => loadPlayers()} className="cc-btn cc-btn-ghost">{t('retry')}</button>
+            }
+          />
         </div>
       </div>
     );
@@ -148,7 +155,10 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
             for "anywhere the UI refers to the sport itself". Routed through
             <EmptyState> so the spacing, size and ink match every other empty
             state instead of being a hand-rolled p-10 with a spacer div. */}
-        <div className="glass-card p-5">
+        {/* Standalone, not boxed: a card whose only content is "nobody yet" is
+            chrome around an absence (the state rule). 28px here plus the
+            standing EmptyState's own 20px is the page-level 48. */}
+        <div className="py-7">
           <EmptyState icon={<ShuttleIcon size={40} color="var(--text-muted)" />}>
             {t('empty')}
           </EmptyState>
@@ -163,6 +173,17 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
     <div className="space-y-5">
       <PageHeader>{pageT('title')}</PageHeader>
       <div className="space-y-4">
+      {/* Part of the load failed (usually the session) while players arrived:
+          the roster is still worth showing, but not as if nothing went wrong —
+          the date above it is the part that is missing. */}
+      {loadError && (
+        <ErrorState
+          message={t('sessionLoadError')}
+          action={
+            <button type="button" onClick={() => loadPlayers()} className="cc-btn cc-btn-ghost">{t('retry')}</button>
+          }
+        />
+      )}
       {/* Active players card */}
       <div className="glass-card overflow-hidden">
         <div className="px-4 pt-3 pb-2 section-label">

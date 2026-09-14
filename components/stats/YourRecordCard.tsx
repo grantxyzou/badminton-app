@@ -27,8 +27,9 @@ export interface YourRecordCardProps {
 
 export default function YourRecordCard({ activeName }: YourRecordCardProps) {
   const t = useTranslations('stats.record');
+  const tStats = useTranslations('stats');
   const [record, setRecord] = useState<GameRecord | null>(null);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'forbidden'>('loading');
   const [loggerOpen, setLoggerOpen] = useState(false);
   // The logger writes into a session bucket, so it needs the active session id.
   // Resolved here rather than threaded through SkillsTab, matching how
@@ -52,12 +53,16 @@ export default function YourRecordCard({ activeName }: YourRecordCardProps) {
   const load = useCallback(() => {
     if (!activeName) return;
     fetch(`${BASE}/api/games?all=true&name=${encodeURIComponent(activeName)}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((r) => {
+        // Owner-gated: a 403 is this device not owning the name, not a failure.
+        if (r.status === 403) return Promise.reject(new Error('forbidden'));
+        return r.ok ? r.json() : Promise.reject(new Error(String(r.status)));
+      })
       .then((d) => {
         setRecord(summarizeRecord((d?.games ?? []) as GameResult[], activeName));
         setStatus('ready');
       })
-      .catch(() => setStatus('error'));
+      .catch((e: Error) => setStatus(e?.message === 'forbidden' ? 'forbidden' : 'error'));
   }, [activeName]);
 
   useEffect(() => {
@@ -66,6 +71,8 @@ export default function YourRecordCard({ activeName }: YourRecordCardProps) {
 
   if (!activeName) return null;
   if (status === 'loading') return <CardSkeleton height={260} />;
+  // Refused: the Stats tab's sign-in banner already says so, with the button.
+  if (status === 'forbidden') return null;
 
   const cta = (
     <>
@@ -73,6 +80,9 @@ export default function YourRecordCard({ activeName }: YourRecordCardProps) {
         type="button"
         className="cc-btn cc-btn-primary cc-btn-lg"
         style={{ width: '100%' }}
+        // No session id, no logger to open: the sheet below only mounts with
+        // one. Enabled, this was a button that did nothing when tapped.
+        disabled={!sessionId}
         onClick={() => setLoggerOpen(true)}
       >
         {t('add')}
@@ -95,7 +105,14 @@ export default function YourRecordCard({ activeName }: YourRecordCardProps) {
     return (
       <div className="glass-card p-5 space-y-3">
         <Header t={t} fraction={null} />
-        <ErrorState message={t('error')} />
+        <ErrorState
+          message={t('error')}
+          action={
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={() => { setStatus('loading'); load(); }}>
+              {tStats('retry')}
+            </button>
+          }
+        />
         {cta}
       </div>
     );

@@ -62,11 +62,12 @@ export interface LearnRegisterProps {
 
 export default function LearnRegister({ activeName, checkIn, onCheckedIn }: LearnRegisterProps) {
   const t = useTranslations('stats.learn');
+  const tStats = useTranslations('stats');
   const online = useOnline();
 
   const [drills, setDrills] = useState<DrillPick[]>([]);
   const [done, setDone] = useState<string[]>([]);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'forbidden'>('loading');
   const [needsCheckIn, setNeedsCheckIn] = useState(false);
   const [openDrill, setOpenDrill] = useState<DrillPick | null>(null);
   const [saveError, setSaveError] = useState(false);
@@ -84,7 +85,7 @@ export default function LearnRegister({ activeName, checkIn, onCheckedIn }: Lear
         setNeedsCheckIn(picks.length === 0);
         setStatus('ready');
       })
-      .catch(() => setStatus('error'));
+      .catch((e: Error) => setStatus(e?.message === '403' ? 'forbidden' : 'error'));
   }, [activeName]);
 
   useEffect(() => {
@@ -138,11 +139,19 @@ export default function LearnRegister({ activeName, checkIn, onCheckedIn }: Lear
 
   if (!activeName) return null;
   if (status === 'loading') return <CardSkeleton height={320} />;
+  // Refused: the Stats tab's sign-in banner already says so, with the button.
+  if (status === 'forbidden') return null;
+  // Standalone, not a card holding only an error (the state rule).
   if (status === 'error') {
     return (
-      <div className="glass-card p-5">
-        <ErrorState message={t('error')} />
-      </div>
+      <ErrorState
+        message={t('error')}
+        action={
+          <button type="button" className="cc-btn cc-btn-ghost" onClick={() => { setStatus('loading'); load(); }}>
+            {tStats('retry')}
+          </button>
+        }
+      />
     );
   }
 

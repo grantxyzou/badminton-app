@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import EmptyState from '@/components/primitives/EmptyState';
 import TopBar from '@/components/primitives/TopBar';
 import ProviderButtons, { type Provider } from '@/components/auth/ProviderButtons';
 import EmailSignUpForm from '@/components/auth/EmailSignUpForm';
@@ -242,7 +243,8 @@ export default function CreateGroupPage({
 
             {!canOfferCredential ? (
               <>
-                <p className="field-error">{t('needsAccount')}</p>
+                {/* A refusal, not a failure: nothing broke, this path needs an account. */}
+                <EmptyState>{t('needsAccount')}</EmptyState>
                 <button type="button" onClick={handleBack} className="cc-btn cc-btn-ghost" style={{ width: '100%' }}>
                   {t('backLabel')}
                 </button>

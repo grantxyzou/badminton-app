@@ -110,7 +110,9 @@ describe('StatsPrivacyScreen', () => {
   it('draws NO switch when the read reported no preference', () => {
     renderScreen(state({ privacy: null, loaded: true, error: false }));
     expect(screen.queryByRole('switch')).toBeNull();
-    expect(screen.getByRole('alert').textContent).toBe(enMessages.stats.privacy.unknown);
+    // Muted, not an alert: the read worked, it reported no answer (state rule, 2026-09-14).
+    expect(screen.getByText(enMessages.stats.privacy.unknown)).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.queryByText(/you'll see your band on every compared skill/)).toBeNull();
     expect(screen.queryByText(/you'll still see the club spread/)).toBeNull();
   });
@@ -124,7 +126,8 @@ describe('StatsPrivacyScreen', () => {
 
   it('keeps a FAILED read distinct from an unknown one', () => {
     renderScreen(state({ privacy: null, loaded: true, error: true }));
-    expect(screen.getByRole('alert').textContent).toBe(enMessages.stats.privacy.saveError);
+    // A READ failure says so — it used to borrow the SAVE copy.
+    expect(screen.getByRole('alert').textContent).toBe(enMessages.stats.privacy.loadError);
     expect(screen.queryByText(enMessages.stats.privacy.unknown)).toBeNull();
     expect(screen.queryByRole('switch')).toBeNull();
   });

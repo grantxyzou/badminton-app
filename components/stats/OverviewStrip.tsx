@@ -25,7 +25,10 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
  * Cosmos misconfiguration stayed invisible.
  */
 
-type Tile<T> = { status: 'loading' | 'ready' | 'error'; data: T | null };
+/** `forbidden` is a 403 — this device does not own the name. A dash with no
+ *  caption: the tab's sign-in banner says why, and "couldn't load" would call
+ *  a refusal a failure. */
+type Tile<T> = { status: 'loading' | 'ready' | 'error' | 'forbidden'; data: T | null };
 
 const PENDING = { status: 'loading' as const, data: null };
 
@@ -70,7 +73,7 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
         const raw = d?.level?.level;
         setLevel({ status: 'ready', data: typeof raw === 'number' ? raw : null });
       })
-      .catch(() => live && setLevel({ status: 'error', data: null }));
+      .catch((e: Error) => live && setLevel({ status: e?.message === '403' ? 'forbidden' : 'error', data: null }));
 
     // The check-in history is NOT read here any more. The level number and its
     // delta still come from different places — the canonical level folds games
@@ -83,7 +86,7 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
 
     get(`/api/games?all=true&name=${n}`)
       .then((d) => live && setGames({ status: 'ready', data: (d?.games ?? []).length }))
-      .catch(() => live && setGames({ status: 'error', data: null }));
+      .catch((e: Error) => live && setGames({ status: e?.message === '403' ? 'forbidden' : 'error', data: null }));
 
     get(`/api/kudos?name=${n}`)
       .then((d) => {
@@ -96,7 +99,7 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
           data: counts.reduce((sum, c) => sum + (typeof c.count === 'number' ? c.count : 0), 0),
         });
       })
-      .catch(() => live && setKudos({ status: 'error', data: null }));
+      .catch((e: Error) => live && setKudos({ status: e?.message === '403' ? 'forbidden' : 'error', data: null }));
 
     return () => {
       live = false;
@@ -117,6 +120,8 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
   let levelCaption: string = t('takeCheckIn');
   if (level.status === 'error') {
     levelCaption = t('loadError');
+  } else if (level.status === 'forbidden') {
+    levelCaption = '';
   } else if (level.status === 'ready' && level.data !== null) {
     levelValue = level.data.toFixed(1);
     // Gate on the OWNER's status, never on a null-coalesced length: a failed
@@ -197,12 +202,12 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
       <GlassTile
         label={t('games')}
         value={countText(games, t('noValue'))}
-        caption={games.status === 'error' ? t('loadError') : t('gamesCaption')}
+        caption={games.status === 'error' ? t('loadError') : games.status === 'forbidden' ? '' : t('gamesCaption')}
       />
       <GlassTile
         label={t('kudos')}
         value={countText(kudos, t('noValue'))}
-        caption={kudos.status === 'error' ? t('loadError') : t('kudosCaption')}
+        caption={kudos.status === 'error' ? t('loadError') : kudos.status === 'forbidden' ? '' : t('kudosCaption')}
         valueColor="var(--accent-amber)"
       />
     </div>

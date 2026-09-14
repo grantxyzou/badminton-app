@@ -39,11 +39,25 @@ import ErrorState from '@/components/primitives/ErrorState';
  */
 export default function SummaryGreeting() {
   const t = useTranslations('stats');
-  const { data, forbidden, serverError } = useInsight(true);
+  const { data, forbidden, serverError, reload } = useInsight(true);
   const greeting = data?.greeting ?? null;
 
-  if (forbidden) return <ErrorState message={t('signInAgain')} />;
-  if (serverError) return <ErrorState message={t('insightUnavailable')} />;
+  // A refusal renders nothing HERE: the same 403 raises the tab's own "sign in
+  // to see your stats" banner, which carries the Sign in button. Every card
+  // repeating it in red was a dozen alerts for one fact that is not a failure.
+  if (forbidden) return null;
+  if (serverError) {
+    return (
+      <ErrorState
+        message={t('insightUnavailable')}
+        action={
+          <button type="button" className="cc-btn cc-btn-ghost" onClick={reload}>
+            {t('retry')}
+          </button>
+        }
+      />
+    );
+  }
   if (!greeting) return null;
 
   return (

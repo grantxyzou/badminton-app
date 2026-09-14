@@ -81,11 +81,16 @@ describe('StringTensionCard — no number without something behind it', () => {
     expect(screen.getByRole('alert').textContent).toBe(TENSION_ERROR);
   });
 
-  it('renders the sign-in state when the level read is refused (403)', async () => {
+  it('renders nothing when the level read is refused (403)', async () => {
+    // State rule (2026-09-14): a refusal is not a failure and is not red. The
+    // Stats tab's sign-in banner explains it once, with a Sign in button, so
+    // the card renders nothing rather than a dozen red repeats.
     mockLevel(403, { error: 'forbidden' });
-    renderCard();
-    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
-    expect(screen.getByRole('alert').textContent).toBe(SIGN_IN_COPY);
+    const { container } = renderCard();
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 20));
+    expect(container.textContent).toBe('');
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   // ── B1: a failed gear read used to print a doubles number at a singles

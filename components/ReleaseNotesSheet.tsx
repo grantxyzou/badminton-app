@@ -47,7 +47,7 @@ export default function ReleaseNotesSheet({ open, releases, onClose }: ReleaseNo
         <p className="terminal-prompt mb-4">$ bpm --changelog</p>
         {releases === null ? (
           <p className="terminal-body" role="alert">
-            Couldn&apos;t load — refresh to retry
+            {t('loadError')}
           </p>
         ) : (
         <ul className="space-y-6">

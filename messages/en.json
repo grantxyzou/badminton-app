@@ -1,5 +1,7 @@
 {
   "home": {
+    "weekLoadError": "Couldn't load this week's session.",
+    "retry": "Try again",
       "firstSession": {
       "title": "No session yet",
       "adminHint": "Set your first night and people can start signing up.",
@@ -43,11 +45,13 @@
           "decline": "No thanks",
           "working": "Saving…",
           "error": "That didn't save — try again.",
-          "gone": "That change is no longer waiting. Pull to refresh.",
+          "gone": "That change is no longer waiting — nothing to answer.",
           "close": "Close"
         },
         "pricingEmpty": "Grant hasn't posted prices yet — he'll confirm when he takes the racket.",
         "pricingUnavailable": "Couldn't load prices just now.",
+        "jobsError": "Couldn't load your rackets.",
+        "retry": "Try again",
         "pricingAsk": "Ask",
         "steps": {
           "submit": "Submit a request",
@@ -208,6 +212,7 @@
       "retry": "Try again"
     },
     "releases": {
+      "loadError": "Couldn't load the changelog.",
       "whatsNew": "What's new in {version}",
       "sheetLabel": "Release history",
       "close": "Close"
@@ -242,6 +247,7 @@
   },
   "profile": {
     "auth": {
+      "retry": "Try again",
       "pendingExpiredTitle": "Let's start that again",
       "pendingExpiredCta": "Back to sign-in",
       "emailLabel": "Email",
@@ -325,7 +331,7 @@
       "disconnectCancel": "Keep it",
       "lastCredential": "This is your only way back in, so it has to stay. Add a PIN or another sign-in first.",
       "disconnectFailed": "Couldn't disconnect that — try again.",
-      "methodsLoadError": "Couldn't load your sign-in methods — refresh to retry.",
+      "methodsLoadError": "Couldn't load your sign-in methods.",
       "claimTitle": "Is that you?",
       "claimBody": "Someone already plays as {name}. If that's you, enter your PIN and we'll connect this sign-in to your account.",
       "claimPinLabel": "Your 4-digit PIN",
@@ -574,7 +580,9 @@
       "catString": "Strings",
       "catShoe": "Shoes",
       "catShuttle": "Shuttles",
-      "kitError": "Couldn't load your equipment — refresh to try again",
+      "kitError": "Couldn't load your equipment.",
+      "pickError": "Couldn't load this pick.",
+      "retry": "Try again",
       "tensionTitle": "String tension",
       "tensionSubtitle": "From your level and how you play.",
       "doubles": "Doubles",
@@ -586,11 +594,11 @@
       "tensionMidLevel": "Around here you start trading a little free power for control — this is a sensible middle to try.",
       "tensionHighLevel": "At your level the bed is about control and feel, so a tighter string makes placement more repeatable.",
       "tensionAdvisory": "A starting point, not a spec — talk to whoever strings your racket.",
-      "tensionError": "Couldn't work out your tension — refresh to try again.",
+      "tensionError": "Couldn't work out your tension.",
       "clubTitle": "What the club plays",
       "clubSubtitle": "Aggregated from everyone's equipment.",
       "clubEmpty": "Not enough equipment logged yet. Add yours and this fills in.",
-      "clubError": "Couldn't load — refresh to try again",
+      "clubError": "Couldn't load what the club uses.",
       "catalogGap": "Recommendations beyond rackets are coming — the catalog only has rackets so far.",
       "pickString": "Add a string",
       "pickStringHint": "Search by name, or pick a brand. One tap adds it to your equipment.",
@@ -782,7 +790,7 @@
       "close": "Close",
       "doneTitle": "Focus done — nice.",
       "doneBody": "Re-rate {skill} at your next check-in to see if it moved.",
-      "error": "Couldn't load your drills — refresh to try again",
+      "error": "Couldn't load your drills.",
       "saveError": "Couldn't save that — try again.",
       "offline": "You're offline — this needs a connection.",
       "needsCheckInBody": "No data yet — rate your skills weekly to keep track of your progress.",
@@ -827,13 +835,13 @@
       "lost": "lost",
       "add": "Add a game",
       "empty": "No games logged yet. Log one and it shows up here.",
-      "error": "Couldn't load your games — refresh to try again"
+      "error": "Couldn't load your games."
     },
     "partners": {
       "title": "Who you play with",
       "subtitle": "Your most frequent partners.",
       "empty": "Nobody yet — log a game and your partners show up here.",
-      "error": "Couldn't load — refresh to try again"
+      "error": "Couldn't load your partners."
     },
     "consent": {
       "title": "See how you compare?",
@@ -865,6 +873,7 @@
       "verdictCounted": "Counted",
       "closing": "Turning comparison off doesn't hide anything from other players — nothing about your skills was ever shown to them. It only changes what <you>you</you> see. The club spread stays visible either way.",
       "saveError": "Couldn't save that — try again.",
+      "loadError": "Couldn't load this setting.",
       "unknown": "We couldn't confirm this setting, so we're not showing one either way.",
       "retry": "Try again",
       "offline": "You're offline — this needs a connection."
@@ -879,7 +888,7 @@
       "footnote": "Bands only. No names, no leaderboard — and you can turn this off in Profile.",
       "private": "Private",
       "footnotePrivate": "Your place is private. Nothing about your skills was ever shown to other players.",
-      "error": "Couldn't load — refresh to try again"
+      "error": "Couldn't load where you sit."
     },
     "overview": {
       "level": "Level",
@@ -908,7 +917,7 @@
       "giveTitle": "Send kudos",
       "giveHint": "Noticed someone playing well? Tell them.",
       "offline": "You're offline — reconnect to send kudos.",
-      "error": "Couldn't load that — refresh to try again",
+      "error": "Couldn't load kudos.",
       "close": "Close",
       "whoLabel": "Who are you recognising?",
       "whatLabel": "What did you notice?",
@@ -940,9 +949,11 @@
     },
     "offline": "You're offline — reconnect to save.",
     "signInAgain": "Sign in on Profile to see this.",
-    "insightUnavailable": "Couldn't load your read \u2014 refresh to retry.",
+    "insightUnavailable": "Couldn't load your read.",
     "signInAgainTitle": "Sign in to see your stats",
     "signInAgainBody": "This device isn't signed in to your account, so your stats and insights can't load. Sign in from Profile.",
+    "retry": "Try again",
+    "signIn": "Sign in",
     "summaryGreeting": {
       "ariaLabel": "Your AI summary",
       "beta": "Beta",
@@ -960,7 +971,7 @@
       "trendOnePoint": "One check-in so far \u2014 check in again and this becomes a line.",
       "trendAria": "Level over time, {count} check-ins, from {first} to {last}.",
       "trendAriaOne": "Level over time, one check-in, on {date}.",
-      "trendError": "Couldn't load your level history \u2014 refresh to retry.",
+      "trendError": "Couldn't load your level history.",
       "trendEmpty": "No check-ins to chart yet.",
       "reRate": "Update",
       "purpose": "Rate every few weeks to watch your trend move.",
@@ -982,7 +993,7 @@
       "savedEyebrow": "Your level now",
       "savedBody": "Your dimensions and this week's focus are already updated. Check in again after a few sessions to watch it move.",
       "done": "Done",
-      "error": "Couldn't load that — refresh to try again",
+      "error": "Couldn't load your check-ins.",
       "checkInTitle": "Skill check-in",
       "close": "Close",
       "mirrorTitle": "Recently",
@@ -1045,8 +1056,9 @@
     "leaveSheetConfirm": "Leave the waitlist",
     "sheetKeep": "Never mind",
     "cancelFailure": "That didn't go through — give it another try.",
-    "loadError": "Couldn't load that — refresh to try again.",
-    "retry": "Retry"
+    "loadError": "Couldn't load the list.",
+    "sessionLoadError": "Couldn't load this week's session details.",
+    "retry": "Try again"
   },
   "admin": {
     "stringing": {
@@ -1296,7 +1308,8 @@
     "racketCatalogEmpty": "No rackets in the catalog yet — check back shortly.",
     "weRecommend": "We recommend",
     "noRacketYet": "Haven't picked one yet.",
-    "recError": "Couldn't load that — refresh to try again",
+    "recError": "That didn't go through — try again.",
+    "catalogError": "Couldn't load the list.",
     "you": "You",
     "partner": "Partner",
     "opponents": "Opponents",
@@ -1418,6 +1431,7 @@
     }
   },
   "groups": {
+    "retry": "Try again",
     "crumb": "Profile",
     "yourGroups": "Your groups",
     "yourGroupsHint": "Switch between the clubs you play with.",
@@ -1425,7 +1439,7 @@
     "switchTo": "Switch to {name}",
     "switching": "Switching…",
     "switchFailed": "Couldn't switch. Try again.",
-    "loadFailed": "Couldn't load your groups — pull to refresh to retry.",
+    "loadFailed": "Couldn't load your groups.",
     "onlyOne": "You're only in one group right now.",
     "roleOwner": "Organiser",
     "roleAdmin": "Admin",

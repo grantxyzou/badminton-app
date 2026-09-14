@@ -106,9 +106,17 @@ export default function PushSheet({ open, onClose, onOpenInstall, push, isAdmin 
             {t('offlineHint')}
           </p>
         )}
-        {error && (
+        {/* Signed out is a refusal, not a failure — muted, not red. */}
+        {error === 'auth' && (
+          // `status`, not `alert`: it still answers the tap for a screen reader,
+          // politely, without announcing a failure that did not happen.
+          <p className="fs-base" role="status" style={{ marginTop: 'var(--space-3)', marginBottom: 0, color: 'var(--text-muted)' }}>
+            {t('errorAuth')}
+          </p>
+        )}
+        {error && error !== 'auth' && (
           <p className="field-error" role="alert" style={{ marginTop: 'var(--space-3)' }}>
-            {error === 'auth' ? t('errorAuth') : t('errorGeneric')}
+            {t('errorGeneric')}
           </p>
         )}
         <button

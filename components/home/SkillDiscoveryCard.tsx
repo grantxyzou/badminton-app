@@ -40,7 +40,10 @@ export default function SkillDiscoveryCard({
     fetch(`${BASE}/api/assessments?name=${encodeURIComponent(name)}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => { if (!cancelled) setHasRated(((d.assessments ?? []).length) > 0); })
-      .catch(() => { if (!cancelled) setHasRated(false); });
+      // Unknown stays unknown: a failed or refused read is not evidence that
+      // they never rated, and nudging someone to "rate your skills" who has
+      // already done it is a lying empty state wearing a call to action.
+      .catch(() => { /* hasRated stays null — render nothing */ });
     return () => { cancelled = true; };
   }, [name]);
 

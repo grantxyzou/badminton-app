@@ -84,7 +84,7 @@ export default function ProfileTab({
   const tGroups = useTranslations('groups');
   // Multi-group: the switcher's data. Resolves to `group: null` with the flag
   // off (the endpoints 404 by design), so the row simply does not render.
-  const { group, groups, error: groupsError } = useCurrentGroup();
+  const { group, groups, error: groupsError, refresh: refreshGroups } = useCurrentGroup();
   const [identity, setLocalIdentity] = useState<Identity | null>(null);
   /**
    * Which credential the anonymous card is asking for. One form is visible at a
@@ -554,6 +554,7 @@ export default function ProfileTab({
         onBack={() => setView('root')}
         groups={groups}
         loadError={groupsError}
+        onRetry={() => void refreshGroups()}
         // A switch re-mints both cookies, so every tab has to refetch; this
         // page cannot do that itself, HomeShell owns the nonce. It also bumps
         // `refreshNonce`, which remounts ProfileTab and returns `view` to

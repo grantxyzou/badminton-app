@@ -85,12 +85,20 @@ export default function SignInMethodsCard({ state, embedded = false }: SignInMet
   }
 
   if (loadError) {
-    return embedded ? (
-      <ErrorState message={t('methodsLoadError')} />
-    ) : (
+    const failed = (
+      <ErrorState
+        message={t('methodsLoadError')}
+        action={
+          <button type="button" className="cc-btn cc-btn-ghost" onClick={() => void load()}>
+            {t('retry')}
+          </button>
+        }
+      />
+    );
+    return embedded ? failed : (
       <div className="glass-card p-5 space-y-3">
         <CardHeader icon="lock" title={t('methodsTitle')} />
-        <ErrorState message={t('methodsLoadError')} />
+        {failed}
       </div>
     );
   }

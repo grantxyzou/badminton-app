@@ -675,11 +675,23 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
               refused reads actually show, keep it. */}
           {signInExpired && online && activeTab !== 'home' && (
             <div className="mb-3">
+              {/* The one place the Stats cards' refusal is explained — they
+                  render nothing on a 403 and leave it to this — so it carries
+                  the way out. Not on Profile, which IS where you sign in. */}
               <StatusBanner
                 tone="warn"
                 icon="lock_clock"
                 title={t('signInAgainTitle')}
-                body={t('signInAgainBody')}
+                body={
+                  activeTab === 'profile' ? t('signInAgainBody') : (
+                    <span style={{ display: 'grid', gap: 'var(--space-2)', justifyItems: 'start' }}>
+                      <span>{t('signInAgainBody')}</span>
+                      <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setActiveTab('profile')}>
+                        {t('signIn')}
+                      </button>
+                    </span>
+                  )
+                }
               />
             </div>
           )}

@@ -32,7 +32,7 @@ interface ClubBands {
   skills: { skillKey: string; band: Band }[];
 }
 
-type Load = 'loading' | 'ready' | 'error';
+type Load = 'loading' | 'ready' | 'error' | 'forbidden';
 
 const SKILL_LABEL = new Map(SKILLS.map((s) => [s.key, s.label]));
 
@@ -51,7 +51,9 @@ export interface WhereYouSitCardProps {
 export default function WhereYouSitCard({ activeName, promptOpen = false, checkIn }: WhereYouSitCardProps) {
   const t = useTranslations('stats.club');
   const [bands, setBands] = useState<ClubBands | null>(null);
+  const tStats = useTranslations('stats');
   const [status, setStatus] = useState<Load>('loading');
+  const [attempt, setAttempt] = useState(0);
 
   /**
    * The member's own ratings come from the single owner, not from a second
@@ -92,14 +94,16 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
         setBands(b as ClubBands);
         setStatus('ready');
       })
-      .catch(() => live && setStatus('error'));
+      .catch((e: Error) => live && setStatus(e?.message === '403' ? 'forbidden' : 'error'));
 
     return () => {
       live = false;
     };
-  }, [activeName]);
+  }, [activeName, attempt]);
 
   if (!activeName) return null;
+  // Refused: the Stats tab's sign-in banner already says so, with the button.
+  if (status === 'forbidden' || historyStatus === 'forbidden') return null;
   if (status === 'loading' || historyStatus === 'loading') return <CardSkeleton height={180} />;
   if (status === 'error' || historyStatus === 'error') {
     // A failed read is NOT the same as "too few people" — say so out loud
@@ -107,10 +111,23 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
     // legitimate below-cohort case. EITHER read failing lands here: without
     // ratings there is no skill to name and without bands no third to place it
     // in, so a half-loaded card has nothing honest to draw.
+    // Standalone, not a card holding only an error (the state rule).
     return (
-      <div className="glass-card p-5">
-        <ErrorState message={t('error')} />
-      </div>
+      <ErrorState
+        message={t('error')}
+        action={
+          <button
+            type="button"
+            className="cc-btn cc-btn-ghost"
+            onClick={() => {
+              if (status === 'error') { setStatus('loading'); setAttempt((n) => n + 1); }
+              if (historyStatus === 'error') checkIn?.reload();
+            }}
+          >
+            {tStats('retry')}
+          </button>
+        }
+      />
     );
   }
 

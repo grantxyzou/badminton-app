@@ -39,6 +39,7 @@ export default function WhoYouPlayWithCard({ activeName }: WhoYouPlayWithCardPro
   const tStats = useTranslations('stats');
   const [partners, setPartners] = useState<Partner[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'forbidden'>('loading');
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!activeName) return;
@@ -68,9 +69,11 @@ export default function WhoYouPlayWithCard({ activeName }: WhoYouPlayWithCardPro
     return () => {
       live = false;
     };
-  }, [activeName]);
+  }, [activeName, attempt]);
 
   if (!activeName) return null;
+  // Refused: the Stats tab's sign-in banner already says so, with the button.
+  if (status === 'forbidden') return null;
   if (status === 'loading') return <CardSkeleton height={160} />;
 
   const top = partners.slice(0, TOP);
@@ -79,10 +82,19 @@ export default function WhoYouPlayWithCard({ activeName }: WhoYouPlayWithCardPro
   return (
     <div className="glass-card p-5 space-y-3">
       <CardHeader icon="group" title={t('title')} subtitle={t('subtitle')} />
-      {status === 'forbidden' ? (
-        <ErrorState message={tStats('signInAgain')} />
-      ) : status === 'error' ? (
-        <ErrorState message={t('error')} />
+      {status === 'error' ? (
+        <ErrorState
+          message={t('error')}
+          action={
+            <button
+              type="button"
+              className="cc-btn cc-btn-ghost"
+              onClick={() => { setStatus('loading'); setAttempt((n) => n + 1); }}
+            >
+              {tStats('retry')}
+            </button>
+          }
+        />
       ) : top.length === 0 ? (
         <EmptyState icon="groups">{t('empty')}</EmptyState>
       ) : (
