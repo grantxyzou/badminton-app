@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import { useState } from 'react';
 import SetupAddSheet from '../../components/stats/SetupAddSheet';
@@ -37,11 +37,17 @@ function useFakeGear(initial: PlayerGear, spies: Partial<UseGear> = {}): UseGear
       setD((p) => ({ ...p, items: [...p.items, gi], activeRacketId: extra?.makeActive ? gi.id : p.activeRacketId ?? (item.category === 'racket' ? gi.id : undefined) }));
       return { ok: true };
     },
-    addCustom: vi.fn(async () => ({ ok: true as const })),
+    addCustom: async (label, extra) => {
+      if (spies.addCustom && (await spies.addCustom(label, extra)).ok === false) return { ok: false, reason: 'error' };
+      const gi: GearItem = { id: `typed-${label}`, catalogId: null, category: 'racket', label };
+      setD((p) => ({ ...p, items: [...p.items, gi], activeRacketId: extra?.makeActive ? gi.id : p.activeRacketId ?? gi.id }));
+      return { ok: true };
+    },
     activate: spies.activate ?? vi.fn(async () => ({ ok: true as const })),
     remove: spies.remove ?? vi.fn(async () => ({ ok: true as const })),
     setPrefs: vi.fn(async () => ({ ok: true as const })),
     setTension: spies.setTension ?? vi.fn(async () => ({ ok: true as const })),
+    setFeel: spies.setFeel ?? vi.fn(async () => ({ ok: true as const })),
   };
 }
 
@@ -204,5 +210,75 @@ describe('SetupAddSheet — a withdrawn catalog row is not offered', () => {
     const search = screen.getByRole('searchbox', { name: /2 rackets/ });
     fireEvent.change(search, { target: { value: 'nitrolite' } });
     expect(screen.queryByRole('button', { name: 'Victor NitroLite 80X' })).toBeNull();
+  });
+});
+
+describe('SetupAddSheet — a racket the catalog does not have', () => {
+  const noPicks = () => picksWith({});
+
+  async function search(text: string) {
+    const box = await screen.findByRole('searchbox');
+    fireEvent.change(box, { target: { value: text } });
+  }
+
+  it('offers the typed name when nothing matches, saves it by name, and asks how it feels', async () => {
+    const addCustom = vi.fn(async () => ({ ok: true as const }));
+    const setFeel = vi.fn(async () => ({ ok: true as const }));
+    const onClose = vi.fn();
+    render(<Harness category="racket" initial={doc([])} picks={noPicks()} spies={{ addCustom, setFeel }} onClose={onClose} />);
+    await search('Auraspeed 90S');
+    expect(screen.getByText('No rackets match that.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Add “Auraspeed 90S”/ }));
+    await waitFor(() => expect(addCustom).toHaveBeenCalledWith('Auraspeed 90S', { makeActive: true }));
+    expect(await screen.findByText('How does it feel?')).toBeTruthy();
+
+    fireEvent.click(within(screen.getByRole('group', { name: 'Balance' })).getByRole('button', { name: 'Head-heavy' }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Shaft' })).getByRole('button', { name: 'Stiff' }));
+    // Answers are local until Done: one write, not one per tap.
+    expect(setFeel).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(setFeel).toHaveBeenCalledTimes(1));
+    expect(setFeel).toHaveBeenCalledWith('typed-Auraspeed 90S', { balance: 'Head-heavy', flex: 'Stiff', weight: undefined });
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+
+  it('writes nothing about feel when every row is left at "Don\'t know"', async () => {
+    const setFeel = vi.fn(async () => ({ ok: true as const }));
+    const onClose = vi.fn();
+    render(<Harness category="racket" initial={doc([])} picks={noPicks()} spies={{ setFeel }} onClose={onClose} />);
+    await search('Auraspeed 90S');
+    fireEvent.click(screen.getByRole('button', { name: /Add “Auraspeed 90S”/ }));
+    await screen.findByText('How does it feel?');
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(setFeel).not.toHaveBeenCalled();
+  });
+
+  it('is also offered beside matches — a near name is not the member\'s racket', async () => {
+    render(<Harness category="racket" initial={doc([])} picks={noPicks()} />);
+    await search('Nanoflare');
+    expect(await screen.findByRole('button', { name: 'Yonex Nanoflare 800' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Add “Nanoflare”/ })).toBeTruthy();
+  });
+
+  it('is not offered when the name IS a catalog racket, by model or by brand and model', async () => {
+    render(<Harness category="racket" initial={doc([])} picks={noPicks()} />);
+    await search('nanoflare 800');
+    expect(await screen.findByRole('button', { name: 'Yonex Nanoflare 800' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Add “/ })).toBeNull();
+    await search('Yonex  Nanoflare 800');
+    expect(screen.queryByRole('button', { name: /Add “/ })).toBeNull();
+  });
+
+  it('is not offered for a name already in the bag, nor on the strings sheet', async () => {
+    const owned: GearItem = { id: 't1', catalogId: null, category: 'racket', label: 'Auraspeed 90S' };
+    render(<Harness category="racket" initial={doc([owned], 't1')} picks={noPicks()} />);
+    await search('auraspeed 90s');
+    expect(screen.queryByRole('button', { name: /Add “/ })).toBeNull();
+    cleanup();
+
+    render(<Harness category="string" initial={doc([])} picks={noPicks()} />);
+    await search('Exbolt 99');
+    expect(screen.queryByRole('button', { name: /Add “/ })).toBeNull();
   });
 });

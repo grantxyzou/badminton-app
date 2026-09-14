@@ -15,6 +15,7 @@ import {
   blankStringPairing,
   clubOthers,
   indexCatalog,
+  racketFeelLine,
   racketSpecLine,
   setupLines,
   stringSpecLine,
@@ -89,7 +90,8 @@ export default function GearSetupCard({ activeName, gear, picks, club, onOpenLin
   const tally = club.status === 'ready' ? club.entries : null;
 
   function racketSub(item: GearItem): string | null {
-    const spec = item.catalogId ? racketSpecLine(catalog.get(item.catalogId)) : null;
+    // A typed-in racket describes itself in the member's own answers.
+    const spec = item.catalogId ? racketSpecLine(catalog.get(item.catalogId)) : racketFeelLine(item.feel, (k) => ts(k));
     const others = clubOthers(tally, item);
     return [spec, others ? ts('othersPlay', { count: others }) : null].filter(Boolean).join(' · ') || null;
   }

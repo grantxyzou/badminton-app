@@ -229,6 +229,14 @@ const LEVEL_BASE: Record<FitLevel | 'null', { balance: number; flex: number; wei
   null: { balance: 2, flex: 2.5, weight: 84, tier: 2 },
 };
 
+/** The price tier a level's own target sits at, in the catalog's words. The
+ *  one axis a member cannot tell us about a racket they typed in, so it is
+ *  taken from where their level would start (`lib/racketFeel.ts`). */
+export function levelTierLabel(level: FitLevel | null): string {
+  const tier = LEVEL_BASE[level ?? 'null'].tier;
+  return tier === 1 ? 'Entry-level' : tier === 3 ? 'Premium' : 'Mid-range';
+}
+
 /**
  * THE GOAL-DELTA TABLE — the badminton judgment in this file.
  *

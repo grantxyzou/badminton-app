@@ -44,6 +44,7 @@ function fakeGear(doc: PlayerGear, overrides: Partial<UseGear> = {}): UseGear {
     remove: vi.fn(async () => ({ ok: true as const })),
     setPrefs: vi.fn(async () => ({ ok: true as const })),
     setTension: vi.fn(async () => ({ ok: true as const })),
+    setFeel: vi.fn(async () => ({ ok: true as const })),
     ...overrides,
   };
 }

@@ -164,6 +164,7 @@ each owns different hooks and a hook cannot be conditional.
 - **`SetupShareSheet`**: preview is the exported PNG (`lib/setupShareCanvas.ts`,
   callback-ref draw); `SetupShare` is gear-only by type.
 - **A catalog row can be withdrawn without deleting it**: `attributes.unlisted` (a reason string) makes `isOffered()` (`lib/catalogOffer.ts`) false, and both recommenders plus both add sheets skip it, while a bag pointing at it still resolves. Deleting a row from the seed JSON would not remove it from Cosmos, since seeding never deletes. See `docs/catalog-check-2026-09-14.md`.
+- **A racket the catalog lacks can be logged by name** (Grant, 2026-09-14): the racket add sheet offers "Add “…”" for any typed name that is not already in the bag or an exact catalog model, via `useGear.addCustom`. Its saved panel asks "How does it feel?" (balance, shaft, weight, each with "Don't know"), written once on Done through PATCH `itemFeel` into `GearItem.feel`; `SetupLineSheet` edits it later. `lib/racketFeel.ts` turns an in-play typed racket with balance AND shaft answered into the fit engine's anchor (tier from the member's level), and `useGearPicks` keys a refetch on those answers. PUT carries `feel` over from the matched item, because it rebuilds items from the wire.
 - **Racket drawings are `lib/racketLook.ts`**: one SVG drawing painted per
   catalog id from researched colourways (`RACKET_LOOKS`), with an isometric head,
   served as a data URL. It is presentation, so it stays off `CatalogItem` (a

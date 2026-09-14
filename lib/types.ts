@@ -437,6 +437,24 @@ export interface GearItem {
   /** String-specific: tension in lbs at last restring. */
   tensionLbs?: number;
   notes?: string;
+  /** Racket-specific, and only for a racket the catalog does not have
+   *  (`catalogId: null`): how the member says it feels. Each answer is
+   *  optional ("Don't know" stores nothing). See `lib/racketFeel.ts`. */
+  feel?: RacketFeel;
+}
+
+/** The member's own description of a typed-in racket, in the catalog's words
+ *  so the fit engine reads it exactly as it reads a catalog row. */
+export type FeelBalance = 'Head-heavy' | 'Even' | 'Head-light';
+export type FeelFlex = 'Stiff' | 'Medium' | 'Flexible';
+export type FeelWeight = '3U' | '4U' | '5U';
+export const FEEL_BALANCES: readonly FeelBalance[] = ['Head-heavy', 'Even', 'Head-light'];
+export const FEEL_FLEXES: readonly FeelFlex[] = ['Stiff', 'Medium', 'Flexible'];
+export const FEEL_WEIGHTS: readonly FeelWeight[] = ['3U', '4U', '5U'];
+export interface RacketFeel {
+  balance?: FeelBalance;
+  flex?: FeelFlex;
+  weight?: FeelWeight;
 }
 
 export interface StringLogEntry {

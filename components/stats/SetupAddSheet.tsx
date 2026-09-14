@@ -8,6 +8,7 @@ import Switch from '@/components/primitives/Switch';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '../BottomSheet';
 import RacketThumb from './RacketThumb';
 import TensionStepper from './TensionStepper';
+import RacketFeelChips from './RacketFeelChips';
 import { useCatalog } from './useCatalog';
 import type { UseGear } from './useGear';
 import type { UseGearPicks } from './useGearPicks';
@@ -15,7 +16,8 @@ import { searchCatalog } from '@/lib/gearSearch';
 import { isOffered } from '@/lib/catalogOffer';
 import { gearFailureMessage } from '@/lib/gearFailureMessage';
 import { blankStringPairing, racketRowSpec, racketSpecLine, setupLines, stringSpecLine, type SetupCategory } from '@/lib/gearSetup';
-import type { CatalogItem, GearItem } from '@/lib/types';
+import { hasFeel } from '@/lib/racketFeel';
+import type { CatalogItem, GearItem, RacketFeel } from '@/lib/types';
 
 export interface SetupAddSheetProps {
   open: boolean;
@@ -38,6 +40,9 @@ export interface SetupAddSheetProps {
    */
   replacesId?: string;
 }
+
+/** `pendingId` while a typed name is being saved; no catalog id looks like it. */
+const TYPED_PENDING = ':typed';
 
 /**
  * "Add a racket" / "Add strings" — the Set-up card's picker (claude.ai/design
@@ -72,17 +77,25 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [dismissed, setDismissed] = useState(false);
-  /** The catalog row this visit saved, and the racket in play before it. */
-  const [saved, setSaved] = useState<{ catalogId: string; prevActiveId: string | null } | null>(null);
+  /** What this visit saved — a catalog row, or a racket typed by name
+   *  (`catalogId: null`) — and the racket in play before it. */
+  const [saved, setSaved] = useState<{ catalogId: string | null; label: string; prevActiveId: string | null } | null>(null);
   /** A tension the member CHOSE for the saved string; null = not chosen. */
   const [tension, setTension] = useState<number | null>(null);
+  /** How a typed-in racket feels, as answered so far. Written once, on the
+   *  way out of the panel, like the tension. */
+  const [feel, setFeel] = useState<RacketFeel>({});
 
   const items = useMemo(
     () => (gear.gear?.items ?? []).filter((i): i is GearItem => !!i && !i.retiredAt && (i.category ?? 'racket') === category),
     [gear.gear, category],
   );
   const ownedIds = useMemo(() => new Set(items.map((i) => i.catalogId).filter(Boolean) as string[]), [items]);
-  const savedItem = saved ? items.find((i) => i.catalogId === saved.catalogId) ?? null : null;
+  const savedItem = saved
+    ? items.find((i) => (saved.catalogId
+      ? i.catalogId === saved.catalogId
+      : !i.catalogId && i.label.trim().toLowerCase() === saved.label.trim().toLowerCase())) ?? null
+    : null;
 
   const brands = useMemo(() => {
     const seen: string[] = [];
@@ -124,6 +137,18 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
     ? (category === 'string' ? picks.view.string.pick : racketPick.pick)
     : null;
 
+  // "Add “…”" offers the typed name as a racket of its own. Rackets only: a
+  // string the catalog lacks has nothing the pairing engine could read. Hidden
+  // when the bag already holds that name — the route would call it a duplicate —
+  // and when the name IS a catalog racket, which the row above already offers
+  // with its real specs; a free-text copy of it would be a racket the engine
+  // cannot read standing in for one it can.
+  const typed = query.trim().slice(0, 80);
+  const typedKey = typed.toLowerCase().replace(/\s+/g, ' ');
+  const offerTyped = category === 'racket' && catalog.loaded && !catalog.loadError && offered.length > 0 && typed.length > 0
+    && !items.some((i) => i.label.trim().toLowerCase() === typedKey)
+    && !offered.some((c) => c.model.toLowerCase() === typedKey || `${c.brand} ${c.model}`.toLowerCase() === typedKey);
+
   function rowSpec(c: CatalogItem): string | null {
     return category === 'string' ? stringSpecLine(c, (k) => t(k)) : racketRowSpec(c);
   }
@@ -141,7 +166,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
         setError(gearFailureMessage(res.reason, tHub));
         return;
       }
-      setSaved({ catalogId: item.id, prevActiveId });
+      setSaved({ catalogId: item.id, label: `${item.brand} ${item.model}`, prevActiveId });
       // Once: "Add another string" from the same visit adds, it does not replace again.
       if (category === 'string' && replacesId && !replacedRef.current) {
         replacedRef.current = true;
@@ -155,13 +180,40 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
     }
   }
 
-  /** Writes a tension the member CHOSE, once, on the way out of the panel.
-   *  Each stepper tap is local: twenty bag writes an hour is the limit, and a
-   *  stepper that wrote per tap would spend it in one adjustment. */
-  async function commitTension(): Promise<boolean> {
-    if (category !== 'string' || !savedItem || tension === null) return true;
-    const res = await gear.setTension(savedItem, tension);
-    if (!res.ok) {
+  /**
+   * "Add “Auraspeed 90S”" — a racket the catalog does not have, by the name the
+   * member typed. Grant, 2026-09-14: a missing racket should cost the member
+   * nothing, and every name typed here is a racket the club really plays.
+   */
+  async function pickTyped(label: string) {
+    const trimmed = label.trim();
+    if (!trimmed || gear.busy || pendingId) return;
+    setError(null);
+    setPendingId(TYPED_PENDING);
+    const prevActiveId = gear.active?.id ?? null;
+    try {
+      const res = await gear.addCustom(trimmed, makeActive ? { makeActive: true } : undefined);
+      if (!res.ok) {
+        setError(gearFailureMessage(res.reason, tHub));
+        return;
+      }
+      setSaved({ catalogId: null, label: trimmed, prevActiveId });
+      setFeel({});
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  /** Writes what the member CHOSE in the panel, once, on the way out of it —
+   *  a string's tension or a typed racket's feel. Each tap is local: the bag
+   *  and preference limits are per hour, and a control that wrote per tap
+   *  would spend them in one adjustment. */
+  async function commitFollowUp(): Promise<boolean> {
+    if (!savedItem) return true;
+    let res;
+    if (category === 'string' && tension !== null) res = await gear.setTension(savedItem, tension);
+    else if (category === 'racket' && !savedItem.catalogId && hasFeel(feel)) res = await gear.setFeel(savedItem.id, feel);
+    if (res && !res.ok) {
       setError(gearFailureMessage(res.reason, tHub));
       return false;
     }
@@ -169,13 +221,15 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
   }
 
   async function finish() {
-    if (await commitTension()) onClose();
+    if (await commitFollowUp()) onClose();
   }
 
   async function addAnother() {
-    if (!(await commitTension())) return;
+    if (!(await commitFollowUp())) return;
     setSaved(null);
     setTension(null);
+    setFeel({});
+    setQuery('');
   }
 
   async function setInPlay(next: boolean) {
@@ -202,13 +256,13 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
     ? stringPick.tensionLbs
     : null;
 
-  function savedPanel(c: CatalogItem) {
+  function savedPanel(catalogId: string | null, title: string) {
     return (
-      <div className="setup-saved" key={c.id}>
+      <div className="setup-saved" key={catalogId ?? `typed:${title}`}>
         <div className="setup-saved-head">
           <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--accent)' }}>check_circle</span>
-          {category === 'racket' && <RacketThumb catalogId={c.id} saved />}
-          <span className="fs-lg" style={{ flex: 1, minWidth: 0, fontWeight: 600 }}>{c.model}</span>
+          {category === 'racket' && <RacketThumb catalogId={catalogId} saved />}
+          <span className="fs-lg" style={{ flex: 1, minWidth: 0, fontWeight: 600 }}>{title}</span>
           <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('saved')}</span>
         </div>
         {category === 'string' ? (
@@ -236,6 +290,13 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
               disabled={!savedItem || gear.busy || !gear.online || (!saved?.prevActiveId && gear.active?.id === savedItem?.id)}
             />
             <span className="fs-base" style={{ color: 'var(--text-primary)' }}>{t('inPlaySwitch')}</span>
+          </div>
+        )}
+        {category === 'racket' && !catalogId && (
+          <div className="setup-saved-indent" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+            <span className="fs-md" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{t('feelTitle')}</span>
+            <span className="fs-sm" style={{ color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{t('feelHelp')}</span>
+            <RacketFeelChips value={feel} onChange={setFeel} disabled={!savedItem || gear.busy} />
           </div>
         )}
       </div>
@@ -297,7 +358,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
 
       <BottomSheetBody bare>
         <div style={{ paddingBottom: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          {(catalog.loadError || (catalog.loaded && offered.length === 0) || (showControls && models.length === 0)) && (
+          {(catalog.loadError || (catalog.loaded && offered.length === 0) || (showControls && !saved && models.length === 0)) && (
             <div style={{ padding: '0 var(--space-6)' }}>
               {catalog.loadError
                 ? <ErrorState message={tHub('catalogError')} />
@@ -310,8 +371,9 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
           {/* The saved row, where it sat. While it is open the rest of the
               list steps back: the panel is the question on screen now. */}
           {saved && (() => {
+            if (!saved.catalogId) return savedPanel(null, saved.label);
             const c = catalog.items.find((x) => x.id === saved.catalogId);
-            return c ? savedPanel(c) : null;
+            return c ? savedPanel(c.id, c.model) : null;
           })()}
 
           {!saved && suggestion && (
@@ -396,6 +458,27 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
                   </ul>
                 </section>
               ))}
+              {offerTyped && (
+                <ul className="sheet-list">
+                  <li>
+                    <button
+                      type="button"
+                      className="sheet-row"
+                      onClick={() => { void pickTyped(typed); }}
+                      aria-busy={pendingId === TYPED_PENDING || undefined}
+                      disabled={pendingId === TYPED_PENDING || !gear.online}
+                      style={pendingId === TYPED_PENDING ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
+                    >
+                      <RacketThumb catalogId={null} />
+                      <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--space-05)' }}>
+                        <span className="fs-lg">{t('addTyped', { label: typed })}</span>
+                        <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('addTypedHelp')}</span>
+                      </span>
+                      <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--accent)' }}>add</span>
+                    </button>
+                  </li>
+                </ul>
+              )}
             </div>
           )}
         </div>

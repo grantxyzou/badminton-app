@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOnline } from '@/lib/useOnline';
 import { rackets as racketsOf, activeRacket } from '@/lib/activeRacket';
-import type { PlayerGear, GearItem, CatalogItem, FitGoal, FitSwing, FitArmComfort, FitGrip } from '@/lib/types';
+import type { PlayerGear, GearItem, CatalogItem, FitGoal, FitSwing, FitArmComfort, FitGrip, RacketFeel } from '@/lib/types';
 
 /**
  * Every preference `PATCH /api/equipment/gear` accepts. `null` clears a field
@@ -86,12 +86,15 @@ export interface UseGear {
    * it. Faking a CatalogItem at the call site would be a cast agreeing with an
    * assumption nothing checks.
    */
-  addCustom: (label: string) => Promise<GearResult>;
+  addCustom: (label: string, extra?: { makeActive?: boolean }) => Promise<GearResult>;
   activate: (itemId: string) => Promise<GearResult>;
   remove: (itemId: string) => Promise<GearResult>;
   setPrefs: (prefs: GearPrefs) => Promise<GearResult>;
   /** Record the tension of a string ALREADY in the bag. See the impl. */
   setTension: (item: GearItem, tensionLbs: number) => Promise<GearResult>;
+  /** Replace what the member said about how a typed-in racket feels. An
+   *  answer left out is "don't know"; `{}` clears them all. */
+  setFeel: (itemId: string, feel: RacketFeel) => Promise<GearResult>;
 }
 
 /**
@@ -329,7 +332,7 @@ export function useGear(name: string | null): UseGear {
   // Tapping the already-active racket is a no-op in the UI (BagList renders a
   // badge, not a button, for that row). This guard is defence in depth so the
   // rule holds even if a caller changes.
-  const addCustom = useCallback(async (label: string): Promise<GearResult> => {
+  const addCustom = useCallback(async (label: string, extra?: { makeActive?: boolean }): Promise<GearResult> => {
     const trimmed = label.trim();
     if (!trimmed) return { ok: false, reason: 'error' };
     return mutate(() => fetch(`${BASE}/api/equipment/gear`, {
@@ -337,6 +340,8 @@ export function useGear(name: string | null): UseGear {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name,
+        // Same one-request intent as `add`'s: "this is the one I play".
+        ...(extra?.makeActive ? { makeActive: true } : null),
         // `catalogId: null` is the route's documented free-text shape; it
         // dedupes on the normalised label in that case, so re-typing a racket
         // already in the bag is a no-op rather than a duplicate.
@@ -392,6 +397,15 @@ export function useGear(name: string | null): UseGear {
     }),
   ), [mutate, name]);
 
+  // A preference-bucket PATCH, not a bag write: three answers about one racket
+  // are the same kind of write as the fit questionnaire's.
+  const setFeel = useCallback((itemId: string, feel: RacketFeel) =>
+    mutate(() => fetch(`${BASE}/api/equipment/gear`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, itemFeel: { itemId, ...feel } }),
+    })), [mutate, name]);
+
   const setPrefs = useCallback((prefs: GearPrefs) =>
     mutate(() => fetch(`${BASE}/api/equipment/gear`, {
       method: 'PATCH',
@@ -415,6 +429,7 @@ export function useGear(name: string | null): UseGear {
     remove,
     setPrefs,
     setTension,
+    setFeel,
   };
 }
 
