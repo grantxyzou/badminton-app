@@ -7,6 +7,7 @@ import { useActiveName } from '@/lib/useActiveName';
 import { KUDOS_TAGS, TAG_ICON, type KudosCount, type KudosNote } from '@/lib/kudos';
 import { SKILLS } from '@/lib/assessment';
 import CardHeader from '@/components/primitives/CardHeader';
+import LockedCard from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -56,7 +57,19 @@ export default function KudosReceivedCard() {
   if (!activeName || !loaded) return null;
   // Quiet until there's something to celebrate.
   if (state.kind === 'ok' && state.kudos.length === 0) return null;
-  if (state.kind === 'needsAuth') return null; // read-only nicety; no nag
+  // Refused (this device holds no session for the name): the card stays, as
+  // its own shape with nothing in it, and Sign in carries the weight.
+  if (state.kind === 'needsAuth') {
+    return (
+      <LockedCard icon="volunteer_activism" title={t('kudos.receivedTitle')} message={t('kudos.receivedLocked')}>
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <span className="locked-line" style={{ width: '24%', height: 'var(--space-6)' }} />
+          <span className="locked-line" style={{ width: '30%', height: 'var(--space-6)' }} />
+          <span className="locked-line" style={{ width: '20%', height: 'var(--space-6)' }} />
+        </div>
+      </LockedCard>
+    );
+  }
 
   const Frame = ({ children }: { children: React.ReactNode }) => (
     // flex+gap, not space-y-3: the <ul> passed in as `children` carries an

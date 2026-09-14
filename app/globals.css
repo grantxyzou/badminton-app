@@ -1966,6 +1966,65 @@ html:root .glass-card.is-locked {
   }
 }
 
+/* ── Locked card (components/stats/LockedCard.tsx) ──
+   A card this device may not fill: signed out, so the server refused it.
+   Principle: show the card's SHAPE with nothing in it, and give the one
+   action real weight. Values never appear — not even invented ones — so the
+   preview is dashes and empty bars at reduced ink, and the Sign in button is
+   a primary rather than the ghost an empty state gets, because signing in is
+   the whole point of a locked card (Grant, 2026-09-14). */
+html:root .locked-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-2xs);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--inner-card-border);
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+html:root .locked-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  color: var(--text-muted);
+  opacity: 0.7;
+  pointer-events: none;
+  user-select: none;
+}
+html:root .locked-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+html:root .locked-line {
+  display: block;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+html:root .locked-bar {
+  display: block;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+html:root .locked-dash {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+}
+html:root .locked-unlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+html:root .locked-unlock-cta { width: 100%; }
+
 /* On-card ink helpers, so call sites don't hand-type the alphas. */
 html:root .fcard-label    { color: var(--fcard-label); }
 html:root .fcard-footnote { color: var(--fcard-footnote); }
@@ -3361,9 +3420,13 @@ button.sheet-row:hover { background: var(--glass-soft-bg); }
   }
 }
 
-/* Ghost — for cancel / dismiss */
+/* Ghost — for cancel / dismiss, and the one action under an empty or error
+   state. The faint border is what makes it read as a control: without it
+   "Try again" centred under a message looked like a second line of copy
+   (Grant, 2026-09-14). No fill, so it still sits below secondary. */
 .cc-btn-ghost {
   color: var(--text-muted, #9ca3af);
+  border-color: var(--border);
 }
 @media (hover: hover) {
   .cc-btn-ghost:hover:not(:disabled) {

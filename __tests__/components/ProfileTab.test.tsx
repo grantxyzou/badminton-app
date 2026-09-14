@@ -42,18 +42,53 @@ describe('ProfileTab', () => {
     expect(screen.getByText(/Forgot your PIN/i)).toBeDefined();
   });
 
-  it('shows player profile + PIN row when identity exists', () => {
-    localStorage.setItem(
-      'badminton_identity',
-      JSON.stringify({ name: 'Michael', token: 'tok', sessionId: 'session-2026-04-27' }),
+  /** Answers /api/members/me with `me`; everything else benignly. */
+  function stubMe(me: Record<string, unknown> | 'fail') {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string) => {
+        const u = String(url);
+        if (u.includes('/api/members/me')) {
+          return me === 'fail'
+            ? Promise.reject(new Error('network'))
+            : Promise.resolve({ ok: true, json: async () => me } as unknown as Response);
+        }
+        const body = u.includes('/api/players') ? [] : {};
+        return Promise.resolve({ ok: true, json: async () => body } as unknown as Response);
+      }),
     );
+  }
+  function rememberName(name: string) {
+    localStorage.setItem('badminton_identity', JSON.stringify({ name, token: 'tok', sessionId: 'session-2026-04-27' }));
+  }
+
+  it('shows player profile + PIN row when identity exists and this device is signed in', async () => {
+    rememberName('Michael');
+    stubMe({ hasPin: true, authed: true, createdAt: '2026-01-01' });
     renderWith();
-    expect(screen.getByText('Michael')).toBeDefined();
-    // PIN management Settings row: until /api/members/me resolves the
-    // hasPin status, the label falls back to the generic "Recovery PIN"
-    // section title rather than asserting "New PIN" (which would mislead
-    // users who DO have a PIN but the fetch errored). See Batch A H4.
-    expect(screen.getByText(/Recovery PIN/i)).toBeDefined();
+    expect(await screen.findByText('Michael')).toBeDefined();
+    expect(screen.getByText(/PIN/i)).toBeDefined();
+    vi.unstubAllGlobals();
+  });
+
+  it('a remembered name with no session gets the sign-in screen, not an account full of refused rows', async () => {
+    rememberName('Kento');
+    stubMe({ hasPin: false, authed: false, createdAt: '2026-01-01' });
+    renderWith();
+    expect(await screen.findByText("Kento, this phone isn't signed in")).toBeDefined();
+    expect((screen.getByPlaceholderText('Your name') as HTMLInputElement).value).toBe('Kento');
+    expect(screen.getByRole('button', { name: 'Ask to be let in' })).toBeDefined();
+    expect(screen.queryByText('Update PIN')).toBeNull();
+    vi.unstubAllGlobals();
+  });
+
+  it('an unanswered probe is unknown, not signed out: it falls back to the account view', async () => {
+    rememberName('Michael');
+    stubMe('fail');
+    renderWith();
+    expect(await screen.findByText('Michael')).toBeDefined();
+    expect(screen.queryByText("Michael, this phone isn't signed in")).toBeNull();
+    vi.unstubAllGlobals();
   });
 
   it('shows the sign-in methods card ONLY when signed in', async () => {

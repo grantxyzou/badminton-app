@@ -8,6 +8,7 @@ import EmptyState from '@/components/primitives/EmptyState';
 import { summarizeRecord, type GameRecord } from '@/lib/gameRecord';
 import type { GameResult } from '@/lib/types';
 import SteppedGameLoggerSheet from './SteppedGameLoggerSheet';
+import LockedCard, { PreviewRow } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -71,8 +72,18 @@ export default function YourRecordCard({ activeName }: YourRecordCardProps) {
 
   if (!activeName) return null;
   if (status === 'loading') return <CardSkeleton height={260} />;
-  // Refused: the Stats tab's sign-in banner already says so, with the button.
-  if (status === 'forbidden') return null;
+  // Refused (this device holds no session for the name): the card stays, as
+  // its own shape with nothing in it, and Sign in carries the weight.
+  // No Add button: logging a game would be refused too.
+  if (status === 'forbidden') {
+    return (
+      <LockedCard title={t('title')} message={t('locked')}>
+        <PreviewRow icon="sports_tennis" width="48%" value="— : —" />
+        <PreviewRow icon="sports_tennis" width="40%" value="— : —" />
+        <PreviewRow icon="sports_tennis" width="44%" value="— : —" />
+      </LockedCard>
+    );
+  }
 
   const cta = (
     <>

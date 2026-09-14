@@ -8,6 +8,7 @@ import GearPickSheet from './GearPickSheet';
 import type { UseGear } from './useGear';
 import { PROFILE_READS_FIT } from '@/lib/racketProfile';
 import type { CatalogItem, EquipmentCategory } from '@/lib/types';
+import LockedCard, { PreviewRow } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -404,7 +405,17 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
     };
   }, [activeName, recKey, apply, holdFitRefetch, retryTick]);
 
-  if (!activeName || refused) return null;
+  if (!activeName) return null;
+  // Refused (this device holds no session for the name): the card stays, as
+  // its own shape with nothing in it, and Sign in carries the weight.
+  if (refused) {
+    return (
+      <LockedCard message={t('picksLocked')}>
+        <PreviewRow icon="sports_tennis" width="50%" />
+        <PreviewRow icon="science" width="38%" />
+      </LockedCard>
+    );
+  }
 
   function retry(cat: EquipmentCategory, status: GearPickCardStatus) {
     if (gear.loadError) gear.reload();

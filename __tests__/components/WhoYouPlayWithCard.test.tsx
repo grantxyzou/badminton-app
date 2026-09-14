@@ -27,7 +27,6 @@ function renderCard(name: string | null = 'Lin') {
   );
 }
 
-const SIGN_IN_COPY = enMessages.stats.signInAgain;
 const LOAD_ERROR_COPY = enMessages.stats.partners.error;
 const EMPTY_COPY = enMessages.stats.partners.empty;
 
@@ -61,15 +60,14 @@ describe('WhoYouPlayWithCard — refused, failed and empty are three different t
   });
 
   // ── The regression f23d7ae introduced ───────────────────────────────────
-  it('renders nothing on a 403 — neither the empty state nor the load error', async () => {
-    // State rule (2026-09-14): a refusal is not a failure and is not red. The
-    // Stats tab's sign-in banner explains it once, with a Sign in button, so
-    // the card renders nothing rather than a dozen red repeats.
+  it('keeps the card on a 403 with the lock copy — neither the empty state nor the load error', async () => {
+    // State rule (2026-09-14): a refusal is not a failure and is not red, and
+    // the card stays so the tab does not look empty (the banner has Sign in).
     mockPartners(403, { error: 'forbidden' });
-    const { container } = renderCard();
-    await waitFor(() => expect(container.textContent).toBe(''));
-    expect(screen.queryByText(SIGN_IN_COPY)).toBeNull();
+    renderCard();
+    expect(await screen.findByText('Sign in to see who you play with most.')).toBeDefined();
     expect(screen.queryByText(LOAD_ERROR_COPY)).toBeNull();
     expect(screen.queryByText(EMPTY_COPY)).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });

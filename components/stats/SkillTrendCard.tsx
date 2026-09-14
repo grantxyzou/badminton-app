@@ -16,6 +16,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import CardHeader from '@/components/primitives/CardHeader';
 import ListRow from '@/components/primitives/ListRow';
+import LockedCard, { PreviewMeter } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -111,8 +112,15 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   // divs, so the tokens just work and none of that machinery is needed.
 
   if (!activeName) return null;
-  // Refused: the Stats tab's sign-in banner already says so, with the button.
-  if (checkIn?.status === 'forbidden') return null;
+  // Refused (this device holds no session for the name): the card stays, as
+  // its own shape with nothing in it, and Sign in carries the weight.
+  if (checkIn?.status === 'forbidden') {
+    return (
+      <LockedCard icon="trending_up" title={t('assess.heroTitle')} message={t('assess.locked')}>
+        {SKILLS.slice(0, 4).map((s) => <PreviewMeter key={s.key} label={s.label} />)}
+      </LockedCard>
+    );
+  }
 
   // Standalone, not a card holding only an error (the state rule).
   if (loadError) {

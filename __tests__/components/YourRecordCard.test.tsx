@@ -141,4 +141,16 @@ describe('YourRecordCard', () => {
     );
     expect(container.textContent).toBe('');
   });
+
+  it('refused (403): keeps the card with the lock copy and no Add button that would be refused too', async () => {
+    mockFetchByUrl([
+      SESSION,
+      PLAYERS,
+      ['/api/games', () => Promise.resolve({ ok: false, status: 403, json: async () => ({ error: 'forbidden' }) } as Response)],
+    ]);
+    renderCard();
+    expect(await screen.findByText(enMessages.stats.record.locked)).toBeDefined();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('button', { name: enMessages.stats.record.add })).toBeNull();
+  });
 });
