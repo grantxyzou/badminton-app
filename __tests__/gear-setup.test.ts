@@ -1,0 +1,108 @@
+import { describe, it, expect } from 'vitest';
+import {
+  clubOthers,
+  isMine,
+  racketSpecLine,
+  setupLines,
+  stringSpecLine,
+} from '../lib/gearSetup';
+import { tallyClubGear, CLUB_GEAR_MIN_COHORT } from '../lib/clubGear';
+import type { CatalogItem, GearItem, PlayerGear } from '../lib/types';
+
+const R1: GearItem = { id: 'r1', catalogId: 'rk-af79', category: 'racket', label: 'Li-Ning Air Force 79' };
+const R2: GearItem = { id: 'r2', catalogId: 'rk-nf800', category: 'racket', label: 'Yonex Nanoflare 800' };
+const S1: GearItem = { id: 's1', catalogId: 'string-yx-bg65', category: 'string', label: 'Yonex BG65' };
+const S2: GearItem = { id: 's2', catalogId: 'string-yx-bg65ti', category: 'string', label: 'Yonex BG65 Ti', tensionLbs: 26 };
+
+function doc(items: GearItem[], activeRacketId?: string): PlayerGear {
+  return { id: 'gear-m1', memberId: 'm1', items, activeRacketId, updatedAt: '' } as PlayerGear;
+}
+
+describe('setupLines', () => {
+  it('a blank bag fills nothing', () => {
+    expect(setupLines(null)).toEqual({ racket: null, spares: [], string: null, filled: 0 });
+  });
+
+  it('the racket line is the ACTIVE racket; every other live racket is a spare', () => {
+    const lines = setupLines(doc([R1, R2, S1], 'r2'));
+    expect(lines.racket?.id).toBe('r2');
+    expect(lines.spares.map((s) => s.id)).toEqual(['r1']);
+    expect(lines.filled).toBe(2);
+  });
+
+  it('the string line is the NEWEST live string, not the first ever added', () => {
+    expect(setupLines(doc([S1, R1, S2])).string?.id).toBe('s2');
+  });
+
+  it('a retired item fills no line and is no spare', () => {
+    const retired = { ...R2, retiredAt: '2026-01-01' };
+    const lines = setupLines(doc([R1, retired], 'r1'));
+    expect(lines.spares).toEqual([]);
+  });
+});
+
+describe('spec lines', () => {
+  const racket = { id: 'rk', category: 'racket', brand: 'Li-Ning', model: 'AF79', skillRange: [1, 3], attributes: { weight: '4U', balance: 'Even' } } as CatalogItem;
+  const string = { id: 'st', category: 'string', brand: 'Yonex', model: 'BG65', skillRange: [1, 3], attributes: { gaugeMm: 0.7, stringType: 'Durability' } } as CatalogItem;
+
+  it('a racket reads weight class then balance', () => {
+    expect(racketSpecLine(racket)).toBe('4U · even');
+  });
+
+  it('a string reads gauge then its character, translated by the caller', () => {
+    expect(stringSpecLine(string, (k) => (k === 'typeDurable' ? 'durable' : k))).toBe('0.70mm · durable');
+  });
+
+  it('an unknown string type is omitted, never printed raw', () => {
+    const odd = { ...string, attributes: { gaugeMm: 0.68, stringType: 'Mystery' } } as CatalogItem;
+    expect(stringSpecLine(odd, (k) => k)).toBe('0.68mm');
+  });
+
+  it('no catalog row, no spec line', () => {
+    expect(racketSpecLine(undefined)).toBeNull();
+    expect(stringSpecLine(undefined, (k) => k)).toBeNull();
+  });
+});
+
+describe('clubOthers — the club fact is only ever read off the cohort-guarded tally', () => {
+  /** N members who each own the Air Force 79, the first of them being "me". */
+  function bags(n: number): PlayerGear[] {
+    return Array.from({ length: n }, (_, i) => doc([{ ...R1, id: `r-${i}` }]));
+  }
+
+  it('below the cohort there is no entry, so there is no number', () => {
+    const entries = tallyClubGear(bags(CLUB_GEAR_MIN_COHORT - 1));
+    expect(clubOthers(entries, R1)).toBeNull();
+  });
+
+  it('at the cohort the member is one of them: three owners is two OTHERS', () => {
+    const entries = tallyClubGear(bags(3));
+    expect(clubOthers(entries, R1)).toBe(2);
+  });
+
+  it('five owners is four others', () => {
+    expect(clubOthers(tallyClubGear(bags(5)), R1)).toBe(4);
+  });
+
+  it('matches on the tally\'s own key: case and surrounding space, same category', () => {
+    const entries = tallyClubGear(bags(4));
+    expect(clubOthers(entries, { ...R1, label: '  li-ning AIR FORCE 79 ' })).toBe(3);
+    expect(clubOthers(entries, { ...R1, category: 'string' })).toBeNull();
+  });
+
+  it('an unread tally has no facts at all', () => {
+    expect(clubOthers(null, R1)).toBeNull();
+  });
+});
+
+describe('isMine', () => {
+  const entry = { category: 'racket' as const, label: 'Li-Ning Air Force 79', count: 5 };
+  it('marks a tally row the member owns', () => {
+    expect(isMine(doc([R1]), entry)).toBe(true);
+  });
+  it('does not mark a retired item, another category, or an unknown bag', () => {
+    expect(isMine(doc([{ ...R1, retiredAt: '2026-01-01' }]), entry)).toBe(false);
+    expect(isMine(doc([{ ...R1, category: 'string' }]), entry)).toBe(false);
+    expect(isMine(null, entry)).toBe(false);
+  });
+});

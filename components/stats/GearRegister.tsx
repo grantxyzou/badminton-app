@@ -1,13 +1,20 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 import GearPickRail from './GearPickRail';
 import GearFitSheet from './GearFitSheet';
+import GearSheet from './GearSheet';
+import GearSetupCard from './GearSetupCard';
 import YourKitCard from './YourKitCard';
 import StringTensionCard from './StringTensionCard';
 import ClubGearCard from './ClubGearCard';
 import { useGear } from './useGear';
+import { useGearPicks } from './useGearPicks';
+import { useClubGear } from './useClubGear';
+import { isFlagOn } from '@/lib/flags';
+import type { SetupCategory } from '@/lib/gearSetup';
 
 /**
  * The Gear register: what we'd suggest per category (the pick rail), what you
@@ -24,6 +31,10 @@ import { useGear } from './useGear';
  * because the catalog has no rows for them, not because the UI is missing.
  * Both the rail and the kit rows key off a sourced-category list rather than a
  * flag, so sourcing rows is the only step to un-park a category.
+ *
+ * `NEXT_PUBLIC_FLAG_GEAR_SETUP` swaps the whole arrangement for the Set-up
+ * card (`SetupRegister` below). Two components rather than one with branches,
+ * because each owns a different set of hooks and a hook cannot be conditional.
  */
 
 export interface GearRegisterProps {
@@ -31,6 +42,12 @@ export interface GearRegisterProps {
 }
 
 export default function GearRegister({ activeName }: GearRegisterProps) {
+  return isFlagOn('NEXT_PUBLIC_FLAG_GEAR_SETUP')
+    ? <SetupRegister activeName={activeName} />
+    : <LegacyRegister activeName={activeName} />;
+}
+
+function LegacyRegister({ activeName }: GearRegisterProps) {
   // THE single owner of the gear document for this register. Every child takes
   // it as a prop. Before this, four components read GET /api/equipment/gear
   // independently and two of them wrote it, and `useGear` holds per-instance
@@ -81,6 +98,64 @@ export default function GearRegister({ activeName }: GearRegisterProps) {
       />
       <ClubGearCard />
       <GearFitSheet open={openFit} onClose={() => setOpenFit(false)} gear={gear} />
+    </>
+  );
+}
+
+/**
+ * The Set-up register (claude.ai/design "Equipment redesign", Turn 2): one
+ * spec card, string tension, the club tally, the fit sheet.
+ *
+ * Every reader has exactly ONE instance, owned here and handed down — the
+ * gear doc (`useGear`), the recommend picks (`useGearPicks`, which the rail
+ * owns on the other branch) and the club tally (`useClubGear`, shared by the
+ * card's "N others play it" and `ClubGearCard`, so the two cannot disagree).
+ */
+function SetupRegister({ activeName }: GearRegisterProps) {
+  const t = useTranslations('stats.gear');
+  const gear = useGear(activeName);
+  const [pairTension, setPairTension] = useState<number | null>(null);
+  const [openFit, setOpenFit] = useState(false);
+  const picks = useGearPicks(activeName, gear, { onPairTension: setPairTension, holdFitRefetch: openFit });
+  const club = useClubGear();
+  // Which line's picker is open. PR 1 routes both lines to the existing
+  // catalog sheet; the Set-up add and manage sheets replace it.
+  const [picking, setPicking] = useState<SetupCategory | null>(null);
+
+  const items = (gear.gear?.items ?? []).filter((i) => i && !i.retiredAt);
+  const ownedForPicking = picking ? items.filter((i) => (i.category ?? 'racket') === picking) : [];
+
+  return (
+    <>
+      <GearSetupCard
+        activeName={activeName}
+        gear={gear}
+        picks={picks}
+        club={club}
+        onOpenLine={setPicking}
+        onOpenFit={() => setOpenFit(true)}
+      />
+      <StringTensionCard
+        activeName={activeName}
+        gear={gear}
+        suppressed={pairTension !== null && !gear.loadError}
+      />
+      <ClubGearCard club={club} mine={gear.loaded && !gear.loadError ? gear.gear : undefined} />
+      <GearFitSheet open={openFit} onClose={() => setOpenFit(false)} gear={gear} />
+      <GearSheet
+        open={picking !== null}
+        onClose={() => setPicking(null)}
+        category={picking ?? 'racket'}
+        title={picking === 'string' ? t('pickString') : t('pickRacket')}
+        ownedCatalogIds={ownedForPicking.map((i) => i.catalogId).filter((id): id is string => typeof id === 'string')}
+        ownedItems={ownedForPicking}
+        activeItemId={gear.active?.id}
+        // A racket picked from its line is "the one I play" — the line is the
+        // racket IN PLAY, so naming or changing it moves the pointer.
+        onPick={(item) => gear.add(item, item.category === 'racket' ? { makeActive: true } : undefined)}
+        busy={gear.busy}
+        online={gear.online}
+      />
     </>
   );
 }

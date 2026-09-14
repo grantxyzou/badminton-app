@@ -583,6 +583,25 @@
       "gear": "Equipment"
     },
     "gear": {
+      "setup": {
+        "eyebrow": "Set-up",
+        "progress": "{filled} of 2",
+        "tapToName": "Tap to name it",
+        "inPlay": "In play",
+        "spare": "Spare",
+        "swapIn": "Swap in",
+        "arriveHint": "Two lines is the whole card. Fill them and the club tally starts working — and we can size your tension to the frame instead of your level.",
+        "othersPlay": "{count} others play it",
+        "pairSuggestion": "For this frame we'd pair {string} at {lb} lb",
+        "pairSuggestionNoLb": "For this frame we'd pair {string}",
+        "addLb": "Add lb",
+        "yours": "yours",
+        "typeDurable": "durable",
+        "typeRepulsion": "repulsion",
+        "typeControl": "control",
+        "typeHybrid": "hybrid",
+        "typeAllRound": "all-round"
+      },
       "picksLocked": "<link>Sign in</link> for gear picked for how you play.",
       "clubLocked": "<link>Sign in</link> to see what the club plays with.",
       "tensionLocked": "<link>Sign in</link> for a string tension that fits your level.",

@@ -583,6 +583,25 @@
       "gear": "装备"
     },
     "gear": {
+      "setup": {
+        "eyebrow": "装备配置",
+        "progress": "已填 {filled}/2",
+        "tapToName": "点击填写",
+        "inPlay": "在用",
+        "spare": "备用",
+        "swapIn": "换上",
+        "arriveHint": "整张卡只有两行。填好后，俱乐部统计就能用上——我们也能按你的球拍而不是水平来建议穿线磅数。",
+        "othersPlay": "另有 {count} 人在用",
+        "pairSuggestion": "这支球拍我们建议搭配 {string}，{lb} 磅",
+        "pairSuggestionNoLb": "这支球拍我们建议搭配 {string}",
+        "addLb": "填写磅数",
+        "yours": "你的",
+        "typeDurable": "耐打",
+        "typeRepulsion": "弹性",
+        "typeControl": "控制",
+        "typeHybrid": "混合",
+        "typeAllRound": "全面"
+      },
       "picksLocked": "<link>登录</link>后获取为你挑选的装备。",
       "clubLocked": "<link>登录</link>后查看俱乐部大家用什么装备。",
       "tensionLocked": "<link>登录</link>后获取适合你水平的穿线磅数。",

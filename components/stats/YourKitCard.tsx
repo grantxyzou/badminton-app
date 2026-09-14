@@ -11,6 +11,7 @@ import BagList from './BagList';
 import type { GearFailure, UseGear } from './useGear';
 import type { EquipmentCategory, GearItem } from '@/lib/types';
 import { gearItemLabel, MIN_LB, MAX_LB } from '@/lib/tension';
+import { gearFailureMessage } from '@/lib/gearFailureMessage';
 
 const CATEGORIES: { key: EquipmentCategory; labelKey: string; icon: string }[] = [
   { key: 'racket', labelKey: 'catRacket', icon: 'sports_tennis' },
@@ -174,17 +175,8 @@ export default function YourKitCard({ activeName, gear, onOpenFit }: YourKitCard
    *  on `'string'`, so one list serves both rather than one per category. */
   const ownedItems = items.filter((i) => !i.retiredAt);
 
-  /** One place a `GearFailure` becomes words, so the picker and these rows can
-   *  never describe the same refusal differently. */
-  function messageFor(reason: GearFailure): string {
-    if (reason === 'bag_full') return tErr('bagFull');
-    if (reason === 'duplicate_racket') return tErr('bagDuplicate');
-    if (reason === 'unauthorized') return tErr('bagSignInAgain');
-    if (reason === 'member_not_found') return tErr('bagMemberMissing');
-    if (reason === 'tension_not_saved') return tErr('bagTensionNotSaved');
-    if (reason === 'rate_limited') return tErr('bagRateLimited');
-    return tErr('recError');
-  }
+  /** Shared with the Set-up card — see `lib/gearFailureMessage.ts`. */
+  const messageFor = (reason: GearFailure) => gearFailureMessage(reason, tErr);
 
   /** Activate / remove, with their answer actually rendered. A handler that
    *  reports nothing is UNKNOWN, not failed — painting an error here would

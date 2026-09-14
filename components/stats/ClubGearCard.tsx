@@ -1,15 +1,26 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
-import type { ClubGearEntry } from '@/lib/clubGear';
 import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
+import { useClubGear, type UseClubGear } from './useClubGear';
+import { isMine } from '@/lib/gearSetup';
+import type { PlayerGear } from '@/lib/types';
 
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+export interface ClubGearCardProps {
+  /**
+   * The register's tally read, when something else on screen reads it too
+   * (the Set-up card's club fact). Absent, the card reads it itself — the
+   * flag-off register, where it is the only reader.
+   */
+  club?: UseClubGear;
+  /** The member's gear doc, to mark their own rows " · yours". Omitted, no
+   *  row is marked — an unknown bag must never claim a row is not yours. */
+  mine?: PlayerGear | null;
+}
 
 /**
  * "What the club plays" — the aggregated kit tally.
@@ -18,27 +29,13 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  * document, so its own fetch is correct and stays. The single-owner rule that
  * `GearRegister` enforces is about `GET /api/equipment/gear` specifically.
  */
-export default function ClubGearCard() {
+export default function ClubGearCard({ club, mine }: ClubGearCardProps = {}) {
   const t = useTranslations('stats.gear');
   const signInLink = useSignInLink();
-  const [entries, setEntries] = useState<ClubGearEntry[]>([]);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'forbidden'>('loading');
-  const [attempt, setAttempt] = useState(0);
-
-  useEffect(() => {
-    let live = true;
-    fetch(`${BASE}/api/stats/club/gear`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((d) => {
-        if (!live) return;
-        setEntries((d?.entries ?? []) as ClubGearEntry[]);
-        setStatus('ready');
-      })
-      .catch((e: Error) => live && setStatus(e?.message === '401' || e?.message === '403' ? 'forbidden' : 'error'));
-    return () => {
-      live = false;
-    };
-  }, [attempt]);
+  // Disabled when a shared read was handed in, so there is still exactly one
+  // request per register.
+  const own = useClubGear(!club);
+  const { entries, status, retry } = club ?? own;
 
   if (status === 'loading') return <CardSkeleton height={180} />;
   // Refused (this device holds no session for the name): the card stays, as
@@ -63,7 +60,7 @@ export default function ClubGearCard() {
         <ErrorState
           message={t('clubError')}
           action={
-            <button type="button" className="cc-btn cc-btn-ghost" onClick={() => { setStatus('loading'); setAttempt((n) => n + 1); }}>
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={retry}>
               {t('retry')}
             </button>
           }
@@ -85,6 +82,11 @@ export default function ClubGearCard() {
               >
                 <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-primary)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {e.label}
+                  {mine !== undefined && isMine(mine, e) && (
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent)', fontWeight: 600 }}>
+                      {' · '}{t('setup.yours')}
+                    </span>
+                  )}
                 </span>
                 <span
                   style={{

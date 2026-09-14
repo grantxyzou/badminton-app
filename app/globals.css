@@ -215,6 +215,10 @@
 
   /* ── Dividers ── */
   --divider: rgba(255, 255, 255, 0.05);
+  /* A line that is ASKING for something (the Set-up card's blank line, an
+     empty tension slot). Heavier than --divider on purpose: a divider
+     separates filled things; this one has to read as a slot. */
+  --divider-dashed: rgba(255, 255, 255, 0.22);
 
   /* ── Misc ── */
   --court-green: #4ade80;
@@ -348,6 +352,7 @@
   --tone-violet-border: rgba(124, 58, 237, 0.28);
 
   --divider: rgba(0, 0, 0, 0.06);
+  --divider-dashed: rgba(0, 0, 0, 0.18);
 
   --pin-color: #dc2626;
 }
@@ -4444,3 +4449,115 @@ html:root .swipe-row {
     transition: none;
   }
 }
+
+/* ── Set-up card (Equipment redesign, NEXT_PUBLIC_FLAG_GEAR_SETUP) ──────────
+   One spec card, one row per line. A filled line is separated by a plain
+   divider; a blank line by a DASHED one, which is the whole of how the card
+   says "this is still to fill" — no "Not set" text, no empty-state icon. The
+   label column is a fixed width so Racket / Strings / Spare values start on
+   one vertical, which is what makes it read as a spec sheet and not a list. */
+/* The card's subject: the member's own name, in display type but NOT in
+   accent — `.bpm-h2` is green, and green on this tab marks what to tap. */
+.setup-name {
+  margin: var(--space-05) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-stat-lg);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.setup-lines { display: flex; flex-direction: column; gap: var(--space-4); }
+.setup-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  width: 100%;
+  padding: 0 0 var(--space-4);
+  border: none;
+  border-bottom: 1px solid var(--divider);
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+button.setup-line { cursor: pointer; }
+button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
+.setup-line:last-child { border-bottom: none; padding-bottom: 0; }
+.setup-line--blank { border-bottom: 1px dashed var(--divider-dashed); }
+.setup-line--blank:last-child { border-bottom: 1px dashed var(--divider-dashed); padding-bottom: var(--space-4); }
+/* The tappable part of a line that ALSO holds its own control (the empty
+   tension slot): buttons cannot nest, so the line is a div and this is the
+   button inside it, carrying the line's layout but none of its border. */
+.setup-line-hit {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.setup-line-hit:disabled { opacity: 0.5; pointer-events: none; }
+.setup-line-label {
+  width: 74px;
+  flex: 0 0 auto;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.setup-line-body { flex: 1; min-width: 0; }
+.setup-line-value {
+  display: block;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.setup-line--blank .setup-line-value { font-weight: 400; color: var(--text-muted); }
+.setup-line-sub {
+  display: block;
+  margin-top: var(--space-05);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.setup-line-sub--accent { color: var(--accent); }
+.setup-line-spare { font-size: var(--fs-md); font-weight: 400; color: var(--text-secondary); }
+.setup-tension { display: inline-flex; align-items: baseline; gap: var(--space-05); }
+.setup-tension-value { font-family: var(--font-mono); font-size: var(--fs-stat); font-weight: 700; color: var(--text-primary); }
+.setup-tension-unit { font-size: var(--fs-xs); color: var(--text-secondary); }
+/* The empty tension slot: it says what it wants, and is never a zero. */
+.setup-chip-dashed {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px dashed var(--divider-dashed);
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.setup-link {
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: var(--fs-sm);
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.setup-link:disabled { opacity: 0.5; pointer-events: none; }
