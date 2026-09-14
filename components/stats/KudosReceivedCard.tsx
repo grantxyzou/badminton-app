@@ -7,7 +7,7 @@ import { useActiveName } from '@/lib/useActiveName';
 import { KUDOS_TAGS, TAG_ICON, type KudosCount, type KudosNote } from '@/lib/kudos';
 import { SKILLS } from '@/lib/assessment';
 import CardHeader from '@/components/primitives/CardHeader';
-import LockedCard from './LockedCard';
+import LockedCard, { useSignInLink } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -24,6 +24,7 @@ type LoadState =
  */
 export default function KudosReceivedCard() {
   const t = useTranslations('stats');
+  const signInLink = useSignInLink();
   // Subscribed, not resolved-once — see the note in SkillTrendCard.
   const { name: activeName } = useActiveName();
   const [state, setState] = useState<LoadState>({ kind: 'idle' });
@@ -61,7 +62,7 @@ export default function KudosReceivedCard() {
   // its own shape with nothing in it, and Sign in carries the weight.
   if (state.kind === 'needsAuth') {
     return (
-      <LockedCard icon="volunteer_activism" title={t('kudos.receivedTitle')} message={t('kudos.receivedLocked')}>
+      <LockedCard icon="volunteer_activism" title={t('kudos.receivedTitle')} message={t.rich('kudos.receivedLocked', { link: signInLink })}>
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           <span className="locked-line" style={{ width: '24%', height: 'var(--space-6)' }} />
           <span className="locked-line" style={{ width: '30%', height: 'var(--space-6)' }} />

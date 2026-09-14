@@ -5,6 +5,13 @@ import { NextIntlClientProvider } from 'next-intl';
 import SummaryGreeting from '../../components/stats/SummaryGreeting';
 import enMessages from '../../messages/en.json';
 
+/** A locked card's sentence, matched whole: its "Sign in" is a link element, so
+ *  the text is split across nodes and a plain text query cannot see it. */
+const sentence = (raw: string) => {
+  const plain = raw.replace(/<\/?link>/g, '');
+  return (_: string, el: Element | null) => el?.tagName === 'P' && el.textContent === plain;
+};
+
 /**
  * The A-section regression, end to end: `/api/stats/insight` is owner-or-admin
  * gated, and `useInsight` used to map every non-ok response to `null` — so a
@@ -69,7 +76,7 @@ describe('SummaryGreeting — a refusal is not an absent greeting', () => {
     signIn('GreetForbidden');
     mockInsight(403, { error: 'forbidden' });
     renderGreeting();
-    expect(await screen.findByText(enMessages.stats.summaryGreeting.locked)).toBeDefined();
+    expect(await screen.findByText(sentence(enMessages.stats.summaryGreeting.locked))).toBeDefined();
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.queryByText(SIGN_IN_COPY)).toBeNull();
   });

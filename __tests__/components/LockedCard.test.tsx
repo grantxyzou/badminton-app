@@ -1,36 +1,49 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
-import { NextIntlClientProvider } from 'next-intl';
+import { NextIntlClientProvider, useTranslations } from 'next-intl';
 import enMessages from '../../messages/en.json';
-import LockedCard, { PreviewRow, StatsSignInContext } from '../../components/stats/LockedCard';
+import LockedCard, { PreviewRow, StatsSignInContext, useSignInLink } from '../../components/stats/LockedCard';
 
 /**
- * Grant, 2026-09-14: a Stats card this device may not fill keeps its shape
- * and carries its own Sign in. The banner that used to explain it is gone,
- * so the button on the card is the only way out.
+ * Grant, 2026-09-14: a Stats card this device may not fill keeps its shape,
+ * and the way in is the words "Sign in" in its sentence — not a button, not a
+ * chip in the header (both were tried and were too loud down a whole tab).
  */
+function Card() {
+  const t = useTranslations('stats.partners');
+  const signInLink = useSignInLink();
+  return (
+    <LockedCard icon="group" title="Who you play with" message={t.rich('locked', { link: signInLink })}>
+      <PreviewRow icon="person" />
+    </LockedCard>
+  );
+}
+
 function renderCard(onSignIn: (() => void) | null) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
       <StatsSignInContext.Provider value={onSignIn}>
-        <LockedCard icon="group" title="Who you play with" message="Sign in to see who you play with most.">
-          <PreviewRow icon="person" />
-        </LockedCard>
+        <Card />
       </StatsSignInContext.Provider>
     </NextIntlClientProvider>,
   );
 }
 
+const SENTENCE = 'Sign in to see who you play with most.';
+
 afterEach(() => cleanup());
 
 describe('LockedCard', () => {
-  it('says what signing in shows, marks itself signed out, and its Sign in goes where the tab sends it', () => {
+  it('reads as one sentence whose "Sign in" is the only control, and it goes where the tab sends it', () => {
     const onSignIn = vi.fn();
-    renderCard(onSignIn);
-    expect(screen.getByText('Sign in to see who you play with most.')).toBeDefined();
-    expect(screen.getByText(enMessages.stats.lockedPill)).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: enMessages.stats.signIn }));
+    const { container } = renderCard(onSignIn);
+    expect(container.querySelector('p')?.textContent).toBe(SENTENCE);
+    const buttons = screen.getAllByRole('button');
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].textContent).toBe('Sign in');
+    expect(buttons[0].className).toContain('locked-link');
+    fireEvent.click(buttons[0]);
     expect(onSignIn).toHaveBeenCalledTimes(1);
   });
 
@@ -40,8 +53,9 @@ describe('LockedCard', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('offers no button that goes nowhere when no tab provides a destination', () => {
-    renderCard(null);
-    expect(screen.queryByRole('button', { name: enMessages.stats.signIn })).toBeNull();
+  it('with nowhere to go, the words stay plain text — no link that goes nowhere', () => {
+    const { container } = renderCard(null);
+    expect(container.querySelector('p')?.textContent).toBe(SENTENCE);
+    expect(screen.queryByRole('button')).toBeNull();
   });
 });

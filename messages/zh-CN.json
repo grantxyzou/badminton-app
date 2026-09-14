@@ -569,7 +569,6 @@
     "mismatch": "两次输入不一样，再试一次吧"
   },
   "stats": {
-    "lockedPill": "未登录",
     "heading": "你的数据",
     "subheadV2": "你的水平在哪里,以及接下来该做什么",
     "registers": {
@@ -579,9 +578,9 @@
       "gear": "装备"
     },
     "gear": {
-      "picksLocked": "登录后获取为你挑选的装备。",
-      "clubLocked": "登录后查看俱乐部大家用什么装备。",
-      "tensionLocked": "登录后获取适合你水平的穿线磅数。",
+      "picksLocked": "<link>登录</link>后获取为你挑选的装备。",
+      "clubLocked": "<link>登录</link>后查看俱乐部大家用什么装备。",
+      "tensionLocked": "<link>登录</link>后获取适合你水平的穿线磅数。",
       "kitTitle": "你拥有的装备",
       "kitSubtitle": "你在用什么。登记之后俱乐部的统计才有意义。",
       "notSet": "未设置",
@@ -774,7 +773,7 @@
       "tensionCaptureLabel": "你实际拉线的磅数"
     },
     "learn": {
-      "locked": "登录后获取本周重点和练习。",
+      "locked": "<link>登录</link>后获取本周重点和练习。",
       "focusEyebrow": "本周 · 重点",
       "focusBody": "你评分最低的技能，也是对手最常抓住的地方。我们替你挑好了 — 你不用纠结。",
       "focusFallback": "练一练你的{label}",
@@ -839,7 +838,7 @@
       "done": "完成"
     },
     "record": {
-      "locked": "登录后查看你的比赛记录。",
+      "locked": "<link>登录</link>后查看你的比赛记录。",
       "title": "比分",
       "subtitle": "你记录的比赛，最新在前。",
       "fraction": "{played}场胜{won}场",
@@ -851,7 +850,7 @@
       "error": "无法加载你的比赛。"
     },
     "partners": {
-      "locked": "登录后查看你最常和谁一起打。",
+      "locked": "<link>登录</link>后查看你最常和谁一起打。",
       "title": "常见搭档",
       "subtitle": "和你搭档最多的人。",
       "empty": "还没有 — 记录一场后搭档就会显示在这里。",
@@ -893,7 +892,7 @@
       "offline": "你处于离线状态 — 此操作需要联网。"
     },
     "club": {
-      "locked": "登录后查看你在俱乐部里的位置。",
+      "locked": "<link>登录</link>后查看你在俱乐部里的位置。",
       "title": "你的位置",
       "ledeOne": "在{skill}上，你处于俱乐部的<hi>{band}</hi>。",
       "ledeTwo": "在{skill1}上，你处于俱乐部的<hi>{band1}</hi>；在{skill2}上处于{band2}。",
@@ -906,7 +905,6 @@
       "error": "无法加载你在俱乐部的位置。"
     },
     "overview": {
-      "signedOut": "未登录",
       "level": "水平",
       "games": "场次",
       "kudos": "点赞",
@@ -929,7 +927,7 @@
       "ofFive": "/ 5"
     },
     "kudos": {
-      "receivedLocked": "登录后查看别人给你的点赞。",
+      "receivedLocked": "<link>登录</link>后查看别人给你的点赞。",
       "receivedTitle": "你收到的赞",
       "giveTitle": "送出赞",
       "giveHint": "看到谁打得好？告诉他们。",
@@ -970,7 +968,7 @@
     "retry": "重试",
     "signIn": "登录",
     "summaryGreeting": {
-      "locked": "登录后每周获得一段关于你打球的简评。",
+      "locked": "<link>登录</link>后每周获得一段关于你打球的简评。",
       "ariaLabel": "你的 AI 总结",
       "beta": "测试版",
       "ai": "AI"
@@ -980,7 +978,7 @@
       "aiBadge": "AI"
     },
     "assess": {
-      "locked": "登录后查看你的技术变化。",
+      "locked": "<link>登录</link>后查看你的技术变化。",
       "heroTitle": "你的球技变化",
       "checkIn": "评估",
       "rateSkills": "评估你的技能",

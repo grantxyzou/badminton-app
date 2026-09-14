@@ -8,7 +8,7 @@ import EmptyState from '@/components/primitives/EmptyState';
 import { summarizeRecord, type GameRecord } from '@/lib/gameRecord';
 import type { GameResult } from '@/lib/types';
 import SteppedGameLoggerSheet from './SteppedGameLoggerSheet';
-import LockedCard, { PreviewRow } from './LockedCard';
+import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -28,6 +28,7 @@ export interface YourRecordCardProps {
 
 export default function YourRecordCard({ activeName }: YourRecordCardProps) {
   const t = useTranslations('stats.record');
+  const signInLink = useSignInLink();
   const tStats = useTranslations('stats');
   const [record, setRecord] = useState<GameRecord | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'forbidden'>('loading');
@@ -77,7 +78,7 @@ export default function YourRecordCard({ activeName }: YourRecordCardProps) {
   // No Add button: logging a game would be refused too.
   if (status === 'forbidden') {
     return (
-      <LockedCard title={t('title')} message={t('locked')}>
+      <LockedCard title={t('title')} message={t.rich('locked', { link: signInLink })}>
         <PreviewRow icon="sports_tennis" width="48%" value="— : —" />
         <PreviewRow icon="sports_tennis" width="40%" value="— : —" />
         <PreviewRow icon="sports_tennis" width="44%" value="— : —" />

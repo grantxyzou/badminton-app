@@ -8,7 +8,7 @@ import EmptyState from '@/components/primitives/EmptyState';
 import { BottomSheet, BottomSheetBody, BottomSheetHeader } from '../BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 import type { UseCheckIn } from './useCheckIn';
-import LockedCard, { PreviewRow } from './LockedCard';
+import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -63,6 +63,7 @@ export interface LearnRegisterProps {
 
 export default function LearnRegister({ activeName, checkIn, onCheckedIn }: LearnRegisterProps) {
   const t = useTranslations('stats.learn');
+  const signInLink = useSignInLink();
   const tStats = useTranslations('stats');
   const online = useOnline();
 
@@ -144,7 +145,7 @@ export default function LearnRegister({ activeName, checkIn, onCheckedIn }: Lear
   // its own shape with nothing in it, and Sign in carries the weight.
   if (status === 'forbidden') {
     return (
-      <LockedCard title={t('twoTitle')} message={t('locked')}>
+      <LockedCard title={t('twoTitle')} message={t.rich('locked', { link: signInLink })}>
         <PreviewRow icon="school" width="70%" value="" />
         <PreviewRow icon="school" width="56%" value="" />
       </LockedCard>

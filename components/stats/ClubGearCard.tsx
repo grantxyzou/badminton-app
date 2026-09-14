@@ -7,7 +7,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import type { ClubGearEntry } from '@/lib/clubGear';
-import LockedCard, { PreviewRow } from './LockedCard';
+import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -20,6 +20,7 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  */
 export default function ClubGearCard() {
   const t = useTranslations('stats.gear');
+  const signInLink = useSignInLink();
   const [entries, setEntries] = useState<ClubGearEntry[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'forbidden'>('loading');
   const [attempt, setAttempt] = useState(0);
@@ -44,7 +45,7 @@ export default function ClubGearCard() {
   // its own shape with nothing in it, and Sign in carries the weight.
   if (status === 'forbidden') {
     return (
-      <LockedCard icon="groups" title={t('clubTitle')} subtitle={t('clubSubtitle')} message={t('clubLocked')}>
+      <LockedCard icon="groups" title={t('clubTitle')} subtitle={t('clubSubtitle')} message={t.rich('clubLocked', { link: signInLink })}>
         <PreviewRow width="52%" />
         <PreviewRow width="40%" />
         <PreviewRow width="30%" />

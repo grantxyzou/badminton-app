@@ -569,7 +569,6 @@
     "mismatch": "Those two don't match — give it another go"
   },
   "stats": {
-    "lockedPill": "Signed out",
     "heading": "Your stats",
     "subheadV2": "Where your game is, and what to do about it",
     "registers": {
@@ -579,9 +578,9 @@
       "gear": "Equipment"
     },
     "gear": {
-      "picksLocked": "Sign in for gear picked for how you play.",
-      "clubLocked": "Sign in to see what the club plays with.",
-      "tensionLocked": "Sign in for a string tension that fits your level.",
+      "picksLocked": "<link>Sign in</link> for gear picked for how you play.",
+      "clubLocked": "<link>Sign in</link> to see what the club plays with.",
+      "tensionLocked": "<link>Sign in</link> for a string tension that fits your level.",
       "kitTitle": "Your equipment",
       "kitSubtitle": "What you play with. Logging it is what makes the club tally useful.",
       "notSet": "Not set",
@@ -774,7 +773,7 @@
       "tensionCaptureLabel": "Tension you strung at"
     },
     "learn": {
-      "locked": "Sign in for this week's focus and drills.",
+      "locked": "<link>Sign in</link> for this week's focus and drills.",
       "focusEyebrow": "This week · focus",
       "focusBody": "Your lowest-rated skill, and the one your partners keep lifting off. We pick it — you don't have to decide.",
       "focusFallback": "Work on your {label}",
@@ -839,7 +838,7 @@
       "done": "Done"
     },
     "record": {
-      "locked": "Sign in to see your games.",
+      "locked": "<link>Sign in</link> to see your games.",
       "title": "Scores",
       "subtitle": "Games you logged, newest first.",
       "fraction": "{won} of {played}",
@@ -851,7 +850,7 @@
       "error": "Couldn't load your games."
     },
     "partners": {
-      "locked": "Sign in to see who you play with most.",
+      "locked": "<link>Sign in</link> to see who you play with most.",
       "title": "Who you play with",
       "subtitle": "Your most frequent partners.",
       "empty": "Nobody yet — log a game and your partners show up here.",
@@ -893,7 +892,7 @@
       "offline": "You're offline — this needs a connection."
     },
     "club": {
-      "locked": "Sign in to see where you sit in the club.",
+      "locked": "<link>Sign in</link> to see where you sit in the club.",
       "title": "Where you sit",
       "ledeOne": "You're in the <hi>{band}</hi> of the club at {skill}.",
       "ledeTwo": "You're in the <hi>{band1}</hi> of the club at {skill1}, and the {band2} at {skill2}.",
@@ -906,7 +905,6 @@
       "error": "Couldn't load where you sit."
     },
     "overview": {
-      "signedOut": "Signed out",
       "level": "Level",
       "games": "Games",
       "kudos": "Kudos",
@@ -929,7 +927,7 @@
       "ofFive": "/ 5"
     },
     "kudos": {
-      "receivedLocked": "Sign in to see kudos people gave you.",
+      "receivedLocked": "<link>Sign in</link> to see kudos people gave you.",
       "receivedTitle": "Kudos you've received",
       "giveTitle": "Send kudos",
       "giveHint": "Noticed someone playing well? Tell them.",
@@ -970,7 +968,7 @@
     "retry": "Try again",
     "signIn": "Sign in",
     "summaryGreeting": {
-      "locked": "Sign in for a short read on your game each week.",
+      "locked": "<link>Sign in</link> for a short read on your game each week.",
       "ariaLabel": "Your AI summary",
       "beta": "Beta",
       "ai": "AI"
@@ -980,7 +978,7 @@
       "aiBadge": "AI"
     },
     "assess": {
-      "locked": "Sign in to see how your skills are moving.",
+      "locked": "<link>Sign in</link> to see how your skills are moving.",
       "heroTitle": "Your game over time",
       "checkIn": "Check in",
       "rateSkills": "Rate your skills",

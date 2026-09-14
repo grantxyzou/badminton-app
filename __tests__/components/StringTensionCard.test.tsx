@@ -6,6 +6,13 @@ import StringTensionCard from '../../components/stats/StringTensionCard';
 import type { UseGear } from '../../components/stats/useGear';
 import enMessages from '../../messages/en.json';
 
+/** A locked card's sentence, matched whole: its "Sign in" is a link element, so
+ *  the text is split across nodes and a plain text query cannot see it. */
+const sentence = (raw: string) => {
+  const plain = raw.replace(/<\/?link>/g, '');
+  return (_: string, el: Element | null) => el?.tagName === 'P' && el.textContent === plain;
+};
+
 function fakeGear(overrides: Partial<UseGear> = {}): UseGear {
   return {
     gear: null,
@@ -87,7 +94,7 @@ describe('StringTensionCard — no number without something behind it', () => {
     // look empty; the tab banner carries the Sign in button.
     mockLevel(403, { error: 'forbidden' });
     renderCard();
-    expect(await screen.findByText('Sign in for a string tension that fits your level.')).toBeDefined();
+    expect(await screen.findByText(sentence(enMessages.stats.gear.tensionLocked))).toBeDefined();
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.queryByRole('button', { name: enMessages.stats.gear.doubles })).toBeNull();
   });

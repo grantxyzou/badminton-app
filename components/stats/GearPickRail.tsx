@@ -8,7 +8,7 @@ import GearPickSheet from './GearPickSheet';
 import type { UseGear } from './useGear';
 import { PROFILE_READS_FIT } from '@/lib/racketProfile';
 import type { CatalogItem, EquipmentCategory } from '@/lib/types';
-import LockedCard, { PreviewRow } from './LockedCard';
+import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -96,6 +96,7 @@ export interface GearPickRailProps {
  */
 export default function GearPickRail({ activeName, gear, onPairTension, onOpenFit, holdFitRefetch = false }: GearPickRailProps) {
   const t = useTranslations('stats.gear');
+  const signInLink = useSignInLink();
   // Reason KEYS are translated at RENDER, in the member's locale — the point
   // of the fit engine speaking in keys. State holds what the server sent
   // (keys AND the legacy English strings); the view below derives the
@@ -410,7 +411,7 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
   // its own shape with nothing in it, and Sign in carries the weight.
   if (refused) {
     return (
-      <LockedCard message={t('picksLocked')}>
+      <LockedCard message={t.rich('picksLocked', { link: signInLink })}>
         <PreviewRow icon="sports_tennis" width="50%" />
         <PreviewRow icon="science" width="38%" />
       </LockedCard>

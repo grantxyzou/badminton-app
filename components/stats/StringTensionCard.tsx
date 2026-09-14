@@ -6,7 +6,7 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import { recommendTension, formatForToggle, MIN_LB, MAX_LB, type PlayFormat } from '@/lib/tension';
 import type { UseGear } from './useGear';
-import LockedCard from './LockedCard';
+import LockedCard, { useSignInLink } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -42,6 +42,7 @@ export interface StringTensionCardProps {
 
 export default function StringTensionCard({ activeName, gear, suppressed }: StringTensionCardProps) {
   const t = useTranslations('stats.gear');
+  const signInLink = useSignInLink();
   const tStats = useTranslations('stats');
   // The bag-write failure vocabulary, shared with both gear sheets so one
   // refusal cannot be described two different ways on one tab.
@@ -119,7 +120,7 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
   // its own shape with nothing in it, and Sign in carries the weight.
   if (levelStatus === 'forbidden') {
     return (
-      <LockedCard icon="science" title={t('tensionTitle')} subtitle={t('tensionSubtitle')} message={t('tensionLocked')}>
+      <LockedCard icon="science" title={t('tensionTitle')} subtitle={t('tensionSubtitle')} message={t.rich('tensionLocked', { link: signInLink })}>
         <div className="segment-control flex w-full">
           <span className="flex-1 flex items-center justify-center fs-sm segment-tab-inactive">{t('doubles')}</span>
           <span className="flex-1 flex items-center justify-center fs-sm segment-tab-inactive">{t('singles')}</span>

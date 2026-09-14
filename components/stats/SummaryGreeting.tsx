@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 import { useInsight } from '@/lib/useInsight';
 import AIBadge from '@/components/primitives/AIBadge';
 import ErrorState from '@/components/primitives/ErrorState';
-import LockedCard from './LockedCard';
+import LockedCard, { useSignInLink } from './LockedCard';
 
 /**
  * The single plain-language AI takeaway at the top of the Stats Summary — the
@@ -40,6 +40,7 @@ import LockedCard from './LockedCard';
  */
 export default function SummaryGreeting() {
   const t = useTranslations('stats');
+  const signInLink = useSignInLink();
   const { data, forbidden, serverError, reload } = useInsight(true);
   const greeting = data?.greeting ?? null;
 
@@ -47,7 +48,7 @@ export default function SummaryGreeting() {
   // Sign in — the same treatment as every other Stats card (LockedCard).
   if (forbidden) {
     return (
-      <LockedCard message={t('summaryGreeting.locked')}>
+      <LockedCard message={t.rich('summaryGreeting.locked', { link: signInLink })}>
         <div className="locked-row">
           <AIBadge label={t('insightChip.aiGenerated')}>{t('summaryGreeting.ai')}</AIBadge>
           <span className="locked-line" style={{ width: '70%' }} />
