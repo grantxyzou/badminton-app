@@ -48,9 +48,9 @@ export function useSignInLink() {
  * no session for the name). Grant, 2026-09-14: keep the card and show what a
  * populated one would look like.
  *
- * Rendered as an amber `StateCard` (the status lives in the glass, see
- * components/primitives/StateCard.tsx). It was the flat `.is-locked` surface
- * until the admin failure cards gave status colour to the material itself.
+ * Rendered as a `StateCard` with no tone: plain glass. Colour in that
+ * material is reserved for real problems (a failed load is red, a session
+ * that needs attention amber); see components/primitives/StateCard.tsx.
  * The preview is `aria-hidden`: it is shape, not content, and a screen reader
  * gets the sentence and its link.
  *
@@ -60,11 +60,11 @@ export function useSignInLink() {
  * header ("take those tags out. Hyperlink the text instead").
  */
 export default function LockedCard({ icon, title, subtitle, message, children }: LockedCardProps) {
-  // Amber glass: signed out is a state that wants attention (members only is
-  // coming), not a failure — the same amber Home's "set up a way to sign in"
-  // warning uses. Grant, 2026-09-14: "yes give it colour".
+  // Plain glass, no tone. Amber was tried and read as a stained card across a
+  // whole tab of signed-out cards; signed out is not a problem, and the Sign in
+  // link already says what to do. Grant, 2026-09-14: "plain glass for stats".
   return (
-    <StateCard tone="warn" icon={icon} title={title} subtitle={subtitle} message={message}>
+    <StateCard icon={icon} title={title} subtitle={subtitle} message={message}>
       {children}
     </StateCard>
   );

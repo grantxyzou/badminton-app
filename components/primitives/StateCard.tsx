@@ -20,7 +20,8 @@ import CardHeader from './CardHeader';
 export type StateTone = 'danger' | 'warn' | 'success';
 
 export interface StateCardProps {
-  tone: StateTone;
+  /** Omit for plain glass: a state that is not a problem (signed out on Stats). */
+  tone?: StateTone;
   icon?: string;
   title?: ReactNode;
   subtitle?: ReactNode;

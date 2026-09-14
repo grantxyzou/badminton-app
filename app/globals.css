@@ -2014,7 +2014,8 @@ html:root .state-dash {
    `--tone` is the wash, `--tone-ink` the readable text colour on top of it.
    Specificity (0,3,1) outranks both `html:root .glass-card` and the Stats
    tab's `html[data-tab="skills"] .glass-card`. */
-html:root .glass-card[data-tone] {
+html:root .glass-card[data-tone],
+html:root .cc-dcard[data-tone] {
   background:
     radial-gradient(
       ellipse at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
@@ -2031,9 +2032,9 @@ html:root .glass-card[data-tone] {
      card should have the colour but borderless"). */
   box-shadow: var(--fcard-inset), var(--fcard-shadow);
 }
-html:root .glass-card[data-tone="danger"]  { --tone: var(--color-red);   --tone-ink: var(--sev-crit-text); }
-html:root .glass-card[data-tone="warn"]    { --tone: var(--color-amber); --tone-ink: var(--sev-med-text); }
-html:root .glass-card[data-tone="success"] { --tone: var(--accent);      --tone-ink: var(--sev-good-text); }
+html:root [data-tone="danger"]  { --tone: var(--color-red);   --tone-ink: var(--sev-crit-text); }
+html:root [data-tone="warn"]    { --tone: var(--color-amber); --tone-ink: var(--sev-med-text); }
+html:root [data-tone="success"] { --tone: var(--accent);      --tone-ink: var(--sev-good-text); }
 html:root .state-message { color: var(--text-primary); }
 html:root .state-link {
   display: inline;
