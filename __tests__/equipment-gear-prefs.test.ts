@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { PATCH, GET, POST } from '../app/api/equipment/gear/route';
+import { PATCH, GET, POST, PUT } from '../app/api/equipment/gear/route';
 import { resetMockStore, seedMember, seedAdminMember, setupAdminPin, makeRequest, makeAdminRequest, memberCookieValue } from './helpers';
 
 const BASE = 'http://localhost:3000/api/equipment/gear';
@@ -175,5 +175,74 @@ describe('fit questionnaire fields', () => {
       name: 'Lin', item: { catalogId: 'racket-yonex-astrox-88d-pro', category: 'racket', label: 'Yonex Astrox 88D Pro' },
     }, headers));
     expect(post.status).toBe(200);
+  });
+});
+
+/**
+ * How a racket typed by name feels (Grant, 2026-09-14). Stored on the bag item
+ * through PATCH `itemFeel`, so it leaves with the racket — and it must survive
+ * PUT, which rebuilds an item from the wire and would otherwise drop it.
+ */
+describe('typed racket feel', () => {
+  const cookie = { Cookie: `member_session=${memberCookieValue('Lin')}` };
+
+  beforeEach(() => {
+    resetMockStore();
+    setupAdminPin();
+    process.env.NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE = 'true';
+    seedMember('Lin', { id: 'member-lin' });
+  });
+
+  async function read() {
+    return (await (await GET(makeRequest('GET', `${BASE}?name=Lin`, undefined, cookie))).json()).gear;
+  }
+
+  async function addTyped(label = 'Victor Auraspeed 90S') {
+    const res = await POST(makeRequest('POST', BASE, { name: 'Lin', makeActive: true, item: { catalogId: null, category: 'racket', label } }, cookie));
+    expect(res.status).toBe(200);
+    return (await read()).items.find((i: { label: string }) => i.label === label).id as string;
+  }
+
+  it('stores the answers on the typed racket, and an empty set clears them', async () => {
+    const id = await addTyped();
+    const res = await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', itemFeel: { itemId: id, balance: 'Head-heavy', flex: 'Stiff' } }, cookie));
+    expect(res.status).toBe(200);
+    expect((await read()).items[0].feel).toEqual({ balance: 'Head-heavy', flex: 'Stiff' });
+
+    // "Don't know" on every row is an answer too: the whole set is replaced.
+    await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', itemFeel: { itemId: id } }, cookie));
+    expect((await read()).items[0].feel).toBeUndefined();
+  });
+
+  it('refuses an answer outside the vocabulary rather than storing it', async () => {
+    const id = await addTyped();
+    const res = await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', itemFeel: { itemId: id, flex: 'Extra Stiff' } }, cookie));
+    expect(res.status).toBe(400);
+    expect((await read()).items[0].feel).toBeUndefined();
+  });
+
+  it('refuses feel on a CATALOG racket — its real specs are already known', async () => {
+    await POST(makeRequest('POST', BASE, { name: 'Lin', item: { catalogId: 'racket-yonex-astrox-88d-pro', category: 'racket', label: 'Yonex Astrox 88D Pro' } }, cookie));
+    const id = (await read()).items[0].id;
+    const res = await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', itemFeel: { itemId: id, balance: 'Even', flex: 'Medium' } }, cookie));
+    expect(res.status).toBe(404);
+  });
+
+  it('is dropped when the typed racket is later picked from the catalog', async () => {
+    const id = await addTyped('Yonex Astrox 88D Pro');
+    await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', itemFeel: { itemId: id, balance: 'Even', flex: 'Medium' } }, cookie));
+    await POST(makeRequest('POST', BASE, { name: 'Lin', item: { catalogId: 'racket-yonex-astrox-88d-pro', category: 'racket', label: 'Yonex Astrox 88D Pro' } }, cookie));
+    const item = (await read()).items[0];
+    expect(item.id).toBe(id);
+    expect(item.catalogId).toBe('racket-yonex-astrox-88d-pro');
+    expect(item.feel).toBeUndefined();
+  });
+
+  it('survives a PUT of the same racket, which rebuilds the item from the wire', async () => {
+    const id = await addTyped();
+    await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', itemFeel: { itemId: id, balance: 'Even', flex: 'Medium', weight: '4U' } }, cookie));
+    const put = await PUT(makeRequest('PUT', BASE, { name: 'Lin', item: { catalogId: null, category: 'racket', label: 'Victor Auraspeed 90S' } }, cookie));
+    expect(put.status).toBe(200);
+    expect((await read()).items[0].feel).toEqual({ balance: 'Even', flex: 'Medium', weight: '4U' });
   });
 });

@@ -1,4 +1,4 @@
-import type { CatalogItem, EquipmentCategory, GearItem, PlayerGear } from './types';
+import type { CatalogItem, EquipmentCategory, GearItem, PlayerGear, RacketFeel } from './types';
 import type { ClubGearEntry } from './clubGear';
 import { activeRacket } from './activeRacket';
 
@@ -173,6 +173,32 @@ export function blankStringPairing(lines: SetupLines, stringPick: SetupStringPic
 export function tensionOnScreen(lines: SetupLines, stringPick: SetupStringPick): boolean {
   if (typeof lines.string?.tensionLbs === 'number') return true;
   return typeof blankStringPairing(lines, stringPick)?.tensionLbs === 'number';
+}
+
+/** Each feel answer → its `stats.gear.setup` word key. Weight classes are
+ *  printed as they are ("4U"); they read the same in every language. */
+export const FEEL_WORD_KEY: Record<string, string> = {
+  'Head-heavy': 'feelHeadHeavy',
+  Even: 'feelEven',
+  'Head-light': 'feelHeadLight',
+  Stiff: 'feelStiff',
+  Medium: 'feelMedium',
+  Flexible: 'feelFlexible',
+};
+
+/**
+ * A typed-in racket's line in the member's own words: "4U · head-heavy ·
+ * stiff", in the same order as a catalog row's spec. Null when nothing was
+ * answered — an unanswered racket has no spec, not a blank one.
+ */
+export function racketFeelLine(feel: RacketFeel | undefined, word: (key: string) => string): string | null {
+  if (!feel) return null;
+  const parts = [
+    feel.weight ?? null,
+    feel.balance ? word(FEEL_WORD_KEY[feel.balance]).toLowerCase() : null,
+    feel.flex ? word(FEEL_WORD_KEY[feel.flex]).toLowerCase() : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join(' · ') : null;
 }
 
 /** A picker row's spec: "3U · head-heavy · stiff". A string row reuses

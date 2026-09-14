@@ -5,11 +5,13 @@ import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
 import TensionStepper from './TensionStepper';
+import RacketFeelChips from './RacketFeelChips';
 import { useCatalog } from './useCatalog';
 import type { GearResult, UseGear } from './useGear';
 import { gearFailureMessage } from '@/lib/gearFailureMessage';
 import { catalogSpecRows } from '@/lib/catalogSpecs';
-import { racketRowSpec, setupLines, stringSpecLine, type SetupCategory } from '@/lib/gearSetup';
+import { racketFeelLine, racketRowSpec, setupLines, stringSpecLine, type SetupCategory } from '@/lib/gearSetup';
+import type { RacketFeel } from '@/lib/types';
 
 export interface SetupLineSheetProps {
   open: boolean;
@@ -43,6 +45,8 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [tension, setTension] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Feel answers edited on this visit; null = untouched, so the stored ones show. */
+  const [feel, setFeel] = useState<RacketFeel | null>(null);
 
   const lines = setupLines(gear.loadError ? null : gear.gear);
   const item = category === 'racket' ? lines.racket : lines.string;
@@ -50,9 +54,14 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
 
   const label = category === 'racket' ? tGear('catRacket') : tGear('catString');
   const title = row?.model ?? item?.label ?? label;
+  // A racket typed by name has no catalog row; its only spec is what the
+  // member said about it.
+  const typedRacket = category === 'racket' && !!item && !item.catalogId;
   const spec = row
     ? [row.brand, category === 'racket' ? racketRowSpec(row) : stringSpecLine(row, (k) => t(k))].filter(Boolean).join(' · ')
-    : null;
+    : typedRacket ? racketFeelLine(item?.feel, (k) => t(k)) : null;
+  const shownFeel = feel ?? item?.feel ?? {};
+  const feelChanged = feel !== null && feelKey(feel) !== feelKey(item?.feel ?? {});
   const specRows = row ? catalogSpecRows(row) : [];
 
   async function run(op: () => Promise<GearResult>, after?: () => void) {
@@ -140,6 +149,24 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
             </div>
           )}
 
+          {typedRacket && item && (
+            <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }} aria-label={t('feelTitle')}>
+              <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)' }}>
+                <span className="fs-md" style={{ flex: 1, color: 'var(--text-primary)', fontWeight: 600 }}>{t('feelTitle')}</span>
+                <button
+                  type="button"
+                  className="setup-link"
+                  disabled={!feelChanged || gear.busy || !gear.online}
+                  onClick={() => { if (feel) void run(() => gear.setFeel(item.id, feel), () => setFeel(null)); }}
+                >
+                  {t('saveFeel')}
+                </button>
+              </span>
+              <span className="fs-sm" style={{ color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{t('feelHelp')}</span>
+              <RacketFeelChips value={shownFeel} onChange={setFeel} disabled={gear.busy || !gear.online} />
+            </section>
+          )}
+
           {error && <ErrorState message={error} />}
 
           {specRows.length > 0 && (
@@ -179,6 +206,11 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
       </BottomSheetBody>
     </BottomSheet>
   );
+}
+
+/** Answers in a fixed order with gaps dropped, so two feels compare by value. */
+function feelKey(f: RacketFeel): string {
+  return [f.balance ?? '', f.flex ?? '', f.weight ?? ''].join('|');
 }
 
 function ActionRow({ icon, label, onClick, disabled }: { icon: string; label: string; onClick: () => void; disabled?: boolean }) {

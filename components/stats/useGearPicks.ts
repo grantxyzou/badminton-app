@@ -194,9 +194,20 @@ export function useGearPicks(
   // the server cannot disagree about which fields matter.
   const d = gear.gear;
   const prefKey = gearLoaded ? `${d?.playFormat ?? ''}|${d?.budgetMaxCad ?? ''}` : null;
-  const fitKey = gearLoaded && PROFILE_READS_FIT
-    ? `${d?.fitGoal ?? ''}|${d?.fitSwing ?? ''}|${d?.fitArmComfort ?? ''}|${d?.fitGrip ?? ''}`
+  // How a typed-in racket IN PLAY feels: those answers are the fit engine's
+  // anchor (`lib/racketFeel.ts`), so a change to them is a fit change like any
+  // other. Empty for a catalog racket, so the bag itself is still not a key.
+  // Deliberately OUTSIDE the `PROFILE_READS_FIT` gate: `buildFitInput` reads
+  // feel regardless of it, and gating the key would strand a member on the
+  // pick from before they answered. Appended, because `comfortChanged` below
+  // reads the third segment by position.
+  const inPlay = gear.active;
+  const feelKey = inPlay && !inPlay.catalogId && inPlay.feel
+    ? `${inPlay.id}:${inPlay.feel.balance ?? ''}:${inPlay.feel.flex ?? ''}:${inPlay.feel.weight ?? ''}`
     : '';
+  const fitKey = gearLoaded && PROFILE_READS_FIT
+    ? `${d?.fitGoal ?? ''}|${d?.fitSwing ?? ''}|${d?.fitArmComfort ?? ''}|${d?.fitGrip ?? ''}|${feelKey}`
+    : `||||${feelKey}`;
   // `stringBudgetMaxCad` is deliberately NOT a key: no engine reads it yet
   // (see PROFILE_READS_FIT's docstring), so a refetch on it returns the same
   // pick for a limiter token.

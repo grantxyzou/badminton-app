@@ -2,6 +2,7 @@ import { getContainer } from './cosmos';
 import { buildProfile } from './racketProfile';
 import { activeRacket, rackets } from './activeRacket';
 import { fitLevel, isScorable, canon, type FitInput } from './racketFit';
+import { feelAnchor } from './racketFeel';
 import type { CatalogItem, PlayerGear } from './types';
 import type { Rating } from './assessment';
 
@@ -12,9 +13,10 @@ import type { Rating } from './assessment';
  * meant the preview could score an input production never produced, and the
  * golden test would pass for an engine members never see.
  *
- * The anchor is the ACTIVE racket, and only when its catalogId resolves to a
- * scorable row; every other racket in the bag, and a free-text one, is
- * excluded by id or by normalised label.
+ * The anchor is the ACTIVE racket, when its catalogId resolves to a scorable
+ * row or, for a typed-in racket, when the member has said how it feels. Every
+ * other racket in the bag, and a free-text one, is excluded by id or by
+ * normalised label.
  */
 export function buildFitInput(
   gear: PlayerGear | null,
@@ -22,8 +24,13 @@ export function buildFitInput(
   catalogRackets: CatalogItem[],
 ): FitInput {
   const profile = buildProfile({ ratings, gear });
+  const level = profile ? fitLevel(profile) : null;
   const active = activeRacket(gear);
-  const anchorRow = active?.catalogId ? catalogRackets.find((r) => r.id === active.catalogId) ?? null : null;
+  // A typed-in racket anchors only through the member's own answers about how
+  // it feels (`feelAnchor`); with balance or shaft unanswered it stays null.
+  const anchorRow = active?.catalogId
+    ? catalogRackets.find((r) => r.id === active.catalogId) ?? null
+    : feelAnchor(active, level);
   const owned = rackets(gear).filter((i) => !i.retiredAt);
   return {
     anchor: anchorRow && isScorable(anchorRow) ? anchorRow : null,
@@ -35,7 +42,7 @@ export function buildFitInput(
     grip: gear?.fitGrip,
     format: gear?.playFormat ?? 'both',
     budgetMaxCad: typeof gear?.budgetMaxCad === 'number' ? gear.budgetMaxCad : undefined,
-    level: profile ? fitLevel(profile) : null,
+    level,
     hasRatings: ratings.length > 0,
   };
 }

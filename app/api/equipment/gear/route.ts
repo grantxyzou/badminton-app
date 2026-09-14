@@ -5,9 +5,10 @@ import { verifyMemberAuth, peekMemberSession, isAdminAuthed, isAdminAuthedWithMe
 import { isFlagOn } from '@/lib/flags';
 import { rackets } from '@/lib/activeRacket';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { FIT_GOALS, FIT_SWINGS, FIT_ARM_COMFORTS, FIT_GRIPS, type PlayerGear, type GearItem, type EquipmentCategory } from '@/lib/types';
+import { FIT_GOALS, FIT_SWINGS, FIT_ARM_COMFORTS, FIT_GRIPS, type PlayerGear, type GearItem, type EquipmentCategory, type RacketFeel } from '@/lib/types';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { resolveGroupId } from '@/lib/groupContext';
+import { parseFeel, hasFeel } from '@/lib/racketFeel';
 
 export const dynamic = 'force-dynamic';
 
@@ -340,7 +341,10 @@ export async function POST(req: NextRequest) {
             && i.label.trim().toLowerCase() === incomingKey)
         : undefined;
       if (typed) {
-        const items = existing.map((i) => (i.id === typed.id ? { ...i, catalogId, category: incomingCategory, label } : i));
+        // A catalog row has real specs, so the member's feel answers for the
+        // typed name are dropped rather than stored beside them.
+        const { feel: _feel, ...keep } = typed;
+        const items = existing.map((i) => (i.id === typed.id ? { ...keep, catalogId, category: incomingCategory, label } : i));
         const activeRacketId = body.makeActive === true && incomingCategory === 'racket'
           ? typed.id
           : prior?.activeRacketId;
@@ -449,11 +453,26 @@ export async function PATCH(req: NextRequest) {
       touchedFit = true;
     }
 
+    // How a typed-in racket feels: `{ itemId, balance?, flex?, weight? }`.
+    // The whole answer set is replaced — an omitted or null answer is "don't
+    // know", which is a real answer here, not an untouched field. A value
+    // outside the vocabulary is refused rather than stored, for the reason the
+    // fit enums above give.
+    let itemFeel: { itemId: string; feel: RacketFeel } | null = null;
+    if ('itemFeel' in body) {
+      const raw = body.itemFeel;
+      const itemId = raw && typeof raw.itemId === 'string' ? raw.itemId : '';
+      const { itemId: _id, ...answers } = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+      const feel = parseFeel(answers);
+      if (!itemId || !feel) return NextResponse.json({ error: 'invalid_feel' }, { status: 400 });
+      itemFeel = { itemId, feel };
+    }
+
     // activeRacketId is required only when this call isn't setting a
     // preference field — the original PATCH contract ("set my active
     // racket") vs. the new one ("set my format/budget/fit preference"),
     // sharing one verb and one auth gate.
-    if (!activeRacketId && !('playFormat' in body) && !('budgetMaxCad' in body) && !touchedFit) {
+    if (!activeRacketId && !('playFormat' in body) && !('budgetMaxCad' in body) && !touchedFit && !itemFeel) {
       return NextResponse.json({ error: 'active_racket_required' }, { status: 400 });
     }
 
@@ -471,6 +490,19 @@ export async function PATCH(req: NextRequest) {
           return { ok: false, response: NextResponse.json({ error: 'racket_not_found' }, { status: 404 }) };
         }
         attempt.activeRacketId = activeRacketId;
+      }
+      if (itemFeel) {
+        const existing = prior?.items ?? [];
+        const target = existing.find((i) => i.id === itemFeel.itemId);
+        // Only a racket the catalog does not have: a catalog row already
+        // carries its real specs, and a member's impression must not be
+        // stored beside them as if it were a second source.
+        if (!target || (target.category ?? 'racket') !== 'racket' || target.catalogId) {
+          return { ok: false, response: NextResponse.json({ error: 'racket_not_found' }, { status: 404 }) };
+        }
+        const { feel: _old, ...rest } = target;
+        const nextItem: GearItem = hasFeel(itemFeel.feel) ? { ...rest, feel: itemFeel.feel } : rest;
+        attempt.items = existing.map((i) => (i.id === target.id ? nextItem : i));
       }
       // `fitUpdatedAt` dates an ANSWER, so it moves only when one actually
       // changes against the stored doc — not on a re-tap of the lit tab, and
@@ -591,6 +623,11 @@ export async function PUT(req: NextRequest) {
         acquiredAt: body.item.acquiredAt,
         tensionLbs: typeof body.item.tensionLbs === 'number' ? body.item.tensionLbs : undefined,
         notes: typeof body.item.notes === 'string' ? body.item.notes.slice(0, 200) : undefined,
+        // PUT rebuilds the item from the wire, and no client sends `feel` —
+        // it is written only by PATCH `itemFeel`. Carried from the matched
+        // item so re-saving a typed-in racket cannot erase what the member
+        // said about it.
+        ...(matchIndex >= 0 && existing[matchIndex].feel ? { feel: existing[matchIndex].feel } : null),
       };
 
       let items: GearItem[];
