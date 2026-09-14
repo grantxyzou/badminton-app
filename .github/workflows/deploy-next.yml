@@ -62,9 +62,9 @@ jobs:
           NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE: 'true'
           NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: 'true'
           NEXT_PUBLIC_FLAG_RACKET_FIT: 'true'
-          # The Equipment redesign (the Set-up card). Dark until its three PRs
-          # have landed and Grant has looked at it; see lib/flags.ts.
-          NEXT_PUBLIC_FLAG_GEAR_SETUP: 'false'
+          # The Equipment redesign (the Set-up card). On since 2026-09-14; revert
+          # to 'false' to bring back the old register. See lib/flags.ts.
+          NEXT_PUBLIC_FLAG_GEAR_SETUP: 'true'
           # NEXT_PUBLIC_* is baked at build time, so this must live here -- an
           # Azure App Setting cannot turn it on.
           #

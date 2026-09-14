@@ -1,7 +1,7 @@
 # Equipment redesign — the Set-up card
 
 **Track:** ROADMAP North Star pillar 4 (recommendations strong enough to suggest) — the club tally and the fit engine are only as good as the equipment members log, and today almost nobody logs any.
-**Status:** in-flight (dark behind `NEXT_PUBLIC_FLAG_GEAR_SETUP`, three PRs)
+**Status:** shipped 2026-09-14 (#419 dark, then the flag turned on)
 **Review on:** 2026-10-12 — has the flag been turned on, and did the share of members with a racket AND a string logged go up?
 
 ## Problem

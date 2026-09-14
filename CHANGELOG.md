@@ -48,6 +48,14 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Equipment — one Set-up card (2026-09-14, #419)
+
+- **The Gear register is one card now.** Two lines to fill, Racket and Strings, replace five empty fields, the pick rail and the kit rows. A filled line shows its spec and how many others in the club play it; a spare racket sits on its own line with "Swap in". Shoes and Shuttles are gone from the register.
+- **Picking and storing are one pass.** The add sheet searches the catalog by brand, offers your check-in's suggestion (it asks "Is this the one you play?" before saving), and captures "This is the one I play" for a racket or "Strung at" for a string on the row you just saved. Each filled line has its own sheet: change it, set the tension, or remove it.
+- **Payoffs.** "Where you'd go next" suggests the racket after the one in play, a complete card can be shared as an image (gear and tension only) or copied as text, and the club tally marks your own row "yours".
+- **Every catalog racket is drawn in its own colourway**, with an isometric head, researched from maker and retailer listings.
+- **Changing a string replaces it.** Found in review before it shipped: the first cut added the new string and left the old one voting in the club tally.
+
 ### Design — the fields stop being a flag (2026-09-10)
 
 - **`NEXT_PUBLIC_FLAG_VISUAL_FIELDS` is retired.** It was `'true'` in both workflows, so nothing changes on screen: the per-tab coloured grounds and the 30px frosted card material are simply the look now. The `data-visual="field"` attribute is gone from `<html>`, the flag is out of the registry and both workflows, and the seven pre-field rules it used to switch away from are deleted.
