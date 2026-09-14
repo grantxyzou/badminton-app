@@ -108,7 +108,7 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     description: 'The Equipment redesign (claude.ai/design "Equipment redesign", Turn 2): the Gear register becomes one "Set-up" spec card with two lines to fill (Racket, Strings), a club fact on each filled line, spares on their own line, a per-line manage sheet, "Where you\'d go next" and a share card. Replaces the pick rail, the kit rows and BagList on the flag-on branch; off, the register is unchanged. Client-only: every write still goes through the same /api/equipment/gear verbs, so it cannot change what is stored.',
     owner: 'grant',
     plannedRemoval: '2026-10-12',
-    note: 'Ships dark across three PRs (card → sheets → payoffs). Retiring it means deleting the flag-off register: GearPickRail, GearPickCard, YourKitCard, BagList and GearSheet if nothing else imports it, with their tests.',
+    note: 'Ships dark across three PRs (card → sheets → payoffs). Retiring it means deleting the flag-off register: GearPickRail, GearPickCard, YourKitCard, BagList and GearSheet if nothing else imports it, with their tests. Two things to know at the flip: `rec_card_tap` keeps its kind but its population changes ("Where you\'d go next" renders only once a racket is in play, the rail\'s card rendered always), so the slice0 tap rate moves for a reason that is not engagement; and this register nests inside NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE, so until that retires the register forks twice.',
   },
 };
 

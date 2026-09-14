@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import GearPickRail from './GearPickRail';
 import GearFitSheet from './GearFitSheet';
@@ -150,6 +150,9 @@ function SetupRegister({ activeName }: GearRegisterProps) {
   >(null);
   const [pickOpen, setPickOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  // Memoised on the doc: the share sheet draws its canvas from a callback ref,
+  // and a fresh object per render would redraw (and reload the image) each time.
+  const share = useMemo(() => setupShare(activeName ?? '', setupLines(gear.gear)), [activeName, gear.gear]);
   const openAdd = (category: SetupCategory, makeActive: boolean) =>
     setSheet((s) => ({ kind: 'add', category, makeActive, key: (s?.key ?? 0) + 1 }));
   const openLine = (category: SetupCategory) => {
@@ -210,7 +213,7 @@ function SetupRegister({ activeName }: GearRegisterProps) {
         <SetupShareSheet
           open
           onClose={() => setShareOpen(false)}
-          share={setupShare(activeName ?? '', setupLines(gear.gear))}
+          share={share}
         />
       )}
       {sheet?.kind === 'line' && (

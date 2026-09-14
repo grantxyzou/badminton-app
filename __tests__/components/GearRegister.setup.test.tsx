@@ -69,3 +69,60 @@ describe('GearRegister — flag off: unchanged', () => {
     expect(screen.queryByText('Set-up')).toBeNull();
   });
 });
+
+describe('GearRegister — flag on: one door per line', () => {
+  /**
+   * The routing table: a blank line NAMES itself (the add sheet, as the one in
+   * play), a filled line is MANAGED (its own sheet), and the dashed "Add lb"
+   * slot belongs to a FILLED string — so it opens the line sheet, never the
+   * catalog. Each sheet is tested alone; this is the decision between them.
+   */
+  function mountWithBag(items: unknown[]) {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      const body = u.includes('/api/equipment/gear')
+        ? { gear: { id: 'gear-m1', memberId: 'm1', items, activeRacketId: 'r1', updatedAt: '' } }
+        : u.includes('/api/equipment/catalog') ? { items: [] }
+        : u.includes('/api/recommend') ? { item: null, needsCheckIn: true }
+        : { entries: [] };
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+    }) as unknown as typeof fetch;
+    return mount();
+  }
+
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_FLAG_GEAR_SETUP = 'true';
+    resetCatalogCache();
+  });
+  afterEach(() => {
+    delete process.env.NEXT_PUBLIC_FLAG_GEAR_SETUP;
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it('a blank racket line opens "Add a racket"', async () => {
+    mountWithBag([]);
+    const blanks = await screen.findAllByText('Tap to name it');
+    act(() => { blanks[0].click(); });
+    expect(await screen.findByText('Add a racket')).toBeTruthy();
+  });
+
+  it('a filled racket line opens its own sheet, not the catalog', async () => {
+    mountWithBag([{ id: 'r1', catalogId: null, category: 'racket', label: 'Li-Ning Air Force 79' }]);
+    const line = await screen.findByText('Li-Ning Air Force 79');
+    act(() => { line.click(); });
+    expect(await screen.findByText('The one you play')).toBeTruthy();
+    expect(screen.queryByText('Add a racket')).toBeNull();
+  });
+
+  it('"Add lb" on a string with no tension opens the string\'s line sheet', async () => {
+    mountWithBag([
+      { id: 'r1', catalogId: null, category: 'racket', label: 'Li-Ning Air Force 79' },
+      { id: 's1', catalogId: null, category: 'string', label: 'Yonex BG65' },
+    ]);
+    const chip = await screen.findByRole('button', { name: 'Add lb' });
+    act(() => { chip.click(); });
+    expect(await screen.findByText('Tension')).toBeTruthy();
+    expect(screen.queryByText('Add strings')).toBeNull();
+  });
+});
