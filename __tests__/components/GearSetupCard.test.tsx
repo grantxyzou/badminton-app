@@ -54,6 +54,7 @@ function fakePicks(stringPick: UseGearPicks['view']['string'] = { status: 'parke
     retry: vi.fn(),
     isOwned: () => false,
     railStatus: (s) => s,
+    refresh: vi.fn(),
   };
 }
 
@@ -126,7 +127,7 @@ describe('GearSetupCard — filling it in', () => {
   });
 
   it('one of two: the racket is in play with its spec, and the string line quotes a READY pairing', async () => {
-    const pick = { status: 'ready' as const, pick: { item: { ...CATALOG.string[0], model: 'BG65 Ti' }, reasons: [], tensionLbs: 26 } };
+    const pick = { status: 'ready' as const, pick: { item: { ...CATALOG.string[0], model: 'BG65 Ti' }, reasons: [], tensionLbs: 26, pairedWith: { label: 'Li-Ning Air Force 79', source: 'owned' as const } } };
     renderCard(fakeGear(doc([AF79], 'r1')), { picks: fakePicks(pick) });
     expect(screen.getByText('1 of 2')).toBeTruthy();
     expect(screen.getByText('In play')).toBeTruthy();

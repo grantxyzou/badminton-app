@@ -128,19 +128,35 @@ export function isMine(gear: PlayerGear | null, entry: ClubGearEntry): boolean {
  *  stays free of component imports. */
 export interface SetupStringPick {
   status: string;
-  pick: { item: { model: string }; tensionLbs?: number | null } | null;
+  pick: {
+    item: { id: string; model: string };
+    tensionLbs?: number | null;
+    /** The frame the server paired against, as it reported it. */
+    pairedWith?: { label: string; source: 'owned' | 'recommended' };
+  } | null;
 }
 
 /**
  * The pairing the BLANK strings line quotes, or null.
  *
  * Only once there is a racket to pair with (the design's "for this frame"),
- * only while there is no string yet, and only from a READY pick — a parked or
- * errored card has nothing to say here.
+ * only while there is no string yet, only from a READY pick — a parked or
+ * errored card has nothing to say here — and only when that pick was paired
+ * with the racket on the line.
  */
 export function blankStringPairing(lines: SetupLines, stringPick: SetupStringPick): SetupStringPick['pick'] {
   if (!lines.racket || lines.string) return null;
-  return stringPick.status === 'ready' ? stringPick.pick : null;
+  if (stringPick.status !== 'ready' || !stringPick.pick) return null;
+  // "For THIS frame" is a claim, so it needs the server to have paired
+  // against THIS frame: the member's own racket, by the label it reported.
+  // The picks are not refetched on every bag change, so a pairing made for
+  // the racket in play a minute ago would otherwise be quoted under the new
+  // one — and a free-text racket the catalog cannot resolve pairs against a
+  // RECOMMENDED frame, which is not the member's at all.
+  const paired = stringPick.pick.pairedWith;
+  if (!paired || paired.source !== 'owned') return null;
+  if (normalise(paired.label) !== normalise(lines.racket.label)) return null;
+  return stringPick.pick;
 }
 
 /**
@@ -157,4 +173,12 @@ export function blankStringPairing(lines: SetupLines, stringPick: SetupStringPic
 export function tensionOnScreen(lines: SetupLines, stringPick: SetupStringPick): boolean {
   if (typeof lines.string?.tensionLbs === 'number') return true;
   return typeof blankStringPairing(lines, stringPick)?.tensionLbs === 'number';
+}
+
+/** A picker row's spec: "3U · head-heavy · stiff". A string row reuses
+ *  `stringSpecLine`. */
+export function racketRowSpec(item: CatalogItem): string | null {
+  const parts = [text(item, 'weight'), text(item, 'balance')?.toLowerCase() ?? null, text(item, 'flex')?.toLowerCase() ?? null]
+    .filter(Boolean);
+  return parts.length ? parts.join(' · ') : null;
 }

@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useEffect, useRef, useState } from 'react';
 
 import GearPickRail from './GearPickRail';
 import GearFitSheet from './GearFitSheet';
-import GearSheet from './GearSheet';
 import GearSetupCard from './GearSetupCard';
+import SetupAddSheet from './SetupAddSheet';
+import SetupLineSheet from './SetupLineSheet';
 import YourKitCard from './YourKitCard';
 import StringTensionCard from './StringTensionCard';
 import ClubGearCard from './ClubGearCard';
@@ -112,17 +112,44 @@ function LegacyRegister({ activeName }: GearRegisterProps) {
  * card's "N others play it" and `ClubGearCard`, so the two cannot disagree).
  */
 function SetupRegister({ activeName }: GearRegisterProps) {
-  const t = useTranslations('stats.gear');
   const gear = useGear(activeName);
   const [openFit, setOpenFit] = useState(false);
   const picks = useGearPicks(activeName, gear, { holdFitRefetch: openFit });
   const club = useClubGear();
-  // Which line's picker is open. PR 1 routes both lines to the existing
-  // catalog sheet; the Set-up add and manage sheets replace it.
-  const [picking, setPicking] = useState<SetupCategory | null>(null);
 
-  const items = (gear.gear?.items ?? []).filter((i) => i && !i.retiredAt);
-  const ownedForPicking = picking ? items.filter((i) => (i.category ?? 'racket') === picking) : [];
+  // The string pairing is made against the racket IN PLAY, so when that
+  // changes (a racket named, changed, swapped in) the pairing is re-asked.
+  // Until it lands, `blankStringPairing` refuses to quote the old one: it
+  // checks the frame the server says it paired with.
+  const activeId = gear.active?.id ?? null;
+  const prevActiveRef = useRef<string | null | undefined>(undefined);
+  const { refresh } = picks;
+  useEffect(() => {
+    if (!gear.loaded || gear.loadError) return;
+    if (prevActiveRef.current === undefined) { prevActiveRef.current = activeId; return; }
+    if (prevActiveRef.current === activeId) return;
+    prevActiveRef.current = activeId;
+    refresh('string');
+  }, [gear.loaded, gear.loadError, activeId, refresh]);
+  // One sheet at a time: a line's own sheet, or the add sheet. `key` is bumped
+  // per opening so each visit starts clean — both sheets keep state that
+  // describes one visit (a saved row, a half-chosen tension, a pending
+  // remove), and a remount is the whole reset.
+  const [sheet, setSheet] = useState<
+    | { kind: 'line'; category: SetupCategory; key: number }
+    | { kind: 'add'; category: SetupCategory; makeActive: boolean; key: number }
+    | null
+  >(null);
+  const openAdd = (category: SetupCategory, makeActive: boolean) =>
+    setSheet((s) => ({ kind: 'add', category, makeActive, key: (s?.key ?? 0) + 1 }));
+  const openLine = (category: SetupCategory) => {
+    const lines = setupLines(gear.loadError ? null : gear.gear);
+    const filled = category === 'racket' ? !!lines.racket : !!lines.string;
+    // A blank line names itself; a filled one is managed. A racket named from
+    // its line is the one in play — the line IS the racket in play.
+    if (filled) setSheet((s) => ({ kind: 'line', category, key: (s?.key ?? 0) + 1 }));
+    else openAdd(category, true);
+  };
 
   return (
     <>
@@ -131,8 +158,9 @@ function SetupRegister({ activeName }: GearRegisterProps) {
         gear={gear}
         picks={picks}
         club={club}
-        onOpenLine={setPicking}
+        onOpenLine={openLine}
         onOpenFit={() => setOpenFit(true)}
+        onAddTension={() => openLine('string')}
       />
       <StringTensionCard
         activeName={activeName}
@@ -145,20 +173,29 @@ function SetupRegister({ activeName }: GearRegisterProps) {
       />
       <ClubGearCard club={club} mine={gear.loaded && !gear.loadError ? gear.gear : undefined} />
       <GearFitSheet open={openFit} onClose={() => setOpenFit(false)} gear={gear} />
-      <GearSheet
-        open={picking !== null}
-        onClose={() => setPicking(null)}
-        category={picking ?? 'racket'}
-        title={picking === 'string' ? t('pickString') : t('pickRacket')}
-        ownedCatalogIds={ownedForPicking.map((i) => i.catalogId).filter((id): id is string => typeof id === 'string')}
-        ownedItems={ownedForPicking}
-        activeItemId={gear.active?.id}
-        // A racket picked from its line is "the one I play" — the line is the
-        // racket IN PLAY, so naming or changing it moves the pointer.
-        onPick={(item) => gear.add(item, item.category === 'racket' ? { makeActive: true } : undefined)}
-        busy={gear.busy}
-        online={gear.online}
-      />
+      {sheet?.kind === 'line' && (
+        <SetupLineSheet
+          key={sheet.key}
+          open
+          onClose={() => setSheet(null)}
+          category={sheet.category}
+          gear={gear}
+          // The two sheets swap, never stack.
+          onChange={() => openAdd(sheet.category, true)}
+          onAddSpare={() => openAdd('racket', false)}
+        />
+      )}
+      {sheet?.kind === 'add' && (
+        <SetupAddSheet
+          key={sheet.key}
+          open
+          onClose={() => setSheet(null)}
+          category={sheet.category}
+          gear={gear}
+          picks={picks}
+          makeActive={sheet.makeActive}
+        />
+      )}
     </>
   );
 }

@@ -110,7 +110,7 @@ describe('isMine', () => {
 });
 
 describe('tensionOnScreen — the level card stands down only for a number the CARD shows', () => {
-  const ready = { status: 'ready', pick: { item: { model: 'BG85' }, tensionLbs: 23 } };
+  const ready = { status: 'ready', pick: { item: { id: 'string-bg85', model: 'BG85' }, tensionLbs: 23, pairedWith: { label: 'Li-Ning Air Force 79', source: 'owned' as const } } };
 
   it('no racket: the pairing is against a frame the card never names, so no number is on screen', () => {
     // The 2026-09-14 bug: a ready string pick with a tension, no racket in the
@@ -128,7 +128,7 @@ describe('tensionOnScreen — the level card stands down only for a number the C
 
   it('a pairing with no tension puts no number on screen', () => {
     const lines = setupLines(doc([R1], 'r1'));
-    expect(tensionOnScreen(lines, { status: 'ready', pick: { item: { model: 'BG85' }, tensionLbs: null } })).toBe(false);
+    expect(tensionOnScreen(lines, { status: 'ready', pick: { ...ready.pick, tensionLbs: null } })).toBe(false);
   });
 
   it('a parked or errored pick quotes nothing', () => {
@@ -139,5 +139,27 @@ describe('tensionOnScreen — the level card stands down only for a number the C
   it('the member\'s own recorded tension counts; a string without one does not', () => {
     expect(tensionOnScreen(setupLines(doc([R1, S2], 'r1')), ready)).toBe(true);
     expect(tensionOnScreen(setupLines(doc([R1, S1], 'r1')), ready)).toBe(false);
+  });
+});
+
+describe('blankStringPairing — "for this frame" needs the server to have paired against THIS frame', () => {
+  const pick = (pairedWith?: { label: string; source: 'owned' | 'recommended' }) =>
+    ({ status: 'ready', pick: { item: { id: 'string-bg85', model: 'BG85' }, tensionLbs: 23, pairedWith } });
+  const lines = setupLines(doc([R1], 'r1'));
+
+  it('quotes a pairing made for the racket on the line', () => {
+    expect(blankStringPairing(lines, pick({ label: 'li-ning air force 79 ', source: 'owned' }))).not.toBeNull();
+  });
+
+  it('refuses a pairing made for the PREVIOUS racket — the picks are not refetched on every bag change', () => {
+    expect(blankStringPairing(lines, pick({ label: 'Yonex Nanoflare 800', source: 'owned' }))).toBeNull();
+  });
+
+  it('refuses a pairing against a recommended frame, even one with the same name', () => {
+    expect(blankStringPairing(lines, pick({ label: 'Li-Ning Air Force 79', source: 'recommended' }))).toBeNull();
+  });
+
+  it('refuses a pairing that does not say what it paired with', () => {
+    expect(blankStringPairing(lines, pick(undefined))).toBeNull();
   });
 });

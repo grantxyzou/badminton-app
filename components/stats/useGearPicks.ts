@@ -82,6 +82,14 @@ export interface UseGearPicks {
   isOwned: (category: EquipmentCategory, item: CatalogItem | null) => boolean;
   /** A card's status once gear-read failure is folded in — see its comment. */
   railStatus: (status: GearPickCardStatus, pick: GearPick | null) => GearPickCardStatus;
+  /**
+   * Re-ask one category, keeping what is on screen until the answer lands.
+   * For a caller that KNOWS the answer moved — the Set-up register calls it
+   * when the racket in play changes, because the string pairing is made
+   * against that racket. Deliberately not wired to the bag in general: see
+   * `recKey`'s comment for why a pick must not re-score on every add.
+   */
+  refresh: (cat: EquipmentCategory) => void;
 }
 
 /**
@@ -450,5 +458,13 @@ export function useGearPicks(
     return gear.loadError && pick ? 'error' : status;
   }
 
-  return { view, refused, parkReasons, retry, isOwned, railStatus };
+  // Same mechanism as a retry, minus the loading state: a category marked
+  // cancelled is re-asked by the next effect pass even with no key change.
+  const refresh = useCallback((cat: EquipmentCategory) => {
+    if (!SOURCED.includes(cat)) return;
+    cancelledRef.current.add(cat);
+    setRetryTick((n) => n + 1);
+  }, []);
+
+  return { view, refused, parkReasons, retry, isOwned, railStatus, refresh };
 }

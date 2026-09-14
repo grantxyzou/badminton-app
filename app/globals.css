@@ -219,6 +219,9 @@
      empty tension slot). Heavier than --divider on purpose: a divider
      separates filled things; this one has to read as a slot. */
   --divider-dashed: rgba(255, 255, 255, 0.22);
+  /* The stand-in racket's tile. Pale in dark mode on purpose: the render is
+     graphite, and a graphite frame on a dark tile is a racket-shaped hole. */
+  --thumb-tile: rgba(236, 240, 236, 0.88);
 
   /* ── Misc ── */
   --court-green: #4ade80;
@@ -353,6 +356,7 @@
 
   --divider: rgba(0, 0, 0, 0.06);
   --divider-dashed: rgba(0, 0, 0, 0.18);
+  --thumb-tile: rgba(0, 0, 0, 0.045);
 
   --pin-color: #dc2626;
 }
@@ -4561,3 +4565,122 @@ button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
   white-space: nowrap;
 }
 .setup-link:disabled { opacity: 0.5; pointer-events: none; }
+
+/* ── Set-up sheets: add a racket/string, manage one line ────────────────── */
+
+/* The stand-in render on a tile. ONE image for every model — not a claim
+   that the frames look alike. A racket at list size is mostly air, so the
+   whole frame sits on a tile where its grip, shaft and paint survive. */
+.setup-thumb {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 58px;
+  border-radius: var(--radius-sm);
+  background: var(--thumb-tile);
+}
+.setup-thumb img { width: 24px; height: 52px; object-fit: contain; }
+.setup-thumb--saved { width: 50px; height: 64px; }
+.setup-thumb--saved img { width: 28px; height: 58px; }
+
+.setup-eyebrow {
+  margin: 0;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.setup-eyebrow--accent { color: var(--accent); }
+
+/* The suggestion: one green row at the top, not a card. */
+.setup-suggest {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--highlight-green);
+  border: 1px solid var(--inner-card-green-border);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+button.setup-suggest { cursor: pointer; }
+button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
+.setup-suggest-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-05); }
+
+/* The row a tap just saved, expanded where it sat: what it bought (tension,
+   in play) and an out for both. Same green material as the suggestion — it
+   is the suggestion's answer. */
+.setup-saved {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0 var(--space-6);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--highlight-green);
+  border: 1px solid var(--inner-card-green-border);
+}
+.setup-saved-head { display: flex; align-items: center; gap: var(--space-2); }
+/* Everything under the head lines up with the name, past the check glyph. */
+.setup-saved-indent { padding-left: var(--space-7); display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+
+.setup-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-05);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+}
+.setup-stepper button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+.setup-stepper button:disabled { color: var(--text-muted); opacity: 0.5; pointer-events: none; }
+.setup-stepper-value {
+  min-width: 2ch;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+/* A suggested number nobody has chosen yet: shown so the stepper has somewhere
+   to start, muted so it cannot be mistaken for what the member said. */
+.setup-stepper-value--suggested { color: var(--text-muted); font-weight: 400; }
+
+/* One management action per row in a line sheet. */
+.setup-actions { display: flex; flex-direction: column; gap: var(--space-2); }
+.setup-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+  text-align: left;
+  font: inherit;
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+}
+button.setup-action { cursor: pointer; }
+button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
+.setup-action--current { background: var(--highlight-green); border-color: var(--inner-card-green-border); color: var(--text-primary); }
+.setup-action-label { flex: 1; min-width: 0; }
