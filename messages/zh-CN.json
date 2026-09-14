@@ -905,7 +905,6 @@
       "error": "无法加载你在俱乐部的位置。"
     },
     "overview": {
-      "signedOut": "未登录",
       "level": "水平",
       "games": "场次",
       "kudos": "点赞",

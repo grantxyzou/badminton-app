@@ -25,9 +25,13 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
  * Cosmos misconfiguration stayed invisible.
  */
 
-/** `forbidden` is a 403 — this device does not own the name. A dash captioned
- *  "Signed out": "couldn't load" would call a refusal a failure, and the cards
- *  below each carry the Sign in. */
+/** `forbidden` is a 403 — this device does not own the name. A dash with a
+ *  blank caption: "couldn't load" would call a refusal a failure, and the
+ *  locked cards below each say how to sign in. */
+
+/** A caption line with nothing to say still holds its height, so the strip
+ *  does not grow when a caption arrives after load (Grant, 2026-09-14). */
+const BLANK = '\u00A0';
 type Tile<T> = { status: 'loading' | 'ready' | 'error' | 'forbidden'; data: T | null };
 
 const PENDING = { status: 'loading' as const, data: null };
@@ -121,7 +125,7 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
   if (level.status === 'error') {
     levelCaption = t('loadError');
   } else if (level.status === 'forbidden') {
-    levelCaption = t('signedOut');
+    levelCaption = BLANK;
   } else if (level.status === 'ready' && level.data !== null) {
     levelValue = level.data.toFixed(1);
     // Gate on the OWNER's status, never on a null-coalesced length: a failed
@@ -151,7 +155,7 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
       levelCaption = t('baseline');
     }
   } else if (level.status === 'loading') {
-    levelCaption = '';
+    levelCaption = BLANK;
   }
 
   // `StatCard`'s button path wraps label + value + unit + caption in ONE
@@ -203,12 +207,12 @@ export default function OverviewStrip({ activeName, checkIn }: OverviewStripProp
       <GlassTile
         label={t('games')}
         value={countText(games, t('noValue'))}
-        caption={games.status === 'error' ? t('loadError') : games.status === 'forbidden' ? t('signedOut') : t('gamesCaption')}
+        caption={games.status === 'error' ? t('loadError') : games.status === 'ready' ? t('gamesCaption') : BLANK}
       />
       <GlassTile
         label={t('kudos')}
         value={countText(kudos, t('noValue'))}
-        caption={kudos.status === 'error' ? t('loadError') : kudos.status === 'forbidden' ? t('signedOut') : t('kudosCaption')}
+        caption={kudos.status === 'error' ? t('loadError') : kudos.status === 'ready' ? t('kudosCaption') : BLANK}
         valueColor="var(--accent-amber)"
       />
     </div>
