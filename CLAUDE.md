@@ -200,7 +200,9 @@ and decisions in `docs/plans/native-shell.md`). Built 2026-09-03 on
   it. So a stash is completed only when the callback needed it (state cookie
   absent) or the stash is `native`; a callback validated on the PARKED state is
   non-authenticating (no `member_session`, never a link — the landing says
-  `handedOff=1`); and a native park mints a RETURN CODE the claim requires,
+  `handedOff=1`, and the pending-signup cookie carries `parked` so
+  `complete-signup` sets no session and `claim-name` refuses outright); and a
+  native park mints a RETURN CODE the claim requires,
   carried in the landing's `#hc=` fragment and home via
   `bpm://auth/return?c=`. **Still open, Grant's call:** the installed iOS PWA
   path has no channel for a code, so a provider authorization URL sent to a
