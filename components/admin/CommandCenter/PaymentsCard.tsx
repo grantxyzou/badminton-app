@@ -547,8 +547,8 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
             color: 'var(--color-red)',
             margin: '0',
             padding: 'var(--space-3) var(--space-4)',
-            background: 'rgba(239,68,68,0.06)',
-            border: '1px solid rgba(239,68,68,0.2)',
+            background: 'var(--tone-red-bg)',
+            border: '1px solid var(--tone-red-border)',
             borderRadius: 'var(--radius-sm)',
           }}
         >

@@ -36,6 +36,27 @@ const REQUIRED_TOKENS = [
   // light value, so deleting one silently reintroduces the light-mode
   // invisibility bug the Roster letter-headers shipped with.
   '--violet', '--on-accent',
+  // tone washes + ink on a coloured surface (#392, #75 second piece)
+  '--tone-green-bg', '--tone-green-border', '--tone-green-border-strong', '--tone-green-strong',
+  '--tone-amber-bg', '--tone-amber-border', '--tone-amber-strong',
+  '--tone-orange-bg', '--tone-orange-border',
+  '--tone-red-bg', '--tone-red-border', '--tone-red-strong',
+  '--tone-violet-bg', '--tone-violet-border',
+  '--ink-tick', '--ink-shadow',
+];
+
+// The tone washes exist BECAUSE the literals they replaced had no light value.
+// Presence alone cannot catch that bug returning: deleting a token's line from
+// the [data-theme="light"] block leaves the dark definition, so `defines token`
+// still passes while light mode goes back to dark-theme lime at dark alpha.
+// Each must be defined in both themes. (--ink-tick / --ink-shadow are
+// deliberately theme-independent and are not in this list.)
+const BOTH_THEME_TOKENS = [
+  '--tone-green-bg', '--tone-green-border', '--tone-green-border-strong', '--tone-green-strong',
+  '--tone-amber-bg', '--tone-amber-border', '--tone-amber-strong',
+  '--tone-orange-bg', '--tone-orange-border',
+  '--tone-red-bg', '--tone-red-border', '--tone-red-strong',
+  '--tone-violet-bg', '--tone-violet-border',
 ];
 
 // Utility/surface classes the primitives + cards rely on.
@@ -72,6 +93,13 @@ describe('design-system canary: globals.css token/class contract', () => {
 
   it.each(REQUIRED_TOKENS)('defines token %s', (token) => {
     expect(css).toContain(`${token}:`);
+  });
+
+  it.each(BOTH_THEME_TOKENS)('defines %s in the dark :root AND the light theme', (token) => {
+    const light = css.slice(css.indexOf('[data-theme="light"] {'));
+    const dark = css.slice(0, css.indexOf('[data-theme="light"] {'));
+    expect(dark).toContain(`${token}:`);
+    expect(light.slice(0, light.indexOf('\n}'))).toContain(`${token}:`);
   });
 
   it.each(REQUIRED_CLASSES)('defines class %s', (cls) => {

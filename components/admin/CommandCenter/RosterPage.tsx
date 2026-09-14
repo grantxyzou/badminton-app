@@ -469,8 +469,8 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                 gap: 'var(--space-2)',
                 padding: 'var(--space-2) var(--space-4)',
                 borderRadius: 'var(--radius-pill)',
-                background: on ? 'rgba(74,222,128,0.13)' : 'rgba(var(--glass-tint), 0.04)',
-                border: `1px solid ${on ? 'rgba(74,222,128,0.35)' : 'rgba(var(--glass-tint), 0.12)'}`,
+                background: on ? 'var(--tone-green-bg)' : 'rgba(var(--glass-tint), 0.04)',
+                border: `1px solid ${on ? 'var(--tone-green-border-strong)' : 'rgba(var(--glass-tint), 0.12)'}`,
                 fontFamily: 'var(--font-display, "Space Grotesk")',
                 fontSize: 'var(--fs-sm)',
                 fontWeight: 500,
@@ -556,9 +556,9 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                     {r.isYou && (
                       <span
                         style={{
-                          background: 'rgba(74,222,128,0.13)',
+                          background: 'var(--tone-green-bg)',
                           color: 'var(--accent)',
-                          border: '1px solid rgba(74,222,128,0.25)',
+                          border: '1px solid var(--tone-green-border)',
                           padding: 'var(--space-1) var(--space-3)',
                           borderRadius: 'var(--radius-pill)',
                           fontSize: 'var(--fs-2xs)',
@@ -572,9 +572,9 @@ export default function RosterPage({ onBack }: RosterPageProps) {
                     {r.member.role === 'admin' && !r.isYou && (
                       <span
                         style={{
-                          background: 'rgba(167,139,250,0.13)',
+                          background: 'var(--tone-violet-bg)',
                           color: 'var(--violet)',
-                          border: '1px solid rgba(167,139,250,0.28)',
+                          border: '1px solid var(--tone-violet-border)',
                           padding: 'var(--space-1) var(--space-3)',
                           borderRadius: 'var(--radius-pill)',
                           fontSize: 'var(--fs-2xs)',
@@ -641,7 +641,7 @@ export default function RosterPage({ onBack }: RosterPageProps) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 12px 28px rgba(74,222,128,0.4), 0 2px 6px rgba(0,0,0,0.4)',
+            boxShadow: '0 12px 28px var(--tone-green-strong), 0 2px 6px var(--ink-shadow)',
             border: 0,
             cursor: 'pointer',
             zIndex: 6,

@@ -220,7 +220,7 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
                 <span
                   className="material-icons"
                   aria-hidden="true"
-                  style={{ fontSize: 18, color: 'var(--text-secondary)' }}
+                  style={{ fontSize: 'var(--icon-md)', color: 'var(--text-secondary)' }}
                 >
                   chevron_right
                 </span>

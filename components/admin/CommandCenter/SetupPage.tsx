@@ -347,7 +347,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
           display: 'flex',
           flexDirection: 'column',
           gap: 'var(--space-4)',
-          background: 'linear-gradient(160deg, rgba(74,222,128,0.06), rgba(var(--glass-tint), 0.02))',
+          background: 'linear-gradient(160deg, var(--inner-card-green-bg), rgba(var(--glass-tint), 0.02))',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
@@ -392,9 +392,9 @@ export default function SetupPage({ onBack }: SetupPageProps) {
                     fontSize: 'var(--fs-xs)',
                     padding: 'var(--space-1) var(--space-4)',
                     borderRadius: 'var(--radius-pill)',
-                    background: costPerCourt === c ? 'rgba(74,222,128,0.13)' : 'rgba(var(--glass-tint), 0.04)',
+                    background: costPerCourt === c ? 'var(--tone-green-bg)' : 'rgba(var(--glass-tint), 0.04)',
                     color: costPerCourt === c ? 'var(--accent)' : 'var(--text-secondary)',
-                    border: `1px solid ${costPerCourt === c ? 'rgba(74,222,128,0.3)' : 'rgba(var(--glass-tint), 0.12)'}`,
+                    border: `1px solid ${costPerCourt === c ? 'var(--tone-green-border-strong)' : 'rgba(var(--glass-tint), 0.12)'}`,
                     cursor: 'pointer',
                     fontFamily: 'var(--font-mono, "JetBrains Mono")',
                   }}
@@ -502,8 +502,8 @@ export default function SetupPage({ onBack }: SetupPageProps) {
           style={{
             padding: 'var(--space-4)',
             borderRadius: 'var(--radius-lg)',
-            background: 'rgba(74,222,128,0.13)',
-            border: '1px solid rgba(74,222,128,0.3)',
+            background: 'var(--tone-green-bg)',
+            border: '1px solid var(--tone-green-border-strong)',
             color: 'var(--accent)',
             textAlign: 'center',
             fontWeight: 600,
@@ -647,7 +647,7 @@ function Stepper({
           height: 28,
           background: 'rgba(var(--glass-tint), 0.04)',
           border: 0,
-          borderRadius: 7,
+          borderRadius: 'var(--radius-sm)',
           color: 'var(--text-primary)',
           cursor: decDisabled || value <= 0 ? 'not-allowed' : 'pointer',
           opacity: decDisabled || value <= 0 ? 0.4 : 1,
@@ -668,7 +668,7 @@ function Stepper({
           height: 28,
           background: 'rgba(var(--glass-tint), 0.04)',
           border: 0,
-          borderRadius: 7,
+          borderRadius: 'var(--radius-sm)',
           color: 'var(--text-primary)',
           cursor: incDisabled ? 'not-allowed' : 'pointer',
           opacity: incDisabled ? 0.4 : 1,
