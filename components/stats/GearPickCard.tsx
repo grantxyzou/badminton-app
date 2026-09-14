@@ -77,6 +77,13 @@ export interface GearPickCardProps {
   owned: boolean;
   status: GearPickCardStatus;
   onOpen: () => void;
+  /** Ask again after a failed pick. A rail card keeps its box — the rail's
+   *  geometry needs the slot — but the failure gets a way out. */
+  onRetry?: () => void;
+  /** Which read failed. `kit` is the member's bag (ownership unknown, so a
+   *  pick cannot be drawn); `pick` is the recommendation itself. They are
+   *  different facts and each gets its own sentence. */
+  errorKind?: 'kit' | 'pick';
 }
 
 interface CategoryMeta {
@@ -172,7 +179,7 @@ function formatSpec(item: CatalogItem): string | null {
   return values.length > 0 ? values.join(' · ') : null;
 }
 
-export default function GearPickCard({ category, pick, owned, status, onOpen, parkReason, onOpenFit }: GearPickCardProps) {
+export default function GearPickCard({ category, pick, owned, status, onOpen, parkReason, onOpenFit, onRetry, errorKind = 'pick' }: GearPickCardProps) {
   const t = useTranslations('stats.gear');
   const meta = META[category];
 
@@ -187,7 +194,14 @@ export default function GearPickCard({ category, pick, owned, status, onOpen, pa
   if (status === 'error') {
     return (
       <div className="glass-card p-4" style={{ width: CARD_WIDTH, flex: '0 0 auto' }}>
-        <ErrorState message={t('kitError')} />
+        <ErrorState
+          message={errorKind === 'kit' ? t('kitError') : t('pickError')}
+          action={onRetry ? (
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={onRetry}>
+              {t('retry')}
+            </button>
+          ) : undefined}
+        />
       </div>
     );
   }

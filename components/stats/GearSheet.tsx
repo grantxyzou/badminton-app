@@ -113,6 +113,7 @@ export default function GearSheet({
   const [brand, setBrand] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [pickError, setPickError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   /** The catalog id currently being written, or null.
@@ -160,7 +161,7 @@ export default function GearSheet({
     return () => { live = false; };
     // `category` belongs here: without it, opening the sheet for strings after
     // opening it for rackets would show the racket list.
-  }, [open, category]);
+  }, [open, category, attempt]);
 
   /** catalogId → the member's own entry, for the owned rows' caption. */
   const ownedByCatalogId = useMemo(() => {
@@ -369,7 +370,16 @@ export default function GearSheet({
           {/* The messages keep the sheet's own 20px column; only the rows go
               edge to edge. */}
           <div style={{ padding: '0 var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-            {loadError && <ErrorState message={t('recError')} />}
+            {loadError && (
+              <ErrorState
+                message={t('catalogError')}
+                action={
+                  <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setAttempt((n) => n + 1)}>
+                    {tGear('retry')}
+                  </button>
+                }
+              />
+            )}
 
             {/* Loaded-but-empty must not look like a working screen with
                 nothing on it. (Not hypothetical: the production container held

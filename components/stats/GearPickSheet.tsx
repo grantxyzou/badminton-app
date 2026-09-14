@@ -350,7 +350,18 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
         </div>
       </section>
 
-      {gear.loadError && <ErrorState message={t('kitError')} />}
+      {/* A sheet switches pull-to-refresh off, so "refresh" was an instruction
+          with nothing that could carry it out. */}
+      {gear.loadError && (
+        <ErrorState
+          message={t('kitError')}
+          action={
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={gear.reload}>
+              {t('retry')}
+            </button>
+          }
+        />
+      )}
       {prefError && <ErrorState message={prefError} />}
     </>
   ) : null;

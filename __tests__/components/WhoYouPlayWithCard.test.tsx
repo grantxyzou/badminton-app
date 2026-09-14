@@ -61,11 +61,14 @@ describe('WhoYouPlayWithCard — refused, failed and empty are three different t
   });
 
   // ── The regression f23d7ae introduced ───────────────────────────────────
-  it('renders the sign-in state on a 403, distinct from both empty and load-error', async () => {
+  it('renders nothing on a 403 — neither the empty state nor the load error', async () => {
+    // State rule (2026-09-14): a refusal is not a failure and is not red. The
+    // Stats tab's sign-in banner explains it once, with a Sign in button, so
+    // the card renders nothing rather than a dozen red repeats.
     mockPartners(403, { error: 'forbidden' });
-    renderCard();
-    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
-    expect(screen.getByRole('alert').textContent).toBe(SIGN_IN_COPY);
+    const { container } = renderCard();
+    await waitFor(() => expect(container.textContent).toBe(''));
+    expect(screen.queryByText(SIGN_IN_COPY)).toBeNull();
     expect(screen.queryByText(LOAD_ERROR_COPY)).toBeNull();
     expect(screen.queryByText(EMPTY_COPY)).toBeNull();
   });

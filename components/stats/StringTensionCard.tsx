@@ -55,6 +55,7 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
   // docstring above is right that a second source of truth is the bug. This
   // holds only the reason the stored value did not move.
   const [prefError, setPrefError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   // `levelStatus` gates on the LEVEL read alone. The gear doc only decides
   // which toggle is lit; this card's render/no-render rule has always been "do
@@ -83,18 +84,26 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
     return () => {
       live = false;
     };
-  }, [activeName]);
+  }, [activeName, attempt]);
 
   const format = (gear.gear?.playFormat ?? 'doubles') as PlayFormat;
   const advice = recommendTension(level, format);
 
   /** Card shell carrying one legible-fail line instead of a number. */
-  const failed = (message: string) => (
+  const failed = (message: string, retry: () => void) => (
     <div className="glass-card p-5 space-y-3">
       <CardHeader icon="science" title={t('tensionTitle')} subtitle={t('tensionSubtitle')} />
-      <ErrorState message={message} />
+      <ErrorState
+        message={message}
+        action={
+          <button type="button" className="cc-btn cc-btn-ghost" onClick={retry}>
+            {tStats('retry')}
+          </button>
+        }
+      />
     </div>
   );
+  const retryLevel = () => { setLevelStatus('loading'); setAttempt((n) => n + 1); };
 
   // D2: the string pairing produced a number for this exact frame-and-string,
   // which beats round(21 + level). Stand down rather than offer the member a
@@ -105,8 +114,10 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
 
   // Order is deliberate, and each branch answers a different question.
   if (levelStatus === 'loading') return null;
-  if (levelStatus === 'forbidden') return failed(tStats('signInAgain'));
-  if (levelStatus === 'error') return failed(t('tensionError'));
+  // Refused: the Stats tab's sign-in banner already says so, with the button —
+  // and silence matches this card's own answer for "no level yet".
+  if (levelStatus === 'forbidden') return null;
+  if (levelStatus === 'error') return failed(t('tensionError'), retryLevel);
 
   // Read succeeded and the member genuinely has no level yet: render nothing,
   // as before. This is the one honest silence and must not become an error.
@@ -117,7 +128,7 @@ export default function StringTensionCard({ activeName, gear, suppressed }: Stri
   // member's stored preference and printed a doubles number at a singles
   // player — a recommendation with nothing behind it, which this card's
   // docstring forbids. `useGear` sets `loadError` for exactly this.
-  if (gear.loadError) return failed(t('tensionError'));
+  if (gear.loadError) return failed(t('tensionError'), gear.reload);
 
   const selected = formatForToggle(format);
 

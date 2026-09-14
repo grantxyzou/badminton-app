@@ -111,12 +111,20 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   // divs, so the tokens just work and none of that machinery is needed.
 
   if (!activeName) return null;
+  // Refused: the Stats tab's sign-in banner already says so, with the button.
+  if (checkIn?.status === 'forbidden') return null;
 
+  // Standalone, not a card holding only an error (the state rule).
   if (loadError) {
     return (
-      <div className="glass-card p-5">
-        <ErrorState message={t('assess.error')} />
-      </div>
+      <ErrorState
+        message={t('assess.error')}
+        action={
+          <button type="button" className="cc-btn cc-btn-ghost" onClick={() => checkIn?.reload()}>
+            {t('retry')}
+          </button>
+        }
+      />
     );
   }
 

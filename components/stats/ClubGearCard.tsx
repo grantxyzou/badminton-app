@@ -20,7 +20,8 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 export default function ClubGearCard() {
   const t = useTranslations('stats.gear');
   const [entries, setEntries] = useState<ClubGearEntry[]>([]);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'forbidden'>('loading');
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -31,13 +32,15 @@ export default function ClubGearCard() {
         setEntries((d?.entries ?? []) as ClubGearEntry[]);
         setStatus('ready');
       })
-      .catch(() => live && setStatus('error'));
+      .catch((e: Error) => live && setStatus(e?.message === '401' || e?.message === '403' ? 'forbidden' : 'error'));
     return () => {
       live = false;
     };
-  }, []);
+  }, [attempt]);
 
   if (status === 'loading') return <CardSkeleton height={180} />;
+  // Refused (members only, no session): the tab's sign-in banner says why.
+  if (status === 'forbidden') return null;
 
   const top = entries.slice(0, 3);
   const max = top[0]?.count ?? 0;
@@ -46,7 +49,14 @@ export default function ClubGearCard() {
     <div className="glass-card p-5 space-y-3">
       <CardHeader icon="groups" title={t('clubTitle')} subtitle={t('clubSubtitle')} />
       {status === 'error' ? (
-        <ErrorState message={t('clubError')} />
+        <ErrorState
+          message={t('clubError')}
+          action={
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={() => { setStatus('loading'); setAttempt((n) => n + 1); }}>
+              {t('retry')}
+            </button>
+          }
+        />
       ) : top.length === 0 ? (
         <EmptyState>{t('clubEmpty')}</EmptyState>
       ) : (

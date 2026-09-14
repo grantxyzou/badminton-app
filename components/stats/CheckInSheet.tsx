@@ -49,6 +49,7 @@ export default function CheckInSheet({
   // self-rating against actual results — so telling a member with twelve
   // games that they logged none directly biases the ratings they then enter.
   const [mirrorStatus, setMirrorStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [mirrorAttempt, setMirrorAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [savedLevel, setSavedLevel] = useState<{ level: number | null; phase: string | null } | null>(null);
@@ -105,7 +106,7 @@ export default function CheckInSheet({
       })
       .catch(() => { if (!cancelled) { setMirror(null); setMirrorStatus('error'); } });
     return () => { cancelled = true; };
-  }, [open, name]);
+  }, [open, name, mirrorAttempt]);
 
   const ratedCount = Object.keys(ratings).length;
 
@@ -250,7 +251,14 @@ export default function CheckInSheet({
           {step === -1 && (
             <div className="space-y-4">
               {mirrorStatus === 'error' ? (
-                <ErrorState message={t('assess.error')} />
+                <ErrorState
+                  message={t('assess.error')}
+                  action={
+                    <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setMirrorAttempt((n) => n + 1)}>
+                      {t('retry')}
+                    </button>
+                  }
+                />
               ) : mirror && mirror.played > 0 ? (
                 <div className="p-4 rounded-xl" style={{ background: 'var(--inner-card-bg)', border: '1px solid var(--inner-card-border)' }}>
                   <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: '0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t('assess.mirrorTitle')}</p>

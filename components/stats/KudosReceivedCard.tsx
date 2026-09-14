@@ -71,7 +71,18 @@ export default function KudosReceivedCard() {
   );
 
   if (state.kind === 'error') {
-    return <Frame><ErrorState message={t('kudos.error')} /></Frame>;
+    return (
+      <Frame>
+        <ErrorState
+          message={t('kudos.error')}
+          action={
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={load}>
+              {t('retry')}
+            </button>
+          }
+        />
+      </Frame>
+    );
   }
   if (state.kind !== 'ok') return null;
 

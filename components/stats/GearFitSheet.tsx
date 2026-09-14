@@ -261,7 +261,16 @@ export default function GearFitSheet({ open, onClose, gear }: GearFitSheetProps)
             {segment(t('fitStringBudgetLabel'), STRING_BUDGET_BANDS, stringBudget, (v) => ({ stringBudgetMaxCad: v }))}
           </section>
 
-          {gear.loadError && <ErrorState message={t('kitError')} />}
+          {gear.loadError && (
+            <ErrorState
+              message={t('kitError')}
+              action={
+                <button type="button" className="cc-btn cc-btn-ghost" onClick={gear.reload}>
+                  {t('retry')}
+                </button>
+              }
+            />
+          )}
           {error && <ErrorState message={error} />}
           {!gear.online && (
             <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>{tStats('offline')}</p>

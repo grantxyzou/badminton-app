@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import enMessages from '../../messages/en.json';
 
@@ -84,6 +84,18 @@ describe('HomeShell — a swallowed 403 left the member with no signal at all', 
     renderShell();
     await waitFor(() => expect(screen.getByTestId('skills-tab')).toBeTruthy());
     await waitFor(() => expect(screen.getByText(BANNER_TITLE)).toBeTruthy());
+  });
+
+  it('carries the way out: Sign in takes the member to Profile', async () => {
+    // The Stats cards render nothing on a 403 and leave the explaining to this
+    // banner (state rule, 2026-09-14), so it has to hold the button.
+    signIn('Lin');
+    onStats();
+    mockFetch(() => json({ error: 'forbidden' }, 403));
+    renderShell();
+    const button = await screen.findByRole('button', { name: enMessages.stats.signIn });
+    fireEvent.click(button);
+    await waitFor(() => expect(sessionStorage.getItem('badminton_active_tab')).toBe('profile'));
   });
 
   // Home carries its own account messaging; the stats banner stacked on top of

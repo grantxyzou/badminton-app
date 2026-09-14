@@ -200,7 +200,14 @@ export default function YourKitCard({ activeName, gear, onOpenFit }: YourKitCard
     <div className="glass-card p-5 space-y-3">
       <CardHeader icon="inventory_2" title={t('kitTitle')} subtitle={t('kitSubtitle')} />
       {status === 'error' ? (
-        <ErrorState message={t('kitError')} />
+        <ErrorState
+          message={t('kitError')}
+          action={
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={gear.reload}>
+              {t('retry')}
+            </button>
+          }
+        />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           {CATEGORIES.map(({ key, labelKey, icon }) => {

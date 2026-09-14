@@ -63,12 +63,16 @@ describe('SummaryGreeting — a refusal is not an absent greeting', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('renders the actionable sign-in state on a 403 (refused, not empty)', async () => {
+  it('renders nothing on a 403 — the tab banner owns the sign-in message', async () => {
+    // State rule (2026-09-14): a refusal is not a failure and is not red. The
+    // Stats tab's sign-in banner explains it once, with a Sign in button, so
+    // the card renders nothing rather than a dozen red repeats.
     signIn('GreetForbidden');
     mockInsight(403, { error: 'forbidden' });
-    renderGreeting();
-    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
-    expect(screen.getByRole('alert').textContent).toBe(SIGN_IN_COPY);
+    const { container } = renderGreeting();
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    expect(container.textContent).toBe('');
+    expect(screen.queryByText(SIGN_IN_COPY)).toBeNull();
   });
 
   it('does not keep telling a member to sign in AFTER they have signed in', async () => {
@@ -78,7 +82,7 @@ describe('SummaryGreeting — a refusal is not an absent greeting', () => {
     signIn('GreetRecovers');
     mockInsight(403, { error: 'forbidden' });
     renderGreeting();
-    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
     cleanup();
 
     mockInsight(200, { account: true, greeting: 'Welcome back.', level: null, trend: null });

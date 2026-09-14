@@ -105,6 +105,14 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
     return keys.map((k) => t(k.key, k.params as Record<string, string | number>));
   }, [t]);
   const [state, setState] = useState<Record<EquipmentCategory, CategoryState>>(initialState);
+  /* A 403 from /api/recommend is this device not owning the name — the Stats
+     tab's sign-in banner explains it. It used to land in the error branch and
+     draw a red card per category. */
+  const [refused, setRefused] = useState(false);
+  /* Bumped by a card's Try again. The fetch effect treats a re-run with no key
+     change as "ask only what was cancelled", so a retry marks its category
+     cancelled and bumps this. */
+  const [retryTick, setRetryTick] = useState(0);
   const view = useMemo(() => {
     const out = {} as Record<EquipmentCategory, CategoryState>;
     for (const cat of ORDER) {
@@ -372,9 +380,10 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
           // A non-ok response (flag off, forbidden, load failure) is "unknown",
           // not "known parked" — it must render the distinct error card per the
           // legible-fail rule, never a confident coming-soon.
-          .catch(() => {
+          .catch((e: Error) => {
             if (!live) return;
             inFlightRef.current.delete(cat);
+            if (e?.message === '403') setRefused(true);
             apply(cat, { status: 'error', pick: null });
           });
       }
@@ -393,9 +402,18 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
       for (const cat of inFlightRef.current) cancelledRef.current.add(cat);
       inFlightRef.current.clear();
     };
-  }, [activeName, recKey, apply, holdFitRefetch]);
+  }, [activeName, recKey, apply, holdFitRefetch, retryTick]);
 
-  if (!activeName) return null;
+  if (!activeName || refused) return null;
+
+  function retry(cat: EquipmentCategory, status: GearPickCardStatus) {
+    if (gear.loadError) gear.reload();
+    if (status === 'error') {
+      cancelledRef.current.add(cat);
+      apply(cat, { status: 'loading', pick: null });
+      setRetryTick((n) => n + 1);
+    }
+  }
 
   /**
    * Ownership, but only ever asked when the answer is KNOWN.
@@ -457,6 +475,8 @@ export default function GearPickRail({ activeName, gear, onPairTension, onOpenFi
             pick={pick}
             owned={isOwned(cat, pick?.item ?? null)}
             status={railStatus(status, pick)}
+            onRetry={() => retry(cat, status)}
+            errorKind={gear.loadError && pick ? 'kit' : 'pick'}
             parkReason={status === 'parked' ? (parkReasons[cat] ?? (SOURCED.includes(cat) ? null : 'no_engine')) : null}
             onOpenFit={onOpenFit}
             onOpen={() => {
