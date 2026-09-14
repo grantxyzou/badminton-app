@@ -1,5 +1,7 @@
 {
   "home": {
+    "weekLoadError": "Couldn't load this week's session.",
+    "retry": "Try again",
       "firstSession": {
       "title": "No session yet",
       "adminHint": "Set your first night and people can start signing up.",
@@ -48,6 +50,10 @@
         },
         "pricingEmpty": "Grant hasn't posted prices yet — he'll confirm when he takes the racket.",
         "pricingUnavailable": "Couldn't load prices just now.",
+        "jobsSignedOut": "Sign in to see your rackets.",
+        "jobsSignIn": "Sign in",
+        "jobsError": "Couldn't load your rackets.",
+        "retry": "Try again",
         "pricingAsk": "Ask",
         "steps": {
           "submit": "Submit a request",

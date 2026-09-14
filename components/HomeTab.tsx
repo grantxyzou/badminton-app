@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations, useFormatter } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
+import ErrorState from '@/components/primitives/ErrorState';
+import { useReportFetchFailure } from '@/lib/useOnline';
 import { isFlagOn } from '@/lib/flags';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import { APP_NAME } from '@/lib/brand';
@@ -114,6 +116,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     : 'anon';
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  /* The week could not be read — distinct from a club that has no week yet
+     (`sessionMissing`, a 404). Before this, every failure was a console.error
+     and Home rendered "—" tiles and "12 of 12 spots left" for a session that
+     never arrived: a confident sign-up card over nothing. */
+  const [weekLoadError, setWeekLoadError] = useState(false);
+  const [sessionMissing, setSessionMissing] = useState(false);
+  const reportFetchFailure = useReportFetchFailure();
   const [memberNames, setMemberNames] = useState<string[]>([]);
   const [hasIdentity, setHasIdentity] = useState(!!memberName);
   // Sign up = session signup only (auth taxonomy split). PIN is no longer
@@ -147,6 +156,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setWeekLoadError(false);
+    setSessionMissing(false);
     try {
       const [sRes, pRes, aRes, mRes, rRes] = await Promise.all([
         fetch(`${BASE}/api/session`, { cache: 'no-store' }),
@@ -155,6 +166,10 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         fetch(`${BASE}/api/members`, { cache: 'no-store' }).catch(() => null),
         fetch(`${BASE}/api/releases`, { cache: 'no-store' }).catch(() => null),
       ]);
+      // The players list is half of the sign-up card (spots left, are you
+      // in), so it failing is the week failing too.
+      if (sRes.status === 404) setSessionMissing(true);
+      else if (!sRes.ok || !pRes.ok) setWeekLoadError(true);
       if (sRes.ok) {
         const s: Session = await sRes.json();
         setSession(s);
@@ -209,10 +224,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       if (rRes && rRes.ok) setReleases(await rRes.json());
     } catch (e) {
       console.error('Load error:', e);
+      setWeekLoadError(true);
+      reportFetchFailure();
     } finally {
       setLoading(false);
     }
-  }, [memberName]);
+  }, [memberName, reportFetchFailure]);
 
   useEffect(() => {
     // Members only: the server-verified member IS the user, and the state above
@@ -561,10 +578,24 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           first thing a new organiser sees after making their club.
           Flag-gated, because with one club this state means the pointer is
           MISSING, and the old layout is the honest report of that. */}
-      {groupsOn && !session ? (
+      {weekLoadError ? (
+        /* Page-level fallback: standalone, 48/24, no card (CLAUDE.md spacing
+           ladder) — the card it replaces would have held nothing true. */
+        <section className="bpm-home-group" aria-label={t('groups.session')} style={{ padding: 'var(--space-9) var(--space-7)' }}>
+          <ErrorState
+            message={t('weekLoadError')}
+            action={
+              <button type="button" className="cc-btn cc-btn-ghost" onClick={() => void loadData()}>
+                {t('retry')}
+              </button>
+            }
+          />
+        </section>
+      ) : groupsOn && sessionMissing ? (
         <section className="bpm-home-group" aria-label={t('groups.session')}>
           <div className="glass-card p-5 space-y-3">
             <CardHeader
+              compact
               icon="event"
               title={t('firstSession.title')}
               subtitle={isAdmin ? t('firstSession.adminHint') : t('firstSession.playerHint')}
@@ -963,7 +994,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           live once an admin has opened the shop, and an UNKNOWN answer keeps
           the modest version too. See StringingCard for why unknown is not
           treated as closed-but-shown. */}
-      <StringingCard hasIdentity={hasIdentity} />
+      <StringingCard hasIdentity={hasIdentity} onSignIn={() => onTabChange?.('profile')} />
       {/* Only renders for someone with work assigned — which is nobody, for
           everyone who is not a stringer. Sits under the player's own card
           because doing the stringing is the rarer role, and the person's own

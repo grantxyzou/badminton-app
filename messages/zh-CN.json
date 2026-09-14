@@ -1,5 +1,7 @@
 {
   "home": {
+    "weekLoadError": "没能读取本周的场次。",
+    "retry": "重试",
       "firstSession": {
       "title": "还没有安排",
       "adminHint": "安排第一场，大家就可以开始报名了。",
@@ -48,6 +50,10 @@
         },
         "pricingEmpty": "Grant 还没公布价格 — 收到拍子时他会确认。",
         "pricingUnavailable": "暂时没能读取价格。",
+        "jobsSignedOut": "登录后查看你的球拍。",
+        "jobsSignIn": "登录",
+        "jobsError": "没能读取你的球拍。",
+        "retry": "重试",
         "pricingAsk": "面议",
         "steps": {
           "submit": "提交申请",
