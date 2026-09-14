@@ -7,6 +7,10 @@ import GearFitSheet from './GearFitSheet';
 import GearSetupCard from './GearSetupCard';
 import SetupAddSheet from './SetupAddSheet';
 import SetupLineSheet from './SetupLineSheet';
+import SetupShareSheet from './SetupShareSheet';
+import NextRacketCard from './NextRacketCard';
+import GearPickSheet from './GearPickSheet';
+import { recordEngagement } from '@/lib/engagement';
 import YourKitCard from './YourKitCard';
 import StringTensionCard from './StringTensionCard';
 import ClubGearCard from './ClubGearCard';
@@ -14,7 +18,7 @@ import { useGear } from './useGear';
 import { useGearPicks } from './useGearPicks';
 import { useClubGear } from './useClubGear';
 import { isFlagOn } from '@/lib/flags';
-import { setupLines, tensionOnScreen, type SetupCategory } from '@/lib/gearSetup';
+import { setupLines, setupShare, tensionOnScreen, type SetupCategory } from '@/lib/gearSetup';
 
 /**
  * The Gear register: what we'd suggest per category (the pick rail), what you
@@ -117,8 +121,8 @@ function SetupRegister({ activeName }: GearRegisterProps) {
   const picks = useGearPicks(activeName, gear, { holdFitRefetch: openFit });
   const club = useClubGear();
 
-  // The string pairing is made against the racket IN PLAY, so when that
-  // changes (a racket named, changed, swapped in) the pairing is re-asked.
+  // The picks are made against the racket IN PLAY, so when that changes (a
+  // racket named, changed, swapped in) they are re-asked.
   // Until it lands, `blankStringPairing` refuses to quote the old one: it
   // checks the frame the server says it paired with.
   const activeId = gear.active?.id ?? null;
@@ -129,7 +133,11 @@ function SetupRegister({ activeName }: GearRegisterProps) {
     if (prevActiveRef.current === undefined) { prevActiveRef.current = activeId; return; }
     if (prevActiveRef.current === activeId) return;
     prevActiveRef.current = activeId;
+    // Both: the pairing is made against the racket in play, and "where you'd
+    // go next" is relative to it (and excludes it). Nothing else about the bag
+    // re-asks — a string added or a spare added changes neither answer.
     refresh('string');
+    refresh('racket');
   }, [gear.loaded, gear.loadError, activeId, refresh]);
   // One sheet at a time: a line's own sheet, or the add sheet. `key` is bumped
   // per opening so each visit starts clean — both sheets keep state that
@@ -140,6 +148,8 @@ function SetupRegister({ activeName }: GearRegisterProps) {
     | { kind: 'add'; category: SetupCategory; makeActive: boolean; key: number }
     | null
   >(null);
+  const [pickOpen, setPickOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const openAdd = (category: SetupCategory, makeActive: boolean) =>
     setSheet((s) => ({ kind: 'add', category, makeActive, key: (s?.key ?? 0) + 1 }));
   const openLine = (category: SetupCategory) => {
@@ -159,8 +169,21 @@ function SetupRegister({ activeName }: GearRegisterProps) {
         picks={picks}
         club={club}
         onOpenLine={openLine}
+        onShare={() => setShareOpen(true)}
         onOpenFit={() => setOpenFit(true)}
         onAddTension={() => openLine('string')}
+      />
+      <NextRacketCard
+        gear={gear}
+        picks={picks}
+        onOpen={() => {
+          setPickOpen(true);
+          // The Slice-0 series' writer moves with the tap it counts — the rail
+          // card's tap on the other branch, this one here. Same kind, so the
+          // append-only series stays continuous.
+          void recordEngagement('rec_card_tap');
+        }}
+        onOpenFit={() => setOpenFit(true)}
       />
       <StringTensionCard
         activeName={activeName}
@@ -173,6 +196,23 @@ function SetupRegister({ activeName }: GearRegisterProps) {
       />
       <ClubGearCard club={club} mine={gear.loaded && !gear.loadError ? gear.gear : undefined} />
       <GearFitSheet open={openFit} onClose={() => setOpenFit(false)} gear={gear} />
+      <GearPickSheet
+        open={pickOpen}
+        onClose={() => setPickOpen(false)}
+        category="racket"
+        pick={picks.view.racket.pick}
+        owned={picks.isOwned('racket', picks.view.racket.pick?.item ?? null)}
+        gear={gear}
+        // Swap, never stack — the same rule as the rail's sheet.
+        onOpenFit={() => { setPickOpen(false); setOpenFit(true); }}
+      />
+      {shareOpen && (
+        <SetupShareSheet
+          open
+          onClose={() => setShareOpen(false)}
+          share={setupShare(activeName ?? '', setupLines(gear.gear))}
+        />
+      )}
       {sheet?.kind === 'line' && (
         <SetupLineSheet
           key={sheet.key}

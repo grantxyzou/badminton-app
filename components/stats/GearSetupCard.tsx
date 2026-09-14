@@ -32,6 +32,9 @@ export interface GearSetupCardProps {
   club: UseClubGear;
   /** A line was tapped: name it (blank) or manage it (filled). */
   onOpenLine: (category: SetupCategory) => void;
+  /** Opens the share sheet. Offered only once both lines are filled — the
+   *  complete card is the thing worth sharing. */
+  onShare?: () => void;
   /** Opens the fit questionnaire. Rendered OUTSIDE the error fork and never
    *  disabled: on the day the gear read fails it is the only way to reach the
    *  sheet, and so the only way to clear a stored comfort answer. */
@@ -55,7 +58,7 @@ export interface GearSetupCardProps {
  * must not read as an empty one — dashed slots over a bag that failed to load
  * invite logging a racket that is already logged.
  */
-export default function GearSetupCard({ activeName, gear, picks, club, onOpenLine, onOpenFit, onAddTension }: GearSetupCardProps) {
+export default function GearSetupCard({ activeName, gear, picks, club, onOpenLine, onShare, onOpenFit, onAddTension }: GearSetupCardProps) {
   const t = useTranslations('stats.gear');
   const ts = useTranslations('stats.gear.setup');
   const tErr = useTranslations('valueHub');
@@ -122,6 +125,12 @@ export default function GearSetupCard({ activeName, gear, picks, club, onOpenLin
         </div>
         {!gear.loadError && filled < 2 && (
           <StatusBadge>{ts('progress', { filled })}</StatusBadge>
+        )}
+        {!gear.loadError && filled === 2 && onShare && (
+          <button type="button" className="setup-share-btn" onClick={onShare}>
+            <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-sm)' }}>ios_share</span>
+            {ts('share')}
+          </button>
         )}
       </div>
 

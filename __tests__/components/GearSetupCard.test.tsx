@@ -60,7 +60,7 @@ function fakePicks(stringPick: UseGearPicks['view']['string'] = { status: 'parke
 
 const noClub: UseClubGear = { entries: [], status: 'ready', retry: vi.fn() };
 
-function renderCard(gear: UseGear, opts: { picks?: UseGearPicks; club?: UseClubGear; onOpenLine?: (c: string) => void; onAddTension?: (i: GearItem) => void } = {}) {
+function renderCard(gear: UseGear, opts: { picks?: UseGearPicks; club?: UseClubGear; onOpenLine?: (c: string) => void; onAddTension?: (i: GearItem) => void; onShare?: () => void } = {}) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
       <GearSetupCard
@@ -70,6 +70,7 @@ function renderCard(gear: UseGear, opts: { picks?: UseGearPicks; club?: UseClubG
         club={opts.club ?? noClub}
         onOpenLine={opts.onOpenLine ?? vi.fn()}
         onOpenFit={vi.fn()}
+        onShare={opts.onShare}
         onAddTension={opts.onAddTension}
       />
     </NextIntlClientProvider>,
@@ -184,5 +185,19 @@ describe('GearSetupCard — complete, with a spare', () => {
     expect(screen.queryByText('0')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Add lb' }));
     expect(onAddTension).toHaveBeenCalledWith(BG65);
+  });
+});
+
+describe('GearSetupCard — Share appears with the complete card', () => {
+  it('not while a line is blank', () => {
+    renderCard(fakeGear(doc([AF79], 'r1')), { onShare: vi.fn() });
+    expect(screen.queryByRole('button', { name: /Share/ })).toBeNull();
+  });
+
+  it('in place of the progress pill once both lines are filled', () => {
+    const onShare = vi.fn();
+    renderCard(fakeGear(doc([AF79, BG65], 'r1')), { onShare });
+    fireEvent.click(screen.getByRole('button', { name: /Share/ }));
+    expect(onShare).toHaveBeenCalled();
   });
 });
