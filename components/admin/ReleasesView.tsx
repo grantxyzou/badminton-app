@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import AdminBackHeader from './AdminBackHeader';
 import ReleaseForm from './ReleaseForm';
+import ErrorState from '@/components/primitives/ErrorState';
 import type { Release } from '@/lib/types';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
@@ -20,12 +21,22 @@ export default function ReleasesView({ onBack }: Props) {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState<FormMode>({ kind: 'hidden' });
   const [error, setError] = useState('');
+  // A failed list is not "No releases yet." — tracked apart so the two can't
+  // render alike.
+  const [loadError, setLoadError] = useState(false);
 
   async function load() {
     setLoading(true);
     try {
       const res = await fetch(`${BASE}/api/releases`, { cache: 'no-store' });
-      if (res.ok) setReleases(await res.json());
+      if (res.ok) {
+        setReleases(await res.json());
+        setLoadError(false);
+      } else {
+        setLoadError(true);
+      }
+    } catch {
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -65,6 +76,9 @@ export default function ReleasesView({ onBack }: Props) {
             type="button"
             onClick={() => setForm({ kind: 'new' })}
             className="cc-btn cc-btn-primary cc-btn-lg"
+            // Not while the list failed to load: the form suggests the next
+            // version from the newest release, and there is no newest to read.
+            disabled={loadError}
           >
             {t('newButton')}
           </button>
@@ -72,6 +86,15 @@ export default function ReleasesView({ onBack }: Props) {
           {error && <p className="field-error" role="alert">{error}</p>}
           {loading ? (
             <p className="fs-md text-gray-400">Loading…</p>
+          ) : loadError ? (
+            <ErrorState
+              message={t('loadError')}
+              action={
+                <button type="button" className="cc-btn cc-btn-ghost" onClick={() => load()}>
+                  {t('retry')}
+                </button>
+              }
+            />
           ) : releases.length === 0 ? (
             <p className="fs-md text-gray-400">No releases yet.</p>
           ) : (

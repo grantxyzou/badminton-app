@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, type ReactNode } from 'react';
-import CardHeader from '@/components/primitives/CardHeader';
+import StateCard from '@/components/primitives/StateCard';
 
 /**
  * Where "Sign in" goes. Provided once by SkillsTab (which knows how to reach
@@ -34,7 +34,7 @@ export function useSignInLink() {
   const onSignIn = useContext(StatsSignInContext);
   return function SignInLink(chunks: ReactNode) {
     return onSignIn ? (
-      <button type="button" className="locked-link" onClick={onSignIn}>
+      <button type="button" className="state-link" onClick={onSignIn}>
         {chunks}
       </button>
     ) : (
@@ -48,10 +48,11 @@ export function useSignInLink() {
  * no session for the name). Grant, 2026-09-14: keep the card and show what a
  * populated one would look like.
  *
- * Built from the existing locked material (`.glass-card.is-locked`, the same
- * flat surface WhereYouSitCard uses for a private comparison) so a locked card
- * reads as withheld rather than loading. The preview is `aria-hidden`: it is
- * shape, not content, and a screen reader gets the sentence and its link.
+ * Rendered as a `StateCard` with no tone: plain glass. Colour in that
+ * material is reserved for real problems (a failed load is red, a session
+ * that needs attention amber); see components/primitives/StateCard.tsx.
+ * The preview is `aria-hidden`: it is shape, not content, and a screen reader
+ * gets the sentence and its link.
  *
  * The way in is the words "Sign in" inside the sentence, as a link. Two louder
  * versions came first and were both too much down a whole tab: a full-width
@@ -59,40 +60,15 @@ export function useSignInLink() {
  * header ("take those tags out. Hyperlink the text instead").
  */
 export default function LockedCard({ icon, title, subtitle, message, children }: LockedCardProps) {
+  // Plain glass, no tone. Amber was tried and read as a stained card across a
+  // whole tab of signed-out cards; signed out is not a problem, and the Sign in
+  // link already says what to do. Grant, 2026-09-14: "plain glass for stats".
   return (
-    <section className="glass-card is-locked p-5 flex flex-col gap-4" aria-label={title}>
-      {title && <CardHeader icon={icon} title={title} subtitle={subtitle} />}
-      <div className="locked-preview" aria-hidden="true">
-        {children}
-      </div>
-      <p className="fs-base" style={{ margin: '0', color: 'var(--text-secondary)' }}>
-        {message}
-      </p>
-    </section>
+    <StateCard icon={icon} title={title} subtitle={subtitle} message={message}>
+      {children}
+    </StateCard>
   );
 }
 
-/** One row of a list preview: an optional leading glyph, a label bar, a value dash. */
-export function PreviewRow({ icon, width = '55%', value = '—' }: { icon?: string; width?: string; value?: string }) {
-  return (
-    <div className="locked-row">
-      {icon && (
-        <span className="material-icons" style={{ fontSize: 'var(--icon-sm)' }}>
-          {icon}
-        </span>
-      )}
-      <span className="locked-line" style={{ width }} />
-      {value && <span className="locked-dash">{value}</span>}
-    </div>
-  );
-}
-
-/** A labelled empty meter — the shape of a score or a share, with nothing in it. */
-export function PreviewMeter({ label }: { label: string }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-      <span className="fs-sm">{label}</span>
-      <span className="locked-bar" />
-    </div>
-  );
-}
+// The preview pieces are shared with the tinted StateCard, so the two cannot drift.
+export { PreviewRow, PreviewMeter } from '@/components/primitives/StateCard';

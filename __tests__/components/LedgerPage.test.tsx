@@ -68,7 +68,7 @@ describe('<LedgerPage />', () => {
     render(<LedgerPage onBack={() => {}} />);
     await waitFor(() => {
       expect(screen.getByText(/Couldn't load the ledger/i)).toBeTruthy();
-      expect(screen.getByRole('button', { name: /retry/i })).toBeTruthy();
+      expect(screen.getByRole('button', { name: /try again/i })).toBeTruthy();
     });
   });
 

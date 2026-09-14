@@ -226,6 +226,8 @@
       "title": "进阶技能"
     },
     "admin": {
+      "retry": "重试",
+      "checkError": "无法确认你的管理员登录状态。",
       "title": "管理",
       "signInHelp": "用你的名字和 PIN 登录",
       "nameLabel": "你的名字",
@@ -427,6 +429,7 @@
     "adminToolsTitle": "管理员工具",
     "adminToolsButton": "管理员工具 →",
     "admin": {
+      "checkFailed": "暂时无法检查",
       "group": "管理",
       "console": "管理控制台",
       "needYou": "{count} 项待处理",
@@ -1078,6 +1081,7 @@
   },
   "admin": {
     "stringing": {
+      "retry": "重试",
         "pricing": {
           "title": "你的价格",
           "hint": "球友会在首页的“查看价格”里看到。",
@@ -1096,7 +1100,7 @@
           "duplicate": "已经有同名的服务了。",
           "badPrice": "这看起来不像价格。",
           "blankMeansAsk": "没有固定价格的可以留空 — 球友会看到“面议”。",
-          "loadError": "价格加载失败 — 刷新重试。",
+          "loadError": "价格加载失败。",
           "saveError": "没保存成功 — 再试一次。"
         },
         "strings": {
@@ -1106,7 +1110,7 @@
           "placeholder": "例如 BG80 白色",
           "add": "添加",
           "remove": "移除 {name}",
-          "loadError": "拍线列表加载失败 — 刷新重试。",
+          "loadError": "拍线列表加载失败。",
           "saveError": "没保存成功 — 再试一次。"
         },
         "lb": "磅",
@@ -1190,12 +1194,12 @@
           "openUnknown": "已归档",
           "title": "已归档",
           "empty": "还没有归档的工单。",
-          "loadError": "归档加载失败 — 下拉刷新试试。",
+          "loadError": "归档加载失败。",
           "stillOwed": "仍欠 ${amount}"
         },
         "mine": "我的",
         "all": "全部",
-        "loadError": "工作台加载失败 — 下拉刷新试试。",
+        "loadError": "工作台加载失败。",
         "empty": "工作台上没有球拍。",
         "emptyMine": "你的工作台上没有球拍。",
         "addJob": "新增工单",
@@ -1234,7 +1238,7 @@
         "newJob": "新工单",
         "who": "谁的球拍？",
         "whoHint": "任何有 %APP_SHORT% 账号的人 — 临时来的也算。",
-        "membersError": "成员列表加载失败 — 刷新重试。",
+        "membersError": "成员列表加载失败。",
         "change": "更换",
         "searchMembers": "按名字搜索",
         "theRacket": "球拍",
@@ -1268,6 +1272,8 @@
         }
     },
     "releases": {
+      "retry": "重试",
+      "loadError": "无法加载发布记录。",
       "newButton": "新发布",
       "draftWithAI": "用 AI 起草",
       "publish": "发布",
@@ -1479,7 +1485,7 @@
       "regenerateAction": "确认更换",
       "regenerating": "更换中…",
       "cancel": "取消",
-      "loadFailed": "无法加载邀请 — 刷新重试。",
+      "loadFailed": "无法加载邀请。",
       "regenerateFailed": "更换失败，旧链接仍然有效。"
     }
   },

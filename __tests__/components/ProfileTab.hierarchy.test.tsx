@@ -142,7 +142,7 @@ describe('ProfileTab — hierarchy pass', () => {
 
   // Legible-fail: a dead signal fetch must not render "0 need you", which is
   // the lying-empty-state pattern. The row still opens admin.
-  it('shows no count when the signal fetch fails, never a zero', async () => {
+  it('says the check failed when the signal fetch fails, never a zero', async () => {
     signedIn();
     mockAdminFetch({ fail: true });
     renderWith({ isAdmin: true });
@@ -154,6 +154,9 @@ describe('ProfileTab — hierarchy pass', () => {
     await new Promise((r) => setTimeout(r, 120));
     expect(screen.queryByText(/need you/i)).toBeNull();
     expect(screen.queryByText(enMessages.profile.admin.allClear)).toBeNull();
+    // ...but it says the check failed, rather than looking like a row that
+    // never had a count. (`profile.admin.checkFailed`.)
+    expect(screen.getByText("Couldn't check")).toBeDefined();
     // The row still works — the count is decoration, opening admin is the job.
     expect(screen.getByRole('button', { name: /Admin console/ })).toBeDefined();
   });

@@ -42,14 +42,14 @@ describe('LockedCard', () => {
     const buttons = screen.getAllByRole('button');
     expect(buttons).toHaveLength(1);
     expect(buttons[0].textContent).toBe('Sign in');
-    expect(buttons[0].className).toContain('locked-link');
+    expect(buttons[0].className).toContain('state-link');
     fireEvent.click(buttons[0]);
     expect(onSignIn).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the preview out of the accessibility tree — it is shape, not content', () => {
     const { container } = renderCard(vi.fn());
-    expect(container.querySelector('.locked-preview')?.getAttribute('aria-hidden')).toBe('true');
+    expect(container.querySelector('.state-preview')?.getAttribute('aria-hidden')).toBe('true');
     expect(screen.queryByRole('alert')).toBeNull();
   });
 

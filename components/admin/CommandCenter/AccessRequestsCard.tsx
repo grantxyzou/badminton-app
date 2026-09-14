@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import CardHeader from '@/components/primitives/CardHeader';
-import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
+import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -66,10 +66,15 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
 
   if (loadError) {
     return (
-      <section className="glass-card p-5 space-y-3" aria-label="Sign-in requests">
-        <CardHeader icon="how_to_reg" title="Sign-in requests" />
-        <ErrorState message="Couldn't load sign-in requests — pull to refresh." />
-      </section>
+      <StateCard
+        tone="danger"
+        icon="how_to_reg"
+        title="Sign-in requests"
+        message={<>Couldn&apos;t load sign-in requests. <StateLink onClick={() => void load()}>Try again</StateLink></>}
+      >
+        <PreviewRow icon="person" width="44%" value="" />
+        <PreviewRow icon="person" width="36%" value="" />
+      </StateCard>
     );
   }
   // Empty is the normal state and deserves no card at all.

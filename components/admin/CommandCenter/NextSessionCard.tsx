@@ -8,8 +8,8 @@ import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import type { SettledSnapshot, BirdUsage } from '@/lib/types';
 import { sessionCostTotals } from '@/lib/sessionCost';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
-import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -219,10 +219,19 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
     // opposite things. This is the screen where believing the wrong one costs
     // somebody their evening.
     return (
-      <section className="glass-card p-4 space-y-3" aria-label="Next session">
-        <h3 className="bpm-h3">Next session</h3>
-        <ErrorState message="Couldn't load this week — pull to refresh." />
-      </section>
+      <StateCard
+        tone="danger"
+        title="Next session"
+        message={
+          <>
+            Couldn&apos;t load this week. <StateLink onClick={() => void load()}>Try again</StateLink>
+          </>
+        }
+      >
+        <span className="state-line" style={{ width: '38%', height: 'var(--space-5)' }} />
+        <PreviewRow width="52%" value="— / —" />
+        <span className="state-bar" />
+      </StateCard>
     );
   }
   if (!session) {

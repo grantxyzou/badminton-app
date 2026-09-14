@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import CardHeader from '@/components/primitives/CardHeader';
-import ErrorState from '@/components/primitives/ErrorState';
 import { isFlagOn } from '@/lib/flags';
+import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -54,10 +54,19 @@ export default function SignInReadinessCard({ refreshKey = 0 }: { refreshKey?: n
 
   if (loadError) {
     return (
-      <section className="glass-card p-5 flex flex-col gap-3" aria-label={title}>
-        <CardHeader icon="key" title={title} />
-        <ErrorState message="Couldn't check who can sign in — pull to refresh." />
-      </section>
+      <StateCard
+        tone="danger"
+        icon="key"
+        title={title}
+        message={<>Couldn&apos;t check who can sign in. <StateLink onClick={() => void load()}>Try again</StateLink></>}
+      >
+        <PreviewRow width="48%" value="— of —" />
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <span className="state-line" style={{ width: '18%', height: 'var(--space-6)' }} />
+          <span className="state-line" style={{ width: '22%', height: 'var(--space-6)' }} />
+          <span className="state-line" style={{ width: '16%', height: 'var(--space-6)' }} />
+        </div>
+      </StateCard>
     );
   }
   if (!data) return null;

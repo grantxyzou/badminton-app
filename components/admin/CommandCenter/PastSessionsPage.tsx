@@ -29,6 +29,8 @@ interface PastSessionsPageProps {
 export default function PastSessionsPage({ onBack }: PastSessionsPageProps) {
   const [rows, setRows] = useState<HistoryRow[] | null>(null);
   const [loadError, setLoadError] = useState(false);
+  // Bumped by "Try again" to re-run the load effect.
+  const [attempt, setAttempt] = useState(0);
 
   // Receipt sheet state — this page owns its OWN instance (it renders instead
   // of CommandCenter, so it can't reuse CommandCenter's sheet).
@@ -38,6 +40,7 @@ export default function PastSessionsPage({ onBack }: PastSessionsPageProps) {
 
   useEffect(() => {
     let cancelled = false;
+    setLoadError(false);
     (async () => {
       try {
         const res = await fetch(`${BASE}/api/sessions/history`, { cache: 'no-store' });
@@ -52,7 +55,7 @@ export default function PastSessionsPage({ onBack }: PastSessionsPageProps) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [attempt]);
 
   const openReceipt = useCallback((row: HistoryRow) => {
     if (!row.receipt) {
@@ -71,7 +74,14 @@ export default function PastSessionsPage({ onBack }: PastSessionsPageProps) {
 
       <div style={{ padding: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         {loadError ? (
-          <ErrorState message="Couldn't load past sessions — refresh to retry." />
+          <ErrorState
+            message="Couldn't load past sessions."
+            action={
+              <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setAttempt((n) => n + 1)}>
+                Try again
+              </button>
+            }
+          />
         ) : rows === null ? (
           <AdminPageSkeleton />
         ) : rows.length === 0 ? (

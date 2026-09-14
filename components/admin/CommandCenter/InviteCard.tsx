@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
-import ErrorState from '@/components/primitives/ErrorState';
 import InviteShare from '@/components/onboarding/InviteShare';
 import { useInviteLink } from '@/lib/useInviteLink';
+import StateCard, { StateLink } from '@/components/primitives/StateCard';
 
 interface Props {
   /** Only rendered for an admin of the current club; the endpoint enforces it too. */
@@ -33,7 +33,8 @@ interface Props {
  */
 export default function InviteCard({ enabled = true, groupName }: Props) {
   const t = useTranslations('groups.invite');
-  const { invite, loading, error, busy, regenerate } = useInviteLink(enabled);
+  const tGroups = useTranslations('groups');
+  const { invite, loading, error, busy, regenerate, reload } = useInviteLink(enabled);
   const [confirming, setConfirming] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -46,6 +47,23 @@ export default function InviteCard({ enabled = true, groupName }: Props) {
     setConfirming(false);
   }
 
+  // A failed load tints the whole card (StateCard) and hides its controls, so
+  // nothing is written against data that did not load.
+  if (error) {
+    return (
+      <StateCard
+        tone="danger"
+        icon="link"
+        title={t('title')}
+        subtitle={t('subtitle')}
+        message={<>{t('loadFailed')} <StateLink onClick={() => void reload()}>{tGroups('retry')}</StateLink></>}
+      >
+        <span className="state-line" style={{ width: '62%', height: 'var(--space-6)' }} />
+        <span className="state-line" style={{ width: '40%', height: 'var(--space-6)' }} />
+      </StateCard>
+    );
+  }
+
   return (
     // `space-y-3` on the CARD, not a margin on the body: `CardHeader` sets no
     // bottom margin by design, so the card owns the gap under it. A hand-typed
@@ -56,9 +74,7 @@ export default function InviteCard({ enabled = true, groupName }: Props) {
       <CardHeader icon="link" title={t('title')} subtitle={t('subtitle')} />
 
       <div style={{ display: 'grid', gap: 'var(--space-5)' }}>
-        {error ? (
-          <ErrorState message={t('loadFailed')} />
-        ) : loading ? (
+        {loading ? (
           // Reserve the shape rather than collapsing the card to nothing — the
           // skeleton contract the tabs use, so the card does not jump on load.
           <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>…</p>

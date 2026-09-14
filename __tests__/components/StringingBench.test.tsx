@@ -357,7 +357,7 @@ describe('the archive', () => {
     await waitFor(() => expect(screen.getByText('Archived')).toBeDefined());
     fireEvent.click(screen.getByText('Archived'));
     await waitFor(() =>
-      expect(screen.getByText("Couldn't load the archive — pull to refresh.")).toBeDefined(),
+      expect(screen.getByText("Couldn't load the archive.")).toBeDefined(),
     );
     expect(screen.queryByText('Nothing archived yet.')).toBeNull();
   });
