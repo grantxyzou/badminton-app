@@ -35,7 +35,7 @@ const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
 const TIME_SHORT = { hour: '2-digit', minute: '2-digit' } as const;
 
 interface HomeTabProps {
-  onTabChange?: (tab: 'home' | 'players' | 'skills' | 'admin') => void;
+  onTabChange?: (tab: 'home' | 'players' | 'skills' | 'admin' | 'profile') => void;
   /**
    * Whether this person runs the club. Used only to decide whose job it is to
    * fix an empty week: the organiser gets the action, a player gets told one is
@@ -948,7 +948,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           the ACCOUNT group rather than above sign-up: as a one-line row
           carrying its own figure it no longer needs the top slot to be read,
           and most weeks it says $0. */}
-      {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" />}
+      {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" onSignIn={() => onTabChange?.('profile')} />}
 
       {/* Stringing service. Still "Coming soon" by default — the card only goes
           live once an admin has opened the shop, and an UNKNOWN answer keeps

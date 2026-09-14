@@ -156,3 +156,30 @@ describe('it re-reads when something else changes what is owed', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 });
+
+/**
+ * Empty and error states (2026-09-14, Grant): signed out is not a failure, so
+ * it is not red, and every state that asks the reader to do something gives
+ * them the control to do it with.
+ */
+describe('<UnpaidSessionsCard /> states', () => {
+  it('signed out on Home: muted copy and a Sign in button, not a red alert', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(new Response('{}', { status: 403 }));
+    const onSignIn = vi.fn();
+    wrap(<UnpaidSessionsCard name="Kento" variant="home" onSignIn={onSignIn} />);
+    expect(await screen.findByText('Sign in to see what you owe.')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(onSignIn).toHaveBeenCalledOnce();
+  });
+
+  it('a real load failure stays an alert, with a Try again that asks again', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(new Response('{}', { status: 500 }));
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    wrap(<UnpaidSessionsCard name="Lin" variant="home" />);
+    expect((await screen.findByRole('alert')).textContent).toBe("Couldn't load what you owe.");
+    const before = fetchSpy.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(fetchSpy.mock.calls.length).toBeGreaterThan(before));
+  });
+});

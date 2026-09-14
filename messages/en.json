@@ -26,7 +26,8 @@
       "stringerTitle": "Rackets to string",
       "stringerSubtitle": "Assigned to you.",
       "stringerFor": "for {name}",
-      "stringerError": "Couldn't load your jobs \u2014 pull to refresh.",
+      "stringerError": "Couldn't load your jobs.",
+      "stringerRetry": "Try again",
       "stringerAdvance": "Mark {status}",
       "stringerSaveError": "That didn't save \u2014 try again.",
         "confirm": {
@@ -201,7 +202,10 @@
         "groupStringing": "Stringing",
       "title": "Balance",
       "total": "Total",
-      "paidUp": "You're all paid up"
+      "paidUp": "You're all paid up",
+      "signedOut": "Sign in to see what you owe.",
+      "signIn": "Sign in",
+      "retry": "Try again"
     },
     "releases": {
       "whatsNew": "What's new in {version}",
@@ -434,7 +438,7 @@
     "unpaid": {
       "title": "Outstanding payments",
       "total": "Total",
-      "loadError": "Couldn't load — refresh to retry.",
+      "loadError": "Couldn't load what you owe.",
       "signInAgain": "Sign in on Profile to see what you owe."
     },
     "migrate": {
