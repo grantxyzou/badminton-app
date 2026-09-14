@@ -221,6 +221,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
     return (
       <StateCard
         tone="danger"
+        icon="event"
         title="Next session"
         message={
           <>

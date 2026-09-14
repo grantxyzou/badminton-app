@@ -11,6 +11,7 @@ import DatePicker from '../DatePicker';
 import StatusBanner from '../primitives/StatusBanner';
 import ErrorState from '../primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
+import { StateLink } from '@/components/primitives/StateCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -133,16 +134,28 @@ export default function AdvanceSessionForm({ onBack }: Props) {
         setPricePerTube(prev => prev > 0 ? prev : currentPricePerTube(Array.isArray(data.purchases) ? data.purchases : []));
       })
       .catch(() => {});
-    // Skip dates from the auth-gated admin endpoint (not the public
-    // /api/members list, which leaks admin attributes if the response
-    // shape ever loosens).
-    fetch(`${BASE}/api/admin/settings`, { cache: 'no-store' })
-      .then(r => r.ok ? r.json() : null)
-      .then((data: { skipDates?: string[] } | null) => {
-        setSkipDates(Array.isArray(data?.skipDates) ? data!.skipDates! : []);
-      })
-      .catch(() => {});
   }, []);
+
+  // Skip dates from the auth-gated admin endpoint (not the public
+  // /api/members list, which leaks admin attributes if the response
+  // shape ever loosens). Its OWN effect with its own failure state: the other
+  // suggestions are chips, but this one is the check that stops an advance
+  // onto a holiday, and an empty list off a dead fetch silently waved every
+  // date through.
+  const [skipCheckFailed, setSkipCheckFailed] = useState(false);
+  const [skipAttempt, setSkipAttempt] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${BASE}/api/admin/settings`, { cache: 'no-store' })
+      .then(r => { if (!r.ok) throw new Error(`settings ${r.status}`); return r.json(); })
+      .then((data: { skipDates?: string[] }) => {
+        if (cancelled) return;
+        setSkipDates(Array.isArray(data?.skipDates) ? data.skipDates : []);
+        setSkipCheckFailed(false);
+      })
+      .catch(() => { if (!cancelled) setSkipCheckFailed(true); });
+    return () => { cancelled = true; };
+  }, [skipAttempt]);
 
   async function handleAdvance(e: React.FormEvent) {
     e.preventDefault();
@@ -333,6 +346,13 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                 <input id="advance-start-time" name="startTime" type="time" value={time} onChange={e => setTime(e.target.value)} style={{ height: '42px' }} />
               </div>
             </div>
+            {skipCheckFailed && (
+              // data-tone gives the inline link the same amber ink as the note.
+              <p className="fs-sm" role="status" data-tone="warn" style={{ margin: 'var(--space-2) 0 0', color: 'var(--tone-ink)' }}>
+                Couldn&apos;t check your skip dates, so this date won&apos;t be warned about.{' '}
+                <StateLink onClick={() => setSkipAttempt((n) => n + 1)}>Try again</StateLink>
+              </p>
+            )}
           </Label>
 
           <Label text="Sign-up Deadline">

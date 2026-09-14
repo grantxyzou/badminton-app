@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // @vitest-environment-options { "url": "http://localhost:3000/bpm" }
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import StringingPage from '../../components/admin/CommandCenter/StringingPage';
 import StringingJobDetail from '../../components/admin/CommandCenter/StringingJobDetail';
@@ -142,8 +142,38 @@ describe('the shop sign', () => {
     wrap(<StringingPage onBack={() => {}} />);
     expect(await screen.findByText("Can't tell right now")).toBeDefined();
     expect(screen.queryByText('Closed for now')).toBeNull();
-    // And there is nothing to tap, because there is nothing to toggle FROM.
-    expect(screen.getByRole('button', { name: 'Open' })).toHaveProperty('disabled', true);
+    // And no toggle at all, because there is nothing to toggle FROM — only the
+    // way to read the sign again.
+    expect(screen.queryByRole('button', { name: 'Open' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
+  });
+
+  it('a failed read of the sign is red glass with a Try again that reads it again', async () => {
+    let shopCalls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string) => {
+        const u = String(url);
+        if (u.includes('/shop')) {
+          shopCalls += 1;
+          return Promise.resolve({
+            ok: shopCalls > 1,
+            status: shopCalls > 1 ? 200 : 500,
+            json: async () => ({ open: true }),
+          } as Response);
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ jobs: [job], view: 'bench', strings: [] }) } as Response);
+      }),
+    );
+    const { container } = wrap(<StringingPage onBack={() => {}} />);
+    expect(await screen.findByText("We couldn't check the sign.")).toBeDefined();
+    const sign = container.querySelector('[data-tone="danger"]') as HTMLElement;
+    expect(sign).not.toBeNull();
+    expect(sign.textContent).not.toMatch(/refresh/i);
+    fireEvent.click(within(sign).getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Open for stringing')).toBeDefined();
+    expect(shopCalls).toBe(2);
+    expect(container.querySelector('[data-tone="success"]')).not.toBeNull();
   });
 
   it('still lists the bench while the shop is closed', async () => {

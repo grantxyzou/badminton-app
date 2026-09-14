@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import EmptyState from '@/components/primitives/EmptyState';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
+import CardHeader from '@/components/primitives/CardHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -115,6 +116,7 @@ export default function ETransferRecipientEditor() {
     return (
       <StateCard
         tone="danger"
+        icon="payments"
         title="E-transfer recipient"
         subtitle="Used by the Share cost button on the Next Session card."
         message={<>Couldn&apos;t load your e-transfer recipient. <StateLink onClick={() => void load()}>Try again</StateLink></>}
@@ -127,12 +129,11 @@ export default function ETransferRecipientEditor() {
 
   return (
     <section className="glass-card p-4 space-y-3 animate-fadeIn" aria-label="E-transfer recipient">
-      <header>
-        <h3 className="bpm-h3">E-transfer recipient</h3>
-        <p className="fs-sm text-gray-400 mt-0.5">
-          Used by the Share cost button on the Next Session card.
-        </p>
-      </header>
+      <CardHeader
+        icon="payments"
+        title="E-transfer recipient"
+        subtitle="Used by the Share cost button on the Next Session card."
+      />
 
       {loadState === 'refused' && (
         <EmptyState
