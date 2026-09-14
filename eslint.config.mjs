@@ -174,7 +174,7 @@ const config = [
   {
     // WHERE A TOKEN CANNOT RESOLVE, OR IS THE SUBJECT.
     //
-    // These four files are OFF rather than narrowed, and the distinction that
+    // These three files are OFF rather than narrowed, and the distinction that
     // earns it is what the LINE does, not which directory it lives in. A raw
     // literal here is the correct code, so a warning on it can only ever be
     // noise -- and 61 permanent warnings are how a backlog stops being read.
@@ -191,13 +191,12 @@ const config = [
     //                            first character. That is DATA -- there is no
     //                            sensible `--avatar-4`, and theming it would
     //                            make the same person change colour per theme.
-    //   app/design/tokens/page   DOCUMENTS the tokens: `{ name: '--bpm-night',
-    //                            value: '#100F0F' }`. The literal is the
-    //                            content. Replacing it with the var() it names
-    //                            would make the page document itself and show
-    //                            the reader nothing.
     //
-    // NOT exempt, and deliberately left warning: the other `app/design/*`
+    // NOT exempt: `app/design/tokens/page.tsx`. Its swatch table IS token data,
+    // but a whole-file exemption also silenced ordinary drift beside it (a
+    // decorative `borderRadius: 2`), so the data array carries a scoped
+    // eslint-disable instead and the rest of the page is checked normally.
+    // Also NOT exempt, and deliberately left warning: the other `app/design/*`
     // specimen pages and `components/DevPanel.tsx`. Living outside the product
     // is not the same as needing a raw value -- sampling them found ordinary
     // drift (`const DANGER = '#ef4444'`, `fontSize: 22` beside a perfectly good
@@ -208,7 +207,6 @@ const config = [
       'app/opengraph-image.tsx',
       'lib/receiptTemplate.ts',
       'lib/avatar.ts',
-      'app/design/tokens/page.tsx',
     ],
     rules: {
       'no-restricted-syntax': 'off',

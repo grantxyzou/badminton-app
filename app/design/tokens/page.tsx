@@ -1,3 +1,6 @@
+/* eslint-disable no-restricted-syntax -- The swatch values ARE the content:
+   this page documents the tokens, so each hex is what the reader came to see.
+   Scoped to this array only; the rest of the page is linted normally. */
 const COLOR_SWATCHES: Array<{ name: string; value: string; note?: string }> = [
   { name: '--bpm-court-green',      value: '#4ade80', note: 'Primary accent (dark)' },
   { name: '--bpm-court-green-dark', value: '#16a34a', note: 'Primary accent (light)' },
@@ -10,6 +13,7 @@ const COLOR_SWATCHES: Array<{ name: string; value: string; note?: string }> = [
   { name: '--bpm-red-400',          value: '#ef4444', note: 'Errors / PIN' },
   { name: '--bpm-blue-400',         value: '#60a5fa', note: 'Info / dates' },
 ];
+/* eslint-enable no-restricted-syntax */
 
 const MOTION: Array<{ name: string; value: string; note: string }> = [
   { name: '--ease-glass',      value: 'cubic-bezier(0.23, 1, 0.32, 1)',   note: 'Default — liquid glass' },
@@ -174,7 +178,7 @@ export default function TokensPage() {
         <ul style={{ listStyle: 'none', padding: '0', margin: '0', display: 'grid', gap: 'var(--space-2)' }}>
           {SPACING.map((row) => (
             <li key={row[0]} style={{ display: 'grid', gridTemplateColumns: '4rem 1fr auto', gap: 'var(--space-4)', alignItems: 'center' }}>
-              <span aria-hidden style={{ height: '0.5rem', width: row[1], background: 'var(--accent)', opacity: 0.4, borderRadius: 2 }} />
+              <span aria-hidden style={{ height: '0.5rem', width: row[1], background: 'var(--accent)', opacity: 0.4, borderRadius: 'var(--radius-pill)' }} />
               <code className="bpm-mono" style={{ fontSize: '0.75rem' }}>{row[0]}</code>
               <span className="bpm-mono" style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                 {row[1]}{row[2] ? ` — ${row[2]}` : ''}
