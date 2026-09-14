@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import EmptyState from '@/components/primitives/EmptyState';
 import TopBar from '@/components/primitives/TopBar';
 import ProviderButtons, { type Provider } from '@/components/auth/ProviderButtons';
 import EmailSignUpForm from '@/components/auth/EmailSignUpForm';
@@ -235,7 +236,8 @@ export default function JoinGroupPage({
 
             {!canOfferCredential ? (
               <>
-                <p className="field-error">{t('needsAccount', { name: found?.name ?? '' })}</p>
+                {/* A refusal, not a failure: nothing broke, this path needs an account. */}
+                <EmptyState>{t('needsAccount', { name: found?.name ?? '' })}</EmptyState>
                 <button type="button" onClick={onBack} className="cc-btn cc-btn-ghost" style={{ width: '100%' }}>
                   {t('backLabel')}
                 </button>

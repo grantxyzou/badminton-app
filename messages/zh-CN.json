@@ -45,7 +45,7 @@
           "decline": "不用了",
           "working": "保存中…",
           "error": "没能保存 — 再试一次。",
-          "gone": "该修改已不在等待中。下拉刷新。",
+          "gone": "该修改已不在等待中 — 无需回复。",
           "close": "关闭"
         },
         "pricingEmpty": "Grant 还没公布价格 — 收到拍子时他会确认。",
@@ -214,6 +214,7 @@
       "retry": "重试"
     },
     "releases": {
+      "loadError": "没能读取更新记录。",
       "whatsNew": "{version} 有新内容",
       "sheetLabel": "发布历史",
       "close": "关闭"
@@ -248,6 +249,7 @@
   },
   "profile": {
     "auth": {
+      "retry": "重试",
       "pendingExpiredTitle": "我们重新开始吧",
       "pendingExpiredCta": "返回登录",
       "emailLabel": "邮箱",
@@ -331,7 +333,7 @@
       "disconnectCancel": "先留着",
       "lastCredential": "这是你唯一的登录方式，必须保留。请先添加 PIN 码或其他登录方式。",
       "disconnectFailed": "没能断开连接 — 请再试一次。",
-      "methodsLoadError": "没能加载你的登录方式 — 请刷新重试。",
+      "methodsLoadError": "没能加载你的登录方式。",
       "claimTitle": "这是你吗？",
       "claimBody": "已经有人以 {name} 的身份打球。如果那是你，请输入 PIN 码，我们会把这个登录方式连接到你的账号。",
       "claimPinLabel": "你的 4 位 PIN 码",
@@ -1056,7 +1058,7 @@
     "leaveSheetConfirm": "退出候补名单",
     "sheetKeep": "再想想",
     "cancelFailure": "没取消成功 — 再试一次吧。",
-    "loadError": "暂时加载不出来 — 刷新再试一次。",
+    "loadError": "暂时加载不出名单。",
     "retry": "重试"
   },
   "admin": {
@@ -1430,6 +1432,7 @@
     }
   },
   "groups": {
+    "retry": "重试",
     "crumb": "我的",
     "yourGroups": "你的群组",
     "yourGroupsHint": "在你参加的俱乐部之间切换。",
@@ -1437,7 +1440,7 @@
     "switchTo": "切换到 {name}",
     "switching": "切换中…",
     "switchFailed": "切换失败，请重试。",
-    "loadFailed": "无法加载你的群组 — 下拉刷新重试。",
+    "loadFailed": "无法加载你的群组。",
     "onlyOne": "你目前只在一个群组里。",
     "roleOwner": "组织者",
     "roleAdmin": "管理员",

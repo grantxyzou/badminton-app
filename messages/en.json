@@ -45,7 +45,7 @@
           "decline": "No thanks",
           "working": "Saving…",
           "error": "That didn't save — try again.",
-          "gone": "That change is no longer waiting. Pull to refresh.",
+          "gone": "That change is no longer waiting — nothing to answer.",
           "close": "Close"
         },
         "pricingEmpty": "Grant hasn't posted prices yet — he'll confirm when he takes the racket.",
@@ -214,6 +214,7 @@
       "retry": "Try again"
     },
     "releases": {
+      "loadError": "Couldn't load the changelog.",
       "whatsNew": "What's new in {version}",
       "sheetLabel": "Release history",
       "close": "Close"
@@ -248,6 +249,7 @@
   },
   "profile": {
     "auth": {
+      "retry": "Try again",
       "pendingExpiredTitle": "Let's start that again",
       "pendingExpiredCta": "Back to sign-in",
       "emailLabel": "Email",
@@ -331,7 +333,7 @@
       "disconnectCancel": "Keep it",
       "lastCredential": "This is your only way back in, so it has to stay. Add a PIN or another sign-in first.",
       "disconnectFailed": "Couldn't disconnect that — try again.",
-      "methodsLoadError": "Couldn't load your sign-in methods — refresh to retry.",
+      "methodsLoadError": "Couldn't load your sign-in methods.",
       "claimTitle": "Is that you?",
       "claimBody": "Someone already plays as {name}. If that's you, enter your PIN and we'll connect this sign-in to your account.",
       "claimPinLabel": "Your 4-digit PIN",
@@ -1056,8 +1058,8 @@
     "leaveSheetConfirm": "Leave the waitlist",
     "sheetKeep": "Never mind",
     "cancelFailure": "That didn't go through — give it another try.",
-    "loadError": "Couldn't load that — refresh to try again.",
-    "retry": "Retry"
+    "loadError": "Couldn't load the list.",
+    "retry": "Try again"
   },
   "admin": {
     "stringing": {
@@ -1430,6 +1432,7 @@
     }
   },
   "groups": {
+    "retry": "Try again",
     "crumb": "Profile",
     "yourGroups": "Your groups",
     "yourGroupsHint": "Switch between the clubs you play with.",
@@ -1437,7 +1440,7 @@
     "switchTo": "Switch to {name}",
     "switching": "Switching…",
     "switchFailed": "Couldn't switch. Try again.",
-    "loadFailed": "Couldn't load your groups — pull to refresh to retry.",
+    "loadFailed": "Couldn't load your groups.",
     "onlyOne": "You're only in one group right now.",
     "roleOwner": "Organiser",
     "roleAdmin": "Admin",

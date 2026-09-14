@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import EmptyState from '@/components/primitives/EmptyState';
 import { setIdentity } from '@/lib/identity';
 import { isNative } from '@/lib/native';
 import ErrorState from './primitives/ErrorState';
@@ -100,7 +101,8 @@ export default function MigrateClaim() {
           <p className="fs-sm" style={{ color: 'var(--text-muted)', lineHeight: 'var(--lh-normal)' }}>{t('pageNoAppBody')}</p>
         </>
       )}
-      {phase === 'no-code' && <ErrorState message={t('pageNoCode')} />}
+      {/* No code in the link is nothing to fail at — muted, with the way home below. */}
+      {phase === 'no-code' && <EmptyState>{t('pageNoCode')}</EmptyState>}
       {phase === 'failed' && <ErrorState message={t('pageFailed')} />}
       {phase !== 'working' && phase !== 'done' && (
         <a href={`${BASE}/`} className="bpm-row-link" style={{ width: 'auto', justifyContent: 'center', marginTop: 'var(--space-6)' }}>

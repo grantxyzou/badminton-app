@@ -105,8 +105,9 @@ describe('PushSheet', () => {
 
   it('surfaces a sign-in error as recovery advice', () => {
     renderSheet(makePush({ status: 'off' }, { error: 'auth' }));
-    const alert = screen.getByRole('alert');
-    expect(alert.textContent).toMatch(/Sign in first/i);
+    // Signed out is a refusal, not a failure: announced politely, not as an alert.
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('status').textContent).toMatch(/Sign in first/i);
   });
 
   it('shows a neutral checking state while probing', () => {
