@@ -49,11 +49,11 @@ export default function SummaryGreeting() {
   if (forbidden) {
     return (
       <LockedCard message={t.rich('summaryGreeting.locked', { link: signInLink })}>
-        <div className="locked-row">
+        <div className="state-row">
           <AIBadge label={t('insightChip.aiGenerated')}>{t('summaryGreeting.ai')}</AIBadge>
-          <span className="locked-line" style={{ width: '70%' }} />
+          <span className="state-line" style={{ width: '70%' }} />
         </div>
-        <span className="locked-line" style={{ width: '52%' }} />
+        <span className="state-line" style={{ width: '52%' }} />
       </LockedCard>
     );
   }

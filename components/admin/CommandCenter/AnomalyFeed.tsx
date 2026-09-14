@@ -150,14 +150,25 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
+      {/* A refusal, not a failure: nothing broke, the cookie simply ran out.
+          So it is muted, not red — and it carries the way back, because
+          signing in again is a full reload of the admin subtree. */}
       {authExpired && visible.length === 0 && (
-        <div className="toast toast-blocking" role="alert">
-          <span className="material-icons fs-lg" aria-hidden="true" style={{ color: 'var(--color-red)' }}>
+        <div className="toast" role="status">
+          <span className="material-icons fs-lg" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>
             lock_clock
           </span>
-          <p className="flex-1 fs-md m-0">
-            Your admin session expired — reload to sign back in.
+          <p className="flex-1 fs-md m-0" style={{ color: 'var(--text-secondary)' }}>
+            Your admin session expired.
           </p>
+          <button
+            type="button"
+            className="cc-btn cc-btn-ghost"
+            style={{ flex: 'none' }}
+            onClick={() => window.location.reload()}
+          >
+            Reload
+          </button>
         </div>
       )}
 
@@ -166,7 +177,15 @@ export default function AnomalyFeed({ refreshKey = 0 }: AnomalyFeedProps) {
           <span className="material-icons fs-lg" aria-hidden="true" style={{ color: 'var(--color-red)' }}>
             error
           </span>
-          <p className="flex-1 fs-md m-0">Couldn&apos;t load notices — try refreshing.</p>
+          <p className="flex-1 fs-md m-0">Couldn&apos;t load notices.</p>
+          <button
+            type="button"
+            className="cc-btn cc-btn-ghost"
+            style={{ flex: 'none' }}
+            onClick={() => void load()}
+          >
+            Try again
+          </button>
         </div>
       )}
 

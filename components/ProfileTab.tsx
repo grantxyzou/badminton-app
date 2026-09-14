@@ -665,16 +665,19 @@ export default function ProfileTab({
               player opens to change their PIN. The count survives here; the
               three stat tiles live on admin home, where they can be acted on.
 
-              No meta at all when the count is unknown: "0 need you" off a dead
-              fetch is the lying-empty-state pattern, and the row's real job —
-              opening admin — works regardless. */}
+              No count when it is unknown: "0 need you" off a dead fetch is the
+              lying-empty-state pattern, and the row's real job — opening
+              admin — works regardless. A FAILED check says so, muted, rather
+              than leaving the row looking like one that never had a count;
+              still loading shows nothing. */}
           <SettingsList
             rows={[
               {
                 icon: 'admin_panel_settings',
                 label: t('admin.console'),
-                meta:
-                  adminSignals.needsYou === null
+                meta: adminSignals.loadError
+                  ? t('admin.checkFailed')
+                  : adminSignals.needsYou === null
                     ? undefined
                     : adminSignals.needsYou > 0
                     ? t('admin.needYou', { count: adminSignals.needsYou })

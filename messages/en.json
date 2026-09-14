@@ -226,6 +226,8 @@
       "title": "Learn"
     },
     "admin": {
+      "retry": "Try again",
+      "checkError": "Couldn't check your admin sign-in.",
       "title": "Admin",
       "signInHelp": "Sign in with your name and PIN",
       "nameLabel": "Your name",
@@ -427,6 +429,7 @@
     "adminToolsTitle": "Admin tools",
     "adminToolsButton": "Admin tools →",
     "admin": {
+      "checkFailed": "Couldn't check",
       "group": "Admin",
       "console": "Admin console",
       "needYou": "{count} need you",
@@ -1077,6 +1080,7 @@
   },
   "admin": {
     "stringing": {
+      "retry": "Try again",
         "pricing": {
           "title": "Your prices",
           "hint": "Players read these behind “View pricing” on Home.",
@@ -1095,7 +1099,7 @@
           "duplicate": "You already have a service with that name.",
           "badPrice": "That doesn’t look like a price.",
           "blankMeansAsk": "Leave the price blank for anything without a fixed rate — players see “Ask”.",
-          "loadError": "Couldn’t load your prices — refresh to retry.",
+          "loadError": "Couldn’t load your prices.",
           "saveError": "Couldn’t save that — give it another go."
         },
         "strings": {
@@ -1105,7 +1109,7 @@
           "placeholder": "e.g. BG80 white",
           "add": "Add",
           "remove": "Remove {name}",
-          "loadError": "Couldn't load your string list — refresh to retry.",
+          "loadError": "Couldn't load your string list.",
           "saveError": "Couldn't save that — give it another go."
         },
         "lb": "lb",
@@ -1189,12 +1193,12 @@
           "openUnknown": "Archived",
           "title": "Archived",
           "empty": "Nothing archived yet.",
-          "loadError": "Couldn't load the archive — pull to refresh.",
+          "loadError": "Couldn't load the archive.",
           "stillOwed": "Still owed ${amount}"
         },
         "mine": "Mine",
         "all": "All",
-        "loadError": "Couldn't load the bench — pull to refresh.",
+        "loadError": "Couldn't load the bench.",
         "empty": "Nothing on the bench.",
         "emptyMine": "Nothing of yours on the bench.",
         "addJob": "Add job",
@@ -1233,7 +1237,7 @@
         "newJob": "New job",
         "who": "Whose racket?",
         "whoHint": "Anyone with a %APP_SHORT% account — walk-ups included.",
-        "membersError": "Couldn't load members — refresh to retry.",
+        "membersError": "Couldn't load members.",
         "change": "Change",
         "searchMembers": "Search by name",
         "theRacket": "The racket",
@@ -1267,6 +1271,8 @@
         }
     },
     "releases": {
+      "retry": "Try again",
+      "loadError": "Couldn't load releases.",
       "newButton": "New release",
       "draftWithAI": "Draft with AI",
       "publish": "Publish",
@@ -1478,7 +1484,7 @@
       "regenerateAction": "Replace it",
       "regenerating": "Replacing…",
       "cancel": "Cancel",
-      "loadFailed": "Couldn't load the invite — refresh to retry.",
+      "loadFailed": "Couldn't load the invite.",
       "regenerateFailed": "Couldn't replace the link. The old one still works."
     }
   },

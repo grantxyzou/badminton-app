@@ -516,7 +516,16 @@ export default function StringingPage({ onBack }: Props) {
       <div className="animate-slideInRight">
         <AdminBackHeader onBack={() => setView('bench')} title={t('archive.title')} />
         <div className="flex flex-col gap-4 pb-6">
-          {archiveError && <ErrorState message={t('archive.loadError')} />}
+          {archiveError && (
+            <ErrorState
+              message={t('archive.loadError')}
+              action={
+                <button type="button" className="cc-btn cc-btn-ghost" onClick={() => void loadArchive()}>
+                  {t('retry')}
+                </button>
+              }
+            />
+          )}
           {!archiveError && archivedJobs === null && <AdminPageSkeleton />}
           {!archiveError && archivedJobs !== null && archivedJobs.length === 0 && (
             <EmptyState icon="inventory_2">{t('archive.empty')}</EmptyState>
@@ -620,7 +629,16 @@ export default function StringingPage({ onBack }: Props) {
           </button>
         </div>
 
-        {loadError && <ErrorState message={t('loadError')} />}
+        {loadError && (
+          <ErrorState
+            message={t('loadError')}
+            action={
+              <button type="button" className="cc-btn cc-btn-ghost" onClick={() => void load()}>
+                {t('retry')}
+              </button>
+            }
+          />
+        )}
         {!loadError && jobs === null && <AdminPageSkeleton />}
         {!loadError && jobs !== null && jobs.length === 0 && (
           /* The bench list IS this page's content; the segment control and

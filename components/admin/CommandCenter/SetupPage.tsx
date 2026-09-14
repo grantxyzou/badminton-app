@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import AdminBackHeader from '../AdminBackHeader';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
+import ErrorState from '@/components/primitives/ErrorState';
 import { normalizeBirdUsages, totalTubes, totalBirdCost, currentPricePerTube } from '@/lib/birdUsages';
 import { renderGroupCanvas, renderGroupText, type ReceiptInput } from '@/lib/receiptTemplate';
 import { withLocalTz } from '@/lib/fmt';
@@ -482,9 +483,14 @@ export default function SetupPage({ onBack }: SetupPageProps) {
 
       {/* Save bar */}
       {loadError && (
-        <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: 'var(--space-2) var(--space-1) 0' }}>
-          Couldn&apos;t load the current session — saving is disabled to avoid overwriting it. Refresh to retry.
-        </p>
+        <ErrorState
+          message="Couldn't load the current session — saving is disabled to avoid overwriting it."
+          action={
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={() => void load()}>
+              Try again
+            </button>
+          }
+        />
       )}
       {saveError && (
         <p role="alert" style={{ fontSize: 'var(--fs-base)', color: 'var(--color-red)', margin: 'var(--space-2) var(--space-1) 0' }}>

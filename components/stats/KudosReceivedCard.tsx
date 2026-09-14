@@ -64,9 +64,9 @@ export default function KudosReceivedCard() {
     return (
       <LockedCard icon="volunteer_activism" title={t('kudos.receivedTitle')} message={t.rich('kudos.receivedLocked', { link: signInLink })}>
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-          <span className="locked-line" style={{ width: '24%', height: 'var(--space-6)' }} />
-          <span className="locked-line" style={{ width: '30%', height: 'var(--space-6)' }} />
-          <span className="locked-line" style={{ width: '20%', height: 'var(--space-6)' }} />
+          <span className="state-line" style={{ width: '24%', height: 'var(--space-6)' }} />
+          <span className="state-line" style={{ width: '30%', height: 'var(--space-6)' }} />
+          <span className="state-line" style={{ width: '20%', height: 'var(--space-6)' }} />
         </div>
       </LockedCard>
     );

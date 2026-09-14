@@ -9,6 +9,7 @@ import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import AdminBackHeader from './AdminBackHeader';
 import DatePicker from '../DatePicker';
 import StatusBanner from '../primitives/StatusBanner';
+import ErrorState from '../primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -66,14 +67,20 @@ export default function AdvanceSessionForm({ onBack }: Props) {
   const [skipDates, setSkipDates] = useState<string[]>([]);
   const [showSkipBlock, setShowSkipBlock] = useState(false);
   const [prefillFailed, setPrefillFailed] = useState(false);
+  // Bumped by "Try again" on the prefill error; re-runs ONLY the session
+  // prefill below, not the four suggestion fetches.
+  const [prefillAttempt, setPrefillAttempt] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
     fetch(`${BASE}/api/session`, { cache: 'no-store' })
       .then(r => {
         if (!r.ok) throw new Error(`session fetch ${r.status}`);
         return r.json();
       })
       .then((data: Session) => {
+        if (cancelled) return;
+        setPrefillFailed(false);
         setTime(data.datetime ? data.datetime.slice(11, 16) : '');
         setEndTime(data.endDatetime ? data.endDatetime.slice(11, 16) : '');
         setDeadlineTime(data.deadline ? data.deadline.slice(11, 16) : '');
@@ -97,8 +104,14 @@ export default function AdvanceSessionForm({ onBack }: Props) {
         // Critical fetch — without it the form shows generic defaults
         // (2 courts / 12 / no cost) and admin advances thinking the
         // form was prefilled from current state.
-        setPrefillFailed(true);
+        if (!cancelled) setPrefillFailed(true);
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [prefillAttempt]);
+
+  useEffect(() => {
     fetch(`${BASE}/api/sessions/costs`, { cache: 'no-store' })
       .then(r => r.ok ? r.json() : { costs: [] })
       .then((data: { costs: number[] }) => setRecentCosts(data.costs ?? []))
@@ -219,19 +232,21 @@ export default function AdvanceSessionForm({ onBack }: Props) {
       <AdminBackHeader onBack={onBack} title="Next Session" />
 
       {prefillFailed && (
-        <div
-          role="alert"
-          style={{
-            padding: 'var(--space-4) var(--space-5)',
-            borderRadius: 'var(--radius-lg)',
-            background: 'rgba(239,68,68,0.06)',
-            border: '1px solid rgba(239,68,68,0.25)',
-            color: 'var(--color-red)',
-            fontSize: 'var(--fs-base)',
-          }}
-        >
-          Couldn&apos;t load current session — fields below show defaults, not your last week&apos;s settings. Refresh before advancing.
-        </div>
+        <ErrorState
+          message="Couldn't load the current session — the fields below show defaults, not last week's settings."
+          action={
+            <button
+              type="button"
+              className="cc-btn cc-btn-ghost"
+              onClick={() => {
+                setPrefillFailed(false);
+                setPrefillAttempt((n) => n + 1);
+              }}
+            >
+              Try again
+            </button>
+          }
+        />
       )}
 
       <form onSubmit={handleAdvance}>

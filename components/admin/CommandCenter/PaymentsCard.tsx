@@ -13,6 +13,7 @@ import { useReportFetchFailure } from '@/lib/useOnline';
 import { buildReceiptInput } from '@/lib/buildReceiptInput';
 import ReceiptSheet from './ReceiptSheet';
 import type { Session, ETransferRecipient } from '@/lib/types';
+import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -151,7 +152,10 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
 
   // Fetch players for the viewed session.
   const loadPlayers = useCallback(async (sessionId: string) => {
-    setPlayersError(false);
+    // `playersError` clears on SUCCESS, not on entry: while a Try again is in
+    // flight `allPlayers` is still [], and clearing up front flashed "No active
+    // players yet" for the length of the request — the lying empty state, for
+    // as long as the network took.
     try {
       const res = await fetch(`${BASE}/api/players?sessionId=${encodeURIComponent(sessionId)}&all=true`, { cache: 'no-store' });
       if (!res.ok) {
@@ -163,6 +167,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       }
       const data = (await res.json()) as Player[];
       setAllPlayers(Array.isArray(data) ? data : []);
+      setPlayersError(false);
     } catch (err) {
       console.warn('PaymentsCard loadPlayers failed:', err);
       setPlayersError(true);
@@ -447,6 +452,39 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
 
   if (loading) return <CardSkeleton height={240} />;
 
+  // A failed load tints the whole card rather than tucking a red line under
+  // its header (Grant, 2026-09-14). The Add field goes with it: adding a
+  // player to a list that did not load is a write against an unknown roster.
+  if (loadError || playersError) {
+    return (
+      <StateCard
+        tone="danger"
+        icon="payments"
+        title="Payments"
+        message={
+          <>
+            Couldn&apos;t load payments.{' '}
+            <StateLink
+              onClick={() => {
+                // Re-run whichever half failed. A failed session load leaves
+                // no viewed session, and a successful re-run sets one, which
+                // fires the players effect on its own.
+                if (loadError) void load();
+                if (playersError && viewedSessionId) void loadPlayers(viewedSessionId);
+              }}
+            >
+              Try again
+            </StateLink>
+          </>
+        }
+      >
+        <PreviewRow width="46%" value="$—" />
+        <PreviewRow width="34%" value="$—" />
+        <PreviewRow width="40%" value="$—" />
+      </StateCard>
+    );
+  }
+
   return (
     <section className="glass-card p-4 space-y-3 animate-fadeIn" aria-label="Payments">
       <CardHeader icon="payments" title="Payments" />
@@ -487,15 +525,6 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
         </div>
       )}
 
-      {/* Load-error affordance preserved from the removed header (the
-          lying-empty-state rule forbids dropping it). */}
-      {(loadError || playersError) && (
-        <p role="alert" className="fs-sm" style={{ color: 'var(--color-red)', margin: '0' }}>
-          Couldn&apos;t load — refresh to retry
-        </p>
-      )}
-
-
       {/* Empty state — kept distinct from loadError (lying-empty-state
           rule). The "X of Y paid" count was removed by design; this is
           the no-roster case, not the count.
@@ -506,7 +535,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           it read as a caption someone forgot to finish. The glyph is
           `group_add` because the way out of this state is the add-player field
           directly below it. */}
-      {!loadError && !playersError && total === 0 && (
+      {total === 0 && (
         <EmptyState icon="group_add">No active players yet</EmptyState>
       )}
 

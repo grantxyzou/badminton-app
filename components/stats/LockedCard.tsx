@@ -62,7 +62,7 @@ export default function LockedCard({ icon, title, subtitle, message, children }:
   return (
     <section className="glass-card is-locked p-5 flex flex-col gap-4" aria-label={title}>
       {title && <CardHeader icon={icon} title={title} subtitle={subtitle} />}
-      <div className="locked-preview" aria-hidden="true">
+      <div className="state-preview" aria-hidden="true">
         {children}
       </div>
       <p className="fs-base" style={{ margin: '0', color: 'var(--text-secondary)' }}>
@@ -72,27 +72,5 @@ export default function LockedCard({ icon, title, subtitle, message, children }:
   );
 }
 
-/** One row of a list preview: an optional leading glyph, a label bar, a value dash. */
-export function PreviewRow({ icon, width = '55%', value = '—' }: { icon?: string; width?: string; value?: string }) {
-  return (
-    <div className="locked-row">
-      {icon && (
-        <span className="material-icons" style={{ fontSize: 'var(--icon-sm)' }}>
-          {icon}
-        </span>
-      )}
-      <span className="locked-line" style={{ width }} />
-      {value && <span className="locked-dash">{value}</span>}
-    </div>
-  );
-}
-
-/** A labelled empty meter — the shape of a score or a share, with nothing in it. */
-export function PreviewMeter({ label }: { label: string }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-      <span className="fs-sm">{label}</span>
-      <span className="locked-bar" />
-    </div>
-  );
-}
+// The preview pieces are shared with the tinted StateCard, so the two cannot drift.
+export { PreviewRow, PreviewMeter } from '@/components/primitives/StateCard';

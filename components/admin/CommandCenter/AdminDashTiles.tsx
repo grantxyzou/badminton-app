@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import ErrorState from '@/components/primitives/ErrorState';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -21,14 +22,18 @@ interface TileData {
 export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashTilesProps) {
   const [data, setData] = useState<TileData | null>(null);
   const [loadError, setLoadError] = useState(false);
+  // Bumped by Try again to re-run the fetch effect below. The reset of
+  // `loadError`/`data` happens in that click handler, not in the effect, so
+  // the effect's only setStates stay the asynchronous ones.
+  const [attempt, setAttempt] = useState(0);
 
   // Inlined into the effect rather than called through a `useCallback`.
   // Nothing else invoked `load`, and the indirection hid the timing from
   // `react-hooks/set-state-in-effect`, which assumed a synchronous cascade.
-  // The old `setLoadError(false)` on entry is gone with it: the state
-  // initialises false and this runs once, so the reset only ever re-set a
-  // value that was already false — and being the one genuinely SYNCHRONOUS
-  // setState here, it was the only part the rule was right about.
+  // The old `setLoadError(false)` on entry is gone with it: on mount the state
+  // is already false, and a re-run only ever comes from Try again, which
+  // resets it in the click handler — being the one genuinely SYNCHRONOUS
+  // setState, it was the only part the rule was right about.
   useEffect(() => {
     let cancelled = false;
 
@@ -83,18 +88,29 @@ export default function AdminDashTiles({ onOpenBirds, onOpenRoster }: AdminDashT
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [attempt]);
 
   if (loadError) {
+    // Unboxed: this stands where the two tiles would be, so it is centred text
+    // with the way out beneath it, not a red panel of its own.
     return (
-      <div
-        className="cc-dgrid"
-        role="alert"
-        style={{ gridColumn: '1 / -1', display: 'block', padding: 'var(--space-4) var(--space-5)', borderRadius: 'var(--radius-xl)', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}
-      >
-        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-red)', margin: '0' }}>
-          Couldn&apos;t load Birds + Roster summaries — refresh to retry.
-        </p>
+      <div style={{ padding: 'var(--space-4) 0' }}>
+        <ErrorState
+          message="Couldn't load the Birds and Roster summaries."
+          action={
+            <button
+              type="button"
+              className="cc-btn cc-btn-ghost"
+              onClick={() => {
+                setLoadError(false);
+                setData(null);
+                setAttempt((n) => n + 1);
+              }}
+            >
+              Try again
+            </button>
+          }
+        />
       </div>
     );
   }

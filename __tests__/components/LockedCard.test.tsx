@@ -49,7 +49,7 @@ describe('LockedCard', () => {
 
   it('keeps the preview out of the accessibility tree — it is shape, not content', () => {
     const { container } = renderCard(vi.fn());
-    expect(container.querySelector('.locked-preview')?.getAttribute('aria-hidden')).toBe('true');
+    expect(container.querySelector('.state-preview')?.getAttribute('aria-hidden')).toBe('true');
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
