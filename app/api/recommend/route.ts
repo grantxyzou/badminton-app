@@ -19,6 +19,7 @@ import type { CatalogItem, EquipmentCategory, PlayerGear } from '@/lib/types';
 import type { Rating } from '@/lib/assessment';
 import { resolveActiveSubject } from '@/lib/memberResolve';
 import { writeEvent } from '@/lib/events';
+import { effectiveArmComfort } from '@/lib/fitProfile';
 import { buildFitInput, readGearOrNull } from '@/lib/racketFitInput';
 
 /**
@@ -259,7 +260,7 @@ export async function GET(req: NextRequest) {
         // SAME delta scores the candidates and names the tension below, or
         // the card would name a string that won at a tension it then tells
         // the member not to use.
-        const tensionDelta = comfortTensionDeltaLb(gear?.fitArmComfort);
+        const tensionDelta = comfortTensionDeltaLb(effectiveArmComfort(gear));
         const pairing = pairString(frame, catalogItems as CatalogItem[], profile, tensionDelta);
         // Every candidate rejected by the tension gate. Not a failure and not
         // a catalog gap: this frame genuinely has no compatible string here.

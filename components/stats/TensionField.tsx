@@ -3,6 +3,8 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { MIN_LB, MAX_LB } from '@/lib/tension';
+// The rated window lives beside the scale it defaults to; re-exported for the sheets.
+export { ratedRange } from '@/lib/tension';
 import type { ClubTensionBand } from '@/lib/clubTension';
 
 /** The widest number the field will hold. Wider than any rated range on
@@ -115,11 +117,3 @@ export function parseLbs(text: string): number | null {
   return Math.min(FIELD_MAX_LB, n);
 }
 
-/** A racket's rated window from its catalog attributes, when a ceiling exists. */
-export function ratedRange(attributes: Record<string, string | number> | undefined): [number, number] | null {
-  // Many frames print only a ceiling; the floor is then the app's own.
-  const hi = attributes?.tensionMaxLbs;
-  if (typeof hi !== 'number') return null;
-  const lo = typeof attributes?.tensionMinLbs === 'number' ? attributes.tensionMinLbs : MIN_LB;
-  return lo <= hi ? [lo, hi] : null;
-}

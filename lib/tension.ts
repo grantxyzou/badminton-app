@@ -71,3 +71,18 @@ export function gearItemLabel(item: { category: string; label: string; tensionLb
   }
   return item.label;
 }
+
+/**
+ * A racket's rated window from its catalog attributes, or null when the row
+ * prints neither bound. Many frames print only a ceiling, and one prints only
+ * a floor; the missing side is the app's own scale. The ONE definition — the
+ * tension field clamps to it and the fit verdict's range sits inside it, and a
+ * member sees both.
+ */
+export function ratedRange(attributes: Record<string, unknown> | undefined): [number, number] | null {
+  const hi = attributes?.tensionMaxLbs;
+  const lo = attributes?.tensionMinLbs;
+  if (typeof hi !== 'number' && typeof lo !== 'number') return null;
+  const window: [number, number] = [typeof lo === 'number' ? lo : MIN_LB, typeof hi === 'number' ? hi : MAX_LB];
+  return window[0] <= window[1] ? window : null;
+}

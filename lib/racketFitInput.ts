@@ -3,6 +3,7 @@ import { buildProfile } from './racketProfile';
 import { activeRacket, rackets } from './activeRacket';
 import { fitLevel, isScorable, canon, type FitInput } from './racketFit';
 import { feelAnchor } from './racketFeel';
+import { effectiveArmComfort } from './fitProfile';
 import type { CatalogItem, PlayerGear } from './types';
 import type { Rating } from './assessment';
 
@@ -38,7 +39,8 @@ export function buildFitInput(
     ownedLabels: new Set(owned.map((i) => canon(i.label)).filter(Boolean)),
     goal: gear?.fitGoal,
     swing: gear?.fitSwing,
-    armComfort: gear?.fitArmComfort,
+    // The fit profile's soreness answer, when given, is the comfort answer.
+    armComfort: effectiveArmComfort(gear),
     grip: gear?.fitGrip,
     format: gear?.playFormat ?? 'both',
     budgetMaxCad: typeof gear?.budgetMaxCad === 'number' ? gear.budgetMaxCad : undefined,

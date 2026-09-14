@@ -4838,7 +4838,8 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
   font-size: var(--fs-base);
   cursor: pointer;
 }
-.setup-feel-chip[aria-pressed="true"] {
+.setup-feel-chip[aria-pressed="true"],
+.setup-feel-chip[aria-checked="true"] {
   background: var(--highlight-green);
   border-color: var(--accent);
   font-weight: 600;
@@ -4896,3 +4897,195 @@ button.setup-next-row { cursor: pointer; }
    Light mode draws it as the design did, on nothing. */
 .setup-next-img { filter: drop-shadow(0 0 1.5px rgba(255, 255, 255, 0.5)); }
 [data-theme="light"] .setup-next-img { filter: none; }
+
+/* ── Your fit (design "Equipment redesign", Turn 3, 3a) ──────────────────── */
+
+.fit-page { display: flex; flex-direction: column; gap: var(--space-5); }
+.fit-counter { font-family: var(--font-mono); font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted); }
+.fit-section-label { padding: 0 var(--space-05); }
+.fit-section-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 var(--space-05); }
+
+.fit-verdict { display: flex; flex-direction: column; gap: var(--space-4); }
+.fit-eyebrow--warn { color: var(--sev-warn); }
+.fit-headline {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-stat-lg);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  text-wrap: balance;
+}
+.fit-body { margin: 0; font-size: var(--fs-md); line-height: 1.55; color: var(--text-secondary); text-wrap: pretty; }
+.fit-reasons { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+.fit-reason { display: flex; align-items: flex-start; gap: var(--space-2); font-size: var(--fs-base); color: var(--text-secondary); }
+.fit-reason .material-icons { font-size: var(--icon-sm); margin-top: var(--space-05); }
+.fit-reason--plus .material-icons { color: var(--accent); }
+.fit-reason--minus .material-icons { color: var(--sev-warn); }
+.fit-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--highlight-green);
+  border: 1px solid var(--segment-active-bg);
+}
+.fit-callout-label { font-size: var(--fs-base); color: var(--text-secondary); }
+.fit-callout-value { font-family: var(--font-mono); font-size: var(--fs-stat); font-weight: 600; color: var(--accent); }
+[data-theme="light"] .fit-callout-value { color: var(--accent-dark); }
+.fit-caption { margin: 0; font-size: var(--fs-sm); line-height: var(--lh-normal); color: var(--text-muted); text-wrap: pretty; }
+.fit-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--divider);
+}
+.fit-tag {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--segment-active-bg);
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+[data-theme="light"] .fit-tag { color: var(--accent-dark); }
+
+.fit-questions { display: flex; flex-direction: column; gap: var(--space-5); }
+.fit-group { display: flex; flex-direction: column; gap: var(--space-3); }
+.fit-group + .fit-group { padding-top: var(--space-5); border-top: 1px solid var(--divider); }
+.fit-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.fit-q-label { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); }
+.fit-q-hint { font-size: var(--fs-xs); color: var(--text-muted); }
+.fit-q-value { font-family: var(--font-mono); font-size: var(--fs-sm); font-weight: 600; color: var(--accent); }
+.fit-mono { font-family: var(--font-mono); }
+
+/* Tiles hold their column counts down to 320px: the grip tiles are ~62px
+   there, which still fits the 44px circle. They must not wrap. */
+.fit-tiles { display: grid; gap: var(--space-3); }
+.fit-tiles--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.fit-tiles--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.fit-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+  color: var(--text-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 100ms var(--ease-out-quart);
+}
+.fit-tile:active { transform: scale(0.97); }
+.fit-tile[aria-checked="true"] {
+  background: var(--highlight-green);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--highlight-green);
+  color: var(--accent);
+}
+.fit-tile:disabled { opacity: 0.5; pointer-events: none; }
+.fit-tile-label { font-size: var(--fs-base); }
+.fit-tile[aria-checked="true"] .fit-tile-label { font-weight: 600; }
+.fit-tile-desc { font-size: var(--fs-2xs); line-height: 1.3; color: var(--text-muted); }
+.fit-tile[aria-checked="true"] .fit-tile-desc { color: var(--accent); }
+.fit-tile-mm { font-family: var(--font-mono); font-size: var(--fs-2xs); color: var(--text-muted); }
+
+/* The swing diagram: apex height is contact height. Drawn in currentColor so
+   the selected tile's accent reaches the arc and both dots. */
+.fit-arc { display: block; width: 100%; height: 52px; overflow: visible; color: var(--text-muted); }
+.fit-tile[aria-checked="true"] .fit-arc { color: var(--accent); }
+.fit-arc-base { stroke: var(--divider); stroke-width: 1; }
+.fit-arc-path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.fit-arc-origin { fill: currentColor; }
+.fit-arc-contact { fill: currentColor; stroke: var(--page-bg); stroke-width: 2; }
+
+/* The grip tile: the handle end-on, to scale. flex: 0 0 auto and
+   border-box are load-bearing — without them the circles squash to ovals
+   and the 2px border inflates the small sizes. */
+.fit-grip-tile { height: 110px; padding: var(--space-3); align-items: center; justify-content: flex-end; text-align: center; gap: var(--space-1); }
+.fit-grip-circle {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  margin-bottom: var(--space-1);
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--text-muted);
+}
+.fit-grip-circle--G3 { width: 44px; height: 44px; }
+.fit-grip-circle--G4 { width: 38px; height: 38px; }
+.fit-grip-circle--G5 { width: 32px; height: 32px; }
+.fit-grip-circle--G6 { width: 26px; height: 26px; }
+.fit-tile[aria-checked="true"] .fit-grip-circle { border-color: var(--accent); background: var(--highlight-green); }
+
+.fit-overgrips {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.fit-sore-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.fit-sore-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--fs-md);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 100ms var(--ease-out-quart);
+}
+.fit-sore-option:active { transform: scale(0.97); }
+/* Amber, because a sore arm is a caution, not a success. */
+.fit-sore-option[aria-checked="true"] { background: var(--highlight-amber); border-color: var(--sev-warn); color: var(--text-primary); }
+.fit-sore-option:disabled { opacity: 0.5; pointer-events: none; }
+.fit-sore-check { font-size: var(--icon-md); color: var(--sev-warn); }
+.fit-consequence { margin: 0; font-size: var(--fs-sm); line-height: var(--lh-normal); color: var(--sev-warn); }
+
+.fit-ranked { display: flex; flex-direction: column; gap: var(--space-3); }
+.fit-rank-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+}
+.fit-rank-thumb {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 58px;
+  border-radius: var(--radius-md);
+  background: var(--inner-card-bg);
+}
+.fit-rank-thumb img { width: 24px; height: 52px; object-fit: contain; }
+.fit-rank-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--space-05); }
+.fit-rank-name { font-size: var(--fs-md); color: var(--text-primary); }
+.fit-rank-n { font-family: var(--font-mono); font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted); }
+.fit-rank-n--first { color: var(--accent); }
+.fit-footnote { margin: 0; padding: 0 var(--space-05); font-size: var(--fs-xs); color: var(--text-muted); }

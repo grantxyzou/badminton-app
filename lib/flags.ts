@@ -25,7 +25,9 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_MULTI_GROUP'
   | 'NEXT_PUBLIC_FLAG_RACKET_FIT'
   | 'NEXT_PUBLIC_FLAG_MEMBERS_ONLY'
-  | 'NEXT_PUBLIC_FLAG_GEAR_SETUP';
+  | 'NEXT_PUBLIC_FLAG_GEAR_SETUP'
+  | 'NEXT_PUBLIC_FLAG_GEAR_PAGES'
+  | 'NEXT_PUBLIC_FLAG_FIT_VERDICT';
 
 interface FlagMeta {
   description: string;
@@ -110,6 +112,18 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     plannedRemoval: '2026-10-12',
     note: 'Ships dark across three PRs (card → sheets → payoffs). Retiring it means deleting the flag-off register: GearPickRail, GearPickCard, YourKitCard, BagList and GearSheet if nothing else imports it, with their tests. Two things to know at the flip: `rec_card_tap` keeps its kind but its population changes ("Where you\'d go next" renders only once a racket is in play, the rail\'s card rendered always), so the slice0 tap rate moves for a reason that is not engagement; and this register nests inside NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE, so until that retires the register forks twice.',
   },
+  NEXT_PUBLIC_FLAG_GEAR_PAGES: {
+    description: 'Equipment redesign Turn 3: "Your fit" and a racket\'s name open full pages inside Stats → Equipment (the fit profile, 3a; the frame page, 3d) instead of sheets. Client-only: the pages write through the same /api/equipment/gear verbs.',
+    owner: 'grant',
+    plannedRemoval: '2026-10-19',
+    note: 'Retiring it means deleting GearFitSheet\'s door on the Set-up branch (the sheet itself stays while the flag-off register uses it).',
+  },
+  NEXT_PUBLIC_FLAG_FIT_VERDICT: {
+    description: 'The fit verdict ("Your Air Force 79 is fighting you slightly") written by Claude from facts computed in lib/fitVerdict.ts. Read SERVER-side by /api/equipment/fit-verdict: off, the route returns the facts with no AI copy and the page shows the fixed wording for each state.',
+    owner: 'grant',
+    plannedRemoval: '2026-10-19',
+    note: 'Stays off in production until Grant signs off the wording on localhost (the design handoff calls the verdict table and its copy unapproved). The state is decided by lib/fitVerdict.ts, never by the model.',
+  },
 };
 
 function readFlag(name: FlagName): string | undefined {
@@ -134,6 +148,10 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_MEMBERS_ONLY;
     case 'NEXT_PUBLIC_FLAG_GEAR_SETUP':
       return process.env.NEXT_PUBLIC_FLAG_GEAR_SETUP;
+    case 'NEXT_PUBLIC_FLAG_GEAR_PAGES':
+      return process.env.NEXT_PUBLIC_FLAG_GEAR_PAGES;
+    case 'NEXT_PUBLIC_FLAG_FIT_VERDICT':
+      return process.env.NEXT_PUBLIC_FLAG_FIT_VERDICT;
     default: {
       // Exhaustiveness guard. Adding a flag to `FlagName` without adding its
       // `case` above used to be silently legal — `readFlag` just returned
