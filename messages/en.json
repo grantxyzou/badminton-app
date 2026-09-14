@@ -591,6 +591,7 @@
       "catShoe": "Shoes",
       "catShuttle": "Shuttles",
       "kitError": "Couldn't load your equipment.",
+      "kitLocked": "<link>Sign in</link> to see and manage your equipment.",
       "pickError": "Couldn't load this pick.",
       "retry": "Try again",
       "tensionTitle": "String tension",

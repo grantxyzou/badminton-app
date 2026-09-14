@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { POST, PATCH, DELETE, GET } from '../app/api/equipment/gear/route';
 import {
-  resetMockStore, seedMember, memberCookieValue, makeRequest, makeGetRequest, setupAdminPin,
+  resetMockStore, seedMember, memberCookieValue, makeRequest, setupAdminPin,
   getStore, makeAdminRequest, seedAdminMember,
 } from './helpers';
 import { activeRacket } from '../lib/activeRacket';
@@ -27,7 +27,9 @@ function unauthedRequest(method: string, body?: Record<string, unknown>) {
 }
 
 async function readGear(): Promise<PlayerGear | null> {
-  const res = await GET(makeGetRequest(`http://localhost/api/equipment/gear?name=${NAME}`));
+  const res = await GET(makeRequest('GET', `http://localhost/api/equipment/gear?name=${NAME}`, undefined, {
+    Cookie: `member_session=${memberCookieValue(NAME, MEMBER_ID)}`,
+  }));
   return (await res.json()).gear;
 }
 

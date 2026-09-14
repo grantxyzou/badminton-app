@@ -6,8 +6,15 @@ import { getContainer } from '@/lib/cosmos';
 import { setMemberCookie } from '@/lib/auth';
 import { setupAdminPin, makeAdminRequest, seedAdminMember, resetMockStore } from './helpers';
 
+/** GET as Lin — the read is owner-or-admin, so the tests that read back their
+ *  own writes carry the owner's cookie. `getAnon` is the refused case. */
 function get(url: string): NextRequest {
-  return new NextRequest(new URL(url, 'http://localhost/bpm'));
+  return new NextRequest(new URL(url, 'http://localhost/bpm'), {
+    headers: { cookie: `member_session=${memberCookieValue('m-lin', 'Lin')}` },
+  });
+}
+function getAnon(url: string, cookie?: string): NextRequest {
+  return new NextRequest(new URL(url, 'http://localhost/bpm'), cookie ? { headers: { cookie } } : undefined);
 }
 function memberCookieValue(memberId: string, name: string): string {
   const r = NextResponse.json({});
@@ -174,8 +181,31 @@ describe('/api/equipment/gear', () => {
     expect(res.status).toBe(200);
   });
 
-  it('GET returns empty gear for an unknown member (loaded-empty, not error)', async () => {
-    const res = await GET(get('/api/equipment/gear?name=Nobody'));
+  // A device that only REMEMBERS a name (stale localStorage identity, lapsed
+  // cookie, shared phone) used to see that person's whole bag while every
+  // other Stats card locked.
+  it('GET refuses anyone but the owner or an admin', async () => {
+    await PUT(putAs('m-lin', 'Lin', { name: 'Lin', item: racket }));
+    await getContainer('members').items.upsert({ id: 'm-kento', name: 'Kento', active: true, stage: 4 });
+
+    expect((await GET(getAnon('/api/equipment/gear?name=Lin'))).status).toBe(403);
+    const other = await GET(getAnon('/api/equipment/gear?name=Lin', `member_session=${memberCookieValue('m-kento', 'Kento')}`));
+    expect(other.status).toBe(403);
+    expect(JSON.stringify(await other.json())).not.toContain('Astrox');
+    // An unknown name is refused too, so a non-owner cannot tell "no such member" from "not yours".
+    expect((await GET(getAnon('/api/equipment/gear?name=Nobody', `member_session=${memberCookieValue('m-kento', 'Kento')}`))).status).toBe(403);
+
+    expect((await GET(get('/api/equipment/gear?name=Lin'))).status).toBe(200);
+    const admin = await GET(makeAdminRequest('GET', 'http://localhost/api/equipment/gear?name=Lin'));
+    expect(admin.status).toBe(200);
+    expect((await admin.json()).gear.items).toHaveLength(1);
+  });
+
+  // Only an admin can ask about a name that is not theirs, so only an admin
+  // sees the loaded-empty answer for an unknown member; the owner's own empty
+  // bag is covered above.
+  it('GET returns empty gear for an unknown member to an admin (loaded-empty, not error)', async () => {
+    const res = await GET(makeAdminRequest('GET', 'http://localhost/api/equipment/gear?name=Nobody'));
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.gear).toBeNull();

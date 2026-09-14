@@ -494,3 +494,22 @@ describe('useGear — setTension updates an owned string in place', () => {
     await waitFor(() => expect(screen.getByTestId('bag').textContent).toBe('Yonex BG65@27'));
   });
 });
+
+describe('useGear — a refused read is not a failed one', () => {
+  function StatusProbe() {
+    const gear = useGear('Kento');
+    return <p data-testid="status">{`${gear.loaded}|${gear.loadError}|${gear.forbidden}|${gear.gear === null}`}</p>;
+  }
+
+  it('403 sets forbidden (and loadError — the bag is unknown, not empty)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 })));
+    render(<StatusProbe />);
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('true|true|true|true'));
+  });
+
+  it('a 500 is a failure, not a refusal', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 500 })));
+    render(<StatusProbe />);
+    await waitFor(() => expect(screen.getByTestId('status').textContent).toBe('true|true|false|true'));
+  });
+});
