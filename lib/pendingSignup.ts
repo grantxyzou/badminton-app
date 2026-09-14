@@ -56,9 +56,9 @@ export interface PendingSignup {
   /**
    * The callback was validated on the PARKED state, not this browser's cookie
    * (lib/oauthCallback.ts, `viaParkedState`). Nothing proves this browser
-   * started the flow, so the name step must not sign it in, and must never
-   * link the identity to an existing member (security scan F3). Additive:
-   * absent means an ordinary cookie-path flow.
+   * started the flow, so `complete-signup` must not sign it in (security scan
+   * F3). `claim-name` does NOT yet refuse it — see the known gap there.
+   * Additive: absent means an ordinary cookie-path flow.
    */
   parked?: boolean;
 }

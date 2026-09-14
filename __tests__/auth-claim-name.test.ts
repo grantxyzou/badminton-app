@@ -190,22 +190,3 @@ describe('POST /api/auth/claim-name', () => {
     expect(res.status).toBe(404);
   });
 });
-
-/**
- * Security scan F3, through the name step. A PARKED pending cookie came from a
- * callback nothing ties to this browser, so linking it to whoever proves a name
- * would attach an attacker's provider account to the victim who typed their PIN.
- */
-describe('POST /api/auth/claim-name — parked flows', () => {
-  it('refuses a parked flow even with the right PIN, and links nothing', async () => {
-    const grant = seedMember('Grant', { pinHash: await hashPin('1130') });
-
-    const res = await POST(req({ name: 'Grant', pin: '1130' }, pendingCookie({ parked: true })));
-
-    expect(res.status).toBe(400);
-    expect((await res.json()).error).toBe('no_pending_signup');
-    expect(await lookupIdentity('google', 'google-sub-1')).toBeNull();
-    expect(stored(grant.id).linkedProviders).toBeUndefined();
-    expect(res.headers.getSetCookie().some((c) => /^member_session=[^;]+;/.test(c))).toBe(false);
-  });
-});

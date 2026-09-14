@@ -91,14 +91,15 @@ export async function POST(req: NextRequest) {
   // with its own rate limit and its own audit gaps.
   const pending = readPendingSignup(req);
   if (!pending) return NextResponse.json({ error: 'no_pending_signup' }, { status: 400 });
-  /* NEVER on a parked-state flow (security scan F3). This route LINKS the
-     pending provider identity to an existing member once they prove the name,
-     and nothing proves this browser started the flow: a victim who opens an
-     attacker's captured callback, types their own name and PIN, would attach
-     the attacker's Google account to themselves. Refused before the PIN is
-     checked, so it is no oracle. It cost nothing that worked — this route never
-     parked for the app, so an installed PWA never collected from it anyway. */
-  if (pending.parked) return NextResponse.json({ error: 'no_pending_signup' }, { status: 400 });
+  /* KNOWN GAP, kept open on purpose (Grant, 2026-09-14). A `pending.parked`
+     flow is one nothing ties to this browser, and this route LINKS the pending
+     provider identity to whoever proves a name — so a victim who opens an
+     attacker's captured callback and types their own name and PIN attaches the
+     attacker's Google account to themselves. Refusing here was tried and
+     reverted before merge: on the installed iOS PWA every PIN-only member's
+     first Google sign-in comes through exactly this path, so the refusal
+     locked nearly the whole roster out of adding Google. The planned fix moves
+     the PIN proof into the app that holds the handoff preimage. */
 
   try {
     const container = getContainer('members');
