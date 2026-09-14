@@ -229,8 +229,9 @@ export default function GearSheet({
 
   /** One place a `GearResult` failure becomes words. */
   function messageFor(reason: string): string {
-    if (reason === 'bag_full') return t('bagFull');
-    if (reason === 'duplicate_racket') return t('bagDuplicate');
+    // This sheet is also the string picker, and the racket copy was wrong there.
+    if (reason === 'bag_full') return t(category === 'string' ? 'bagFullString' : 'bagFull');
+    if (reason === 'duplicate_racket') return t(category === 'string' ? 'bagDuplicateString' : 'bagDuplicate');
     if (reason === 'unauthorized') return t('bagSignInAgain');
     if (reason === 'member_not_found') return t('bagMemberMissing');
     if (reason === 'tension_not_saved') return t('bagTensionNotSaved');

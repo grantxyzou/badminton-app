@@ -1338,6 +1338,8 @@
     "searchNoMatches": "No rackets match that.",
     "bagFull": "That's all the rackets we can hold — remove one first.",
     "bagDuplicate": "That racket is already in your bag.",
+    "bagFullString": "That's all the strings we can hold \u2014 remove one first.",
+    "bagDuplicateString": "That string is already in your bag.",
     "bagSignInAgain": "You've been signed out \u2014 sign in again from Profile, then this will save.",
     "bagMemberMissing": "We couldn't find your player record \u2014 ask an admin to check it.",
     "bagTensionNotSaved": "Added \u2014 but the tension didn't save. Remove it and add it again to set one.",

@@ -434,6 +434,27 @@ describe('GearSheet — a refusal has to be visible, and a slow write must not f
    * jsdom has no layout, so "above the fold" is asserted STRUCTURALLY: the
    * alert must not live inside the scroll container.
    */
+  // The string picker shares this sheet. "That's all the rackets we can hold"
+  // was the answer to a full STRING bag too.
+  it('names strings, not rackets, when the string bag is full or already has it', async () => {
+    mockCatalog(STRING_CATALOG);
+    const onPick = vi.fn(async () => ({ ok: false as const, reason: 'bag_full' as const }));
+    renderSheet({ onPick, category: 'string' });
+    fireEvent.click(await screen.findByText('BG65'));
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('strings');
+    expect(alert.textContent).not.toContain('racket');
+    cleanup();
+
+    mockCatalog(STRING_CATALOG);
+    const dup = vi.fn(async () => ({ ok: false as const, reason: 'duplicate_racket' as const }));
+    renderSheet({ onPick: dup, category: 'string' });
+    fireEvent.click(await screen.findByText('BG65'));
+    const dupAlert = await screen.findByRole('alert');
+    expect(dupAlert.textContent).toContain('string');
+    expect(dupAlert.textContent).not.toContain('racket');
+  });
+
   it('renders a refusal outside the scroller, not below 71 rows of catalog', async () => {
     mockCatalog();
     const onPick = vi.fn(async () => ({ ok: false as const, reason: 'bag_full' as const }));
