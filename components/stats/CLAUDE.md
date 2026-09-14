@@ -131,6 +131,43 @@ state of its own except the one thing it exists to own (below).
   (`GearPickRail`'s `SOURCED`, `YourKitCard`'s `PICKABLE`), so un-parking a
   category is only ever a sourcing step, never a UI change.
 
+### Set-up register (`NEXT_PUBLIC_FLAG_GEAR_SETUP`, 2026-09-14)
+
+The Equipment redesign — `docs/plans/equipment-setup-card.md`. Flag on,
+`GearRegister` renders `SetupRegister` instead of the rail + kit arrangement
+above; flag off, nothing changes. Two components rather than branches, because
+each owns different hooks and a hook cannot be conditional.
+
+- **Every reader still has ONE instance, owned by the register**: `useGear`, the
+  recommend picks (`useGearPicks` — the rail's state machine extracted verbatim;
+  the rail owns it on the flag-off branch) and the club tally (`useClubGear`,
+  handed to `ClubGearCard` so the card's "N others play it" and the tally cannot
+  disagree). `useCatalog` is a module-cached catalog read shared by the card and
+  sheets.
+- **`lib/gearSetup.ts` owns the rules**, pure and tested: which item fills each
+  line (`setupLines` — active racket, newest live string, other rackets are
+  spares), the spec lines, `clubOthers` (reads ONLY `tallyClubGear`'s
+  cohort-cut entries; the member is counted, so the fact is `count - 1`; keyed
+  exactly as the tally keys), `blankStringPairing` (a pairing is quoted only
+  when the server paired against the racket on the line) and `tensionOnScreen`
+  (the ONE rule both the card and `StringTensionCard`'s stand-down read).
+- **`GearSetupCard`**: three non-ready states draw no lines — an unread card
+  must not read as an empty one. The "Your fit" link sits outside the error fork
+  (the always-there door rule above).
+- **`SetupAddSheet`**: a tap saves; the row expands in place with the one
+  follow-up (in play / strung at). The stepper is local until Done (bag limiter).
+  The suggestion confirms before saving and is offered only on a blank line.
+  Mounted with a fresh `key` per opening — its state is one visit.
+- **`SetupLineSheet`**: one filled line's management. Remove asks once. No Retire.
+- **`NextRacketCard`** renders only once a racket is in play; its tap carries the
+  `rec_card_tap` beacon the rail card carries on the other branch.
+- **`SetupShareSheet`**: preview is the exported PNG (`lib/setupShareCanvas.ts`,
+  callback-ref draw); `SetupShare` is gear-only by type.
+- **Racket drawings are `lib/racketLook.ts`**: one SVG drawing painted per
+  catalog id from researched colourways (`RACKET_LOOKS`), with an isometric head,
+  served as a data URL. It is presentation, so it stays off `CatalogItem` (a
+  colour change must not refresh seeded rows); an unknown id draws `DEFAULT_LOOK`.
+
 ### Racket FIT engine (`NEXT_PUBLIC_FLAG_RACKET_FIT`, Phase 2, 2026-09-09)
 
 `lib/racketFit.ts` replaces the seven scorers below on the racket branch of
