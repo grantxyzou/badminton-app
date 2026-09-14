@@ -15,6 +15,8 @@
       "body": "Soon you'll need to log in to see sessions, and this name has no PIN, password or Google yet.",
       "action": "Ask to be let in",
       "haveOne": "Already use email or Google? Log in on Profile.",
+      "signedUpTitle": "{name}, you're in this week",
+      "signedUpBody": "Soon you'll need an account to sign in, and your name has no PIN, password or Google yet.",
       "noneTitle": "Set a PIN so you can get back in",
       "noneBody": "You're signed in on this phone, but your account has no PIN, password or Google. Without one, you'll need an admin to let you in again next time.",
       "noneAction": "Set a PIN"

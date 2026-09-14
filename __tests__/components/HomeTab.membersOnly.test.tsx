@@ -121,6 +121,25 @@ describe('the pre-flip sign-in warning', () => {
     expect(screen.getByRole('button', { name: 'Ask to be let in' })).toBeDefined();
   });
 
+  it('once signed up, the confirmation itself is the warning — amber, not a green thank-you', async () => {
+    signedInLocallyAs('Kento');
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/api/session')) return ok(session);
+      if (url.includes('/api/members/me')) return ok({ createdAt: '2026-01-01', hasPin: false, authed: false });
+      if (url.includes('/api/players/unpaid')) return ok({ totalOwed: 0, sessionCount: 0, mostRecent: null, sessions: [] });
+      if (url.includes('/api/stringing/shop')) return ok({ open: false });
+      if (url.includes('/api/players')) return ok([{ name: 'Kento', waitlisted: false }]);
+      return ok([]);
+    });
+    renderHome(null);
+    expect(await screen.findByText("Kento, you're in this week", {}, { timeout: 2000 })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Ask to be let in' })).toBeDefined();
+    expect(screen.queryByText('Kento, thank you for signing up!')).toBeNull();
+    // One warning, in the sign-up card — not a second copy down in the account group.
+    expect(screen.queryByText('Set up a way to sign in')).toBeNull();
+  });
+
   it('does not warn a member with a PIN', async () => {
     signedInLocallyAs('Lin');
     probeAnswers({ createdAt: '2026-01-01', hasPin: true, authed: false });

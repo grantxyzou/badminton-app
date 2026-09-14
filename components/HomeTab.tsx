@@ -296,6 +296,15 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
   const isFull = activePlayers.length >= (session?.maxPlayers ?? maxPlayers);
   const needsCredential = !!memberName && hasCredential === false;
+  /* MEMBERS ONLY, THE WARNING BEFORE THE FLIP (docs/plans/members-only.md).
+     Grant's decision was "warn first, then request access": once members only
+     is on, a name with no PIN, password or Google reaches the welcome screen
+     with no way past it. True only BEFORE the flip (no verified `memberName`)
+     and only for the name this device is signed in as, when the probe knows it
+     has no PIN and this device holds no live session. An email or Google
+     member whose cookie lapsed would match too — the probe cannot see a
+     password — so the banner's last line says where they go instead. Shown in
+     the sign-up card, where the player is already looking. */
   const needsSignInSetup =
     !memberName &&
     !!currentUser &&
@@ -303,6 +312,24 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     memberProbe?.exists === true &&
     !memberProbe.hasPin &&
     !memberProbe.authed;
+  /* The warning's body, shared by both places it can stand in the sign-up
+     card. The action gets its own row: `.link-quiet` keeps a 44px tap target,
+     and set inline it stretched one line of the paragraph taller than the
+     rest. */
+  const signInSetupBody = (body: string) => (
+    <span style={{ display: 'grid', gap: 'var(--space-1)', justifyItems: 'start' }}>
+      <span>{body}</span>
+      <button
+        type="button"
+        className="link-quiet"
+        style={{ paddingInline: 0, fontWeight: 600 }}
+        onClick={() => setAskAccessOpen(true)}
+      >
+        {t('signInSetup.action')}
+      </button>
+      <span>{t('signInSetup.haveOne')}</span>
+    </span>
+  );
   const suggestions = name.trim().length > 0
     ? memberNames.filter(n => n.toLowerCase().includes(name.toLowerCase().trim()))
     : [];
@@ -638,13 +665,27 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <p className="bpm-h2">{t('signup.heading')}</p>
               <p key={spotsTotal - activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
             </div>
-            <StatusBanner
-              tone="success"
-              icon="check_circle"
-              title={currentUser ? tStates('signedUpTitle', { name: currentUser }) : tStates('signedUpTitleGeneric')}
-              body={tStates('signedUpBody')}
-              celebrate={justSignedUp}
-            />
+            {/* MEMBERS ONLY, THE WARNING BEFORE THE FLIP: a name with no PIN,
+                password or Google is in THIS week, but will reach a welcome
+                screen with no way past it once members only is on. The
+                confirmation itself says so, in amber, rather than a green
+                "see you soon" with the catch in a separate card below. */}
+            {needsSignInSetup ? (
+              <StatusBanner
+                tone="warn"
+                icon="key"
+                title={t('signInSetup.signedUpTitle', { name: currentUser ?? '' })}
+                body={signInSetupBody(t('signInSetup.signedUpBody'))}
+              />
+            ) : (
+              <StatusBanner
+                tone="success"
+                icon="check_circle"
+                title={currentUser ? tStates('signedUpTitle', { name: currentUser }) : tStates('signedUpTitleGeneric')}
+                body={tStates('signedUpBody')}
+                celebrate={justSignedUp}
+              />
+            )}
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
               {t('signup.viewList')}
             </button>
@@ -860,6 +901,16 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 </p>
               )}
             </form>
+            {/* Not signed up yet: the same warning, under the button it is
+                about. Signing up swaps it for the amber confirmation above. */}
+            {needsSignInSetup && (
+              <StatusBanner
+                tone="warn"
+                icon="key"
+                title={t('signInSetup.title')}
+                body={signInSetupBody(t('signInSetup.body'))}
+              />
+            )}
           </div>
         )}
       </div>
@@ -868,15 +919,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       )}
 
       <section className="bpm-home-group" aria-label={t('groups.account')}>
-      {/* MEMBERS ONLY, THE WARNING BEFORE THE FLIP (docs/plans/members-only.md).
-          Grant's decision was "warn first, then request access": once members
-          only is on, a name with no PIN, password or Google reaches the welcome
-          screen with no way past it. This shows only BEFORE the flip (no
-          verified `memberName`) and only for the name this device is signed
-          in as, when the probe knows it has no PIN and this device holds no
-          live session. An email or Google member whose cookie lapsed would
-          match too — the probe cannot see a password — so the second line
-          says where they go instead. */}
       {/* MEMBERS ONLY: signed in, but nothing to sign in WITH next time — the
           state an admin-approved access request leaves. One tap to a PIN. */}
       {needsCredential && (
@@ -898,30 +940,6 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               >
                 {t('signInSetup.noneAction')}
               </button>
-            </span>
-          }
-        />
-      )}
-      {needsSignInSetup && (
-        <StatusBanner
-          tone="warn"
-          icon="key"
-          title={t('signInSetup.title')}
-          body={
-            /* The action gets its own row: `.link-quiet` keeps a 44px tap
-               target, and set inline it stretched one line of the paragraph
-               taller than the rest. */
-            <span style={{ display: 'grid', gap: 'var(--space-1)', justifyItems: 'start' }}>
-              <span>{t('signInSetup.body')}</span>
-              <button
-                type="button"
-                className="link-quiet"
-                style={{ paddingInline: 0, fontWeight: 600 }}
-                onClick={() => setAskAccessOpen(true)}
-              >
-                {t('signInSetup.action')}
-              </button>
-              <span>{t('signInSetup.haveOne')}</span>
             </span>
           }
         />

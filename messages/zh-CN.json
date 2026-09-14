@@ -15,6 +15,8 @@
       "body": "很快需要登录才能看到场次，而这个名字还没有 PIN、密码或 Google 登录。",
       "action": "请求加入",
       "haveOne": "已经用邮箱或 Google？在个人页登录。",
+      "signedUpTitle": "{name}，本周已报名",
+      "signedUpBody": "很快需要账户才能登录，而你的名字还没有 PIN、密码或 Google 登录。",
       "noneTitle": "设置 PIN，方便下次登录",
       "noneBody": "你已在这台手机上登录，但账户还没有 PIN、密码或 Google 登录。没有的话，下次还得请管理员放你进来。",
       "noneAction": "设置 PIN"
