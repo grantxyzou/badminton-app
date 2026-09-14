@@ -7,6 +7,9 @@
    ══════════════════════════════════════════════════════════ */
 
 :root {
+  /* The share card's ground: the design system's near-black, used where an
+     image leaves the app and must not follow the viewer's theme. */
+  --bpm-night: #100F0F;
   /* ── Page ── */
   --page-bg: #100F0F;
   --text-primary: #e2e8f0;
@@ -4799,11 +4802,11 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 360 / 196;
   border-radius: var(--radius-xl);
-  box-shadow: 0 8px 24px rgba(22, 163, 74, 0.28);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
 }
-.setup-share-preview--pending { background: linear-gradient(160deg, #16a34a 0%, #0f7a37 100%); }
+/* Before the canvas lands: the card's night ground at its usual proportions. */
+.setup-share-preview--pending { aspect-ratio: 360 / 300; background: var(--bpm-night); }
 
 /* "Where you'd go next": the whole frame, large, beside the pick. */
 button.setup-next { display: flex; flex-direction: column; gap: var(--space-4); width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }

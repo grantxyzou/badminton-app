@@ -22,6 +22,8 @@ export interface ClubTensionBand {
   sampleSize: number;
   low: number;
   high: number;
+  /** The members' average, to the half pound. */
+  mean: number;
 }
 
 /** The tension on the string a member has on now: the newest live string. */
@@ -45,7 +47,8 @@ export function tallyClubTension(docs: TensionDoc[]): Map<string, ClubTensionBan
   const bands = new Map<string, ClubTensionBand>();
   for (const [frame, values] of samples) {
     if (values.length < CLUB_GEAR_MIN_COHORT) continue;
-    bands.set(frame, { sampleSize: values.length, low: Math.min(...values), high: Math.max(...values) });
+    const mean = Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 2) / 2;
+    bands.set(frame, { sampleSize: values.length, low: Math.min(...values), high: Math.max(...values), mean });
   }
   return bands;
 }

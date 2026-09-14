@@ -64,6 +64,9 @@ const EXEMPT: Record<string, string> = {
     'Gates on memberId EQUALITY (`caller?.memberId !== memberId`), not on the name. That is the ' +
     'stronger form of this rule — an id is neither mutable nor per-club — and it must not be ' +
     'downgraded to a name comparison just to satisfy a grep.',
+  'app/api/equipment/share-card/route.ts GET':
+    'The share card is a summary of the gear doc, and gates the same way as the gear GET: on ' +
+    'memberId EQUALITY (`caller?.memberId !== memberId`) or admin, never on the name.',
   'app/api/admin/owed-audit/route.ts GET':
     'Admin-only (`isAdminAuthed` at the top). The name selects which member to audit; it is not ' +
     'the thing being trusted.',

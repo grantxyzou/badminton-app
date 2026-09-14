@@ -9,7 +9,7 @@ import enMessages from '../../messages/en.json';
 afterEach(cleanup);
 
 function Harness({ initial = null, rated = null, club = null, spy = vi.fn() }: {
-  initial?: number | null; rated?: [number, number] | null; club?: { sampleSize: number; low: number; high: number } | null; spy?: (v: number | null) => void;
+  initial?: number | null; rated?: [number, number] | null; club?: { sampleSize: number; low: number; high: number; mean: number } | null; spy?: (v: number | null) => void;
 }) {
   const [v, setV] = useState<number | null>(initial);
   return (
@@ -41,7 +41,7 @@ describe('TensionField', () => {
 
   it('a typed figure outside the rated range warns and is still the value', () => {
     const spy = vi.fn();
-    render(<Harness rated={[22, 28]} spy={spy} club={{ sampleSize: 4, low: 24, high: 27 }} />);
+    render(<Harness rated={[22, 28]} spy={spy} club={{ sampleSize: 4, low: 24, high: 27, mean: 25.5 }} />);
     expect(screen.getByText('The club strings this frame 24–27 lb.')).toBeTruthy();
     fireEvent.change(field(), { target: { value: '31' } });
     expect(spy).toHaveBeenLastCalledWith(31);

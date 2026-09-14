@@ -28,7 +28,7 @@ describe('tallyClubTension', () => {
   it('draws no band from two members, and a min–max band from three', () => {
     expect(clubTensionFor([doc(1, FRAME, 24), doc(2, FRAME, 27)], FRAME)).toBeNull();
     expect(clubTensionFor([doc(1, FRAME, 24), doc(2, FRAME, 27), doc(3, FRAME, 25)], FRAME))
-      .toEqual({ sampleSize: 3, low: 24, high: 27 });
+      .toEqual({ sampleSize: 3, low: 24, high: 27, mean: 25.5 });
   });
 
   it('reads the NEWEST string, the racket IN PLAY, and skips a string with no tension', () => {
@@ -39,7 +39,7 @@ describe('tallyClubTension', () => {
     ] } as PlayerGear;
     const bands = tallyClubTension([doc(1, FRAME, 24), doc(2, FRAME, 26), doc(3, FRAME, 25), noTension, spare]);
     // The old 30 lb string never counts; neither does the member with no tension.
-    expect(bands.get(FRAME)).toEqual({ sampleSize: 3, low: 24, high: 26 });
+    expect(bands.get(FRAME)).toEqual({ sampleSize: 3, low: 24, high: 26, mean: 25 });
   });
 });
 
@@ -53,7 +53,7 @@ describe('GET /api/stats/club/tension', () => {
     getStore()['playerGear'] = [1, 2, 3].map((i) => doc(i, FRAME, 23 + i, { fitArmComfort: 'often_sore', fitSwing: 'fast' }));
     const res = await CLUB_TENSION(makeRequest('GET', `http://localhost/api/stats/club/tension?frame=${FRAME}`));
     const body = await res.json();
-    expect(body).toEqual({ band: { sampleSize: 3, low: 24, high: 26 } });
+    expect(body).toEqual({ band: { sampleSize: 3, low: 24, high: 26, mean: 25 } });
     expect(JSON.stringify(body)).not.toMatch(/m1|sore|fast|gear-/);
   });
 
