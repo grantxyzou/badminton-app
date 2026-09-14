@@ -43,7 +43,14 @@ export default function NameAutocompleteInput({
   // Index of the keyboard-highlighted option, or -1 for none.
   const [activeIndex, setActiveIndex] = useState(-1);
 
-  const open = showSuggestions && suggestions.length > 0;
+  // A name that already matches a suggestion exactly is finished, and the list
+  // has nothing left to offer for it — but it DOES cover what the form reveals
+  // next. Home shows a PIN field the moment a typed name resolves to a member,
+  // and the open list sat right over it ("Kento" over "Create a PIN" in the
+  // 2026-09-13 flow audit). Typing on ("Lind" for Lindsay) reopens it.
+  const typed = value.trim().toLowerCase();
+  const completed = typed.length > 0 && suggestions.some((s) => s.toLowerCase() === typed);
+  const open = showSuggestions && suggestions.length > 0 && !completed;
   const listboxId = `${id}-listbox`;
   const optionId = (i: number) => `${id}-option-${i}`;
   // Guard against a stale index if the suggestion list shrank.

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
+import EmptyState from '@/components/primitives/EmptyState';
 import GiveKudosSheet from '@/components/stats/GiveKudosSheet';
 import { useOnline } from '@/lib/useOnline';
 import { useActiveName } from '@/lib/useActiveName';
@@ -34,6 +35,8 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  */
 export default function GiveKudosCard() {
   const t = useTranslations('stats.kudos');
+  const tStats = useTranslations('stats');
+  const [attempt, setAttempt] = useState(0);
   const online = useOnline();
   /* Eligibility is resolved from the member COOKIE server-side, so this name is
      not sent anywhere — it is here as the SUBSCRIPTION. Without it the card
@@ -104,22 +107,35 @@ export default function GiveKudosCard() {
     return () => {
       cancelled = true;
     };
-  }, [activeName, resolved]);
+  }, [activeName, resolved, attempt]);
 
   return (
     <div className="glass-card p-5 space-y-3">
       <CardHeader icon="volunteer_activism" title={t('giveTitle')} subtitle={t('giveHint')} />
 
       {load === 'error' ? (
-        <ErrorState message={t('error')} />
+        <ErrorState
+          message={t('error')}
+          action={
+            <button
+              type="button"
+              className="cc-btn cc-btn-ghost"
+              onClick={() => { setLoad('loading'); setAttempt((n) => n + 1); }}
+            >
+              {tStats('retry')}
+            </button>
+          }
+        />
       ) : load === 'needsSignIn' ? (
-        <p className="fs-sm m-0" style={{ color: 'var(--text-muted)' }}>{t('needsSignIn')}</p>
+        /* Muted, not red: a lapsed session is not a failure. The Stats tab's
+           sign-in banner carries the button. */
+        <EmptyState>{t('needsSignIn')}</EmptyState>
       ) : load === 'loading' ? (
-        <p className="fs-sm m-0" style={{ color: 'var(--text-muted)' }}>{t('loading')}</p>
+        <EmptyState>{t('loading')}</EmptyState>
       ) : names.length === 0 ? (
         /* The honest empty state. Says WHY there is nobody rather than
            disappearing, which is what made this unfindable. */
-        <p className="fs-sm m-0" style={{ color: 'var(--text-muted)' }}>{t('emptyHint')}</p>
+        <EmptyState>{t('emptyHint')}</EmptyState>
       ) : (
         <>
           <p className="fs-sm m-0" style={{ color: 'var(--text-muted)' }}>

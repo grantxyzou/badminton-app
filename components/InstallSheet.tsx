@@ -33,7 +33,7 @@ export default function InstallSheet({ open, onClose }: Props) {
       ];
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')} width="narrow">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')}>
       <BottomSheetHeader>
         <span className="bpm-h3" style={{ margin: '0' }}>{t('title')}</span>
         <button

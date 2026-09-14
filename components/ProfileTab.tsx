@@ -32,6 +32,8 @@ import { isFlagOn } from '@/lib/flags';
 import { useAdminNeedsYou } from '@/lib/useAdminNeedsYou';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import GroupsPage from './profile/GroupsPage';
+import StatusBanner from './primitives/StatusBanner';
+import CardSkeleton from './primitives/CardSkeleton';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -84,7 +86,7 @@ export default function ProfileTab({
   const tGroups = useTranslations('groups');
   // Multi-group: the switcher's data. Resolves to `group: null` with the flag
   // off (the endpoints 404 by design), so the row simply does not render.
-  const { group, groups, error: groupsError } = useCurrentGroup();
+  const { group, groups, error: groupsError, refresh: refreshGroups } = useCurrentGroup();
   const [identity, setLocalIdentity] = useState<Identity | null>(null);
   /**
    * Which credential the anonymous card is asking for. One form is visible at a
@@ -109,6 +111,10 @@ export default function ProfileTab({
   // set in RecoveryPinSheet (the server requires the cookie for the claim flow).
   // null = unknown — don't block on it.
   const [pinAuthed, setPinAuthed] = useState<boolean | null>(null);
+  /* Whether the members/me probe has ANSWERED (either way) for the current
+     identity. Until it has, Profile cannot tell a signed-in member from a
+     device that only remembers a name, and must show neither. */
+  const [authKnown, setAuthKnown] = useState(false);
   const [memberCreatedAt, setMemberCreatedAt] = useState<string | null>(null);
   const [isSignedUp, setIsSignedUp] = useState<boolean>(false);
   const [enterCodeOpen, setEnterCodeOpen] = useState(false);
@@ -212,6 +218,7 @@ export default function ProfileTab({
     }
     let cancelled = false;
     setPinIsSet(null); // mark unknown while fetching
+    setAuthKnown(false);
     // PIN status — its OWN chain so a players-fetch failure can never reset it.
     // Previously these were chained (members/me -> players) under one catch, so
     // a transient players rejection wiped a perfectly good pinIsSet=true,
@@ -227,6 +234,7 @@ export default function ProfileTab({
         setMemberCreatedAt(typeof data.createdAt === 'string' ? data.createdAt : null);
         // `authed` gates first-PIN set in RecoveryPinSheet; unknown stays null.
         setPinAuthed(typeof data.authed === 'boolean' ? data.authed : null);
+        setAuthKnown(true);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -236,6 +244,9 @@ export default function ProfileTab({
         console.warn('hasPin fetch failed:', err);
         setPinIsSet(null);
         setPinAuthed(null);
+        // Answered with "unknown": fall back to the signed-in view rather than
+        // locking someone out of their own Profile over a network blip.
+        setAuthKnown(true);
       });
 
     // Signed-up status — independent chain; its failure must NOT touch pinIsSet.
@@ -311,7 +322,24 @@ export default function ProfileTab({
   }
   const authProvidersOn = isFlagOn('NEXT_PUBLIC_FLAG_AUTH_PROVIDERS');
 
-  if (!identity) {
+  // A device that remembers a name but holds no session for it (a name-only
+  // sign-up, or a 30-day cookie that lapsed). Grant, 2026-09-14: "why show
+  // user and bunch of buttons and items when they are not even signed in?"
+  // Every row in the signed-in tree would be refused, so it gets the sign-in
+  // screen, told whose name this is. KNOWN false only — `null` is unknown —
+  // and never for an admin, whose sign-in mints only the admin cookie.
+  const deviceSignedOut = !!identity && authKnown && pinAuthed === false && !isAdmin;
+
+  if (identity && !authKnown && !isAdmin) {
+    return (
+      <div className="animate-fadeIn flex flex-col gap-4">
+        <PageHeader>{tNav('profile')}</PageHeader>
+        <CardSkeleton height={220} />
+      </div>
+    );
+  }
+
+  if (!identity || deviceSignedOut) {
     // Availability is server-resolved, so this is settled on the first paint
     // rather than arriving later and reflowing the card.
     const providersLead = authProvidersOn && authProviders.length > 0;
@@ -409,7 +437,38 @@ export default function ProfileTab({
     return (
       <div className="animate-fadeIn flex flex-col gap-4">
         <PageHeader>{t('anonymousTitle')}</PageHeader>
-        <p style={{ color: 'var(--text-secondary)' }}>{t('anonymousBody')}</p>
+        {identity ? (
+          <StatusBanner
+            tone="warn"
+            icon="lock"
+            title={t('deviceSignedOut.title', { name: identity.name })}
+            body={
+              <span style={{ display: 'grid', gap: 'var(--space-1)', justifyItems: 'start' }}>
+                <span>{pinIsSet === false ? t('deviceSignedOut.noCredentialBody') : t('deviceSignedOut.body')}</span>
+                {pinIsSet === false && (
+                  <button
+                    type="button"
+                    className="link-quiet"
+                    style={{ paddingInline: 0, fontWeight: 600 }}
+                    onClick={() => setAskAccessOpen(true)}
+                  >
+                    {t('deviceSignedOut.ask')}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="link-quiet"
+                  style={{ paddingInline: 0 }}
+                  onClick={() => { clearIdentity(); setLocalIdentity(null); }}
+                >
+                  {t('deviceSignedOut.forget', { name: identity.name })}
+                </button>
+              </span>
+            }
+          />
+        ) : (
+          <p style={{ color: 'var(--text-secondary)' }}>{t('anonymousBody')}</p>
+        )}
         <div className="glass-card p-4" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           {/* Providers LEAD. One tap, nothing to remember, and the only route
               that works on a phone which has never seen this app — it is also
@@ -442,6 +501,7 @@ export default function ProfileTab({
           ) : (
             <SignInForm
               sessionId={sessionId}
+              initialName={identity?.name}
               onSuccess={handleSignInSuccess}
               onForgotPin={providersLead ? undefined : () => setEnterCodeOpen(true)}
             />
@@ -554,6 +614,7 @@ export default function ProfileTab({
         onBack={() => setView('root')}
         groups={groups}
         loadError={groupsError}
+        onRetry={() => void refreshGroups()}
         // A switch re-mints both cookies, so every tab has to refetch; this
         // page cannot do that itself, HomeShell owns the nonce. It also bumps
         // `refreshNonce`, which remounts ProfileTab and returns `view` to
@@ -571,6 +632,36 @@ export default function ProfileTab({
   if (view === 'stats-privacy') {
     return <StatsPrivacyScreen onBack={() => setView('root')} state={privacyState} />;
   }
+
+  // This device: every row here can be absent (push still probing, already
+  // installed, no migration), so the group hides rather than titling nothing.
+  const appRows: SettingsRow[] = [
+    /* Hidden while the probe is unresolved: rendering "Off" before we
+       know would be a confirmed negative from an unknown state
+       (CLAUDE.md, "Unknown ≠ known-false"). */
+    ...(push.state.status !== 'loading'
+      ? [{
+          icon: 'notifications',
+          label: tSettings('notifications'),
+          meta:
+            push.state.status === 'on'
+              ? tPush('metaOn')
+              : push.state.status === 'denied'
+                ? tPush('metaBlocked')
+                : push.state.status === 'unsupported'
+                  ? undefined
+                  : tPush('metaOff'),
+          onClick: () => setPushOpen(true),
+        }]
+      : []),
+    ...(!installed
+      ? [{ icon: 'install_mobile', label: tSettings('install'), onClick: () => setInstallOpen(true) }]
+      : []),
+    // Web only: the native shell IS the destination.
+    ...(migrateOn && !isNative()
+      ? [{ icon: 'install_mobile', label: t('migrate.row'), onClick: () => setMigrateOpen(true) }]
+      : []),
+  ];
 
   // Player (and possibly admin) state
   return (
@@ -604,16 +695,19 @@ export default function ProfileTab({
               player opens to change their PIN. The count survives here; the
               three stat tiles live on admin home, where they can be acted on.
 
-              No meta at all when the count is unknown: "0 need you" off a dead
-              fetch is the lying-empty-state pattern, and the row's real job —
-              opening admin — works regardless. */}
+              No count when it is unknown: "0 need you" off a dead fetch is the
+              lying-empty-state pattern, and the row's real job — opening
+              admin — works regardless. A FAILED check says so, muted, rather
+              than leaving the row looking like one that never had a count;
+              still loading shows nothing. */}
           <SettingsList
             rows={[
               {
                 icon: 'admin_panel_settings',
                 label: t('admin.console'),
-                meta:
-                  adminSignals.needsYou === null
+                meta: adminSignals.loadError
+                  ? t('admin.checkFailed')
+                  : adminSignals.needsYou === null
                     ? undefined
                     : adminSignals.needsYou > 0
                     ? t('admin.needYou', { count: adminSignals.needsYou })
@@ -683,10 +777,12 @@ export default function ProfileTab({
         ]}
       />
 
-      {/* Security, app and help were interleaved — a recovery code sat next to
-          What's new next to Add to Home Screen. Splitting them is what lets
-          ACCOUNT stay two rows. */}
-      <ProfileEyebrow>{tSettings('appGroup')}</ProfileEyebrow>
+      {/* Four groups, each one question: who am I here (ACCOUNT, above), what
+          do others see (PRIVACY), how does this device behave (APP), and where
+          do I get help (HELP). "App" used to hold all six — a privacy screen
+          beside a changelog beside the privacy policy (Grant, 2026-09-14:
+          "reorg the items into logical group"). */}
+      <ProfileEyebrow>{tSettings('privacyGroup')}</ProfileEyebrow>
       <SettingsList
         rows={[
           // `meta` shows the state so nobody has to open the row to check it.
@@ -700,37 +796,25 @@ export default function ProfileTab({
               : undefined,
             onClick: () => setView('stats-privacy'),
           },
-          /* Hidden while the probe is unresolved: rendering "Off" before we
-             know would be a confirmed negative from an unknown state
-             (CLAUDE.md, "Unknown ≠ known-false"). */
-          ...(push.state.status !== 'loading'
-            ? [{
-                icon: 'notifications',
-                label: tSettings('notifications'),
-                meta:
-                  push.state.status === 'on'
-                    ? tPush('metaOn')
-                    : push.state.status === 'denied'
-                      ? tPush('metaBlocked')
-                      : push.state.status === 'unsupported'
-                        ? undefined
-                        : tPush('metaOff'),
-                onClick: () => setPushOpen(true),
-              }]
-            : []),
-          ...(!installed
-            ? [{ icon: 'install_mobile', label: tSettings('install'), onClick: () => setInstallOpen(true) }]
-            : []),
-          { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
-          { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setReportOpen(true) },
-          // Web only: the native shell IS the destination.
-          ...(migrateOn && !isNative()
-            ? [{ icon: 'install_mobile', label: t('migrate.row'), onClick: () => setMigrateOpen(true) }]
-            : []),
           // A full navigation, not a sheet: the policy is a public server-
           // rendered page (also the URL in both store listings), and Apple
           // 5.1.1(i) wants it reachable from inside the app.
           { icon: 'shield', label: tSettings('privacyPolicy'), onClick: () => window.location.assign(`${BASE}/legal/privacy`) },
+        ]}
+      />
+
+      {appRows.length > 0 && (
+        <>
+          <ProfileEyebrow>{tSettings('appGroup')}</ProfileEyebrow>
+          <SettingsList rows={appRows} />
+        </>
+      )}
+
+      <ProfileEyebrow>{tSettings('helpGroup')}</ProfileEyebrow>
+      <SettingsList
+        rows={[
+          { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
+          { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setReportOpen(true) },
         ]}
       />
 
@@ -833,16 +917,6 @@ export default function ProfileTab({
         push={push}
         isAdmin={isAdmin}
       />
-      <PushSheet
-        open={pushOpen}
-        onClose={() => setPushOpen(false)}
-        onOpenInstall={() => {
-          setPushOpen(false);
-          setInstallOpen(true);
-        }}
-        push={push}
-        isAdmin={isAdmin}
-      />
     </div>
   );
 }
@@ -864,7 +938,10 @@ interface SettingsRow {
 
 function SettingsList({ rows }: { rows: SettingsRow[] }) {
   return (
-    <div className="glass-card-soft" style={{ padding: '0', overflow: 'hidden' }}>
+    // Page-level card, so the field-card glass — not `.glass-card-soft`, the
+    // flat bordered style for rows INSIDE a card, which made Profile read as
+    // frosted plastic beside every other tab (Grant, 2026-09-14).
+    <div className="glass-card is-flush" style={{ overflow: 'hidden' }}>
       <ul style={{ listStyle: 'none', margin: '0', padding: '0' }}>
         {rows.map((row, idx) => (
           <li key={row.label} style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--divider)' }}>
@@ -944,7 +1021,7 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin }: Pro
 
   return (
     <div
-      className="glass-card-soft"
+      className="glass-card"
       style={{
         padding: 'var(--space-5)',
         display: 'flex',

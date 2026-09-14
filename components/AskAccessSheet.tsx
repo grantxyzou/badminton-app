@@ -142,7 +142,7 @@ export default function AskAccessSheet({
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('askTitle')} maxHeight="60vh" width="narrow">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={t('askTitle')}>
       <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('askTitle')}</span>
         <button type="button" onClick={onClose} aria-label={t('close')} style={{ minWidth: 44, minHeight: 44 }}>

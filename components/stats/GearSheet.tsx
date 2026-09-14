@@ -113,6 +113,7 @@ export default function GearSheet({
   const [brand, setBrand] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [pickError, setPickError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   /** The catalog id currently being written, or null.
@@ -160,7 +161,7 @@ export default function GearSheet({
     return () => { live = false; };
     // `category` belongs here: without it, opening the sheet for strings after
     // opening it for rackets would show the racket list.
-  }, [open, category]);
+  }, [open, category, attempt]);
 
   /** catalogId → the member's own entry, for the owned rows' caption. */
   const ownedByCatalogId = useMemo(() => {
@@ -228,8 +229,9 @@ export default function GearSheet({
 
   /** One place a `GearResult` failure becomes words. */
   function messageFor(reason: string): string {
-    if (reason === 'bag_full') return t('bagFull');
-    if (reason === 'duplicate_racket') return t('bagDuplicate');
+    // This sheet is also the string picker, and the racket copy was wrong there.
+    if (reason === 'bag_full') return t(category === 'string' ? 'bagFullString' : 'bagFull');
+    if (reason === 'duplicate_racket') return t(category === 'string' ? 'bagDuplicateString' : 'bagDuplicate');
     if (reason === 'unauthorized') return t('bagSignInAgain');
     if (reason === 'member_not_found') return t('bagMemberMissing');
     if (reason === 'tension_not_saved') return t('bagTensionNotSaved');
@@ -290,7 +292,7 @@ export default function GearSheet({
   const showControls = loaded && !loadError && catalog.length > 0;
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={heading} maxHeight="92dvh">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={heading}>
       <BottomSheetHeader>
         {/* 20px display bold. This is the sheet's own heading, not a card
             title — at `fs-lg`/600 it read as a label on the search field
@@ -369,7 +371,16 @@ export default function GearSheet({
           {/* The messages keep the sheet's own 20px column; only the rows go
               edge to edge. */}
           <div style={{ padding: '0 var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-            {loadError && <ErrorState message={t('recError')} />}
+            {loadError && (
+              <ErrorState
+                message={t('catalogError')}
+                action={
+                  <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setAttempt((n) => n + 1)}>
+                    {tGear('retry')}
+                  </button>
+                }
+              />
+            )}
 
             {/* Loaded-but-empty must not look like a working screen with
                 nothing on it. (Not hypothetical: the production container held

@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
-import { isAdminAuthedWithMember } from '@/lib/auth';
+import { isAdminAuthedWithMember, requireMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ensureClubSettings } from '@/lib/stringingShop';
@@ -34,6 +34,8 @@ export async function GET(req: NextRequest) {
     // not entitled to make it.
     return NextResponse.json({ services: null });
   }
+  const gate = await requireMember(req);
+  if (!gate.ok) return gate.response;
   return NextResponse.json({ services: await readPricing(resolveGroupId(req)) });
 }
 

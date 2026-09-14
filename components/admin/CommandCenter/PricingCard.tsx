@@ -6,8 +6,9 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
-import { MAX_SERVICES, formatServicePrice, type ServicePrice } from '@/lib/stringingPricing';
+import { MAX_SERVICES, formatServicePrice, type ServicePrice } from '@/lib/stringingRateCard';
 import { moveItem, canMove } from '@/lib/reorder';
+import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -27,6 +28,8 @@ export default function PricingCard() {
   const online = useOnline();
   const [services, setServices] = useState<ServicePrice[] | null>(null);
   const [loadError, setLoadError] = useState(false);
+  // Bumped by "Try again" to re-run the load effect.
+  const [attempt, setAttempt] = useState(0);
   const [saveError, setSaveError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [label, setLabel] = useState('');
@@ -38,6 +41,7 @@ export default function PricingCard() {
 
   useEffect(() => {
     let cancelled = false;
+    setLoadError(false);
     fetch(`${BASE}/api/stringing/pricing`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
@@ -51,7 +55,7 @@ export default function PricingCard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [attempt]);
 
   async function save(next: ServicePrice[]) {
     if (busy || !online) return;
@@ -152,11 +156,27 @@ export default function PricingCard() {
     void save([...services, { label: name, priceCents: parsed as number | null }]);
   }
 
+  // A failed load tints the whole card (StateCard) and hides its controls, so
+  // nothing is written against data that did not load.
+  if (loadError) {
+    return (
+      <StateCard
+        tone="danger"
+        icon="payments"
+        title={t('pricing.title')}
+        subtitle={t('pricing.hint')}
+        message={<>{t('pricing.loadError')} <StateLink onClick={() => setAttempt((n) => n + 1)}>{t('retry')}</StateLink></>}
+      >
+        <PreviewRow width="46%" />
+        <PreviewRow width="34%" />
+      </StateCard>
+    );
+  }
+
   return (
     <div className="glass-card p-5 space-y-3">
       <CardHeader icon="payments" title={t('pricing.title')} subtitle={t('pricing.hint')} />
 
-      {loadError && <ErrorState message={t('pricing.loadError')} />}
       {saveError && <ErrorState message={t('pricing.saveError')} />}
 
       {services !== null && services.length === 0 && !loadError && (

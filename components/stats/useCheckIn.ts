@@ -32,7 +32,9 @@ export interface CheckInSnapshot {
 export interface UseCheckIn {
   snapshots: CheckInSnapshot[];
   /** TRI-STATE. Never infer emptiness from `snapshots.length` — see below. */
-  status: 'loading' | 'ready' | 'error';
+  /** `forbidden` is a 403: this device does not own the name. Not a failure —
+   * the Stats tab's sign-in banner explains it, and cards render nothing. */
+  status: 'loading' | 'ready' | 'error' | 'forbidden';
   latest: CheckInSnapshot | undefined;
   /** Seeds the sheet's "then" column. Undefined until a snapshot exists. */
   previous: Map<string, number> | undefined;
@@ -73,7 +75,7 @@ export function useCheckIn(activeName: string | null): UseCheckIn {
   const [snapshots, setSnapshots] = useState<CheckInSnapshot[]>([]);
   /* Seeded from the name: with nobody signed in there is nothing to fetch, so
      'loading' would be a state this hook could never leave on its own. */
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>(
+  const [status, setStatus] = useState<UseCheckIn['status']>(
     () => (activeName ? 'loading' : 'ready'),
   );
   const [open, setOpen] = useState(false);
@@ -115,8 +117,9 @@ export function useCheckIn(activeName: string | null): UseCheckIn {
         setSnapshots((d?.assessments ?? []) as CheckInSnapshot[]);
         setStatus('ready');
       })
-      .catch(() => {
+      .catch((e: Error) => {
         if (op !== opRef.current) return;
+        if (e?.message === '403') { setStatus('forbidden'); return; }
         // Deliberately NOT `setSnapshots([])`. An error must not masquerade as
         // an empty history, and the last good data is better than nothing while
         // the caller renders its error state.

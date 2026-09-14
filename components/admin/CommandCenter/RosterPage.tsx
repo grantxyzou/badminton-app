@@ -657,8 +657,6 @@ export default function RosterPage({ onBack }: RosterPageProps) {
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
         ariaLabel={editingId ? 'Edit member' : 'Add member'}
-        maxHeight="80vh"
-        width="narrow"
       >
         <BottomSheetHeader>
           <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{editingId ? 'Edit member' : 'Add member'}</span>

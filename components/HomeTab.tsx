@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations, useFormatter } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
+import ErrorState from '@/components/primitives/ErrorState';
+import { useReportFetchFailure } from '@/lib/useOnline';
 import { isFlagOn } from '@/lib/flags';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import { APP_NAME } from '@/lib/brand';
@@ -21,6 +23,7 @@ import StatusBanner from '@/components/primitives/StatusBanner';
 import PageHeader from '@/components/primitives/PageHeader';
 import EnterCodeSheet from './EnterCodeSheet';
 import AskAccessSheet from './AskAccessSheet';
+import { OFFER_PIN_KEY } from '@/lib/offerPin';
 import RecoveryPinSheet from './RecoveryPinSheet';
 import PinInput from './PinInput';
 import NameAutocompleteInput from './home/NameAutocompleteInput';
@@ -34,7 +37,7 @@ const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
 const TIME_SHORT = { hour: '2-digit', minute: '2-digit' } as const;
 
 interface HomeTabProps {
-  onTabChange?: (tab: 'home' | 'players' | 'skills' | 'admin') => void;
+  onTabChange?: (tab: 'home' | 'players' | 'skills' | 'admin' | 'profile') => void;
   /**
    * Whether this person runs the club. Used only to decide whose job it is to
    * fix an empty week: the organiser gets the action, a player gets told one is
@@ -51,9 +54,16 @@ interface HomeTabProps {
    * background to keep things fresh on long-lived tabs.
    */
   initialAnnouncement?: Announcement | null;
+  /**
+   * MEMBERS ONLY: the signed-in member's name, as the server verified it. When
+   * set, the sign-up card signs up THIS person — no name field, no PIN field,
+   * no probe — because the server takes the name from the account and ignores
+   * anything typed (docs/plans/members-only.md). `null` with the flag off.
+   */
+  memberName?: string | null;
 }
 
-export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initialAnnouncement = null, isAdmin = false }: HomeTabProps) {
+export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initialAnnouncement = null, isAdmin = false, memberName = null }: HomeTabProps) {
   const t = useTranslations('home');
   const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   /**
@@ -76,27 +86,45 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   const [session, setSession] = useState<Session | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [announcement, setAnnouncement] = useState<Announcement | null>(initialAnnouncement);
-  const [currentUser, setCurrentUser] = useState<string | null>(null);
-  const [name, setName] = useState('');
+  const [currentUser, setCurrentUser] = useState<string | null>(memberName);
+  const [name, setName] = useState(memberName ?? '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Unified sign-up form auth state. PIN inputs reveal inline based on
   // the member probe — no separate sign-in card, no Create Account sheet
   // on Home. (Per Figma 138 + 139, supersedes #89.)
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
-  const memberProbe = useMemberProbe(name);
+  // An empty name makes the probe a no-op: with the name LOCKED to the account
+  // there is nothing to find out about it, and asking would only publish it.
+  const memberProbe = useMemberProbe(memberName ? '' : name);
   const authMode: 'anon' | 'sign-in' | 'create' =
+    memberName ? 'anon' :
     // Trusted device: the PIN was already proven here (member_session cookie),
     // so render one-tap sign-up (no PIN field) and POST { name } — the server
     // accepts the cookie as identity proof. Same form shape as anon.
     memberProbe?.hasPin && memberProbe?.authed ? 'anon'
     : memberProbe?.hasPin ? 'sign-in'
-    : memberProbe?.exists ? 'create'
+    // A member with NO PIN on a device that cannot prove it is theirs signs up
+    // by NAME, as the server has always allowed. 'create' used to be shown
+    // here, and the PIN it collected was then refused as
+    // `account_claim_needs_approval` (first-PIN set needs a session) — so the
+    // name-only sign-up regulars rely on failed on every new phone (2026-09-13
+    // flow audit). The pre-flip warning below then tells them to set up a
+    // sign-in. 'create' stays for a device that holds their session, where
+    // choosing a PIN actually succeeds.
+    : memberProbe?.exists ? (memberProbe.authed ? 'create' : 'anon')
     : 'anon';
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  /* The week could not be read — distinct from a club that has no week yet
+     (`sessionMissing`, a 404). Before this, every failure was a console.error
+     and Home rendered "—" tiles and "12 of 12 spots left" for a session that
+     never arrived: a confident sign-up card over nothing. */
+  const [weekLoadError, setWeekLoadError] = useState(false);
+  const [sessionMissing, setSessionMissing] = useState(false);
+  const reportFetchFailure = useReportFetchFailure();
   const [memberNames, setMemberNames] = useState<string[]>([]);
-  const [hasIdentity, setHasIdentity] = useState(false);
+  const [hasIdentity, setHasIdentity] = useState(!!memberName);
   // Sign up = session signup only (auth taxonomy split). PIN is no longer
   // collected here — it's an opt-in identity primitive, set via Profile →
   // Create account / Set PIN. Returning players who already have a PIN can
@@ -115,11 +143,21 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
      a replacement is how they ended up PIN-less without being told. */
   const [setPinOpen, setSetPinOpen] = useState(false);
   const [recoveredName, setRecoveredName] = useState('');
+  /**
+   * MEMBERS ONLY: does the verified member have any way to sign in again —
+   * a PIN, a password or a linked provider? Tri-state: `null` is unknown and
+   * shows nothing. A member let in by an admin (an access request) is signed in
+   * with a 30-day session and no credential at all, and would be locked out
+   * again when it lapses (2026-09-13 flow audit).
+   */
+  const [hasCredential, setHasCredential] = useState<boolean | null>(null);
 
   const maxPlayers = defaultMaxPlayers();
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setWeekLoadError(false);
+    setSessionMissing(false);
     try {
       const [sRes, pRes, aRes, mRes, rRes] = await Promise.all([
         fetch(`${BASE}/api/session`, { cache: 'no-store' }),
@@ -128,11 +166,19 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         fetch(`${BASE}/api/members`, { cache: 'no-store' }).catch(() => null),
         fetch(`${BASE}/api/releases`, { cache: 'no-store' }).catch(() => null),
       ]);
+      // The players list is half of the sign-up card (spots left, are you
+      // in), so it failing is the week failing too.
+      if (sRes.status === 404) setSessionMissing(true);
+      else if (!sRes.ok || !pRes.ok) setWeekLoadError(true);
       if (sRes.ok) {
         const s: Session = await sRes.json();
         setSession(s);
         const stored = getIdentity();
-        if (stored && stored.sessionId && stored.sessionId !== s.id) {
+        // Members only: the server verified who this is before rendering the
+        // app, so a stale LOCAL record is not evidence about anyone — and on a
+        // shared phone it can name the previous person, whose probe would fail
+        // and wrongly sign this one out. HomeShell reconciles the record.
+        if (!memberName && stored && stored.sessionId && stored.sessionId !== s.id) {
           // Stale identity. Probe /api/members/me to learn if this name is
           // a PIN-protected member (auth survives session boundaries) or
           // anonymous (deleteToken bound to old session, both stale).
@@ -178,12 +224,22 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       if (rRes && rRes.ok) setReleases(await rRes.json());
     } catch (e) {
       console.error('Load error:', e);
+      setWeekLoadError(true);
+      reportFetchFailure();
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [memberName, reportFetchFailure]);
 
   useEffect(() => {
+    // Members only: the server-verified member IS the user, and the state above
+    // was initialised from it. localStorage may not have caught up yet —
+    // HomeShell reconciles it, but its effect runs after this child's — so it
+    // must not be allowed to override that here.
+    if (memberName) {
+      loadData();
+      return;
+    }
     const id = getIdentity();
     setHasIdentity(id !== null);
     if (id) {
@@ -196,7 +252,53 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       setName(id.name);
     }
     loadData();
-  }, [loadData]);
+  }, [loadData, memberName]);
+
+  // Ask the server what the verified member can sign in with. `auth/methods`
+  // answers for the cookie's own member (PIN, password, providers); where that
+  // route is off, `members/me` for the member's own name still knows the PIN.
+  useEffect(() => {
+    if (!memberName) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${BASE}/api/auth/methods`, { cache: 'no-store' });
+        if (res.ok) {
+          const m = (await res.json()) as { hasPin?: boolean; hasPassword?: boolean; linked?: string[] };
+          if (cancelled) return;
+          const has = m.hasPin === true || m.hasPassword === true || (Array.isArray(m.linked) && m.linked.length > 0);
+          setHasCredential(has);
+          return;
+        }
+        const me = await fetch(`${BASE}/api/members/me?name=${encodeURIComponent(memberName)}`, { cache: 'no-store' });
+        if (!me.ok || cancelled) return;
+        const d = (await me.json()) as { hasPin?: boolean; createdAt?: string | null };
+        if (typeof d.createdAt === 'string' && !cancelled) setHasCredential(d.hasPin === true);
+      } catch {
+        /* unknown — show nothing */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [memberName]);
+
+  // Straight after an admin let this member in, open the PIN sheet rather than
+  // only showing the card: the approval is the moment they are thinking about
+  // how they got in. SignedOutShell leaves the one-shot marker before reloading.
+  useEffect(() => {
+    if (!memberName || hasCredential !== false) return;
+    let offer = false;
+    try {
+      offer = window.sessionStorage.getItem(OFFER_PIN_KEY) === '1';
+      window.sessionStorage.removeItem(OFFER_PIN_KEY);
+    } catch {
+      /* storage unavailable — the card still shows */
+    }
+    if (!offer) return;
+    setRecoveredName(memberName);
+    setSetPinOpen(true);
+  }, [memberName, hasCredential]);
 
   const activePlayers = players.filter(p => !p.waitlisted);
   const waitlistPlayers = players.filter(p => p.waitlisted);
@@ -210,6 +312,52 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     : false;
 
   const isFull = activePlayers.length >= (session?.maxPlayers ?? maxPlayers);
+  const needsCredential = !!memberName && hasCredential === false;
+  /* MEMBERS ONLY, THE WARNING BEFORE THE FLIP (docs/plans/members-only.md).
+     Grant's decision was "warn first, then request access": once members only
+     is on, a name with no PIN, password or Google reaches the welcome screen
+     with no way past it. True only BEFORE the flip (no verified `memberName`)
+     and only for the name this device is signed in as, when the probe knows it
+     has no PIN and this device holds no live session. An email or Google
+     member whose cookie lapsed would match too — the probe cannot see a
+     password — so the banner's last line says where they go instead. Shown in
+     the sign-up card, where the player is already looking. */
+  const needsSignInSetup =
+    !memberName &&
+    !!currentUser &&
+    name.trim().toLowerCase() === currentUser.toLowerCase() &&
+    memberProbe?.exists === true &&
+    !memberProbe.hasPin &&
+    !memberProbe.authed;
+  /* The warning's body, shared by both places it can stand in the sign-up
+     card. The action gets its own row: `.link-quiet` keeps a 44px tap target,
+     and set inline it stretched one line of the paragraph taller than the
+     rest. */
+  const signInSetupBody = (body: string) => (
+    <span style={{ display: 'grid', gap: 'var(--space-1)', justifyItems: 'start' }}>
+      <span>{body}</span>
+      <button
+        type="button"
+        className="link-quiet"
+        style={{ paddingInline: 0, fontWeight: 600 }}
+        onClick={() => setAskAccessOpen(true)}
+      >
+        {t('signInSetup.action')}
+      </button>
+      <span>{t('signInSetup.haveOne')}</span>
+    </span>
+  );
+  /* Every sign-up state that is not "signed up" carries the same warning: a
+     regular who hits a closed, full or finished week (or joins the waitlist)
+     is as locked out after the flip as one who signs up. */
+  const signInSetupBanner = needsSignInSetup ? (
+    <StatusBanner
+      tone="warn"
+      icon="key"
+      title={t('signInSetup.title')}
+      body={signInSetupBody(t('signInSetup.body'))}
+    />
+  ) : null;
   const suggestions = name.trim().length > 0
     ? memberNames.filter(n => n.toLowerCase().includes(name.toLowerCase().trim()))
     : [];
@@ -244,7 +392,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     // Legible-fail: refuse the mutation with a clear reason instead of
     // firing a fetch that throws and leaves the form in limbo.
     if (!online) { setError(t('signup.offline')); return; }
-    const trimmed = name.trim();
+    const trimmed = (memberName ?? name).trim();
     if (!trimmed) { setError(t('signup.nameRequired')); return; }
 
     // Per-mode pre-flight validation. The probe drives form shape but the
@@ -430,10 +578,24 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           first thing a new organiser sees after making their club.
           Flag-gated, because with one club this state means the pointer is
           MISSING, and the old layout is the honest report of that. */}
-      {groupsOn && !session ? (
+      {weekLoadError ? (
+        /* Page-level fallback: standalone, 48/24, no card (CLAUDE.md spacing
+           ladder) — the card it replaces would have held nothing true. */
+        <section className="bpm-home-group" aria-label={t('groups.session')} style={{ padding: 'var(--space-9) var(--space-7)' }}>
+          <ErrorState
+            message={t('weekLoadError')}
+            action={
+              <button type="button" className="cc-btn cc-btn-ghost" onClick={() => void loadData()}>
+                {t('retry')}
+              </button>
+            }
+          />
+        </section>
+      ) : groupsOn && sessionMissing ? (
         <section className="bpm-home-group" aria-label={t('groups.session')}>
           <div className="glass-card p-5 space-y-3">
             <CardHeader
+              compact
               icon="event"
               title={t('firstSession.title')}
               subtitle={isAdmin ? t('firstSession.adminHint') : t('firstSession.playerHint')}
@@ -516,12 +678,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           <div className="space-y-4">
             <p className="bpm-h2">{t('signup.heading')}</p>
             <StatusBanner tone="success" icon="celebration" title={tStates('finishedTitle')} body={tStates('finishedBody')} />
+            {signInSetupBanner}
           </div>
         ) : isSignupClosed && !effectiveIsSignedUp && !isWaitlisted ? (
           /* ── State: Sign-ups opening soon ── */
           <div className="space-y-4">
             <p className="bpm-h2">{t('signup.heading')}</p>
             <StatusBanner tone="warn" icon="watch_later" title={tStates('openingSoonTitle')} body={tStates('openingSoonBody')} />
+            {signInSetupBanner}
           </div>
         ) : isDeadlinePast && !effectiveIsSignedUp && !isWaitlisted ? (
           /* ── State: Deadline passed ── */
@@ -533,6 +697,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               title={tStates('closedTitle')}
               body={t('signup.closedPreviously', { date: format.dateTime(new Date(session!.deadline), DAY_LONG) })}
             />
+            {signInSetupBanner}
           </div>
         ) : effectiveIsSignedUp ? (
           /* ── State 1: Active sign-up ── */
@@ -545,13 +710,27 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <p className="bpm-h2">{t('signup.heading')}</p>
               <p key={spotsTotal - activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsRemaining', { remaining: spotsTotal - activePlayers.length, total: spotsTotal })}</p>
             </div>
-            <StatusBanner
-              tone="success"
-              icon="check_circle"
-              title={currentUser ? tStates('signedUpTitle', { name: currentUser }) : tStates('signedUpTitleGeneric')}
-              body={tStates('signedUpBody')}
-              celebrate={justSignedUp}
-            />
+            {/* MEMBERS ONLY, THE WARNING BEFORE THE FLIP: a name with no PIN,
+                password or Google is in THIS week, but will reach a welcome
+                screen with no way past it once members only is on. The
+                confirmation itself says so, in amber, rather than a green
+                "see you soon" with the catch in a separate card below. */}
+            {needsSignInSetup ? (
+              <StatusBanner
+                tone="warn"
+                icon="key"
+                title={t('signInSetup.signedUpTitle', { name: currentUser ?? '' })}
+                body={signInSetupBody(t('signInSetup.signedUpBody'))}
+              />
+            ) : (
+              <StatusBanner
+                tone="success"
+                icon="check_circle"
+                title={currentUser ? tStates('signedUpTitle', { name: currentUser }) : tStates('signedUpTitleGeneric')}
+                body={tStates('signedUpBody')}
+                celebrate={justSignedUp}
+              />
+            )}
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
               {t('signup.viewList')}
             </button>
@@ -574,6 +753,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               title={tStates('waitlistTitle')}
               body={`${tStates('waitlistPositionLabel', { position: waitlistPosition, total: waitlistPlayers.length })} · ${t('signup.confirmed', { name: currentUser ?? '' })}`}
             />
+            {signInSetupBanner}
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
               {t('signup.viewList')}
             </button>
@@ -586,16 +766,23 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <p key={activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsFull', { count: activePlayers.length })}</p>
             </div>
             <StatusBanner tone="warn" icon="lock" title={t('signup.full')} body={t('signup.allSpotsTaken', { total: spotsTotal })} />
+            {signInSetupBanner}
             <form onSubmit={handleJoinWaitlist} className="space-y-3">
-              <NameAutocompleteInput
-                id="waitlist-name"
-                value={name}
-                onValueChange={(v) => { setName(v); setError(''); }}
-                suggestions={suggestions}
-                placeholder={t('signup.namePlaceholder')}
-                ariaLabel={t('signup.nameAriaLabel')}
-                errorId={error ? 'signup-error' : undefined}
-              />
+              {memberName ? (
+                <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                  {t('signup.signingUpAs', { name: memberName })}
+                </p>
+              ) : (
+                <NameAutocompleteInput
+                  id="waitlist-name"
+                  value={name}
+                  onValueChange={(v) => { setName(v); setError(''); }}
+                  suggestions={suggestions}
+                  placeholder={t('signup.namePlaceholder')}
+                  ariaLabel={t('signup.nameAriaLabel')}
+                  errorId={error ? 'signup-error' : undefined}
+                />
+              )}
               {/* PIN inputs — same adaptive reveal as the open-signup form, so a
                   PIN-protected member can authenticate while joining the waitlist
                   (the server enforces the PIN on waitlist sign-ups too). */}
@@ -630,7 +817,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <button
                 type="submit"
                 disabled={
-                  isSubmitting || !name.trim() || !online
+                  isSubmitting || !(memberName ?? name).trim() || !online
                   || (authMode === 'sign-in' && pin.length !== 4)
                   || (authMode === 'create' && (pin.length !== 4 || confirmPin.length !== 4))
                 }
@@ -674,15 +861,21 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               </p>
             </div>
             <form onSubmit={handleSignUp} className="space-y-3">
-              <NameAutocompleteInput
-                id="signup-name"
-                value={name}
-                onValueChange={(v) => { setName(v); setError(''); }}
-                suggestions={suggestions}
-                placeholder={t('signup.namePlaceholder')}
-                ariaLabel={t('signup.nameAriaLabel')}
-                errorId={error ? 'signup-error' : undefined}
-              />
+              {memberName ? (
+                <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                  {t('signup.signingUpAs', { name: memberName })}
+                </p>
+              ) : (
+                <NameAutocompleteInput
+                  id="signup-name"
+                  value={name}
+                  onValueChange={(v) => { setName(v); setError(''); }}
+                  suggestions={suggestions}
+                  placeholder={t('signup.namePlaceholder')}
+                  ariaLabel={t('signup.nameAriaLabel')}
+                  errorId={error ? 'signup-error' : undefined}
+                />
+              )}
               {/* PIN inputs — revealed inline based on the member probe.
                   sign-in: single PIN field.
                   create:  PIN + Confirm PIN.
@@ -718,7 +911,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <button
                 type="submit"
                 disabled={
-                  isSubmitting || !name.trim() || !online
+                  isSubmitting || !(memberName ?? name).trim() || !online
                   || (authMode === 'sign-in' && pin.length !== 4)
                   || (authMode === 'create' && (pin.length !== 4 || confirmPin.length !== 4))
                 }
@@ -755,6 +948,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 </p>
               )}
             </form>
+            {/* Not signed up yet: the same warning, under the button it is
+                about. Signing up swaps it for the amber confirmation above. */}
+            {signInSetupBanner}
           </div>
         )}
       </div>
@@ -763,11 +959,36 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       )}
 
       <section className="bpm-home-group" aria-label={t('groups.account')}>
+      {/* MEMBERS ONLY: signed in, but nothing to sign in WITH next time — the
+          state an admin-approved access request leaves. One tap to a PIN. */}
+      {needsCredential && (
+        <StatusBanner
+          tone="warn"
+          icon="key"
+          title={t('signInSetup.noneTitle')}
+          body={
+            <span style={{ display: 'grid', gap: 'var(--space-1)', justifyItems: 'start' }}>
+              <span>{t('signInSetup.noneBody')}</span>
+              <button
+                type="button"
+                className="link-quiet"
+                style={{ paddingInline: 0, fontWeight: 600 }}
+                onClick={() => {
+                  setRecoveredName(memberName ?? '');
+                  setSetPinOpen(true);
+                }}
+              >
+                {t('signInSetup.noneAction')}
+              </button>
+            </span>
+          }
+        />
+      )}
       {/* Your balance — what you owe, across sessions and stringing. Sits in
           the ACCOUNT group rather than above sign-up: as a one-line row
           carrying its own figure it no longer needs the top slot to be read,
           and most weeks it says $0. */}
-      {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" />}
+      {currentUser && <UnpaidSessionsCard name={currentUser} variant="home" onSignIn={() => onTabChange?.('profile')} />}
 
       {/* Stringing service. Still "Coming soon" by default — the card only goes
           live once an admin has opened the shop, and an UNKNOWN answer keeps
@@ -835,7 +1056,11 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
         /* The redemption minted a member_session, so the first-set guard is
            satisfied — `true`, not the tri-state unknown. */
         authed
-        onSaved={() => setSetPinOpen(false)}
+        onSaved={() => {
+          setSetPinOpen(false);
+          // A PIN now exists; the "no way back in" card has nothing left to say.
+          if (memberName) setHasCredential(true);
+        }}
       />
       )}
       </div>

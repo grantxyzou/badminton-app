@@ -153,19 +153,41 @@ describe('<AnomalyFeed />', () => {
     });
   });
 
-  it('renders nothing on a 401 (non-admin context)', async () => {
+  // These two used to assert "renders nothing", and passed vacuously: the
+  // component renders null while loading, so waitFor was satisfied before the
+  // fetch ever resolved.
+  it('a 401 is a muted expired-session notice with a way back, not a red alert', async () => {
     mockFetch(async () => new Response('unauthorized', { status: 401 }));
-    const { container } = render(<AnomalyFeed />);
+    render(<AnomalyFeed />);
     await waitFor(() => {
-      expect(container.querySelector('section')).toBeNull();
+      expect(screen.getByText(/admin session expired/i)).toBeTruthy();
     });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('button', { name: /reload/i })).toBeTruthy();
   });
 
-  it('renders nothing on a network error', async () => {
-    mockFetch(async () => { throw new Error('boom'); });
-    const { container } = render(<AnomalyFeed />);
-    await waitFor(() => {
-      expect(container.querySelector('section')).toBeNull();
+  it('a network error shows the failure with a Try again that refetches', async () => {
+    let calls = 0;
+    mockFetch(async () => {
+      calls += 1;
+      if (calls === 1) throw new Error('boom');
+      return new Response(JSON.stringify([
+        { code: 'cost_drift', severity: 'warning', message: 'cost drifted', dismissable: false },
+      ]), { status: 200 });
     });
+    render(<AnomalyFeed />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /try again/i })).toBeTruthy();
+    });
+    const retry = screen.getByRole('button', { name: /try again/i });
+    expect(screen.getByRole('alert').textContent).toMatch(/couldn.t load notices/i);
+    expect(screen.queryByText(/refresh/i)).toBeNull();
+
+    fireEvent.click(retry);
+    await waitFor(() => {
+      expect(screen.getByText('cost drifted')).toBeTruthy();
+    });
+    expect(calls).toBe(2);
+    expect(screen.queryByText(/couldn.t load notices/i)).toBeNull();
   });
 });

@@ -87,6 +87,9 @@ export function useAdminNeedsYou(enabled: boolean): AdminNeedsYou {
           : 0;
 
         setNeedsYou([unpaid > 0, birdsLow, dormant > 0].filter(Boolean).length);
+        // Profile now shows a failure, so a success on a later run (the row
+        // re-enabled after a sign-in) must clear an earlier one.
+        setLoadError(false);
       } catch {
         if (cancelled) return;
         setLoadError(true);

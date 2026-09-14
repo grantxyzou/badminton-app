@@ -8,6 +8,7 @@ import InviteCard from './InviteCard';
 import { isFlagOn } from '@/lib/flags';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import AccessRequestsCard from './AccessRequestsCard';
+import SignInReadinessCard from './SignInReadinessCard';
 import NextSessionCard from './NextSessionCard';
 import PaymentsCard from './PaymentsCard';
 import AdminDashTiles from './AdminDashTiles';
@@ -39,6 +40,9 @@ interface CommandCenterProps {
 export default function CommandCenter({ refreshKey, setView, onExit }: CommandCenterProps) {
   const pageT = useTranslations('pages.admin');
   const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
+  // Members only needs the invite card even with one club: a new account can
+  // only be made with an invite (docs/plans/members-only.md).
+  const invitesOn = groupsOn || isFlagOn('NEXT_PUBLIC_FLAG_MEMBERS_ONLY');
   // Names the club in the share sheet. `null` with the flag off, which is also
   // when `InviteCard` renders nothing.
   const { group } = useCurrentGroup();
@@ -156,12 +160,19 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
           organiser opens this screen to run Thursday — the invite is the thing
           you come looking for, not the thing you are interrupted by. Renders
           nothing with the flag off (the endpoint 404s) or for a non-admin. */}
-      <InviteCard enabled={groupsOn} groupName={groupName} />
+      <InviteCard enabled={invitesOn} groupName={groupName} />
+
+      {/* Members only (docs/plans/members-only.md): who would be locked out.
+          BELOW the week's work, beside the invite, for the invite card's own
+          reason — it is a checklist worked through over weeks before the flip,
+          not something to be interrupted by every Thursday. Access requests,
+          which are someone waiting, stay at the top. */}
+      <SignInReadinessCard refreshKey={composedRefresh} />
 
       {/* Profile-style settings list (mirrors ProfileTab's SettingsList).
           Announcements / E-transfer / Skip dates / Ledger / Release notes
           are drill-in sub-pages (AdminBackHeader) wired in AdminDashboard. */}
-      <div className="glass-card-soft" style={{ padding: '0', overflow: 'hidden' }}>
+      <div className="glass-card is-flush" style={{ overflow: 'hidden' }}>
         <ul style={{ listStyle: 'none', margin: '0', padding: '0' }}>
           {[
             { icon: 'campaign', label: 'Announcements', onClick: () => setView('announcements') },

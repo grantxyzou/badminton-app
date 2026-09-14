@@ -24,6 +24,8 @@ interface Props {
  * downgraded. See PR #376.
  */
   inviteToken?: string | null;
+  /** The same invite as a typed code; sent only when no token is. */
+  inviteCode?: string | null;
 }
 
 /**
@@ -46,7 +48,7 @@ interface Props {
  * signed, HttpOnly cookie the browser cannot read, and both endpoints take it
  * from there — so all that is posted from here is a name and a credential.
  */
-export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken }: Props) {
+export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken, inviteCode }: Props) {
   const t = useTranslations('profile.auth');
   const [mode, setMode] = useState<'name' | 'claim' | 'expired'>('name');
   const [name, setName] = useState('');
@@ -94,6 +96,7 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken 
    * to one constant is what stops the two sides drifting apart.
    */
   const sentInvite = typeof inviteToken === 'string' && inviteToken.trim().length > 0;
+  const sentCode = !sentInvite && typeof inviteCode === 'string' && inviteCode.trim().length > 0;
 
   function finish(returnedName: string) {
     // The server already set member_session; mirror the name into localStorage
@@ -112,7 +115,11 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken 
       const res = await fetch(`${BASE}/api/auth/complete-signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), ...(sentInvite ? { inviteToken } : {}) }),
+        body: JSON.stringify({
+          name: name.trim(),
+          ...(sentInvite ? { inviteToken } : {}),
+          ...(sentCode ? { inviteCode } : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
 

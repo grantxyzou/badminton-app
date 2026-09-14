@@ -58,6 +58,10 @@ export interface UseGear {
   /** A read FAILED. Distinct from a loaded-empty bag: a player with three
    *  rackets who hits a flaky fetch must see an error, not "you own none". */
   loadError: boolean;
+  /** The read was REFUSED (403): this device does not own the name. Always
+   *  comes with `loadError` — the bag is unknown, not empty — but a card
+   *  should offer Sign in rather than Retry, which cannot help. */
+  forbidden: boolean;
   /** A mutation is in flight, or we're offline. Consumers disable on this. */
   busy: boolean;
   online: boolean;
@@ -123,6 +127,7 @@ export function useGear(name: string | null): UseGear {
   const [gear, setGear] = useState<PlayerGear | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [forbidden, setForbidden] = useState(false);
   const [saving, setSaving] = useState(false);
   const opRef = useRef(0);
   // Mirrors `gear` for follow-up writes inside one user action. `add` needs the
@@ -145,10 +150,12 @@ export function useGear(name: string | null): UseGear {
         setGear(gearRef.current);
         markLoaded();
         setLoadError(false);
+        setForbidden(false);
       })
-      .catch(() => {
+      .catch((e: Error) => {
         if (opId !== opRef.current) return;
         setLoadError(true);
+        setForbidden(e?.message === '403');
         markLoaded();
       });
   }, [name, markLoaded]);
@@ -398,6 +405,7 @@ export function useGear(name: string | null): UseGear {
     active: activeRacket(gear),
     loaded,
     loadError,
+    forbidden,
     busy: saving || !online,
     online,
     reload,

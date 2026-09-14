@@ -280,3 +280,43 @@ describe('view pricing', () => {
     expect(screen.queryByText('$0.00')).toBeNull();
   });
 });
+
+/** Empty/error state audit, 2026-09-14: refused, failed and loading each say so. */
+describe('when the racket list is not there', () => {
+  function answer(jobsStatus: number, pricingStatus = 200) {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes('/shop')) return Promise.resolve({ ok: true, status: 200, json: async () => ({ open: true }) } as Response);
+      if (u.includes('/pricing')) return Promise.resolve({ ok: pricingStatus < 300, status: pricingStatus, json: async () => ({ services: [] }) } as Response);
+      return Promise.resolve({ ok: jobsStatus < 300, status: jobsStatus, json: async () => ({ jobs: [] }) } as Response);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
+  it('refused: says nothing (Balance above already asks to sign in), no alert, and no request button that would fail', async () => {
+    answer(401);
+    wrap();
+    await waitFor(() =>
+      expect((screen.getByRole('button', { name: /Submit a request/ }) as HTMLButtonElement).disabled).toBe(true),
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sign in' })).toBeNull();
+  });
+
+  it('failed: an alert with Try again that asks again', async () => {
+    const fetchMock = answer(500);
+    wrap();
+    expect((await screen.findByRole('alert')).textContent).toBe("Couldn't load your rackets.");
+    const before = fetchMock.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(before));
+  });
+
+  it('pricing: no "couldn\'t load" while the request is still in flight', async () => {
+    answer(200, 200);
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: /View pricing/ }));
+    expect(screen.queryByText("Couldn't load prices just now.")).toBeNull();
+  });
+});

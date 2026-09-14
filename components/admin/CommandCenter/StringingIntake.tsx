@@ -7,7 +7,7 @@ import DatePicker from '@/components/DatePicker';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
-import { formatServicePrice, type ServicePrice } from '@/lib/stringingPricing';
+import { formatServicePrice, type ServicePrice } from '@/lib/stringingRateCard';
 import {
   TENSION_MIN_LB,
   TENSION_MAX_LB,
@@ -49,6 +49,8 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
 
   const [members, setMembers] = useState<PickableMember[] | null>(null);
   const [membersError, setMembersError] = useState(false);
+  // Bumped by "Try again" to re-run the members load.
+  const [membersAttempt, setMembersAttempt] = useState(0);
   const [search, setSearch] = useState('');
   const [picked, setPicked] = useState<PickableMember | null>(null);
 
@@ -82,6 +84,7 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
 
   useEffect(() => {
     let cancelled = false;
+    setMembersError(false);
     fetch(`${BASE}/api/members`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
@@ -99,7 +102,7 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [membersAttempt]);
 
   const matches = useMemo(() => {
     if (!members) return [];
@@ -161,7 +164,16 @@ export default function StringingIntake({ onBack, onCreated }: Props) {
         {/* Who */}
         <div className="glass-card p-5 space-y-3">
           <CardHeader icon="person" title={t('who')} subtitle={t('whoHint')} />
-          {membersError && <ErrorState message={t('membersError')} />}
+          {membersError && (
+            <ErrorState
+              message={t('membersError')}
+              action={
+                <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setMembersAttempt((n) => n + 1)}>
+                  {t('retry')}
+                </button>
+              }
+            />
+          )}
           {picked ? (
             <button
               type="button"

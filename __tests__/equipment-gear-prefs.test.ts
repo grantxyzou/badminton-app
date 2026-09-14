@@ -117,15 +117,13 @@ describe('fit questionnaire fields', () => {
     expect(gear.fitGrip).toBe('G4');
   });
 
-  it('strips fitArmComfort from the public GET; the owner and an admin still see it', async () => {
+  it('the comfort answer reaches only the owner and an admin — everyone else is refused the whole doc', async () => {
     await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitGoal: 'happy', fitArmComfort: 'often_sore' }, cookie));
 
-    const anonymous = await read();
-    expect(anonymous.fitGoal).toBe('happy');
-    expect(anonymous).not.toHaveProperty('fitArmComfort');
-
-    const someoneElse = await read({ Cookie: `member_session=${memberCookieValue('Viktor')}` });
-    expect(someoneElse).not.toHaveProperty('fitArmComfort');
+    // The GET was public by name and stripped only this field. It is now
+    // owner-or-admin, so a non-owner sees none of the doc at all.
+    expect((await GET(makeRequest('GET', `${BASE}?name=Lin`))).status).toBe(403);
+    expect((await GET(makeRequest('GET', `${BASE}?name=Lin`, undefined, { Cookie: `member_session=${memberCookieValue('Viktor')}` }))).status).toBe(403);
 
     expect((await read(cookie)).fitArmComfort).toBe('often_sore');
 
@@ -155,25 +153,15 @@ describe('fit questionnaire fields', () => {
     expect((await read(cookie)).fitUpdatedAt).not.toBe(first);
   });
 
-  it('marks a stripped answer as redacted for the LAPSED OWNER only — never for an anonymous reader', async () => {
+  // A lapsed owner used to get the stripped doc plus a `fitArmComfortRedacted`
+  // marker. With the read owner-or-admin, a cookie past its TTL is refused like
+  // any other non-owner: the card locks and offers Sign in, which is the only
+  // thing that helps.
+  it('refuses the LAPSED OWNER rather than showing a redacted bag', async () => {
     await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitArmComfort: 'sometimes_sore' }, cookie));
-    // Anonymous: neither the value nor the fact that one exists.
-    const anonymous = await read();
-    expect(anonymous).not.toHaveProperty('fitArmComfort');
-    expect(anonymous).not.toHaveProperty('fitArmComfortRedacted');
-    // Another member's live cookie: the same nothing.
-    const other = await read({ Cookie: `member_session=${memberCookieValue('Viktor')}` });
-    expect(other).not.toHaveProperty('fitArmComfortRedacted');
-    // Lin's own cookie, past its TTL: stripped, but told so.
-    const lapsed = await read({ Cookie: `member_session=${memberCookieValue('Lin', 'member-lin', -60)}` });
-    expect(lapsed).not.toHaveProperty('fitArmComfort');
-    expect(lapsed.fitArmComfortRedacted).toBe(true);
-    // Viktor's lapsed cookie is not Lin's.
-    const lapsedOther = await read({ Cookie: `member_session=${memberCookieValue('Viktor', 'member-viktor', -60)}` });
-    expect(lapsedOther).not.toHaveProperty('fitArmComfortRedacted');
-    // And no marker at all when there is nothing to strip.
-    await PATCH(makeRequest('PATCH', BASE, { name: 'Lin', fitArmComfort: null }, cookie));
-    expect(await read({ Cookie: `member_session=${memberCookieValue('Lin', 'member-lin', -60)}` })).not.toHaveProperty('fitArmComfortRedacted');
+    const lapsed = await GET(makeRequest('GET', `${BASE}?name=Lin`, undefined, { Cookie: `member_session=${memberCookieValue('Lin', 'member-lin', -60)}` }));
+    expect(lapsed.status).toBe(403);
+    expect(JSON.stringify(await lapsed.json())).not.toContain('sore');
   });
 
   it('preference writes do not spend the bag limiter — a questionnaire cannot lock "Add to my equipment"', async () => {

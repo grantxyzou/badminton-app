@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import TopBar from '@/components/primitives/TopBar';
 import Switch from '@/components/primitives/Switch';
 import ErrorState from '@/components/primitives/ErrorState';
+import EmptyState from '@/components/primitives/EmptyState';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ProfileEyebrow from '@/components/primitives/ProfileEyebrow';
 import { useOnline } from '@/lib/useOnline';
@@ -58,9 +59,16 @@ export default function StatsPrivacyScreen({ onBack, state }: StatsPrivacyScreen
       {!loaded ? (
         <CardSkeleton height={180} />
       ) : error ? (
-        <div className="glass-card p-5">
-          <ErrorState message={t('saveError')} />
-        </div>
+        // A READ failure: it used to say "couldn't save", about a save nobody
+        // had tried, alone in a card with no way to ask again.
+        <ErrorState
+          message={t('loadError')}
+          action={
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={reload} disabled={!online}>
+              {t('retry')}
+            </button>
+          }
+        />
       ) : unknown ? (
         // Read succeeded but reported no preference. Distinct from the failure
         // above (different copy, and a retry that re-reads rather than a
@@ -70,10 +78,16 @@ export default function StatsPrivacyScreen({ onBack, state }: StatsPrivacyScreen
           <h3 className="bpm-h3" style={{ margin: '0' }}>
             {t('comparisonTitle')}
           </h3>
-          <ErrorState message={t('unknown')} />
-          <button type="button" className="cc-btn cc-btn-ghost" onClick={reload} disabled={!online}>
-            {t('retry')}
-          </button>
+          {/* Not red: the read worked, it just reported no answer. */}
+          <EmptyState
+            action={
+              <button type="button" className="cc-btn cc-btn-ghost" onClick={reload} disabled={!online}>
+                {t('retry')}
+              </button>
+            }
+          >
+            {t('unknown')}
+          </EmptyState>
         </div>
       ) : (
         <div className="glass-card p-5 space-y-3">
@@ -139,7 +153,7 @@ export default function StatsPrivacyScreen({ onBack, state }: StatsPrivacyScreen
 
       <ProfileEyebrow>{t('othersEyebrow')}</ProfileEyebrow>
 
-      <div className="glass-card-soft" style={{ padding: '0', overflow: 'hidden' }}>
+      <div className="glass-card is-flush" style={{ overflow: 'hidden' }}>
         {/* Kudos are ANONYMOUS in this app. The design handoff asserted the
             opposite ("Always — kudos are signed"), which would have reversed a
             documented strip-canary invariant in lib/kudos.ts. That reversal was

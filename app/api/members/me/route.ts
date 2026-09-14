@@ -14,6 +14,7 @@ import {
   setMemberCookie,
   clearMemberCookie,
   clearAdminCookie,
+  requireMember,
 } from '@/lib/auth';
 import {
   purgeMember,
@@ -38,11 +39,28 @@ export async function GET(req: NextRequest) {
     // re-fire the first-run consent sheet at someone who already answered.
     return NextResponse.json({ role: 'member', hasPin: false, statsPrivacy: null });
   }
+  const gate = await requireMember(req);
+  if (!gate.ok) return gate.response;
 
   try {
     const name = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50);
     if (!name) {
       return NextResponse.json({ role: 'member', hasPin: false, statsPrivacy: null });
+    }
+
+    // MEMBERS ONLY: a signed-in member may ask about THEMSELVES and nobody
+    // else. Everything this route answers for another name — does an account
+    // exist (`createdAt`), does it have a PIN (`hasPin`) — is exactly what an
+    // attacker wants before guessing a 4-digit PIN, and the public half of it
+    // existed only to drive the anonymous sign-up form, which members-only
+    // removes. Admins may still ask about anyone. `gate.member` is null only
+    // with the flag off, where the route answers as it always did.
+    if (
+      gate.member &&
+      gate.member.role === 'member' &&
+      gate.member.name.trim().toLowerCase() !== name.toLowerCase()
+    ) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
 
     // NOTE: this is a PROJECTED select, so there is no destructure here and

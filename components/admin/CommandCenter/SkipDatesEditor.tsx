@@ -2,6 +2,9 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import EmptyState from '@/components/primitives/EmptyState';
+import StateCard, { StateLink } from '@/components/primitives/StateCard';
+import CardHeader from '@/components/primitives/CardHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -13,17 +16,30 @@ export default function SkipDatesEditor() {
   const [adding, setAdding] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  /* 'failed' and 'refused' are NOT an empty list. Rendering "No skip dates yet"
+     off a dead fetch was a lying empty state — and worse here, because the
+     next Add would PATCH `[newDate]` over the real list. While either is set
+     the input and the list are not rendered at all, so there is nothing to
+     save from. */
+  const [loadState, setLoadState] = useState<'ok' | 'failed' | 'refused'>('ok');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`${BASE}/api/admin/settings`, { cache: 'no-store' });
-      if (res.ok) {
-        const data = (await res.json()) as { skipDates?: string[] };
-        setDates(Array.isArray(data.skipDates) ? data.skipDates : []);
+      if (res.status === 401 || res.status === 403) {
+        setLoadState('refused');
+        return;
       }
+      if (!res.ok) {
+        setLoadState('failed');
+        return;
+      }
+      const data = (await res.json()) as { skipDates?: string[] };
+      setDates(Array.isArray(data.skipDates) ? data.skipDates : []);
+      setLoadState('ok');
     } catch {
-      // ignore — empty list is correct fallback
+      setLoadState('failed');
     } finally {
       setLoading(false);
     }
@@ -78,60 +94,99 @@ export default function SkipDatesEditor() {
 
   if (loading) return <CardSkeleton height={140} />;
 
+  // A failed load tints the card (Grant, 2026-09-14) and shows the list's
+  // shape with nothing in it; the date field is not rendered, so nothing can
+  // be saved over the real list.
+  if (loadState === 'failed') {
+    return (
+      <StateCard
+        tone="danger"
+        icon="calendar_today"
+        title="Skip dates"
+        subtitle="Dates the system will warn you about when advancing — holidays, travel, venue closures."
+        message={
+          <>
+            Couldn&apos;t load your skip dates. <StateLink onClick={() => void load()}>Try again</StateLink>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <span className="state-line" style={{ width: '28%', height: 'var(--space-6)' }} />
+          <span className="state-line" style={{ width: '28%', height: 'var(--space-6)' }} />
+        </div>
+      </StateCard>
+    );
+  }
+
   return (
     <section className="glass-card p-4 space-y-3 animate-fadeIn" aria-label="Skip dates">
-      <header>
-        <h3 className="bpm-h3">Skip dates</h3>
-        <p className="fs-sm text-gray-400 mt-0.5">
-          Dates the system will warn you about when advancing — holidays, travel, venue closures.
-        </p>
-      </header>
+      <CardHeader
+        icon="calendar_today"
+        title="Skip dates"
+        subtitle="Dates the system will warn you about when advancing — holidays, travel, venue closures."
+      />
 
-      <div className="flex gap-2">
-        <input
-          type="date"
-          value={adding}
-          onChange={(e) => { setAdding(e.target.value); setError(''); }}
-          className="flex-1 fs-md rounded-lg p-2"
-          style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
-        />
-        <button
-          type="button"
-          onClick={addDate}
-          disabled={saving || !adding}
-          className="cc-btn cc-btn-secondary"
+      {loadState === 'refused' && (
+        <EmptyState
+          action={
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={() => void load()}>
+              Try again
+            </button>
+          }
         >
-          Add
-        </button>
-      </div>
-
-      {error && <p className="field-error" role="alert">{error}</p>}
-
-      {dates.length > 0 && (
-        <ul className="flex flex-wrap gap-2" role="list">
-          {dates.map((d) => (
-            <li
-              key={d}
-              className="fs-sm px-3 py-1 rounded-full inline-flex items-center gap-1"
-              style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
-            >
-              {d}
-              <button
-                type="button"
-                onClick={() => removeDate(d)}
-                disabled={saving}
-                className="text-gray-400 hover:text-red-400 disabled:opacity-50"
-                aria-label={`Remove ${d}`}
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
+          Sign in as an admin to see skip dates.
+        </EmptyState>
       )}
 
-      {dates.length === 0 && (
-        <p className="fs-sm text-gray-500">No skip dates yet.</p>
+      {loadState === 'ok' && (
+        <>
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={adding}
+              onChange={(e) => { setAdding(e.target.value); setError(''); }}
+              className="flex-1 fs-md rounded-lg p-2"
+              style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
+            />
+            <button
+              type="button"
+              onClick={addDate}
+              disabled={saving || !adding}
+              className="cc-btn cc-btn-secondary"
+            >
+              Add
+            </button>
+          </div>
+
+          {error && <p className="field-error" role="alert">{error}</p>}
+
+          {dates.length > 0 && (
+            <ul className="flex flex-wrap gap-2" role="list">
+              {dates.map((d) => (
+                <li
+                  key={d}
+                  className="fs-sm px-3 py-1 rounded-full inline-flex items-center gap-1"
+                  style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)' }}
+                >
+                  {d}
+                  <button
+                    type="button"
+                    onClick={() => removeDate(d)}
+                    disabled={saving}
+                    className="text-gray-400 hover:text-red-400 disabled:opacity-50"
+                    aria-label={`Remove ${d}`}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {dates.length === 0 && (
+            <p className="fs-sm text-gray-500">No skip dates yet.</p>
+          )}
+        </>
       )}
     </section>
   );

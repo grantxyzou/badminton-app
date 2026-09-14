@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import AdminBackHeader from './AdminBackHeader';
 import PlayerProfileSheet from './CommandCenter/PlayerProfileSheet';
+import ErrorState from '@/components/primitives/ErrorState';
 import { fmtSessionLabel } from '@/lib/fmt';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -108,22 +109,15 @@ export default function LedgerPage({ onBack, onOpenSession }: LedgerPageProps) {
     return (
       <div className="animate-slideInRight space-y-3">
         <AdminBackHeader onBack={onBack} title="Ledger" />
-        <div
-          role="alert"
-          style={{ padding: 'var(--space-9) var(--space-7)', textAlign: 'center', color: 'var(--text-muted)' }}
-        >
-          <p style={{ fontWeight: 600, color: 'var(--text)' }}>Couldn&apos;t load the ledger</p>
-          <p style={{ fontSize: 'var(--fs-base)', marginTop: 'var(--space-2)' }}>
-            Backend may be cold-starting. Reconnect, then retry.
-          </p>
-          <button
-            type="button"
-            className="cc-btn cc-btn-ghost"
-            style={{ marginTop: 'var(--space-4)' }}
-            onClick={() => void load()}
-          >
-            Retry
-          </button>
+        <div style={{ padding: 'var(--space-9) var(--space-7)' }}>
+          <ErrorState
+            message="Couldn't load the ledger."
+            action={
+              <button type="button" className="cc-btn cc-btn-ghost" onClick={() => void load()}>
+                Try again
+              </button>
+            }
+          />
         </div>
       </div>
     );

@@ -8,6 +8,7 @@ import EmptyState from '@/components/primitives/EmptyState';
 import { BottomSheet, BottomSheetBody, BottomSheetHeader } from '../BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 import type { UseCheckIn } from './useCheckIn';
+import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -62,11 +63,13 @@ export interface LearnRegisterProps {
 
 export default function LearnRegister({ activeName, checkIn, onCheckedIn }: LearnRegisterProps) {
   const t = useTranslations('stats.learn');
+  const signInLink = useSignInLink();
+  const tStats = useTranslations('stats');
   const online = useOnline();
 
   const [drills, setDrills] = useState<DrillPick[]>([]);
   const [done, setDone] = useState<string[]>([]);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'forbidden'>('loading');
   const [needsCheckIn, setNeedsCheckIn] = useState(false);
   const [openDrill, setOpenDrill] = useState<DrillPick | null>(null);
   const [saveError, setSaveError] = useState(false);
@@ -84,7 +87,7 @@ export default function LearnRegister({ activeName, checkIn, onCheckedIn }: Lear
         setNeedsCheckIn(picks.length === 0);
         setStatus('ready');
       })
-      .catch(() => setStatus('error'));
+      .catch((e: Error) => setStatus(e?.message === '403' ? 'forbidden' : 'error'));
   }, [activeName]);
 
   useEffect(() => {
@@ -138,11 +141,27 @@ export default function LearnRegister({ activeName, checkIn, onCheckedIn }: Lear
 
   if (!activeName) return null;
   if (status === 'loading') return <CardSkeleton height={320} />;
+  // Refused (this device holds no session for the name): the card stays, as
+  // its own shape with nothing in it, and Sign in carries the weight.
+  if (status === 'forbidden') {
+    return (
+      <LockedCard title={t('twoTitle')} message={t.rich('locked', { link: signInLink })}>
+        <PreviewRow icon="school" width="70%" value="" />
+        <PreviewRow icon="school" width="56%" value="" />
+      </LockedCard>
+    );
+  }
+  // Standalone, not a card holding only an error (the state rule).
   if (status === 'error') {
     return (
-      <div className="glass-card p-5">
-        <ErrorState message={t('error')} />
-      </div>
+      <ErrorState
+        message={t('error')}
+        action={
+          <button type="button" className="cc-btn cc-btn-ghost" onClick={() => { setStatus('loading'); load(); }}>
+            {tStats('retry')}
+          </button>
+        }
+      />
     );
   }
 
@@ -420,7 +439,7 @@ function DrillSheet({
 }) {
   const t = useTranslations('stats.learn');
   return (
-    <BottomSheet open={!!drill} onClose={onClose} ariaLabel={drill?.title ?? ''} maxHeight="75vh">
+    <BottomSheet open={!!drill} onClose={onClose} ariaLabel={drill?.title ?? ''}>
       <BottomSheetHeader>
         <h2 className="bpm-h3" style={{ margin: '0' }}>
           {drill?.title}

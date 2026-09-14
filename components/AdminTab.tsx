@@ -9,6 +9,7 @@ import { AdminTabSkeleton } from './primitives/CardSkeleton';
 import AdminDashboard from './admin/AdminDashboard';
 import PinInput from './PinInput';
 import PageHeader from './primitives/PageHeader';
+import ErrorState from './primitives/ErrorState';
 
 /* ─────────────────────────── Admin login ───────────────────────────
    Per PR B: admin auth is now per-player. Sign in with your name + your
@@ -29,12 +30,38 @@ export default function AdminTab({ onExit }: { onExit: () => void }) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(false);
+  /* Unknown is not "signed out". A thrown or 5xx check used to fall through to
+     `{ authed: false }` and put a signed-in admin in front of the PIN form, as
+     if their session had ended. `GET /api/admin` answers a real refusal with a
+     200 `{ authed: false }`, so `res.ok` is the discriminator. */
+  const [checkFailed, setCheckFailed] = useState(false);
+  const [checkAttempt, setCheckAttempt] = useState(0);
 
   useEffect(() => {
-    fetch(`${BASE}/api/admin`).then(r => r.json()).catch(() => ({ authed: false }))
-      .then((d) => setIsAuthed(d.authed === true))
-      .catch(() => setIsAuthed(false));
-  }, []);
+    let cancelled = false;
+    fetch(`${BASE}/api/admin`)
+      .then(async (r) => {
+        if (r.status === 401 || r.status === 403) {
+          if (!cancelled) setIsAuthed(false);
+          return;
+        }
+        if (!r.ok) throw new Error(`admin check ${r.status}`);
+        const d = (await r.json()) as { authed?: boolean };
+        if (!cancelled) setIsAuthed(d.authed === true);
+      })
+      .catch(() => {
+        if (!cancelled) setCheckFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [checkAttempt]);
+
+  function retryCheck() {
+    setCheckFailed(false);
+    setIsAuthed(null);
+    setCheckAttempt((n) => n + 1);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -59,6 +86,24 @@ export default function AdminTab({ onExit }: { onExit: () => void }) {
     } finally {
       setChecking(false);
     }
+  }
+
+  if (checkFailed) {
+    return (
+      <div className="space-y-5">
+        <PageHeader>{pageT('title')}</PageHeader>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <ErrorState
+            message={pageT('checkError')}
+            action={
+              <button type="button" className="cc-btn cc-btn-ghost" onClick={retryCheck}>
+                {pageT('retry')}
+              </button>
+            }
+          />
+        </div>
+      </div>
+    );
   }
 
   if (isAuthed === null) {

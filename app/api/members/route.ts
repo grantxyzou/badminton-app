@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
-import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
+import { isAdminAuthed, isAdminAuthedWithMember, unauthorized, requireMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { rosterMembers, adminAddToRoster } from '@/lib/roster';
 import { rosterNameHolder, renameRosterMember, removeFromRoster, RosterNameTakenError } from '@/lib/groups';
@@ -12,6 +12,8 @@ import { randomBytes } from 'crypto';
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 
 export async function GET(req: NextRequest) {
+  const gate = await requireMember(req);
+  if (!gate.ok) return gate.response;
   try {
     const isAdmin = isAdminAuthed(req);
     const includeInactive = new URL(req.url).searchParams.get('all') === 'true' && isAdmin;

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { completeSignIn } from '@/lib/authSession';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { getContainer } from '@/lib/cosmos';
+import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, explicitGroupId } from '@/lib/groupContext';
 import { signInCandidates, type SignInCandidate } from '@/lib/memberResolve';
@@ -38,11 +38,17 @@ async function handlePost(req: NextRequest) {
   }
 
   const name = typeof body.name === 'string' ? body.name.trim() : '';
-  const sessionId = typeof body.sessionId === 'string' ? body.sessionId : '';
+  const bodySessionId = typeof body.sessionId === 'string' ? body.sessionId : '';
   const pin = typeof body.pin === 'string' ? body.pin : null;
   const code = typeof body.code === 'string' ? body.code : null;
 
-  if (!name || !sessionId) {
+  // `sessionId` is OPTIONAL now. It only ever located the caller's own player
+  // row, to re-mint a deleteToken after the PIN checked out. The members-only
+  // signed-out screen cannot know the active session — reading it is exactly
+  // what that screen is refused — and handing it the id instead would publish
+  // the session's date (`session-YYYY-MM-DD`). Absent, the active session is
+  // resolved server-side below, which is stricter than trusting the client.
+  if (!name) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
   if ((pin && code) || (!pin && !code)) {
@@ -68,6 +74,7 @@ async function handlePost(req: NextRequest) {
 
   const requestGroupId = resolveGroupId(req);
   const scope = groupScope(requestGroupId);
+  const sessionId = bodySessionId || (await getActiveSessionId(requestGroupId)) || '';
   const membersContainer = getContainer('members');
 
   /**

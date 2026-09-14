@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { renderMarkdown } from '@/lib/miniMarkdown';
 import { useReportFetchFailure } from '@/lib/useOnline';
+import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
+import CardHeader from '@/components/primitives/CardHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -34,7 +36,6 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
   const reportFetchFailure = useReportFetchFailure();
 
   const load = useCallback(async () => {
-    setLoadError(false);
     try {
       const res = await fetch(`${BASE}/api/announcements`, { cache: 'no-store' });
       // Don't swallow a failed load as "No announcements posted" (lying empty
@@ -44,6 +45,10 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
         return;
       }
       setItems(await res.json());
+      // Cleared on success rather than on entry, so a Try again in flight
+      // keeps saying "couldn't load" instead of flashing "No announcements
+      // posted" over a list nobody has read yet.
+      setLoadError(false);
     } catch {
       setLoadError(true);
       reportFetchFailure();
@@ -158,22 +163,32 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
     }
   }
 
+  // A failed load tints the whole card (StateCard) and hides its controls, so
+  // nothing is written against data that did not load.
+  if (loadError) {
+    return (
+      <StateCard
+        tone="danger"
+        icon="campaign"
+        title="Announcements"
+        message={<>Couldn&apos;t load announcements. <StateLink onClick={() => void load()}>Try again</StateLink></>}
+      >
+        <PreviewRow width="70%" value="" />
+        <PreviewRow width="52%" value="" />
+      </StateCard>
+    );
+  }
+
   return (
     <section className="glass-card p-4 space-y-3 flex flex-col" aria-label="Announcements">
-      <header>
-        <h3 className="bpm-h3">Announcements</h3>
-        <p
-          className="fs-sm text-gray-400 mt-0.5"
-          role={loadError ? 'alert' : undefined}
-          style={loadError ? { color: 'var(--color-red)' } : undefined}
-        >
-          {loadError
-            ? "Couldn't load — refresh to retry"
-            : items.length === 0
-              ? 'No announcements posted'
-              : `${items.length} posted`}
-        </p>
-      </header>
+      {/* The count is a claim about the list; a failed load never reaches this
+          render (it returns the tinted StateCard above). */}
+      <CardHeader
+        icon="campaign"
+        title="Announcements"
+        subtitle={items.length === 0 ? 'No announcements posted' : `${items.length} posted`}
+      />
+
 
       {composing && (
         <div className="space-y-2">

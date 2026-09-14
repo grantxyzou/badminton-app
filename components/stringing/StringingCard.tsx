@@ -5,13 +5,14 @@ import { useTranslations } from 'next-intl';
 import StatusBanner from '@/components/primitives/StatusBanner';
 import CardHeader from '@/components/primitives/CardHeader';
 import StatusBadge from '@/components/primitives/StatusBadge';
+import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
 import RequestStringingSheet from './RequestStringingSheet';
 import { useGear } from '@/components/stats/useGear';
 import { useActiveName } from '@/lib/useActiveName';
 import ConfirmChangeSheet from './ConfirmChangeSheet';
 import StringingSteps, { stepForStage } from './StringingSteps';
-import { formatServicePrice, type ServicePrice } from '@/lib/stringingPricing';
+import { formatServicePrice, type ServicePrice } from '@/lib/stringingRateCard';
 import type { PlayerStage } from '@/lib/stringing';
 import type { PlayerStringingJob } from '@/lib/types';
 
@@ -82,6 +83,14 @@ export default function StringingCard({ hasIdentity }: Props) {
   // null = unknown/unread. `[]` means nothing posted — the expander says so
   // rather than showing a blank panel.
   const [pricing, setPricing] = useState<ServicePrice[] | null>(null);
+  /* Why the racket list is absent, when it is. `refused` is a device with no
+     session for this name (the server answers 401/403) — not a failure, and
+     not "no rackets" either. `failed` is a read that went wrong. Both used to
+     leave `jobs` null and render exactly like an empty bench. */
+  const [jobsProblem, setJobsProblem] = useState<'refused' | 'failed' | null>(null);
+  // Loading and failed were one `null`, so opening the panel flashed "Couldn't
+  // load prices" before the request had even landed.
+  const [pricingFailed, setPricingFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,15 +112,23 @@ export default function StringingCard({ hasIdentity }: Props) {
     // `view=player` explicitly: an ADMIN calling this without it gets the
     // bench projection — every member's jobs, shaped with `status` instead of
     // `stage`. This is a player surface regardless of who is looking.
+    setJobsProblem(null);
     fetch(`${BASE}/api/stringing/jobs?view=player`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (r.status === 401 || r.status === 403) return 'refused' as const;
+        if (!r.ok) throw new Error(`player jobs ${r.status}`);
+        return r.json();
+      })
       .then((d) => {
+        if (d === 'refused') { setJobsProblem('refused'); return; }
         if (d && Array.isArray(d.jobs)) setJobs(d.jobs as PlayerStringingJob[]);
+        else setJobsProblem('failed');
       })
       .catch(() => {
         // Left null rather than []: "you have no rackets with Grant" and "we
         // could not ask" must not render the same, and here the difference is
         // whether someone thinks their racket was never received.
+        setJobsProblem('failed');
       });
   }, [hasIdentity]);
 
@@ -122,20 +139,22 @@ export default function StringingCard({ hasIdentity }: Props) {
   // Fetched only when the expander is first opened. A rate card nobody has
   // asked to see is not worth a request on every Home render.
   useEffect(() => {
-    if (!pricingOpen || pricing !== null) return;
+    if (!pricingOpen || pricing !== null || pricingFailed) return;
     let cancelled = false;
     fetch(`${BASE}/api/stringing/pricing`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (!cancelled && d && Array.isArray(d.services)) setPricing(d.services);
+        if (cancelled) return;
+        if (d && Array.isArray(d.services)) setPricing(d.services);
+        else setPricingFailed(true);
       })
       .catch(() => {
-        /* stays null — the panel says it could not load */
+        if (!cancelled) setPricingFailed(true);
       });
     return () => {
       cancelled = true;
     };
-  }, [pricingOpen, pricing]);
+  }, [pricingOpen, pricing, pricingFailed]);
 
   // Anything that is not a confirmed open shop keeps the original card.
   if (open !== true) {
@@ -313,6 +332,20 @@ export default function StringingCard({ hasIdentity }: Props) {
           </div>
         )}
 
+        {/* Refused renders nothing here: the Balance card directly above already
+            says "Sign in", and two stacked sign-in prompts read as two problems.
+            The request CTA below is disabled, which is this card's half of it. */}
+        {jobsProblem === 'failed' && (
+          <ErrorState
+            message={t('jobsError')}
+            action={
+              <button type="button" className="cc-btn cc-btn-ghost" onClick={loadJobs}>
+                {t('retry')}
+              </button>
+            }
+          />
+        )}
+
         {/* The CTA and pricing stay in BOTH states — only the RACKET folds away.
             Hiding them when collapsed also produced a visible jump: `active` is
             null until the jobs fetch lands, so the card rendered expanded and
@@ -327,7 +360,8 @@ export default function StringingCard({ hasIdentity }: Props) {
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
-          disabled={!hasIdentity || !online}
+          // Refused means the request would be refused too — no button that fails.
+          disabled={!hasIdentity || !online || jobsProblem === 'refused'}
           className="bpm-row-link"
         >
           <span className="fs-md" style={{ fontWeight: 600 }}>{t('requestCta')}</span>
@@ -357,10 +391,15 @@ export default function StringingCard({ hasIdentity }: Props) {
 
         {pricingOpen && (
           <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-            {pricing === null && (
-              <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>
-                {t('pricingUnavailable')}
-              </p>
+            {pricingFailed && (
+              <ErrorState
+                message={t('pricingUnavailable')}
+                action={
+                  <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setPricingFailed(false)}>
+                    {t('retry')}
+                  </button>
+                }
+              />
             )}
             {pricing !== null && pricing.length === 0 && (
               <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>

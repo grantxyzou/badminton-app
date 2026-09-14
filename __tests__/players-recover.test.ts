@@ -355,5 +355,39 @@ describe('POST /api/players/recover', () => {
   });
 });
 
+/**
+ * MEMBERS ONLY (docs/plans/members-only.md): the signed-out screen cannot know
+ * the active session — reading it is exactly what that screen is refused, and
+ * handing it the id would publish the session's date. So `sessionId` became
+ * optional, resolved server-side when absent.
+ */
+describe('sessionId is optional — the active session is resolved server-side', () => {
+  it('signs in by PIN with no sessionId, and still re-mints the deleteToken for this week', async () => {
+    const pinHash = await hashPin('1234');
+    seedMember('Michael', { pinHash });
+    const player = seedPlayer(SESSION, 'Michael', { pinHash, deleteToken: 'old-token' });
+
+    const res = await POST(makeRequest('POST', URL_PATH, { name: 'Michael', pin: '1234' }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    // A fresh token can only come from finding THIS session's player row, which
+    // is the proof the active session was resolved rather than skipped.
+    expect(data.deleteToken).toMatch(/^[0-9a-f]{32}$/);
+    const stored = (getStore()['players'] as Array<{ id: string; deleteToken: string }>).find((p) => p.id === player.id);
+    expect(stored?.deleteToken).toBe(data.deleteToken);
+  });
+
+  it('a wrong PIN with no sessionId is still the one generic refusal', async () => {
+    seedMember('Michael', { pinHash: await hashPin('1234') });
+    const res = await POST(makeRequest('POST', URL_PATH, { name: 'Michael', pin: '9876' }));
+    expect(res.status).toBe(401);
+  });
+
+  it('still refuses a request with no name', async () => {
+    const res = await POST(makeRequest('POST', URL_PATH, { pin: '1234' }));
+    expect(res.status).toBe(400);
+  });
+});
+
 // Silence unused var lint
 void adminCookieValue;

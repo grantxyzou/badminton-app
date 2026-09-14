@@ -18,6 +18,7 @@ import StringingJobDetail from './StringingJobDetail';
 import StringingIntake from './StringingIntake';
 import OfferedStringsCard from './OfferedStringsCard';
 import PricingCard from './PricingCard';
+import { StateLink } from '@/components/primitives/StateCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -109,20 +110,31 @@ export default function StringingPage({ onBack }: Props) {
     void load();
   }, [load]);
 
+  // `shopOpen` null is "not known yet"; `shopReadFailed` separates a read that
+  // FAILED from one still in flight. They used to share null, so the sign said
+  // "we couldn't check" while the request was merely loading, and a real
+  // failure told the admin to refresh with nothing to tap.
+  const [shopReadFailed, setShopReadFailed] = useState(false);
+  const [shopAttempt, setShopAttempt] = useState(0);
   useEffect(() => {
     let cancelled = false;
     fetch(`${BASE}/api/stringing/shop`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (!r.ok) throw new Error(`shop ${r.status}`);
+        return r.json();
+      })
       .then((d) => {
-        if (!cancelled && d) setShopOpen(typeof d.open === 'boolean' ? d.open : null);
+        if (cancelled) return;
+        if (typeof d?.open === 'boolean') setShopOpen(d.open);
+        else setShopReadFailed(true);
       })
       .catch(() => {
-        /* stays null — unknown, not closed */
+        if (!cancelled) setShopReadFailed(true);
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [shopAttempt]);
 
   async function toggleShop() {
     if (shopBusy || !online || shopOpen === null) return;
@@ -395,8 +407,6 @@ export default function StringingPage({ onBack }: Props) {
         setDeleteError(false);
       }}
       ariaLabel={t('actions.title')}
-      maxHeight="50vh"
-      width="narrow"
     >
       <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>
@@ -516,7 +526,16 @@ export default function StringingPage({ onBack }: Props) {
       <div className="animate-slideInRight">
         <AdminBackHeader onBack={() => setView('bench')} title={t('archive.title')} />
         <div className="flex flex-col gap-4 pb-6">
-          {archiveError && <ErrorState message={t('archive.loadError')} />}
+          {archiveError && (
+            <ErrorState
+              message={t('archive.loadError')}
+              action={
+                <button type="button" className="cc-btn cc-btn-ghost" onClick={() => void loadArchive()}>
+                  {t('retry')}
+                </button>
+              }
+            />
+          )}
           {!archiveError && archivedJobs === null && <AdminPageSkeleton />}
           {!archiveError && archivedJobs !== null && archivedJobs.length === 0 && (
             <EmptyState icon="inventory_2">{t('archive.empty')}</EmptyState>
@@ -554,41 +573,60 @@ export default function StringingPage({ onBack }: Props) {
             that says whether this code exists, this says whether Grant is
             taking rackets this week. Closing does NOT stop the bench — jobs in
             flight still need finishing and a walk-up can still be logged. */}
+        {/* The status is in the glass (StateCard tones): green when open, red
+            when the sign could not be read, plain while closed or loading. */}
         <div
           className="glass-card p-5 space-y-3"
-          style={
-            shopOpen
-              ? { background: 'var(--banner-green-bg)', borderColor: 'var(--banner-green-border)' }
-              : undefined
-          }
+          data-tone={shopReadFailed ? 'danger' : shopOpen ? 'success' : undefined}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
             <span
               className="material-icons icon-md"
-              style={{ color: shopOpen ? 'var(--accent)' : 'var(--text-muted)' }}
+              style={{ color: shopReadFailed ? 'var(--tone-ink)' : shopOpen ? 'var(--accent)' : 'var(--text-muted)' }}
             >
-              {shopOpen ? 'check_circle' : 'lock'}
+              {shopReadFailed ? 'error' : shopOpen ? 'check_circle' : 'lock'}
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="bpm-h3 m-0">
-                {shopOpen === null ? t('shop.unknown') : shopOpen ? t('shop.open') : t('shop.closed')}
+                {shopReadFailed
+                  ? t('shop.unknown')
+                  : shopOpen === null
+                    ? t('shop.checking')
+                    : shopOpen ? t('shop.open') : t('shop.closed')}
               </div>
               <p className="fs-sm" style={{ color: 'var(--text-secondary)', margin: 'var(--space-05) 0 0' }}>
-                {shopOpen === null
-                  ? t('shop.unknownHint')
+                {shopReadFailed ? (
+                  <>
+                    {t('shop.unknownHint')}{' '}
+                    <StateLink
+                      onClick={() => {
+                        setShopReadFailed(false);
+                        setShopAttempt((n) => n + 1);
+                      }}
+                    >
+                      {t('retry')}
+                    </StateLink>
+                  </>
+                ) : shopOpen === null
+                  ? '\u00A0'
                   : shopOpen
                     ? t('shop.openHint')
                     : t('shop.closedHint')}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={toggleShop}
-              disabled={shopBusy || !online || shopOpen === null}
-              className={`cc-btn ${shopOpen ? 'cc-btn-secondary' : 'cc-btn-primary'}`}
-            >
-              {shopOpen ? t('shop.closeCta') : t('shop.openCta')}
-            </button>
+            {/* No toggle on a sign that could not be read: there is nothing to
+                flip FROM, and a greyed Open beside "Try again" is two controls
+                where one is the answer. */}
+            {!shopReadFailed && (
+              <button
+                type="button"
+                onClick={toggleShop}
+                disabled={shopBusy || !online || shopOpen === null}
+                className={`cc-btn ${shopOpen ? 'cc-btn-secondary' : 'cc-btn-primary'}`}
+              >
+                {shopOpen ? t('shop.closeCta') : t('shop.openCta')}
+              </button>
+            )}
           </div>
         </div>
 
@@ -620,7 +658,16 @@ export default function StringingPage({ onBack }: Props) {
           </button>
         </div>
 
-        {loadError && <ErrorState message={t('loadError')} />}
+        {loadError && (
+          <ErrorState
+            message={t('loadError')}
+            action={
+              <button type="button" className="cc-btn cc-btn-ghost" onClick={() => void load()}>
+                {t('retry')}
+              </button>
+            }
+          />
+        )}
         {!loadError && jobs === null && <AdminPageSkeleton />}
         {!loadError && jobs !== null && jobs.length === 0 && (
           /* The bench list IS this page's content; the segment control and

@@ -139,8 +139,6 @@ export default function CoverSheet({
       open={open}
       onClose={onClose}
       ariaLabel="Cover confirmation"
-      maxHeight="60vh"
-      width="narrow"
     >
       <BottomSheetHeader bare className="p-4">
         <h2 className="bpm-h3" style={{ margin: '0' }}>{title}</h2>

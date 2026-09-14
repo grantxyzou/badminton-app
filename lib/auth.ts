@@ -415,7 +415,13 @@ export async function requireGroupMember(
       // read `isAdminAuthedWithMember` makes, so a BPM admin is an admin here too.
       const { resource } = await getContainer('members').item(session.memberId, session.memberId).read<Member>();
       if (!resource || resource.active !== true) return null;
-      return { ...session, groupId: BPM_GROUP_ID, role: resource.role === 'admin' ? 'admin' : 'member' };
+      // The CURRENT name, not the one baked into a cookie that can be 30 days
+      // old. A caller that keys anything on this name — the members-only
+      // sign-up in `POST /api/players` — would otherwise refuse a renamed
+      // member as a stranger. With groups on, the membership read below
+      // already returns the roster name.
+      const name = typeof resource.name === 'string' && resource.name ? resource.name : session.name;
+      return { ...session, name, groupId: BPM_GROUP_ID, role: resource.role === 'admin' ? 'admin' : 'member' };
     }
     const m = await readMembership(session.groupId, session.memberId);
     if (!m || m.status !== 'active') return null;
@@ -423,6 +429,52 @@ export async function requireGroupMember(
   } catch {
     return null;
   }
+}
+
+/** `NEXT_PUBLIC_FLAG_MEMBERS_ONLY`, read server-side — a client flag cannot protect a route. */
+export const membersOnlyOn = (): boolean => isFlagOn('NEXT_PUBLIC_FLAG_MEMBERS_ONLY');
+
+export type MemberGate =
+  | { ok: true; member: (MemberSession & { role: MembershipRole }) | null }
+  | { ok: false; response: NextResponse };
+
+/**
+ * THE MEMBERS-ONLY READ GATE (docs/plans/members-only.md). Every route that
+ * returns club data calls this after its rate limit and before it reads
+ * anything; `__tests__/members-only-coverage.test.ts` fails the build on a
+ * listed route that does not.
+ *
+ * FLAG OFF IT IS A PASS-THROUGH with no I/O, and answers `member: null` —
+ * a route must not start treating that null as "anonymous" and change its
+ * response, or turning the flag off would stop restoring what shipped.
+ *
+ * FLAG ON, two things pass, and a bare cookie signature is neither:
+ *
+ * - an ACTIVE member, via `requireGroupMember`. That re-reads the Member (flag
+ *   off for groups) or the membership (flag on), so a removed person's 30-day
+ *   cookie stops working on the next request rather than at expiry. The cheap
+ *   `verifyMemberAuth` would have let it keep reading the roster for a month.
+ * - an admin, via `isAdminAuthedWithMember`. `POST /api/admin` mints ONLY an
+ *   `admin_session`, so an admin who signed in there holds no member cookie at
+ *   all; refusing them would lock the club's own admin out of Home.
+ *
+ * Anything else is one identical 401. It never says whether a name exists.
+ */
+export async function requireMember(req: NextRequest): Promise<MemberGate> {
+  if (!membersOnlyOn()) return { ok: true, member: null };
+
+  const member = await requireGroupMember(req);
+  if (member) return { ok: true, member };
+
+  const admin = await isAdminAuthedWithMember(req);
+  if (admin.authed) {
+    return {
+      ok: true,
+      member: { memberId: admin.memberId, name: admin.name, groupId: admin.groupId, role: 'admin' },
+    };
+  }
+
+  return { ok: false, response: unauthorized() };
 }
 
 /**

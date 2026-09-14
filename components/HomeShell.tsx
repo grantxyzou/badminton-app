@@ -18,7 +18,6 @@ import SkillsTab from '@/components/SkillsTab';
 import ProfileTab from '@/components/ProfileTab';
 import NativeBridge from '@/components/NativeBridge';
 import type { Provider as AuthProvider } from '@/components/auth/ProviderButtons';
-import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import StatusBanner from '@/components/primitives/StatusBanner';
@@ -30,7 +29,8 @@ import { getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
 import { noticeBanner, noticeTimeoutMs, type AuthNotice } from '@/lib/authNotice';
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
 import { consumeRecentExcursion } from '@/lib/excursion';
-import { claimPendingHandoff, pendingHandoffId } from '@/lib/handoffClient';
+import { pendingHandoffId } from '@/lib/handoffClient';
+import { useHandoffCollect } from '@/lib/useHandoffCollect';
 import { useClientValue } from '@/lib/useClientValue';
 
 /** `?dev` opens the DevPanel. Never stripped, so it is safe to read on demand. */
@@ -64,9 +64,15 @@ interface Props {
    * component tests that mount the shell directly need not care.
    */
   authProviders?: AuthProvider[];
+  /**
+   * MEMBERS ONLY: the signed-in member's name, as the SERVER verified it before
+   * rendering this shell at all (`app/page.tsx`, `requireMember`). `null` with
+   * the flag off, where identity stays a client-side matter as it always was.
+   */
+  memberName?: string | null;
 }
 
-export default function HomeShell({ initialAnnouncement, authProviders = [] }: Props) {
+export default function HomeShell({ initialAnnouncement, authProviders = [], memberName = null }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   // Bumped by pull-to-refresh — folded into each tab's React key so the active
   // tab remounts and re-runs its data fetches (no service worker; refresh ==
@@ -147,21 +153,12 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
   /** Guards the once-only whoami fetch. See the effect below. */
   const signedInHandledRef = useRef(false);
   const [demoMode, setDemoMode] = useState(false);
-  // KNOWN-refused, never merely unknown: set only by an actual 403 from an
-  // owner-gated read (see the insight prewarm below), cleared by any other
-  // outcome. A network failure must not raise it — that is the offline
-  // banner's job, and telling someone to sign in again over a dropped wifi
-  // packet is the same class of lie as a lying empty state.
-  const [signInExpired, setSignInExpired] = useState(false);
   // Connectivity is one app-wide signal now (lib/useOnline). `online` is
   // "server believed reachable" — NEVER conflated with "user is not an
   // admin": a failed probe must not masquerade as a confirmed negative
   // (the auth twin of the forbidden `catch { setX([]) }` lying-empty).
   const online = useOnline();
   const reportFetchFailure = useReportFetchFailure();
-  // Only the sign-in-expired banner is translated here; the adjacent offline
-  // banner predates this and stays as it is (not this task's file to churn).
-  const t = useTranslations('stats');
   const tAuth = useTranslations('profile.auth');
 
   // The URL-param effect below strips what it reads, so it must run ONCE.
@@ -172,8 +169,11 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
   const urlParamsConsumed = useRef(false);
 
   /* eslint-disable react-hooks/set-state-in-effect --
-     The ONE sanctioned exemption from the compiler-ready pass, and it is
-     structural rather than deferred work.
+     A sanctioned exemption from the compiler-ready pass, and it is structural
+     rather than deferred work. It has exactly ONE twin: the same landing
+     effect in `components/onboarding/SignedOutShell.tsx` (members only), which
+     reads the same parameters for a visitor who is not signed in, and cites
+     this comment rather than repeating it.
 
      This effect consumes the landing URL and STRIPS what it reads in the same
      pass, so the params cannot be re-read during a later render the way
@@ -385,50 +385,33 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
    *
    * On an installed iOS PWA the OAuth excursion runs in Safari, so the callback
    * sets `member_session` in Safari's cookie jar and this app stays signed out
-   * — measured, see lib/authHandoff.ts. The callback parks the resolved member
-   * against a ref instead; this redeems it with the secret held in OUR
-   * localStorage, and the response mints the cookie in OUR jar.
+   * — measured, see lib/authHandoff.ts. The listeners live in
+   * `lib/useHandoffCollect.ts`, shared with the members-only signed-out screen.
+   */
+  useHandoffCollect((name) => {
+    setIdentity({ name, sessionId: sessionIdRef.current });
+    setAuthNotice({ kind: 'signedIn', provider: 'google' });
+  });
+
+  /**
+   * MEMBERS ONLY: THE SERVER'S ANSWER ABOUT WHO THIS IS WINS.
    *
-   * Runs on mount and on every return to the foreground, because the person
-   * comes back by switching apps — there is no navigation to hang this on, and
-   * iOS may have evicted the webview entirely while Safari was in front.
+   * This shell renders at all only because the server verified a live
+   * `member_session`. But every tab still reads identity from localStorage, and
+   * the two can disagree: cleared storage leaves a signed-in member looking
+   * signed out on Stats and Profile, and a shared phone can hold the PREVIOUS
+   * person's name. So the local record is brought into line with the cookie.
    *
-   * `pending` is the normal in-flight answer and is left alone to retry.
+   * A different name means a different person, so their `deleteToken` and
+   * session are dropped rather than inherited. An external-store write, not
+   * React state — the tabs pick it up through IDENTITY_EVENT.
    */
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    let cancelled = false;
-
-    const collect = async () => {
-      if (cancelled || !pendingHandoffId()) return;
-      const out = await claimPendingHandoff();
-      if (cancelled || out.status !== 'ready') return;
-      setIdentity({ name: out.name, sessionId: sessionIdRef.current });
-      setAuthNotice({ kind: 'signedIn', provider: 'google' });
-    };
-
-    void collect();
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') void collect();
-    };
-    // The native shell's browser sheet is a modal INSIDE the app, so closing
-    // it fires neither visibilitychange nor focus on this document. The
-    // NativeBridge dispatches `bpm:resume` on browserFinished / appUrlOpen /
-    // appStateChange instead. No-op on the web: nothing dispatches it.
-    const onResume = () => void collect();
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('focus', onVisible);
-    window.addEventListener('bpm:resume', onResume);
-    return () => {
-      cancelled = true;
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('focus', onVisible);
-      window.removeEventListener('bpm:resume', onResume);
-    };
-    // sessionIdRef is a ref and the setters are stable, so the empty dep array
-    // is complete rather than suppressed — mount-once is intended and the rule
-    // agrees. (A disable directive sat here and was doing nothing.)
-  }, []);
+    if (!memberName) return;
+    const current = getIdentity();
+    if (current?.name === memberName) return;
+    setIdentity({ name: memberName, sessionId: '' });
+  }, [memberName]);
 
   useEffect(() => {
     if (!signedInPending || signedInHandledRef.current) return;
@@ -542,28 +525,15 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
   // generated/cached server-side BEFORE the user reaches the Stats tab. The
   // endpoint dedupes by (member, active session), so this is at most one Claude
   // call per member per session-cycle no matter how often it's pinged. No CTA.
-  //
-  // Fire-and-forget for network failures ONLY. A 403 is not a failed prewarm,
-  // it is the server saying this device does not own the identity in
-  // localStorage — the `member_session` cookie (30-day TTL) expired or was
-  // never minted, while `badminton_identity` persists indefinitely. Every
-  // owner-gated Stats read will refuse for the same reason, and swallowing it
-  // here left the member with no signal anywhere: cards that used to have
-  // content simply stopped having any. Unknown ≠ known-false, so only the
-  // KNOWN refusal raises the banner; a network error leaves it alone.
+  // Its 403 once drove a "sign in to see your stats" banner; the refusal now
+  // lives on each locked Stats card instead, where the member is looking.
   useEffect(() => {
     function prewarmInsight() {
       const name = getIdentity()?.name;
-      if (!name) {
-        setSignInExpired(false);
-        return;
-      }
-      fetch(`${BASE}/api/stats/insight?name=${encodeURIComponent(name)}`, { cache: 'no-store' })
-        .then((r) => setSignInExpired(r.status === 403))
-        .catch(() => {
-          /* network failure — unknown, not a refusal. The offline banner owns
-             this case and the Stats cards retry on view. */
-        });
+      if (!name) return;
+      // Warm-up only: nothing renders from the answer. A refusal is shown by
+      // the Stats cards themselves, a network failure by the offline banner.
+      fetch(`${BASE}/api/stats/insight?name=${encodeURIComponent(name)}`, { cache: 'no-store' }).catch(() => {});
     }
     prewarmInsight();
     window.addEventListener(IDENTITY_EVENT, prewarmInsight);
@@ -660,7 +630,6 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
     <>
       <PullToRefresh onRefresh={handlePullRefresh} />
       <div className="min-h-screen pb-32">
-        <GlassPhysics />
         <ThemeToggle />
         <LanguageToggle />
         <main data-page-shell className="max-w-lg mx-auto px-4 page-shell-top">
@@ -674,16 +643,10 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
               />
             </div>
           )}
-          {signInExpired && online && (
-            <div className="mb-3">
-              <StatusBanner
-                tone="warn"
-                icon="lock_clock"
-                title={t('signInAgainTitle')}
-                body={t('signInAgainBody')}
-              />
-            </div>
-          )}
+          {/* No "sign in to see your stats" banner (removed 2026-09-14). Each
+              Stats card a device may not fill now locks itself with its own
+              Sign in button (components/stats/LockedCard.tsx), and Profile
+              shows the sign-in screen when this device holds no session. */}
           {authNotice && (
             <div className="mb-3">
               <StatusBanner
@@ -766,7 +729,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [] }: P
             />
           ) : (
           <>
-          {activeTab === 'home' && <div key={`home-${refreshNonce}`} className="animate-fadeIn"><HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} /></div>}
+          {activeTab === 'home' && <div key={`home-${refreshNonce}`} className="animate-fadeIn"><HomeTab isAdmin={showAdmin} onTabChange={setActiveTab} onTitleTap={handleTitleTap} devOverrides={devMode ? devOverrides : undefined} initialAnnouncement={initialAnnouncement} memberName={memberName} /></div>}
           {activeTab === 'players' && <div key={`players-${refreshNonce}`} className="animate-fadeIn"><PlayersTab onTabChange={setActiveTab} /></div>}
           {activeTab === 'skills' && <div key={`skills-${refreshNonce}`} className="animate-fadeIn"><SkillsTab onTabChange={setActiveTab} /></div>}
           {activeTab === 'admin' && showAdmin && <div key={`admin-${refreshNonce}`} className="animate-fadeIn"><AdminErrorBoundary><AdminTab onExit={() => setActiveTab('profile')} /></AdminErrorBoundary></div>}

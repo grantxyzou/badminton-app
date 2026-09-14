@@ -4,6 +4,7 @@ import { resolveGroupId } from '@/lib/groupContext';
 import { rosterMemberIds } from '@/lib/roster';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
+import { requireMember } from '@/lib/auth';
 import { tallyClubGear, CLUB_GEAR_MIN_COHORT } from '@/lib/clubGear';
 import type { PlayerGear } from '@/lib/types';
 
@@ -32,6 +33,8 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(`stats-club-gear:${ip}`, 30, 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
+  const gate = await requireMember(req);
+  if (!gate.ok) return gate.response;
 
   try {
     await ensureContainer('playerGear', '/memberId');

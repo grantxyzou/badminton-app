@@ -42,10 +42,17 @@ export interface EmptyStateProps {
    * matches the `.icon-xl` rung this uses for ligatures.
    */
   icon?: string | ReactNode;
+  /**
+   * The one thing the reader can do about it — a `cc-btn cc-btn-ghost`, never
+   * a primary (an empty or signed-out card is not the screen's main decision).
+   * Giving one also switches to the standing, centred layout: a button hanging
+   * off a left-aligned caption reads as a form, not a state.
+   */
+  action?: ReactNode;
 }
 
-export default function EmptyState({ children, icon }: EmptyStateProps) {
-  if (!icon) {
+export default function EmptyState({ children, icon, action }: EmptyStateProps) {
+  if (!icon && !action) {
     return (
       <p className="fs-base" style={{ color: 'var(--text-muted)', margin: '0' }}>
         {children}
@@ -60,11 +67,15 @@ export default function EmptyState({ children, icon }: EmptyStateProps) {
         flexDirection: 'column',
         alignItems: 'center',
         gap: 'var(--space-3)',
-        padding: 'var(--space-6) var(--space-4)',
+        // The 20px above and below is room for the glyph. A sentence and a
+        // button alone sit in the card's own padding instead — with the
+        // glyph's room and no glyph, one line of copy made a Home card taller
+        // than the card holding the week's sign-up.
+        padding: icon ? 'var(--space-6) var(--space-4)' : '0 var(--space-4)',
         textAlign: 'center',
       }}
     >
-      {typeof icon === 'string' ? (
+      {!icon ? null : typeof icon === 'string' ? (
         <span
           className="material-icons icon-xl"
           aria-hidden="true"
@@ -78,6 +89,7 @@ export default function EmptyState({ children, icon }: EmptyStateProps) {
       <p className="fs-base" style={{ color: 'var(--text-muted)', margin: '0', maxWidth: '28ch' }}>
         {children}
       </p>
+      {action}
     </div>
   );
 }

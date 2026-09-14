@@ -6,6 +6,7 @@ import CardHeader from '@/components/primitives/CardHeader';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
+import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -34,11 +35,13 @@ interface Partner {
 
 export default function WhoYouPlayWithCard({ activeName }: WhoYouPlayWithCardProps) {
   const t = useTranslations('stats.partners');
+  const signInLink = useSignInLink();
   // Shared copy for the refusal, so the three surfaces that can hit a 403 all
   // say the same thing.
   const tStats = useTranslations('stats');
   const [partners, setPartners] = useState<Partner[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'forbidden'>('loading');
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!activeName) return;
@@ -68,9 +71,20 @@ export default function WhoYouPlayWithCard({ activeName }: WhoYouPlayWithCardPro
     return () => {
       live = false;
     };
-  }, [activeName]);
+  }, [activeName, attempt]);
 
   if (!activeName) return null;
+  // Refused (this device holds no session for the name): the card stays, as
+  // its own shape with nothing in it, and Sign in carries the weight.
+  if (status === 'forbidden') {
+    return (
+      <LockedCard icon="group" title={t('title')} subtitle={t('subtitle')} message={t.rich('locked', { link: signInLink })}>
+        <PreviewRow icon="person" width="58%" />
+        <PreviewRow icon="person" width="44%" />
+        <PreviewRow icon="person" width="32%" />
+      </LockedCard>
+    );
+  }
   if (status === 'loading') return <CardSkeleton height={160} />;
 
   const top = partners.slice(0, TOP);
@@ -79,10 +93,19 @@ export default function WhoYouPlayWithCard({ activeName }: WhoYouPlayWithCardPro
   return (
     <div className="glass-card p-5 space-y-3">
       <CardHeader icon="group" title={t('title')} subtitle={t('subtitle')} />
-      {status === 'forbidden' ? (
-        <ErrorState message={tStats('signInAgain')} />
-      ) : status === 'error' ? (
-        <ErrorState message={t('error')} />
+      {status === 'error' ? (
+        <ErrorState
+          message={t('error')}
+          action={
+            <button
+              type="button"
+              className="cc-btn cc-btn-ghost"
+              onClick={() => { setStatus('loading'); setAttempt((n) => n + 1); }}
+            >
+              {tStats('retry')}
+            </button>
+          }
+        />
       ) : top.length === 0 ? (
         <EmptyState icon="groups">{t('empty')}</EmptyState>
       ) : (

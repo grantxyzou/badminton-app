@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto';
 import { ensureContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
-import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, ownsNameOrAdmin } from '@/lib/auth';
+import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, ownsNameOrAdmin, requireMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import type { GameResult } from '@/lib/types';
@@ -31,6 +31,8 @@ export async function GET(req: NextRequest) {
   if (!isFlagOn('NEXT_PUBLIC_FLAG_VALUE_HUB_SLICE')) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
+  const gate = await requireMember(req);
+  if (!gate.ok) return gate.response;
   try {
     await ensureGames();
     const params = new URL(req.url).searchParams;

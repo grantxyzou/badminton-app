@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
 import PaymentsCard from '@/components/admin/CommandCenter/PaymentsCard';
 
 /**
@@ -38,5 +38,35 @@ describe('<PaymentsCard /> — players load failure', () => {
       expect(screen.getByText(/couldn.t load/i)).toBeTruthy();
     });
     expect(screen.queryByText(/No active players/i)).toBeNull();
+  });
+
+  it('Try again refetches the players, and the error clears only once they load', async () => {
+    let playersCalls = 0;
+    global.fetch = (async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : (input as Request).url;
+      if (url.includes('/api/session') && !url.includes('/sessions')) {
+        return new Response(JSON.stringify(ACTIVE_SESSION), { status: 200 });
+      }
+      if (url.includes('/api/sessions')) {
+        return new Response(JSON.stringify([ACTIVE_SESSION]), { status: 200 });
+      }
+      if (url.includes('/api/players')) {
+        playersCalls += 1;
+        if (playersCalls === 1) return new Response(JSON.stringify({ error: 'Failed' }), { status: 503 });
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+      return new Response('not found', { status: 404 });
+    }) as typeof fetch;
+
+    render(<PaymentsCard />);
+    const retry = await screen.findByRole('button', { name: /try again/i });
+    expect(screen.queryByText(/refresh/i)).toBeNull();
+
+    fireEvent.click(retry);
+    await waitFor(() => {
+      expect(screen.getByText(/No active players yet/i)).toBeTruthy();
+    });
+    expect(playersCalls).toBe(2);
+    expect(screen.queryByText(/couldn.t load/i)).toBeNull();
   });
 });

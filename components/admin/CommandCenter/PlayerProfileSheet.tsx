@@ -188,7 +188,7 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel="Player profile" maxHeight="85vh" width="narrow">
+    <BottomSheet open={open} onClose={onClose} ariaLabel="Player profile">
       <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>
           {history?.member.name ?? initialName ?? 'Player'}

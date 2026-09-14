@@ -6,7 +6,8 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
-import { MAX_OFFERED } from '@/lib/stringingStrings';
+import { MAX_OFFERED } from '@/lib/stringingLimits';
+import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -30,12 +31,15 @@ export default function OfferedStringsCard() {
   // means "nothing stocked" — the request form treats them differently too.
   const [strings, setStrings] = useState<string[] | null>(null);
   const [loadError, setLoadError] = useState(false);
+  // Bumped by "Try again" to re-run the load effect.
+  const [attempt, setAttempt] = useState(0);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setLoadError(false);
     fetch(`${BASE}/api/stringing/strings`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
@@ -49,7 +53,7 @@ export default function OfferedStringsCard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [attempt]);
 
   async function save(next: string[]) {
     if (busy || !online) return;
@@ -89,11 +93,27 @@ export default function OfferedStringsCard() {
     void save([...strings, label]);
   }
 
+  // A failed load tints the whole card (StateCard) and hides its controls, so
+  // nothing is written against data that did not load.
+  if (loadError) {
+    return (
+      <StateCard
+        tone="danger"
+        icon="format_list_bulleted"
+        title={t('strings.title')}
+        subtitle={t('strings.hint')}
+        message={<>{t('strings.loadError')} <StateLink onClick={() => setAttempt((n) => n + 1)}>{t('retry')}</StateLink></>}
+      >
+        <PreviewRow width="46%" />
+        <PreviewRow width="34%" />
+      </StateCard>
+    );
+  }
+
   return (
     <div className="glass-card p-5 space-y-3">
       <CardHeader icon="format_list_bulleted" title={t('strings.title')} subtitle={t('strings.hint')} />
 
-      {loadError && <ErrorState message={t('strings.loadError')} />}
       {saveError && <ErrorState message={t('strings.saveError')} />}
 
       {strings !== null && strings.length === 0 && !loadError && (

@@ -16,6 +16,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import CardHeader from '@/components/primitives/CardHeader';
 import ListRow from '@/components/primitives/ListRow';
+import LockedCard, { PreviewMeter, useSignInLink } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -69,6 +70,7 @@ function Delta({ value }: { value: number }) {
 
 export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   const t = useTranslations('stats');
+  const signInLink = useSignInLink();
   // Shared owner of the identity → preview-name chain. Subscribing (rather
   // than resolving once at mount) is what keeps this card from rendering the
   // PREVIOUS member's trend beside the new member's other cards after a
@@ -111,12 +113,27 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   // divs, so the tokens just work and none of that machinery is needed.
 
   if (!activeName) return null;
+  // Refused (this device holds no session for the name): the card stays, as
+  // its own shape with nothing in it, and Sign in carries the weight.
+  if (checkIn?.status === 'forbidden') {
+    return (
+      <LockedCard icon="trending_up" title={t('assess.heroTitle')} message={t.rich('assess.locked', { link: signInLink })}>
+        {SKILLS.slice(0, 4).map((s) => <PreviewMeter key={s.key} label={s.label} />)}
+      </LockedCard>
+    );
+  }
 
+  // Standalone, not a card holding only an error (the state rule).
   if (loadError) {
     return (
-      <div className="glass-card p-5">
-        <ErrorState message={t('assess.error')} />
-      </div>
+      <ErrorState
+        message={t('assess.error')}
+        action={
+          <button type="button" className="cc-btn cc-btn-ghost" onClick={() => checkIn?.reload()}>
+            {t('retry')}
+          </button>
+        }
+      />
     );
   }
 
@@ -327,7 +344,7 @@ function SkillAnchorSheet({ skillKey, value, onClose }: { skillKey: string; valu
   const skill = SKILL_BY_KEY.get(skillKey);
   if (!skill) return null;
   return (
-    <BottomSheet open onClose={onClose} ariaLabel={skill.label} maxHeight="75vh">
+    <BottomSheet open onClose={onClose} ariaLabel={skill.label}>
       <div
         style={{
           background: 'var(--glass-bg)',

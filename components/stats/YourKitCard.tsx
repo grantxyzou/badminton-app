@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
+import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import GearSheet from './GearSheet';
@@ -120,6 +121,7 @@ export default function YourKitCard({ activeName, gear, onOpenFit }: YourKitCard
   // bagDuplicate, shared with every other surface that writes gear — it moved
   // here with the controls that can produce it.
   const tErr = useTranslations('valueHub');
+  const signInLink = useSignInLink();
   const { gear: doc, loaded, loadError, busy, online, add, activate, remove, setTension, active } = gear;
   const [picking, setPicking] = useState<EquipmentCategory | null>(null);
   const [tensionInput, setTensionInput] = useState('');
@@ -130,6 +132,16 @@ export default function YourKitCard({ activeName, gear, onOpenFit }: YourKitCard
 
   if (!activeName) return null;
   if (status === 'loading') return <CardSkeleton height={220} />;
+  // Refused, not failed: this device does not own the name. Retry cannot fix
+  // that and a bag must not be shown for it, so the card keeps its rows as
+  // dashes and offers Sign in — the same locked state as the rest of Stats.
+  if (gear.forbidden) {
+    return (
+      <LockedCard icon="inventory_2" title={t('kitTitle')} subtitle={t('kitSubtitle')} message={t.rich('kitLocked', { link: signInLink })}>
+        {CATEGORIES.map(({ key, icon }) => <PreviewRow key={key} icon={icon} />)}
+      </LockedCard>
+    );
+  }
 
   // Legacy gear docs predate `category` and are all rackets — same read
   // tolerance as normalizeBirdUsages.
@@ -200,7 +212,14 @@ export default function YourKitCard({ activeName, gear, onOpenFit }: YourKitCard
     <div className="glass-card p-5 space-y-3">
       <CardHeader icon="inventory_2" title={t('kitTitle')} subtitle={t('kitSubtitle')} />
       {status === 'error' ? (
-        <ErrorState message={t('kitError')} />
+        <ErrorState
+          message={t('kitError')}
+          action={
+            <button type="button" className="cc-btn cc-btn-ghost" onClick={gear.reload}>
+              {t('retry')}
+            </button>
+          }
+        />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           {CATEGORIES.map(({ key, labelKey, icon }) => {

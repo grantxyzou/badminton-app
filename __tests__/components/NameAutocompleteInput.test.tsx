@@ -94,3 +94,30 @@ describe('NameAutocompleteInput — combobox a11y', () => {
     expect(onValueChange).toHaveBeenCalledWith('Viktor');
   });
 });
+
+/**
+ * A finished name closes the list. Home reveals a PIN field as soon as a typed
+ * name resolves to a member, and the open list covered it ("Kento" over
+ * "Create a PIN" in the 2026-09-13 flow audit).
+ */
+describe('NameAutocompleteInput — a completed name', () => {
+  it('stays closed when the value already matches a suggestion exactly', () => {
+    const { input } = renderInput({ value: 'Viktor', suggestions: ['Viktor'] });
+    fireEvent.focus(input);
+    expect(input.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
+  it('matches case-insensitively and ignores surrounding spaces', () => {
+    const { input } = renderInput({ value: '  lin ', suggestions: ['Lin', 'Lindsay'] });
+    fireEvent.focus(input);
+    expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
+  it('still opens for a partial name', () => {
+    const { input } = renderInput({ value: 'Lind', suggestions: ['Lindsay'] });
+    fireEvent.focus(input);
+    expect(screen.getByRole('listbox')).toBeDefined();
+  });
+});
+
