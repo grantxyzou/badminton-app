@@ -210,7 +210,8 @@ and decisions in `docs/plans/native-shell.md`). Built 2026-09-03 on
   ref. **Also open:** `claim-name` still links on a `parked` flow — refusing it
   locked every PIN-only iOS-PWA member out of adding Google, since that is
   their first-Google path; the fix is to take the PIN in the app instead.
-  `lib/authHandoff.ts`'s docblock carries the full argument.
+  `lib/authHandoff.ts`'s docblock carries the full argument; both open gaps,
+  plain-language, with the options, are in `docs/plans/oauth-handoff-gaps.md`.
 - **Push is one server transport for both platforms**: `@capacitor-firebase/messaging`
   hands back an FCM token on iOS and Android (Firebase relays to APNs), and
   `lib/fcm.ts` sends via FCM HTTP v1 with zero dependencies. `PushSubscriptionDoc`
