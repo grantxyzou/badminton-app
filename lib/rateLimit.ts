@@ -1,9 +1,56 @@
+import { createHmac, randomBytes } from 'node:crypto';
+
 interface Entry {
   count: number;
   resetAt: number;
+  /** Refusals in this window, for the log below. */
+  refused: number;
 }
 
 const store = new Map<string, Entry>();
+
+/**
+ * In-memory, on purpose: friend-group scale, no real attackers today (#80).
+ * The accepted cost is real and stays real — a 20-minute Azure B1 cold start
+ * gets anyone a fresh allowance, and it does not survive >1 instance — so the
+ * mitigation is not fixing that, it is making an attempt that relies on it
+ * VISIBLE. See `logRefusal` for what is logged and how often. Revisit persistence (Cosmos
+ * or Redis) if `[rate-limit] refused` ever shows a real pattern in the logs;
+ * until then this is the deliberate choice, not an oversight.
+ */
+
+/**
+ * One `[rate-limit] refused` line — but not for every refusal, and never the
+ * raw key.
+ *
+ * WHAT: the key's first segment (`auth-signin`, `pin-update`) names the bucket;
+ * the rest is replaced by a short sha256. Keys carry an email or a roster name
+ * next to an IP (`auth-signin:${email}:${ip}`, `pin-update:${name}:${ip}`), and
+ * writing those to App Service logs on every refusal is personal data kept for
+ * no reason (PIPEDA). The hash is KEYED with a random per-process salt: a plain
+ * sha256 of `signup:${ip}` is reversible by trying all of IPv4 in seconds, and
+ * the bucket name logged beside it gives away the template. Within one process
+ * the hash is stable, so a key's repeated refusals still line up; across a
+ * restart it changes, which is the same lifetime the in-memory limiter has.
+ *
+ * HOW OFTEN: on the 1st, 2nd, 4th, 8th… refusal in a window. Small buckets are
+ * the reason logging exists at all — a 3/hr limit's first refusal is the whole
+ * signal, and it is always logged — while a flood against a 60/min bucket
+ * writes log2(n) lines instead of n, and `refusedThisWindow` still says how
+ * big it got.
+ *
+ * The message is a CONSTANT; every value rides in the payload object, because
+ * `console.warn(str, obj)` treats `str` as a FORMAT string. Same guard as
+ * `[group-leak]` in lib/groupScope.ts.
+ */
+const LOG_SALT = randomBytes(32);
+
+function logRefusal(key: string, maxRequests: number, windowMs: number, refused: number): void {
+  if ((refused & (refused - 1)) !== 0) return;
+  const bucket = key.split(':')[0];
+  const keyHash = createHmac('sha256', LOG_SALT).update(key).digest('hex').slice(0, 12);
+  console.warn('[rate-limit] refused', { bucket, keyHash, maxRequests, windowMs, refusedThisWindow: refused });
+}
 
 /** Returns true if the request is allowed, false if rate-limited. */
 export function checkRateLimit(key: string, maxRequests: number, windowMs: number): boolean {
@@ -19,11 +66,15 @@ export function checkRateLimit(key: string, maxRequests: number, windowMs: numbe
   const entry = store.get(key);
 
   if (!entry || now > entry.resetAt) {
-    store.set(key, { count: 1, resetAt: now + windowMs });
+    store.set(key, { count: 1, resetAt: now + windowMs, refused: 0 });
     return true;
   }
 
-  if (entry.count >= maxRequests) return false;
+  if (entry.count >= maxRequests) {
+    entry.refused++;
+    logRefusal(key, maxRequests, windowMs, entry.refused);
+    return false;
+  }
   entry.count++;
   return true;
 }
