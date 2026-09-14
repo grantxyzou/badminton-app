@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 
 interface Entry {
   count: number;
@@ -27,8 +27,11 @@ const store = new Map<string, Entry>();
  * the rest is replaced by a short sha256. Keys carry an email or a roster name
  * next to an IP (`auth-signin:${email}:${ip}`, `pin-update:${name}:${ip}`), and
  * writing those to App Service logs on every refusal is personal data kept for
- * no reason (PIPEDA). The hash is stable, so repeated refusals of one key still
- * line up in the logs without saying whose they are.
+ * no reason (PIPEDA). The hash is KEYED with a random per-process salt: a plain
+ * sha256 of `signup:${ip}` is reversible by trying all of IPv4 in seconds, and
+ * the bucket name logged beside it gives away the template. Within one process
+ * the hash is stable, so a key's repeated refusals still line up; across a
+ * restart it changes, which is the same lifetime the in-memory limiter has.
  *
  * HOW OFTEN: on the 1st, 2nd, 4th, 8th… refusal in a window. Small buckets are
  * the reason logging exists at all — a 3/hr limit's first refusal is the whole
@@ -40,10 +43,12 @@ const store = new Map<string, Entry>();
  * `console.warn(str, obj)` treats `str` as a FORMAT string. Same guard as
  * `[group-leak]` in lib/groupScope.ts.
  */
+const LOG_SALT = randomBytes(32);
+
 function logRefusal(key: string, maxRequests: number, windowMs: number, refused: number): void {
   if ((refused & (refused - 1)) !== 0) return;
   const bucket = key.split(':')[0];
-  const keyHash = createHash('sha256').update(key).digest('hex').slice(0, 12);
+  const keyHash = createHmac('sha256', LOG_SALT).update(key).digest('hex').slice(0, 12);
   console.warn('[rate-limit] refused', { bucket, keyHash, maxRequests, windowMs, refusedThisWindow: refused });
 }
 

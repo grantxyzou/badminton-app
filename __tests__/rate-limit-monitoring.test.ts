@@ -58,6 +58,17 @@ describe('checkRateLimit monitoring', () => {
     expect(new Set(payloads.map((p: Logged) => p.keyHash)).size).toBe(1);
   });
 
+  // An unsalted sha256 of `bucket:ip` is reversible by enumerating IPv4, and
+  // the bucket is logged in the clear beside it. The hash must not be one.
+  it('the key hash is salted — not a plain sha256 anyone can reverse', async () => {
+    const { createHash } = await import('node:crypto');
+    const key = 'mon-salted:203.0.113.9';
+    checkRateLimit(key, 1, 60_000);
+    checkRateLimit(key, 1, 60_000);
+    const { keyHash } = warnSpy.mock.calls[0][1] as { keyHash: string };
+    expect(keyHash).not.toBe(createHash('sha256').update(key).digest('hex').slice(0, 12));
+  });
+
   it('never interpolates the key into the message string', () => {
     const key = 'mon-injection-key:%s:%o';
     checkRateLimit(key, 1, 60_000);
