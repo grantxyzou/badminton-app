@@ -24,17 +24,14 @@ export const PRICING_DOC_ID = 'stringing-pricing';
 export function pricingDocId(groupId: string): string {
   return groupDocId(groupId, PRICING_DOC_ID);
 }
-export const MAX_SERVICES = 12;
-export const MAX_LABEL_LEN = 60;
-/** $1000. A rate card, not an invoice — anything above this is a typo. */
-export const MAX_PRICE_CENTS = 100000;
-
-export interface ServicePrice {
-  label: string;
-  /** Null means "ask" — a service that genuinely has no fixed price, such as
-   *  a special request. Rendering that as $0.00 would be a lie. */
-  priceCents: number | null;
-}
+export {
+  MAX_SERVICES,
+  MAX_LABEL_LEN,
+  MAX_PRICE_CENTS,
+  formatServicePrice,
+  type ServicePrice,
+} from './stringingRateCard';
+import { MAX_SERVICES, MAX_LABEL_LEN, MAX_PRICE_CENTS, type ServicePrice } from './stringingRateCard';
 
 export interface PricingDoc {
   id: string;
@@ -92,10 +89,4 @@ export function normalisePricing(value: unknown): ServicePrice[] | null {
     out.push({ label: t, priceCents: priceCents as number });
   }
   return out;
-}
-
-/** "$30" whole, "$29.50" when it isn't. A rate card reads badly in cents. */
-export function formatServicePrice(cents: number | null): string | null {
-  if (cents === null) return null;
-  return cents % 100 === 0 ? `$${cents / 100}` : `$${(cents / 100).toFixed(2)}`;
 }

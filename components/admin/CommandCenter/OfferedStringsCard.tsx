@@ -6,7 +6,7 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { useOnline } from '@/lib/useOnline';
-import { MAX_OFFERED } from '@/lib/stringingStrings';
+import { MAX_OFFERED } from '@/lib/stringingLimits';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 

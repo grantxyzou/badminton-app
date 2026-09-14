@@ -7,7 +7,7 @@ import DatePicker from '@/components/DatePicker';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
-import { formatServicePrice, type ServicePrice } from '@/lib/stringingPricing';
+import { formatServicePrice, type ServicePrice } from '@/lib/stringingRateCard';
 import {
   TENSION_MIN_LB,
   TENSION_MAX_LB,
