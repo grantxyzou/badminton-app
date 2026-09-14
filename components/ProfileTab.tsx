@@ -716,6 +716,16 @@ export default function ProfileTab({
                 accent: (adminSignals.needsYou ?? 0) > 0,
                 onClick: onAdminTools,
               },
+              // TEMPORARY SPIKE — delete with app/lab/popup. The installed
+              // home-screen app has no address bar, so the test page has to be
+              // reached from inside it; a full navigation stays in the app
+              // because /bpm/lab is inside the manifest scope.
+              {
+                icon: 'science',
+                label: 'Pop-up sign-in test',
+                // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a separate route, not a tab
+                onClick: () => window.location.assign(`${BASE}/lab/popup`),
+              },
             ]}
           />
         </>
