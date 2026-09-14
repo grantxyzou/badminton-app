@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
-import { getEnv, type EnvName } from '@/lib/flags';
+import { getEnv } from '@/lib/flags';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,17 +52,13 @@ export async function GET(_req: NextRequest) {
       (b as { publishedAt: string }).publishedAt.localeCompare((a as { publishedAt: string }).publishedAt),
     );
 
-    // Environment filter — only return releases stamped with the current env
-    // (or legacy pre-env records with no `env` field, which stay visible on
-    // both deployments for backcompat). Stops releases posted on bpm-next
-    // from leaking onto bpm-stable through the shared Cosmos DB.
-    const env = getEnv();
-    const filtered = sorted.filter((r) => {
-      const recEnv = (r as { env?: EnvName }).env;
-      if (!recEnv) return true;   // legacy, always visible
-      if (env === 'dev') return true; // dev sees everything
-      return recEnv === env;
-    });
+    // No environment filter. There used to be one — show only releases stamped
+    // with this build's `env` — to keep bpm-next's notes off bpm-stable, which
+    // shared the database. That second deployment was deleted on 2026-08-25, and
+    // on 2026-08-19 the surviving one was rebuilt as `stable` instead of `next`,
+    // so the filter's only remaining effect was to hide every note ever
+    // published from it. `env` is still stamped on write, as history.
+    const filtered = sorted;
 
     return NextResponse.json(filtered);
   } catch (error) {

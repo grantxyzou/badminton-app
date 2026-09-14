@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Release } from '@/lib/types';
+import { MAX_PROMPT_CHARS } from '@/lib/claudeLimits';
 
 function nextPatchVersion(current: string | undefined): string {
   if (!current) return 'v0.1.0';
@@ -79,11 +80,9 @@ export default function ReleaseForm({ latestVersion, initialRecord, onPublished,
       setError('Paste some raw notes first.');
       return;
     }
-    setDrafting(true);
-    setError('');
-    try {
-      const prompt = `You are drafting a release note for a badminton session app.
-Given these raw notes, produce a JSON object with:
+    const prompt = `You are drafting a release note for a badminton session app.
+The raw notes below are a developer changelog: most of it is internal (tests, flags, admin tooling, fixes nobody saw).
+Pick only the changes a PLAYER would notice, at most 6, and produce a JSON object with:
   - title_en: short friendly title in English (max 8 words)
   - title_zh: same meaning in Simplified Chinese
   - body_en: bullet list in English (one bullet per line, prefix each with "• "), player-focused (not dev jargon)
@@ -92,6 +91,13 @@ Output ONLY valid JSON, no prose, no markdown code fences.
 
 Raw notes:
 ${rawNotes}`;
+    if (prompt.length > MAX_PROMPT_CHARS) {
+      setError(`The notes are too long to draft from (${rawNotes.length.toLocaleString()} characters). Trim them to the player-facing changes and try again.`);
+      return;
+    }
+    setDrafting(true);
+    setError('');
+    try {
 
       // `persona: true` — a release note is read by every player, so it speaks in
       // the app's voice. The persona and a JSON-only instruction coexist fine;

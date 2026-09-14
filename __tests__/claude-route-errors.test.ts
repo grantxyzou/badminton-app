@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { setupAdminPin, resetMockStore, seedAdminMember, makeAdminRequest, makeRequest, adminCookieValue } from './helpers';
 import { VOICE_PERSONA } from '@/lib/aiPersona';
+import { MAX_OUTPUT_TOKENS, MAX_PROMPT_CHARS } from '@/lib/claudeLimits';
 
 /**
  * Route-level cover for the swallowed-error fix. The unit tests in
@@ -94,11 +95,13 @@ describe('POST /api/claude — failures say why', () => {
     expect((await res.json()).text).toBe('Polished.');
   });
 
-  it('tolerates an empty content array rather than throwing a fake AI error', async () => {
+  it('an empty reply is named as one, not thrown as a fake AI outage and not a 200 with nothing', async () => {
+    // It used to answer 200 { text: '' }: the announcement polish then showed an
+    // empty draft and the release form "couldn't be parsed", with no reason.
     create.mockResolvedValue({ content: [] });
     const res = await post({ prompt: 'polish this' });
-    expect(res.status).toBe(200);
-    expect((await res.json()).text).toBe('');
+    expect(res.status).toBe(502);
+    expect((await res.json()).error).toBe('The AI returned no text. Try again.');
   });
 
   it('still refuses non-admins', async () => {
@@ -157,6 +160,41 @@ describe('POST /api/claude — failures say why', () => {
     seedAdminMember({ active: false });
     const res = await post({ prompt: 'polish this' });
     expect(res.status).toBe(401);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The release-note draft sends the CHANGELOG's Unreleased section. At 4,000
+   * characters the route refused it ("Prompt too long"), and no note was drafted
+   * after v1.7; by September 2026 that section was ~12,000 characters.
+   */
+  it('accepts a release-note-sized prompt and gives the draft room to answer in two languages', async () => {
+    create.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+    const res = await post({ prompt: 'x'.repeat(12_000), persona: true });
+    expect(res.status).toBe(200);
+    expect(create.mock.calls[0][0].max_tokens).toBe(MAX_OUTPUT_TOKENS);
+    expect(MAX_OUTPUT_TOKENS).toBeGreaterThanOrEqual(2048);
+  });
+
+  it('reads the answer from the text block when the model thinks first', async () => {
+    // PROSE_MODEL puts a thinking block at content[0]; reading only that
+    // returned { text: '' } with a 200.
+    create.mockResolvedValue({ stop_reason: 'end_turn', content: [{ type: 'thinking', thinking: '...' }, { type: 'text', text: '{"title_en":"x"}' }] });
+    const res = await post({ prompt: 'draft' });
+    expect(res.status).toBe(200);
+    expect((await res.json()).text).toBe('{"title_en":"x"}');
+  });
+
+  it('says so when the model ran out of room before writing, never a 200 with nothing', async () => {
+    create.mockResolvedValue({ stop_reason: 'max_tokens', content: [{ type: 'thinking', thinking: '...' }] });
+    const res = await post({ prompt: 'draft' });
+    expect(res.status).toBe(502);
+    expect((await res.json()).error).toMatch(/ran out of room/);
+  });
+
+  it('still refuses a prompt past the cap, without calling the model', async () => {
+    const res = await post({ prompt: 'x'.repeat(MAX_PROMPT_CHARS + 1) });
+    expect(res.status).toBe(400);
     expect(create).not.toHaveBeenCalled();
   });
 });
