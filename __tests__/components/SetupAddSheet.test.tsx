@@ -14,7 +14,8 @@ import enMessages from '../../messages/en.json';
 const AF79: CatalogItem = { id: 'rk-af79', category: 'racket', brand: 'Li-Ning', model: 'Air Force 79', skillRange: [1, 3], msrp: 129, attributes: { weight: '4U', balance: 'Even', flex: 'Medium' } };
 const NF800: CatalogItem = { id: 'rk-nf800', category: 'racket', brand: 'Yonex', model: 'Nanoflare 800', skillRange: [1, 3], attributes: { weight: '4U', balance: 'Head-light' } };
 const BG65: CatalogItem = { id: 'st-bg65', category: 'string', brand: 'Yonex', model: 'BG65 Ti', skillRange: [1, 3], attributes: { gaugeMm: 0.7, stringType: 'Durability' } };
-const CATALOG: Record<string, CatalogItem[]> = { racket: [AF79, NF800], string: [BG65] };
+const AERO: CatalogItem = { id: 'st-ab', category: 'string', brand: 'Yonex', model: 'Aerobite', skillRange: [1, 3], attributes: { gaugeMm: 0.67, stringType: 'Control' } };
+const CATALOG: Record<string, CatalogItem[]> = { racket: [AF79, NF800], string: [BG65, AERO] };
 
 function doc(items: GearItem[], activeRacketId?: string): PlayerGear {
   return { id: 'gear-m1', memberId: 'm1', items, activeRacketId, updatedAt: '' } as PlayerGear;
@@ -30,14 +31,14 @@ function useFakeGear(initial: PlayerGear, spies: Partial<UseGear> = {}): UseGear
     loaded: true, loadError: false, forbidden: false, busy: false, online: true,
     reload: vi.fn(),
     add: async (item, extra) => {
+      if (spies.add && (await spies.add(item, extra)).ok === false) return { ok: false, reason: 'bag_full' };
       const gi: GearItem = { id: `new-${item.id}`, catalogId: item.id, category: item.category, label: `${item.brand} ${item.model}` };
       setD((p) => ({ ...p, items: [...p.items, gi], activeRacketId: extra?.makeActive ? gi.id : p.activeRacketId ?? (item.category === 'racket' ? gi.id : undefined) }));
-      await spies.add?.(item, extra);
       return { ok: true };
     },
     addCustom: vi.fn(async () => ({ ok: true as const })),
     activate: spies.activate ?? vi.fn(async () => ({ ok: true as const })),
-    remove: vi.fn(async () => ({ ok: true as const })),
+    remove: spies.remove ?? vi.fn(async () => ({ ok: true as const })),
     setPrefs: vi.fn(async () => ({ ok: true as const })),
     setTension: spies.setTension ?? vi.fn(async () => ({ ok: true as const })),
   };
@@ -51,13 +52,13 @@ function picksWith(view: Partial<UseGearPicks['view']>): UseGearPicks {
   };
 }
 
-function Harness({ category, initial, picks, spies = {}, onClose = vi.fn(), makeActive = true }: {
-  category: 'racket' | 'string'; initial: PlayerGear; picks: UseGearPicks; spies?: Partial<UseGear>; onClose?: () => void; makeActive?: boolean;
+function Harness({ category, initial, picks, spies = {}, onClose = vi.fn(), makeActive = true, replacesId }: {
+  category: 'racket' | 'string'; initial: PlayerGear; picks: UseGearPicks; spies?: Partial<UseGear>; onClose?: () => void; makeActive?: boolean; replacesId?: string;
 }) {
   const gear = useFakeGear(initial, spies);
   return (
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <SetupAddSheet open onClose={onClose} category={category} gear={gear} picks={picks} makeActive={makeActive} />
+      <SetupAddSheet open onClose={onClose} category={category} gear={gear} picks={picks} makeActive={makeActive} replacesId={replacesId} />
     </NextIntlClientProvider>
   );
 }
@@ -157,5 +158,39 @@ describe('SetupAddSheet — a tap saves, and the row expands with the one follow
     render(<Harness category="racket" initial={doc([owned], 'r1')} picks={picksWith({})} makeActive={false} />);
     expect(await screen.findByText('Nanoflare 800')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Yonex Nanoflare 800' })).toBeNull();
+  });
+});
+
+describe('SetupAddSheet — "Change the string" replaces', () => {
+  const OLD: GearItem = { id: 's-old', catalogId: 'st-bg65', category: 'string', label: 'Yonex BG65 Ti', tensionLbs: 24 };
+
+  it('adds the new string, then removes the one it replaces — once, even if another is added after', async () => {
+    const order: string[] = [];
+    const add = vi.fn(async (item: CatalogItem) => { order.push(`add:${item.id}`); return { ok: true as const }; });
+    const remove = vi.fn(async (id: string) => { order.push(`remove:${id}`); return { ok: true as const }; });
+    render(<Harness category="string" initial={doc([OLD])} picks={picksWith({})} spies={{ add, remove }} replacesId="s-old" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Yonex Aerobite' }));
+    await waitFor(() => expect(remove).toHaveBeenCalledWith('s-old'));
+    expect(order).toEqual(['add:st-ab', 'remove:s-old']);
+    fireEvent.click(screen.getByRole('button', { name: 'Add another string' }));
+    expect(remove).toHaveBeenCalledTimes(1);
+  });
+
+  it('a failed add keeps the string the member has', async () => {
+    const add = vi.fn(async () => ({ ok: false as const, reason: 'bag_full' as const }));
+    const remove = vi.fn(async () => ({ ok: true as const }));
+    render(<Harness category="string" initial={doc([OLD])} picks={picksWith({})} spies={{ add, remove }} replacesId="s-old" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Yonex Aerobite' }));
+    await waitFor(() => expect(add).toHaveBeenCalled());
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('without replacesId a string is only added', async () => {
+    const remove = vi.fn(async () => ({ ok: true as const }));
+    render(<Harness category="string" initial={doc([])} picks={picksWith({})} spies={{ remove }} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Yonex Aerobite' }));
+    expect(await screen.findByText('Saved')).toBeTruthy();
+    expect(remove).not.toHaveBeenCalled();
   });
 });

@@ -145,7 +145,7 @@ function SetupRegister({ activeName }: GearRegisterProps) {
   // remove), and a remount is the whole reset.
   const [sheet, setSheet] = useState<
     | { kind: 'line'; category: SetupCategory; key: number }
-    | { kind: 'add'; category: SetupCategory; makeActive: boolean; key: number }
+    | { kind: 'add'; category: SetupCategory; makeActive: boolean; replacesId?: string; key: number }
     | null
   >(null);
   const [pickOpen, setPickOpen] = useState(false);
@@ -153,8 +153,8 @@ function SetupRegister({ activeName }: GearRegisterProps) {
   // Memoised on the doc: the share sheet draws its canvas from a callback ref,
   // and a fresh object per render would redraw (and reload the image) each time.
   const share = useMemo(() => setupShare(activeName ?? '', setupLines(gear.gear)), [activeName, gear.gear]);
-  const openAdd = (category: SetupCategory, makeActive: boolean) =>
-    setSheet((s) => ({ kind: 'add', category, makeActive, key: (s?.key ?? 0) + 1 }));
+  const openAdd = (category: SetupCategory, makeActive: boolean, replacesId?: string) =>
+    setSheet((s) => ({ kind: 'add', category, makeActive, replacesId, key: (s?.key ?? 0) + 1 }));
   const openLine = (category: SetupCategory) => {
     const lines = setupLines(gear.loadError ? null : gear.gear);
     const filled = category === 'racket' ? !!lines.racket : !!lines.string;
@@ -225,7 +225,9 @@ function SetupRegister({ activeName }: GearRegisterProps) {
           category={sheet.category}
           gear={gear}
           // The two sheets swap, never stack.
-          onChange={() => openAdd(sheet.category, true)}
+          // A racket change keeps the old frame as a visible spare; a string
+          // change replaces, because the card has no spare line for strings.
+          onChange={() => openAdd(sheet.category, true, sheet.category === 'string' ? setupLines(gear.gear).string?.id : undefined)}
           onAddSpare={() => openAdd('racket', false)}
         />
       )}
@@ -238,6 +240,7 @@ function SetupRegister({ activeName }: GearRegisterProps) {
           gear={gear}
           picks={picks}
           makeActive={sheet.makeActive}
+          replacesId={sheet.replacesId}
         />
       )}
     </>

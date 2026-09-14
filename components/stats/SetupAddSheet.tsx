@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
@@ -28,6 +28,14 @@ export interface SetupAddSheetProps {
    * spare". The saved panel's switch can flip it either way afterwards.
    */
   makeActive: boolean;
+  /**
+   * Strings only: "Change the string" REPLACES the string on the card. The card
+   * shows one string, so an old one kept behind the new one would be invisible
+   * yet still vote in the club tally and count toward the bag cap. The new
+   * string is added first and the old one removed after, so a failed add never
+   * costs the member the string they have.
+   */
+  replacesId?: string;
 }
 
 /**
@@ -47,7 +55,7 @@ export interface SetupAddSheetProps {
  * Mount it with a fresh `key` per opening (the register does): every piece of
  * state here describes one visit, and a remount is the whole reset.
  */
-export default function SetupAddSheet({ open, onClose, category, gear, picks, makeActive }: SetupAddSheetProps) {
+export default function SetupAddSheet({ open, onClose, category, gear, picks, makeActive, replacesId }: SetupAddSheetProps) {
   const t = useTranslations('stats.gear.setup');
   const tGear = useTranslations('stats.gear');
   const tHub = useTranslations('valueHub');
@@ -116,6 +124,8 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
     return category === 'string' ? stringSpecLine(c, (k) => t(k)) : racketRowSpec(c);
   }
 
+  const replacedRef = useRef(false);
+
   async function pick(item: CatalogItem) {
     if (gear.busy || pendingId) return;
     setError(null);
@@ -128,6 +138,12 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
         return;
       }
       setSaved({ catalogId: item.id, prevActiveId });
+      // Once: "Add another string" from the same visit adds, it does not replace again.
+      if (category === 'string' && replacesId && !replacedRef.current) {
+        replacedRef.current = true;
+        const removed = await gear.remove(replacesId);
+        if (!removed.ok) setError(gearFailureMessage(removed.reason, tHub));
+      }
       setTension(null);
       setConfirming(false);
     } finally {
