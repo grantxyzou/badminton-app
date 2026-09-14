@@ -1,7 +1,6 @@
 'use client';
 
 import { createContext, useContext, type ReactNode } from 'react';
-import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 
 /**
@@ -14,62 +13,61 @@ export const StatsSignInContext = createContext<(() => void) | null>(null);
 
 interface LockedCardProps {
   icon?: string;
-  /** Omitted for the headerless cards (Learn, the pick rail) that never had one. */
+  /** Omitted for the headerless cards (the greeting, the pick rail) that never had one. */
   title?: string;
   subtitle?: string;
-  /** What signing in would show, in one sentence. */
-  message: string;
+  /**
+   * What signing in would show, in one sentence, with "Sign in" as the link:
+   * `t.rich('locked', { link: signInLink })` using `useSignInLink()` below.
+   */
+  message: ReactNode;
   /** The card's own layout with no values in it: dashes and empty bars, never invented numbers. */
   children: ReactNode;
 }
 
 /**
+ * The rich-text renderer for a locked sentence's `<link>` chunk: the words
+ * "Sign in" become the control. With no destination (a card rendered on its
+ * own) the words stay plain text rather than a link that goes nowhere.
+ */
+export function useSignInLink() {
+  const onSignIn = useContext(StatsSignInContext);
+  return function SignInLink(chunks: ReactNode) {
+    return onSignIn ? (
+      <button type="button" className="locked-link" onClick={onSignIn}>
+        {chunks}
+      </button>
+    ) : (
+      <>{chunks}</>
+    );
+  };
+}
+
+/**
  * A Stats card this device is not allowed to fill (the server answered 403:
- * no session for the name). Grant, 2026-09-14: keep the card, show what a
- * populated one would look like, and give "Sign in" real weight on each card.
+ * no session for the name). Grant, 2026-09-14: keep the card and show what a
+ * populated one would look like.
  *
  * Built from the existing locked material (`.glass-card.is-locked`, the same
  * flat surface WhereYouSitCard uses for a private comparison) so a locked card
  * reads as withheld rather than loading. The preview is `aria-hidden`: it is
- * shape, not content, and a screen reader gets the sentence and the button.
+ * shape, not content, and a screen reader gets the sentence and its link.
  *
- * The button is `cc-btn-primary`, deliberately NOT the ghost that EmptyState
- * prescribes. An empty card has nothing to do about it; a locked card has one
- * thing to do, and it is the point of the card.
+ * The way in is the words "Sign in" inside the sentence, as a link. Two louder
+ * versions came first and were both too much down a whole tab: a full-width
+ * button per card ("too many sign in all over the page"), then a chip in each
+ * header ("take those tags out. Hyperlink the text instead").
  */
 export default function LockedCard({ icon, title, subtitle, message, children }: LockedCardProps) {
-  const t = useTranslations('stats');
-  const onSignIn = useContext(StatsSignInContext);
   return (
-    <section className="glass-card is-locked p-5 flex flex-col gap-4" aria-label={title ?? message}>
-      {title && (
-        <CardHeader
-          icon={icon}
-          title={title}
-          subtitle={subtitle}
-          badge={
-            <span className="locked-pill">
-              <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-xs)' }}>
-                lock
-              </span>
-              {t('lockedPill')}
-            </span>
-          }
-        />
-      )}
+    <section className="glass-card is-locked p-5 flex flex-col gap-4" aria-label={title}>
+      {title && <CardHeader icon={icon} title={title} subtitle={subtitle} />}
       <div className="locked-preview" aria-hidden="true">
         {children}
       </div>
-      <div className="locked-unlock">
-        <p className="fs-base" style={{ margin: '0', color: 'var(--text-secondary)' }}>
-          {message}
-        </p>
-        {onSignIn && (
-          <button type="button" className="cc-btn cc-btn-primary cc-btn-lg locked-unlock-cta" onClick={onSignIn}>
-            {t('signIn')}
-          </button>
-        )}
-      </div>
+      <p className="fs-base" style={{ margin: '0', color: 'var(--text-secondary)' }}>
+        {message}
+      </p>
     </section>
   );
 }

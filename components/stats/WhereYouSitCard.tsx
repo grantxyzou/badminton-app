@@ -8,7 +8,7 @@ import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { SKILLS, topStrengths, workOnNext, type Rating } from '@/lib/assessment';
 import type { Band } from '@/lib/clubBands';
 import type { UseCheckIn } from './useCheckIn';
-import LockedCard, { PreviewMeter } from './LockedCard';
+import LockedCard, { PreviewMeter, useSignInLink } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -51,6 +51,7 @@ export interface WhereYouSitCardProps {
 
 export default function WhereYouSitCard({ activeName, promptOpen = false, checkIn }: WhereYouSitCardProps) {
   const t = useTranslations('stats.club');
+  const signInLink = useSignInLink();
   const [bands, setBands] = useState<ClubBands | null>(null);
   const tStats = useTranslations('stats');
   const [status, setStatus] = useState<Load>('loading');
@@ -107,7 +108,7 @@ export default function WhereYouSitCard({ activeName, promptOpen = false, checkI
   // its own shape with nothing in it, and Sign in carries the weight.
   if (status === 'forbidden' || historyStatus === 'forbidden') {
     return (
-      <LockedCard icon="groups" title={t('title')} message={t('locked')}>
+      <LockedCard icon="groups" title={t('title')} message={t.rich('locked', { link: signInLink })}>
         {SKILLS.slice(0, 2).map((s) => <PreviewMeter key={s.key} label={s.label} />)}
       </LockedCard>
     );

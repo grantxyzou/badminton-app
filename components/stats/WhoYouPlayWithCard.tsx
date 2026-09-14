@@ -6,7 +6,7 @@ import CardHeader from '@/components/primitives/CardHeader';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
-import LockedCard, { PreviewRow } from './LockedCard';
+import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -35,6 +35,7 @@ interface Partner {
 
 export default function WhoYouPlayWithCard({ activeName }: WhoYouPlayWithCardProps) {
   const t = useTranslations('stats.partners');
+  const signInLink = useSignInLink();
   // Shared copy for the refusal, so the three surfaces that can hit a 403 all
   // say the same thing.
   const tStats = useTranslations('stats');
@@ -77,7 +78,7 @@ export default function WhoYouPlayWithCard({ activeName }: WhoYouPlayWithCardPro
   // its own shape with nothing in it, and Sign in carries the weight.
   if (status === 'forbidden') {
     return (
-      <LockedCard icon="group" title={t('title')} subtitle={t('subtitle')} message={t('locked')}>
+      <LockedCard icon="group" title={t('title')} subtitle={t('subtitle')} message={t.rich('locked', { link: signInLink })}>
         <PreviewRow icon="person" width="58%" />
         <PreviewRow icon="person" width="44%" />
         <PreviewRow icon="person" width="32%" />

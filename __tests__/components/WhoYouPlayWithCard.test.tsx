@@ -5,6 +5,13 @@ import { NextIntlClientProvider } from 'next-intl';
 import WhoYouPlayWithCard from '../../components/stats/WhoYouPlayWithCard';
 import enMessages from '../../messages/en.json';
 
+/** A locked card's sentence, matched whole: its "Sign in" is a link element, so
+ *  the text is split across nodes and a plain text query cannot see it. */
+const sentence = (raw: string) => {
+  const plain = raw.replace(/<\/?link>/g, '');
+  return (_: string, el: Element | null) => el?.tagName === 'P' && el.textContent === plain;
+};
+
 /**
  * `/api/stats/partners` gained an owner-or-admin gate, so the card now has
  * THREE non-happy outcomes that must not look alike: refused (403), failed
@@ -65,7 +72,7 @@ describe('WhoYouPlayWithCard — refused, failed and empty are three different t
     // the card stays so the tab does not look empty (the banner has Sign in).
     mockPartners(403, { error: 'forbidden' });
     renderCard();
-    expect(await screen.findByText('Sign in to see who you play with most.')).toBeDefined();
+    expect(await screen.findByText(sentence(enMessages.stats.partners.locked))).toBeDefined();
     expect(screen.queryByText(LOAD_ERROR_COPY)).toBeNull();
     expect(screen.queryByText(EMPTY_COPY)).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();

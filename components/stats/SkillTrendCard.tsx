@@ -16,7 +16,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import CardHeader from '@/components/primitives/CardHeader';
 import ListRow from '@/components/primitives/ListRow';
-import LockedCard, { PreviewMeter } from './LockedCard';
+import LockedCard, { PreviewMeter, useSignInLink } from './LockedCard';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -70,6 +70,7 @@ function Delta({ value }: { value: number }) {
 
 export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   const t = useTranslations('stats');
+  const signInLink = useSignInLink();
   // Shared owner of the identity → preview-name chain. Subscribing (rather
   // than resolving once at mount) is what keeps this card from rendering the
   // PREVIOUS member's trend beside the new member's other cards after a
@@ -116,7 +117,7 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
   // its own shape with nothing in it, and Sign in carries the weight.
   if (checkIn?.status === 'forbidden') {
     return (
-      <LockedCard icon="trending_up" title={t('assess.heroTitle')} message={t('assess.locked')}>
+      <LockedCard icon="trending_up" title={t('assess.heroTitle')} message={t.rich('assess.locked', { link: signInLink })}>
         {SKILLS.slice(0, 4).map((s) => <PreviewMeter key={s.key} label={s.label} />)}
       </LockedCard>
     );
