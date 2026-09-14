@@ -7,17 +7,18 @@
  * response that reveals nothing about whether the name exists, and (c) the fact
  * that asking accomplishes nothing on its own — a human still has to approve.
  *
- * The response carries a SECRET held only by the asking device. Approval is by
- * name and deliberately blind — Grant taps "let them in" without inspecting a
- * device string he has no way to verify — so without this, approving a request
- * would sign in whoever asked next rather than the person who asked. See
+ * The response carries a SECRET held only by the asking device. Approval is
+ * deliberately blind — Grant taps "let them in" without inspecting a device
+ * string he has no way to verify — so without this, approving a request would
+ * sign in whoever asked next rather than the person who asked. See
  * lib/accessRequest.ts.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
-import { issueAccessRequest, isPending } from '@/lib/accessRequest';
+import { issueAccessRequest, MAX_OPEN_REQUESTS } from '@/lib/accessRequest';
+import { updateAccessRequests } from '@/lib/accessRequestStore';
 import { sendPushToMembers } from '@/lib/push';
 import type { Member } from '@/lib/types';
 import { resolveGroupId } from '@/lib/groupContext';
@@ -45,35 +46,28 @@ export async function POST(req: NextRequest) {
     const { secret, stored } = issueAccessRequest();
 
     if (memberId) {
-      const container = getContainer('members');
-      const { resource: member } = await container.item(memberId, memberId).read<Member>();
-      if (member) {
-        /**
-         * FIRST ASK WINS. Do not overwrite a request that is still open.
-         *
-         * `accessRequest` is a single object, and approval is by NAME — the
-         * admin sees "Lin" and taps, with no way to tell which device is
-         * behind it. So an overwrite hands the approval to whoever asked LAST:
-         * Lin asks, anyone who knows the name (they are enumerable through
-         * GET /api/members) asks again before Grant taps, and the approval
-         * mints a session for the second device. Lin's own poll then reports
-         * `none`, indistinguishable from an expired request.
-         *
-         * That is full account takeover — the claim mints `member_session`,
-         * which `PATCH /api/members/me` accepts as proof for a first-PIN set —
-         * and it defeats the exact property this file's header calls
-         * load-bearing. Every test wrote one request per name, so none of them
-         * could see it.
-         *
-         * The response shape is unchanged: the second caller still gets a
-         * secret and a 200, it simply will never match. Refusing loudly here
-         * would leak that a request is already open for this name.
-         */
-        if (isPending(member.accessRequest)) {
-          return NextResponse.json({ ok: true, secret });
-        }
-        await container.items.upsert({ ...member, accessRequest: stored });
+      /**
+       * EVERY ASK IS ITS OWN ENTRY. Nobody displaces anybody.
+       *
+       * This used to be one `accessRequest` per member, and it was lost both
+       * ways round. Overwriting handed Grant's approval to whoever asked LAST;
+       * the "first ask wins" fix that replaced it handed it to whoever asked
+       * FIRST — a stranger who knows the name (enumerable via GET
+       * /api/members) asks before Lin does, Lin's request is silently not
+       * stored, and approving "Lin" signs the stranger in (security finding
+       * F2). With a list, both requests stand, the admin sees two, and two is
+       * exactly when approval is refused — see app/api/admin/access-requests.
+       *
+       * Past MAX_OPEN_REQUESTS the new ask is not stored. The response is the
+       * same either way: refusing loudly would say a request is already open.
+       */
+      const result = await updateAccessRequests(memberId, (open) =>
+        open.length >= MAX_OPEN_REQUESTS ? null : [...open, stored],
+      );
 
+      if (result) {
+        const { member } = result;
+        const container = getContainer('members');
         /**
          * Tell the admins. Best-effort and never able to fail the request —
          * same posture as the stringing notifier. If push is unconfigured or
@@ -82,6 +76,8 @@ export async function POST(req: NextRequest) {
          *
          * No money and no secret in the body, obviously; a lock screen is a
          * public surface. The name is the whole point of the notification.
+         * The tag is per member, so a second ask replaces the banner rather
+         * than stacking another.
          */
         try {
           const { resources: admins } = await container.items

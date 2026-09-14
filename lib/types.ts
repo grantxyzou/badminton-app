@@ -241,10 +241,14 @@ export interface Member {
    * `pinHash`, this is a STRIP-CANARY — never send it to a client.
    */
   recoveryCode?: { hash: string; expiresAt: number };
-  /** An open "let me in" request from a device that cannot sign in. Hashed
-   *  secret + expiry, and `approvedAt` once an admin says yes — see
-   *  lib/accessRequest.ts. Cleared when claimed or declined. */
+  /** LEGACY: the single "let me in" request, from before one-per-device.
+   *  Read-tolerated by `openRequests()` in lib/accessRequest.ts, never written —
+   *  the next write replaces it with `accessRequests`. Kept for rollback. */
   accessRequest?: StoredAccessRequest;
+  /** Open "let me in" requests, one per asking device. Each is a hashed secret
+   *  + expiry + id, and `approvedAt` once an admin says yes — see
+   *  lib/accessRequest.ts. Emptied when one is claimed or the admin clears them. */
+  accessRequests?: StoredAccessRequest[];
   /**
    * This person strings rackets. Deliberately NOT tied to `role`.
    *
