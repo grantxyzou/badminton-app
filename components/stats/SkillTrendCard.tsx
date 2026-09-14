@@ -344,7 +344,7 @@ function SkillAnchorSheet({ skillKey, value, onClose }: { skillKey: string; valu
   const skill = SKILL_BY_KEY.get(skillKey);
   if (!skill) return null;
   return (
-    <BottomSheet open onClose={onClose} ariaLabel={skill.label} maxHeight="75vh">
+    <BottomSheet open onClose={onClose} ariaLabel={skill.label}>
       <div
         style={{
           background: 'var(--glass-bg)',

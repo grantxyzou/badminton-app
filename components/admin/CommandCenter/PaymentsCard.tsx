@@ -805,8 +805,6 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
         open={actionTarget !== null}
         onClose={() => { setActionTarget(null); setActionError(''); }}
         ariaLabel="Player actions"
-        maxHeight="50vh"
-        width="narrow"
       >
         <BottomSheetHeader>
           <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{actionTarget?.name ?? 'Player'}</span>

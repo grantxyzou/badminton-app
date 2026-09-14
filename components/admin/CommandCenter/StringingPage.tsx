@@ -395,8 +395,6 @@ export default function StringingPage({ onBack }: Props) {
         setDeleteError(false);
       }}
       ariaLabel={t('actions.title')}
-      maxHeight="50vh"
-      width="narrow"
     >
       <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>

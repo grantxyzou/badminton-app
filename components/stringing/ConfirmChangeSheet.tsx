@@ -99,8 +99,6 @@ export default function ConfirmChangeSheet({
       open={open}
       onClose={onClose}
       ariaLabel={t('confirm.title')}
-      maxHeight="70vh"
-      width="narrow"
     >
       <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('confirm.title')}</span>

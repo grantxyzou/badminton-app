@@ -433,8 +433,6 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
           open={confirmingAdvance}
           onClose={() => setConfirmingAdvance(false)}
           ariaLabel="Advance to next week"
-          maxHeight="50vh"
-          width="narrow"
         >
           <BottomSheetHeader>
             <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>Advance to next week</span>

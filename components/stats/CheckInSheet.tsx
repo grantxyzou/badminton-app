@@ -192,7 +192,7 @@ export default function CheckInSheet({
   });
 
   return (
-    <BottomSheet open onClose={onClose} ariaLabel={t('assess.checkInTitle')} maxHeight="85vh">
+    <BottomSheet open onClose={onClose} ariaLabel={t('assess.checkInTitle')}>
       <div
         style={{
           background: 'var(--glass-bg)',

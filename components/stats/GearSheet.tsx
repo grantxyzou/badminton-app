@@ -292,7 +292,7 @@ export default function GearSheet({
   const showControls = loaded && !loadError && catalog.length > 0;
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={heading} maxHeight="92dvh">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={heading}>
       <BottomSheetHeader>
         {/* 20px display bold. This is the sheet's own heading, not a card
             title — at `fs-lg`/600 it read as a label on the search field

@@ -29,7 +29,6 @@ export default function ReleaseNotesSheet({ open, releases, onClose }: ReleaseNo
       open={open}
       onClose={handleClose}
       ariaLabel={t('sheetLabel')}
-      width="full"
       className="terminal-sheet"
     >
       <BottomSheetHeader bare className="terminal-titlebar flex items-center justify-between">

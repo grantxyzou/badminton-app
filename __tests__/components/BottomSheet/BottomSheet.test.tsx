@@ -179,28 +179,19 @@ describe('BottomSheet — baked-in defaults (issue #87)', () => {
     expect(body.className).not.toContain('p-5');
   });
 
-  it('width maps to a max-width class, default being the reading width', () => {
-    const { rerender } = render(
-      <BottomSheet open onClose={vi.fn()} ariaLabel="Test sheet">
+  // One size for every sheet: the primitive sets no size of its own, so the
+  // width and height cap come only from `.bottom-sheet` in globals.css
+  // (jsdom applies no stylesheet — sheet-size-canary pins the CSS itself).
+  it('sets no width class and no inline height cap — the size is the stylesheet\'s', () => {
+    render(
+      <BottomSheet open onClose={vi.fn()} ariaLabel="Test sheet" className="terminal-sheet">
         <BottomSheetBody>content</BottomSheetBody>
       </BottomSheet>,
     );
-    expect(document.body.querySelector('[role="dialog"]')!.className).toContain('max-w-lg');
-
-    rerender(
-      <BottomSheet open onClose={vi.fn()} ariaLabel="Test sheet" width="narrow">
-        <BottomSheetBody>content</BottomSheetBody>
-      </BottomSheet>,
-    );
-    expect(document.body.querySelector('[role="dialog"]')!.className).toContain('max-w-sm');
-
-    rerender(
-      <BottomSheet open onClose={vi.fn()} ariaLabel="Test sheet" width="full">
-        <BottomSheetBody>content</BottomSheetBody>
-      </BottomSheet>,
-    );
-    const cls = document.body.querySelector('[role="dialog"]')!.className;
-    expect(cls).not.toContain('max-w-lg');
-    expect(cls).not.toContain('max-w-sm');
+    const dialog = document.body.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog.className).toContain('bottom-sheet');
+    expect(dialog.className).toContain('terminal-sheet');
+    expect(dialog.className).not.toMatch(/max-w-|mx-auto/);
+    expect(dialog.style.maxHeight).toBe('');
   });
 });

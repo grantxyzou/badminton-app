@@ -107,7 +107,7 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
     (!hasPin || currentPin.length === 4);
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={title} maxHeight="75vh">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={title}>
       <BottomSheetHeader>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{title}</span>
         <button

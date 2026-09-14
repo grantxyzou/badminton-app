@@ -184,7 +184,6 @@ export default function SteppedGameLoggerSheet({
       open={open}
       onClose={onClose}
       ariaLabel={t('title')}
-      maxHeight="85vh"
     >
       <BottomSheetHeader>
         <h2 className="bpm-h3" style={{ margin: '0' }}>{t('title')}</h2>

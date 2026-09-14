@@ -75,7 +75,7 @@ export default function DeleteAccountSheet({
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')} width="narrow">
+    <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')}>
       <BottomSheetBody>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           <div>

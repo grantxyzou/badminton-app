@@ -47,8 +47,9 @@ state of its own except the one thing it exists to own (below).
     that only fires when the strict pass found nothing — a member typed
     "helbatec" for Halbertec and got an empty list indistinguishable from an
     absent row. Digits never get typo tolerance: one edit turns 5000 into 9000
-    and N65 into N68. Full height (`92dvh` — `vh`
-    ignores collapsible mobile chrome and clips the sheet).
+    and N65 into N68. It opens at the app's one sheet cap (`--sheet-max-h`, 88dvh —
+    `dvh` because `vh` ignores collapsible mobile chrome and clips the sheet;
+    it had its own 92dvh until every sheet was made one size, 2026-09-14).
     **It BROWSES and nothing else** (gear-sheet redesign, 2026-08-27):
     - **Brand is a GROUP HEADING with a count** (`YONEX · 21`), not the first
       line of every row — it printed five times running under a filter chip
