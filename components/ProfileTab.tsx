@@ -928,7 +928,10 @@ interface SettingsRow {
 
 function SettingsList({ rows }: { rows: SettingsRow[] }) {
   return (
-    <div className="glass-card-soft" style={{ padding: '0', overflow: 'hidden' }}>
+    // Page-level card, so the field-card glass — not `.glass-card-soft`, the
+    // flat bordered style for rows INSIDE a card, which made Profile read as
+    // frosted plastic beside every other tab (Grant, 2026-09-14).
+    <div className="glass-card is-flush" style={{ overflow: 'hidden' }}>
       <ul style={{ listStyle: 'none', margin: '0', padding: '0' }}>
         {rows.map((row, idx) => (
           <li key={row.label} style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--divider)' }}>
@@ -1008,7 +1011,7 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin }: Pro
 
   return (
     <div
-      className="glass-card-soft"
+      className="glass-card"
       style={{
         padding: 'var(--space-5)',
         display: 'flex',
