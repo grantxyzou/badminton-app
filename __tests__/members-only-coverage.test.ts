@@ -23,6 +23,7 @@ import { GET as shopGET } from '@/app/api/stringing/shop/route';
 import { GET as stringsGET } from '@/app/api/stringing/strings/route';
 import { GET as pricingGET } from '@/app/api/stringing/pricing/route';
 import { GET as clubGearGET } from '@/app/api/stats/club/gear/route';
+import { GET as clubTensionGET } from '@/app/api/stats/club/tension/route';
 import { GET as recommendGET } from '@/app/api/recommend/route';
 
 /**
@@ -66,6 +67,7 @@ const ROUTES: Record<string, Entry> = {
   'stringing/strings': GATED,
   'stringing/pricing': GATED,
   'stats/club/gear': GATED,
+  'stats/club/tension': GATED,
   recommend: GATED,
 
   // ── Already refused to a signed-out caller ───────────────────────────────
@@ -247,6 +249,7 @@ describe('behaviour of the gated routes', () => {
     ['stringing/strings', stringsGET as Handler, 'http://localhost/api/stringing/strings'],
     ['stringing/pricing', pricingGET as Handler, 'http://localhost/api/stringing/pricing'],
     ['stats/club/gear', clubGearGET as Handler, 'http://localhost/api/stats/club/gear'],
+    ['stats/club/tension', clubTensionGET as Handler, 'http://localhost/api/stats/club/tension?frame=racket-yonex-astrox-100zz'],
     ['recommend', recommendGET as Handler, 'http://localhost/api/recommend?name=Lin'],
   ];
 

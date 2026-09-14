@@ -4630,39 +4630,63 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
 /* Everything under the head lines up with the name, past the check glyph. */
 .setup-saved-indent { padding-left: var(--space-7); display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
 
-.setup-stepper {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-05);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  border: 1px solid var(--glass-border);
-}
-.setup-stepper button {
+/* Tension as a field (design 2a screen 03): steppers either side of a real
+   numeric input drawn in its focused state, so it reads as something to type
+   into rather than a value. The field is the one place green edges a control
+   before it is touched: the keypad is already open on it. */
+.setup-saved-indent--stack { flex-direction: column; align-items: stretch; gap: var(--space-3); }
+.setup-action--stack { flex-direction: column; align-items: stretch; gap: var(--space-3); }
+.setup-tension-label { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.setup-tension { display: flex; flex-direction: column; gap: var(--space-2); }
+.setup-tension-row { display: flex; align-items: stretch; gap: var(--space-3); }
+.setup-tension-step {
+  flex: 0 0 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
+  min-height: 44px;
   border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--accent);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+  color: var(--text-secondary);
   cursor: pointer;
+  transition: transform 100ms var(--ease-glass);
 }
-.setup-stepper button:disabled { color: var(--text-muted); opacity: 0.5; pointer-events: none; }
-.setup-stepper-value {
-  min-width: 2ch;
-  text-align: center;
+.setup-tension-step--up { background: var(--highlight-green); border-color: var(--inner-card-green-border); color: var(--accent); }
+.setup-tension-step:active { transform: scale(0.97); }
+.setup-tension-step:disabled { opacity: 0.5; pointer-events: none; }
+.setup-tension-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+  border: 1px solid var(--input-focus-border);
+  box-shadow: 0 0 0 3px var(--input-focus-ring);
+  cursor: text;
+}
+.setup-tension-field input {
+  width: 3ch;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  text-align: right;
   font-family: var(--font-mono);
-  font-size: var(--fs-md);
-  font-weight: 600;
+  font-size: var(--fs-stat-lg);
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
+  caret-color: var(--accent);
 }
-/* A suggested number nobody has chosen yet: shown so the stepper has somewhere
-   to start, muted so it cannot be mistaken for what the member said. */
-.setup-stepper-value--suggested { color: var(--text-muted); font-weight: 400; }
+.setup-tension-field input::placeholder { color: var(--text-muted); font-weight: 400; }
+.setup-tension-unit { font-size: var(--fs-base); color: var(--text-secondary); }
+.setup-tension-hint { margin: 0; font-size: var(--fs-xs); line-height: var(--lh-normal); color: var(--text-muted); }
+.setup-tension-warn { color: var(--sev-warn); }
 
 /* One management action per row in a line sheet. */
 .setup-actions { display: flex; flex-direction: column; gap: var(--space-2); }

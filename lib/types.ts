@@ -457,11 +457,18 @@ export interface RacketFeel {
   weight?: FeelWeight;
 }
 
+/** One restring, written by `lib/stringLog.ts`. Every field past `catalogId`
+ *  is additive (2026-09-14); `tensionLbs` is absent until one is recorded. */
 export interface StringLogEntry {
   at: string;
-  tensionLbs: number;
+  tensionLbs?: number;
   /** CatalogItem.id for the string used, or null if not from catalog. */
   catalogId: string | null;
+  stringItemId?: string;
+  stringLabel?: string;
+  /** The racket in play when it was strung. */
+  racketItemId?: string;
+  racketCatalogId?: string | null;
 }
 
 /**

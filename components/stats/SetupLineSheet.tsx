@@ -4,7 +4,8 @@ import { Fragment, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '../BottomSheet';
-import TensionStepper from './TensionStepper';
+import TensionField, { ratedRange } from './TensionField';
+import { useClubTension } from './useClubTension';
 import RacketFeelChips from './RacketFeelChips';
 import { useCatalog } from './useCatalog';
 import type { GearResult, UseGear } from './useGear';
@@ -50,6 +51,11 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
 
   const lines = setupLines(gear.loadError ? null : gear.gear);
   const item = category === 'racket' ? lines.racket : lines.string;
+  // The string's frame: the racket on the card.
+  const racketCatalog = useCatalog('racket');
+  const frameId = category === 'string' ? lines.racket?.catalogId ?? null : null;
+  const frameRow = frameId ? racketCatalog.items.find((c) => c.id === frameId) : undefined;
+  const clubTension = useClubTension(frameId);
   const row = item?.catalogId ? catalog.items.find((c) => c.id === item.catalogId) : undefined;
 
   const label = category === 'racket' ? tGear('catRacket') : tGear('catString');
@@ -114,19 +120,26 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
                 </>
               ) : (
                 <>
-                  <div className="setup-action">
-                    <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)', color: 'var(--text-muted)' }}>tune</span>
-                    <span className="setup-action-label">{t('tension')}</span>
-                    <TensionStepper value={tension ?? item.tensionLbs ?? null} onChange={setTension} disabled={gear.busy || !gear.online} />
-                    <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{tGear('lb')}</span>
-                    <button
-                      type="button"
-                      className="setup-link"
-                      disabled={tension === null || tension === item.tensionLbs || gear.busy || !gear.online}
-                      onClick={() => { if (tension !== null) void run(() => gear.setTension(item, tension), () => setTension(null)); }}
-                    >
-                      {t('saveTension')}
-                    </button>
+                  <div className="setup-action setup-action--stack">
+                    <span className="setup-tension-label">
+                      <span className="setup-action-label">{t('tension')}</span>
+                      <button
+                        type="button"
+                        className="setup-link"
+                        disabled={tension === null || tension === item.tensionLbs || gear.busy || !gear.online}
+                        onClick={() => { if (tension !== null) void run(() => gear.setTension(item, tension), () => setTension(null)); }}
+                      >
+                        {t('saveTension')}
+                      </button>
+                    </span>
+                    <TensionField
+                      label={t('tension')}
+                      value={tension ?? item.tensionLbs ?? null}
+                      onChange={setTension}
+                      rated={ratedRange(frameRow?.attributes)}
+                      club={clubTension.band}
+                      disabled={gear.busy || !gear.online}
+                    />
                   </div>
                   <ActionRow icon="swap_horiz" label={t('changeString')} onClick={onChange} disabled={!gear.online} />
                 </>

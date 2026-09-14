@@ -7,7 +7,8 @@ import EmptyState from '@/components/primitives/EmptyState';
 import Switch from '@/components/primitives/Switch';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '../BottomSheet';
 import RacketThumb from './RacketThumb';
-import TensionStepper from './TensionStepper';
+import TensionField, { ratedRange } from './TensionField';
+import { useClubTension } from './useClubTension';
 import RacketFeelChips from './RacketFeelChips';
 import { useCatalog } from './useCatalog';
 import type { UseGear } from './useGear';
@@ -17,6 +18,7 @@ import { isOffered } from '@/lib/catalogOffer';
 import { gearFailureMessage } from '@/lib/gearFailureMessage';
 import { blankStringPairing, racketRowSpec, racketSpecLine, setupLines, stringSpecLine, type SetupCategory } from '@/lib/gearSetup';
 import { hasFeel } from '@/lib/racketFeel';
+import { recordEngagement } from '@/lib/engagement';
 import type { CatalogItem, GearItem, RacketFeel } from '@/lib/types';
 
 export interface SetupAddSheetProps {
@@ -67,6 +69,12 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
   const tHub = useTranslations('valueHub');
   const tRecovery = useTranslations('recovery');
   const catalog = useCatalog(category);
+  // The frame a string goes on is the racket in play: its rated window bounds
+  // the tension steppers and names the club's band.
+  const racketCatalog = useCatalog('racket');
+  const frameId = category === 'string' ? gear.active?.catalogId ?? null : null;
+  const frameRow = frameId ? racketCatalog.items.find((c) => c.id === frameId) : undefined;
+  const clubTension = useClubTension(frameId);
   // The browse list and its count: a withdrawn row stays resolvable (a saved
   // racket still finds its specs) but is never offered to someone new.
   const offered = useMemo(() => catalog.items.filter(isOffered), [catalog.items]);
@@ -267,17 +275,24 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
         </div>
         {category === 'string' ? (
           <>
-            <div className="setup-saved-indent">
-              <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('strungAt')}</span>
-              <TensionStepper value={tension} suggested={suggestedLbs} onChange={setTension} disabled={!savedItem || gear.busy} />
-              <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{tGear('lb')}</span>
-              <button type="button" className="setup-link" style={{ marginLeft: 'auto' }} onClick={() => { setTension(null); onClose(); }} disabled={gear.busy}>
-                {t('dontKnow')}
-              </button>
+            <div className="setup-saved-indent setup-saved-indent--stack">
+              <span className="setup-tension-label">
+                <span className="fs-sm" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{t('strungAt')}</span>
+                <button type="button" className="setup-link" onClick={() => { setTension(null); recordEngagement('tension_skipped', { catalogId: saved?.catalogId ?? undefined }); onClose(); }} disabled={gear.busy}>
+                  {t('dontKnow')}
+                </button>
+              </span>
+              <TensionField
+                label={t('strungAt')}
+                value={tension}
+                suggested={suggestedLbs}
+                onChange={setTension}
+                rated={ratedRange(frameRow?.attributes)}
+                club={clubTension.band}
+                autoFocus
+                disabled={!savedItem || gear.busy}
+              />
             </div>
-            <p className="fs-xs" style={{ margin: 0, paddingLeft: 'var(--space-7)', color: 'var(--text-muted)', lineHeight: 'var(--lh-normal)' }}>
-              {t('tensionHelp')}
-            </p>
           </>
         ) : (
           <div className="setup-saved-indent">

@@ -128,8 +128,10 @@ describe('SetupAddSheet — a tap saves, and the row expands with the one follow
     render(<Harness category="string" initial={doc([])} picks={picksWith({ string: stringPick })} spies={{ setTension }} onClose={onClose} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Yonex BG65 Ti' }));
     await screen.findByText('Saved');
-    // The pairing's 26 is shown as a starting point only.
-    expect(screen.getByText('26').className).toContain('suggested');
+    // The pairing's 26 is shown as a starting point only: a placeholder, not a value.
+    const field = screen.getByRole('textbox', { name: 'Strung at' }) as HTMLInputElement;
+    expect(field.value).toBe('');
+    expect(field.placeholder).toBe('26');
     fireEvent.click(screen.getByRole('button', { name: 'Raise tension' }));
     fireEvent.click(screen.getByRole('button', { name: 'Raise tension' }));
     expect(setTension).not.toHaveBeenCalled();
@@ -145,8 +147,9 @@ describe('SetupAddSheet — a tap saves, and the row expands with the one follow
     render(<Harness category="string" initial={doc([])} picks={picksWith({ string: stringPick })} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Yonex BG65 Ti' }));
     await screen.findByText('Saved');
-    expect(screen.queryByText('23')).toBeNull();
-    expect(screen.getByText('–')).toBeTruthy();
+    const field = screen.getByRole('textbox', { name: 'Strung at' }) as HTMLInputElement;
+    expect(field.placeholder).toBe('–');
+    expect(field.value).toBe('');
   });
 
   it('a racket added as a spare can be made the one in play from its saved row', async () => {
