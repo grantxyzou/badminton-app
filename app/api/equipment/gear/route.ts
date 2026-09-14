@@ -9,6 +9,7 @@ import { FIT_GOALS, FIT_SWINGS, FIT_ARM_COMFORTS, FIT_GRIPS, type PlayerGear, ty
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { resolveGroupId } from '@/lib/groupContext';
 import { parseFeel, hasFeel } from '@/lib/racketFeel';
+import { parseItemLook, hasItemLook, type ItemLook } from '@/lib/racketCustom';
 import { logStringAdded, logTension } from '@/lib/stringLog';
 
 export const dynamic = 'force-dynamic';
@@ -344,7 +345,12 @@ export async function POST(req: NextRequest) {
       if (typed) {
         // A catalog row has real specs, so the member's feel answers for the
         // typed name are dropped rather than stored beside them.
-        const { feel: _feel, ...keep } = typed;
+        // A catalog row has real specs and a real paint job, so the member's
+        // feel answers and any typed-only paint go; string and wrap stay theirs.
+        const { feel: _feel, look: typedLook, ...keep } = typed;
+        if (typedLook?.string || typedLook?.wrap) {
+          (keep as GearItem).look = { ...(typedLook.string ? { string: typedLook.string } : null), ...(typedLook.wrap ? { wrap: typedLook.wrap } : null) };
+        }
         const items = existing.map((i) => (i.id === typed.id ? { ...keep, catalogId, category: incomingCategory, label } : i));
         const activeRacketId = body.makeActive === true && incomingCategory === 'racket'
           ? typed.id
@@ -475,11 +481,23 @@ export async function PATCH(req: NextRequest) {
       itemFeel = { itemId, feel };
     }
 
+    // How a racket looks: `{ itemId, string?, wrap?, frame?, pattern?, shape? }`.
+    // Validated against the item below (frame, pattern and shape are for a
+    // typed-in racket only), so only the shape of the body is checked here.
+    let itemLook: { itemId: string; raw: Record<string, unknown> } | null = null;
+    if ('itemLook' in body) {
+      const raw = body.itemLook;
+      const lookItemId = raw && typeof raw.itemId === 'string' ? raw.itemId : '';
+      if (!lookItemId || typeof raw !== 'object') return NextResponse.json({ error: 'invalid_look' }, { status: 400 });
+      const { itemId: _lookId, ...rest } = raw as Record<string, unknown>;
+      itemLook = { itemId: lookItemId, raw: rest };
+    }
+
     // activeRacketId is required only when this call isn't setting a
     // preference field — the original PATCH contract ("set my active
     // racket") vs. the new one ("set my format/budget/fit preference"),
     // sharing one verb and one auth gate.
-    if (!activeRacketId && !('playFormat' in body) && !('budgetMaxCad' in body) && !touchedFit && !itemFeel) {
+    if (!activeRacketId && !('playFormat' in body) && !('budgetMaxCad' in body) && !touchedFit && !itemFeel && !itemLook) {
       return NextResponse.json({ error: 'active_racket_required' }, { status: 400 });
     }
 
@@ -498,8 +516,20 @@ export async function PATCH(req: NextRequest) {
         }
         attempt.activeRacketId = activeRacketId;
       }
+      if (itemLook) {
+        const existing = attempt.items ?? prior?.items ?? [];
+        const target = existing.find((i) => i.id === itemLook.itemId);
+        if (!target || (target.category ?? 'racket') !== 'racket') {
+          return { ok: false, response: NextResponse.json({ error: 'racket_not_found' }, { status: 404 }) };
+        }
+        const look: ItemLook | null = parseItemLook(itemLook.raw, !!target.catalogId);
+        if (!look) return { ok: false, response: NextResponse.json({ error: 'invalid_look' }, { status: 400 }) };
+        const { look: _oldLook, ...rest } = target;
+        const nextItem: GearItem = hasItemLook(look) ? { ...rest, look } : rest;
+        attempt.items = existing.map((i) => (i.id === target.id ? nextItem : i));
+      }
       if (itemFeel) {
-        const existing = prior?.items ?? [];
+        const existing = attempt.items ?? prior?.items ?? [];
         const target = existing.find((i) => i.id === itemFeel.itemId);
         // Only a racket the catalog does not have: a catalog row already
         // carries its real specs, and a member's impression must not be
@@ -635,6 +665,7 @@ export async function PUT(req: NextRequest) {
         // item so re-saving a typed-in racket cannot erase what the member
         // said about it.
         ...(matchIndex >= 0 && existing[matchIndex].feel ? { feel: existing[matchIndex].feel } : null),
+        ...(matchIndex >= 0 && existing[matchIndex].look ? { look: existing[matchIndex].look } : null),
       };
 
       // A string's tension moving is the one history this doc keeps: the item

@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '../BottomSheet';
-import { racketSrc } from '@/lib/racketLook';
+import { racketLook, racketSrc } from '@/lib/racketLook';
+import { hasItemLook, modelInputs } from '@/lib/racketCustom';
+import type { ItemLook } from '@/lib/types';
 import { shareOrSaveImage } from '@/lib/shareImage';
 import { recordEngagement } from '@/lib/engagement';
 import { drawSetupShareCanvas, type ShareCanvasContent } from '@/lib/setupShareCanvas';
@@ -21,6 +23,10 @@ export interface SetupShareSheetProps {
   share: SetupShare;
   /** The racket in play's catalog id, for its drawing. */
   racketCatalogId?: string | null;
+  /** The member's string and wrap colours (and a typed racket's paint). When
+   *  set, the card draws a still of the 3D model in those colours instead of
+   *  the catalog pre-render. */
+  racketItemLook?: ItemLook;
 }
 
 /** The card with nothing the server would have added: every club and history
@@ -44,7 +50,7 @@ function localCard(share: SetupShare): ShareCard {
  * IS the exported PNG (the `ReceiptSheet` callback-ref pattern), and "Copy as
  * text" says the same facts, one per line.
  */
-export default function SetupShareSheet({ open, onClose, share, racketCatalogId }: SetupShareSheetProps) {
+export default function SetupShareSheet({ open, onClose, share, racketCatalogId, racketItemLook }: SetupShareSheetProps) {
   const t = useTranslations('stats.gear.setup');
   const tRecovery = useTranslations('recovery');
   const locale = useLocale();
@@ -54,6 +60,22 @@ export default function SetupShareSheet({ open, onClose, share, racketCatalogId 
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [saveHint, setSaveHint] = useState(false);
+  /** The racket picture: the catalog pre-render, or a still of the model in the
+   *  member's own colours once it has rendered. */
+  const [racketImage, setRacketImage] = useState(() => racketSrc(racketCatalogId));
+
+  useEffect(() => {
+    if (!hasItemLook(racketItemLook)) return;
+    let live = true;
+    const { look, tweaks } = modelInputs(racketLook(racketCatalogId), racketItemLook);
+    import('@/lib/racketSnapshot')
+      .then(({ racketSnapshot }) => racketSnapshot(look, tweaks))
+      .then((url) => { if (live && url) setRacketImage(url); })
+      .catch(() => { /* the pre-render stays */ });
+    return () => { live = false; };
+    // Once per opening: the sheet remounts on each open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let live = true;
@@ -125,8 +147,8 @@ export default function SetupShareSheet({ open, onClose, share, racketCatalogId 
       const fonts = (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready ?? Promise.resolve();
       fonts.then(paint).catch(paint);
     };
-    img.src = racketSrc(racketCatalogId);
-  }, [content, racketCatalogId]);
+    img.src = racketImage;
+  }, [content, racketImage]);
 
   async function saveImage() {
     setError(null);
@@ -169,7 +191,7 @@ export default function SetupShareSheet({ open, onClose, share, racketCatalogId 
 
       <BottomSheetBody>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          {content && <canvas key={JSON.stringify(content)} ref={drawCanvas} aria-hidden="true" style={{ display: 'none' }} />}
+          {content && <canvas key={`${JSON.stringify(content)}|${racketImage.length}`} ref={drawCanvas} aria-hidden="true" style={{ display: 'none' }} />}
           {png ? (
             // eslint-disable-next-line @next/next/no-img-element -- a data: URL from the canvas above; next/image cannot optimise it and must not try.
             <img src={png} alt={text} className="setup-share-preview" />

@@ -1,9 +1,9 @@
 /**
- * What each catalog racket looks like, drawn rather than photographed.
+ * What each catalog racket looks like, rendered rather than photographed.
  *
- * One drawing (the design project's racket, front view) painted per model:
- * frame, accent and grip colours from each model's launch colourway, and an
- * isometric head, which every model in the catalog has. It is a likeness, not
+ * One 3D model (Grant's, from the design project "Racket 3D" — see
+ * `lib/racketModel.ts`) painted per model: frame, accent and grip colours from
+ * each model's launch colourway, plus an optional paint pattern and head shape. It is a likeness, not
  * a product photo: colours were researched from maker and retailer pages on
  * 2026-09-14 (157 rackets after that day's catalog check), and a row marked `guessed` had no listing to read from.
  *
@@ -24,6 +24,12 @@ export interface RacketLook {
   grip: string;
   /** No listing was found; the colours follow the series family. */
   guessed?: boolean;
+  /** Where the accent paint sits on the 3D frame (`PATTERNS` in
+   *  lib/racketModel.ts). Absent = the shoulder band. */
+  pattern?: 'shoulder' | 'tips' | 'chevron' | 'crown' | 'plain';
+  /** The head silhouette (`SHAPES`). Absent = isometric, which every current
+   *  catalog racket is. */
+  shape?: 'isometric' | 'oval' | 'boxy';
 }
 
 /* eslint-disable no-restricted-syntax -- product data, not theme: these are the
@@ -193,98 +199,22 @@ export const RACKET_LOOKS: Record<string, RacketLook> = {
   "racket-li-ning-3d-calibar-900-instinct": { colourway: "Black / Gold", frame: "#111111", accent: "#c9a24a", grip: "#111111" },
 };
 
-const STRING = '#f2efe6';
-const TRIM = '#b9c0c6';
 /* eslint-enable no-restricted-syntax */
 
 export function racketLook(catalogId: string | null | undefined): RacketLook {
   return (catalogId && RACKET_LOOKS[catalogId]) || DEFAULT_LOOK;
 }
 
-/** Mix a `#rrggbb` toward black by `amount` (0..1) — the frame's own edge line. */
-function darken(hex: string, amount: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  const ch = (shift: number) => Math.round(((n >> shift) & 255) * (1 - amount)).toString(16).padStart(2, '0');
-  return `#${ch(16)}${ch(8)}${ch(0)}`;
-}
-
-const f = (v: number) => Math.round(v * 100) / 100;
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /**
- * The isometric head as a closed path: a superellipse whose top half is
- * squarer than its bottom (the shoulders an isometric frame is named for) and
- * a touch wider above the centre, tapering into the throat.
+ * An `<img src>` (and canvas `Image.src`) for a racket: the image pre-rendered
+ * from the 3D model (`lib/racketModel.ts`) for that catalog id, or the default
+ * look for a racket the table does not know. Same-origin files under
+ * `public/rackets/`, written by `scripts/render-racket-images.mjs` — so a
+ * canvas that draws one can still export.
  */
-function headPoints(cx: number, cy: number, rx: number, ry: number): Array<[number, number]> {
-  const pts: Array<[number, number]> = [];
-  const STEPS = 72;
-  for (let i = 0; i < STEPS; i++) {
-    const t = (i / STEPS) * Math.PI * 2;
-    const c = Math.cos(t);
-    const s = Math.sin(t); // > 0 is the top of the head
-    const n = s > 0 ? 2.8 : 2.15;
-    const x = rx * (1 + 0.035 * s) * Math.sign(c) * Math.abs(c) ** (2 / n);
-    const y = cy - ry * Math.sign(s) * Math.abs(s) ** (2 / n);
-    pts.push([f(cx + x), f(y)]);
-  }
-  return pts;
-}
-
-const closed = (pts: Array<[number, number]>) => `M${pts.map(([x, y]) => `${x} ${y}`).join('L')}Z`;
-
-/** The top band: the stretch of the frame across the shoulders. */
-function bandPath(pts: Array<[number, number]>): string {
-  const STEPS = pts.length;
-  const from = Math.round(STEPS * 0.1);
-  const to = Math.round(STEPS * 0.4);
-  return `M${pts.slice(from, to + 1).map(([x, y]) => `${x} ${y}`).join('L')}`;
-}
-
-/** The racket as SVG markup in `look`'s colours. Pure; the same input gives the same bytes. */
-export function racketSvg(look: RacketLook): string {
-  const { frame, accent, grip } = look;
-  const edge = darken(frame, 0.45);
-  const CY = 140.4;
-  const outer = headPoints(0, CY, 106, 135);
-  const bed = closed(headPoints(0, CY, 101, 130));
-  const strings: string[] = [];
-  for (let x = -98.44; x <= 98.5; x += 9.844) strings.push(`M${f(x)} 4V277`);
-  for (let y = 14.34; y <= 272; y += 12.605) strings.push(`M-108 ${f(y)}H108`);
-  const head = closed(outer);
-  return [
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-116 -4 232 628">',
-    // Grip, butt cap and trim.
-    `<polygon fill="${grip}" stroke="${darken(grip, 0.35)}" stroke-width="1.2" points="-12.8,620.4 12.8,620.4 11.2,520.4 -11.2,520.4"/>`,
-    `<polygon fill="${frame}" points="-13.2,620.4 13.2,620.4 14.8,610.4 -14.8,610.4"/>`,
-    `<rect fill="${TRIM}" x="-15.4" y="608.8" width="30.8" height="2.8"/>`,
-    `<polygon fill="${accent}" points="-11.4,527.4 11.4,527.4 11.6,520.4 -11.6,520.4"/>`,
-    // Shaft with its two flashes, then the throat.
-    `<polygon fill="${frame}" stroke="${edge}" stroke-width="1" points="-4.2,520.4 4.2,520.4 3.4,305.4 -3.4,305.4"/>`,
-    `<polygon fill="${accent}" points="-3.8,370.4 3.8,370.4 3.8,350.4 -3.8,350.4"/>`,
-    `<polygon fill="${accent}" points="-3.8,393.9 3.8,393.9 3.8,386.9 -3.8,386.9"/>`,
-    `<polygon fill="${frame}" stroke="${edge}" stroke-width="1" points="-9.2,305.4 9.2,305.4 3.6,272 -3.6,272"/>`,
-    // String bed, clipped to the inside of the frame.
-    `<clipPath id="bed"><path d="${bed}"/></clipPath>`,
-    `<path clip-path="url(#bed)" stroke="${STRING}" stroke-width="1.3" fill="none" d="${strings.join('')}"/>`,
-    // Frame: an edge line under the colour, so a white frame still has an outline.
-    `<path fill="none" stroke="${edge}" stroke-width="12" stroke-linejoin="round" d="${head}"/>`,
-    `<path fill="none" stroke="${frame}" stroke-width="9" stroke-linejoin="round" d="${head}"/>`,
-    `<path fill="none" stroke="${accent}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" d="${bandPath(outer)}"/>`,
-    '</svg>',
-  ].join('');
-}
-
-const srcCache = new Map<string, string>();
-
-/** An `<img src>` (and canvas `Image.src`) for a catalog racket: the drawing as a
- *  data URL, built once per look. `img-src` allows `data:` (next.config.js). */
 export function racketSrc(catalogId: string | null | undefined): string {
-  const look = racketLook(catalogId);
-  const key = catalogId && RACKET_LOOKS[catalogId] ? catalogId : '';
-  let src = srcCache.get(key);
-  if (!src) {
-    src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(racketSvg(look))}`;
-    srcCache.set(key, src);
-  }
-  return src;
+  const key = catalogId && RACKET_LOOKS[catalogId] ? catalogId : '_default';
+  return `${BASE}/rackets/${key}.webp`;
 }

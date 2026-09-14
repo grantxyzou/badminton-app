@@ -187,10 +187,32 @@ each owns different hooks and a hook cannot be conditional.
   projection never selects the fit answers.
 - **A catalog row can be withdrawn without deleting it**: `attributes.unlisted` (a reason string) makes `isOffered()` (`lib/catalogOffer.ts`) false, and both recommenders plus both add sheets skip it, while a bag pointing at it still resolves. Deleting a row from the seed JSON would not remove it from Cosmos, since seeding never deletes. See `docs/catalog-check-2026-09-14.md`.
 - **A racket the catalog lacks can be logged by name** (Grant, 2026-09-14): the racket add sheet offers "Add “…”" for any typed name that is not already in the bag or an exact catalog model, via `useGear.addCustom`. Its saved panel asks "How does it feel?" (balance, shaft, weight, each with "Don't know"), written once on Done through PATCH `itemFeel` into `GearItem.feel`; `SetupLineSheet` edits it later. `lib/racketFeel.ts` turns an in-play typed racket with balance AND shaft answered into the fit engine's anchor (tier from the member's level), and `useGearPicks` keys a refetch on those answers. PUT carries `feel` over from the matched item, because it rebuilds items from the wire.
-- **Racket drawings are `lib/racketLook.ts`**: one SVG drawing painted per
-  catalog id from researched colourways (`RACKET_LOOKS`), with an isometric head,
-  served as a data URL. It is presentation, so it stays off `CatalogItem` (a
-  colour change must not refresh seeded rows); an unknown id draws `DEFAULT_LOOK`.
+- **The racket is Grant's 3D model** (design project "Racket 3D", 2026-09-14):
+  `lib/racketModel.ts` is the design's racket builder ported with its geometry untouched —
+  do not "improve" a number; the handoff README says which values read as an
+  egg, a teardrop or a flat top. `lib/racketStage.ts` is the studio the
+  materials were balanced against (ACES 1.15, the PMREM gradient, key and fill);
+  without it the model looks like plastic. **three.js is only ever reached by a
+  dynamic `import()`** — `__tests__/racket-custom.test.ts` fails the build on a
+  static import.
+  - **Lists and cards use images pre-rendered from that model**
+    (`public/rackets/<catalogId>.webp`, `racketSrc`), written by
+    `scripts/render-racket-images.mjs` against the dev-only
+    `/design/racket-render` page. Re-run it when a look changes: the coverage
+    test fails on a look with no image or an image with no look.
+  - **Live 3D only on big views**: `Racket3D` (falls back to the image without
+    WebGL; no autorotate under reduced motion) inside `RacketLookSheet`
+    ("See it in 3D" on the racket's line sheet). The share card draws a still
+    of the model in the member's colours (`lib/racketSnapshot.ts`).
+  - **Paint comes from the catalog; a member dresses it** (`lib/racketCustom.ts`,
+    `GearItem.look`, PATCH `itemLook`): string and wrap colour on any racket,
+    frame colour, paint pattern and head shape only on a typed-in racket — a
+    recoloured Astrox 88D is not an Astrox 88D. Closed palettes, validated
+    server-side; PUT carries `look` over; picking a typed racket's catalog row
+    keeps string and wrap and drops the paint.
+  - `RACKET_LOOKS` in `lib/racketLook.ts` stays the one paint table (frame,
+    accent, grip, optional `pattern` / `shape`). It is presentation, so it stays
+    off `CatalogItem`; an unknown id uses `DEFAULT_LOOK`.
 
 ### Racket FIT engine (`NEXT_PUBLIC_FLAG_RACKET_FIT`, Phase 2, 2026-09-09)
 

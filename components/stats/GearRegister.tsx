@@ -8,6 +8,7 @@ import GearSetupCard from './GearSetupCard';
 import SetupAddSheet from './SetupAddSheet';
 import SetupLineSheet from './SetupLineSheet';
 import SetupShareSheet from './SetupShareSheet';
+import RacketLookSheet from './RacketLookSheet';
 import NextRacketCard from './NextRacketCard';
 import GearPickSheet from './GearPickSheet';
 import { recordEngagement } from '@/lib/engagement';
@@ -146,6 +147,7 @@ function SetupRegister({ activeName }: GearRegisterProps) {
   const [sheet, setSheet] = useState<
     | { kind: 'line'; category: SetupCategory; key: number }
     | { kind: 'add'; category: SetupCategory; makeActive: boolean; replacesId?: string; key: number }
+    | { kind: 'look'; itemId: string; title: string; key: number }
     | null
   >(null);
   const [pickOpen, setPickOpen] = useState(false);
@@ -215,6 +217,7 @@ function SetupRegister({ activeName }: GearRegisterProps) {
           onClose={() => setShareOpen(false)}
           share={share}
           racketCatalogId={gear.active?.catalogId}
+          racketItemLook={gear.active?.look}
         />
       )}
       {sheet?.kind === 'line' && (
@@ -229,8 +232,15 @@ function SetupRegister({ activeName }: GearRegisterProps) {
           // change replaces, because the card has no spare line for strings.
           onChange={() => openAdd(sheet.category, true, sheet.category === 'string' ? setupLines(gear.gear).string?.id : undefined)}
           onAddSpare={() => openAdd('racket', false)}
+          onViewLook={(item, title) => setSheet((s) => ({ kind: 'look', itemId: item.id, title, key: (s?.key ?? 0) + 1 }))}
         />
       )}
+      {sheet?.kind === 'look' && (() => {
+        const item = gear.gear?.items.find((i) => i.id === sheet.itemId);
+        return item ? (
+          <RacketLookSheet key={sheet.key} open onClose={() => setSheet(null)} gear={gear} item={item} title={sheet.title} />
+        ) : null;
+      })()}
       {sheet?.kind === 'add' && (
         <SetupAddSheet
           key={sheet.key}
