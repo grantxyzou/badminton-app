@@ -29,11 +29,11 @@
         "tier": "Premium",
         "frameMaterial": "2G-Namd Flex Force + Ultra PE Fiber",
         "tensionMinLbs": 20,
-        "tensionMaxLbs": 28,
+        "tensionMaxLbs": 29,
         "gripSize": "G4/G5",
-        "priceMinUSD": 200,
-        "priceMaxUSD": 230,
-        "lastVerified": "2026-08-19",
+        "priceMinUSD": 290,
+        "priceMaxUSD": 290,
+        "lastVerified": "2026-09-14",
         "notes": "Doubles back-court power racket"
       },
       "sources": [
@@ -56,16 +56,20 @@
         6
       ],
       "attributes": {
-        "weight": "4U",
-        "balance": "Even",
+        "weight": "3U/4U",
+        "balance": "Head-heavy",
         "flex": "Stiff",
         "playStyle": "Control",
         "notes": "doubles front-court control",
         "subType": "doubles",
         "tier": "Premium",
         "weightMinG": 80,
-        "weightMaxG": 84,
-        "lastVerified": "2026-08-21"
+        "weightMaxG": 89,
+        "lastVerified": "2026-09-14",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 29,
+        "priceMinUSD": 290,
+        "priceMaxUSD": 290
       },
       "sources": [
         {
@@ -83,20 +87,24 @@
       "model": "Astrox 99 Pro",
       "msrp": 329,
       "skillRange": [
-        5,
+        4,
         6
       ],
       "attributes": {
-        "weight": "3U",
+        "weight": "3U/4U",
         "balance": "Head-heavy",
-        "flex": "Extra Stiff",
+        "flex": "Stiff",
         "playStyle": "Power",
         "notes": "singles power",
         "subType": "singles",
         "tier": "Premium",
-        "weightMinG": 85,
+        "weightMinG": 80,
         "weightMaxG": 89,
-        "lastVerified": "2026-08-21"
+        "lastVerified": "2026-09-14",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 29,
+        "priceMinUSD": 290,
+        "priceMaxUSD": 290
       },
       "sources": [
         {
@@ -149,21 +157,21 @@
         6
       ],
       "attributes": {
-        "weight": "4U",
+        "weight": "3U/4U",
         "balance": "Even",
-        "flex": "Medium-Stiff",
+        "flex": "Stiff",
         "playStyle": "Control",
         "series": "ArcSaber",
         "weightMinG": 80,
-        "weightMaxG": 84,
+        "weightMaxG": 89,
         "tier": "Premium",
         "frameMaterial": "HM Graphite + Namd + Pocketing Booster frame",
-        "tensionMinLbs": 20,
+        "tensionMinLbs": 19,
         "tensionMaxLbs": 28,
         "gripSize": "G4/G5",
-        "priceMinUSD": 220,
-        "priceMaxUSD": 250,
-        "lastVerified": "2026-08-19",
+        "priceMinUSD": 285,
+        "priceMaxUSD": 285,
+        "lastVerified": "2026-09-14",
         "notes": "Elite control/placement racket"
       },
       "sources": [
@@ -186,7 +194,7 @@
         6
       ],
       "attributes": {
-        "weight": "4U",
+        "weight": "3U/4U",
         "balance": "Head-heavy",
         "flex": "Stiff",
         "playStyle": "Power",
@@ -194,8 +202,8 @@
         "subType": "singles",
         "tier": "Premium",
         "weightMinG": 80,
-        "weightMaxG": 84,
-        "lastVerified": "2026-08-21"
+        "weightMaxG": 89,
+        "lastVerified": "2026-09-14"
       },
       "sources": [
         {
@@ -213,20 +221,20 @@
       "model": "Thruster Falcon",
       "msrp": 189,
       "skillRange": [
-        2,
-        4
+        4,
+        6
       ],
       "attributes": {
-        "weight": "4U",
+        "weight": "3U/4U",
         "balance": "Head-heavy",
-        "flex": "Medium",
+        "flex": "Stiff",
         "playStyle": "Power",
         "notes": "entry-level attack",
         "subType": "all-round",
-        "tier": "Mid-range",
+        "tier": "Premium",
         "weightMinG": 80,
-        "weightMaxG": 84,
-        "lastVerified": "2026-08-21"
+        "weightMaxG": 89,
+        "lastVerified": "2026-09-14"
       },
       "sources": [
         {
@@ -250,19 +258,18 @@
       "attributes": {
         "weight": "3U/4U",
         "balance": "Head-light",
-        "flex": "Extra Stiff",
+        "flex": "Stiff",
         "playStyle": "Speed",
         "series": "Auraspeed",
         "weightMinG": 80,
         "weightMaxG": 89,
         "tier": "Premium",
         "frameMaterial": "HRM Graphite + Nano Aerogel + PBO Fiber",
-        "tensionMinLbs": 20,
-        "tensionMaxLbs": 29,
+        "tensionMaxLbs": 30,
         "gripSize": "G5",
         "priceMinUSD": 180,
         "priceMaxUSD": 220,
-        "lastVerified": "2026-08-19",
+        "lastVerified": "2026-09-14",
         "notes": "Reference speed/defense/counter-attack racket"
       },
       "sources": [
@@ -281,11 +288,11 @@
       "model": "Jetspeed 12",
       "msrp": 259,
       "skillRange": [
-        3,
-        5
+        4,
+        6
       ],
       "attributes": {
-        "weight": "4U",
+        "weight": "3U/4U",
         "balance": "Head-light",
         "flex": "Medium",
         "playStyle": "Speed",
@@ -293,8 +300,8 @@
         "subType": "doubles",
         "tier": "Premium",
         "weightMinG": 80,
-        "weightMaxG": 84,
-        "lastVerified": "2026-08-21"
+        "weightMaxG": 89,
+        "lastVerified": "2026-09-14"
       },
       "sources": [
         {
@@ -312,11 +319,11 @@
       "model": "DriveX 9X",
       "msrp": 219,
       "skillRange": [
-        3,
+        2,
         5
       ],
       "attributes": {
-        "weight": "4U",
+        "weight": "3U/4U",
         "balance": "Even",
         "flex": "Medium",
         "playStyle": "All-round",
@@ -324,8 +331,8 @@
         "subType": "all-round",
         "tier": "Mid-range",
         "weightMinG": 80,
-        "weightMaxG": 84,
-        "lastVerified": "2026-08-21"
+        "weightMaxG": 89,
+        "lastVerified": "2026-09-14"
       },
       "sources": [
         {
@@ -349,7 +356,7 @@
       "attributes": {
         "weight": "4U",
         "balance": "Head-heavy",
-        "flex": "Medium",
+        "flex": "Flexible",
         "playStyle": "All-round",
         "series": "Aeronaut",
         "weightMinG": 80,
@@ -357,11 +364,11 @@
         "tier": "Premium",
         "frameMaterial": "Air Stream Channel + Wing Stabilizer + DOF",
         "tensionMinLbs": 20,
-        "tensionMaxLbs": 28,
-        "gripSize": "G4/G5",
-        "priceMinUSD": 200,
-        "priceMaxUSD": 230,
-        "lastVerified": "2026-08-19",
+        "tensionMaxLbs": 30,
+        "gripSize": "G6",
+        "priceMinUSD": 250,
+        "priceMaxUSD": 370,
+        "lastVerified": "2026-09-14",
         "notes": "Versatile pro-level all-rounder"
       },
       "sources": [
@@ -411,20 +418,24 @@
       "model": "BladeX 700",
       "msrp": 239,
       "skillRange": [
-        3,
-        5
+        4,
+        6
       ],
       "attributes": {
         "weight": "4U",
-        "balance": "Even",
-        "flex": "Medium",
+        "balance": "Head-light",
+        "flex": "Stiff",
         "playStyle": "Control",
         "notes": "all-rounder control",
         "subType": "all-round",
-        "tier": "Mid-range",
+        "tier": "Premium",
         "weightMinG": 80,
         "weightMaxG": 84,
-        "lastVerified": "2026-08-21"
+        "lastVerified": "2026-09-14",
+        "gripSize": "G6",
+        "tensionMaxLbs": 30,
+        "priceMinUSD": 210,
+        "priceMaxUSD": 280
       },
       "sources": [
         {
@@ -442,20 +453,23 @@
       "model": "3D Calibar 900",
       "msrp": 209,
       "skillRange": [
-        3,
-        5
+        4,
+        6
       ],
       "attributes": {
         "weight": "4U",
-        "balance": "Head-light",
-        "flex": "Medium",
+        "balance": "Head-heavy",
+        "flex": "Stiff",
         "playStyle": "Speed",
         "notes": "doubles speed",
         "subType": "doubles",
-        "tier": "Mid-range",
+        "tier": "Premium",
         "weightMinG": 80,
         "weightMaxG": 84,
-        "lastVerified": "2026-08-21"
+        "lastVerified": "2026-09-14",
+        "tensionMaxLbs": 32,
+        "priceMinUSD": 250,
+        "priceMaxUSD": 300
       },
       "sources": [
         {
@@ -478,7 +492,7 @@
       ],
       "attributes": {
         "weight": "5U",
-        "balance": "Even",
+        "balance": "Head-light",
         "flex": "Flexible",
         "playStyle": "All-round",
         "notes": "beginner-friendly all-rounder",
@@ -486,7 +500,12 @@
         "tier": "Entry-level",
         "weightMinG": 75,
         "weightMaxG": 79,
-        "lastVerified": "2026-08-21"
+        "lastVerified": "2026-09-14",
+        "gripSize": "G4/G5",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 27,
+        "priceMinUSD": 55,
+        "priceMaxUSD": 55
       },
       "sources": [
         {
@@ -521,13 +540,13 @@
         "weightMaxG": 88,
         "tier": "Premium",
         "tensionMinLbs": 20,
-        "tensionMaxLbs": 28,
-        "priceMinUSD": 220,
-        "priceMaxUSD": 250,
-        "lastVerified": "2026-08-19"
+        "tensionMaxLbs": 29,
+        "priceMinUSD": 295,
+        "priceMaxUSD": 295,
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
-      "msrp": 304
+      "msrp": 407
     },
     {
       "id": "racket-yonex-astrox-100va-zz",
@@ -553,13 +572,13 @@
         "weightMaxG": 88,
         "tier": "Premium",
         "tensionMinLbs": 20,
-        "tensionMaxLbs": 28,
-        "priceMinUSD": 230,
-        "priceMaxUSD": 260,
-        "lastVerified": "2026-08-19"
+        "tensionMaxLbs": 29,
+        "priceMinUSD": 295,
+        "priceMaxUSD": 325,
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
-      "msrp": 317
+      "msrp": 407
     },
     {
       "id": "racket-yonex-nanoflare-1000z",
@@ -575,23 +594,23 @@
         "playStyle": "Speed",
         "balance": "Head-light",
         "flex": "Extra Stiff",
-        "weight": "4U",
+        "weight": "3U/4U",
         "weightGrams": "80-84",
         "frameMaterial": "HM Graphite + Nanometric DR + M40X",
         "stringTensionLbs": "20-28",
         "gripSize": "G4/G5",
         "notes": "Fastest acceleration, doubles/net specialists",
         "weightMinG": 80,
-        "weightMaxG": 84,
+        "weightMaxG": 89,
         "tier": "Premium",
         "tensionMinLbs": 20,
-        "tensionMaxLbs": 28,
-        "priceMinUSD": 220,
-        "priceMaxUSD": 250,
-        "lastVerified": "2026-08-19"
+        "tensionMaxLbs": 29,
+        "priceMinUSD": 285,
+        "priceMaxUSD": 285,
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
-      "msrp": 304
+      "msrp": 393
     },
     {
       "id": "racket-yonex-nanoflare-700-pro",
@@ -599,8 +618,8 @@
       "brand": "Yonex",
       "model": "Nanoflare 700 Pro",
       "skillRange": [
-        2,
-        5
+        4,
+        6
       ],
       "attributes": {
         "series": "Nanoflare",
@@ -611,19 +630,19 @@
         "weightGrams": "77-84",
         "frameMaterial": "M40X + Sonic Flare System",
         "stringTensionLbs": "19-27",
-        "gripSize": "G4/G5",
+        "gripSize": "G5/G6",
         "notes": "Upgraded speed racket w/ vibration dampening",
         "weightMinG": 77,
         "weightMaxG": 84,
-        "tier": "Mid-range",
+        "tier": "Premium",
         "tensionMinLbs": 19,
-        "tensionMaxLbs": 27,
-        "priceMinUSD": 180,
-        "priceMaxUSD": 210,
-        "lastVerified": "2026-08-19"
+        "tensionMaxLbs": 28,
+        "priceMinUSD": 275,
+        "priceMaxUSD": 275,
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
-      "msrp": 248
+      "msrp": 379
     },
     {
       "id": "racket-yonex-nanoflare-800-pro",
@@ -639,23 +658,23 @@
         "playStyle": "Speed",
         "balance": "Head-light",
         "flex": "Stiff",
-        "weight": "4U",
+        "weight": "3U/4U",
         "weightGrams": "80-84",
         "frameMaterial": "HM Graphite + M40X",
         "stringTensionLbs": "20-28",
         "gripSize": "G4/G5",
         "notes": "Used by top men's doubles pairs for quick rallies",
         "weightMinG": 80,
-        "weightMaxG": 84,
+        "weightMaxG": 89,
         "tier": "Premium",
         "tensionMinLbs": 20,
-        "tensionMaxLbs": 28,
-        "priceMinUSD": 200,
-        "priceMaxUSD": 230,
-        "lastVerified": "2026-08-19"
+        "tensionMaxLbs": 29,
+        "priceMinUSD": 275,
+        "priceMaxUSD": 275,
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
-      "msrp": 276
+      "msrp": 379
     },
     {
       "id": "racket-yonex-arcsaber-7-pro",
@@ -663,32 +682,32 @@
       "brand": "Yonex",
       "model": "ArcSaber 7 Pro",
       "skillRange": [
-        2,
-        5
+        4,
+        6
       ],
       "attributes": {
         "series": "ArcSaber",
         "playStyle": "Control",
         "balance": "Even",
-        "flex": "Medium-Stiff",
+        "flex": "Medium",
         "weight": "4U",
         "weightGrams": "80-84",
         "frameMaterial": "HM Graphite",
         "stringTensionLbs": "20-27",
-        "gripSize": "G4/G5",
+        "gripSize": "G5/G6",
         "notes": "Benchmark all-round racket for any style",
         "subType": "all-round",
         "weightMinG": 80,
         "weightMaxG": 84,
-        "tier": "Mid-range",
-        "tensionMinLbs": 20,
+        "tier": "Premium",
+        "tensionMinLbs": 19,
         "tensionMaxLbs": 27,
-        "priceMinUSD": 150,
-        "priceMaxUSD": 180,
-        "lastVerified": "2026-08-19"
+        "priceMinUSD": 255,
+        "priceMaxUSD": 255,
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
-      "msrp": 207
+      "msrp": 352
     },
     {
       "id": "racket-yonex-astrox-99-play",
@@ -696,8 +715,8 @@
       "brand": "Yonex",
       "model": "Astrox 99 Play",
       "skillRange": [
-        1,
-        3
+        2,
+        5
       ],
       "attributes": {
         "series": "Astrox",
@@ -713,15 +732,15 @@
         "subType": "beginner",
         "weightMinG": 80,
         "weightMaxG": 84,
-        "tier": "Entry-level",
-        "tensionMinLbs": 19,
-        "tensionMaxLbs": 26,
-        "priceMinUSD": 50,
-        "priceMaxUSD": 70,
-        "lastVerified": "2026-08-19"
+        "tier": "Mid-range",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 28,
+        "priceMinUSD": 110,
+        "priceMaxUSD": 110,
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
-      "msrp": 69
+      "msrp": 152
     },
     {
       "id": "racket-yonex-astrox-77-play",
@@ -729,32 +748,32 @@
       "brand": "Yonex",
       "model": "Astrox 77 Play",
       "skillRange": [
-        1,
-        3
+        2,
+        5
       ],
       "attributes": {
         "series": "Astrox",
         "playStyle": "Power",
         "balance": "Head-heavy",
-        "flex": "Medium",
+        "flex": "Flexible",
         "weight": "4U",
         "weightGrams": "80-84",
         "frameMaterial": "Standard graphite composite",
         "stringTensionLbs": "19-26",
-        "gripSize": "G5",
+        "gripSize": "G5/G6",
         "notes": "Cheapest price point in the Astrox family",
         "subType": "beginner",
         "weightMinG": 80,
         "weightMaxG": 84,
-        "tier": "Entry-level",
-        "tensionMinLbs": 19,
-        "tensionMaxLbs": 26,
-        "priceMinUSD": 50,
-        "priceMaxUSD": 80,
-        "lastVerified": "2026-08-19"
+        "tier": "Mid-range",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 28,
+        "priceMinUSD": 79,
+        "priceMaxUSD": 100,
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
-      "msrp": 69
+      "msrp": 109
     },
     {
       "id": "racket-yonex-astrox-lite-43i",
@@ -769,22 +788,22 @@
         "series": "Astrox",
         "playStyle": "Power",
         "balance": "Head-heavy",
-        "flex": "Medium",
-        "weight": "4U",
+        "flex": "Flexible",
+        "weight": "5U",
         "weightGrams": "80-84",
         "frameMaterial": "Nanomesh Neo",
         "stringTensionLbs": "19-26",
         "gripSize": "G5",
         "notes": "Attacking frame you won't outgrow quickly",
         "subType": "beginner",
-        "weightMinG": 80,
-        "weightMaxG": 84,
+        "weightMinG": 75,
+        "weightMaxG": 79,
         "tier": "Entry-level",
         "tensionMinLbs": 19,
         "tensionMaxLbs": 26,
         "priceMinUSD": 75,
         "priceMaxUSD": 75,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
       "msrp": 103
@@ -803,21 +822,21 @@
         "playStyle": "Power",
         "balance": "Head-heavy",
         "flex": "Flexible",
-        "weight": "4U/5U",
+        "weight": "5U",
         "weightGrams": "77-84",
         "frameMaterial": "Standard graphite composite",
         "stringTensionLbs": "19-25",
         "gripSize": "G5",
         "notes": "Most forgiving head-heavy option; sales price ~$55",
         "subType": "beginner",
-        "weightMinG": 77,
-        "weightMaxG": 84,
+        "weightMinG": 75,
+        "weightMaxG": 79,
         "tier": "Entry-level",
         "tensionMinLbs": 19,
         "tensionMaxLbs": 25,
         "priceMinUSD": 55,
         "priceMaxUSD": 75,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
       "msrp": 76
@@ -828,14 +847,14 @@
       "brand": "Yonex",
       "model": "Nanoflare 700 Play",
       "skillRange": [
-        1,
-        3
+        2,
+        5
       ],
       "attributes": {
         "series": "Nanoflare",
         "playStyle": "Speed",
         "balance": "Head-light",
-        "flex": "Medium",
+        "flex": "Flexible",
         "weight": "4U",
         "weightGrams": "80-84",
         "frameMaterial": "Standard graphite composite",
@@ -845,12 +864,12 @@
         "subType": "beginner",
         "weightMinG": 80,
         "weightMaxG": 84,
-        "tier": "Entry-level",
-        "tensionMinLbs": 19,
-        "tensionMaxLbs": 26,
+        "tier": "Mid-range",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 28,
         "priceMinUSD": 80,
-        "priceMaxUSD": 80,
-        "lastVerified": "2026-08-19"
+        "priceMaxUSD": 100,
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
       "msrp": 110
@@ -868,21 +887,20 @@
         "series": "Thruster",
         "playStyle": "Power",
         "balance": "Head-heavy",
-        "flex": "Extra Stiff",
-        "weight": "3U",
+        "flex": "Stiff",
+        "weight": "3U/4U",
         "weightGrams": "85-89",
         "frameMaterial": "Hard Cored Technology carbon inner frame",
         "stringTensionLbs": "20-30",
         "gripSize": "G5",
         "notes": "Made famous by Tai Tzu-Ying, hardest-smashing line",
-        "weightMinG": 85,
+        "weightMinG": 80,
         "weightMaxG": 89,
         "tier": "Premium",
-        "tensionMinLbs": 20,
-        "tensionMaxLbs": 30,
+        "tensionMaxLbs": 32,
         "priceMinUSD": 200,
         "priceMaxUSD": 230,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
       "msrp": 276
@@ -900,24 +918,23 @@
         "series": "Thruster",
         "playStyle": "Power",
         "balance": "Head-heavy",
-        "flex": "Extra Stiff",
-        "weight": "3U",
+        "flex": "Stiff",
+        "weight": "4U",
         "weightGrams": "85-89",
         "frameMaterial": "Hard Cored Technology",
         "stringTensionLbs": "20-30",
         "gripSize": "G5",
         "notes": "Victor's most powerful racket",
-        "weightMinG": 85,
-        "weightMaxG": 89,
+        "weightMinG": 80,
+        "weightMaxG": 84,
         "tier": "Premium",
-        "tensionMinLbs": 20,
-        "tensionMaxLbs": 30,
-        "priceMinUSD": 180,
-        "priceMaxUSD": 220,
-        "lastVerified": "2026-08-19"
+        "tensionMaxLbs": 31,
+        "priceMinUSD": 230,
+        "priceMaxUSD": 240,
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
-      "msrp": 248
+      "msrp": 317
     },
     {
       "id": "racket-victor-auraspeed-fantome",
@@ -933,20 +950,19 @@
         "playStyle": "Speed",
         "balance": "Head-light",
         "flex": "Stiff",
-        "weight": "4U",
+        "weight": "3U/4U",
         "weightGrams": "83",
         "frameMaterial": "HRM Graphite + Nano Aerogel + PBO + Hard Cored Tech",
         "stringTensionLbs": "20-29",
         "gripSize": "G5",
         "notes": "Super-slim frame for speed/precision",
-        "weightMinG": 83,
-        "weightMaxG": 83,
+        "weightMinG": 80,
+        "weightMaxG": 89,
         "tier": "Premium",
-        "tensionMinLbs": 20,
-        "tensionMaxLbs": 29,
+        "tensionMaxLbs": 30,
         "priceMinUSD": 190,
         "priceMaxUSD": 220,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
       "msrp": 262
@@ -997,7 +1013,7 @@
         "playStyle": "Speed",
         "balance": "Even",
         "flex": "Medium-Stiff",
-        "weight": "4U",
+        "weight": "3U/4U",
         "weightGrams": "80-84",
         "frameMaterial": "Nanotech-enhanced frame",
         "stringTensionLbs": "19-28",
@@ -1005,13 +1021,12 @@
         "notes": "Durable older-gen line, still relevant for control",
         "subType": "all-round",
         "weightMinG": 80,
-        "weightMaxG": 84,
+        "weightMaxG": 89,
         "tier": "Mid-range",
-        "tensionMinLbs": 19,
-        "tensionMaxLbs": 28,
+        "tensionMaxLbs": 31,
         "priceMinUSD": 200,
         "priceMaxUSD": 200,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
       "msrp": 276
@@ -1022,31 +1037,30 @@
       "brand": "Victor",
       "model": "DriveX 10 Metallic",
       "skillRange": [
-        2,
-        5
+        4,
+        6
       ],
       "attributes": {
         "series": "DriveX",
         "playStyle": "All-round",
         "balance": "Even",
-        "flex": "Medium-Stiff",
-        "weight": "3U/4U",
+        "flex": "Stiff",
+        "weight": "4U",
         "weightGrams": "80-89",
         "frameMaterial": "Carbon composite (new-gen frame)",
         "stringTensionLbs": "19-28",
         "gripSize": "G5",
         "notes": "Versatile all-rounder for singles/doubles",
         "weightMinG": 80,
-        "weightMaxG": 89,
-        "tier": "Mid-range",
-        "tensionMinLbs": 19,
+        "weightMaxG": 84,
+        "tier": "Premium",
         "tensionMaxLbs": 28,
-        "priceMinUSD": 150,
-        "priceMaxUSD": 180,
-        "lastVerified": "2026-08-19"
+        "priceMinUSD": 210,
+        "priceMaxUSD": 230,
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
-      "msrp": 207
+      "msrp": 290
     },
     {
       "id": "racket-victor-jetspeed-s-12",
@@ -1062,21 +1076,20 @@
         "playStyle": "Speed",
         "balance": "Head-light",
         "flex": "Medium",
-        "weight": "4U/5U",
+        "weight": "3U/4U",
         "weightGrams": "75-84",
         "frameMaterial": "Standard carbon composite",
         "stringTensionLbs": "19-26",
         "gripSize": "G5",
         "notes": "Excellent starting point for most players",
         "subType": "intermediate",
-        "weightMinG": 75,
-        "weightMaxG": 84,
+        "weightMinG": 80,
+        "weightMaxG": 89,
         "tier": "Mid-range",
-        "tensionMinLbs": 19,
-        "tensionMaxLbs": 26,
+        "tensionMaxLbs": 30,
         "priceMinUSD": 140,
         "priceMaxUSD": 160,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
       "msrp": 193
@@ -1095,21 +1108,20 @@
         "playStyle": "Speed",
         "balance": "Head-light",
         "flex": "Medium",
-        "weight": "4U/5U",
+        "weight": "4U",
         "weightGrams": "75-84",
         "frameMaterial": "Standard carbon composite",
         "stringTensionLbs": "19-25",
         "gripSize": "G5",
         "notes": "Budget-friendly speed option",
         "subType": "beginner",
-        "weightMinG": 75,
+        "weightMinG": 80,
         "weightMaxG": 84,
         "tier": "Entry-level",
-        "tensionMinLbs": 19,
-        "tensionMaxLbs": 25,
+        "tensionMaxLbs": 24,
         "priceMinUSD": 100,
         "priceMaxUSD": 140,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
       "msrp": 138
@@ -1128,21 +1140,20 @@
         "playStyle": "Speed",
         "balance": "Head-light",
         "flex": "Flexible",
-        "weight": "4U/5U",
+        "weight": "4U",
         "weightGrams": "75-84",
         "frameMaterial": "Basic composite frame",
         "stringTensionLbs": "18-24",
         "gripSize": "G5",
         "notes": "Very budget-friendly entry racket",
         "subType": "beginner",
-        "weightMinG": 75,
+        "weightMinG": 80,
         "weightMaxG": 84,
         "tier": "Entry-level",
-        "tensionMinLbs": 18,
         "tensionMaxLbs": 24,
         "priceMinUSD": 75,
         "priceMaxUSD": 100,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
       "msrp": 103
@@ -1226,7 +1237,7 @@
         "series": "N-Series",
         "playStyle": "Power",
         "balance": "Head-heavy",
-        "flex": "Stiff",
+        "flex": "Flexible",
         "weight": "3U/4U",
         "weightGrams": "80-89",
         "frameMaterial": "TB Nano + Aerotec Beam System",
@@ -1237,10 +1248,10 @@
         "weightMaxG": 89,
         "tier": "Premium",
         "tensionMinLbs": 20,
-        "tensionMaxLbs": 28,
+        "tensionMaxLbs": 32,
         "priceMinUSD": 220,
         "priceMaxUSD": 250,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
       "msrp": 304
@@ -1258,24 +1269,24 @@
         "series": "Aeronaut",
         "playStyle": "Speed",
         "balance": "Even",
-        "flex": "Medium-Stiff",
+        "flex": "Flexible",
         "weight": "4U",
         "weightGrams": "80-84",
         "frameMaterial": "Air Stream Channel (aero-optimized)",
         "stringTensionLbs": "20-27",
-        "gripSize": "G4/G5",
+        "gripSize": "G6",
         "notes": "Aerodynamic, fast swing, all-around control",
         "weightMinG": 80,
         "weightMaxG": 84,
         "tier": "Premium",
         "tensionMinLbs": 20,
-        "tensionMaxLbs": 27,
-        "priceMinUSD": 190,
-        "priceMaxUSD": 220,
-        "lastVerified": "2026-08-19"
+        "tensionMaxLbs": 30,
+        "priceMinUSD": 250,
+        "priceMaxUSD": 370,
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
-      "msrp": 262
+      "msrp": 345
     },
     {
       "id": "racket-li-ning-turbo-charging-75",
@@ -1289,22 +1300,22 @@
       "attributes": {
         "series": "Turbo Charging",
         "playStyle": "Speed",
-        "balance": "Head-light",
+        "balance": "Even",
         "flex": "Flexible",
-        "weight": "4U/5U",
+        "weight": "3U",
         "weightGrams": "75-84",
         "frameMaterial": "Dynamic Optimum Frame (DOF) + Turbo Charging Platform",
         "stringTensionLbs": "19-26",
         "gripSize": "G4/G5",
         "notes": "Fast swing, net kills/drives, less durable >26lbs",
-        "weightMinG": 75,
-        "weightMaxG": 84,
+        "weightMinG": 85,
+        "weightMaxG": 89,
         "tier": "Mid-range",
         "tensionMinLbs": 19,
-        "tensionMaxLbs": 26,
+        "tensionMaxLbs": 32,
         "priceMinUSD": 150,
         "priceMaxUSD": 190,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
       "msrp": 207
@@ -1322,21 +1333,21 @@
         "series": "AxForce",
         "playStyle": "Power",
         "balance": "Head-heavy",
-        "flex": "Extra Stiff",
+        "flex": "Stiff",
         "weight": "3U/4U",
         "weightGrams": "80-89",
         "frameMaterial": "Box Wing Frame, carbon composite",
         "stringTensionLbs": "20-30",
-        "gripSize": "G4/G5",
+        "gripSize": "G5",
         "notes": "Elite flagship, used by Anders Skaarup Rasmussen",
         "weightMinG": 80,
         "weightMaxG": 89,
         "tier": "Premium",
         "tensionMinLbs": 20,
-        "tensionMaxLbs": 30,
+        "tensionMaxLbs": 31,
         "priceMinUSD": 260,
         "priceMaxUSD": 280,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
       "msrp": 359
@@ -1354,24 +1365,24 @@
         "series": "AxForce",
         "playStyle": "Power",
         "balance": "Head-heavy",
-        "flex": "Stiff",
+        "flex": "Flexible",
         "weight": "3U/4U",
         "weightGrams": "80-89",
         "frameMaterial": "Box Wing Frame",
         "stringTensionLbs": "20-28",
-        "gripSize": "G4/G5",
+        "gripSize": "G5/G6",
         "notes": "Used by Lee Zii Jia, Chou Tien Chen, Anthony Ginting",
         "weightMinG": 80,
         "weightMaxG": 89,
         "tier": "Premium",
         "tensionMinLbs": 20,
-        "tensionMaxLbs": 28,
-        "priceMinUSD": 180,
-        "priceMaxUSD": 220,
-        "lastVerified": "2026-08-19"
+        "tensionMaxLbs": 31,
+        "priceMinUSD": 240,
+        "priceMaxUSD": 300,
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
-      "msrp": 248
+      "msrp": 331
     },
     {
       "id": "racket-li-ning-halbertec-9000",
@@ -1386,24 +1397,24 @@
         "series": "Halbertec",
         "playStyle": "Control",
         "balance": "Even",
-        "flex": "Medium",
+        "flex": "Stiff",
         "weight": "4U",
         "weightGrams": "80-84",
         "frameMaterial": "Standard Li-Ning composite frame",
         "stringTensionLbs": "19-27",
-        "gripSize": "G4/G5",
+        "gripSize": "G5",
         "notes": "Lowers control learning threshold, still precise",
         "weightMinG": 80,
         "weightMaxG": 84,
         "tier": "Premium",
         "tensionMinLbs": 19,
-        "tensionMaxLbs": 27,
-        "priceMinUSD": 200,
-        "priceMaxUSD": 250,
-        "lastVerified": "2026-08-19"
+        "tensionMaxLbs": 30,
+        "priceMinUSD": 260,
+        "priceMaxUSD": 300,
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
-      "msrp": 276
+      "msrp": 359
     },
     {
       "id": "racket-li-ning-bladex-900-sun-max",
@@ -1423,17 +1434,17 @@
         "weightGrams": "80-84",
         "frameMaterial": "Speed-oriented composite frame",
         "stringTensionLbs": "20-28",
-        "gripSize": "G4/G5",
+        "gripSize": "G6",
         "notes": "Doubles/mixed doubles speed weapon",
         "subType": "doubles",
         "weightMinG": 80,
         "weightMaxG": 84,
         "tier": "Premium",
         "tensionMinLbs": 20,
-        "tensionMaxLbs": 28,
+        "tensionMaxLbs": 30,
         "priceMinUSD": 240,
         "priceMaxUSD": 250,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
       "msrp": 331
@@ -1450,23 +1461,23 @@
       "attributes": {
         "series": "Windstorm",
         "playStyle": "Control",
-        "balance": "Even",
-        "flex": "Medium",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
         "weight": "4U/5U",
         "weightGrams": "75-84",
         "frameMaterial": "Ultra-thin shaft (0.35-0.38mm)",
         "stringTensionLbs": "19-26",
-        "gripSize": "G4/G5",
+        "gripSize": "G6",
         "notes": "Lightweight, maneuverable, offense+defense balance",
         "subType": "all-round",
         "weightMinG": 75,
         "weightMaxG": 84,
         "tier": "Mid-range",
         "tensionMinLbs": 19,
-        "tensionMaxLbs": 26,
+        "tensionMaxLbs": 30,
         "priceMinUSD": 150,
         "priceMaxUSD": 180,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
       "msrp": 207
@@ -1484,7 +1495,7 @@
         "series": "AxForce",
         "playStyle": "Power",
         "balance": "Head-heavy",
-        "flex": "Medium",
+        "flex": "Flexible",
         "weight": "4U/5U",
         "weightGrams": "77-84",
         "frameMaterial": "Standard composite",
@@ -1496,10 +1507,10 @@
         "weightMaxG": 84,
         "tier": "Entry-level",
         "tensionMinLbs": 19,
-        "tensionMaxLbs": 26,
+        "tensionMaxLbs": 32,
         "priceMinUSD": 70,
         "priceMaxUSD": 110,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
       "msrp": 97
@@ -1510,14 +1521,14 @@
       "brand": "Li-Ning",
       "model": "BladeX Spiral",
       "skillRange": [
-        2,
-        5
+        1,
+        3
       ],
       "attributes": {
         "series": "BladeX",
         "playStyle": "Speed",
         "balance": "Head-light",
-        "flex": "Medium",
+        "flex": "Flexible",
         "weight": "4U/5U",
         "weightGrams": "77-84",
         "frameMaterial": "Standard composite",
@@ -1527,15 +1538,15 @@
         "subType": "intermediate",
         "weightMinG": 77,
         "weightMaxG": 84,
-        "tier": "Mid-range",
+        "tier": "Entry-level",
         "tensionMinLbs": 19,
         "tensionMaxLbs": 26,
-        "priceMinUSD": 90,
-        "priceMaxUSD": 130,
-        "lastVerified": "2026-08-19"
+        "priceMinUSD": 47,
+        "priceMaxUSD": 96,
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
-      "msrp": 124
+      "msrp": 65
     },
     {
       "id": "racket-li-ning-halberd-900",
@@ -1615,7 +1626,7 @@
       "attributes": {
         "series": "Light Force",
         "playStyle": "All-round",
-        "balance": "Even",
+        "balance": "Head-heavy",
         "flex": "Flexible",
         "weight": "5U",
         "weightGrams": "75-82",
@@ -1628,10 +1639,10 @@
         "weightMaxG": 82,
         "tier": "Entry-level",
         "tensionMinLbs": 18,
-        "tensionMaxLbs": 24,
+        "tensionMaxLbs": 30,
         "priceMinUSD": 40,
         "priceMaxUSD": 70,
-        "lastVerified": "2026-08-19"
+        "lastVerified": "2026-09-14"
       },
       "seeded": true,
       "msrp": 55
@@ -1649,22 +1660,22 @@
         "series": "Astrox",
         "playStyle": "Power",
         "balance": "Head-heavy",
-        "flex": "Extra Stiff",
+        "flex": "Stiff",
         "weight": "3U/4U",
         "weightMinG": 83,
         "weightMaxG": 88,
         "tier": "Premium",
         "frameMaterial": "2G-Namd Flex Force + HM Graphite + CFR + Tungsten",
         "tensionMinLbs": 20,
-        "tensionMaxLbs": 28,
+        "tensionMaxLbs": 29,
         "gripSize": "G4/G5",
-        "priceMinUSD": 210,
-        "priceMaxUSD": 240,
-        "lastVerified": "2026-08-19",
+        "priceMinUSD": 290,
+        "priceMaxUSD": 290,
+        "lastVerified": "2026-09-14",
         "notes": "Kento Momota's line; sits between 88 Pro doubles specialists and 100VA ZZ"
       },
       "seeded": true,
-      "msrp": 290
+      "msrp": 400
     },
     {
       "id": "racket-yonex-astrox-88s-pro-3rd-gen",
@@ -1680,22 +1691,22 @@
         "playStyle": "Power",
         "subType": "doubles",
         "balance": "Head-heavy",
-        "flex": "Medium-Stiff",
-        "weight": "4U",
+        "flex": "Stiff",
+        "weight": "3U/4U",
         "weightMinG": 80,
-        "weightMaxG": 84,
+        "weightMaxG": 89,
         "tier": "Premium",
         "frameMaterial": "2G-Namd Flex Force + Ultra PE Fiber",
         "tensionMinLbs": 20,
-        "tensionMaxLbs": 28,
+        "tensionMaxLbs": 29,
         "gripSize": "G4/G5",
-        "priceMinUSD": 200,
-        "priceMaxUSD": 230,
-        "lastVerified": "2026-08-19",
+        "priceMinUSD": 290,
+        "priceMaxUSD": 290,
+        "lastVerified": "2026-09-14",
         "notes": "Control-oriented sibling to 88D Pro; sharper placement, less raw power"
       },
       "seeded": true,
-      "msrp": 276
+      "msrp": 400
     },
     {
       "id": "racket-yonex-astrox-nextage",
@@ -1717,16 +1728,16 @@
         "weightMaxG": 84,
         "tier": "Mid-range",
         "frameMaterial": "Vibration Dampening Mesh (VDM) + standard graphite",
-        "tensionMinLbs": 19,
-        "tensionMaxLbs": 27,
-        "gripSize": "G4/G5",
-        "priceMinUSD": 120,
-        "priceMaxUSD": 150,
-        "lastVerified": "2026-08-19",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 28,
+        "gripSize": "G5",
+        "priceMinUSD": 165,
+        "priceMaxUSD": 165,
+        "lastVerified": "2026-09-14",
         "notes": "Bridges beginner and pro Astrox tiers; softer feel than 100ZZ"
       },
       "seeded": true,
-      "msrp": 166
+      "msrp": 228
     },
     {
       "id": "racket-yonex-nanoflare-nextage",
@@ -1748,16 +1759,16 @@
         "weightMaxG": 83,
         "tier": "Mid-range",
         "frameMaterial": "Wide Profile Frame + Sonic Flare System",
-        "tensionMinLbs": 19,
-        "tensionMaxLbs": 27,
-        "gripSize": "G4/G5",
-        "priceMinUSD": 120,
-        "priceMaxUSD": 150,
-        "lastVerified": "2026-08-19",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 28,
+        "gripSize": "G5",
+        "priceMinUSD": 165,
+        "priceMaxUSD": 165,
+        "lastVerified": "2026-09-14",
         "notes": "Speed counterpart to Astrox Nextage for developing players"
       },
       "seeded": true,
-      "msrp": 166
+      "msrp": 228
     },
     {
       "id": "racket-yonex-nanoflare-x5",
@@ -1765,8 +1776,8 @@
       "brand": "Yonex",
       "model": "Nanoflare X5",
       "skillRange": [
-        2,
-        5
+        1,
+        3
       ],
       "attributes": {
         "series": "Nanoflare",
@@ -1776,18 +1787,18 @@
         "weight": "4U",
         "weightMinG": 80,
         "weightMaxG": 84,
-        "tier": "Mid-range",
+        "tier": "Entry-level",
         "frameMaterial": "HM Graphite + Sonic Flare System",
         "tensionMinLbs": 20,
-        "tensionMaxLbs": 27,
-        "gripSize": "G4/G5",
-        "priceMinUSD": 180,
-        "priceMaxUSD": 210,
-        "lastVerified": "2026-08-19",
+        "tensionMaxLbs": 28,
+        "gripSize": "G5",
+        "priceMinUSD": 49.99,
+        "priceMaxUSD": 65,
+        "lastVerified": "2026-09-14",
         "notes": "Newer speed/precision frame in the Nanoflare X sub-line"
       },
       "seeded": true,
-      "msrp": 248
+      "msrp": 69
     },
     {
       "id": "racket-yonex-nanoflare-x7",
@@ -1810,10 +1821,10 @@
         "frameMaterial": "HM Graphite + M40X",
         "tensionMinLbs": 20,
         "tensionMaxLbs": 28,
-        "gripSize": "G4/G5",
+        "gripSize": "G5",
         "priceMinUSD": 220,
         "priceMaxUSD": 250,
-        "lastVerified": "2026-08-19",
+        "lastVerified": "2026-09-14",
         "notes": "Stiffer step-up from X5 for advanced speed players"
       },
       "seeded": true,
@@ -1840,13 +1851,13 @@
         "frameMaterial": "HRM Graphite + PYROFIL + Nano Fortify TR+ + Hard Cored Technology",
         "tensionMaxLbs": 31,
         "gripSize": "G5",
-        "priceMinUSD": 210,
-        "priceMaxUSD": 240,
-        "lastVerified": "2026-08-19",
+        "priceMinUSD": 230,
+        "priceMaxUSD": 230,
+        "lastVerified": "2026-09-14",
         "notes": "Anders Antonsen's racket; upgrades the original 90K with Anti-Torsion System"
       },
       "seeded": true,
-      "msrp": 290
+      "msrp": 317
     },
     {
       "id": "racket-victor-thruster-ryuga",
@@ -1861,18 +1872,17 @@
         "series": "Thruster",
         "playStyle": "Power",
         "balance": "Head-heavy",
-        "flex": "Extra Stiff",
+        "flex": "Stiff",
         "weight": "3U/4U",
         "weightMinG": 83,
         "weightMaxG": 89,
         "tier": "Premium",
         "frameMaterial": "Hard Cored Technology + HRM Graphite",
-        "tensionMinLbs": 20,
-        "tensionMaxLbs": 30,
+        "tensionMaxLbs": 31,
         "gripSize": "G5",
         "priceMinUSD": 180,
         "priceMaxUSD": 210,
-        "lastVerified": "2026-08-19",
+        "lastVerified": "2026-09-14",
         "notes": "Closest Victor equivalent to Astrox 99 for maximum smash power"
       },
       "seeded": true,
@@ -1882,7 +1892,7 @@
       "id": "racket-victor-auraspeed-hyper-sonic-hs",
       "category": "racket",
       "brand": "Victor",
-      "model": "Auraspeed Hyper Sonic HS",
+      "model": "Auraspeed HyperSonic",
       "skillRange": [
         4,
         6
@@ -1893,17 +1903,16 @@
         "subType": "doubles",
         "balance": "Head-light",
         "flex": "Medium-Stiff",
-        "weight": "4U",
+        "weight": "3U/4U",
         "weightMinG": 80,
-        "weightMaxG": 84,
+        "weightMaxG": 89,
         "tier": "Premium",
         "frameMaterial": "HRM Graphite + Nano Aerogel",
-        "tensionMinLbs": 20,
         "tensionMaxLbs": 28,
         "gripSize": "G5",
         "priceMinUSD": 190,
         "priceMaxUSD": 220,
-        "lastVerified": "2026-08-19",
+        "lastVerified": "2026-09-14",
         "notes": "Hendra Setiawan signature line, tuned for doubles speed exchanges"
       },
       "seeded": true,
@@ -1946,29 +1955,28 @@
       "brand": "Victor",
       "model": "Brave Sword 12",
       "skillRange": [
-        2,
-        5
+        4,
+        6
       ],
       "attributes": {
         "series": "Brave Sword",
         "playStyle": "All-round",
-        "balance": "Head-heavy",
+        "balance": "Even",
         "flex": "Medium-Stiff",
         "weight": "3U/4U",
         "weightMinG": 80,
         "weightMaxG": 89,
-        "tier": "Mid-range",
+        "tier": "Premium",
         "frameMaterial": "Diamond-shaped aerodynamic frame, standard composite",
-        "tensionMinLbs": 19,
-        "tensionMaxLbs": 28,
+        "tensionMaxLbs": 30,
         "gripSize": "G5",
-        "priceMinUSD": 140,
-        "priceMaxUSD": 170,
-        "lastVerified": "2026-08-19",
+        "priceMinUSD": 215,
+        "priceMaxUSD": 215,
+        "lastVerified": "2026-09-14",
         "notes": "Victor's long-running 'safe pick' all-rounder for club players"
       },
       "seeded": true,
-      "msrp": 193
+      "msrp": 297
     },
     {
       "id": "racket-li-ning-axforce-90-dragon-max",
@@ -1983,7 +1991,7 @@
         "series": "AxForce",
         "playStyle": "Power",
         "balance": "Head-heavy",
-        "flex": "Medium-Stiff",
+        "flex": "Stiff",
         "weight": "3U/4U",
         "weightMinG": 80,
         "weightMaxG": 89,
@@ -1991,13 +1999,13 @@
         "frameMaterial": "M50 Super Carbon + 6.2mm shaft + HDF Shock Absorption",
         "tensionMaxLbs": 31,
         "gripSize": "G5",
-        "priceMinUSD": 200,
-        "priceMaxUSD": 230,
-        "lastVerified": "2026-08-19",
+        "priceMinUSD": 270,
+        "priceMaxUSD": 270,
+        "lastVerified": "2026-09-14",
         "notes": "Used by Loh Kean Yew; thin shaft for fast head-heavy swings"
       },
       "seeded": true,
-      "msrp": 276
+      "msrp": 373
     },
     {
       "id": "racket-li-ning-axforce-90-tiger-max",
@@ -2012,17 +2020,17 @@
         "series": "AxForce",
         "playStyle": "Power",
         "balance": "Head-heavy",
-        "flex": "Medium",
+        "flex": "Flexible",
         "weight": "3U/4U",
         "weightMinG": 80,
         "weightMaxG": 89,
         "tier": "Premium",
         "frameMaterial": "M50 Super Carbon + 6.6mm shaft",
-        "tensionMaxLbs": 30,
+        "tensionMaxLbs": 31,
         "gripSize": "G5",
         "priceMinUSD": 190,
         "priceMaxUSD": 220,
-        "lastVerified": "2026-08-19",
+        "lastVerified": "2026-09-14",
         "notes": "Slightly softer-shaft sibling to the Dragon Max for more control"
       },
       "seeded": true,
@@ -2048,15 +2056,15 @@
         "tier": "Premium",
         "frameMaterial": "Standard Li-Ning composite, precision-tuned frame",
         "tensionMinLbs": 19,
-        "tensionMaxLbs": 27,
-        "gripSize": "G4/G5",
-        "priceMinUSD": 210,
-        "priceMaxUSD": 240,
-        "lastVerified": "2026-08-19",
+        "tensionMaxLbs": 30,
+        "gripSize": "G5",
+        "priceMinUSD": 245,
+        "priceMaxUSD": 300,
+        "lastVerified": "2026-09-14",
         "notes": "Preferred by active-power control players; sharper than the 9000"
       },
       "seeded": true,
-      "msrp": 290
+      "msrp": 338
     },
     {
       "id": "racket-li-ning-bladex-800-speed",
@@ -2072,22 +2080,22 @@
         "playStyle": "Speed",
         "subType": "doubles",
         "balance": "Head-light",
-        "flex": "Stiff",
+        "flex": "Medium-Stiff",
         "weight": "4U",
         "weightMinG": 80,
         "weightMaxG": 84,
         "tier": "Premium",
         "frameMaterial": "M46X carbon frame, 6.8mm shaft",
         "tensionMinLbs": 20,
-        "tensionMaxLbs": 28,
-        "gripSize": "G4/G5",
-        "priceMinUSD": 220,
-        "priceMaxUSD": 240,
-        "lastVerified": "2026-08-19",
+        "tensionMaxLbs": 30,
+        "gripSize": "G6",
+        "priceMinUSD": 250,
+        "priceMaxUSD": 300,
+        "lastVerified": "2026-09-14",
         "notes": "3rd-gen 800 line; stiff, springy, high entry bar for advanced players"
       },
       "seeded": true,
-      "msrp": 304
+      "msrp": 345
     },
     {
       "id": "racket-li-ning-axforce-100-ii",
@@ -2102,17 +2110,17 @@
         "series": "AxForce",
         "playStyle": "Power",
         "balance": "Head-heavy",
-        "flex": "Extra Stiff",
+        "flex": "Stiff",
         "weight": "4U",
         "weightMinG": 80,
         "weightMaxG": 84,
         "tier": "Premium",
         "frameMaterial": "Box Wing Frame + top-tier carbon composite",
-        "tensionMaxLbs": 32,
-        "gripSize": "G4/G5",
+        "tensionMaxLbs": 30,
+        "gripSize": "G5",
         "priceMinUSD": 260,
         "priceMaxUSD": 280,
-        "lastVerified": "2026-08-19",
+        "lastVerified": "2026-09-14",
         "notes": "Second-gen flagship AxForce, top of the power lineup"
       },
       "seeded": true,
@@ -2124,8 +2132,8 @@
       "brand": "Yonex",
       "model": "Astrox 77 Pro",
       "skillRange": [
-        2,
-        5
+        4,
+        6
       ],
       "attributes": {
         "series": "Astrox",
@@ -2133,21 +2141,21 @@
         "subType": "all-round",
         "balance": "Head-heavy",
         "flex": "Medium",
-        "weight": "4U",
+        "weight": "3U/4U",
         "weightMinG": 80,
-        "weightMaxG": 84,
-        "tier": "Mid-range",
+        "weightMaxG": 89,
+        "tier": "Premium",
         "frameMaterial": "HM Graphite + Namd + Nanometric + Rotational Generator System",
-        "tensionMinLbs": 20,
+        "tensionMinLbs": 19,
         "tensionMaxLbs": 28,
         "gripSize": "G5",
-        "priceMinUSD": 180,
-        "priceMaxUSD": 220,
-        "lastVerified": "2026-08-19",
+        "priceMinUSD": 260,
+        "priceMaxUSD": 260,
+        "lastVerified": "2026-09-14",
         "notes": "Advanced-elite tier of the 77 line; used by Chen Yu Fei, An Se Young. Slimmest shaft in head-heavy Astrox lineup."
       },
       "seeded": true,
-      "msrp": 248
+      "msrp": 359
     },
     {
       "id": "racket-yonex-arcsaber-71-light",
@@ -2169,12 +2177,12 @@
         "weightMaxG": 78,
         "tier": "Mid-range",
         "frameMaterial": "Standard graphite composite",
-        "tensionMinLbs": 18,
-        "tensionMaxLbs": 25,
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 30,
         "gripSize": "G5",
         "priceMinUSD": 90,
         "priceMaxUSD": 120,
-        "lastVerified": "2026-08-19",
+        "lastVerified": "2026-09-14",
         "notes": "Light, quick-reacting control racket bridging beginner and ArcSaber 7 Pro tiers"
       },
       "seeded": true,
@@ -2201,11 +2209,11 @@
         "tier": "Mid-range",
         "frameMaterial": "High Modulus Graphite + HDF Shock Absorption System",
         "tensionMinLbs": 20,
-        "tensionMaxLbs": 30,
+        "tensionMaxLbs": 31,
         "gripSize": "G5",
         "priceMinUSD": 120,
         "priceMaxUSD": 150,
-        "lastVerified": "2026-08-19",
+        "lastVerified": "2026-09-14",
         "notes": "Entry point into serious control-play; same design language as Halbertec 8000/9000 at a club-friendly price"
       },
       "seeded": true,
@@ -2217,30 +2225,30 @@
       "brand": "Li-Ning",
       "model": "Aeronaut 7000i",
       "skillRange": [
-        2,
-        5
+        4,
+        6
       ],
       "attributes": {
         "series": "Aeronaut",
         "playStyle": "Control",
         "subType": "all-round",
-        "balance": "Head-light",
-        "flex": "Medium",
-        "weight": "4U",
-        "weightMinG": 78,
-        "weightMaxG": 78,
-        "tier": "Mid-range",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "5U",
+        "weightMinG": 75,
+        "weightMaxG": 79,
+        "tier": "Premium",
         "frameMaterial": "Air Stream Channel (aerodynamic frame)",
         "tensionMinLbs": 19,
-        "tensionMaxLbs": 26,
-        "gripSize": "G4/G5",
-        "priceMinUSD": 110,
-        "priceMaxUSD": 140,
-        "lastVerified": "2026-08-19",
+        "tensionMaxLbs": 32,
+        "gripSize": "G6",
+        "priceMinUSD": 230,
+        "priceMaxUSD": 310,
+        "lastVerified": "2026-09-14",
         "notes": "Lighter, more accessible step below the Aeronaut 9000 flagship"
       },
       "seeded": true,
-      "msrp": 152
+      "msrp": 317
     },
     {
       "id": "racket-li-ning-air-force-79",
@@ -4203,6 +4211,2484 @@
       },
       "seeded": true,
       "msrp": 10
+    },
+    {
+      "id": "racket-yonex-astrox-100-tour",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox 100 Tour",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Astrox",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Extra Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "HM Graphite, Nanomesh Neo, Tungsten; shaft HM Graphite, Namd",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 29,
+        "priceMinUSD": 220,
+        "priceMaxUSD": 220,
+        "lastVerified": "2026-09-14",
+        "notes": "Extra-stiff, head-heavy smash frame one step below the 100ZZ."
+      },
+      "seeded": true,
+      "msrp": 304
+    },
+    {
+      "id": "racket-yonex-astrox-100-game",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox 100 Game",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Astrox",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Medium",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Mid-range",
+        "frameMaterial": "HM Graphite, Nanomesh Neo, Tungsten; shaft HM Graphite, Nanomesh Neo",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 29,
+        "priceMinUSD": 160,
+        "priceMaxUSD": 160,
+        "lastVerified": "2026-09-14",
+        "notes": "Head-heavy attacking frame with a friendlier medium shaft."
+      },
+      "seeded": true,
+      "msrp": 221
+    },
+    {
+      "id": "racket-yonex-astrox-100va-tour",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox 100VA Tour",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Astrox",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "HM Graphite, Nanomesh Neo, Volume Cut Resin, Tungsten; shaft HM Graphite, Namd",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 29,
+        "priceMinUSD": 220,
+        "priceMaxUSD": 220,
+        "lastVerified": "2026-09-14",
+        "notes": "Viktor Axelsen collection Tour frame — stiff, head-heavy power."
+      },
+      "seeded": true,
+      "msrp": 304
+    },
+    {
+      "id": "racket-yonex-astrox-100va-game",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox 100VA Game",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Astrox",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Medium",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Mid-range",
+        "frameMaterial": "HM Graphite, Nanomesh Neo, Volume Cut Resin, Tungsten; shaft HM Graphite, Nanomesh Neo",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 29,
+        "priceMinUSD": 150,
+        "priceMaxUSD": 160,
+        "lastVerified": "2026-09-14",
+        "notes": "Axelsen-collection power frame at a mid price, medium shaft."
+      },
+      "seeded": true,
+      "msrp": 207
+    },
+    {
+      "id": "racket-yonex-astrox-99-tour",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox 99 Tour",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Astrox",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "HM Graphite, CSR, Tungsten, 2G-Namd Flex Force",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 29,
+        "priceMinUSD": 200,
+        "priceMaxUSD": 200,
+        "lastVerified": "2026-09-14",
+        "notes": "Stiff head-heavy smasher; the 99 Pro feel for less."
+      },
+      "seeded": true,
+      "msrp": 276
+    },
+    {
+      "id": "racket-yonex-astrox-99-game",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox 99 Game",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Astrox",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Medium",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "HM Graphite, CSR, Tungsten, 2G-Nanomesh Neo",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 28,
+        "gripSize": "G5/G6",
+        "priceMinUSD": 145,
+        "priceMaxUSD": 145,
+        "lastVerified": "2026-09-14",
+        "notes": "Head-heavy power with a medium shaft for developing attackers."
+      },
+      "seeded": true,
+      "msrp": 200
+    },
+    {
+      "id": "racket-yonex-astrox-88s-tour",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox 88S Tour",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Astrox",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "HM Graphite, CSR, Tungsten; shaft HM Graphite, 2G-Namd Flex Force",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 29,
+        "priceMinUSD": 200,
+        "priceMaxUSD": 200,
+        "lastVerified": "2026-09-14",
+        "notes": "Front-court doubles frame, stiff and head-heavy."
+      },
+      "seeded": true,
+      "msrp": 276
+    },
+    {
+      "id": "racket-yonex-astrox-88s-game",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox 88S Game",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Astrox",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Medium",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "HM Graphite, CSR, Tungsten; shaft HM Graphite, 2G-Nanomesh Neo",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 28,
+        "gripSize": "G5/G6",
+        "priceMinUSD": 135,
+        "priceMaxUSD": 135,
+        "lastVerified": "2026-09-14",
+        "notes": "Front-court doubles frame with an easier medium shaft."
+      },
+      "seeded": true,
+      "msrp": 186
+    },
+    {
+      "id": "racket-yonex-astrox-88d-tour",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox 88D Tour",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Astrox",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "HM Graphite, CSR, Tungsten; shaft HM Graphite, 2G-Namd Flex Force",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 29,
+        "priceMinUSD": 200,
+        "priceMaxUSD": 200,
+        "lastVerified": "2026-09-14",
+        "notes": "Back-court doubles power, stiff and head-heavy."
+      },
+      "seeded": true,
+      "msrp": 276
+    },
+    {
+      "id": "racket-yonex-astrox-88d-game",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox 88D Game",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Astrox",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Medium",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "HM Graphite, CSR, Tungsten; shaft HM Graphite, 2G-Nanomesh Neo",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 28,
+        "gripSize": "G5/G6",
+        "priceMinUSD": 135,
+        "priceMaxUSD": 135,
+        "lastVerified": "2026-09-14",
+        "notes": "Back-court doubles frame with a medium shaft."
+      },
+      "seeded": true,
+      "msrp": 186
+    },
+    {
+      "id": "racket-yonex-astrox-88-play",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox 88 Play",
+      "skillRange": [
+        1,
+        3
+      ],
+      "attributes": {
+        "series": "Astrox",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Medium",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Entry-level",
+        "frameMaterial": "Graphite",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 28,
+        "gripSize": "G5",
+        "priceMinUSD": 85,
+        "priceMaxUSD": 85,
+        "lastVerified": "2026-09-14",
+        "notes": "Pre-strung head-heavy 88 for players starting out."
+      },
+      "seeded": true,
+      "msrp": 117
+    },
+    {
+      "id": "racket-yonex-astrox-77-tour",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox 77 Tour",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Astrox",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Medium",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "HM Graphite, LIGHT Feel Carbon Neo, Tungsten; shaft HM Graphite, Nanomesh Neo",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 29,
+        "priceMinUSD": 180,
+        "priceMaxUSD": 190,
+        "lastVerified": "2026-09-14",
+        "notes": "Accessible head-heavy power with a medium shaft."
+      },
+      "seeded": true,
+      "msrp": 248
+    },
+    {
+      "id": "racket-yonex-astrox-70",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox 70",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Astrox",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Premium",
+        "frameMaterial": "HM Graphite, VDM, Tungsten; shaft HM Graphite, Namd",
+        "tensionMinLbs": 18,
+        "tensionMaxLbs": 26,
+        "gripSize": "G5/G6",
+        "priceMinUSD": 260,
+        "priceMaxUSD": 260,
+        "lastVerified": "2026-09-14",
+        "notes": "Flexible, comfortable head-heavy frame for easy clears."
+      },
+      "seeded": true,
+      "msrp": 359
+    },
+    {
+      "id": "racket-yonex-astrox-01-feel",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox 01 Feel",
+      "skillRange": [
+        1,
+        3
+      ],
+      "attributes": {
+        "series": "Astrox",
+        "playStyle": "Power",
+        "subType": "beginner",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Entry-level",
+        "frameMaterial": "Graphite",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 28,
+        "gripSize": "G4/G5",
+        "priceMinUSD": 65,
+        "priceMaxUSD": 65,
+        "lastVerified": "2026-09-14",
+        "notes": "Budget pre-strung head-heavy frame with a whippy shaft."
+      },
+      "seeded": true,
+      "msrp": 90
+    },
+    {
+      "id": "racket-yonex-astrox-attack-9",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Astrox Attack 9",
+      "skillRange": [
+        1,
+        3
+      ],
+      "attributes": {
+        "series": "Astrox",
+        "playStyle": "Speed",
+        "subType": "beginner",
+        "balance": "Head-light",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Entry-level",
+        "frameMaterial": "Carbon frame and shaft",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 27,
+        "priceMinUSD": 55,
+        "priceMaxUSD": 55,
+        "lastVerified": "2026-09-14",
+        "notes": "Low-cost pre-strung starter racket."
+      },
+      "seeded": true,
+      "msrp": 76
+    },
+    {
+      "id": "racket-yonex-nanoflare-1000-tour",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Nanoflare 1000 Tour",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Nanoflare",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Extra Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "HM Graphite, Nanocell Neo, EX-Hyper MG; shaft HM Graphite",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 29,
+        "priceMinUSD": 220,
+        "priceMaxUSD": 220,
+        "lastVerified": "2026-09-14",
+        "notes": "Fast head-light 1000 frame below the 1000Z."
+      },
+      "seeded": true,
+      "msrp": 304
+    },
+    {
+      "id": "racket-yonex-nanoflare-1000-game",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Nanoflare 1000 Game",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Nanoflare",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Medium",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Graphite, HM Graphite, Nanocell Neo",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 28,
+        "gripSize": "G5/G6",
+        "priceMinUSD": 160,
+        "priceMaxUSD": 160,
+        "lastVerified": "2026-09-14",
+        "notes": "Head-light speed frame with a medium shaft."
+      },
+      "seeded": true,
+      "msrp": 221
+    },
+    {
+      "id": "racket-yonex-nanoflare-1000-play",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Nanoflare 1000 Play",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Nanoflare",
+        "playStyle": "Speed",
+        "subType": "beginner",
+        "balance": "Head-light",
+        "flex": "Medium",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Graphite",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 28,
+        "gripSize": "G5/G6",
+        "priceMinUSD": 79.99,
+        "priceMaxUSD": 110,
+        "lastVerified": "2026-09-14",
+        "notes": "Pre-strung head-light racket for recreational players."
+      },
+      "seeded": true,
+      "msrp": 110
+    },
+    {
+      "id": "racket-yonex-nanoflare-800-tour",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Nanoflare 800 Tour",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Nanoflare",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "Graphite, Nanocell Neo, HM Graphite, Copper; shaft HM Graphite, Super HMG",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 29,
+        "priceMinUSD": 185,
+        "priceMaxUSD": 185,
+        "lastVerified": "2026-09-14",
+        "notes": "Head-light doubles speed frame, stiff shaft."
+      },
+      "seeded": true,
+      "msrp": 255
+    },
+    {
+      "id": "racket-yonex-nanoflare-800-game",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Nanoflare 800 Game",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Nanoflare",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Medium",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Graphite, Nanocell Neo, HM Graphite, Copper; shaft Graphite",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 28,
+        "gripSize": "G5/G6",
+        "priceMinUSD": 150,
+        "priceMaxUSD": 150,
+        "lastVerified": "2026-09-14",
+        "notes": "Head-light speed frame for intermediate doubles."
+      },
+      "seeded": true,
+      "msrp": 207
+    },
+    {
+      "id": "racket-yonex-nanoflare-800-play",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Nanoflare 800 Play",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Nanoflare",
+        "playStyle": "Speed",
+        "subType": "beginner",
+        "balance": "Head-light",
+        "flex": "Medium",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Graphite",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 28,
+        "gripSize": "G5/G6",
+        "priceMinUSD": 79.99,
+        "priceMaxUSD": 100,
+        "lastVerified": "2026-09-14",
+        "notes": "Pre-strung head-light 800 for newer players."
+      },
+      "seeded": true,
+      "msrp": 110
+    },
+    {
+      "id": "racket-yonex-nanoflare-700-tour",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Nanoflare 700 Tour",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Nanoflare",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Medium",
+        "weight": "4U/5U",
+        "weightMinG": 75,
+        "weightMaxG": 84,
+        "tier": "Premium",
+        "frameMaterial": "HM Graphite, Nanocell Neo, Super HMG, Servo Filter; shaft HM Graphite",
+        "tensionMinLbs": 19,
+        "tensionMaxLbs": 28,
+        "gripSize": "G5/G6",
+        "priceMinUSD": 185,
+        "priceMaxUSD": 190,
+        "lastVerified": "2026-09-14",
+        "notes": "Light, head-light frame for effortless clears and quick defence."
+      },
+      "seeded": true,
+      "msrp": 255
+    },
+    {
+      "id": "racket-yonex-nanoflare-700-game",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Nanoflare 700 Game",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Nanoflare",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Graphite, Nanocell Neo, HM Graphite, Servo Filter; shaft Graphite",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 28,
+        "gripSize": "G5/G6",
+        "priceMinUSD": 150,
+        "priceMaxUSD": 150,
+        "lastVerified": "2026-09-14",
+        "notes": "Flexible head-light frame that makes clears easy."
+      },
+      "seeded": true,
+      "msrp": 207
+    },
+    {
+      "id": "racket-yonex-nanoflare-speed-7",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "Nanoflare Speed 7",
+      "skillRange": [
+        1,
+        3
+      ],
+      "attributes": {
+        "series": "Nanoflare",
+        "playStyle": "Speed",
+        "subType": "beginner",
+        "balance": "Head-light",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Entry-level",
+        "frameMaterial": "Carbon frame and shaft",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 27,
+        "priceMinUSD": 55,
+        "priceMaxUSD": 55,
+        "lastVerified": "2026-09-14",
+        "notes": "Low-cost pre-strung head-light starter racket."
+      },
+      "seeded": true,
+      "msrp": 76
+    },
+    {
+      "id": "racket-yonex-arcsaber-11-tour",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "ArcSaber 11 Tour",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Arcsaber",
+        "playStyle": "Control",
+        "balance": "Even",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Mid-range",
+        "frameMaterial": "HM Graphite, Pocketing Booster; shaft HM Graphite, Super HMG",
+        "tensionMinLbs": 19,
+        "tensionMaxLbs": 28,
+        "priceMinUSD": 175,
+        "priceMaxUSD": 175,
+        "lastVerified": "2026-09-14",
+        "notes": "Even-balance control frame with the 11 Pro's stiff feel."
+      },
+      "seeded": true,
+      "msrp": 241
+    },
+    {
+      "id": "racket-yonex-arcsaber-11-play",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "ArcSaber 11 Play",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Arcsaber",
+        "playStyle": "Control",
+        "subType": "beginner",
+        "balance": "Even",
+        "flex": "Medium",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Graphite",
+        "tensionMinLbs": 19,
+        "tensionMaxLbs": 27,
+        "gripSize": "G5/G6",
+        "priceMinUSD": 79.99,
+        "priceMaxUSD": 110,
+        "lastVerified": "2026-09-14",
+        "notes": "Pre-strung even-balance control racket."
+      },
+      "seeded": true,
+      "msrp": 110
+    },
+    {
+      "id": "racket-yonex-arcsaber-7-tour",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "ArcSaber 7 Tour",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Arcsaber",
+        "playStyle": "Control",
+        "balance": "Even",
+        "flex": "Medium",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "HM Graphite, Pocketing Booster; shaft HM Graphite",
+        "tensionMinLbs": 19,
+        "tensionMaxLbs": 27,
+        "gripSize": "G5/G6",
+        "priceMinUSD": 145,
+        "priceMaxUSD": 145,
+        "lastVerified": "2026-09-14",
+        "notes": "All-round even-balance frame for placement."
+      },
+      "seeded": true,
+      "msrp": 200
+    },
+    {
+      "id": "racket-yonex-arcsaber-7-play",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "ArcSaber 7 Play",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Arcsaber",
+        "playStyle": "Control",
+        "subType": "beginner",
+        "balance": "Even",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Graphite",
+        "tensionMinLbs": 19,
+        "tensionMaxLbs": 27,
+        "gripSize": "G5/G6",
+        "priceMinUSD": 79.99,
+        "priceMaxUSD": 100,
+        "lastVerified": "2026-09-14",
+        "notes": "Pre-strung even-balance racket with a forgiving shaft."
+      },
+      "seeded": true,
+      "msrp": 110
+    },
+    {
+      "id": "racket-yonex-arcsaber-2-clear",
+      "category": "racket",
+      "brand": "Yonex",
+      "model": "ArcSaber 2 Clear",
+      "skillRange": [
+        1,
+        3
+      ],
+      "attributes": {
+        "series": "Arcsaber",
+        "playStyle": "Control",
+        "subType": "beginner",
+        "balance": "Even",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Entry-level",
+        "frameMaterial": "HT Graphite; shaft Graphite",
+        "tensionMinLbs": 20,
+        "tensionMaxLbs": 30,
+        "gripSize": "G5/G6",
+        "priceMinUSD": 65,
+        "priceMaxUSD": 65,
+        "lastVerified": "2026-09-14",
+        "notes": "Budget pre-strung even-balance racket."
+      },
+      "seeded": true,
+      "msrp": 90
+    },
+    {
+      "id": "racket-victor-auraspeed-100x-ultra",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Auraspeed 100X Ultra",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Auraspeed",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "High Resilience Modulus Graphite + Nano Fortify TR + Hard Cored Technology",
+        "tensionMaxLbs": 31,
+        "gripSize": "G5",
+        "priceMinUSD": 220,
+        "priceMaxUSD": 220,
+        "lastVerified": "2026-09-14",
+        "notes": "Stiff, head-light speed frame with a slim 5.8 shaft"
+      },
+      "seeded": true,
+      "msrp": 304
+    },
+    {
+      "id": "racket-victor-auraspeed-90f",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Auraspeed 90F",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Auraspeed",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Medium-Stiff",
+        "weight": "4U/5U",
+        "weightMinG": 75,
+        "weightMaxG": 84,
+        "tier": "Premium",
+        "frameMaterial": "High Resilient Modulus Graphite + Nano Fortify TR+",
+        "tensionMaxLbs": 28,
+        "gripSize": "G6",
+        "priceMinUSD": 220,
+        "priceMaxUSD": 220,
+        "lastVerified": "2026-09-14",
+        "notes": "Light head-light speed racket with a thin G6 grip"
+      },
+      "seeded": true,
+      "msrp": 304
+    },
+    {
+      "id": "racket-victor-auraspeed-90k-metallic",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Auraspeed 90K Metallic",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Auraspeed",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "High Resilient Modulus Graphite + Metallic Carbon Fiber + Nano Fortify TR+",
+        "tensionMaxLbs": 31,
+        "gripSize": "G5",
+        "priceMinUSD": 220,
+        "priceMaxUSD": 240,
+        "lastVerified": "2026-09-14",
+        "notes": "Metallic-fibre update of the 90K for fast attacking exchanges"
+      },
+      "seeded": true,
+      "msrp": 304
+    },
+    {
+      "id": "racket-victor-auraspeed-hs-plus",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Auraspeed HS Plus",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Auraspeed",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "High Resilience Modulus Graphite + Formosa Carbon Fiber",
+        "tensionMaxLbs": 29,
+        "gripSize": "G5",
+        "priceMinUSD": 230,
+        "priceMaxUSD": 230,
+        "lastVerified": "2026-09-14",
+        "notes": "Compact-head, stiff speed racket for quick doubles exchanges"
+      },
+      "seeded": true,
+      "msrp": 317
+    },
+    {
+      "id": "racket-victor-auraspeed-90s",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Auraspeed 90S",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Auraspeed",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "High Resilient Modulus Graphite + Nano Fortify TR+ + Hard Cored Technology",
+        "tensionMaxLbs": 30,
+        "gripSize": "G5",
+        "priceMinUSD": 180,
+        "priceMaxUSD": 180,
+        "lastVerified": "2026-09-14",
+        "notes": "Head-light, stiff frame that swings quickly in drives and defence"
+      },
+      "seeded": true,
+      "msrp": 248
+    },
+    {
+      "id": "racket-victor-auraspeed-99",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Auraspeed 99",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Auraspeed",
+        "playStyle": "Speed",
+        "balance": "Even",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "High Resilience Graphite + Metallic Carbon Fiber + Nano Aerogel",
+        "tensionMaxLbs": 31,
+        "gripSize": "G5",
+        "priceMinUSD": 220,
+        "priceMaxUSD": 220,
+        "lastVerified": "2026-09-14",
+        "notes": "Even-balanced, stiff racket built for fast drives"
+      },
+      "seeded": true,
+      "msrp": 304
+    },
+    {
+      "id": "racket-victor-auraspeed-fantome-f-ac",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Auraspeed Fantome F AC",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Auraspeed",
+        "playStyle": "Speed",
+        "balance": "Head-heavy",
+        "flex": "Medium-Stiff",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Premium",
+        "frameMaterial": "HR Modulus Graphite + Nano Fortify TR",
+        "tensionMaxLbs": 28,
+        "gripSize": "G5",
+        "priceMinUSD": 220,
+        "priceMaxUSD": 220,
+        "lastVerified": "2026-09-14",
+        "notes": "Ultra-slim Fantome frame tuned with a head-heavy balance"
+      },
+      "seeded": true,
+      "msrp": 304
+    },
+    {
+      "id": "racket-victor-thruster-f-c-ultra-cx",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Thruster F C Ultra CX",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Thruster",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Stiff",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Premium",
+        "frameMaterial": "HRM Graphite + 46T PYROFIL + Nano Fortify TR + Hard Cored Technology",
+        "tensionMaxLbs": 31,
+        "gripSize": "G5",
+        "priceMinUSD": 230,
+        "priceMaxUSD": 230,
+        "lastVerified": "2026-09-14",
+        "notes": "Stiff, head-heavy 4U attacking racket with a 6.0 slim shaft"
+      },
+      "seeded": true,
+      "msrp": 317
+    },
+    {
+      "id": "racket-victor-drivex-12",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "DriveX 12",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "DriveX",
+        "playStyle": "All-round",
+        "balance": "Even",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "High Resilience Modulus Graphite + Metallic Carbon Fiber",
+        "tensionMaxLbs": 32,
+        "gripSize": "G5",
+        "priceMinUSD": 230,
+        "priceMaxUSD": 230,
+        "lastVerified": "2026-09-14",
+        "notes": "Stiff all-rounder that handles both attack and defence"
+      },
+      "seeded": true,
+      "msrp": 317
+    },
+    {
+      "id": "racket-victor-drivex-3h",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "DriveX 3H",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "DriveX",
+        "playStyle": "All-round",
+        "balance": "Even",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Mid-range",
+        "frameMaterial": "High Resilience Graphite + Nano Resin",
+        "tensionMaxLbs": 31,
+        "gripSize": "G5",
+        "priceMinUSD": 120,
+        "priceMaxUSD": 120,
+        "lastVerified": "2026-09-14",
+        "notes": "Affordable even-balanced all-rounder with a firm shaft"
+      },
+      "seeded": true,
+      "msrp": 166
+    },
+    {
+      "id": "racket-victor-thruster-f-ultra",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Thruster F Ultra",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Thruster",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "High Resilience Modulus Graphite + Hard Cored Technology",
+        "tensionMinLbs": 26,
+        "tensionMaxLbs": 30,
+        "gripSize": "G5",
+        "priceMinUSD": 230,
+        "priceMaxUSD": 230,
+        "lastVerified": "2026-09-14",
+        "notes": "Head-heavy, stiff smash racket with a slim 5.8 shaft"
+      },
+      "seeded": true,
+      "msrp": 317
+    },
+    {
+      "id": "racket-victor-thruster-f-enhanced-hs",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Thruster F Enhanced HS",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Thruster",
+        "playStyle": "Power",
+        "balance": "Even",
+        "flex": "Stiff",
+        "weight": "3U",
+        "weightMinG": 85,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "High Resilient Modulus Graphite + PYROFIL + Hard Cored Technology",
+        "tensionMaxLbs": 31,
+        "gripSize": "G5",
+        "priceMinUSD": 230,
+        "priceMaxUSD": 230,
+        "lastVerified": "2026-09-14",
+        "notes": "Hendra Setiawan edition of the TK-F Enhanced; even balance, stiff shaft"
+      },
+      "seeded": true,
+      "msrp": 317
+    },
+    {
+      "id": "racket-victor-thruster-legend",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Thruster Legend",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Thruster",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "High Resilience Modulus Graphite + Hard Cored Technology",
+        "tensionMaxLbs": 31,
+        "gripSize": "G5",
+        "priceMinUSD": 189.99,
+        "priceMaxUSD": 189.99,
+        "lastVerified": "2026-09-14",
+        "notes": "Head-heavy offensive racket for full smashes"
+      },
+      "seeded": true,
+      "msrp": 262
+    },
+    {
+      "id": "racket-victor-thruster-ryuga-ii-pro",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Thruster Ryuga II Pro",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Thruster",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "High Resilience Modulus Graphite + Hard Cored Technology",
+        "tensionMaxLbs": 32,
+        "gripSize": "G5/G6",
+        "priceMinUSD": 230,
+        "priceMaxUSD": 230,
+        "lastVerified": "2026-09-14",
+        "notes": "Head-heavy, stiff Ryuga upgrade with a 6.6 shaft"
+      },
+      "seeded": true,
+      "msrp": 317
+    },
+    {
+      "id": "racket-victor-thruster-ryuga-metallic",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Thruster Ryuga Metallic",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Thruster",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "High Resilience Modulus Graphite + Hard Cored Technology + Metallic Carbon Fiber",
+        "tensionMaxLbs": 32,
+        "gripSize": "G5",
+        "priceMinUSD": 230,
+        "priceMaxUSD": 235,
+        "lastVerified": "2026-09-14",
+        "notes": "Metallic-fibre Ryuga for heavy, steep smashes"
+      },
+      "seeded": true,
+      "msrp": 317
+    },
+    {
+      "id": "racket-victor-thruster-raptor",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Thruster Raptor",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Thruster",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Stiff",
+        "weight": "3U/4U",
+        "weightMinG": 80,
+        "weightMaxG": 89,
+        "tier": "Mid-range",
+        "frameMaterial": "High Resilience Graphite + PYROFIL + Hard Cored Technology",
+        "tensionMaxLbs": 32,
+        "gripSize": "G5",
+        "priceMinUSD": 170,
+        "priceMaxUSD": 170,
+        "lastVerified": "2026-09-14",
+        "notes": "Mid-priced head-heavy attacker with a stiff shaft"
+      },
+      "seeded": true,
+      "msrp": 235
+    },
+    {
+      "id": "racket-victor-thruster-ryuga-muse",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Thruster Ryuga Muse",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Thruster",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Medium-Stiff",
+        "weight": "5U",
+        "weightMinG": 75,
+        "weightMaxG": 79,
+        "tier": "Premium",
+        "frameMaterial": "High Resilience Modulus Graphite + Hard Cored Technology",
+        "tensionMaxLbs": 30,
+        "gripSize": "G6",
+        "priceMinUSD": 180,
+        "priceMaxUSD": 180,
+        "lastVerified": "2026-09-14",
+        "notes": "Light 5U Ryuga that keeps a head-heavy feel"
+      },
+      "seeded": true,
+      "msrp": 248
+    },
+    {
+      "id": "racket-victor-thruster-k-280-ex",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Thruster K 280 EX",
+      "skillRange": [
+        1,
+        3
+      ],
+      "attributes": {
+        "series": "Thruster",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Medium",
+        "weight": "4U/5U",
+        "weightMinG": 75,
+        "weightMaxG": 84,
+        "tier": "Entry-level",
+        "frameMaterial": "Graphite + Resin",
+        "tensionMaxLbs": 27,
+        "gripSize": "G5/G6",
+        "priceMinUSD": 85,
+        "priceMaxUSD": 85,
+        "lastVerified": "2026-09-14",
+        "notes": "Budget head-heavy racket that makes power easy"
+      },
+      "seeded": true,
+      "msrp": 117
+    },
+    {
+      "id": "racket-victor-thruster-k-100k",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Thruster K 100K",
+      "skillRange": [
+        1,
+        3
+      ],
+      "attributes": {
+        "series": "Thruster",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "4U/5U",
+        "weightMinG": 75,
+        "weightMaxG": 84,
+        "tier": "Entry-level",
+        "frameMaterial": "Graphite + Resin",
+        "tensionMaxLbs": 31,
+        "gripSize": "G5",
+        "priceMinUSD": 89.99,
+        "priceMaxUSD": 89.99,
+        "lastVerified": "2026-09-14",
+        "notes": "Flexible, head-heavy entry racket for easy power (Victor lists 5U; Badminton Alley sells a 4U)"
+      },
+      "seeded": true,
+      "msrp": 124
+    },
+    {
+      "id": "racket-victor-thruster-k-6",
+      "category": "racket",
+      "brand": "Victor",
+      "model": "Thruster K 6",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Thruster",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Graphite + Resin",
+        "gripSize": "G5",
+        "priceMinUSD": 99.99,
+        "priceMaxUSD": 99.99,
+        "lastVerified": "2026-09-14",
+        "notes": "Pre-strung, flexible attacking racket for improving players"
+      },
+      "seeded": true,
+      "msrp": 138
+    },
+    {
+      "id": "racket-li-ning-axforce-90",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "AxForce 90",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "AxForce",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Premium",
+        "frameMaterial": "Carbon fibre, 6.4mm shaft, Box Wing Frame",
+        "gripSize": "G5",
+        "priceMinUSD": 230,
+        "priceMaxUSD": 280,
+        "lastVerified": "2026-09-14",
+        "notes": "The 2025 AxForce 90: head-heavy with a flexible 6.4mm shaft for easy smash power"
+      },
+      "seeded": true,
+      "msrp": 317
+    },
+    {
+      "id": "racket-li-ning-axforce-80-ii",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "AxForce 80 II",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "AxForce",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Medium",
+        "weight": "4U/5U",
+        "weightMinG": 75,
+        "weightMaxG": 84,
+        "tier": "Premium",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G5/G6",
+        "priceMinUSD": 250,
+        "priceMaxUSD": 300,
+        "lastVerified": "2026-09-14",
+        "notes": "Second-generation AxForce 80: head-heavy attacking frame with a medium shaft"
+      },
+      "seeded": true,
+      "msrp": 345
+    },
+    {
+      "id": "racket-li-ning-axforce-80-light",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "AxForce 80 Light",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "AxForce",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Stiff",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Premium",
+        "frameMaterial": "M40X + ULTRA high-elastic carbon; T1100 shaft",
+        "gripSize": "G6",
+        "priceMinUSD": 229,
+        "priceMaxUSD": 270,
+        "lastVerified": "2026-09-14",
+        "notes": "A lighter take on the AxForce 80: head-heavy with a stiff shaft"
+      },
+      "seeded": true,
+      "msrp": 316
+    },
+    {
+      "id": "racket-li-ning-axforce-70",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "AxForce 70",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "AxForce",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Premium",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G5",
+        "priceMinUSD": 180,
+        "priceMaxUSD": 250,
+        "lastVerified": "2026-09-14",
+        "notes": "Head-heavy, flexible power racket a step below the AxForce 80/90"
+      },
+      "seeded": true,
+      "msrp": 248
+    },
+    {
+      "id": "racket-li-ning-axforce-60",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "AxForce 60",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "AxForce",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Premium",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G5",
+        "priceMinUSD": 170,
+        "priceMaxUSD": 230,
+        "lastVerified": "2026-09-14",
+        "notes": "Mid-priced head-heavy power frame with a forgiving flexible shaft"
+      },
+      "seeded": true,
+      "msrp": 235
+    },
+    {
+      "id": "racket-li-ning-axforce-50",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "AxForce 50",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "AxForce",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "5U",
+        "weightMinG": 75,
+        "weightMaxG": 79,
+        "tier": "Mid-range",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G5",
+        "priceMinUSD": 150,
+        "priceMaxUSD": 200,
+        "lastVerified": "2026-09-14",
+        "notes": "Light 5U head-heavy racket for easy power"
+      },
+      "seeded": true,
+      "msrp": 207
+    },
+    {
+      "id": "racket-li-ning-axforce-40",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "AxForce 40",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "AxForce",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G6",
+        "priceMinUSD": 99,
+        "priceMaxUSD": 160,
+        "lastVerified": "2026-09-14",
+        "notes": "Affordable head-heavy racket with a soft shaft for club attackers"
+      },
+      "seeded": true,
+      "msrp": 137
+    },
+    {
+      "id": "racket-li-ning-axforce-30",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "AxForce 30",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "AxForce",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G5",
+        "priceMinUSD": 80,
+        "priceMaxUSD": 130,
+        "lastVerified": "2026-09-14",
+        "notes": "Budget head-heavy frame rated to high string tension"
+      },
+      "seeded": true,
+      "msrp": 110
+    },
+    {
+      "id": "racket-li-ning-axforce-20",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "AxForce 20",
+      "skillRange": [
+        1,
+        3
+      ],
+      "attributes": {
+        "series": "AxForce",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Entry-level",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G5",
+        "priceMinUSD": 75,
+        "priceMaxUSD": 100,
+        "lastVerified": "2026-09-14",
+        "notes": "Entry head-heavy racket with an easy flexible shaft"
+      },
+      "seeded": true,
+      "msrp": 103
+    },
+    {
+      "id": "racket-li-ning-axforce-10",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "AxForce 10",
+      "skillRange": [
+        1,
+        3
+      ],
+      "attributes": {
+        "series": "AxForce",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Entry-level",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G5",
+        "priceMinUSD": 60,
+        "priceMaxUSD": 80,
+        "lastVerified": "2026-09-14",
+        "notes": "Cheapest AxForce: head-heavy and flexible for newer attackers"
+      },
+      "seeded": true,
+      "msrp": 83
+    },
+    {
+      "id": "racket-li-ning-axforce-cannon-pro",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "AxForce Cannon Pro",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "AxForce",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G5",
+        "priceMinUSD": 93,
+        "priceMaxUSD": 160,
+        "lastVerified": "2026-09-14",
+        "notes": "Step up from the Cannon: head-heavy, flexible, up to 28 lbs"
+      },
+      "seeded": true,
+      "msrp": 128
+    },
+    {
+      "id": "racket-li-ning-axforce-big-bang",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "AxForce Big Bang",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "AxForce",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G6",
+        "priceMinUSD": 93,
+        "priceMaxUSD": 130,
+        "lastVerified": "2026-09-14",
+        "notes": "Light head-heavy racket with a flexible shaft; also sold down to 7U"
+      },
+      "seeded": true,
+      "msrp": 128
+    },
+    {
+      "id": "racket-li-ning-axforce-warrior",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "AxForce Warrior",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "AxForce",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G5",
+        "priceMinUSD": 100,
+        "priceMaxUSD": 150,
+        "lastVerified": "2026-09-14",
+        "notes": "New 2026 budget power racket: head-heavy and flexible"
+      },
+      "seeded": true,
+      "msrp": 138
+    },
+    {
+      "id": "racket-li-ning-halbertec-7000",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "Halbertec 7000",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Halbertec",
+        "playStyle": "Control",
+        "balance": "Even",
+        "flex": "Stiff",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Premium",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G5",
+        "priceMinUSD": 186,
+        "priceMaxUSD": 250,
+        "lastVerified": "2026-09-14",
+        "notes": "Even-balance control racket with a stiff shaft, below the Halbertec 8000/9000"
+      },
+      "seeded": true,
+      "msrp": 257
+    },
+    {
+      "id": "racket-li-ning-halbertec-6000",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "Halbertec 6000",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Halbertec",
+        "playStyle": "Control",
+        "balance": "Even",
+        "flex": "Medium",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Premium",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G5",
+        "priceMinUSD": 150,
+        "priceMaxUSD": 230,
+        "lastVerified": "2026-09-14",
+        "notes": "Mid-priced even-balance control racket with a medium shaft"
+      },
+      "seeded": true,
+      "msrp": 207
+    },
+    {
+      "id": "racket-li-ning-halbertec-motor-pro",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "Halbertec Motor Pro",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Halbertec",
+        "playStyle": "Control",
+        "balance": "Even",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G5",
+        "priceMinUSD": 100,
+        "priceMaxUSD": 160,
+        "lastVerified": "2026-09-14",
+        "notes": "Affordable even-balance all-court racket with a flexible shaft"
+      },
+      "seeded": true,
+      "msrp": 138
+    },
+    {
+      "id": "racket-li-ning-halbertec-motor",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "Halbertec Motor",
+      "skillRange": [
+        1,
+        3
+      ],
+      "attributes": {
+        "series": "Halbertec",
+        "playStyle": "Control",
+        "balance": "Even",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Entry-level",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G5",
+        "priceMinUSD": 60,
+        "priceMaxUSD": 80,
+        "lastVerified": "2026-09-14",
+        "notes": "Budget even-balance racket, rated to 31 lbs (4U)"
+      },
+      "seeded": true,
+      "msrp": 83
+    },
+    {
+      "id": "racket-li-ning-halbertec-1000",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "Halbertec 1000",
+      "skillRange": [
+        1,
+        3
+      ],
+      "attributes": {
+        "series": "Halbertec",
+        "playStyle": "Control",
+        "balance": "Even",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Entry-level",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G5",
+        "priceMinUSD": 60,
+        "priceMaxUSD": 80,
+        "lastVerified": "2026-09-14",
+        "notes": "Entry Halbertec: even balance and a forgiving flexible shaft"
+      },
+      "seeded": true,
+      "msrp": 83
+    },
+    {
+      "id": "racket-li-ning-bladex-880-shida",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "BladeX 880 Shida",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "BladeX",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Medium-Stiff",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Premium",
+        "frameMaterial": "M46X carbon fibre",
+        "gripSize": "G5/G6",
+        "priceMinUSD": 239,
+        "priceMaxUSD": 300,
+        "lastVerified": "2026-09-14",
+        "notes": "Head-light doubles speed racket with a wider sweet spot than the 800 Speed"
+      },
+      "seeded": true,
+      "msrp": 330
+    },
+    {
+      "id": "racket-li-ning-bladex-800-power",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "BladeX 800 Power",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "BladeX",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Medium",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Premium",
+        "frameMaterial": "M46X carbon fibre",
+        "gripSize": "G6",
+        "priceMinUSD": 250,
+        "priceMaxUSD": 300,
+        "lastVerified": "2026-09-14",
+        "notes": "The head-heavy, medium-shaft sibling of the BladeX 800 Speed"
+      },
+      "seeded": true,
+      "msrp": 345
+    },
+    {
+      "id": "racket-li-ning-bladex-800",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "BladeX 800",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "BladeX",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Stiff",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Premium",
+        "frameMaterial": "M46 + ULTRA high-elasticity carbon fibre",
+        "gripSize": "G5/G6",
+        "priceMinUSD": 210,
+        "priceMaxUSD": 300,
+        "lastVerified": "2026-09-14",
+        "notes": "Head-light, stiff BladeX for fast doubles exchanges"
+      },
+      "seeded": true,
+      "msrp": 290
+    },
+    {
+      "id": "racket-li-ning-bladex-600",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "BladeX 600",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "BladeX",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Medium",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G6",
+        "priceMinUSD": 150,
+        "priceMaxUSD": 190,
+        "lastVerified": "2026-09-14",
+        "notes": "Mid-priced head-light speed racket with a medium shaft"
+      },
+      "seeded": true,
+      "msrp": 207
+    },
+    {
+      "id": "racket-li-ning-bladex-500",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "BladeX 500",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "BladeX",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Stiff",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Premium",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G6",
+        "priceMinUSD": 160,
+        "priceMaxUSD": 200,
+        "lastVerified": "2026-09-14",
+        "notes": "Head-light, stiff speed racket at a mid-range price"
+      },
+      "seeded": true,
+      "msrp": 221
+    },
+    {
+      "id": "racket-li-ning-bladex-sonar",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "BladeX Sonar",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "BladeX",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Medium",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G6",
+        "priceMinUSD": 120,
+        "priceMaxUSD": 150,
+        "lastVerified": "2026-09-14",
+        "notes": "Affordable head-light racket with a medium shaft for quick drives"
+      },
+      "seeded": true,
+      "msrp": 166
+    },
+    {
+      "id": "racket-li-ning-bladex-assassin",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "BladeX Assassin",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "BladeX",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G6",
+        "priceMinUSD": 87,
+        "priceMaxUSD": 130,
+        "lastVerified": "2026-09-14",
+        "notes": "Budget head-light racket with a flexible shaft"
+      },
+      "seeded": true,
+      "msrp": 120
+    },
+    {
+      "id": "racket-li-ning-bladex-200",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "BladeX 200",
+      "skillRange": [
+        1,
+        3
+      ],
+      "attributes": {
+        "series": "BladeX",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Stiff",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Entry-level",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G5",
+        "priceMinUSD": 70,
+        "priceMaxUSD": 90,
+        "lastVerified": "2026-09-14",
+        "notes": "Entry head-light racket with a stiff shaft"
+      },
+      "seeded": true,
+      "msrp": 97
+    },
+    {
+      "id": "racket-li-ning-aeronaut-9000-instinct",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "Aeronaut 9000 Instinct",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "Aeronaut",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "5U",
+        "weightMinG": 75,
+        "weightMaxG": 79,
+        "tier": "Premium",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G6",
+        "priceMinUSD": 250,
+        "priceMaxUSD": 370,
+        "lastVerified": "2026-09-14",
+        "notes": "Light 5U Aeronaut with a very head-heavy balance for easy power"
+      },
+      "seeded": true,
+      "msrp": 345
+    },
+    {
+      "id": "racket-li-ning-turbo-charging-marshal",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "Turbo Charging Marshal",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Turbo Charging",
+        "playStyle": "Speed",
+        "balance": "Head-light",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G6",
+        "priceMinUSD": 130,
+        "priceMaxUSD": 180,
+        "lastVerified": "2026-09-14",
+        "notes": "Head-light, flexible Turbo Charging frame for quick defence and drives"
+      },
+      "seeded": true,
+      "msrp": 179
+    },
+    {
+      "id": "racket-li-ning-tectonic-1",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "Tectonic 1",
+      "skillRange": [
+        1,
+        3
+      ],
+      "attributes": {
+        "series": "Tectonic",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Entry-level",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G5",
+        "priceMinUSD": 60,
+        "priceMaxUSD": 90,
+        "lastVerified": "2026-09-14",
+        "notes": "Entry head-heavy Tectonic with an easy flexible shaft"
+      },
+      "seeded": true,
+      "msrp": 83
+    },
+    {
+      "id": "racket-li-ning-tectonic-6",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "Tectonic 6",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Tectonic",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Stiff",
+        "weight": "5U",
+        "weightMinG": 75,
+        "weightMaxG": 79,
+        "tier": "Mid-range",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G6",
+        "priceMinUSD": 140,
+        "priceMaxUSD": 200,
+        "lastVerified": "2026-09-14",
+        "notes": "Light 5U head-heavy frame with a stiff shaft"
+      },
+      "seeded": true,
+      "msrp": 193
+    },
+    {
+      "id": "racket-li-ning-windstorm-79s",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "Windstorm 79S",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Windstorm",
+        "playStyle": "All-round",
+        "balance": "Even",
+        "flex": "Flexible",
+        "weight": "5U",
+        "weightMinG": 75,
+        "weightMaxG": 79,
+        "tier": "Mid-range",
+        "frameMaterial": "Carbon graphite",
+        "gripSize": "G6",
+        "priceMinUSD": 86,
+        "priceMaxUSD": 130,
+        "lastVerified": "2026-09-14",
+        "notes": "Light 79 g even-balance racket with a flexible shaft"
+      },
+      "seeded": true,
+      "msrp": 119
+    },
+    {
+      "id": "racket-li-ning-windstorm-79h",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "Windstorm 79H",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "Windstorm",
+        "playStyle": "All-round",
+        "balance": "Even",
+        "flex": "Stiff",
+        "weight": "5U",
+        "weightMinG": 75,
+        "weightMaxG": 79,
+        "tier": "Mid-range",
+        "frameMaterial": "Carbon graphite",
+        "gripSize": "G6",
+        "priceMinUSD": 100,
+        "priceMaxUSD": 160,
+        "lastVerified": "2026-09-14",
+        "notes": "Light 79 g even-balance racket with a stiffer shaft than the 79S"
+      },
+      "seeded": true,
+      "msrp": 138
+    },
+    {
+      "id": "racket-li-ning-3d-calibar-300",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "3D Calibar 300",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "3D Calibar",
+        "playStyle": "All-round",
+        "balance": "Even",
+        "flex": "Stiff",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G6",
+        "priceMinUSD": 87,
+        "priceMaxUSD": 140,
+        "lastVerified": "2026-09-14",
+        "notes": "Budget even-balance Calibar with a stiff shaft"
+      },
+      "seeded": true,
+      "msrp": 120
+    },
+    {
+      "id": "racket-li-ning-3d-calibar-300-boost",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "3D Calibar 300 Boost",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "3D Calibar",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "4U",
+        "weightMinG": 80,
+        "weightMaxG": 84,
+        "tier": "Mid-range",
+        "frameMaterial": "Carbon fibre",
+        "gripSize": "G6",
+        "priceMinUSD": 86,
+        "priceMaxUSD": 130,
+        "lastVerified": "2026-09-14",
+        "notes": "Budget Calibar variant; the maker lists it as head-heavy with a flexible shaft"
+      },
+      "seeded": true,
+      "msrp": 119
+    },
+    {
+      "id": "racket-li-ning-3d-calibar-300-combat",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "3D Calibar 300 Combat",
+      "skillRange": [
+        2,
+        5
+      ],
+      "attributes": {
+        "series": "3D Calibar",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "3U",
+        "weightMinG": 85,
+        "weightMaxG": 89,
+        "tier": "Mid-range",
+        "frameMaterial": "Carbon fibre",
+        "priceMinUSD": 90,
+        "priceMaxUSD": 130,
+        "lastVerified": "2026-09-14",
+        "notes": "Budget 3U head-heavy Calibar for power players"
+      },
+      "seeded": true,
+      "msrp": 124
+    },
+    {
+      "id": "racket-li-ning-3d-calibar-600-combat",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "3D Calibar 600 Combat",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "3D Calibar",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "3U",
+        "weightMinG": 85,
+        "weightMaxG": 89,
+        "tier": "Premium",
+        "frameMaterial": "Carbon fibre",
+        "priceMinUSD": 180,
+        "priceMaxUSD": 199,
+        "lastVerified": "2026-09-14",
+        "notes": "3U head-heavy Calibar for power players"
+      },
+      "seeded": true,
+      "msrp": 248
+    },
+    {
+      "id": "racket-li-ning-3d-calibar-900-instinct",
+      "category": "racket",
+      "brand": "Li-Ning",
+      "model": "3D Calibar 900 Instinct",
+      "skillRange": [
+        4,
+        6
+      ],
+      "attributes": {
+        "series": "3D Calibar",
+        "playStyle": "Power",
+        "balance": "Head-heavy",
+        "flex": "Flexible",
+        "weight": "5U",
+        "weightMinG": 75,
+        "weightMaxG": 79,
+        "tier": "Premium",
+        "frameMaterial": "Carbon fibre",
+        "priceMinUSD": 260,
+        "priceMaxUSD": 350,
+        "lastVerified": "2026-09-14",
+        "notes": "Light 79 g head-heavy Calibar (Liliyana Natsir's frame)"
+      },
+      "seeded": true,
+      "msrp": 359
     }
   ]
 }

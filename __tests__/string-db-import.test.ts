@@ -103,7 +103,7 @@ describe('string db import', () => {
 
   it('leaves the racket catalog untouched', () => {
     // Union, never replace — no string id may collide with a racket id.
-    expect(all.filter((i) => i.category === 'racket')).toHaveLength(71);
+    expect(all.filter((i) => i.category === 'racket')).toHaveLength(157);
     const ids = all.map((i) => i.id);
     expect(new Set(ids).size).toBe(ids.length);
   });

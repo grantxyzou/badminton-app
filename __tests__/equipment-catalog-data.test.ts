@@ -6,11 +6,11 @@ import type { CatalogItem } from '../lib/types';
 const items = catalog.items as unknown as CatalogItem[];
 
 describe('equipment catalog data', () => {
-  it('holds the 71-racket catalog after v2 import', () => {
+  it('holds the 157-racket catalog (v2 import + the 2026-09-14 catalog check)', () => {
     // Counted by category rather than by total length: strings now share this
     // file, and a bare length check would silently stop guarding the rackets
     // the moment another category arrived.
-    expect(items.filter((i) => i.category === 'racket')).toHaveLength(71);
+    expect(items.filter((i) => i.category === 'racket')).toHaveLength(157);
   });
 
   it('holds the 46-string catalog after the string import', () => {
@@ -113,7 +113,10 @@ describe('equipment catalog data', () => {
      driving a real stringing decision. Pinned so nobody "fixes" it by guessing. */
   it('leaves the unpublished tension ceilings absent rather than guessing them', () => {
     const withoutCeiling = rackets().filter((r) => typeof r.attributes?.tensionMaxLbs !== 'number');
-    expect(withoutCeiling.length).toBe(11);
+    // 11 before the 2026-09-14 check. That check found a published range for 5
+    // of them, and added 38 new models whose makers print none — without one,
+    // by the same rule (11 − 5 + 38).
+    expect(withoutCeiling.length).toBe(44);
   });
 
   it('imports new rackets with converted pricing and derived skillRange', () => {
