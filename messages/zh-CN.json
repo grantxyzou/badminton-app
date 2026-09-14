@@ -906,6 +906,7 @@
       "error": "无法加载你在俱乐部的位置。"
     },
     "overview": {
+      "signedOut": "未登录",
       "level": "水平",
       "games": "场次",
       "kudos": "点赞",
@@ -969,6 +970,7 @@
     "retry": "重试",
     "signIn": "登录",
     "summaryGreeting": {
+      "locked": "登录后每周获得一段关于你打球的简评。",
       "ariaLabel": "你的 AI 总结",
       "beta": "测试版",
       "ai": "AI"

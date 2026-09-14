@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import { useInsight } from '@/lib/useInsight';
 import AIBadge from '@/components/primitives/AIBadge';
 import ErrorState from '@/components/primitives/ErrorState';
+import LockedCard from './LockedCard';
 
 /**
  * The single plain-language AI takeaway at the top of the Stats Summary — the
@@ -42,10 +43,19 @@ export default function SummaryGreeting() {
   const { data, forbidden, serverError, reload } = useInsight(true);
   const greeting = data?.greeting ?? null;
 
-  // A refusal renders nothing HERE: the same 403 raises the tab's own "sign in
-  // to see your stats" banner, which carries the Sign in button. Every card
-  // repeating it in red was a dozen alerts for one fact that is not a failure.
-  if (forbidden) return null;
+  // Refused (no session on this device): the greeting's own shape, locked, with
+  // Sign in — the same treatment as every other Stats card (LockedCard).
+  if (forbidden) {
+    return (
+      <LockedCard message={t('summaryGreeting.locked')}>
+        <div className="locked-row">
+          <AIBadge label={t('insightChip.aiGenerated')}>{t('summaryGreeting.ai')}</AIBadge>
+          <span className="locked-line" style={{ width: '70%' }} />
+        </div>
+        <span className="locked-line" style={{ width: '52%' }} />
+      </LockedCard>
+    );
+  }
   if (serverError) {
     return (
       <ErrorState

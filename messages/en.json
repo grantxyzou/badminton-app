@@ -906,6 +906,7 @@
       "error": "Couldn't load where you sit."
     },
     "overview": {
+      "signedOut": "Signed out",
       "level": "Level",
       "games": "Games",
       "kudos": "Kudos",
@@ -969,6 +970,7 @@
     "retry": "Try again",
     "signIn": "Sign in",
     "summaryGreeting": {
+      "locked": "Sign in for a short read on your game each week.",
       "ariaLabel": "Your AI summary",
       "beta": "Beta",
       "ai": "AI"
