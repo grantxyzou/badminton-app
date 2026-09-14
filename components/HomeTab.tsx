@@ -330,6 +330,17 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       <span>{t('signInSetup.haveOne')}</span>
     </span>
   );
+  /* Every sign-up state that is not "signed up" carries the same warning: a
+     regular who hits a closed, full or finished week (or joins the waitlist)
+     is as locked out after the flip as one who signs up. */
+  const signInSetupBanner = needsSignInSetup ? (
+    <StatusBanner
+      tone="warn"
+      icon="key"
+      title={t('signInSetup.title')}
+      body={signInSetupBody(t('signInSetup.body'))}
+    />
+  ) : null;
   const suggestions = name.trim().length > 0
     ? memberNames.filter(n => n.toLowerCase().includes(name.toLowerCase().trim()))
     : [];
@@ -636,12 +647,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           <div className="space-y-4">
             <p className="bpm-h2">{t('signup.heading')}</p>
             <StatusBanner tone="success" icon="celebration" title={tStates('finishedTitle')} body={tStates('finishedBody')} />
+            {signInSetupBanner}
           </div>
         ) : isSignupClosed && !effectiveIsSignedUp && !isWaitlisted ? (
           /* ── State: Sign-ups opening soon ── */
           <div className="space-y-4">
             <p className="bpm-h2">{t('signup.heading')}</p>
             <StatusBanner tone="warn" icon="watch_later" title={tStates('openingSoonTitle')} body={tStates('openingSoonBody')} />
+            {signInSetupBanner}
           </div>
         ) : isDeadlinePast && !effectiveIsSignedUp && !isWaitlisted ? (
           /* ── State: Deadline passed ── */
@@ -653,6 +666,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               title={tStates('closedTitle')}
               body={t('signup.closedPreviously', { date: format.dateTime(new Date(session!.deadline), DAY_LONG) })}
             />
+            {signInSetupBanner}
           </div>
         ) : effectiveIsSignedUp ? (
           /* ── State 1: Active sign-up ── */
@@ -708,6 +722,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               title={tStates('waitlistTitle')}
               body={`${tStates('waitlistPositionLabel', { position: waitlistPosition, total: waitlistPlayers.length })} · ${t('signup.confirmed', { name: currentUser ?? '' })}`}
             />
+            {signInSetupBanner}
             <button type="button" onClick={() => onTabChange?.('players')} className="btn-ghost w-full">
               {t('signup.viewList')}
             </button>
@@ -720,6 +735,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               <p key={activePlayers.length} className="fs-md text-gray-400 animate-count-tick">{t('signup.spotsFull', { count: activePlayers.length })}</p>
             </div>
             <StatusBanner tone="warn" icon="lock" title={t('signup.full')} body={t('signup.allSpotsTaken', { total: spotsTotal })} />
+            {signInSetupBanner}
             <form onSubmit={handleJoinWaitlist} className="space-y-3">
               {memberName ? (
                 <p className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)' }}>
@@ -903,14 +919,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
             </form>
             {/* Not signed up yet: the same warning, under the button it is
                 about. Signing up swaps it for the amber confirmation above. */}
-            {needsSignInSetup && (
-              <StatusBanner
-                tone="warn"
-                icon="key"
-                title={t('signInSetup.title')}
-                body={signInSetupBody(t('signInSetup.body'))}
-              />
-            )}
+            {signInSetupBanner}
           </div>
         )}
       </div>

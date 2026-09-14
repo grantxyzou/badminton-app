@@ -140,6 +140,25 @@ describe('the pre-flip sign-in warning', () => {
     expect(screen.queryByText('Set up a way to sign in')).toBeNull();
   });
 
+  it.each([
+    ['on the waitlist', { ...session, maxPlayers: 1 }, [{ name: 'Lin', waitlisted: false }, { name: 'Kento', waitlisted: true }]],
+    ['when the session is full', { ...session, maxPlayers: 1 }, [{ name: 'Lin', waitlisted: false }]],
+    ['when sign-ups are not open yet', { ...session, signupOpen: false }, []],
+  ])('warns %s too, not only on the open form', async (_label, s, players) => {
+    signedInLocallyAs('Kento');
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/api/session')) return ok(s);
+      if (url.includes('/api/members/me')) return ok({ createdAt: '2026-01-01', hasPin: false, authed: false });
+      if (url.includes('/api/players/unpaid')) return ok({ totalOwed: 0, sessionCount: 0, mostRecent: null, sessions: [] });
+      if (url.includes('/api/stringing/shop')) return ok({ open: false });
+      if (url.includes('/api/players')) return ok(players);
+      return ok([]);
+    });
+    renderHome(null);
+    expect(await screen.findByText('Set up a way to sign in', {}, { timeout: 2000 })).toBeDefined();
+  });
+
   it('does not warn a member with a PIN', async () => {
     signedInLocallyAs('Lin');
     probeAnswers({ createdAt: '2026-01-01', hasPin: true, authed: false });
