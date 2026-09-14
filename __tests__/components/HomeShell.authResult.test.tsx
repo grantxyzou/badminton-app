@@ -22,7 +22,6 @@ vi.mock('@/components/PlayersTab', () => ({ default: () => null }));
 vi.mock('@/components/SkillsTab', () => ({ default: () => null }));
 vi.mock('@/components/ProfileTab', () => ({ default: () => null }));
 vi.mock('@/components/BottomNav', () => ({ default: () => null }));
-vi.mock('@/components/GlassPhysics', () => ({ default: () => null }));
 vi.mock('@/components/ThemeToggle', () => ({ default: () => null }));
 vi.mock('@/components/LanguageToggle', () => ({ default: () => null }));
 vi.mock('@/components/PullToRefresh', () => ({ default: () => null }));

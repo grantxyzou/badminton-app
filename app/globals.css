@@ -1467,7 +1467,7 @@ html:root .court-bg::after {
 
 
 /* ── Stats-tab glass highlight ──
-   On Stats, the cursor-tracked highlight uses a desaturated neutral grey at
+   On Stats, the centre highlight uses a desaturated neutral grey at
    ~half the global alpha so the cards read as ambient-lit, not spotlit.
    Other tabs keep the canonical .glass-card highlight (line 634-639). */
 html[data-tab="skills"] .glass-card {
@@ -1507,7 +1507,7 @@ html[data-tab="skills"] .glass-card {
 }
 
 @media (hover: hover) {
-  html[data-tab="skills"] .glass-card:hover {
+  html[data-tab="skills"] :is(button, a, [role="button"]).glass-card:hover {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.24),
       inset 0 -1px 1px rgba(0, 0, 0, 0.20);
@@ -1538,8 +1538,8 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
 }
 
 @media (hover: hover) {
-  [data-theme="light"] html[data-tab="skills"] .glass-card:hover,
-  html[data-tab="skills"][data-theme="light"] .glass-card:hover {
+  [data-theme="light"] html[data-tab="skills"] :is(button, a, [role="button"]).glass-card:hover,
+  html[data-tab="skills"][data-theme="light"] :is(button, a, [role="button"]).glass-card:hover {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.85),
       inset 0 -1px 1px rgba(22, 33, 27, 0.08);
@@ -1551,7 +1551,8 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
   /* Canonical per docs/design-system/preview/14-glass-card.html —
      radius 16 (corner ladder caps rectangular surfaces at 16), blur via
      --glass-blur token (10 dark / 16 light), saturate 180%. The radial
-     mouse-tracked highlight (GlassPhysics) lays over the base glass tint. */
+     highlight (fixed at centre since GlassPhysics was removed) lays over the
+     base glass tint. */
   background:
     radial-gradient(
       ellipse at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
@@ -1569,8 +1570,11 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
               transform var(--duration-normal) var(--ease-glass);
 }
 
+/* Hover lifts only a card you can press. A static card that rose and
+   brightened under the pointer read as a control that did nothing ("the cards
+   move and shine when mouse hover on it. weird", Grant 2026-09-14). */
 @media (hover: hover) {
-  .glass-card:hover {
+  :is(button, a, [role="button"]).glass-card:hover {
     transform: translateY(-2px);
     box-shadow:
       inset 0 1px 0 var(--glass-inset-hover);
@@ -1603,8 +1607,10 @@ html[data-tab="skills"][data-theme="light"] .glass-card {
    has defined since v1 and .glass-card has never applied.
    ══════════════════════════════════════════════════════════════════════════ */
 html:root .glass-card {
-  /* Keep the GlassPhysics mouse-tracked highlight layered over the new tint —
-     it is the app's signature interaction and costs nothing here. */
+  /* The radial highlight rests at the card's centre (--mx/--my default 0.5).
+     It used to follow the mouse via GlassPhysics, deleted 2026-09-14: cards
+     shimmering under the pointer read as controls. Every device now sees the
+     still light phones always saw. */
   background:
     radial-gradient(
       ellipse at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
@@ -1623,7 +1629,7 @@ html:root .glass-card {
 }
 
 @media (hover: hover) {
-  html:root .glass-card:hover {
+  html:root :is(button, a, [role="button"]).glass-card:hover {
     box-shadow: var(--fcard-inset), var(--glass-shadow-hover);
   }
 }
@@ -1667,7 +1673,7 @@ html:root .cc-dcard.warn  { background: var(--fcard-wait-bg); }
    the same inset-brightening the field card already uses, so admin hover and
    app hover are one behaviour. */
 @media (hover: hover) {
-  html:root .cc-dcard:hover {
+  html:root :is(button, a, [role="button"]).cc-dcard:hover {
     border-color: transparent;
     box-shadow: inset 0 1px 0 var(--glass-inset-hover), var(--glass-shadow-hover);
   }
@@ -3920,7 +3926,7 @@ html:root[data-theme="light"] {
   cursor: pointer;
   transition: border-color 120ms ease;
 }
-.cc-dcard:hover { border-color: rgba(255, 255, 255, 0.22); }
+:is(button, a, [role="button"]).cc-dcard:hover { border-color: rgba(255, 255, 255, 0.22); }
 .cc-dcard .htitle {
   font-family: var(--font-display, 'Space Grotesk'), system-ui, sans-serif;
   font-size: 12px;
@@ -3961,7 +3967,7 @@ html:root[data-theme="light"] {
 [data-theme="light"] .cc-dcard .htitle { color: var(--text-secondary); }
 [data-theme="light"] .cc-dcard .big { color: var(--text-primary); }
 [data-theme="light"] .cc-dcard .small { color: var(--text-secondary); }
-[data-theme="light"] .cc-dcard:hover { border-color: rgba(0, 0, 0, 0.18); }
+[data-theme="light"] :is(button, a, [role="button"]).cc-dcard:hover { border-color: rgba(0, 0, 0, 0.18); }
 [data-theme="light"] .cc-dcard.alert {
   border-color: rgba(234, 88, 12, 0.30);
   background: linear-gradient(160deg, rgba(234, 88, 12, 0.06), rgba(0, 0, 0, 0.01));

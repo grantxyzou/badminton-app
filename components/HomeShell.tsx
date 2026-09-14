@@ -18,7 +18,6 @@ import SkillsTab from '@/components/SkillsTab';
 import ProfileTab from '@/components/ProfileTab';
 import NativeBridge from '@/components/NativeBridge';
 import type { Provider as AuthProvider } from '@/components/auth/ProviderButtons';
-import GlassPhysics from '@/components/GlassPhysics';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import StatusBanner from '@/components/primitives/StatusBanner';
@@ -631,7 +630,6 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     <>
       <PullToRefresh onRefresh={handlePullRefresh} />
       <div className="min-h-screen pb-32">
-        <GlassPhysics />
         <ThemeToggle />
         <LanguageToggle />
         <main data-page-shell className="max-w-lg mx-auto px-4 page-shell-top">
