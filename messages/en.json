@@ -436,6 +436,8 @@
       "allClear": "All clear"
     },
     "settings": {
+      "helpGroup": "Help",
+      "privacyGroup": "Privacy",
       "title": "Account",
       "appGroup": "App",
       "newPin": "New PIN",

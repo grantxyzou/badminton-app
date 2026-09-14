@@ -99,12 +99,19 @@ describe('ProfileTab — hierarchy pass', () => {
 
   // #4 — seven rows in three groups, and "Admin access" is cut because it and
   // the console row were two doors to one place.
-  it('groups settings under ACCOUNT and APP, with no Admin access row', async () => {
+  it('groups settings under ACCOUNT, PRIVACY, APP and HELP, with no Admin access row', async () => {
     signedIn();
     renderWith({ isAdmin: true });
     await screen.findByText('Michael');
-    expect(screen.getByText(enMessages.profile.settings.title)).toBeDefined();
-    expect(screen.getByText(enMessages.profile.settings.appGroup)).toBeDefined();
+    const s = enMessages.profile.settings;
+    for (const eyebrow of [s.title, s.privacyGroup, s.appGroup, s.helpGroup]) {
+      expect(screen.getByText(eyebrow)).toBeDefined();
+    }
+    // Rows that answer the same question share one list (2026-09-14 regroup).
+    const listOf = (label: string) => screen.getByText(label).closest('ul');
+    expect(listOf(s.statsPrivacy)).toBe(listOf(s.privacyPolicy));
+    expect(listOf(s.releaseNotes)).toBe(listOf(s.reportProblem));
+    expect(listOf(s.statsPrivacy)).not.toBe(listOf(s.releaseNotes));
     expect(screen.queryByText(/Admin access/i)).toBeNull();
   });
 

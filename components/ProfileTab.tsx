@@ -633,6 +633,36 @@ export default function ProfileTab({
     return <StatsPrivacyScreen onBack={() => setView('root')} state={privacyState} />;
   }
 
+  // This device: every row here can be absent (push still probing, already
+  // installed, no migration), so the group hides rather than titling nothing.
+  const appRows: SettingsRow[] = [
+    /* Hidden while the probe is unresolved: rendering "Off" before we
+       know would be a confirmed negative from an unknown state
+       (CLAUDE.md, "Unknown ≠ known-false"). */
+    ...(push.state.status !== 'loading'
+      ? [{
+          icon: 'notifications',
+          label: tSettings('notifications'),
+          meta:
+            push.state.status === 'on'
+              ? tPush('metaOn')
+              : push.state.status === 'denied'
+                ? tPush('metaBlocked')
+                : push.state.status === 'unsupported'
+                  ? undefined
+                  : tPush('metaOff'),
+          onClick: () => setPushOpen(true),
+        }]
+      : []),
+    ...(!installed
+      ? [{ icon: 'install_mobile', label: tSettings('install'), onClick: () => setInstallOpen(true) }]
+      : []),
+    // Web only: the native shell IS the destination.
+    ...(migrateOn && !isNative()
+      ? [{ icon: 'install_mobile', label: t('migrate.row'), onClick: () => setMigrateOpen(true) }]
+      : []),
+  ];
+
   // Player (and possibly admin) state
   return (
     <div className="animate-fadeIn flex flex-col gap-4">
@@ -747,10 +777,12 @@ export default function ProfileTab({
         ]}
       />
 
-      {/* Security, app and help were interleaved — a recovery code sat next to
-          What's new next to Add to Home Screen. Splitting them is what lets
-          ACCOUNT stay two rows. */}
-      <ProfileEyebrow>{tSettings('appGroup')}</ProfileEyebrow>
+      {/* Four groups, each one question: who am I here (ACCOUNT, above), what
+          do others see (PRIVACY), how does this device behave (APP), and where
+          do I get help (HELP). "App" used to hold all six — a privacy screen
+          beside a changelog beside the privacy policy (Grant, 2026-09-14:
+          "reorg the items into logical group"). */}
+      <ProfileEyebrow>{tSettings('privacyGroup')}</ProfileEyebrow>
       <SettingsList
         rows={[
           // `meta` shows the state so nobody has to open the row to check it.
@@ -764,37 +796,25 @@ export default function ProfileTab({
               : undefined,
             onClick: () => setView('stats-privacy'),
           },
-          /* Hidden while the probe is unresolved: rendering "Off" before we
-             know would be a confirmed negative from an unknown state
-             (CLAUDE.md, "Unknown ≠ known-false"). */
-          ...(push.state.status !== 'loading'
-            ? [{
-                icon: 'notifications',
-                label: tSettings('notifications'),
-                meta:
-                  push.state.status === 'on'
-                    ? tPush('metaOn')
-                    : push.state.status === 'denied'
-                      ? tPush('metaBlocked')
-                      : push.state.status === 'unsupported'
-                        ? undefined
-                        : tPush('metaOff'),
-                onClick: () => setPushOpen(true),
-              }]
-            : []),
-          ...(!installed
-            ? [{ icon: 'install_mobile', label: tSettings('install'), onClick: () => setInstallOpen(true) }]
-            : []),
-          { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
-          { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setReportOpen(true) },
-          // Web only: the native shell IS the destination.
-          ...(migrateOn && !isNative()
-            ? [{ icon: 'install_mobile', label: t('migrate.row'), onClick: () => setMigrateOpen(true) }]
-            : []),
           // A full navigation, not a sheet: the policy is a public server-
           // rendered page (also the URL in both store listings), and Apple
           // 5.1.1(i) wants it reachable from inside the app.
           { icon: 'shield', label: tSettings('privacyPolicy'), onClick: () => window.location.assign(`${BASE}/legal/privacy`) },
+        ]}
+      />
+
+      {appRows.length > 0 && (
+        <>
+          <ProfileEyebrow>{tSettings('appGroup')}</ProfileEyebrow>
+          <SettingsList rows={appRows} />
+        </>
+      )}
+
+      <ProfileEyebrow>{tSettings('helpGroup')}</ProfileEyebrow>
+      <SettingsList
+        rows={[
+          { icon: 'campaign', label: tSettings('releaseNotes'), onClick: () => setReleaseSheetOpen(true) },
+          { icon: 'flag', label: tSettings('reportProblem'), onClick: () => setReportOpen(true) },
         ]}
       />
 
@@ -897,16 +917,6 @@ export default function ProfileTab({
         push={push}
         isAdmin={isAdmin}
       />
-      <PushSheet
-        open={pushOpen}
-        onClose={() => setPushOpen(false)}
-        onOpenInstall={() => {
-          setPushOpen(false);
-          setInstallOpen(true);
-        }}
-        push={push}
-        isAdmin={isAdmin}
-      />
     </div>
   );
 }
@@ -928,7 +938,10 @@ interface SettingsRow {
 
 function SettingsList({ rows }: { rows: SettingsRow[] }) {
   return (
-    <div className="glass-card-soft" style={{ padding: '0', overflow: 'hidden' }}>
+    // Page-level card, so the field-card glass — not `.glass-card-soft`, the
+    // flat bordered style for rows INSIDE a card, which made Profile read as
+    // frosted plastic beside every other tab (Grant, 2026-09-14).
+    <div className="glass-card is-flush" style={{ overflow: 'hidden' }}>
       <ul style={{ listStyle: 'none', margin: '0', padding: '0' }}>
         {rows.map((row, idx) => (
           <li key={row.label} style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--divider)' }}>
@@ -1008,7 +1021,7 @@ function ProfileIdentityCard({ name, memberCreatedAt, isSignedUp, isAdmin }: Pro
 
   return (
     <div
-      className="glass-card-soft"
+      className="glass-card"
       style={{
         padding: 'var(--space-5)',
         display: 'flex',

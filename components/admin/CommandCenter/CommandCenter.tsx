@@ -172,7 +172,7 @@ export default function CommandCenter({ refreshKey, setView, onExit }: CommandCe
       {/* Profile-style settings list (mirrors ProfileTab's SettingsList).
           Announcements / E-transfer / Skip dates / Ledger / Release notes
           are drill-in sub-pages (AdminBackHeader) wired in AdminDashboard. */}
-      <div className="glass-card-soft" style={{ padding: '0', overflow: 'hidden' }}>
+      <div className="glass-card is-flush" style={{ overflow: 'hidden' }}>
         <ul style={{ listStyle: 'none', margin: '0', padding: '0' }}>
           {[
             { icon: 'campaign', label: 'Announcements', onClick: () => setView('announcements') },

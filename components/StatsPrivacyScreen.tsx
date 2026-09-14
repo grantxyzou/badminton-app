@@ -153,7 +153,7 @@ export default function StatsPrivacyScreen({ onBack, state }: StatsPrivacyScreen
 
       <ProfileEyebrow>{t('othersEyebrow')}</ProfileEyebrow>
 
-      <div className="glass-card-soft" style={{ padding: '0', overflow: 'hidden' }}>
+      <div className="glass-card is-flush" style={{ overflow: 'hidden' }}>
         {/* Kudos are ANONYMOUS in this app. The design handoff asserted the
             opposite ("Always — kudos are signed"), which would have reversed a
             documented strip-canary invariant in lib/kudos.ts. That reversal was

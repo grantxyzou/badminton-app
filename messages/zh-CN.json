@@ -436,6 +436,8 @@
       "allClear": "一切就绪"
     },
     "settings": {
+      "helpGroup": "帮助",
+      "privacyGroup": "隐私",
       "title": "账号",
       "appGroup": "应用",
       "newPin": "新建 PIN",
