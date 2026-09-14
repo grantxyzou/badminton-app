@@ -91,6 +91,14 @@ export async function POST(req: NextRequest) {
   // with its own rate limit and its own audit gaps.
   const pending = readPendingSignup(req);
   if (!pending) return NextResponse.json({ error: 'no_pending_signup' }, { status: 400 });
+  /* NEVER on a parked-state flow (security scan F3). This route LINKS the
+     pending provider identity to an existing member once they prove the name,
+     and nothing proves this browser started the flow: a victim who opens an
+     attacker's captured callback, types their own name and PIN, would attach
+     the attacker's Google account to themselves. Refused before the PIN is
+     checked, so it is no oracle. It cost nothing that worked — this route never
+     parked for the app, so an installed PWA never collected from it anyway. */
+  if (pending.parked) return NextResponse.json({ error: 'no_pending_signup' }, { status: 400 });
 
   try {
     const container = getContainer('members');

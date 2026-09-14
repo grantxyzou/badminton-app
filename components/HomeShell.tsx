@@ -280,13 +280,18 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
       // navigation prompts "Open in BPM?"; if the person declines or it is
       // swallowed, the button rendered below is the fallback. Short delay so
       // the page paints first — the prompt over a blank sheet reads as a bug.
-      window.setTimeout(() => {
-        try {
-          window.location.assign(nativeReturnHref(code));
-        } catch {
-          /* the button remains */
-        }
-      }, 800);
+      // NOT on the name step: the account does not exist yet, and returning
+      // now would close the sheet before a name can be typed. The name sheet
+      // hands back itself, with the return code, once it does.
+      if (params.get('authFlow') !== 'name') {
+        window.setTimeout(() => {
+          try {
+            window.location.assign(nativeReturnHref(code));
+          } catch {
+            /* the button remains */
+          }
+        }, 800);
+      }
     }
 
     // A LIVE INVITE CREDENTIAL, stripped for the same reasons as `?reset=`

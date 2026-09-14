@@ -166,13 +166,18 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
         setReturnCode(code);
         cleaned.hash = '';
       }
-      window.setTimeout(() => {
-        try {
-          window.location.assign(nativeReturnHref(code));
-        } catch {
-          /* the button remains */
-        }
-      }, 800);
+      // NOT on the name step: the account does not exist yet, and returning
+      // now would close the sheet before a name can be typed. The name sheet
+      // hands back itself, with the return code, once it does.
+      if (params.get('authFlow') !== 'name') {
+        window.setTimeout(() => {
+          try {
+            window.location.assign(nativeReturnHref(code));
+          } catch {
+            /* the button remains */
+          }
+        }, 800);
+      }
     }
 
     if (dirty) window.history.replaceState(window.history.state, '', cleaned);

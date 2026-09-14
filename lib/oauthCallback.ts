@@ -181,6 +181,7 @@ export async function finishOAuthCallback(
       // complete-signup, which is where one first exists — under the same
       // condition as the sign-in path below, or the name step reopens F4.
       handoff,
+      ...(claims.viaParkedState ? { parked: true } : {}),
     });
     clearOAuthCookies(res);
     return res;

@@ -224,3 +224,29 @@ describe('finishOAuthCallback — a parked-state callback is non-authenticating'
     expect(sessionCookie(res)).toBeUndefined();
   });
 });
+
+describe('finishOAuthCallback — the name step inherits a parked flow', () => {
+  it('marks the pending cookie parked, so complete-signup and claim-name can refuse to authenticate', async () => {
+    const { readPendingSignup } = await import('../lib/pendingSignup');
+    const ref = handoffRef(createHandoffId());
+    await beginHandoff(ref, { state: 's'.repeat(64), codeVerifier: 'v' });
+
+    const res = await finishOAuthCallback(req(), ORIGIN, claims({ sub: 'fresh', handoff: ref, viaParkedState: true }));
+    const header = res.headers.getSetCookie().find((c) => c.startsWith(`${PENDING_COOKIE}=`))!;
+    const parsed = readPendingSignup(
+      new NextRequest(`${ORIGIN}/bpm/api/auth/complete-signup`, { headers: { Cookie: header.split(';')[0] } }),
+    );
+    expect(parsed?.parked).toBe(true);
+    expect(parsed?.handoff).toBe(ref);
+  });
+
+  it('an ordinary new-account flow is not marked', async () => {
+    const { readPendingSignup } = await import('../lib/pendingSignup');
+    const res = await finishOAuthCallback(req(), ORIGIN, claims({ sub: 'fresh-2' }));
+    const header = res.headers.getSetCookie().find((c) => c.startsWith(`${PENDING_COOKIE}=`))!;
+    const parsed = readPendingSignup(
+      new NextRequest(`${ORIGIN}/bpm/api/auth/complete-signup`, { headers: { Cookie: header.split(';')[0] } }),
+    );
+    expect(parsed?.parked).toBeUndefined();
+  });
+});

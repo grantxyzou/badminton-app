@@ -193,6 +193,8 @@ export async function POST(req: NextRequest) {
         email: claimEmail,
         provider: pending.provider,
         ...(returnCode ? { returnCode } : {}),
+        // Tells the name sheet this browser was NOT signed in, and why.
+        ...(pending.parked ? { handedOff: true } : {}),
       },
       { status: 201 },
     );
@@ -202,7 +204,11 @@ export async function POST(req: NextRequest) {
     // leaving a stale admin_session alive for a non-admin. Verified, and
     // pinned by __tests__/auth-cookie-order.test.ts.
     clearPendingSignup(res);
-    await completeSignIn(res, member, cookieGroupId);
+    /* A PARKED flow is non-authenticating, one step later (security scan F3).
+       Otherwise an attacker's captured callback, opened by a victim who then
+       picks a name, signs the victim into an account bound to the ATTACKER's
+       provider identity. The app holding the preimage collects it instead. */
+    if (!pending.parked) await completeSignIn(res, member, cookieGroupId);
     return res;
   } catch (err) {
     await releaseIdentity(pending.provider, pending.sub);
