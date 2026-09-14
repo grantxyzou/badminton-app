@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { renderMarkdown } from '@/lib/miniMarkdown';
 import { useReportFetchFailure } from '@/lib/useOnline';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
+import CardHeader from '@/components/primitives/CardHeader';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -168,6 +169,7 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
     return (
       <StateCard
         tone="danger"
+        icon="campaign"
         title="Announcements"
         message={<>Couldn&apos;t load announcements. <StateLink onClick={() => void load()}>Try again</StateLink></>}
       >
@@ -179,16 +181,13 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
 
   return (
     <section className="glass-card p-4 space-y-3 flex flex-col" aria-label="Announcements">
-      <header>
-        <h3 className="bpm-h3">Announcements</h3>
-        {/* The count is a claim about the list, so it goes quiet when the
-            list is unknown; the failure itself is said in the body below. */}
-        {!loadError && (
-          <p className="fs-sm text-gray-400 mt-0.5">
-            {items.length === 0 ? 'No announcements posted' : `${items.length} posted`}
-          </p>
-        )}
-      </header>
+      {/* The count is a claim about the list; a failed load never reaches this
+          render (it returns the tinted StateCard above). */}
+      <CardHeader
+        icon="campaign"
+        title="Announcements"
+        subtitle={items.length === 0 ? 'No announcements posted' : `${items.length} posted`}
+      />
 
 
       {composing && (
