@@ -53,14 +53,6 @@ export interface PendingSignup {
    * callback had no member to park yet. See lib/authHandoff.ts.
    */
   handoff?: string | null;
-  /**
-   * The callback was validated on the PARKED state, not this browser's cookie.
-   * NO LONGER MINTED: such a callback now parks the identity on the hand-off
-   * stash and the app names it (lib/authHandoff.ts, guarantee 4). Still read by
-   * `complete-signup`, which refuses to sign in a cookie minted before that
-   * change — they live thirty minutes. Additive, and safe to delete after.
-   */
-  parked?: boolean;
 }
 
 export function setPendingSignup(res: NextResponse, value: PendingSignup): void {

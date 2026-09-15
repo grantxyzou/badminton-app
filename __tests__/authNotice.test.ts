@@ -97,21 +97,7 @@ describe('noticeBanner', () => {
 describe('AUTH_PARAMS', () => {
   it('lists every param the server writes on an auth redirect', () => {
     expect([...AUTH_PARAMS].sort()).toEqual(
-      ['authError', 'provider', 'reset', 'signedIn', 'verified', 'native', 'handedOff'].sort(),
+      ['authError', 'provider', 'reset', 'signedIn', 'verified', 'native'].sort(),
     );
-  });
-});
-
-describe('handedOff', () => {
-  /* The landing a jar-split sign-in now gets instead of a session: the ONLY
-     thing that tells the person where it went. Keys that resolve through
-     noticeBanner are dynamic, which check-i18n-keys.mjs cannot see. */
-  it('has copy in both locales', () => {
-    const banner = noticeBanner({ kind: 'handedOff' });
-    for (const [locale, messages] of [['en', en], ['zh-CN', zh]] as const) {
-      const auth = (messages as unknown as { profile: { auth: Record<string, string> } }).profile.auth;
-      expect(auth[banner.titleKey], locale).toBeTruthy();
-      expect(auth[banner.bodyKey], locale).toBeTruthy();
-    }
   });
 });

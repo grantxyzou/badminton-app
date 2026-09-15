@@ -153,16 +153,6 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken,
         onClose();
         return;
       }
-      // The account exists but THIS browser was deliberately not signed in —
-      // it belongs to the app on this device. Both shells already read this
-      // landing param, so the explanation lives in one place.
-      if (data.handedOff === true) {
-        // A full load on purpose: both shells read landing params once, on
-        // mount, so a client-side push would render no explanation at all.
-        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-        window.location.assign(`${BASE}/?handedOff=1`);
-        return;
-      }
       finish(data.name);
     } catch {
       setError(t('genericError'));

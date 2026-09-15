@@ -312,8 +312,6 @@
       "noticeNotVerifiedBody": "It may have already been used or expired. If your email is already confirmed, there's nothing more to do.",
       "noticeUnconfirmedTitle": "Almost — we couldn't confirm it",
       "noticeUnconfirmedBody": "The sign-in didn't quite land on this device. Give it another go.",
-      "noticeHandedOffTitle": "Signed in — now back to the app",
-      "noticeHandedOffBody": "Open %APP_SHORT% from your Home Screen to finish. You can close this tab.",
       "handoffEnterTitle": "Enter your sign-in code",
       "handoffEnterBody": "It's on the page that opened after you picked your Google or Apple account.",
       "handoffEnterLabel": "6-digit sign-in code",
