@@ -186,6 +186,14 @@ describe('ProviderButtons', () => {
     expect(href).not.toContain(secret!);
   });
 
+  it('lists Apple before Google, whatever order they arrive in', async () => {
+    mockMethods({ available: ['google', 'apple'], linked: [] });
+    renderButtons();
+    await screen.findByText('Continue with Apple');
+    const labels = screen.getAllByText(/Continue with (Apple|Google)/).map((el) => el.textContent);
+    expect(labels).toEqual(['Continue with Apple', 'Continue with Google']);
+  });
+
   it('shows only the providers this deployment actually configured', async () => {
     mockMethods({ available: ['google'], linked: [] });
     renderButtons();

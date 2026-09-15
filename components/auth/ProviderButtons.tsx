@@ -52,6 +52,8 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 export type Provider = 'google' | 'apple';
 
+const PROVIDER_ORDER: Provider[] = ['apple', 'google'];
+
 interface Props {
   /**
    * `signin` on the anonymous Profile view, `link` when an already-signed-in
@@ -177,7 +179,10 @@ export default function ProviderButtons({
     };
   }, [given]);
 
-  const available = given ?? probed;
+  /* APPLE FIRST (Grant, 2026-09-15). Decided here rather than trusted from
+     whichever source answered (the server prop, the probe), so every sign-in
+     surface lists them the same way. */
+  const available = (given ?? probed)?.slice().sort((a, b) => PROVIDER_ORDER.indexOf(a) - PROVIDER_ORDER.indexOf(b));
   if (!available || available.length === 0) return null;
 
   return (
