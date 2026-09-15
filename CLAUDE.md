@@ -116,7 +116,7 @@ Bottom-nav "Stats" (formerly "Skills"; `nav.skills` i18n key kept for backcompat
 A member's picture is a RACKET, never an upload: `Member.avatar = { kind: 'racket', racketId }` (`lib/memberAvatar.ts`), drawn as the head of that racket's pre-rendered catalog image (`public/rackets/<id>.webp`, `racketSrc`). Absent = the initial. Chosen in Profile's `AvatarSheet` (my racket / shuffle / initial) and written by `PATCH /api/members/me { avatar }` with the member's own cookie or an admin.
 - **`components/primitives/MemberAvatar.tsx` is the one avatar**, everywhere a name appears; `lib/useMemberAvatars.ts` is the one read (`GET /api/members`, module-cached, looked up only where an avatar renders). Don't hand-roll an initial circle or fetch avatars per card.
 - **"My racket" is copied at save, not followed**, so a roster costs one `members` read and no gear read per name — and a racket becomes a public picture only when its owner picks it, because club gear is otherwise cohort-gated (`CLUB_GEAR_MIN_COHORT`).
-- A racket avatar always sits on the per-name colour, even on Profile: the renders are pale and vanish on the neutral circle in light theme.
+- A racket avatar sits on a ground picked against its OWN frame paint (`racketAvatarGround`: light behind a dark frame, dark behind a light one) — the per-name colours swallowed both. Initials keep the per-name colour.
 
 ### Kudos
 

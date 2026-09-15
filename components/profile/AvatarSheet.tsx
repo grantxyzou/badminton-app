@@ -92,16 +92,17 @@ function AvatarPicker({ name, current, onClose, onSaved }: Omit<Props, 'open'>) 
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-5)' }}>
       <MemberAvatar name={name} avatar={draft} size={112} />
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 'var(--space-3)' }}>
-        {myRacketId && (
-          <button
-            type="button"
-            className="cc-btn cc-btn-secondary"
-            aria-pressed={draftId === myRacketId}
-            onClick={() => setDraft({ kind: 'racket', racketId: myRacketId })}
-          >
-            {t('myRacket')}
-          </button>
-        )}
+        {/* Always offered, so it is findable; disabled until the member has a
+            racket set (or while their gear is still loading). */}
+        <button
+          type="button"
+          className="cc-btn cc-btn-secondary"
+          aria-pressed={!!myRacketId && draftId === myRacketId}
+          disabled={!myRacketId}
+          onClick={() => myRacketId && setDraft({ kind: 'racket', racketId: myRacketId })}
+        >
+          {t('myRacket')}
+        </button>
         <button
           type="button"
           className="cc-btn cc-btn-secondary"

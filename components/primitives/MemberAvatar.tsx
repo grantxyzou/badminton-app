@@ -2,7 +2,7 @@
 
 import { avatarColors } from '@/lib/avatar';
 import { racketSrc } from '@/lib/racketLook';
-import type { MemberAvatar as Avatar } from '@/lib/memberAvatar';
+import { racketAvatarGround, type MemberAvatar as Avatar } from '@/lib/memberAvatar';
 import { useMemberAvatars } from '@/lib/useMemberAvatars';
 
 interface Props {
@@ -35,10 +35,14 @@ export default function MemberAvatar({ name, avatar: given, size = 32, tone = 'n
   const avatarFor = useMemberAvatars();
   const avatar = given === undefined ? avatarFor(name) : given;
   const racketId = avatar?.kind === 'racket' ? avatar.racketId : null;
-  // A racket always sits on its colour: the renders are pale, and on the
-  // neutral circle they all but vanish in the light theme.
   const neutral = tone === 'neutral' && !racketId;
-  const colours = neutral ? null : avatarColors(name);
+  // A racket sits on a ground chosen against its own frame paint
+  // (`racketAvatarGround`); an initial keeps the per-name colour.
+  const colours = racketId
+    ? { bg: racketAvatarGround(racketId), fg: 'inherit' }
+    : neutral
+      ? null
+      : avatarColors(name);
   return (
     <span
       aria-hidden="true"

@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { GET as ME_GET, PATCH } from '../app/api/members/me/route';
 import { GET as ROSTER_GET } from '../app/api/members/route';
 import { resetMockStore, setupAdminPin, seedMember, makeRequest, makeGetRequest, memberCookieValue, getStore } from './helpers';
-import { parseAvatar, normalizeAvatar, isRacketAvatarId, racketAvatarIds, DEFAULT_RACKET_ID } from '../lib/memberAvatar';
+import { parseAvatar, normalizeAvatar, isRacketAvatarId, racketAvatarIds, DEFAULT_RACKET_ID, racketAvatarGround } from '../lib/memberAvatar';
+import { RACKET_LOOKS } from '../lib/racketLook';
 import { shuffleRacket } from '../components/profile/AvatarSheet';
 
 const BASE = 'http://localhost:3000/api/members/me';
@@ -34,6 +35,16 @@ describe('memberAvatar', () => {
   it('reads a stored value that no longer validates as the initial', () => {
     expect(normalizeAvatar({ kind: 'racket', racketId: 'retired-racket' })).toBeNull();
     expect(normalizeAvatar(undefined)).toBeNull();
+  });
+
+  it('puts a light ground behind a dark frame and a dark ground behind a light one', () => {
+    const ids = Object.keys(RACKET_LOOKS);
+    const dark = ids.find((id) => RACKET_LOOKS[id].frame === '#111111')!;
+    const light = ids.find((id) => /^#(e|f)/i.test(RACKET_LOOKS[id].frame))!;
+    expect(dark && light).toBeTruthy();
+    expect(racketAvatarGround(dark)).not.toBe(racketAvatarGround(light));
+    // The default look is graphite, so it gets the light ground.
+    expect(racketAvatarGround(DEFAULT_RACKET_ID)).toBe(racketAvatarGround(dark));
   });
 
   it('shuffle never lands on the racket already showing', () => {
