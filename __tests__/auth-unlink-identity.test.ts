@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { configureAppleForTest } from './appleTestEnv';
 import { NextRequest } from 'next/server';
 import { resetMockStore, seedMember, setupAdminPin, memberCookieValue, getStore } from './helpers';
 import { DELETE } from '../app/api/auth/identity/route';
-import { lookupIdentity, reserveIdentity } from '../lib/authIdentity';
+import { lookupIdentity, reserveIdentity, storeAppleRefreshToken, readAppleRefreshToken } from '../lib/authIdentity';
 import { hashPin } from '../lib/recoveryHash';
 
 /**
@@ -42,6 +43,46 @@ function asMember(name: string, id: string): string {
 function stored(id: string) {
   return (getStore()['members'] as Array<Record<string, unknown>>).find((m) => m.id === id)!;
 }
+
+describe('DELETE /api/auth/identity — Apple', () => {
+  it('revokes Apple\u2019s tokens when Apple is disconnected', async () => {
+    const { restore } = configureAppleForTest();
+    const fetchMock = vi.fn(async () => new Response('', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const m = seedMember('Sindhu', { pinHash: await hashPin('1234'), linkedProviders: ['apple'] });
+      await reserveIdentity('apple', 'apple-sub-sindhu', m.id);
+      await storeAppleRefreshToken('apple-sub-sindhu', 'refresh-sindhu');
+
+      const res = await DELETE(req({ provider: 'apple' }, asMember('Sindhu', m.id)));
+      expect(res.status).toBe(200);
+      expect(new URLSearchParams(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body)).get('token')).toBe('refresh-sindhu');
+      expect(await lookupIdentity('apple', 'apple-sub-sindhu')).toBeNull();
+      expect(await readAppleRefreshToken('apple-sub-sindhu')).toBeNull();
+    } finally {
+      restore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('disconnects even when Apple refuses the revoke', async () => {
+    const { restore } = configureAppleForTest();
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 503 })));
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const m = seedMember('Viktor', { pinHash: await hashPin('1234'), linkedProviders: ['apple'] });
+      await reserveIdentity('apple', 'apple-sub-viktor', m.id);
+      await storeAppleRefreshToken('apple-sub-viktor', 'refresh-viktor');
+      const res = await DELETE(req({ provider: 'apple' }, asMember('Viktor', m.id)));
+      expect(res.status).toBe(200);
+      expect(await lookupIdentity('apple', 'apple-sub-viktor')).toBeNull();
+    } finally {
+      restore();
+      vi.unstubAllGlobals();
+      log.mockRestore();
+    }
+  });
+});
 
 describe('DELETE /api/auth/identity', () => {
   it('disconnects a provider when another credential remains', async () => {

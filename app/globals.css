@@ -4231,6 +4231,42 @@ html:root[data-theme="light"] {
   background: #f2f2f2;
 }
 
+/* SIGN IN WITH APPLE — Apple's own button spec, not this app's palette.
+   The same geometry as `.btn-google` so the two sit as a matched pair, but
+   Apple's colours: the WHITE button on a dark surface and the BLACK button on a
+   light one, with the logo drawn in the text colour (`AppleMark` inherits
+   `currentColor`). Apple's guidelines allow only black, white and white-with-
+   outline, so these are literals, never tokens — a theme must not recolour
+   them. The system font is Apple's recommendation for the label. */
+.btn-apple {
+  width: 100%;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-pill);
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', var(--font-sans);
+  font-size: var(--fs-md);
+  font-weight: 500;
+  text-decoration: none;
+  background: #ffffff;
+  color: #000000;
+  border: 1px solid #ffffff;
+}
+
+.btn-apple:hover {
+  background: #f2f2f2;
+}
+
+[data-theme='light'] .btn-apple {
+  background: #000000;
+  color: #ffffff;
+  border-color: #000000;
+}
+
+[data-theme='light'] .btn-apple:hover {
+  background: #1f1f1f;
+}
+
 /* ══════════════════════════════════════════════════════════════════════════
    PROCESS STRIP  —  o——o——o——o
    ══════════════════════════════════════════════════════════════════════════

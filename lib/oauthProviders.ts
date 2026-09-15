@@ -72,7 +72,7 @@ export function appleClient(origin: string): Apple | null {
 }
 
 /** Strips the PEM armour and base64-decodes to the DER bytes arctic expects. */
-function pkcs8FromPem(pem: string): Uint8Array | null {
+export function pkcs8FromPem(pem: string): Uint8Array | null {
   const body = pem
     .replace(/\\n/g, '\n')
     .replace(/-----BEGIN PRIVATE KEY-----/, '')

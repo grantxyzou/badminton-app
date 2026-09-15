@@ -24,7 +24,13 @@ vi.mock('@/lib/oauthProviders', async (orig) => {
     appleClient: () => ({
       createAuthorizationURL: (state: string) =>
         new URL(`https://appleid.apple.com/auth/authorize?state=${encodeURIComponent(state)}`),
-      validateAuthorizationCode: async (_code: string) => ({ idToken: () => 'fake.apple' }),
+      // arctic's OAuth2Tokens shape, refresh token included — Apple returns one
+      // on every code exchange, and the callback keeps it for revocation.
+      validateAuthorizationCode: async (_code: string) => ({
+        idToken: () => 'fake.apple',
+        hasRefreshToken: () => true,
+        refreshToken: () => 'apple-refresh-1',
+      }),
     }),
     decodeIdTokenClaims: () => ({
       sub: 'apple-sub-1',
@@ -223,6 +229,17 @@ describe('apple callback — the jar split', () => {
     const res = await callback({ code: 'abc', state }, stateCookie(state));
     expect(errorOf(res)).toBeNull();
     expect(reachedResolution(res)).toBe(true);
+  });
+
+  it('keeps Apple\u2019s refresh token server-side, for revocation, and nowhere else', async () => {
+    const state = createState();
+    const res = await callback({ code: 'abc', state }, stateCookie(state));
+    expect(errorOf(res)).toBeNull();
+    const row = (getStore()['identities'] as Array<Record<string, unknown>>).find((r) => r.id === 'apple-refresh:apple-sub-1');
+    expect(row?.refreshToken).toBe('apple-refresh-1');
+    // Not in the redirect, not in any cookie.
+    expect(res.headers.get('location') ?? '').not.toContain('apple-refresh-1');
+    expect(res.headers.getSetCookie().join(';')).not.toContain('apple-refresh-1');
   });
 
   it('prefers the cookie even when a handoff ref is also present', async () => {

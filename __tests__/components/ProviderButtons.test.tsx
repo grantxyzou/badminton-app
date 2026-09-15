@@ -297,7 +297,18 @@ describe('ProviderButtons Google branding', () => {
     renderButtons({ available: ['apple'] });
     const link = screen.getByText('Continue with Apple').closest('a');
     expect(link?.className).not.toContain('btn-google');
-    expect(link?.querySelector('svg')).toBeNull();
+    expect(link?.className).toContain('btn-apple');
+  });
+
+  it('draws the Apple logo in the button\u2019s own text colour, as Apple\u2019s spec requires', () => {
+    // Black button, white logo; white button, black logo. A fixed fill would be
+    // wrong in one of the two themes.
+    const { container } = renderButtons({ available: ['apple'] });
+    const link = screen.getByText('Continue with Apple').closest('a');
+    const paths = Array.from(link?.querySelectorAll('svg path') ?? []);
+    expect(paths.length).toBe(1);
+    expect(paths[0].getAttribute('fill')).toBe('currentColor');
+    expect(container.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('hides the mark from the accessibility tree — the label already says Google', () => {
