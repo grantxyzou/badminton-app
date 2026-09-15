@@ -217,6 +217,8 @@ export interface SetupShare {
   racket: string | null;
   string: string | null;
   tensionLbs: number | null;
+  /** A hybrid's crosses string; absent or null for one string throughout. */
+  crosses?: { name: string; tensionLbs: number | null } | null;
 }
 
 export function setupShare(name: string, lines: SetupLines): SetupShare {
@@ -225,6 +227,9 @@ export function setupShare(name: string, lines: SetupLines): SetupShare {
     racket: lines.racket?.label ?? null,
     string: lines.string?.label ?? null,
     tensionLbs: typeof lines.string?.tensionLbs === 'number' ? lines.string.tensionLbs : null,
+    crosses: lines.string?.crosses
+      ? { name: lines.string.crosses.label, tensionLbs: typeof lines.string.crosses.tensionLbs === 'number' ? lines.string.crosses.tensionLbs : null }
+      : null,
   };
 }
 

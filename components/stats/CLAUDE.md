@@ -162,6 +162,19 @@ each owns different hooks and a hook cannot be conditional.
   one value per facet, a dual weight class counts as both — and the result
   line, group headers ("Yonex · 4 match") and rows all read the same filtered
   list. The suggestion is never filtered.
+- **A hybrid's crosses string is NESTED on the mains string item**
+  (`GearItem.crosses`, `lib/stringCrosses.ts`, 2026-09-15), written only by
+  PATCH `itemCrosses` and carried through PUT like `feel`/`look`. Not a second
+  string item, on purpose: seven readers take "the member's string" as the LAST
+  string in the bag (`clubTension`, `fitVerdict`, `frameDetail`, `shareCard`,
+  `setupLines`, the fit-verdict and share-card routes), and a crosses item
+  would silently become it — the club band, the verdict and the share card
+  would all read a figure conventionally 2 lb high. Nested, they all keep
+  meaning the mains. The card stacks mains over crosses inside the one Strings
+  line (`filled` still counts two lines), the line sheet sets each tension, and
+  `SetupAddSheet` in crosses mode (`crossesForId`) picks the crosses string;
+  "Change the string" carries the crosses onto the new mains. Crosses are not
+  in the club tally or the restring log.
 - **`TensionField`** is tension as a field: a numeric input with steppers
   bounded by the frame's rated range (`ratedRange` in `lib/tension.ts`, a
   missing bound is the app scale's own), a warning that still saves, and the club hint from

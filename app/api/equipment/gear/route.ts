@@ -11,6 +11,8 @@ import { resolveGroupId } from '@/lib/groupContext';
 import { parseFeel, hasFeel } from '@/lib/racketFeel';
 import { parseItemLook, hasItemLook, type ItemLook } from '@/lib/racketCustom';
 import { logStringAdded, logTension } from '@/lib/stringLog';
+import { parseCrosses } from '@/lib/stringCrosses';
+import type { StringCrosses } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -505,16 +507,31 @@ export async function PATCH(req: NextRequest) {
       itemLook = { itemId: lookItemId, raw: rest };
     }
 
+    // A hybrid's crosses string: `{ itemId, crosses: { catalogId?, label,
+    // tensionLbs? } }` sets or replaces it, `{ itemId, crosses: null }` removes
+    // it. Nested on the mains string item — see `lib/stringCrosses.ts`.
+    let itemCrosses: { itemId: string; crosses: StringCrosses | null } | null = null;
+    if ('itemCrosses' in body) {
+      const raw = body.itemCrosses;
+      const crossesItemId = raw && typeof raw.itemId === 'string' ? raw.itemId : '';
+      if (!crossesItemId || typeof raw !== 'object' || !('crosses' in raw)) {
+        return NextResponse.json({ error: 'invalid_crosses' }, { status: 400 });
+      }
+      const crosses = raw.crosses === null ? null : parseCrosses(raw.crosses);
+      if (raw.crosses !== null && !crosses) return NextResponse.json({ error: 'invalid_crosses' }, { status: 400 });
+      itemCrosses = { itemId: crossesItemId, crosses };
+    }
+
     // activeRacketId is required only when this call isn't setting a
     // preference field — the original PATCH contract ("set my active
     // racket") vs. the new one ("set my format/budget/fit preference"),
     // sharing one verb and one auth gate.
-    if (!activeRacketId && !('playFormat' in body) && !('budgetMaxCad' in body) && !touchedFit && !itemFeel && !itemLook) {
+    if (!activeRacketId && !('playFormat' in body) && !('budgetMaxCad' in body) && !touchedFit && !itemFeel && !itemLook && !itemCrosses) {
       return NextResponse.json({ error: 'active_racket_required' }, { status: 400 });
     }
 
     // A pointer move is a bag write; a preference-only PATCH is not.
-    const auth = await authorizeBagWrite(req, name, activeRacketId ? 'bag' : 'prefs');
+    const auth = await authorizeBagWrite(req, name, activeRacketId || itemCrosses ? 'bag' : 'prefs');
     if (auth.error) return auth.error;
 
     return await commitGearDoc(auth.memberId, (prior) => {
@@ -538,6 +555,16 @@ export async function PATCH(req: NextRequest) {
         if (!look) return { ok: false, response: NextResponse.json({ error: 'invalid_look' }, { status: 400 }) };
         const { look: _oldLook, ...rest } = target;
         const nextItem: GearItem = hasItemLook(look) ? { ...rest, look } : rest;
+        attempt.items = existing.map((i) => (i.id === target.id ? nextItem : i));
+      }
+      if (itemCrosses) {
+        const existing = attempt.items ?? prior?.items ?? [];
+        const target = existing.find((i) => i.id === itemCrosses.itemId);
+        if (!target || target.retiredAt || target.category !== 'string') {
+          return { ok: false, response: NextResponse.json({ error: 'string_not_found' }, { status: 404 }) };
+        }
+        const { crosses: _oldCrosses, ...rest } = target;
+        const nextItem: GearItem = itemCrosses.crosses ? { ...rest, crosses: itemCrosses.crosses } : rest;
         attempt.items = existing.map((i) => (i.id === target.id ? nextItem : i));
       }
       if (itemFeel) {
@@ -678,6 +705,7 @@ export async function PUT(req: NextRequest) {
         // said about it.
         ...(matchIndex >= 0 && existing[matchIndex].feel ? { feel: existing[matchIndex].feel } : null),
         ...(matchIndex >= 0 && existing[matchIndex].look ? { look: existing[matchIndex].look } : null),
+        ...(matchIndex >= 0 && existing[matchIndex].crosses ? { crosses: existing[matchIndex].crosses } : null),
       };
 
       // A string's tension moving is the one history this doc keeps: the item

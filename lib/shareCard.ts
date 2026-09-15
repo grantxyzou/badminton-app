@@ -27,6 +27,8 @@ export interface ShareCard {
   tensionVsClub: number | null;
   string: string | null;
   tensionLbs: number | null;
+  /** A hybrid's crosses string. `string` and `tensionLbs` stay the mains. */
+  crosses?: { name: string; tensionLbs: number | null } | null;
   grip: string | null;
   /** How many club members play this frame, the member included — "1 of N". */
   clubCount: number | null;
@@ -92,6 +94,9 @@ export function buildShareCard(input: ShareCardInput): ShareCard {
     tensionVsClub,
     string: string ? (input.stringRow?.model ?? string.label) : null,
     tensionLbs,
+    crosses: string?.crosses
+      ? { name: string.crosses.label, tensionLbs: typeof string.crosses.tensionLbs === 'number' ? string.crosses.tensionLbs : null }
+      : null,
     grip: typeof gear?.fitGrip === 'string' ? gear.fitGrip : null,
     clubCount,
   };
@@ -112,6 +117,20 @@ export interface ShareCardWords {
   footer: string;
 }
 
+/** The Strings fact: "BG80", or "BG80 / BG66" for a hybrid (mains first). */
+export function stringsFact(card: Pick<ShareCard, 'string' | 'crosses'>): string | null {
+  if (!card.string) return null;
+  return card.crosses ? `${card.string} / ${card.crosses.name}` : card.string;
+}
+
+/** The Tension figure: "26", or "26 / 28" for a hybrid. A missing half is a
+ *  dash, never a zero; null when neither half has a figure. */
+export function tensionFact(card: Pick<ShareCard, 'tensionLbs' | 'crosses'>): string | null {
+  if (!card.crosses) return card.tensionLbs !== null ? String(card.tensionLbs) : null;
+  if (card.tensionLbs === null && card.crosses.tensionLbs === null) return null;
+  return `${card.tensionLbs ?? '–'} / ${card.crosses.tensionLbs ?? '–'}`;
+}
+
 /** "Copy as text": the same facts as the image, one per line, no art. */
 export function shareCardText(card: ShareCard, w: ShareCardWords): string {
   const lines = [w.title];
@@ -120,8 +139,10 @@ export function shareCardText(card: ShareCard, w: ShareCardWords): string {
     const spec = [card.racket.brand, card.racket.weight, card.racket.balance?.toLowerCase()].filter(Boolean).join(' · ');
     lines.push(`${w.racket}: ${card.racket.name}${spec ? ` (${spec})` : ''}`);
   }
-  if (card.string) lines.push(`${w.strings}: ${card.string}`);
-  if (card.tensionLbs !== null) lines.push(`${w.tension}: ${card.tensionLbs} ${w.lb}`);
+  const strings = stringsFact(card);
+  const tension = tensionFact(card);
+  if (strings) lines.push(`${w.strings}: ${strings}`);
+  if (tension) lines.push(`${w.tension}: ${tension} ${w.lb}`);
   if (card.grip) lines.push(`${w.grip}: ${card.grip}`);
   if (card.restrings) lines.push(w.restrings(card.restrings.count, card.restrings.since));
   if (card.tensionVsClub !== null) lines.push(w.vsClub(card.tensionVsClub));

@@ -17,6 +17,12 @@ export type PlayFormat = 'singles' | 'doubles' | 'both';
 export const MIN_LB = 20;
 export const MAX_LB = 30;
 
+/** The widest number a tension FIELD will hold. Wider than any rated range on
+ *  purpose: an out-of-range figure warns but still saves (the member may know
+ *  something the catalog does not). The server holds a stored tension to it. */
+export const FIELD_MIN_LB = 10;
+export const FIELD_MAX_LB = 40;
+
 export interface TensionAdvice {
   lb: number;
   /** 0-1 position along the MIN_LB..MAX_LB scale, for the knob. */

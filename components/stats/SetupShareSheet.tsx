@@ -10,7 +10,7 @@ import type { ItemLook } from '@/lib/types';
 import { shareOrSaveImage } from '@/lib/shareImage';
 import { recordEngagement } from '@/lib/engagement';
 import { drawSetupShareCanvas, type ShareCanvasContent } from '@/lib/setupShareCanvas';
-import { shareCardText, type ShareCard } from '@/lib/shareCard';
+import { shareCardText, stringsFact, tensionFact, type ShareCard } from '@/lib/shareCard';
 import type { SetupShare } from '@/lib/gearSetup';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -36,7 +36,7 @@ function localCard(share: SetupShare): ShareCard {
   return {
     name, initial: name.charAt(0).toUpperCase(), sinceYear: null, clubName: null,
     racket: share.racket ? { name: share.racket, brand: null, weight: null, balance: null } : null,
-    restrings: null, tensionVsClub: null, string: share.string, tensionLbs: share.tensionLbs, grip: null, clubCount: null,
+    restrings: null, tensionVsClub: null, string: share.string, tensionLbs: share.tensionLbs, crosses: share.crosses ?? null, grip: null, clubCount: null,
   };
 }
 
@@ -103,8 +103,10 @@ export default function SetupShareSheet({ open, onClose, share, racketCatalogId,
     if (card.restrings) stats.push({ num: String(card.restrings.count), text: t('statRestrings', { count: card.restrings.count, since: monthYear(card.restrings.since) }) });
     if (card.tensionVsClub !== null) stats.push({ num: `${card.tensionVsClub > 0 ? '+' : ''}${card.tensionVsClub}`, text: t('statVsClub') });
     const facts: ShareCanvasContent['facts'] = [];
-    if (card.string) facts.push({ label: t('factStrings'), value: card.string });
-    if (card.tensionLbs !== null) facts.push({ label: t('factTension'), value: String(card.tensionLbs), unit: t('lbUnit') });
+    const strings = stringsFact(card);
+    const tension = tensionFact(card);
+    if (strings) facts.push({ label: t('factStrings'), value: strings });
+    if (tension) facts.push({ label: t('factTension'), value: tension, unit: t('lbUnit') });
     if (card.grip) facts.push({ label: t('factGrip'), value: card.grip });
     if (card.clubCount !== null) facts.push({ label: club ? t('factAtClub', { club }) : t('factInClub'), value: t('factOneOf', { count: card.clubCount }) });
     const specs = card.racket

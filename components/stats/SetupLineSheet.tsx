@@ -11,6 +11,7 @@ import { useCatalog } from './useCatalog';
 import type { GearResult, UseGear } from './useGear';
 import { gearFailureMessage } from '@/lib/gearFailureMessage';
 import { catalogSpecRows } from '@/lib/catalogSpecs';
+import { crossesFor } from '@/lib/stringing';
 import { racketFeelLine, racketRowSpec, setupLines, stringSpecLine, type SetupCategory } from '@/lib/gearSetup';
 import type { GearItem, RacketFeel } from '@/lib/types';
 
@@ -27,6 +28,8 @@ export interface SetupLineSheetProps {
   onViewLook?: (item: GearItem, title: string) => void;
   /** The racket's own page (NEXT_PUBLIC_FLAG_GEAR_PAGES). Only a catalog racket has one. */
   onViewFrame?: (catalogId: string) => void;
+  /** A hybrid's crosses string, to add or change: the add sheet in crosses mode. */
+  onCrosses?: () => void;
 }
 
 /**
@@ -40,7 +43,7 @@ export interface SetupLineSheetProps {
  *
  * Mount with a fresh `key` per opening; its state describes one visit.
  */
-export default function SetupLineSheet({ open, onClose, category, gear, onChange, onAddSpare, onViewLook, onViewFrame }: SetupLineSheetProps) {
+export default function SetupLineSheet({ open, onClose, category, gear, onChange, onAddSpare, onViewLook, onViewFrame, onCrosses }: SetupLineSheetProps) {
   const t = useTranslations('stats.gear.setup');
   const tGear = useTranslations('stats.gear');
   const tHub = useTranslations('valueHub');
@@ -52,6 +55,9 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
    *  shows), null = cleared while retyping (the field shows empty, not the
    *  saved figure snapping back under the member's thumb). */
   const [tension, setTension] = useState<number | null | undefined>(undefined);
+  /** The crosses tension typed on this visit, with the same three states. */
+  const [crossesTension, setCrossesTension] = useState<number | null | undefined>(undefined);
+  const [confirmCrosses, setConfirmCrosses] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** Feel answers edited on this visit; null = untouched, so the stored ones show. */
   const [feel, setFeel] = useState<RacketFeel | null>(null);
@@ -131,7 +137,7 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
                 <>
                   <div className="setup-action setup-action--stack">
                     <span className="tension-field-label">
-                      <span className="setup-action-label">{t('tension')}</span>
+                      <span className="setup-action-label">{item.crosses ? t('mainsTension') : t('tension')}</span>
                       <button
                         type="button"
                         className="setup-link"
@@ -142,7 +148,7 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
                       </button>
                     </span>
                     <TensionField
-                      label={t('tension')}
+                      label={item.crosses ? t('mainsTension') : t('tension')}
                       value={tension === undefined ? item.tensionLbs ?? null : tension}
                       suggested={tension === null ? item.tensionLbs ?? null : null}
                       onChange={setTension}
@@ -152,6 +158,56 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
                       disabled={gear.busy || !gear.online}
                     />
                   </div>
+                  {item.crosses ? (() => {
+                    const crosses = item.crosses;
+                    // Crosses conventionally sit a couple of pounds above the
+                    // mains (`lib/stringing.ts`), so that is the figure offered
+                    // before one is chosen — dashed, never saved on its own.
+                    const suggestedCrosses = typeof item.tensionLbs === 'number' ? crossesFor(item.tensionLbs) : null;
+                    return (
+                      <>
+                        <div className="setup-action setup-action--stack">
+                          <span className="tension-field-label">
+                            <span className="setup-action-label">{t('crossesTension')} · {crosses.label}</span>
+                            <button
+                              type="button"
+                              className="setup-link"
+                              disabled={crossesTension == null || crossesTension === crosses.tensionLbs || gear.busy || !gear.online}
+                              onClick={() => {
+                                if (crossesTension != null) void run(() => gear.setCrosses(item.id, { ...crosses, tensionLbs: crossesTension }), () => setCrossesTension(undefined));
+                              }}
+                            >
+                              {t('saveTension')}
+                            </button>
+                          </span>
+                          <TensionField
+                            label={t('crossesTension')}
+                            value={crossesTension === undefined ? crosses.tensionLbs ?? null : crossesTension}
+                            suggested={crossesTension === null ? crosses.tensionLbs ?? suggestedCrosses : crosses.tensionLbs === undefined ? suggestedCrosses : null}
+                            onChange={setCrossesTension}
+                            disabled={gear.busy || !gear.online}
+                          />
+                        </div>
+                        {onCrosses && <ActionRow icon="swap_horiz" label={t('changeCrosses')} onClick={onCrosses} disabled={!gear.online} />}
+                        {confirmCrosses ? (
+                          <div className="setup-action" role="group" aria-label={t('removeCrossesConfirm', { label: crosses.label })}>
+                            <span className="setup-action-label" style={{ color: 'var(--text-primary)' }}>{t('removeCrossesConfirm', { label: crosses.label })}</span>
+                            <button type="button" className="setup-link" style={{ color: 'var(--sev-crit-text)' }} disabled={gear.busy || !gear.online}
+                              onClick={() => { void run(() => gear.setCrosses(item.id, null), () => { setConfirmCrosses(false); setCrossesTension(undefined); }); }}>
+                              {t('removeCrossesYes')}
+                            </button>
+                            <button type="button" className="setup-link" style={{ color: 'var(--text-secondary)' }} onClick={() => setConfirmCrosses(false)}>
+                              {t('cancel')}
+                            </button>
+                          </div>
+                        ) : (
+                          <ActionRow icon="remove" label={t('removeCrosses')} onClick={() => setConfirmCrosses(true)} disabled={!gear.online} />
+                        )}
+                      </>
+                    );
+                  })() : onCrosses && (
+                    <ActionRow icon="add" label={t('addCrosses')} onClick={onCrosses} disabled={!gear.online} />
+                  )}
                   <ActionRow icon="swap_horiz" label={t('changeString')} onClick={onChange} disabled={!gear.online} />
                 </>
               )}

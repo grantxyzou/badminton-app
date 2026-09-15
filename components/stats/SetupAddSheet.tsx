@@ -22,6 +22,7 @@ import { hasFeel } from '@/lib/racketFeel';
 import { recordEngagement } from '@/lib/engagement';
 import type { CatalogItem, GearItem, RacketFeel } from '@/lib/types';
 import { priceCadPoint } from '@/lib/catalogPrice';
+import { crossesFor } from '@/lib/stringing';
 
 export interface SetupAddSheetProps {
   open: boolean;
@@ -43,6 +44,12 @@ export interface SetupAddSheetProps {
    * costs the member the string they have.
    */
   replacesId?: string;
+  /**
+   * Strings only: the MAINS string item's id, when this visit picks a hybrid's
+   * crosses string. A pick is stored nested on that item (`setCrosses`), never
+   * as a bag item of its own — see `lib/stringCrosses.ts` for why.
+   */
+  crossesForId?: string;
 }
 
 const FACET_LABEL: Record<Facet, string> = {
@@ -73,7 +80,7 @@ const TYPED_PENDING = ':typed';
  * Mount it with a fresh `key` per opening (the register does): every piece of
  * state here describes one visit, and a remount is the whole reset.
  */
-export default function SetupAddSheet({ open, onClose, category, gear, picks, makeActive, replacesId }: SetupAddSheetProps) {
+export default function SetupAddSheet({ open, onClose, category, gear, picks, makeActive, replacesId, crossesForId }: SetupAddSheetProps) {
   const t = useTranslations('stats.gear.setup');
   /** A chip's words for a facet value. Catalog values stay as the catalog
    *  spells them; "Even" alone reads as a number, so it says what it is. */
@@ -117,8 +124,15 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
     () => (gear.gear?.items ?? []).filter((i): i is GearItem => !!i && !i.retiredAt && (i.category ?? 'racket') === category),
     [gear.gear, category],
   );
-  const ownedIds = useMemo(() => new Set(items.map((i) => i.catalogId).filter(Boolean) as string[]), [items]);
-  const savedItem = saved
+  // Crosses mode: the mains string the crosses go with. A crosses string is a
+  // DIFFERENT string by definition, so the mains (and the crosses already
+  // there) read as taken; everything else in the bag is irrelevant.
+  const mains = crossesForId ? items.find((i) => i.id === crossesForId) ?? null : null;
+  const crossesMode = category === 'string' && !!crossesForId;
+  const ownedIds = useMemo(() => new Set((crossesMode
+    ? [mains?.catalogId, mains?.crosses?.catalogId]
+    : items.map((i) => i.catalogId)).filter(Boolean) as string[]), [items, crossesMode, mains]);
+  const savedItem = crossesMode ? (saved ? mains : null) : saved
     ? items.find((i) => (saved.catalogId
       ? i.catalogId === saved.catalogId
       : !i.catalogId && i.label.trim().toLowerCase() === saved.label.trim().toLowerCase())) ?? null
@@ -179,7 +193,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
   const basePick = category === 'string'
     ? blankStringPairing(lines, picks.view.string)
     : (!lines.racket && racketPick.status === 'ready' ? racketPick.pick : null);
-  const suggestion = basePick && !dismissed && !query.trim() && !ownedIds.has(basePick.item.id)
+  const suggestion = !crossesMode && basePick && !dismissed && !query.trim() && !ownedIds.has(basePick.item.id)
     ? (category === 'string' ? picks.view.string.pick : racketPick.pick)
     : null;
 
@@ -207,6 +221,23 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
     setPendingId(item.id);
     const prevActiveId = gear.active?.id ?? null;
     try {
+      if (crossesMode) {
+        if (!mains) return;
+        // A new crosses string keeps the crosses tension already on record:
+        // the frame and the stringer did not change with the string.
+        const res = await gear.setCrosses(mains.id, {
+          catalogId: item.id,
+          label: `${item.brand} ${item.model}`,
+          ...(typeof mains.crosses?.tensionLbs === 'number' ? { tensionLbs: mains.crosses.tensionLbs } : null),
+        });
+        if (!res.ok) { setError(gearFailureMessage(res.reason, tHub)); return; }
+        setSaved({ catalogId: item.id, label: `${item.brand} ${item.model}`, prevActiveId });
+        setTension(null);
+        return;
+      }
+      // "Change the string" replaces the MAINS; a hybrid's crosses stay, so
+      // they are carried onto the new item before the old one goes.
+      const replacedCrosses = replacesId ? items.find((i) => i.id === replacesId)?.crosses : undefined;
       const res = await gear.add(item, category === 'racket' && makeActive ? { makeActive: true } : undefined);
       if (!res.ok) {
         setError(gearFailureMessage(res.reason, tHub));
@@ -216,6 +247,13 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
       // Once: "Add another string" from the same visit adds, it does not replace again.
       if (category === 'string' && replacesId && !replacedRef.current) {
         replacedRef.current = true;
+        if (replacedCrosses && res.itemId) {
+          const carried = await gear.setCrosses(res.itemId, replacedCrosses);
+          // The old string still holds the crosses; removing it now would lose
+          // them for good. Keep it and say so — nothing is lost, and the card
+          // simply shows the new string until the member tries again.
+          if (!carried.ok) { setError(gearFailureMessage(carried.reason, tHub)); return; }
+        }
         const removed = await gear.remove(replacesId);
         if (!removed.ok) setError(gearFailureMessage(removed.reason, tHub));
       }
@@ -257,7 +295,8 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
   async function commitFollowUp(): Promise<boolean> {
     if (!savedItem) return true;
     let res;
-    if (category === 'string' && tension !== null) res = await gear.setTension(savedItem, tension);
+    if (crossesMode && tension !== null && savedItem.crosses) res = await gear.setCrosses(savedItem.id, { ...savedItem.crosses, tensionLbs: tension });
+    else if (category === 'string' && tension !== null) res = await gear.setTension(savedItem, tension);
     else if (category === 'racket' && !savedItem.catalogId && hasFeel(feel)) res = await gear.setFeel(savedItem.id, feel);
     if (res && !res.ok) {
       setError(gearFailureMessage(res.reason, tHub));
@@ -287,7 +326,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
     if (!res.ok) setError(gearFailureMessage(res.reason, tHub));
   }
 
-  const heading = category === 'string' ? t('addString') : t('addRacket');
+  const heading = crossesMode ? t('addCrossesHeading') : category === 'string' ? t('addString') : t('addRacket');
   const searchPlaceholder = category === 'string'
     ? tHub('searchCountString', { count: offered.length })
     : tHub('searchCountRacket', { count: offered.length });
@@ -297,10 +336,14 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
   // Only for the string the pairing was FOR: BG85's 23 lb is not a starting
   // point for BG65, it is a number about a different string.
   const stringPick = picks.view.string.pick;
-  const suggestedLbs = category === 'string' && saved && stringPick?.item.id === saved.catalogId
-    && typeof stringPick.tensionLbs === 'number'
-    ? stringPick.tensionLbs
-    : null;
+  const suggestedLbs = crossesMode
+    // Crosses: the figure already on record, else a couple of pounds over the
+    // mains (`lib/stringing.ts`). Never the pairing's number, which is a mains.
+    ? (mains?.crosses?.tensionLbs ?? (typeof mains?.tensionLbs === 'number' ? crossesFor(mains.tensionLbs) : null))
+    : category === 'string' && saved && stringPick?.item.id === saved.catalogId
+      && typeof stringPick.tensionLbs === 'number'
+      ? stringPick.tensionLbs
+      : null;
 
   function savedPanel(catalogId: string | null, title: string) {
     return (
@@ -315,19 +358,20 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
           <>
             <div className="setup-saved-indent setup-saved-indent--stack">
               <span className="tension-field-label">
-                <span className="fs-sm" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{t('strungAt')}</span>
+                <span className="fs-sm" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{crossesMode ? t('crossesTension') : t('strungAt')}</span>
                 <button type="button" className="setup-link" onClick={() => { setTension(null); recordEngagement('tension_skipped', { catalogId: saved?.catalogId ?? undefined }); onClose(); }} disabled={gear.busy}>
                   {t('dontKnow')}
                 </button>
               </span>
               <TensionField
-                label={t('strungAt')}
+                label={crossesMode ? t('crossesTension') : t('strungAt')}
                 value={tension}
                 suggested={suggestedLbs}
                 onChange={setTension}
                 rated={ratedRange(frameRow?.attributes)}
-                club={clubTension.band}
-                clubStatus={frameId ? clubTension.status : undefined}
+                // The club's band is a MAINS band; it says nothing about crosses.
+                club={crossesMode ? null : clubTension.band}
+                clubStatus={frameId && !crossesMode ? clubTension.status : undefined}
                 autoFocus
                 disabled={!savedItem || gear.busy}
               />
@@ -569,9 +613,12 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
             <button type="button" className="btn-primary" style={{ width: '100%' }} onClick={() => { void finish(); }} disabled={gear.busy}>
               {t('done')}
             </button>
-            <button type="button" className="setup-link" style={{ alignSelf: 'center', color: 'var(--text-secondary)', padding: 'var(--space-2) 0' }} onClick={() => { void addAnother(); }} disabled={gear.busy}>
-              {category === 'string' ? t('addAnotherString') : t('addAnotherRacket')}
-            </button>
+            {/* A hybrid has one crosses string; there is no "another". */}
+            {!crossesMode && (
+              <button type="button" className="setup-link" style={{ alignSelf: 'center', color: 'var(--text-secondary)', padding: 'var(--space-2) 0' }} onClick={() => { void addAnother(); }} disabled={gear.busy}>
+                {category === 'string' ? t('addAnotherString') : t('addAnotherRacket')}
+              </button>
+            )}
           </div>
         </BottomSheetFooter>
       )}

@@ -21,14 +21,15 @@ function fakeGear(items: GearItem[], overrides: Partial<UseGear> = {}): UseGear 
     activate: vi.fn(async () => ({ ok: true as const })),
     remove: vi.fn(async () => ({ ok: true as const })),
     setPrefs: vi.fn(), setTension: vi.fn(async () => ({ ok: true as const })),
+    setCrosses: vi.fn(async () => ({ ok: true as const })),
     ...overrides,
   } as UseGear;
 }
 
-function renderSheet(category: 'racket' | 'string', gear: UseGear, handlers: { onChange?: () => void; onAddSpare?: () => void; onClose?: () => void } = {}) {
+function renderSheet(category: 'racket' | 'string', gear: UseGear, handlers: { onChange?: () => void; onAddSpare?: () => void; onClose?: () => void; onCrosses?: () => void } = {}) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <SetupLineSheet open category={category} gear={gear} onClose={handlers.onClose ?? vi.fn()} onChange={handlers.onChange ?? vi.fn()} onAddSpare={handlers.onAddSpare ?? vi.fn()} />
+      <SetupLineSheet open category={category} gear={gear} onClose={handlers.onClose ?? vi.fn()} onChange={handlers.onChange ?? vi.fn()} onAddSpare={handlers.onAddSpare ?? vi.fn()} onCrosses={handlers.onCrosses} />
     </NextIntlClientProvider>,
   );
 }
@@ -101,5 +102,32 @@ describe('SetupLineSheet — one sheet about one line', () => {
     fireEvent.change(input, { target: { value: '28' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(gear.setTension).toHaveBeenCalledWith(expect.objectContaining({ id: 's1' }), 28));
+  });
+
+  it('a single string offers a different string for the crosses', async () => {
+    const onCrosses = vi.fn();
+    renderSheet('string', fakeGear([RACKET, STRING]), { onCrosses });
+    fireEvent.click(await screen.findByRole('button', { name: /Use a different string for the crosses/ }));
+    expect(onCrosses).toHaveBeenCalled();
+    expect(screen.queryByRole('textbox', { name: 'Crosses tension' })).toBeNull();
+  });
+
+  it('a hybrid sets its crosses tension on its own, and taking the crosses off asks once', async () => {
+    const hybrid: GearItem = { ...STRING, crosses: { catalogId: null, label: 'Yonex BG80', tensionLbs: 27 } };
+    const gear = fakeGear([RACKET, hybrid]);
+    renderSheet('string', gear, { onCrosses: vi.fn() });
+    const crossesField = await screen.findByRole('textbox', { name: 'Crosses tension' }) as HTMLInputElement;
+    expect(crossesField.value).toBe('27');
+    expect((screen.getByRole('textbox', { name: 'Mains tension' }) as HTMLInputElement).value).toBe('25');
+    fireEvent.change(crossesField, { target: { value: '28' } });
+    const saves = screen.getAllByRole('button', { name: 'Save' });
+    fireEvent.click(saves[1]);
+    await waitFor(() => expect(gear.setCrosses).toHaveBeenCalledWith('s1', { catalogId: null, label: 'Yonex BG80', tensionLbs: 28 }));
+    expect(gear.setTension).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /One string throughout/ }));
+    expect(gear.setCrosses).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Take it off' }));
+    await waitFor(() => expect(gear.setCrosses).toHaveBeenLastCalledWith('s1', null));
   });
 });

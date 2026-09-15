@@ -43,6 +43,7 @@ function fakeGear(d: PlayerGear | null, overrides: Partial<UseGear> = {}): UseGe
     setTension: vi.fn(async () => ({ ok: true as const })),
     setFeel: vi.fn(async () => ({ ok: true as const })),
     setLook: vi.fn(async () => ({ ok: true as const })),
+    setCrosses: vi.fn(async () => ({ ok: true as const })),
     ...overrides,
   };
 }
@@ -201,5 +202,29 @@ describe('GearSetupCard — Share appears with the complete card', () => {
     renderCard(fakeGear(doc([AF79, BG65], 'r1')), { onShare });
     fireEvent.click(screen.getByRole('button', { name: /Share/ }));
     expect(onShare).toHaveBeenCalled();
+  });
+});
+
+describe('GearSetupCard — a hybrid is still one Strings line', () => {
+  it('stacks mains over crosses, each with its own figure, and the line opens the string sheet', async () => {
+    const onOpenLine = vi.fn();
+    const hybrid: GearItem = { ...BG65, tensionLbs: 26, crosses: { catalogId: null, label: 'Yonex BG80', tensionLbs: 28 } };
+    renderCard(fakeGear(doc([AF79, hybrid], 'r1')), { onOpenLine, onAddTension: vi.fn() });
+    expect(await screen.findByText('Mains')).toBeTruthy();
+    expect(screen.getByText('Crosses')).toBeTruthy();
+    expect(screen.getByText('Yonex BG80')).toBeTruthy();
+    expect(screen.getByText('26')).toBeTruthy();
+    expect(screen.getByText('28')).toBeTruthy();
+    fireEvent.click(screen.getByText('Yonex BG80'));
+    expect(onOpenLine).toHaveBeenCalledWith('string');
+    // Crosses are part of the Strings line, not a third line.
+    expect(screen.queryByText('3 of 2')).toBeNull();
+  });
+
+  it('one string throughout names no roles', async () => {
+    renderCard(fakeGear(doc([AF79, { ...BG65, tensionLbs: 26 }], 'r1')));
+    expect(await screen.findByText('26')).toBeTruthy();
+    expect(screen.queryByText('Mains')).toBeNull();
+    expect(screen.queryByText('Crosses')).toBeNull();
   });
 });
