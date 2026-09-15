@@ -88,7 +88,6 @@ describe('POST /api/auth/handoff/claim', () => {
       new NextRequest('https://bpm.grantzou.com/bpm/api/auth/complete-signup', { headers: { Cookie: header.split(';')[0] } }),
     );
     expect(parsed).toMatchObject({ provider: 'google', sub: 'g-new', email: 'new@example.com', emailVerified: true });
-    expect(parsed?.parked).toBeUndefined();
     expect(parsed?.handoff ?? null).toBeNull();
   });
 

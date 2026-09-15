@@ -226,17 +226,6 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
       dirty = true;
     }
 
-    // A sign-in that finished in THIS browser for an app on this device (the
-    // installed-PWA jar split). The callback deliberately signed this browser
-    // in as nobody — security scan F3 — so the only honest thing to say here
-    // is where the session went.
-    if (params.get('handedOff') === '1') {
-      setAuthNotice({ kind: 'handedOff' });
-      cleaned.searchParams.delete('handedOff');
-      cleaned.searchParams.delete('provider');
-      dirty = true;
-    }
-
     const failure = params.get('authError');
     if (failure) {
       setAuthNotice({ kind: 'authError', reason: failure });

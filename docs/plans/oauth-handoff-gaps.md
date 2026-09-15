@@ -1,8 +1,8 @@
 # Sign-in hand-off: the two takeovers
 
 **Track:** Store launch — Sign in with Apple is required once the native app offers Google, and it rides the same hand-off, so it would open a second door into both gaps below.
-**Status:** in-flight — both gaps closed in code (PR pending), device test outstanding
-**Review on:** 2026-10-01 — has the pop-up been confirmed on more than one iPhone, and did anyone get stuck on the typed code?
+**Status:** shipped 2026-09-15 — #430, #435; pop-up sign-in confirmed on Grant's iPhone
+**Review on:** 2026-10-01 — did any member get stuck on the typed code, or report Google/Apple not signing them in?
 
 ## Problem
 
@@ -142,11 +142,14 @@ This failed if either:
     members still add Google — they just type the PIN in the app.
   - The pop-up posts only to an origin of ours, recorded at `/start`, because
     Grant's home-screen app runs on the Azure host, not `bpm.grantzou.com`.
-- **Legacy paths kept for one cookie lifetime, then delete:** the `handedOff`
-  notice and `PendingSignup.parked`. Nothing mints either any more; a
-  pending-signup cookie minted before this change (30-minute TTL) can still
-  reach `complete-signup`'s `parked` branch, which refuses to sign in and
-  sends the browser to `?handedOff=1`. Safe to remove from 2026-09-16.
+- **2026-09-15 — first device test failed, then passed** (#435). The pop-up
+  reported back but the app never claimed: opening the pop-up fired a claim
+  before `/start` had parked anything, and its `none` cleared the hand-off id.
+  Found in App Insights, not guessed. The client now disbelieves a `none` for
+  two minutes after a tap.
+- **2026-09-15 — legacy paths removed:** the `handedOff` notice and
+  `PendingSignup.parked`, once the last pre-#430 pending cookie (30-minute TTL)
+  had expired.
 - **The typed-code rate limit is per HAND-OFF, not per IP** (advisor, before
   merge). The club signs in from one gym's wifi; a per-IP cap would have
   locked the venue out after ten typed sign-ins, and shown it as a cold
@@ -171,4 +174,3 @@ This failed if either:
 | `parked` on the pending-signup cookie | `lib/pendingSignup.ts` |
 | Claim (preimage + return code) | `app/api/auth/handoff/claim/route.ts` |
 | Client: staging, return code, landing link | `lib/handoffClient.ts`, `components/NativeBridge.tsx` |
-| Landing notice `handedOff` | `lib/authNotice.ts`, `components/HomeShell.tsx`, `components/onboarding/SignedOutShell.tsx` |

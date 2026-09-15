@@ -131,11 +131,6 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
       if (pendingHandoffId() === null) setNotice({ kind: 'signInUnconfirmed' });
       strip('signedIn', 'provider');
     }
-    // Where the session went — see HomeShell's twin.
-    if (params.get('handedOff') === '1') {
-      setNotice({ kind: 'handedOff' });
-      strip('handedOff', 'provider');
-    }
     const failure = params.get('authError');
     if (failure) {
       setNotice({ kind: 'authError', reason: failure });

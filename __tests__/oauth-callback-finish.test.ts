@@ -238,13 +238,13 @@ describe('finishOAuthCallback — a parked flow is named in the app', () => {
     expect((await readHandoff(ref))?.pending?.sub).toBe('fresh');
   });
 
-  it('an ordinary new-account flow is not marked', async () => {
+  it('an ordinary new-account flow names the account in this browser', async () => {
     const { readPendingSignup } = await import('../lib/pendingSignup');
     const res = await finishOAuthCallback(req(), ORIGIN, claims({ sub: 'fresh-2' }));
     const header = res.headers.getSetCookie().find((c) => c.startsWith(`${PENDING_COOKIE}=`))!;
     const parsed = readPendingSignup(
       new NextRequest(`${ORIGIN}/bpm/api/auth/complete-signup`, { headers: { Cookie: header.split(';')[0] } }),
     );
-    expect(parsed?.parked).toBeUndefined();
+    expect(parsed?.sub).toBe('fresh-2');
   });
 });
