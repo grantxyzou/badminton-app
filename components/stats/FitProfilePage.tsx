@@ -25,6 +25,8 @@ export interface FitProfilePageProps {
   /** The register's picks, for "If you ever replace it". */
   picks: UseGearPicks;
   onBack: () => void;
+  /** A ranked frame's own page, when pages are on. */
+  onOpenFrame?: (frameId: string) => void;
 }
 
 type Answerable = keyof Pick<GearPrefs, 'fitLevelOverride' | 'fitPlayStyle' | 'playFormat' | 'fitSwing' | 'fitGrip' | 'fitOvergrips' | 'fitSoreness' | 'fitGoal'>;
@@ -46,7 +48,7 @@ const FORMAT_OF: Record<FitPlayStyle, 'singles' | 'doubles' | 'both'> = { double
  * The verdict is the server's (`/api/equipment/fit-verdict`) and keeps showing
  * the previous one while a new one is asked for — no spinner on the verdict.
  */
-export default function FitProfilePage({ activeName, gear, picks, onBack }: FitProfilePageProps) {
+export default function FitProfilePage({ activeName, gear, picks, onBack, onOpenFrame }: FitProfilePageProps) {
   const t = useTranslations('stats.gear.fitPage');
   const tGear = useTranslations('stats.gear');
   const tHub = useTranslations('valueHub');
@@ -226,7 +228,7 @@ export default function FitProfilePage({ activeName, gear, picks, onBack }: FitP
       )}
 
       <p className="setup-eyebrow fit-section-label">{t('replaceTitle')}</p>
-      <RankedFrames picks={picks} ready={!!answers.swing && !!answers.grip} />
+      <RankedFrames picks={picks} ready={!!answers.swing && !!answers.grip} onOpenFrame={onOpenFrame} />
 
       <p className="fit-footnote">{t('privacy')}</p>
     </div>
@@ -307,7 +309,7 @@ function tensionCaption(facts: FitFacts, t: (key: string, values?: Record<string
   return t('tensionInside');
 }
 
-function RankedFrames({ picks, ready }: { picks: UseGearPicks; ready: boolean }) {
+function RankedFrames({ picks, ready, onOpenFrame }: { picks: UseGearPicks; ready: boolean; onOpenFrame?: (frameId: string) => void }) {
   const t = useTranslations('stats.gear.fitPage');
   // The handoff's threshold: a ranking needs the swing and the grip.
   if (!ready) return <div className="glass-card p-5"><p className="fit-caption" style={{ margin: 0 }}>{t('rankedNeeds')}</p></div>;
@@ -323,7 +325,7 @@ function RankedFrames({ picks, ready }: { picks: UseGearPicks; ready: boolean })
   return (
     <div className="glass-card p-5 fit-ranked">
       {rows.map((r, i) => (
-        <div key={r.item.id} className="fit-rank-row">
+        <button key={r.item.id} type="button" className="fit-rank-row frame-close-row" disabled={!onOpenFrame} onClick={() => onOpenFrame?.(r.item.id)}>
           <span className="fit-rank-thumb" aria-hidden="true">
             {/* eslint-disable-next-line @next/next/no-img-element -- a pre-rendered local WebP; next/image adds nothing at 24px. */}
             <img src={racketSrc(r.item.id)} alt="" />
@@ -333,7 +335,7 @@ function RankedFrames({ picks, ready }: { picks: UseGearPicks; ready: boolean })
             {r.why && <span className="fit-caption">{r.why}</span>}
           </span>
           <span className={`fit-rank-n${i === 0 ? ' fit-rank-n--first' : ''}`}>{t(`rank_${i + 1}`)}</span>
-        </div>
+        </button>
       ))}
       <p className="fit-caption" style={{ margin: 0 }}>{t('rankedFooter')}</p>
     </div>

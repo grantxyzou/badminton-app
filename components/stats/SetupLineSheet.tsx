@@ -25,6 +25,8 @@ export interface SetupLineSheetProps {
   onAddSpare: () => void;
   /** "See it in 3D" — the racket's own look sheet (swaps with this one). */
   onViewLook?: (item: GearItem, title: string) => void;
+  /** The racket's own page (NEXT_PUBLIC_FLAG_GEAR_PAGES). Only a catalog racket has one. */
+  onViewFrame?: (catalogId: string) => void;
 }
 
 /**
@@ -38,7 +40,7 @@ export interface SetupLineSheetProps {
  *
  * Mount with a fresh `key` per opening; its state describes one visit.
  */
-export default function SetupLineSheet({ open, onClose, category, gear, onChange, onAddSpare, onViewLook }: SetupLineSheetProps) {
+export default function SetupLineSheet({ open, onClose, category, gear, onChange, onAddSpare, onViewLook, onViewFrame }: SetupLineSheetProps) {
   const t = useTranslations('stats.gear.setup');
   const tGear = useTranslations('stats.gear');
   const tHub = useTranslations('valueHub');
@@ -118,6 +120,7 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
                     <span className="setup-action-label">{t('theOneYouPlay')}</span>
                   </div>
                   <ActionRow icon="swap_horiz" label={t('changeModel')} onClick={onChange} disabled={!gear.online} />
+                  {onViewFrame && item.catalogId && <ActionRow icon="fact_check" label={t('viewFrame')} onClick={() => onViewFrame(item.catalogId!)} />}
                   {onViewLook && <ActionRow icon="sports_tennis" label={t('viewIn3d')} onClick={() => onViewLook(item, title)} />}
                   <ActionRow icon="add" label={t('addSpare')} onClick={onAddSpare} disabled={!gear.online} />
                 </>

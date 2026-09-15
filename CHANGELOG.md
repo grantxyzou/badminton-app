@@ -48,6 +48,12 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Equipment — a page for every racket (2026-09-14, dark)
+
+- **About this racket** (behind `NEXT_PUBLIC_FLAG_GEAR_PAGES`): the frame in 3D, its specs, a typical price range in dollars, and four rows — your fit verdict (or how it would suit you), the club's tension band with your line on it, your restring log, and the rackets closest to it.
+- **Reached from** your racket's sheet, the ranked frames on Your fit, and from one racket's page to the next; back walks back through them.
+- **Only what's real**: no release year, no member-reported price, no string log for a racket you don't own, and no club band until three members have logged this frame.
+
 ### Equipment — Your fit, and a verdict on your racket (2026-09-14, dark)
 
 - **Your fit is a page now** (behind `NEXT_PUBLIC_FLAG_GEAR_PAGES`): level, what you mostly play, swing speed drawn as where you meet the shuttle, grip size drawn to scale, and anything sore. Every tap saves.
