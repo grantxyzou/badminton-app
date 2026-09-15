@@ -48,6 +48,12 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Equipment — a tension ruler, and club rows that open the racket (2026-09-14)
+
+- **Strung at** has a live ruler under it: the frame's rated window, the club's range once three members have logged one, and your figure as a line that moves as you type or tap. A suggested figure draws dashed; one outside the rated window turns amber.
+- **The club line always says what it knows**: the club's range, "Not enough of the club has logged this frame yet", or "We couldn't reach the club data just now" — a failed read no longer looks the same as a quiet club.
+- **What the club plays**: a racket row that names a catalog racket opens that racket's page.
+
 ### Equipment — one price per racket (2026-09-14)
 
 - **Every screen shows the same price for a racket now.** Nine rackets had a hand-set figure on the pick sheets that disagreed with the typical range on their own page (the 3D Calibar 900 read $209 in one place and $345–$415 in the other). Prices come from one sourced figure (`lib/catalogPrice.ts`), and a test holds every catalog row to it.

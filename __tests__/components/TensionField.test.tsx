@@ -8,13 +8,14 @@ import enMessages from '../../messages/en.json';
 
 afterEach(cleanup);
 
-function Harness({ initial = null, rated = null, club = null, spy = vi.fn() }: {
-  initial?: number | null; rated?: [number, number] | null; club?: { sampleSize: number; low: number; high: number; mean: number } | null; spy?: (v: number | null) => void;
+function Harness({ initial = null, rated = null, club = null, clubStatus, suggested = null, spy = vi.fn() }: {
+  initial?: number | null; rated?: [number, number] | null; club?: { sampleSize: number; low: number; high: number; mean: number } | null;
+  clubStatus?: 'loading' | 'ready' | 'error'; suggested?: number | null; spy?: (v: number | null) => void;
 }) {
   const [v, setV] = useState<number | null>(initial);
   return (
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <TensionField label="Strung at" value={v} onChange={(n) => { setV(n); spy(n); }} rated={rated} club={club} />
+      <TensionField label="Strung at" value={v} suggested={suggested} onChange={(n) => { setV(n); spy(n); }} rated={rated} club={club} clubStatus={clubStatus} />
     </NextIntlClientProvider>
   );
 }
@@ -41,16 +42,48 @@ describe('TensionField', () => {
 
   it('a typed figure outside the rated range warns and is still the value', () => {
     const spy = vi.fn();
-    render(<Harness rated={[22, 28]} spy={spy} club={{ sampleSize: 4, low: 24, high: 27, mean: 25.5 }} />);
+    render(<Harness rated={[22, 28]} spy={spy} club={{ sampleSize: 4, low: 24, high: 27, mean: 25.5 }} clubStatus="ready" />);
     expect(screen.getByText('The club strings this frame 24–27 lb.')).toBeTruthy();
     fireEvent.change(field(), { target: { value: '31' } });
     expect(spy).toHaveBeenLastCalledWith(31);
     expect(screen.getByText("That's outside what this frame is rated for — 22 to 28 lb.")).toBeTruthy();
   });
 
-  it('says nothing about the club without a band', () => {
+  it('with no frame to ask about, draws no ruler and says nothing about the club', () => {
     render(<Harness rated={[22, 28]} />);
-    expect(screen.queryByText(/The club strings/)).toBeNull();
+    expect(screen.queryByText(/club/i)).toBeNull();
+    expect(screen.queryByRole('img')).toBeNull();
+  });
+
+  // A failed read, a read in flight and "fewer than three members" used to
+  // render the same silence. Each now says what it is.
+  it('tells loading, not-enough-yet and a failed read apart', () => {
+    const { container, rerender } = render(<Harness clubStatus="loading" />);
+    expect(container.querySelector('.tension-field-shimmer')).toBeTruthy();
+    cleanup();
+    render(<Harness clubStatus="ready" club={null} />);
+    expect(screen.getByText('Not enough of the club has logged this frame yet.')).toBeTruthy();
+    cleanup();
+    render(<Harness clubStatus="error" />);
+    expect(screen.getByText("We couldn't reach the club data just now.")).toBeTruthy();
+    void rerender;
+  });
+
+  it('the ruler draws the rated window and club band, and the line follows the figure', () => {
+    render(<Harness initial={25} rated={[20, 30]} clubStatus="ready" club={{ sampleSize: 3, low: 24, high: 27, mean: 25.5 }} />);
+    expect(screen.getByRole('img', { name: /Tension from 20 to 30 lb/ })).toBeTruthy();
+    expect(screen.getByTestId('ruler-club').style.left).toBe('40%');
+    expect(screen.getByTestId('ruler-club').style.width).toBe('30%');
+    expect(screen.getByTestId('ruler-you').style.left).toBe('50%');
+    fireEvent.click(screen.getByRole('button', { name: 'Raise tension' }));
+    expect(screen.getByTestId('ruler-you').style.left).toBe('60%');
+  });
+
+  it('draws a suggestion dashed and an out-of-range figure amber', () => {
+    render(<Harness suggested={24} rated={[22, 26]} clubStatus="ready" />);
+    expect(screen.getByTestId('ruler-you').className).toContain('tension-ruler-you--suggested');
+    fireEvent.change(field(), { target: { value: '28' } });
+    expect(screen.getByTestId('ruler-you').className).toContain('tension-ruler-you--warn');
   });
 });
 

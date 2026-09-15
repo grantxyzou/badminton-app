@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { MIN_LB, MAX_LB } from '@/lib/tension';
+import { MIN_LB, MAX_LB, scalePosition } from '@/lib/tension';
 // The rated window lives beside the scale it defaults to; re-exported for the sheets.
 export { ratedRange } from '@/lib/tension';
 import type { ClubTensionBand } from '@/lib/clubTension';
@@ -21,8 +21,13 @@ export interface TensionFieldProps {
   onChange: (lbs: number | null) => void;
   /** The racket's rated window, when the catalog prints one. */
   rated?: [number, number] | null;
-  /** The club's band for this frame; null says nothing. */
+  /** The club's band for this frame. */
   club?: ClubTensionBand | null;
+  /** Where the club read is. Given only when there IS a frame to ask about:
+   *  then the field draws its ruler and always says something about the club
+   *  — the range, "not enough of the club yet", a failed read, or a shimmer —
+   *  instead of the same silence for all four. Absent, no ruler, no club line. */
+  clubStatus?: 'loading' | 'ready' | 'error';
   autoFocus?: boolean;
   disabled?: boolean;
   /** Accessible name for the input, e.g. "Strung at". */
@@ -35,7 +40,7 @@ export interface TensionFieldProps {
  * opens on focus; the steppers nudge a pound within the frame's rated range and
  * stop at its edges; a typed figure outside the range warns and still saves.
  */
-export default function TensionField({ value, suggested = null, onChange, rated = null, club = null, autoFocus = false, disabled = false, label }: TensionFieldProps) {
+export default function TensionField({ value, suggested = null, onChange, rated = null, club = null, clubStatus, autoFocus = false, disabled = false, label }: TensionFieldProps) {
   const t = useTranslations('stats.gear.setup');
   const inputRef = useRef<HTMLInputElement>(null);
   const hintId = useId();
@@ -67,7 +72,15 @@ export default function TensionField({ value, suggested = null, onChange, rated 
   }
 
   const outOfRange = rated !== null && value !== null && (value < rated[0] || value > rated[1]);
-  const clubLine = club ? t('tensionClubHint', { low: club.low, high: club.high }) : null;
+  const clubLine = clubStatus === undefined
+    ? null
+    : clubStatus === 'loading'
+      ? <span className="shimmer-line tension-field-shimmer" aria-hidden="true" />
+      : clubStatus === 'error'
+        ? t('tensionClubError')
+        : club
+          ? t('tensionClubHint', { low: club.low, high: club.high })
+          : t('tensionClubNone');
 
   return (
     <div className="tension-field">
@@ -97,6 +110,9 @@ export default function TensionField({ value, suggested = null, onChange, rated 
           <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-md)' }}>add</span>
         </button>
       </div>
+      {clubStatus !== undefined && (
+        <TensionRuler value={value ?? suggested} chosen={value !== null} rated={rated} club={clubStatus === 'ready' ? club : null} outOfRange={outOfRange} label={t('tensionRulerLabel')} />
+      )}
       {(outOfRange || clubLine) && (
         <p id={hintId} className="tension-field-hint">
           {outOfRange && rated
@@ -104,6 +120,40 @@ export default function TensionField({ value, suggested = null, onChange, rated 
             : clubLine}
         </p>
       )}
+    </div>
+  );
+}
+
+const pct = (lbs: number) => `${(scalePosition(lbs) * 100).toFixed(2)}%`;
+const RULER_TICKS = [MIN_LB, (MIN_LB + MAX_LB) / 2, MAX_LB];
+
+/**
+ * The field's figure on the app's fixed 20–30 lb ruler, live as it changes:
+ * the frame's rated window as a faint track, the club's band when three members
+ * have logged one, and the member's line moving as they type or step. A figure
+ * nobody chose (the suggestion) draws dashed; one outside the rated window
+ * turns amber, the same cue as the warning under it.
+ */
+function TensionRuler({ value, chosen, rated, club, outOfRange, label }: {
+  value: number | null; chosen: boolean; rated: [number, number] | null; club: ClubTensionBand | null; outOfRange: boolean; label: string;
+}) {
+  const span = (lo: number, hi: number) => ({ left: pct(lo), width: `${((scalePosition(hi) - scalePosition(lo)) * 100).toFixed(2)}%` });
+  return (
+    <div className="tension-ruler" role="img" aria-label={label}>
+      <div className="tension-ruler-track">
+        {rated && <span className="tension-ruler-rated" data-testid="ruler-rated" style={span(rated[0], rated[1])} />}
+        {club && <span className="tension-ruler-club" data-testid="ruler-club" style={span(club.low, club.high)} />}
+        {value !== null && (
+          <span
+            className={`tension-ruler-you${chosen ? '' : ' tension-ruler-you--suggested'}${outOfRange ? ' tension-ruler-you--warn' : ''}`}
+            data-testid="ruler-you"
+            style={{ left: pct(value) }}
+          />
+        )}
+      </div>
+      <div className="tension-ruler-axis" aria-hidden="true">
+        {RULER_TICKS.map((lb) => <span key={lb}>{lb}</span>)}
+      </div>
     </div>
   );
 }

@@ -327,6 +327,7 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
                 onChange={setTension}
                 rated={ratedRange(frameRow?.attributes)}
                 club={clubTension.band}
+                clubStatus={frameId ? clubTension.status : undefined}
                 autoFocus
                 disabled={!savedItem || gear.busy}
               />

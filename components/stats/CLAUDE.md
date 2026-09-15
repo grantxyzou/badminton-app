@@ -165,7 +165,11 @@ each owns different hooks and a hook cannot be conditional.
 - **`TensionField`** is tension as a field: a numeric input with steppers
   bounded by the frame's rated range (`ratedRange` in `lib/tension.ts`, a
   missing bound is the app scale's own), a warning that still saves, and the club hint from
-  `useClubTension`. Its classes are `tension-field-*` — `.setup-tension` is the
+  `useClubTension`. **Pass `clubStatus` only when there is a frame to ask about**:
+  then it draws the live ruler (`scalePosition`, the same fixed 20–30 lb scale
+  as the frame page's chart) and its club line distinguishes loading, a failed
+  read and "not enough of the club yet" — passing `.band` alone made all three
+  the same silence. Its classes are `tension-field-*` — `.setup-tension` is the
   CARD's figure, and reusing that name restyled it.
 - **`SetupLineSheet`**: one filled line's management. Remove asks once. No Retire.
 - **`NextRacketCard`** renders only once a racket is in play; its tap carries the
