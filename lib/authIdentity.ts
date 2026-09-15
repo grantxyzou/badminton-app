@@ -169,6 +169,84 @@ export async function releaseIdentityDoc(identity: AuthIdentity): Promise<void> 
   }
 }
 
+/** The provider-side key an identity was reserved under (Google/Apple `sub`,
+ *  or the normalized email). The inverse of `identityId`, kept here so no
+ *  caller has to take the id apart itself. */
+export function identityKeyOf(identity: AuthIdentity): string {
+  return identity.id.slice(identity.provider.length + 1);
+}
+
+/**
+ * APPLE REFRESH TOKENS — kept only so they can be REVOKED.
+ *
+ * Apple requires an app that offers Sign in with Apple to revoke the user's
+ * tokens when they delete their account. Revocation needs a token, and the only
+ * moment we ever hold one is the callback's code exchange.
+ *
+ * It lives in its own doc keyed by Apple's `sub`, not as a field on the
+ * `apple:<sub>` identity, because for a NEW account that identity does not
+ * exist yet at the callback: it is reserved later by complete-signup,
+ * claim-name or the hand-off claim, none of which ever sees the token. Keyed by
+ * `sub`, the doc is findable from the identity whenever it is created.
+ *
+ * NO `memberId` field, on purpose: `listIdentitiesForMember` (and the
+ * account-deletion purge, which queries by memberId) must never return it as
+ * if it were an identity. The purge revokes and deletes it explicitly first.
+ *
+ * A server-side credential: never returned by any route. Useless on its own —
+ * using it needs our client-secret JWT — but still not something to hand out.
+ * `__tests__/apple-token-canary.test.ts` holds the field to its files.
+ */
+interface AppleRefreshTokenDoc {
+  id: string;
+  kind: 'apple_refresh_token';
+  refreshToken: string;
+  updatedAt: string;
+}
+
+function appleTokenDocId(sub: string): string {
+  return `apple-refresh:${sub.trim()}`;
+}
+
+/** Best-effort: never fails a sign-in. The latest token replaces any older one. */
+export async function storeAppleRefreshToken(sub: string, refreshToken: string): Promise<void> {
+  try {
+    await ready();
+    const doc: AppleRefreshTokenDoc = {
+      id: appleTokenDocId(sub),
+      kind: 'apple_refresh_token',
+      refreshToken,
+      updatedAt: new Date().toISOString(),
+    };
+    await getContainer('identities').items.upsert(doc);
+  } catch (err) {
+    console.error('[apple-token] store failed', { message: (err as Error)?.message });
+  }
+}
+
+export async function readAppleRefreshToken(sub: string): Promise<string | null> {
+  await ready();
+  const id = appleTokenDocId(sub);
+  try {
+    const { resource } = await getContainer('identities').item(id, id).read<AppleRefreshTokenDoc>();
+    return resource?.kind === 'apple_refresh_token' && typeof resource.refreshToken === 'string'
+      ? resource.refreshToken
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function forgetAppleRefreshToken(sub: string): Promise<void> {
+  await ready();
+  const id = appleTokenDocId(sub);
+  try {
+    await getContainer('identities').item(id, id).delete();
+  } catch {
+    // Already gone is the desired end state.
+  }
+}
+
 export async function listIdentitiesForMember(memberId: string): Promise<AuthIdentity[]> {
   await ready();
   const { resources } = await getContainer('identities')

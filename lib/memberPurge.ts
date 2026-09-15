@@ -30,6 +30,8 @@
 import { getContainer } from './cosmos';
 import { pkFieldOf, type ContainerName } from './containers';
 import { listMembershipsForMember, reassignOwnership } from './groups';
+import { listIdentitiesForMember } from './authIdentity';
+import { revokeAppleIdentity } from './appleRevoke';
 
 /** What an anonymized row says instead of a name. */
 export const TOMBSTONE_NAME = 'Former member';
@@ -212,6 +214,22 @@ export async function purgeMember(memberId: string, name: string): Promise<Purge
       summary.failed.push(`groups:ownership:${m.groupId}`);
       heldBack.add(m.groupId);
     }
+  }
+
+  // Apple BEFORE the loop: the loop deletes `identities`, and the `apple:<sub>`
+  // row is the only record of which Apple user to revoke. Apple requires the
+  // revoke when an account is deleted. Best-effort like everything here — a
+  // failure is reported and the deletion goes on. The provider is re-checked
+  // in JS because the container also holds email reservations.
+  try {
+    const identities = await listIdentitiesForMember(memberId);
+    for (const identity of identities) {
+      if (identity.provider !== 'apple' || identity.memberId !== memberId) continue;
+      if ((await revokeAppleIdentity(identity)) === 'failed') summary.failed.push('apple:revoke');
+    }
+  } catch (err) {
+    console.error('[purge] apple revoke failed:', err);
+    summary.failed.push('apple:revoke');
   }
 
   for (const t of OWNED) {

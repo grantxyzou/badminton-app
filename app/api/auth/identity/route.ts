@@ -22,6 +22,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isFlagOn } from '@/lib/flags';
 import { verifyMemberAuth } from '@/lib/auth';
 import { listIdentitiesForMember, releaseIdentityDoc } from '@/lib/authIdentity';
+import { revokeAppleIdentity } from '@/lib/appleRevoke';
 import type { Member } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -81,6 +82,11 @@ export async function DELETE(req: NextRequest) {
     // fails, the worst case is a stale `linkedProviders` entry — cosmetic, and
     // self-corrects on the next read, since the container is authoritative.
     // The reverse order could leave a live identity the UI says is gone.
+    // Disconnecting Apple revokes it at Apple too, so the app leaves the
+    // person's "Sign in with Apple" list rather than only ours. Best-effort
+    // and never throws: a revoke failure must not keep a connection the
+    // member asked to remove.
+    if (target.provider === 'apple') await revokeAppleIdentity(target);
     await releaseIdentityDoc(target);
 
     const remaining = (member.linkedProviders ?? []).filter((p) => p !== provider);

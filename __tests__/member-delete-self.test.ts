@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { configureAppleForTest } from './appleTestEnv';
 import {
   resetMockStore,
   getStore,
@@ -111,6 +112,17 @@ beforeEach(async () => {
     memberId: MEMBER_ID,
     provider: 'google',
   });
+  // Apple: the identity row and, separately, the refresh token kept to revoke it.
+  await getContainer('identities').items.upsert({
+    id: 'apple:apple-sub-wei',
+    memberId: MEMBER_ID,
+    provider: 'apple',
+  });
+  await getContainer('identities').items.upsert({
+    id: 'apple-refresh:apple-sub-wei',
+    kind: 'apple_refresh_token',
+    refreshToken: 'refresh-wei',
+  });
   await getContainer('aliases').items.upsert({ id: 'a1', memberId: MEMBER_ID, name: 'Wei' });
   await getContainer('skills').items.upsert({
     id: 's1',
@@ -216,6 +228,36 @@ describe('what is destroyed', () => {
   ])('purges %s outright', async (container) => {
     await del();
     expect(rows(container)).toHaveLength(0);
+  });
+
+  describe('Sign in with Apple', () => {
+    let restoreApple: () => void = () => {};
+    beforeEach(() => { restoreApple = configureAppleForTest().restore; });
+    afterEach(() => { restoreApple(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+    it('revokes their Apple tokens at Apple, then forgets the stored token', async () => {
+      // Apple's rule: an app offering Sign in with Apple revokes on account deletion.
+      const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response('', { status: 200 }));
+      vi.stubGlobal('fetch', fetchMock);
+      const res = await del();
+      expect(res.status).toBe(200);
+      const call = fetchMock.mock.calls.find((c) => String(c[0]) === 'https://appleid.apple.com/auth/revoke');
+      expect(call).toBeDefined();
+      expect(new URLSearchParams(String(call![1]!.body)).get('token')).toBe('refresh-wei');
+      expect(rows('identities').find((r) => r.id === 'apple-refresh:apple-sub-wei')).toBeUndefined();
+      expect((await res.json()).failed).toEqual([]);
+    });
+
+    it('still deletes the account when Apple refuses, and says so', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 500 })));
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const res = await del();
+      expect(res.status).toBe(200);
+      expect(rows('members').find((m) => m.id === MEMBER_ID)).toBeUndefined();
+      expect((await res.json()).failed).toContain('apple:revoke');
+      // Nothing of theirs is kept, token included.
+      expect(rows('identities')).toHaveLength(0);
+    });
   });
 
   it('deletes a kudos they RECEIVED — that one is about them', async () => {

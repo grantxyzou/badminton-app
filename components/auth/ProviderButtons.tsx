@@ -9,6 +9,7 @@ import { useTranslations } from 'next-intl';
 import { useOnline } from '@/lib/useOnline';
 import { useClientValue } from '@/lib/useClientValue';
 import GoogleMark from './GoogleMark';
+import AppleMark from './AppleMark';
 
 /** Only `false` is a confirmed absence; `null`/unknown must read as present. */
 const readPluginMissing = () => hasNativePlugin('Browser') === false;
@@ -218,15 +219,15 @@ export default function ProviderButtons({
           );
         }
 
-        // Google's button is Google's, down to the surface colours — see
-        // `.btn-google` in globals.css. Apple is deliberately still on the
-        // generic style: Sign in with Apple has its own mandatory button spec
-        // (their mark, their black/white/outline set, SF), and shipping it
-        // dressed as a Google button would breach it. It needs the same
-        // treatment before the Apple provider is ever switched on.
-        const branded = p === 'google';
+        // Each provider's button is that provider's, down to the surface
+        // colours — `.btn-google` and `.btn-apple` in globals.css. They are two
+        // specs, not one: Google's four-colour mark on its neutral pill, and
+        // Sign in with Apple's black/white button with the logo in the text
+        // colour. Dressing either in the other's surface breaches both.
+        const branded = p === 'google' || p === 'apple';
+        const mark = p === 'google' ? <GoogleMark /> : p === 'apple' ? <AppleMark /> : null;
         const startHref = `${BASE}/api/auth/${p}/start${handoffRef ? `?hr=${handoffRef}` : ''}`;
-        const className = branded ? 'cc-btn btn-google' : 'cc-btn cc-btn-secondary';
+        const className = branded ? `cc-btn btn-${p}` : 'cc-btn cc-btn-secondary';
         const style = {
           display: 'flex',
           alignItems: 'center',
@@ -272,7 +273,7 @@ export default function ProviderButtons({
               className={className}
               style={style}
             >
-              {branded && <GoogleMark />}
+              {mark}
               {label}
             </button>
           );
@@ -307,7 +308,7 @@ export default function ProviderButtons({
             className={className}
             style={style}
           >
-            {branded && <GoogleMark />}
+            {mark}
             {label}
           </a>
         );

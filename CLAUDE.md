@@ -76,6 +76,18 @@ container appears in none of the three lists, and **it resolves single-level
 were invisible to a literal-only scan, and `authhandoff` (which parks a
 `memberId`) therefore survived a deletion request in the first cut.
 
+**Sign in with Apple is revoked at Apple first** (2026-09-15, Apple's rule for
+apps offering it): `purgeMember` reads the member's `apple:<sub>` identity
+BEFORE its loop deletes `identities`, and `revokeAppleIdentity`
+(`lib/appleRevoke.ts`) sends the stored refresh token to Apple, then forgets it
+whether or not Apple accepted — a failure lands in `failed` as `apple:revoke`
+and never blocks the deletion. Disconnecting Apple does the same. The token
+lives in its own `apple-refresh:<sub>` doc with NO `memberId` (for a new
+account the identity row does not exist yet at the callback), and
+`__tests__/apple-token-canary.test.ts` pins it to its files. The client-secret
+JWT is hand-signed there because arctic keeps its own private —
+`dsaEncoding: 'ieee-p1363'` is load-bearing and asserted.
+
 Two consequences worth knowing: the anonymized `players` row has its
 `deleteToken`, `pinHash` and `memberId` stripped (an anonymized row keeping a
 live credential is the strip-canary rule at rest), and purging `events` LOWERS

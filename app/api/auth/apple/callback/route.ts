@@ -24,6 +24,7 @@ import { appOrigin, appleClient, decodeIdTokenClaims } from '@/lib/oauthProvider
 import { readOAuthCookies, classifyState, describeCallbackContext } from '@/lib/oauthState';
 import { readHandoff, handoffStateMatches, isHandoffRef } from '@/lib/authHandoff';
 import { finishOAuthCallback, oauthFailure } from '@/lib/oauthCallback';
+import { storeAppleRefreshToken } from '@/lib/authIdentity';
 
 export const dynamic = 'force-dynamic';
 
@@ -125,6 +126,12 @@ export async function POST(req: NextRequest) {
     const tokens = await client.validateAuthorizationCode(code);
     const claims = decodeIdTokenClaims(tokens.idToken());
     if (!claims.sub) return oauthFailure(origin, 'invalid_callback');
+
+    // Kept ONLY so it can be revoked when the account is deleted or Apple is
+    // disconnected (Apple's rule). Stored by `sub`, because for a new account
+    // the identity row does not exist yet. Server-side only; never in a
+    // cookie, a redirect or a response. Best-effort: never fails a sign-in.
+    if (tokens.hasRefreshToken()) await storeAppleRefreshToken(claims.sub, tokens.refreshToken());
 
     return await finishOAuthCallback(req, origin, {
       handoff,
