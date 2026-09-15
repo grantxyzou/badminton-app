@@ -2,7 +2,7 @@
 
 **Track:** North Star pillar 4 (traffic/recommendations strong enough to suggest equipment purchases) — stringing is the one paid equipment service the app sells, and its only door is one Home card.
 **Status:** in-flight
-**Review on:** 2026-10-26 — Did stringing requests per member-month rise after the reminder and the Set-up door shipped, and did anyone tap in from Stats → Gear?
+**Review on:** 2026-10-26 — From `stringingJobs.createdAt`: did requests per month from repeat shop customers rise in the six weeks after ship vs the six before?
 
 ## Problem
 
@@ -21,8 +21,12 @@ recorded in CLAUDE.md in a player's words: "how do I give kudos to other people?
 
 ## Kill criterion
 
-If six weeks after ship the members who were shown the reminder request no more
-often than before, the reminder is noise; remove the line and keep the door.
+Requests per month from members with at least one earlier shop job, counted
+from `stringingJobs.createdAt`, for the six weeks after ship against the six
+before. No rise: the reminder is noise; remove the line and keep the door.
+Nothing records who SAW the reminder or tapped the Set-up link, so this reads
+the cohort the reminder can reach, not the people it reached — add an
+`app/api/events` kind first if that distinction ever decides anything.
 
 ## Non-goals
 

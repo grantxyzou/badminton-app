@@ -360,9 +360,11 @@ export default function StringingCard({ hasIdentity }: Props) {
             a link with an arrow, it still reads as the way in without
             competing for the one primary slot on the screen. */}
         {/* Secondary ink, never red and never accent: the CTA right below
-            stays the card's one way in. */}
+            stays the card's one way in. No inline margin: this is a non-first
+            direct child of a `space-y-3` card, and `margin: 0` would cancel the
+            gap above it (the WhereYouSitCard footnote bug). */}
         {restringWeeks !== null && (
-          <p className="fs-sm" style={{ margin: '0', color: 'var(--text-secondary)' }}>
+          <p className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
             {t('restringDue', { weeks: restringWeeks })}
           </p>
         )}

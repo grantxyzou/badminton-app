@@ -269,13 +269,18 @@ function SetupRegister({ activeName }: GearRegisterProps) {
         // Swap, never stack — the same rule as the rail's sheet.
         onOpenFit={() => { setPickOpen(false); openFitDoor(); }}
       />
-      <RequestStringingSheet
-        open={stringingOpen}
-        onClose={() => setStringingOpen(false)}
-        // Nothing on this register lists jobs; Home's card reads them on its own mount.
-        onRequested={() => {}}
-        gear={activeName ? gear : null}
-      />
+      {/* Mounted only while open: the sheet reads the stocked strings on
+          mount, and every Equipment visit should not pay for a sheet nobody
+          opened. Also starts each visit with a clean form. */}
+      {stringingOpen && (
+        <RequestStringingSheet
+          open
+          onClose={() => setStringingOpen(false)}
+          // Nothing on this register lists jobs; Home's card reads them on its own mount.
+          onRequested={() => {}}
+          gear={activeName ? gear : null}
+        />
+      )}
       {shareOpen && (
         <SetupShareSheet
           open
