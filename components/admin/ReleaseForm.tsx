@@ -4,14 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Release } from '@/lib/types';
 import { MAX_PROMPT_CHARS } from '@/lib/claudeLimits';
-
-function nextPatchVersion(current: string | undefined): string {
-  if (!current) return 'v0.1.0';
-  const m = current.match(/^v?(\d+)\.(\d+)\.(\d+)$/);
-  if (!m) return 'v0.1.0';
-  const [, major, minor, patch] = m;
-  return `v${major}.${minor}.${parseInt(patch, 10) + 1}`;
-}
+import { suggestReleaseVersion } from '@/lib/releaseVersion';
 
 interface ReleaseFormProps {
   latestVersion?: string;
@@ -39,7 +32,7 @@ interface ChangelogUnreleased {
 export default function ReleaseForm({ latestVersion, initialRecord, onPublished, onCancel }: ReleaseFormProps) {
   const t = useTranslations('admin.releases');
   const isEdit = !!initialRecord;
-  const [version, setVersion] = useState(() => initialRecord?.version ?? nextPatchVersion(latestVersion));
+  const [version, setVersion] = useState(() => initialRecord?.version ?? suggestReleaseVersion(latestVersion, undefined));
   const [rawNotes, setRawNotes] = useState('');
   // Tracks when the Unreleased section was baked at build time, so the admin
   // can see at a glance whether the pre-filled bullets are current.
@@ -56,13 +49,18 @@ export default function ReleaseForm({ latestVersion, initialRecord, onPublished,
       const res = await fetch(`${BASE}/changelog-unreleased.json`, { cache: 'no-store' });
       if (!res.ok) return;
       const data = (await res.json()) as ChangelogUnreleased;
-      if (data.suggestedVersion) setVersion(data.suggestedVersion);
+      // A changelog suggestion never goes BELOW what is already published
+      // (v2.0 was published while CHANGELOG.md topped out at v1.8). The
+      // published-fallback source re-shows the last release's own version.
+      if (data.suggestedVersion) {
+        setVersion(data.source === 'published-fallback' ? data.suggestedVersion : suggestReleaseVersion(latestVersion, data.suggestedVersion));
+      }
       if (data.text) setRawNotes(data.text);
       if (data.generatedAt) setChangelogMeta({ generatedAt: data.generatedAt, source: data.source });
     } catch {
       /* swallow — changelog is optional */
     }
-  }, []);
+  }, [latestVersion]);
 
   useEffect(() => {
     if (!isEdit) loadFromChangelog();

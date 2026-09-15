@@ -87,8 +87,10 @@ for (const raw of source) {
     // `weightGrams` string) is preserved rather than dropped wholesale.
     existing.attributes = { ...existing.attributes, ...mapped.attributes };
     existing.skillRange = mapped.skillRange;
-    // Preserve curated fields: sources array and hand-set msrp (only set USD-derived msrp if none exists)
-    if (mapped.msrp !== undefined && existing.msrp === undefined) {
+    // msrp always follows the sourced USD price (lib/catalogPrice.ts is the one
+    // price source since 2026-09-14; a hand-set figure drifted on nine rows).
+    // The curated sources array is still preserved.
+    if (mapped.msrp !== undefined) {
       existing.msrp = mapped.msrp;
     }
     // Preserve other top-level fields from existing (sources, retailer links, etc.)

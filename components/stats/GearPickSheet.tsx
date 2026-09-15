@@ -12,6 +12,7 @@ import type { GearPick } from './GearPickCard';
 import { budgetWords, type UseGear } from './useGear';
 import type { CatalogItem, EquipmentCategory } from '@/lib/types';
 import { catalogSpecRows } from '@/lib/catalogSpecs';
+import { priceCadPoint } from '@/lib/catalogPrice';
 
 export interface GearPickSheetProps {
   open: boolean;
@@ -446,9 +447,9 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
               {shownOwned && <StatusBadge variant="accent">{t('railInKit')}</StatusBadge>}
             </span>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-              {typeof item.msrp === 'number' && item.msrp > 0 && (
+              {priceCadPoint(item) !== null && (
                 <span className="fs-lg" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
-                  ${item.msrp}
+                  ${priceCadPoint(item)}
                 </span>
               )}
               <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{item.brand}</span>
@@ -569,8 +570,8 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
                     ariaLabel={`${o.item.brand} ${o.item.model}`}
                     title={<span className="fs-md" style={{ color: 'var(--text-primary)' }}>{o.item.model}</span>}
                     subtitle={o.line || o.item.brand}
-                    trailing={typeof o.item.msrp === 'number' && o.item.msrp > 0 ? (
-                      <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>${o.item.msrp}</span>
+                    trailing={priceCadPoint(o.item) !== null ? (
+                      <span className="fs-sm" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>${priceCadPoint(o.item)}</span>
                     ) : undefined}
                   />
                 ))}

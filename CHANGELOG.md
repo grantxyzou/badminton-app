@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Equipment — one price per racket (2026-09-14)
+
+- **Every screen shows the same price for a racket now.** Nine rackets had a hand-set figure on the pick sheets that disagreed with the typical range on their own page (the 3D Calibar 900 read $209 in one place and $345–$415 in the other). Prices come from one sourced figure (`lib/catalogPrice.ts`), and a test holds every catalog row to it.
+- **Prices re-checked online** for those nine: ArcSaber 11 Pro, Auraspeed 90K and Nanoflare 001 Ability ranges updated; the rest held.
+- The string pairing's "a $X set" warning is in Canadian dollars like every other price.
+- **Release notes**: the form suggests the next version above the last one published (v2.1 after v2.0), not only above CHANGELOG.md's headings.
+
 ### Equipment — Your fit and racket pages are on (2026-09-14)
 
 - **`NEXT_PUBLIC_FLAG_GEAR_PAGES` and `NEXT_PUBLIC_FLAG_FIT_VERDICT` are on** in production and PR CI. "Your fit" opens the fit page with a verdict on your racket, and "About this racket" opens the racket's own page.
