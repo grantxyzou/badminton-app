@@ -169,9 +169,32 @@ describe('claimPendingHandoff', () => {
 
   it('clears on a terminal none, so the app cannot poll forever', async () => {
     await beginHandoff();
+    localStorage.setItem('badminton_auth_handoff_staged_at', String(Date.now() - 3 * 60 * 1000));
     mockFetch(() => json({ status: 'none' }));
 
     expect(await claimPendingHandoff()).toEqual({ status: 'none' });
+    expect(pendingHandoffId()).toBeNull();
+  });
+
+  /**
+   * THE PRODUCTION BUG (2026-09-15). Opening the sign-in pop-up fires focus
+   * events, so the app claims before the pop-up's /start has parked anything.
+   * That `none` means "not yet", and clearing on it left the pop-up's code with
+   * nothing to claim — on every attempt.
+   */
+  it('does not believe a none straight after the tap — the sign-in may not have started yet', async () => {
+    await beginHandoff();
+    mockFetch(() => json({ status: 'none' }));
+
+    expect(await claimPendingHandoff()).toEqual({ status: 'pending' });
+    expect(pendingHandoffId()).not.toBeNull();
+  });
+
+  it('does believe a none that answers a typed code, even straight after the tap', async () => {
+    await beginHandoff();
+    mockFetch(() => json({ status: 'none' }));
+
+    expect(await claimPendingHandoff('482913')).toEqual({ status: 'none' });
     expect(pendingHandoffId()).toBeNull();
   });
 

@@ -16,6 +16,23 @@
 const KEY = 'badminton_auth_handoff';
 /** The native return code, written by NativeBridge when `bpm://auth/return?c=` opens the app. */
 const RETURN_KEY = 'badminton_auth_handoff_return';
+/** When the pending hand-off was staged — see `STARTING_GRACE_MS`. */
+const STAGED_AT_KEY = 'badminton_auth_handoff_staged_at';
+
+/**
+ * How long after a tap a `none` from the server is NOT believed.
+ *
+ * The server cannot tell "this sign-in has not reached /start yet" from "this
+ * sign-in is gone" — both are an absent stash, deliberately one answer. A
+ * pop-up keeps this page alive, and opening one fires the focus and visibility
+ * events collection listens to, so the app's first claim routinely lands a few
+ * milliseconds BEFORE the pop-up's /start. Believing that `none` cleared the id,
+ * and when the pop-up then posted its code there was nothing left to claim
+ * with — every attempt, measured in production (2026-09-15). A full-page trip
+ * never showed it because it left the page. Two minutes is far longer than
+ * /start takes and far shorter than a stash lives.
+ */
+const STARTING_GRACE_MS = 2 * 60 * 1000;
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 /** Mirrors the server's regex — a malformed value should never reach a fetch. */
@@ -63,10 +80,20 @@ export async function mintHandoff(): Promise<{ id: string; ref: string } | null>
 export function stageHandoff(id: string): void {
   try {
     localStorage.setItem(KEY, id);
+    localStorage.setItem(STAGED_AT_KEY, String(Date.now()));
     // A code belongs to the flow that minted it; a new flow must not send it.
     localStorage.removeItem(RETURN_KEY);
   } catch {
     /* privacy mode — the flow degrades to the cookie path */
+  }
+}
+
+function justStaged(): boolean {
+  try {
+    const at = Number(localStorage.getItem(STAGED_AT_KEY));
+    return Number.isFinite(at) && at > 0 && Date.now() - at < STARTING_GRACE_MS;
+  } catch {
+    return false;
   }
 }
 
@@ -83,6 +110,7 @@ export function clearHandoff(): void {
   try {
     localStorage.removeItem(KEY);
     localStorage.removeItem(RETURN_KEY);
+    localStorage.removeItem(STAGED_AT_KEY);
   } catch {
     /* nothing to do — a stash we cannot clear expires server-side anyway */
   }
@@ -280,6 +308,9 @@ export async function claimPendingHandoff(typedCode?: string): Promise<ClaimOutc
     }
     if (data.status === 'code_required') return { status: 'code_required', wrong: data.wrong === true };
     if (data.status === 'pending') return { status: 'pending' };
+    // Too soon to believe — see STARTING_GRACE_MS. A typed code is answered
+    // straight: the person needs to hear that the sign-in is gone.
+    if (data.status === 'none' && !typedCode && justStaged()) return { status: 'pending' };
     clearHandoff();
     return { status: 'none' };
   } catch {
