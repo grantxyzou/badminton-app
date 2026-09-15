@@ -14,7 +14,6 @@ import PageHeader from '@/components/primitives/PageHeader';
 import { BottomSheet, BottomSheetBody } from '@/components/BottomSheet';
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
 import GiveKudosSheet from '@/components/stats/GiveKudosSheet';
-import KudosRosterHint from '@/components/KudosRosterHint';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
@@ -185,11 +184,6 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
           }
         />
       )}
-      {/* Only for someone who can actually send one here — the same
-          `iAmOnRoster` the per-name button is gated on — and only when there
-          is somebody else to thank. */}
-      {iAmOnRoster && activePlayers.length > 1 && <KudosRosterHint />}
-
       {/* Active players card */}
       <div className="glass-card overflow-hidden">
         <div className="px-4 pt-3 pb-2 section-label">

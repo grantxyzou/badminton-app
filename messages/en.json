@@ -1335,8 +1335,6 @@
     "waitlistHeader": "WAITLIST",
     "youSuffix": "(you)",
     "kudosAction": "Give kudos to {name}",
-    "kudosHint": "Tap the heart next to someone to thank them for a good game.",
-    "kudosHintDismiss": "Hide this tip",
     "cancelAction": "Cancel",
     "leaveAction": "Leave",
     "cancelConfirm": "Cancel your spot?",

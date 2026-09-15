@@ -1335,8 +1335,6 @@
     "waitlistHeader": "候补名单",
     "youSuffix": "（您）",
     "kudosAction": "给 {name} 点赞",
-    "kudosHint": "点名字旁边的爱心，谢谢一起打得好的球友。",
-    "kudosHintDismiss": "隐藏这条提示",
     "cancelAction": "取消",
     "leaveAction": "离开",
     "cancelConfirm": "取消您的名额？",
