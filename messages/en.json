@@ -1720,51 +1720,66 @@
         {
           "h": "Who we are",
           "p": [
-            "%APP% is a sign-up sheet for one casual badminton group in Vancouver, BC. It is run by the group's organiser, Grant Zou, as an individual — not a company. The privacy law that applies is Canada's PIPEDA and BC's Personal Information Protection Act."
+            "%APP% is a sign-up sheet for one casual badminton group in Vancouver, BC. It is run by the group's organiser as an individual — not a company. The privacy law that applies is Canada's PIPEDA and BC's Personal Information Protection Act. This app isn't intended for children under 13."
           ]
         },
         {
           "h": "What we hold about you",
           "p": [
-            "Your name — the one you sign up with. Other members see it on the roster.",
-            "Your PIN, if you set one, stored only as a salted hash. If you sign in with Google or Apple we hold the identifier they give us; for email sign-in, your email address.",
-            "Session records: which sessions you signed up for, whether you were on the waitlist, and your share of the court and shuttle cost — including whether it has been marked paid.",
-            "E-transfer names: if the name on your e-transfer differs from your sign-up name, the organiser records that pairing so payments can be matched. Only admins see it.",
-            "Things you add yourself: skill self-assessments, kudos you give or receive (including notes), games you log, and rackets or strings you save.",
-            "If you turn on notifications, a push token for that device. It identifies the device to Apple, Google or your browser — not you.",
-            "A short technical note when something breaks (the page you were on and the error), sent only when you tap Report a problem.",
-            "If you answer the racket-fit questions on the Stats tab — your level, what you mostly play, what you'd change about your racket, your swing, your grip size, and an optional note on whether your arm or shoulder is sore (elbow, shoulder or wrist) — those answers are stored with your equipment and used only to shape a racket suggestion, a string tension and a verdict on the racket you play. The arm-or-shoulder answer is visible only to you and the organiser. You can clear any of them at any time from that sheet, and they are deleted with your account."
+            "• **Your name** — the one you sign up with. Other members see it on the roster.",
+            "• **Your PIN**, if you set one, stored only as a salted hash. If you sign in with Google, Apple, or email, we receive an identifier from that provider, and — only if you allow it during sign-in — your name and email address.",
+            "• **Session records**: which sessions you signed up for, whether you were on the waitlist, and your share of the court and shuttle cost, including whether it has been marked paid.",
+            "• **E-transfer names**: if the name on your e-transfer differs from your sign-up name, the organiser records that pairing so payments can be matched. Only admins see it.",
+            "• **Things you add yourself**: skill self-assessments, kudos you give or receive (including notes), games you log, and rackets or strings you save.",
+            "• **A push token**, if you turn on notifications, for that device. It identifies the device to Apple, Google, or your browser — not you.",
+            "• **A short technical note** when something breaks (the page you were on and the error), sent only when you tap \"Report a problem.\"",
+            "• **Racket-fit answers**, if you answer the questions on the Stats tab — your level, what you mostly play, what you'd change about your racket, your swing, your grip size, and an optional note on whether your arm or shoulder is sore. This is health-related information and we handle it with extra care: the sore-arm-or-shoulder answer is visible only to you and the organiser, it's used only to shape a racket suggestion and string-tension verdict, and you can clear any of it at any time from that sheet — it's also deleted with your account."
+          ]
+        },
+        {
+          "h": "Who admins are",
+          "p": [
+            "Admins are the organiser and any co-organisers the organiser has appointed to help run sessions and payments. Admins can see payment status and e-transfer names; other members cannot."
           ]
         },
         {
           "h": "What we don't do",
           "p": [
-            "No ads. No analytics trackers. No selling or sharing with anyone for their own purposes. No location, contacts, photos or camera access. We don't build a profile of you for anything beyond running the sessions."
+            "No ads. No analytics trackers. No selling or sharing with anyone for their own purposes. No location, contacts, photos, or camera access. We don't build a profile of you for anything beyond running the sessions."
           ]
         },
         {
           "h": "Who can see what",
           "p": [
-            "Members see the roster: names and whether each spot is confirmed or waitlisted, and the per-person cost for a session. Payment status and e-transfer names are visible to admins only. A kudos note is shown to the person who received it, signed by the giver."
+            "• **Members** see the roster: names, whether each spot is confirmed or waitlisted, and the per-person cost for a session.",
+            "• **Admins** additionally see payment status and e-transfer names.",
+            "• A **kudos note** is shown to the person who received it, signed by the giver."
           ]
         },
         {
           "h": "Where it lives",
           "p": [
-            "Data is stored in Microsoft Azure (Cosmos DB) and reached only over HTTPS. Sign-in with Google or Apple is handled by those providers under their own policies; we receive only the identifier and, if you allow it, your name and email.",
-            "Some text in the app is written with the help of an AI service (Anthropic, in the United States) — for example the summary on your Stats tab. It receives only what that text needs, which can include your name and the names of people you regularly play with. When it writes the verdict on your racket, it receives the racket and what the verdict found from your fit answers — including that something is sore, if you said so — and never your name. Under our agreement with them, what we send is not used to train their models."
+            "Data is stored in Microsoft Azure (Cosmos DB) and reached only over HTTPS. Sign-in with Google or Apple is handled by those providers under their own policies.",
+            "Some text in the app is written with the help of an AI service (Anthropic, in the United States) — for example, the summary on your Stats tab. It receives only what that text needs, which can include your name and the names of people you regularly play with. When it writes the verdict on your racket, it receives the racket and what the verdict found from your fit answers — including that something is sore, if you said so — and never your name. These two kinds of requests never mix: a request that includes your name never includes your fit answers, and vice versa. Under our agreement with them, what we send is not used to train their models.",
+            "Because Azure and Anthropic's US operations are outside Canada, some of your data may be accessible to US authorities under US law while it's there."
           ]
         },
         {
           "h": "How long we keep it",
           "p": [
-            "Session and payment records are kept so the group's books add up. Push tokens are removed when you turn notifications off or when the device stops accepting them."
+            "Session and payment records are kept for 24 months after the session date, then deleted or reduced to the anonymized line described under \"Deleting your account.\" Push tokens are removed when you turn off notifications or when the device stops accepting them."
+          ]
+        },
+        {
+          "h": "If something goes wrong",
+          "p": [
+            "If a breach happens that puts you at real risk of harm, we'll notify you and report it to the Office of the Privacy Commissioner of Canada, as PIPEDA requires."
           ]
         },
         {
           "h": "Deleting your account",
           "p": [
-            "You can delete your account from inside the app — Profile → Delete account — or by following the steps on our account-deletion page. Deletion removes your PIN, provider sign-ins, gear, stats, kudos and notifications. Past sessions keep one unnamed line so everyone else's cost split still adds up; that line no longer identifies you."
+            "You can delete your account from inside the app — Profile → Delete account — or by following the steps on our account-deletion page. Deletion removes your PIN, provider sign-ins, gear, stats, kudos, and notifications. Past sessions keep one unnamed line so everyone else's cost split still adds up; that line no longer identifies you."
           ]
         },
         {

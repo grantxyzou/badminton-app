@@ -6,7 +6,37 @@ export type LegalDocKey = 'privacy' | 'terms' | 'support' | 'deleteAccount';
 
 interface Section {
   h: string;
+  /** Paragraphs. A run of lines starting with `• ` renders as one bulleted
+   *  list — a marker rather than a second key, because the message JSON is
+   *  typed as one tree and a section with `items` but no `p` is a different
+   *  shape from one with `p` but no `items`. */
   p: string[];
+}
+
+const BULLET = '• ';
+
+/** Paragraphs, with each run of bullet lines gathered into one list. */
+function blocks(lines: string[]): Array<{ kind: 'p'; text: string } | { kind: 'list'; items: string[] }> {
+  const out: Array<{ kind: 'p'; text: string } | { kind: 'list'; items: string[] }> = [];
+  for (const line of lines) {
+    if (line.startsWith(BULLET)) {
+      const last = out[out.length - 1];
+      if (last?.kind === 'list') last.items.push(line.slice(BULLET.length));
+      else out.push({ kind: 'list', items: [line.slice(BULLET.length)] });
+    } else out.push({ kind: 'p', text: line });
+  }
+  return out;
+}
+
+/**
+ * `**bold**` spans, and nothing else. Legal copy leads each list item with a
+ * bold label; this is the whole of the markup it needs, so there is no raw-HTML
+ * path for a translation to smuggle anything through.
+ */
+function inline(text: string): ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**') ? <strong key={i}>{part.slice(2, -2)}</strong> : part,
+  );
 }
 
 /**
@@ -36,13 +66,13 @@ export default async function LegalDoc({ doc, children }: { doc: LegalDocKey; ch
       {sections.map((s) => (
         <section key={s.h} style={{ marginTop: 'var(--space-7)' }}>
           <h2 className="bpm-h3">{s.h}</h2>
-          {rawList<string>(s.p).map((para, i) => (
+          {blocks(rawList<string>(s.p)).map((b, i) => b.kind === 'list' ? <LegalList key={i} items={b.items} /> : (
             <p
               key={i}
               className="fs-md"
               style={{ color: 'var(--text-primary)', lineHeight: 'var(--lh-normal)', marginTop: 'var(--space-3)' }}
             >
-              {para}
+              {inline(b.text)}
             </p>
           ))}
         </section>
@@ -62,7 +92,7 @@ export function LegalList({ items }: { items: string[] }) {
           className="fs-md"
           style={{ color: 'var(--text-primary)', lineHeight: 'var(--lh-normal)', marginTop: 'var(--space-2)' }}
         >
-          {s}
+          {inline(s)}
         </li>
       ))}
     </ul>
