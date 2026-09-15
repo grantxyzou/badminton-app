@@ -126,3 +126,46 @@ describe('GearRegister — flag on: one door per line', () => {
     expect(screen.queryByText('Add strings')).toBeNull();
   });
 });
+
+describe('GearRegister — flag on: swapping rackets', () => {
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_FLAG_GEAR_SETUP = 'true';
+    resetCatalogCache();
+    let active = 'r1';
+    const items = [
+      { id: 'r1', catalogId: null, category: 'racket', label: 'Li-Ning Air Force 79' },
+      { id: 'r2', catalogId: null, category: 'racket', label: 'Yonex Nanoflare 800' },
+    ];
+    global.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      const u = String(url);
+      if (u.includes('/api/equipment/gear') && init?.method === 'PATCH') {
+        active = JSON.parse(String(init.body)).activeRacketId;
+      }
+      const body = u.includes('/api/equipment/gear')
+        ? { gear: { id: 'gear-m1', memberId: 'm1', items, activeRacketId: active, updatedAt: '' } }
+        : u.includes('/api/equipment/catalog') ? { items: [] }
+        : u.includes('/api/recommend') ? { item: null, needsCheckIn: true }
+        : { entries: [] };
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(body) });
+    }) as unknown as typeof fetch;
+  });
+  afterEach(() => {
+    delete process.env.NEXT_PUBLIC_FLAG_GEAR_SETUP;
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it('a burst of swaps re-asks the picks once, not twice per swap', async () => {
+    mount();
+    await screen.findByText('Set-up');
+    await waitFor(() => expect(calls((u) => u.includes('/api/recommend')).length).toBe(2));
+    for (let i = 0; i < 3; i++) {
+      const swap = await screen.findByRole('button', { name: /^Swap in/ });
+      await act(async () => { swap.click(); await new Promise((r) => setTimeout(r, 20)); });
+    }
+    const patches = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter((c) => (c[1] as RequestInit | undefined)?.method === 'PATCH');
+    expect(patches.length).toBe(3);
+    await act(async () => { await new Promise((r) => setTimeout(r, 700)); });
+    expect(calls((u) => u.includes('/api/recommend')).length).toBe(4);
+  });
+});

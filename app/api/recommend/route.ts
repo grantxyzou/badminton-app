@@ -121,8 +121,11 @@ export async function GET(req: NextRequest) {
   }
   // Probes by name — rate-limit like /api/members/me so it can't enumerate members + stages.
   // Rule 4: rate limit stays first, before any auth check, so it can't be bypassed.
+  // 30/min: a Stats visit is two calls and every racket swapped in is two
+  // more, and one gym's wifi is one IP for everyone on it. At 10 a member
+  // swapping rackets a few times broke the card for a minute.
   const ip = getClientIp(req);
-  if (!checkRateLimit(`recommend:${ip}`, 10, 60 * 1000)) {
+  if (!checkRateLimit(`recommend:${ip}`, 30, 60 * 1000)) {
     return NextResponse.json({ item: null, reason: null });
   }
   // Members only, on BOTH engine branches. The GEAR_RECOMMENDER branch below
