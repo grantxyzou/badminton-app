@@ -69,6 +69,7 @@
         "noStringsYet": "Grant hasn't listed what he stocks yet, so tell him what you'd like.",
         "unusualPair": "Unusual pair — most rackets go {suggested} on the crosses.",
         "openBadge": "Open",
+        "restringDue": "Strung {weeks} weeks ago — time for a restring?",
         "requestCta": "Submit a request",
         "needName": "Add your name above first, so Grant knows whose racket it is.",
         "stage": {

@@ -7,6 +7,8 @@ import CardHeader from '@/components/primitives/CardHeader';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import ErrorState from '@/components/primitives/ErrorState';
 import { useOnline } from '@/lib/useOnline';
+import { useStringingShop } from '@/lib/useStringingShop';
+import { restringDueWeeks } from '@/lib/restring';
 import RequestStringingSheet from './RequestStringingSheet';
 import { useGear } from '@/components/stats/useGear';
 import { useActiveName } from '@/lib/useActiveName';
@@ -62,8 +64,11 @@ export default function StringingCard({ hasIdentity }: Props) {
   const gear = useGear(activeName.name ?? '');
   const t = useTranslations('home.stringing');
   const online = useOnline();
-  const [open, setOpen] = useState<boolean | null>(null);
+  const open = useStringingShop();
   const [jobs, setJobs] = useState<PlayerStringingJob[] | null>(null);
+  // The shop's half of "when were these strung" — null until read, and when
+  // they have never used it.
+  const [shopStrungAt, setShopStrungAt] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   // Above every early return — this component has several, and a hook
   // after one of them is a Rules-of-Hooks violation that only shows up when
@@ -92,21 +97,6 @@ export default function StringingCard({ hasIdentity }: Props) {
   // load prices" before the request had even landed.
   const [pricingFailed, setPricingFailed] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`${BASE}/api/stringing/shop`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!cancelled) setOpen(d && typeof d.open === 'boolean' ? d.open : null);
-      })
-      .catch(() => {
-        /* stays null — unknown, which renders "Coming soon" */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const loadJobs = useCallback(() => {
     if (!hasIdentity) return;
     // `view=player` explicitly: an ADMIN calling this without it gets the
@@ -121,7 +111,10 @@ export default function StringingCard({ hasIdentity }: Props) {
       })
       .then((d) => {
         if (d === 'refused') { setJobsProblem('refused'); return; }
-        if (d && Array.isArray(d.jobs)) setJobs(d.jobs as PlayerStringingJob[]);
+        if (d && Array.isArray(d.jobs)) {
+          setJobs(d.jobs as PlayerStringingJob[]);
+          setShopStrungAt(typeof d.lastStrungAt === 'string' ? d.lastStrungAt : null);
+        }
         else setJobsProblem('failed');
       })
       .catch(() => {
@@ -191,6 +184,15 @@ export default function StringingCard({ hasIdentity }: Props) {
    * worth folding away, so the card opens collapsed and expands to the racket.
    */
   const collapsible = active !== null;
+
+  /* THE RESTRING REMINDER. Only for someone the shop has strung for, only once
+     it has been two months (`RESTRING_AFTER_WEEKS`), and only with no racket
+     in — a racket on the bench is already the answer. No date renders nothing;
+     "you're due" on a guess is the lying-empty-state rule in reverse.
+     `jobs !== null` waits for the read, so the line cannot flash in and then
+     vanish when an active job arrives. */
+  const restringWeeks =
+    jobs !== null && active === null ? restringDueWeeks(shopStrungAt, new Date()) : null;
   const expanded = !collapsible || (openOverride ?? false);
 
   const header = (
@@ -357,6 +359,16 @@ export default function StringingCard({ hasIdentity }: Props) {
             week's actual decision — from inside the group below it. Demoted to
             a link with an arrow, it still reads as the way in without
             competing for the one primary slot on the screen. */}
+        {/* Secondary ink, never red and never accent: the CTA right below
+            stays the card's one way in. No inline margin: this is a non-first
+            direct child of a `space-y-3` card, and `margin: 0` would cancel the
+            gap above it (the WhereYouSitCard footnote bug). */}
+        {restringWeeks !== null && (
+          <p className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
+            {t('restringDue', { weeks: restringWeeks })}
+          </p>
+        )}
+
         <button
           type="button"
           onClick={() => setSheetOpen(true)}

@@ -23,12 +23,12 @@ function wrap(hasIdentity = true) {
 }
 
 /** Answers /shop with `open`, and /jobs with whatever is passed. */
-function mockApi(open: boolean | null, jobs: unknown[] = []) {
+function mockApi(open: boolean | null, jobs: unknown[] = [], lastStrungAt: string | null = null) {
   const fetchMock = vi.fn().mockImplementation((url: string) =>
       Promise.resolve({
         ok: true,
         json: async () =>
-          String(url).includes('/shop') ? { open } : { jobs, view: 'player' },
+          String(url).includes('/shop') ? { open } : { jobs, view: 'player', lastStrungAt },
       } as Response),
   );
   vi.stubGlobal('fetch', fetchMock);
@@ -318,5 +318,44 @@ describe('when the racket list is not there', () => {
     wrap();
     fireEvent.click(await screen.findByRole('button', { name: /View pricing/ }));
     expect(screen.queryByText("Couldn't load prices just now.")).toBeNull();
+  });
+});
+
+describe('the restring reminder', () => {
+  const weeksAgo = (n: number) => new Date(Date.now() - n * 7 * 24 * 60 * 60 * 1000 - 60 * 60 * 1000).toISOString();
+  const REMINDER = /time for a restring/;
+
+  it('speaks up two months after the shop last strung for them', async () => {
+    mockApi(true, [], weeksAgo(9));
+    wrap();
+    expect(await screen.findByText('Strung 9 weeks ago — time for a restring?')).toBeDefined();
+  });
+
+  it('stays quiet before two months', async () => {
+    mockApi(true, [], weeksAgo(7));
+    wrap();
+    await screen.findByRole('button', { name: 'Submit a request' });
+    expect(screen.queryByText(REMINDER)).toBeNull();
+  });
+
+  it('says nothing to someone the shop has never strung for', async () => {
+    mockApi(true, [], null);
+    wrap();
+    await screen.findByRole('button', { name: 'Submit a request' });
+    expect(screen.queryByText(REMINDER)).toBeNull();
+  });
+
+  it('stands down while a racket is with the stringer', async () => {
+    mockApi(true, [
+      {
+        id: 'j1', jobNo: 'J-0001', stage: 'being_strung', stageIndex: 1,
+        racketLabel: 'Astrox 99 Pro', stringLabel: 'BG80', tensionMains: 26, tensionCrosses: 26,
+        method: '', priceRange: null, amountDue: null, readyBy: null, paid: false,
+        pendingEdit: null, createdAt: '', updatedAt: '',
+      },
+    ], weeksAgo(20));
+    wrap();
+    await screen.findByRole('button', { name: 'Submit a request' });
+    expect(screen.queryByText(REMINDER)).toBeNull();
   });
 });

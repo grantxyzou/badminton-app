@@ -69,6 +69,7 @@
         "noStringsYet": "Grant 还没列出有哪些线，直接告诉他你想要什么吧。",
         "unusualPair": "这个组合不常见 — 横线一般是 {suggested} 磅。",
         "openBadge": "开放中",
+        "restringDue": "上次穿线是 {weeks} 周前 — 该重新穿线了？",
         "requestCta": "提交申请",
         "needName": "先在上面填你的名字，Grant 才知道是谁的拍。",
         "stage": {
