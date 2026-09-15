@@ -253,6 +253,17 @@ describe('SetupAddSheet — a hybrid\'s crosses string', () => {
     expect(order).toEqual(['add:st-ab', 'crosses:new-st-ab', 'remove:s-old']);
     expect((setCrosses.mock.calls[0] as unknown[])[1]).toEqual(crosses);
   });
+
+  it('a failed carry keeps the old string, so its crosses are not lost', async () => {
+    const crosses = { catalogId: 'st-x', label: 'Yonex BG80', tensionLbs: 26 };
+    const setCrosses = vi.fn(async () => ({ ok: false as const, reason: 'rate_limited' as const }));
+    const remove = vi.fn(async () => ({ ok: true as const }));
+    render(<Harness category="string" initial={doc([{ ...MAINS, crosses }])} picks={picksWith({})} spies={{ setCrosses, remove }} replacesId="s-old" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Yonex Aerobite' }));
+    await waitFor(() => expect(setCrosses).toHaveBeenCalled());
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(remove).not.toHaveBeenCalled();
+  });
 });
 
 describe('SetupAddSheet — a withdrawn catalog row is not offered', () => {

@@ -249,7 +249,10 @@ export default function SetupAddSheet({ open, onClose, category, gear, picks, ma
         replacedRef.current = true;
         if (replacedCrosses && res.itemId) {
           const carried = await gear.setCrosses(res.itemId, replacedCrosses);
-          if (!carried.ok) setError(gearFailureMessage(carried.reason, tHub));
+          // The old string still holds the crosses; removing it now would lose
+          // them for good. Keep it and say so — nothing is lost, and the card
+          // simply shows the new string until the member tries again.
+          if (!carried.ok) { setError(gearFailureMessage(carried.reason, tHub)); return; }
         }
         const removed = await gear.remove(replacesId);
         if (!removed.ok) setError(gearFailureMessage(removed.reason, tHub));
