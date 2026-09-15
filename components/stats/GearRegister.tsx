@@ -23,7 +23,8 @@ import { useGearPicks } from './useGearPicks';
 import { useClubGear } from './useClubGear';
 import { isFlagOn } from '@/lib/flags';
 import type { CatalogItem, GearItem } from '@/lib/types';
-import { setupLines, setupShare, tensionOnScreen, type SetupCategory } from '@/lib/gearSetup';
+import { racketIdsByTallyKey, setupLines, setupShare, tensionOnScreen, type SetupCategory } from '@/lib/gearSetup';
+import { useCatalog } from './useCatalog';
 
 /**
  * The Gear register: what we'd suggest per category (the pick rail), what you
@@ -145,6 +146,8 @@ function SetupRegister({ activeName }: GearRegisterProps) {
   // pace, every tap would otherwise re-ask /api/recommend against its limit.
   const picks = useGearPicks(activeName, gear, { holdFitRefetch: openFit || pages.some((p) => p.kind === 'fit') });
   const club = useClubGear();
+  const catalogRackets = useCatalog('racket');
+  const racketIds = useMemo(() => racketIdsByTallyKey(catalogRackets.items), [catalogRackets.items]);
 
   // The picks are made against the racket IN PLAY, so when that changes (a
   // racket named, changed, swapped in) they are re-asked.
@@ -251,7 +254,14 @@ function SetupRegister({ activeName }: GearRegisterProps) {
         // no number at all.
         suppressed={!gear.loadError && tensionOnScreen(setupLines(gear.gear), picks.view.string)}
       />
-      <ClubGearCard club={club} mine={gear.loaded && !gear.loadError ? gear.gear : undefined} />
+      <ClubGearCard
+        club={club}
+        mine={gear.loaded && !gear.loadError ? gear.gear : undefined}
+        // A racket row opens that racket's page (pages on). The catalog read is
+        // the register's shared, module-cached one — no second request.
+        onOpenRacket={pagesOn ? openFrame : undefined}
+        racketIds={racketIds}
+      />
       <GearFitSheet open={openFit} onClose={() => setOpenFit(false)} gear={gear} />
       <GearPickSheet
         open={pickOpen}

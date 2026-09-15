@@ -144,6 +144,7 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
                       onChange={setTension}
                       rated={ratedRange(frameRow?.attributes)}
                       club={clubTension.band}
+                      clubStatus={frameId ? clubTension.status : undefined}
                       disabled={gear.busy || !gear.online}
                     />
                   </div>

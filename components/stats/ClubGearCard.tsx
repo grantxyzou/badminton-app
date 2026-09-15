@@ -7,7 +7,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
 import { useClubGear, type UseClubGear } from './useClubGear';
-import { isMine } from '@/lib/gearSetup';
+import { isMine, tallyEntryRacketId } from '@/lib/gearSetup';
 import type { PlayerGear } from '@/lib/types';
 
 export interface ClubGearCardProps {
@@ -20,6 +20,10 @@ export interface ClubGearCardProps {
   /** The member's gear doc, to mark their own rows " · yours". Omitted, no
    *  row is marked — an unknown bag must never claim a row is not yours. */
   mine?: PlayerGear | null;
+  /** A racket row's own page. Given with `racketIds` (the catalog keyed as the
+   *  tally keys); a row whose name is not a catalog racket stays plain text. */
+  onOpenRacket?: (catalogId: string) => void;
+  racketIds?: Map<string, string>;
 }
 
 /**
@@ -29,7 +33,7 @@ export interface ClubGearCardProps {
  * document, so its own fetch is correct and stays. The single-owner rule that
  * `GearRegister` enforces is about `GET /api/equipment/gear` specifically.
  */
-export default function ClubGearCard({ club, mine }: ClubGearCardProps = {}) {
+export default function ClubGearCard({ club, mine, onOpenRacket, racketIds }: ClubGearCardProps = {}) {
   const t = useTranslations('stats.gear');
   const signInLink = useSignInLink();
   // Disabled when a shared read was handed in, so there is still exactly one
@@ -69,8 +73,14 @@ export default function ClubGearCard({ club, mine }: ClubGearCardProps = {}) {
         <EmptyState>{t('clubEmpty')}</EmptyState>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          {top.map((e) => (
-            <div key={`${e.category}:${e.label}`}>
+          {top.map((e) => {
+            const racketId = onOpenRacket && racketIds ? tallyEntryRacketId(e, racketIds) : null;
+            const Row = racketId ? 'button' : 'div';
+            return (
+            <Row
+              key={`${e.category}:${e.label}`}
+              {...(racketId ? { type: 'button' as const, className: 'club-gear-row club-gear-row--link', onClick: () => onOpenRacket!(racketId) } : { className: 'club-gear-row' })}
+            >
               <div
                 style={{
                   display: 'flex',
@@ -97,6 +107,7 @@ export default function ClubGearCard({ club, mine }: ClubGearCardProps = {}) {
                   }}
                 >
                   {e.count}
+                  {racketId && <span className="material-icons club-gear-chevron" aria-hidden="true">chevron_right</span>}
                 </span>
               </div>
               <div style={{ height: 6, borderRadius: 'var(--radius-pill)', background: 'var(--inner-card-bg)' }}>
@@ -110,8 +121,9 @@ export default function ClubGearCard({ club, mine }: ClubGearCardProps = {}) {
                   }}
                 />
               </div>
-            </div>
-          ))}
+            </Row>
+            );
+          })}
         </div>
       )}
     </div>

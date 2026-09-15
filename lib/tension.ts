@@ -86,3 +86,10 @@ export function ratedRange(attributes: Record<string, unknown> | undefined): [nu
   const window: [number, number] = [typeof lo === 'number' ? lo : MIN_LB, typeof hi === 'number' ? hi : MAX_LB];
   return window[0] <= window[1] ? window : null;
 }
+
+/** Where a tension sits on the app's fixed 20–30 lb scale, 0–1, clamped. The
+ *  one ruler every tension chart is drawn on, so a band on one screen measures
+ *  the same as on another. */
+export function scalePosition(lbs: number): number {
+  return Math.max(0, Math.min(1, (lbs - MIN_LB) / (MAX_LB - MIN_LB)));
+}

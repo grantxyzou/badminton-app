@@ -1,7 +1,7 @@
 import { activeRacket } from './activeRacket';
 import { isOffered } from './catalogOffer';
 import { axesOf, buildTarget, compareFit, isScorable, scoreFit, type FitInput } from './racketFit';
-import { MAX_LB, MIN_LB } from './tension';
+import { scalePosition } from './tension';
 import { cadRange } from './catalogPrice';
 import type { CatalogItem, GearItem, PlayerGear, StringLogEntry } from './types';
 
@@ -126,5 +126,5 @@ export function frameHistory(gear: PlayerGear | null, frameId: string): FrameHis
 
 /** Where a tension sits on the chart's fixed 20–30 lb scale, 0–1, clamped. */
 export function bandPosition(lbs: number): number {
-  return Math.max(0, Math.min(1, (lbs - MIN_LB) / (MAX_LB - MIN_LB)));
+  return scalePosition(lbs);
 }

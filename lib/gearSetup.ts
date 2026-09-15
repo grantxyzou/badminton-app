@@ -227,3 +227,18 @@ export function setupShare(name: string, lines: SetupLines): SetupShare {
     tensionLbs: typeof lines.string?.tensionLbs === 'number' ? lines.string.tensionLbs : null,
   };
 }
+
+/**
+ * The catalog racket a club tally row names, keyed exactly as the tally keys
+ * (a catalog racket's label is "Brand Model"), or null — a typed-in name has no
+ * page to open. Built once per catalog, looked up per row.
+ */
+export function racketIdsByTallyKey(rackets: Array<{ id: string; category: string; brand: string; model: string }>): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const r of rackets) if (r.category === 'racket') out.set(normalise(`${r.brand} ${r.model}`), r.id);
+  return out;
+}
+
+export function tallyEntryRacketId(entry: ClubGearEntry, ids: Map<string, string>): string | null {
+  return entry.category === 'racket' ? ids.get(normalise(entry.label)) ?? null : null;
+}

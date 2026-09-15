@@ -4872,6 +4872,42 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
 .tension-field-unit { font-size: var(--fs-base); color: var(--text-secondary); }
 .tension-field-hint { margin: 0; font-size: var(--fs-xs); line-height: var(--lh-normal); color: var(--text-muted); }
 .tension-field-warn { color: var(--sev-warn); }
+.tension-field-shimmer { display: inline-block; width: 60%; height: 11px; border-radius: var(--radius-sm); vertical-align: middle; }
+
+/* The live tension ruler under the field: the fixed 20–30 lb scale the frame
+   page's chart uses, at field size. The line glides as the figure changes
+   (the global reduced-motion rule stops it). */
+.tension-ruler { display: flex; flex-direction: column; gap: var(--space-1); margin-top: var(--space-3); }
+.tension-ruler-track {
+  position: relative;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+  overflow: hidden;
+}
+.tension-ruler-rated { position: absolute; top: 0; bottom: 0; background: var(--inner-card-border); }
+.tension-ruler-club {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--highlight-green);
+  border: 1px solid var(--accent);
+  transition: left 180ms var(--ease-sheet), width 180ms var(--ease-sheet);
+}
+.tension-ruler-you {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--accent);
+  transition: left 180ms var(--ease-sheet), background-color 180ms var(--ease-sheet);
+}
+.tension-ruler-you--suggested { background: repeating-linear-gradient(to bottom, var(--accent) 0 3px, transparent 3px 6px); }
+.tension-ruler-you--warn { background: var(--sev-warn); }
+.tension-ruler-axis { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: var(--fs-2xs); color: var(--text-muted); }
 
 /* The live 3D racket (components/stats/Racket3D). A tall stage on the
    thumb tile's ground so a white frame still reads; the pre-render sits in the
@@ -5355,3 +5391,9 @@ button.setup-next-row { cursor: pointer; }
 .catalog-gap-line { margin: 0; font-size: var(--fs-sm); color: var(--text-secondary); line-height: var(--lh-normal); }
 .catalog-gap-hint { color: var(--text-muted); }
 .catalog-gap-likely { color: var(--sev-warn); }
+
+/* A club tally row that opens its racket's page: the row itself is the button. */
+.club-gear-row { display: block; width: 100%; }
+.club-gear-row--link { padding: 0; border: none; background: transparent; font: inherit; color: inherit; text-align: left; cursor: pointer; transition: transform 100ms var(--ease-out-quart); }
+.club-gear-row--link:active { transform: scale(0.98); }
+.club-gear-chevron { font-size: var(--icon-sm); color: var(--text-muted); vertical-align: middle; margin-left: var(--space-1); }
