@@ -146,6 +146,14 @@ export default function ProviderButtons({
     };
   }, []);
   const handoffRef = handoff?.ref ?? null;
+  /* A FRESH PAIR AFTER EVERY TAP. A ref's stash is first-write-wins while it
+     lives (lib/authHandoff.ts), so a second tap on the same ref parks nothing
+     new and its callback fails `state_mismatch` against the first attempt's
+     state for ten minutes. A full-page trip remounted this component and got
+     away with it; a pop-up and the native sheet leave it mounted. */
+  const remint = () => {
+    void mintHandoff().then((pair) => setHandoff(pair));
+  };
 
   useEffect(() => {
     // The server already answered. Note this checks for the PROP being absent,
@@ -250,6 +258,7 @@ export default function ProviderButtons({
                 // simply expires and a stale excursion marker only restores
                 // the last tab for three minutes — both harmless.
                 stageHandoff(handoff.id);
+                remint();
                 markExternalExcursion();
                 onLeave?.();
                 void openInSystemBrowser(`${window.location.origin}${startHref}&native=1`).catch(
@@ -281,6 +290,7 @@ export default function ProviderButtons({
                  when the person returns from the excursion, and writing on
                  mount would overwrite the handoff they came back to collect. */
               if (handoff) stageHandoff(handoff.id);
+              remint();
               markExternalExcursion();
               onLeave?.();
               /* THE INSTALLED iOS WEB APP signs in through a POP-UP. A full-page

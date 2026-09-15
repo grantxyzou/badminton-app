@@ -18,6 +18,8 @@ import { getContainer } from '@/lib/cosmos';
 import { claimHandoff } from '@/lib/authHandoff';
 import { completeSignIn } from '@/lib/authSession';
 import { setPendingSignup } from '@/lib/pendingSignup';
+import { verifyMemberAuth } from '@/lib/auth';
+import { reserveIdentity } from '@/lib/authIdentity';
 import type { Member } from '@/lib/types';
 import { resolveGroupId, explicitGroupId } from '@/lib/groupContext';
 
@@ -86,6 +88,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ status: 'code_required', wrong: claim.wrong }, { status: 200 });
   }
   if (claim.status === 'needs_name') {
+    /* ALREADY SIGNED IN HERE: this is "Connect Google" from Profile, so LINK it
+       to this member — resolution rule 2, which the callback could not apply
+       because the window that finished the sign-in is not the app. The claim
+       proves the same two things a cookie-path callback would (this app started
+       it, and the finishing browser handed it back), so this jar's session is
+       a genuine request to link. Without this the app got a name step on top
+       of a signed-in account, and any name but their own created a second,
+       empty account and switched them into it. */
+    const session = verifyMemberAuth(req);
+    if (session) {
+      const members = getContainer('members');
+      const { resource: current } = await members.item(session.memberId, session.memberId).read<Member>();
+      if (current && current.active === true) {
+        const reserved = await reserveIdentity(claim.pending.provider, claim.pending.sub, current.id);
+        if (!reserved.ok) return NextResponse.json({ status: 'already_linked' }, { status: 200 });
+        const linked = new Set([...(current.linkedProviders ?? []), claim.pending.provider]);
+        await members.items.upsert({ ...current, linkedProviders: [...linked] });
+        return NextResponse.json({ status: 'ready', name: current.name, memberId: current.id });
+      }
+    }
     /* A NEW provider identity, named HERE (guarantee 4). This response lands in
        the app's own jar, which has just proved it started the flow (preimage)
        and that the completing browser handed it back (code) — the same two

@@ -78,6 +78,11 @@ export function useHandoffCollect(onReady: (name: string) => void): HandoffColle
         // A full reload is the point: the server renders the name step for the cookie it just set.
         window.location.replace(`${BASE}/?authFlow=name`);
         return;
+      case 'already_linked':
+        setPrompt(null);
+        // The shells already explain this landing, in both languages.
+        window.location.replace(`${BASE}/?authError=already_linked`);
+        return;
       case 'code_required':
         // A background poll must not wipe a "that didn't match" the person is reading.
         setPrompt((p) => (submitted ? { ...CLEAR, wrong: out.wrong } : (p ?? CLEAR)));

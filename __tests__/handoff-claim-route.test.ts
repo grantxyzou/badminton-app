@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { resetMockStore, setupAdminPin, seedMember } from './helpers';
+import { resetMockStore, setupAdminPin, seedMember, memberCookieValue, getStore } from './helpers';
+import { lookupIdentity, reserveIdentity } from '../lib/authIdentity';
 import { createHandoffId, handoffRef, beginHandoff, completeHandoff } from '../lib/authHandoff';
 import { PENDING_COOKIE, readPendingSignup } from '../lib/pendingSignup';
 
@@ -12,12 +13,16 @@ import { PENDING_COOKIE, readPendingSignup } from '../lib/pendingSignup';
  */
 
 let ipSeq = 0;
-async function claim(body: unknown) {
+async function claim(body: unknown, cookie?: string) {
   const { POST } = await import('../app/api/auth/handoff/claim/route');
   return POST(
     new NextRequest('https://bpm.grantzou.com/bpm/api/auth/handoff/claim', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Client-IP': `10.44.${Math.floor(ipSeq / 250)}.${ipSeq++ % 250}` },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Client-IP': `10.44.${Math.floor(ipSeq / 250)}.${ipSeq++ % 250}`,
+        ...(cookie ? { Cookie: cookie } : {}),
+      },
       body: JSON.stringify(body),
     }),
   );
@@ -106,6 +111,38 @@ describe('POST /api/auth/handoff/claim', () => {
       expect(res.status).toBe(200);
       expect((await res.json()).status).toBe('ready');
     }
+  });
+
+  /**
+   * "Connect Google" from Profile, on the installed iOS web app. The app is
+   * already signed in, so a new identity is LINKED to that member — never a
+   * name step on top of their account, where any other name made a second,
+   * empty account and switched them into it.
+   */
+  it('links a new identity to the member this app is already signed in as', async () => {
+    const m = seedMember('Kento', { pinHash: 'x' });
+    const facts = { provider: 'google' as const, sub: 'g-link', email: null, emailVerified: false, suggestedName: null };
+    const { id, typedCode } = await webStash({ pending: facts });
+
+    const res = await claim({ handoffId: id, typedCode }, `member_session=${memberCookieValue('Kento', m.id)}`);
+
+    expect(await res.json()).toMatchObject({ status: 'ready', name: 'Kento' });
+    expect(res.headers.getSetCookie().find((c) => c.startsWith(`${PENDING_COOKIE}=`))).toBeUndefined();
+    expect((await lookupIdentity('google', 'g-link'))?.memberId).toBe(m.id);
+    const stored = (getStore()['members'] as Array<Record<string, unknown>>).find((x) => x.id === m.id)!;
+    expect(stored.linkedProviders).toEqual(['google']);
+  });
+
+  it('never steals an identity another member holds', async () => {
+    const owner = seedMember('Lin');
+    const m = seedMember('Kento');
+    await reserveIdentity('google', 'g-taken', owner.id);
+    const facts = { provider: 'google' as const, sub: 'g-taken', email: null, emailVerified: false, suggestedName: null };
+    const { id, typedCode } = await webStash({ pending: facts });
+
+    const res = await claim({ handoffId: id, typedCode }, `member_session=${memberCookieValue('Kento', m.id)}`);
+    expect(await res.json()).toEqual({ status: 'already_linked' });
+    expect((await lookupIdentity('google', 'g-taken'))?.memberId).toBe(owner.id);
   });
 
   it('refuses a malformed typed code rather than dropping it', async () => {

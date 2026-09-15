@@ -86,6 +86,22 @@ describe('ProviderButtons — pop-up sign-in on the installed iOS web app', () =
     expect(click.defaultPrevented).toBe(true);
   });
 
+  /* A ref's stash is first-write-wins, so a retry on the same ref would fail
+     state_mismatch against the first attempt for ten minutes. */
+  it('a second tap starts a NEW hand-off, not the first one again', async () => {
+    platform.ios = true;
+    platform.standalone = true;
+    const open = vi.spyOn(window, 'open').mockReturnValue({ postMessage: vi.fn() } as unknown as Window);
+    await tapGoogle();
+    const link = screen.getByText('Continue with Google').closest('a')!;
+    const first = new URL(String(open.mock.calls[0][0]), 'http://localhost:3000').searchParams.get('hr');
+    await waitFor(() => expect(link.getAttribute('href')).not.toContain(`hr=${first}`));
+    link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    const second = new URL(String(open.mock.calls[1][0]), 'http://localhost:3000').searchParams.get('hr');
+    expect(second).toMatch(/^[0-9a-f]{64}$/);
+    expect(second).not.toBe(first);
+  });
+
   it('lets the link navigate when the pop-up is blocked', async () => {
     platform.ios = true;
     platform.standalone = true;

@@ -230,6 +230,8 @@ export type ClaimOutcome =
   /** A new Google/Apple identity; the app's pending-signup cookie is now set. */
   | { status: 'needs_name' }
   | { status: 'code_required'; wrong: boolean }
+  /** That Google/Apple account already belongs to someone else here. */
+  | { status: 'already_linked' }
   /** Too many tries on this sign-in for now — not a cold start, and worth saying so. */
   | { status: 'rate_limited' }
   | { status: 'pending' }
@@ -271,6 +273,10 @@ export async function claimPendingHandoff(typedCode?: string): Promise<ClaimOutc
     if (data.status === 'needs_name') {
       clearHandoff();
       return { status: 'needs_name' };
+    }
+    if (data.status === 'already_linked') {
+      clearHandoff();
+      return { status: 'already_linked' };
     }
     if (data.status === 'code_required') return { status: 'code_required', wrong: data.wrong === true };
     if (data.status === 'pending') return { status: 'pending' };
