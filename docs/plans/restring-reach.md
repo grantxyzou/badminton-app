@@ -1,4 +1,4 @@
-# Restring reach — a reminder, a second door, and the kudos hint
+# Restring reach — a reminder, and the kudos hint
 
 **Track:** North Star pillar 4 (traffic/recommendations strong enough to suggest equipment purchases) — stringing is the one paid equipment service the app sells, and its only door is one Home card.
 **Status:** in-flight
@@ -13,8 +13,7 @@ list what else?"
 Nobody has reported this one; it is the owner's read. The shop is OPEN in
 production and push notifications for jobs are wired, so the service exists. What
 it lacks is reach: "Submit a request" sits on one Home card with nothing
-suggesting it is time to use it, and the Set-up card, which is literally a list of
-what is on your racket, has no route to it at all.
+suggesting it is time to use it.
 
 The kudos per-name button on Sign-Ups has the same shape of problem, already
 recorded in CLAUDE.md in a player's words: "how do I give kudos to other people?"
@@ -23,8 +22,8 @@ recorded in CLAUDE.md in a player's words: "how do I give kudos to other people?
 
 Requests per month from members with at least one earlier shop job, counted
 from `stringingJobs.createdAt`, for the six weeks after ship against the six
-before. No rise: the reminder is noise; remove the line and keep the door.
-Nothing records who SAW the reminder or tapped the Set-up link, so this reads
+before. No rise: the reminder is noise; remove the line.
+Nothing records who SAW the reminder, so this reads
 the cohort the reminder can reach, not the people it reached — add an
 `app/api/events` kind first if that distinction ever decides anything.
 
@@ -48,8 +47,8 @@ the cohort the reminder can reach, not the people it reached — add an
   string ADDED to the bag logs the day it was typed, not the day it went on.
 - **`lastStrungAt` rides on the existing player jobs read** rather than a new
   route: one more field, a date only, so the price wall is untouched.
-- **The Set-up card's "Get these strung" link is for everyone** once the shop is
-  known to be open. It is a door, not a reminder.
+- **No "Get these strung" link on the Set-up card.** Built, looked at, and removed
+  the same evening on Grant's call.
 - **The kudos hint dismisses for an ISO week**, the same unit kudos dedupe on.
 
 ## Shape
@@ -60,5 +59,4 @@ the cohort the reminder can reach, not the people it reached — add an
 | `lastStrungAt` on the player view | `app/api/stringing/jobs/route.ts` |
 | Shop-open probe, one owner | `lib/useStringingShop.ts` |
 | Reminder line | `components/stringing/StringingCard.tsx` |
-| Set-up card door | `components/stats/GearSetupCard.tsx`, `GearRegister.tsx` |
 | Sign-Ups hint | `components/KudosRosterHint.tsx`, `components/PlayersTab.tsx` |

@@ -43,10 +43,6 @@ export interface GearSetupCardProps {
   /** The empty tension slot on a string with no recorded tension. Omitted,
    *  the slot is not drawn — a chip that opens nothing is a dead button. */
   onAddTension?: (item: GearItem) => void;
-  /** Opens the stringing request sheet. The register passes it only once the
-   *  shop is KNOWN to be open, so an unknown or closed shop draws no link —
-   *  a door into a sheet whose submit would 409 is a dead button. */
-  onRequestStringing?: () => void;
 }
 
 /**
@@ -63,7 +59,7 @@ export interface GearSetupCardProps {
  * must not read as an empty one — dashed slots over a bag that failed to load
  * invite logging a racket that is already logged.
  */
-export default function GearSetupCard({ activeName, gear, picks, club, onOpenLine, onShare, onOpenFit, onAddTension, onRequestStringing }: GearSetupCardProps) {
+export default function GearSetupCard({ activeName, gear, picks, club, onOpenLine, onShare, onOpenFit, onAddTension }: GearSetupCardProps) {
   const t = useTranslations('stats.gear');
   const ts = useTranslations('stats.gear.setup');
   const tErr = useTranslations('valueHub');
@@ -234,24 +230,6 @@ export default function GearSetupCard({ activeName, gear, picks, club, onOpenLin
               </div>
             ))}
           </div>
-
-          {/* The stringing service's second door. The Home card was its only
-              one, and this card is the list of what is on your racket — the
-              place the question "should I get these done?" actually comes up.
-              Inside the loaded fork: with the kit unreadable the sheet cannot
-              offer your racket, and the Home card is still there. */}
-          {onRequestStringing && (
-            <button
-              type="button"
-              className="setup-link"
-              onClick={onRequestStringing}
-              disabled={!gear.online}
-              style={{ alignSelf: 'flex-start', color: 'var(--text-secondary)' }}
-            >
-              {ts('getStrung')}
-              <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--icon-sm)', verticalAlign: 'middle' }}>chevron_right</span>
-            </button>
-          )}
 
           {filled === 0 && (
             <p style={{ margin: 0, fontSize: 'var(--fs-sm)', lineHeight: 'var(--lh-normal)', color: 'var(--text-secondary)' }}>

@@ -715,7 +715,6 @@
         "inPlay": "In play",
         "spare": "Spare",
         "swapIn": "Swap in",
-        "getStrung": "Get these strung",
         "arriveHint": "Two lines is the whole card. Fill them and the club tally starts working — and we can size your tension to the frame instead of your level.",
         "othersPlay": "{count} others play it",
         "pairSuggestion": "For this frame we'd pair {string} at {lb} lb",

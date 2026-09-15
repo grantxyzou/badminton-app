@@ -715,7 +715,6 @@
         "inPlay": "在用",
         "spare": "备用",
         "swapIn": "换上",
-        "getStrung": "送去穿线",
         "arriveHint": "整张卡只有两行。填好后，俱乐部统计就能用上——我们也能按你的球拍而不是水平来建议穿线磅数。",
         "othersPlay": "另有 {count} 人在用",
         "pairSuggestion": "这支球拍我们建议搭配 {string}，{lb} 磅",

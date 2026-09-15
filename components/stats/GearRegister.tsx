@@ -14,8 +14,6 @@ import SetupShareSheet from './SetupShareSheet';
 import RacketLookSheet from './RacketLookSheet';
 import NextRacketCard from './NextRacketCard';
 import GearPickSheet from './GearPickSheet';
-import RequestStringingSheet from '@/components/stringing/RequestStringingSheet';
-import { useStringingShop } from '@/lib/useStringingShop';
 import { recordEngagement } from '@/lib/engagement';
 import YourKitCard from './YourKitCard';
 import StringTensionCard from './StringTensionCard';
@@ -178,9 +176,6 @@ function SetupRegister({ activeName }: GearRegisterProps) {
   >(null);
   const [pickOpen, setPickOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  // The request sheet takes this register's `gear` — never a second `useGear`.
-  const shopOpen = useStringingShop();
-  const [stringingOpen, setStringingOpen] = useState(false);
   // Memoised on the doc: the share sheet draws its canvas from a callback ref,
   // and a fresh object per render would redraw (and reload the image) each time.
   const share = useMemo(() => setupShare(activeName ?? '', setupLines(gear.gear)), [activeName, gear.gear]);
@@ -234,7 +229,6 @@ function SetupRegister({ activeName }: GearRegisterProps) {
         onShare={() => setShareOpen(true)}
         onOpenFit={openFitDoor}
         onAddTension={() => openLine('string')}
-        onRequestStringing={shopOpen === true ? () => setStringingOpen(true) : undefined}
       />
       <NextRacketCard
         gear={gear}
@@ -269,18 +263,6 @@ function SetupRegister({ activeName }: GearRegisterProps) {
         // Swap, never stack — the same rule as the rail's sheet.
         onOpenFit={() => { setPickOpen(false); openFitDoor(); }}
       />
-      {/* Mounted only while open: the sheet reads the stocked strings on
-          mount, and every Equipment visit should not pay for a sheet nobody
-          opened. Also starts each visit with a clean form. */}
-      {stringingOpen && (
-        <RequestStringingSheet
-          open
-          onClose={() => setStringingOpen(false)}
-          // Nothing on this register lists jobs; Home's card reads them on its own mount.
-          onRequested={() => {}}
-          gear={activeName ? gear : null}
-        />
-      )}
       {shareOpen && (
         <SetupShareSheet
           open
