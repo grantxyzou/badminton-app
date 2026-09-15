@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GET as SHARE_CARD } from '../app/api/equipment/share-card/route';
-import { buildShareCard, shareCardText, type ShareCardInput, type ShareCard } from '../lib/shareCard';
+import { buildShareCard, shareCardText, stringsFact, tensionFact, type ShareCardInput, type ShareCard } from '../lib/shareCard';
 import { resetMockStore, setupAdminPin, seedMember, memberCookieValue, makeRequest, getStore } from './helpers';
 import type { PlayerGear } from '../lib/types';
 
@@ -50,7 +50,7 @@ describe('buildShareCard', () => {
 
   it('has no field for a level, a result, kudos or arm history', () => {
     const keys = Object.keys(buildShareCard(input({ gear: gear({ fitArmComfort: 'often_sore', fitSwing: 'fast' }) }))).sort();
-    expect(keys).toEqual(['clubCount', 'clubName', 'grip', 'initial', 'name', 'racket', 'restrings', 'sinceYear', 'string', 'tensionLbs', 'tensionVsClub'].sort());
+    expect(keys).toEqual(['clubCount', 'clubName', 'crosses', 'grip', 'initial', 'name', 'racket', 'restrings', 'sinceYear', 'string', 'tensionLbs', 'tensionVsClub'].sort());
   });
 
   it('the text carries the same facts, one per line, and omits what the card omits', () => {
@@ -93,5 +93,26 @@ describe('GET /api/equipment/share-card', () => {
   it('refuses someone else', async () => {
     const res = await SHARE_CARD(makeRequest('GET', 'http://localhost/api/equipment/share-card?name=Lin', undefined, { Cookie: `member_session=${memberCookieValue('Viktor', 'member-viktor')}` }));
     expect(res.status).toBe(403);
+  });
+});
+
+describe('a hybrid on the share card', () => {
+  const HYBRID = { ...STRING, crosses: { catalogId: null, label: 'Yonex BG80', tensionLbs: 28 } };
+
+  it('keeps the mains as the string and its tension, so the club comparison is a mains one', () => {
+    const card = buildShareCard(input({ gear: gear({ items: [RACKET, HYBRID] }) }));
+    expect(card.string).toBe('Yonex BG65 Ti');
+    expect(card.tensionLbs).toBe(26);
+    expect(card.tensionVsClub).toBe(2);
+    expect(card.crosses).toEqual({ name: 'Yonex BG80', tensionLbs: 28 });
+  });
+
+  it('reads "mains / crosses", with a dash for a missing half and nothing when neither has a figure', () => {
+    expect(stringsFact({ string: 'BG65', crosses: { name: 'BG80', tensionLbs: null } })).toBe('BG65 / BG80');
+    expect(stringsFact({ string: 'BG65', crosses: null })).toBe('BG65');
+    expect(tensionFact({ tensionLbs: 26, crosses: { name: 'BG80', tensionLbs: 28 } })).toBe('26 / 28');
+    expect(tensionFact({ tensionLbs: null, crosses: { name: 'BG80', tensionLbs: 28 } })).toBe('– / 28');
+    expect(tensionFact({ tensionLbs: null, crosses: { name: 'BG80', tensionLbs: null } })).toBeNull();
+    expect(tensionFact({ tensionLbs: 26, crosses: null })).toBe('26');
   });
 });

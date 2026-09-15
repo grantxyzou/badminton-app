@@ -2,16 +2,12 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { MIN_LB, MAX_LB, rulerScale, scalePosition } from '@/lib/tension';
+import { MIN_LB, MAX_LB, FIELD_MIN_LB, FIELD_MAX_LB, rulerScale, scalePosition } from '@/lib/tension';
 // The rated window lives beside the scale it defaults to; re-exported for the sheets.
 export { ratedRange } from '@/lib/tension';
 import type { ClubTensionBand } from '@/lib/clubTension';
 
-/** The widest number the field will hold. Wider than any rated range on
- *  purpose: an out-of-range figure warns but still saves (the member may know
- *  something the catalog does not). */
-export const FIELD_MIN_LB = 10;
-export const FIELD_MAX_LB = 40;
+export { FIELD_MIN_LB, FIELD_MAX_LB };
 
 export interface TensionFieldProps {
   /** What the member has chosen, or null for nothing chosen yet. */

@@ -35,7 +35,7 @@ function useFakeGear(initial: PlayerGear, spies: Partial<UseGear> = {}): UseGear
       if (spies.add && (await spies.add(item, extra)).ok === false) return { ok: false, reason: 'bag_full' };
       const gi: GearItem = { id: `new-${item.id}`, catalogId: item.id, category: item.category, label: `${item.brand} ${item.model}` };
       setD((p) => ({ ...p, items: [...p.items, gi], activeRacketId: extra?.makeActive ? gi.id : p.activeRacketId ?? (item.category === 'racket' ? gi.id : undefined) }));
-      return { ok: true };
+      return { ok: true, itemId: gi.id };
     },
     addCustom: async (label, extra) => {
       if (spies.addCustom && (await spies.addCustom(label, extra)).ok === false) return { ok: false, reason: 'error' };
@@ -49,6 +49,15 @@ function useFakeGear(initial: PlayerGear, spies: Partial<UseGear> = {}): UseGear
     setTension: spies.setTension ?? vi.fn(async () => ({ ok: true as const })),
     setFeel: spies.setFeel ?? vi.fn(async () => ({ ok: true as const })),
     setLook: spies.setLook ?? vi.fn(async () => ({ ok: true as const })),
+    setCrosses: async (itemId, crosses) => {
+      if (spies.setCrosses && (await spies.setCrosses(itemId, crosses)).ok === false) return { ok: false, reason: 'error' };
+      setD((p) => ({ ...p, items: p.items.map((i) => {
+        if (i.id !== itemId) return i;
+        const { crosses: _old, ...rest } = i;
+        return crosses ? { ...rest, crosses } : rest;
+      }) }));
+      return { ok: true };
+    },
   };
 }
 
@@ -60,13 +69,13 @@ function picksWith(view: Partial<UseGearPicks['view']>): UseGearPicks {
   };
 }
 
-function Harness({ category, initial, picks, spies = {}, onClose = vi.fn(), makeActive = true, replacesId }: {
-  category: 'racket' | 'string'; initial: PlayerGear; picks: UseGearPicks; spies?: Partial<UseGear>; onClose?: () => void; makeActive?: boolean; replacesId?: string;
+function Harness({ category, initial, picks, spies = {}, onClose = vi.fn(), makeActive = true, replacesId, crossesForId }: {
+  category: 'racket' | 'string'; initial: PlayerGear; picks: UseGearPicks; spies?: Partial<UseGear>; onClose?: () => void; makeActive?: boolean; replacesId?: string; crossesForId?: string;
 }) {
   const gear = useFakeGear(initial, spies);
   return (
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <SetupAddSheet open onClose={onClose} category={category} gear={gear} picks={picks} makeActive={makeActive} replacesId={replacesId} />
+      <SetupAddSheet open onClose={onClose} category={category} gear={gear} picks={picks} makeActive={makeActive} replacesId={replacesId} crossesForId={crossesForId} />
     </NextIntlClientProvider>
   );
 }
@@ -203,6 +212,46 @@ describe('SetupAddSheet — "Change the string" replaces', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Yonex Aerobite' }));
     expect(await screen.findByText('Saved')).toBeTruthy();
     expect(remove).not.toHaveBeenCalled();
+  });
+});
+
+describe('SetupAddSheet — a hybrid\'s crosses string', () => {
+  const MAINS: GearItem = { id: 's-old', catalogId: 'st-bg65', category: 'string', label: 'Yonex BG65 Ti', tensionLbs: 24 };
+
+  it('stores the pick nested on the mains, never as a bag item, and writes a chosen crosses tension on Done', async () => {
+    const add = vi.fn(async () => ({ ok: true as const }));
+    const setCrosses = vi.fn(async () => ({ ok: true as const }));
+    const onClose = vi.fn();
+    render(<Harness category="string" initial={doc([MAINS])} picks={picksWith({})} spies={{ add, setCrosses }} crossesForId="s-old" onClose={onClose} />);
+    expect(await screen.findByText('Crosses string')).toBeTruthy();
+    // The mains string is not offered as its own crosses.
+    expect(screen.queryByRole('button', { name: 'Yonex BG65 Ti' })).toBeNull();
+    fireEvent.click(await screen.findByRole('button', { name: 'Yonex Aerobite' }));
+    await screen.findByText('Saved');
+    expect(setCrosses).toHaveBeenCalledWith('s-old', { catalogId: 'st-ab', label: 'Yonex Aerobite' });
+    expect(add).not.toHaveBeenCalled();
+    // Crosses conventionally sit 2 lb above a 24 lb mains: offered, not chosen.
+    const field = screen.getByRole('textbox', { name: 'Crosses tension' }) as HTMLInputElement;
+    expect(field.placeholder).toBe('26');
+    expect(screen.queryByRole('button', { name: 'Add another string' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Raise tension' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(setCrosses).toHaveBeenCalledTimes(2));
+    expect((setCrosses.mock.calls[1] as unknown[])[1]).toEqual({ catalogId: 'st-ab', label: 'Yonex Aerobite', tensionLbs: 27 });
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('"Change the string" carries a hybrid\'s crosses onto the new mains before the old one goes', async () => {
+    const order: string[] = [];
+    const crosses = { catalogId: 'st-x', label: 'Yonex BG80', tensionLbs: 26 };
+    const add = vi.fn(async (item: CatalogItem) => { order.push(`add:${item.id}`); return { ok: true as const }; });
+    const setCrosses = vi.fn(async (id: string) => { order.push(`crosses:${id}`); return { ok: true as const }; });
+    const remove = vi.fn(async (id: string) => { order.push(`remove:${id}`); return { ok: true as const }; });
+    render(<Harness category="string" initial={doc([{ ...MAINS, crosses }])} picks={picksWith({})} spies={{ add, setCrosses, remove }} replacesId="s-old" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Yonex Aerobite' }));
+    await waitFor(() => expect(remove).toHaveBeenCalledWith('s-old'));
+    expect(order).toEqual(['add:st-ab', 'crosses:new-st-ab', 'remove:s-old']);
+    expect((setCrosses.mock.calls[0] as unknown[])[1]).toEqual(crosses);
   });
 });
 

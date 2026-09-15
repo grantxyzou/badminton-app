@@ -184,7 +184,7 @@ function SetupRegister({ activeName }: GearRegisterProps) {
   // remove), and a remount is the whole reset.
   const [sheet, setSheet] = useState<
     | { kind: 'line'; category: SetupCategory; key: number }
-    | { kind: 'add'; category: SetupCategory; makeActive: boolean; replacesId?: string; key: number }
+    | { kind: 'add'; category: SetupCategory; makeActive: boolean; replacesId?: string; crossesForId?: string; key: number }
     | { kind: 'look'; itemId: string; title: string; key: number }
     | null
   >(null);
@@ -193,8 +193,8 @@ function SetupRegister({ activeName }: GearRegisterProps) {
   // Memoised on the doc: the share sheet draws its canvas from a callback ref,
   // and a fresh object per render would redraw (and reload the image) each time.
   const share = useMemo(() => setupShare(activeName ?? '', setupLines(gear.gear)), [activeName, gear.gear]);
-  const openAdd = (category: SetupCategory, makeActive: boolean, replacesId?: string) =>
-    setSheet((s) => ({ kind: 'add', category, makeActive, replacesId, key: (s?.key ?? 0) + 1 }));
+  const openAdd = (category: SetupCategory, makeActive: boolean, replacesId?: string, crossesForId?: string) =>
+    setSheet((s) => ({ kind: 'add', category, makeActive, replacesId, crossesForId, key: (s?.key ?? 0) + 1 }));
   const openLine = (category: SetupCategory) => {
     const lines = setupLines(gear.loadError ? null : gear.gear);
     const filled = category === 'racket' ? !!lines.racket : !!lines.string;
@@ -305,6 +305,10 @@ function SetupRegister({ activeName }: GearRegisterProps) {
           // change replaces, because the card has no spare line for strings.
           onChange={() => openAdd(sheet.category, true, sheet.category === 'string' ? setupLines(gear.gear).string?.id : undefined)}
           onAddSpare={() => openAdd('racket', false)}
+          onCrosses={sheet.category === 'string' ? () => {
+            const mainsId = setupLines(gear.gear).string?.id;
+            if (mainsId) openAdd('string', false, undefined, mainsId);
+          } : undefined}
           onViewLook={(item, title) => setSheet((s) => ({ kind: 'look', itemId: item.id, title, key: (s?.key ?? 0) + 1 }))}
           onViewFrame={pagesOn ? (catalogId) => { setSheet(null); openFrame(catalogId); } : undefined}
         />
@@ -325,6 +329,7 @@ function SetupRegister({ activeName }: GearRegisterProps) {
           picks={picks}
           makeActive={sheet.makeActive}
           replacesId={sheet.replacesId}
+          crossesForId={sheet.crossesForId}
         />
       )}
     </>

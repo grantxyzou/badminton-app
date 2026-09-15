@@ -450,6 +450,19 @@ export interface GearItem {
   /** Racket-specific: the member's string and overgrip colours, and for a
    *  typed-in racket its frame paint and head shape. See `lib/racketCustom.ts`. */
   look?: ItemLook;
+  /** String-specific, and only for a HYBRID: the crosses string, when it is a
+   *  different string from this item (the mains). Nested rather than a second
+   *  string item on purpose: seven readers take "the member's string" as the
+   *  last string in the bag, and a crosses item would become it. Absent means
+   *  one string throughout. See `lib/stringCrosses.ts`. */
+  crosses?: StringCrosses;
+}
+
+/** The crosses half of a hybrid stringing. */
+export interface StringCrosses {
+  catalogId: string | null;
+  label: string;
+  tensionLbs?: number;
 }
 
 /** How a member dresses their racket (`lib/racketCustom.ts` owns the palettes).

@@ -168,8 +168,16 @@ describe('blankStringPairing — "for this frame" needs the server to have paire
 describe('setupShare — gear only, by construction', () => {
   it('carries a name, the two lines and a tension, and no other field', () => {
     const share = setupShare('Lin', setupLines(doc([R1, R2, S2], 'r1')));
-    expect(Object.keys(share).sort()).toEqual(['name', 'racket', 'string', 'tensionLbs']);
-    expect(share).toEqual({ name: 'Lin', racket: 'Li-Ning Air Force 79', string: 'Yonex BG65 Ti', tensionLbs: 26 });
+    expect(Object.keys(share).sort()).toEqual(['crosses', 'name', 'racket', 'string', 'tensionLbs']);
+    expect(share).toEqual({ name: 'Lin', racket: 'Li-Ning Air Force 79', string: 'Yonex BG65 Ti', tensionLbs: 26, crosses: null });
+  });
+
+  it("a hybrid adds its crosses string and tension, and the mains stays the string", () => {
+    const hybrid = { ...S2, crosses: { catalogId: null, label: 'Yonex BG80', tensionLbs: 28 } };
+    const share = setupShare('Lin', setupLines(doc([R1, R2, hybrid], 'r1')));
+    expect(share.string).toBe('Yonex BG65 Ti');
+    expect(share.tensionLbs).toBe(26);
+    expect(share.crosses).toEqual({ name: 'Yonex BG80', tensionLbs: 28 });
   });
 
 });

@@ -4954,6 +4954,21 @@ button.setup-line:disabled { opacity: 0.5; pointer-events: none; }
 }
 .setup-line-sub--accent { color: var(--accent); }
 .setup-line-spare { font-size: var(--fs-md); font-weight: 400; color: var(--text-secondary); }
+/* A hybrid on the Strings line: mains over crosses, each row its own role,
+   name and figure. The role is the label column's type at body size, so the
+   two names still start on one vertical. */
+.setup-line-pair { display: flex; flex-direction: column; gap: var(--space-2); }
+.setup-line-pair-row { display: flex; align-items: baseline; gap: var(--space-3); min-width: 0; }
+.setup-line-pair-row .setup-line-value { flex: 1; min-width: 0; }
+.setup-line-role {
+  width: 52px;
+  flex: 0 0 auto;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
 .setup-tension { display: inline-flex; align-items: baseline; gap: var(--space-05); }
 .setup-tension-value { font-family: var(--font-mono); font-size: var(--fs-stat); font-weight: 700; color: var(--text-primary); }
 .setup-tension-unit { font-size: var(--fs-xs); color: var(--text-secondary); }

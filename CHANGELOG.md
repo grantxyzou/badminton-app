@@ -48,6 +48,12 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Equipment — hybrid strings: mains and crosses (2026-09-15)
+
+- **A racket can be strung with two strings.** From the string's sheet, "Use a different string for the crosses" picks the crosses string; the Set-up card then shows Mains and Crosses on the Strings line, each with its own tension, and the sheet sets each one. "One string throughout" takes the crosses off.
+- The crosses tension starts from a suggestion 2 lb over the mains (the usual convention), never saved until chosen.
+- Everything that compares a tension — the club's range, the fit verdict, the share card's club line — still reads the mains. The share card shows "BG80 / BG66" and "26 / 28 lb" for a hybrid.
+
 ### Equipment — swapping rackets no longer breaks "Where you'd go next" (2026-09-15)
 
 - **Swapping a racket in a few times in a row** showed "Couldn't load this pick": every swap re-asked both picks, and the recommendation limit (10 a minute per IP) ran out on the fifth. A burst of swaps is now one re-ask, and the limit is 30 a minute — one gym's wifi is one IP for everyone on it.

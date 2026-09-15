@@ -165,9 +165,33 @@ export default function GearSetupCard({ activeName, gear, picks, club, onOpenLin
                 : <EditGlyph />}
             </button>
 
-            {/* Strings. A div, not a button, when filled with a tension slot:
-                the slot is its own button and buttons do not nest. */}
-            {string && !(typeof string.tensionLbs === 'number') && onAddTension ? (
+            {/* Strings. A hybrid is still ONE line: mains and crosses stacked,
+                each with its own figure, and the whole line opens the sheet
+                where both tensions are set. */}
+            {string?.crosses ? (
+              <button type="button" className="setup-line" onClick={() => onOpenLine('string')} disabled={!gear.online}>
+                <span className="setup-line-label">{t('catString')}</span>
+                <span className="setup-line-body setup-line-pair">
+                  {([
+                    ['mains', string.label, string.tensionLbs],
+                    ['crosses', string.crosses.label, string.crosses.tensionLbs],
+                  ] as const).map(([role, name, lbs]) => (
+                    <span key={role} className="setup-line-pair-row">
+                      <span className="setup-line-role">{ts(role)}</span>
+                      <span className="setup-line-value">{name}</span>
+                      {typeof lbs === 'number' && (
+                        <span className="setup-tension">
+                          <span className="setup-tension-value">{lbs}</span>
+                          <span className="setup-tension-unit">{t('lb')}</span>
+                        </span>
+                      )}
+                    </span>
+                  ))}
+                </span>
+              </button>
+            ) : string && !(typeof string.tensionLbs === 'number') && onAddTension ? (
+              /* A div, not a button, when filled with a tension slot: the slot
+                 is its own button and buttons do not nest. */
               <div className="setup-line">
                 <button
                   type="button"

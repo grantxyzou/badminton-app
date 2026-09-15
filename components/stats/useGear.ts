@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOnline } from '@/lib/useOnline';
 import { rackets as racketsOf, activeRacket } from '@/lib/activeRacket';
-import type { PlayerGear, GearItem, CatalogItem, FitGoal, FitSwing, FitArmComfort, FitGrip, FitPlayStyle, FitSoreness, FitLevelOption, RacketFeel, ItemLook } from '@/lib/types';
+import type { PlayerGear, GearItem, CatalogItem, FitGoal, FitSwing, FitArmComfort, FitGrip, FitPlayStyle, FitSoreness, FitLevelOption, RacketFeel, ItemLook, StringCrosses } from '@/lib/types';
 
 /**
  * Every preference `PATCH /api/equipment/gear` accepts. `null` clears a field
@@ -50,7 +50,9 @@ export type GearFailure =
    *  member does now will help — only waiting will. */
   | 'rate_limited'
   | 'error';
-export type GearResult = { ok: true } | { ok: false; reason: GearFailure };
+/** `itemId` is set by `add` only: the id the new bag item got, which exists
+ *  only in the response body. */
+export type GearResult = { ok: true; itemId?: string } | { ok: false; reason: GearFailure };
 
 export interface UseGear {
   gear: PlayerGear | null;
@@ -102,6 +104,9 @@ export interface UseGear {
   /** Replace how a racket is dressed — string and wrap colours, and for a
    *  typed-in racket its paint. `{}` puts it back as the model comes. */
   setLook: (itemId: string, look: ItemLook) => Promise<GearResult>;
+  /** Set, re-tension or (null) remove a hybrid's crosses string on the mains
+   *  string item. See `lib/stringCrosses.ts`. */
+  setCrosses: (itemId: string, crosses: StringCrosses | null) => Promise<GearResult>;
 }
 
 /**
@@ -331,9 +336,11 @@ export function useGear(name: string | null): UseGear {
       // the tension did not. (A 401 here is close to impossible anyway; the
       // POST it follows proved the credential a moment earlier.)
       if (!withTension.ok) return { ok: false, reason: 'tension_not_saved' };
-      return withTension;
     }
-    return res;
+    if (!res.ok) return res;
+    const category = item.category ?? 'racket';
+    const added = gearRef.current?.items.find((i) => i && i.catalogId === item.id && (i.category ?? 'racket') === category);
+    return { ok: true, itemId: added?.id };
   }, [mutate, name]);
 
   // Tapping the already-active racket is a no-op in the UI (BagList renders a
@@ -420,6 +427,13 @@ export function useGear(name: string | null): UseGear {
       body: JSON.stringify({ name, itemLook: { itemId, ...look } }),
     })), [mutate, name]);
 
+  const setCrosses = useCallback((itemId: string, crosses: StringCrosses | null) =>
+    mutate(() => fetch(`${BASE}/api/equipment/gear`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, itemCrosses: { itemId, crosses } }),
+    })), [mutate, name]);
+
   const setPrefs = useCallback((prefs: GearPrefs) =>
     mutate(() => fetch(`${BASE}/api/equipment/gear`, {
       method: 'PATCH',
@@ -445,6 +459,7 @@ export function useGear(name: string | null): UseGear {
     setTension,
     setFeel,
     setLook,
+    setCrosses,
   };
 }
 
