@@ -41,6 +41,10 @@ export default function NativeBridge({ activeTab, onGoHome }: Props) {
 
   useEffect(() => {
     if (!isNative()) return;
+    // CSS cannot tell the shell apart: its WebView is not `display-mode:
+    // standalone`, so app-only rules (no text selection on chrome) never
+    // matched there. Stamped once; the shell is native for the page's life.
+    document.documentElement.setAttribute('data-native', '');
     let disposed = false;
     const handles: Removable[] = [];
     const resume = () => window.dispatchEvent(new Event('bpm:resume'));

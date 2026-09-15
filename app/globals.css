@@ -504,7 +504,9 @@ body {
    page's behaviour, and Grant's words were "this feel not like an app". Off
    for everything, back on where text is the point: fields, and the club
    announcement people copy an address or a time out of. Browser tabs keep
-   ordinary selection. */
+   ordinary selection. The native shell is not `display-mode: standalone`
+   (its WebView reports browser), so NativeBridge stamps `html[data-native]`
+   and the same rule is repeated for it. */
 @media (display-mode: standalone) {
   body {
     -webkit-user-select: none;
@@ -520,6 +522,20 @@ body {
     user-select: text;
     -webkit-touch-callout: default;
   }
+}
+html[data-native] body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+html[data-native] input,
+html[data-native] textarea,
+html[data-native] select,
+html[data-native] [contenteditable='true'],
+html[data-native] .announcement-body {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
 }
 
 body {
