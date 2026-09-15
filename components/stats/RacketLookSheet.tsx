@@ -36,7 +36,8 @@ function sameLook(a: ItemLook, b: ItemLook): boolean {
  * string colour and the overgrip (Grant, 2026-09-14). A racket typed in by name
  * also takes frame colour, paint and head shape — nobody else can say what it
  * looks like. Every tap previews on the live model; the choice is written once,
- * on Done.
+ * on Done. Closing (the X, Escape) DISCARDS: a way out of a sheet must never
+ * depend on a network write succeeding, or a member offline is trapped in it.
  */
 export default function RacketLookSheet({ open, onClose, gear, item, title }: RacketLookSheetProps) {
   const t = useTranslations('stats.gear.setup');
@@ -81,7 +82,7 @@ export default function RacketLookSheet({ open, onClose, gear, item, title }: Ra
   }
 
   return (
-    <BottomSheet open={open} onClose={() => { void done(); }} ariaLabel={title}>
+    <BottomSheet open={open} onClose={onClose} ariaLabel={title}>
       <BottomSheetHeader>
         <div style={{ minWidth: 0 }}>
           <p className="setup-eyebrow">{t('lookEyebrow')}</p>
@@ -89,7 +90,7 @@ export default function RacketLookSheet({ open, onClose, gear, item, title }: Ra
             {title}
           </span>
         </div>
-        <button type="button" onClick={() => { void done(); }} aria-label={tRecovery('close')}
+        <button type="button" onClick={onClose} aria-label={tRecovery('close')}
           style={{ background: 'transparent', border: 'none', cursor: 'pointer', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' }}>
           <span className="material-icons" style={{ fontSize: 'var(--fs-stat)' }}>close</span>
         </button>
