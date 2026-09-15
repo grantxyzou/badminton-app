@@ -499,6 +499,29 @@ body {
   }
 }
 
+/* THE HOME-SCREEN APP DOES NOT SELECT ITS OWN CHROME. A long-press on a card
+   selected "Submit a request" and raised Copy / Look Up / Translate — a web
+   page's behaviour, and Grant's words were "this feel not like an app". Off
+   for everything, back on where text is the point: fields, and the club
+   announcement people copy an address or a time out of. Browser tabs keep
+   ordinary selection. */
+@media (display-mode: standalone) {
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  input,
+  textarea,
+  select,
+  [contenteditable='true'],
+  .announcement-body {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
+}
+
 body {
   background: var(--page-bg);
   color: var(--text-primary);
@@ -943,6 +966,30 @@ h1, h2, h3, h4 {
     backdrop-filter 0.25s ease,
     padding 0.25s ease,
     border-color 0.25s ease;
+}
+.bpm-topbar::before,
+.bpm-page-header::before {
+  /* THE STATUS-BAR STRIP ABOVE A STUCK BAR. Both bars stick BELOW the inset
+     (`top` includes it), and the strip above them had nothing in it, so
+     scrolled content showed through behind the clock (the Admin page, Grant's
+     iPhone, 2026-09-15). This fills it with the bar's own surface, only while
+     scrolled. Height is the inset, so a browser tab (inset 0) draws nothing. */
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: env(safe-area-inset-top, 0px);
+  background: var(--topbar-bg-scrolled);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(22px) saturate(140%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.bpm-topbar.scrolled::before,
+.bpm-page-header.scrolled::before {
+  opacity: 1;
 }
 .bpm-topbar.scrolled {
   background: var(--topbar-bg-scrolled);
