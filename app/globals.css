@@ -7,6 +7,9 @@
    ══════════════════════════════════════════════════════════ */
 
 :root {
+  /* The share card's ground: the design system's near-black, used where an
+     image leaves the app and must not follow the viewer's theme. */
+  --bpm-night: #100F0F;
   /* ── Page ── */
   --page-bg: #100F0F;
   --text-primary: #e2e8f0;
@@ -3314,6 +3317,66 @@ html:root[data-tab="admin"] .bottom-sheet {
   -webkit-appearance: none;
 }
 .sheet-search input::placeholder { color: var(--text-muted); }
+/* Clears the query; a 44px target around an 18px glyph. */
+.sheet-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-3)) calc(-1 * var(--space-4)) 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.sheet-search-clear .material-icons { font-size: var(--icon-md); }
+
+/* Catalog filters (design 2a screen 02): applied chips are green and carry a
+   remove glyph; unset facets are quiet and carry a disclosure glyph. One row,
+   scrolling sideways — a second row of chips would push the list off screen. */
+.filter-chips {
+  display: flex;
+  gap: var(--space-2);
+  min-height: 44px;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.filter-chips::-webkit-scrollbar { display: none; }
+.filter-options { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.filter-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 100ms var(--ease-glass);
+}
+.filter-chip:active { transform: scale(0.97); }
+.filter-chip .material-icons { font-size: var(--icon-sm); }
+.filter-chip--applied {
+  background: var(--segment-active-bg);
+  border-color: transparent;
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+.filter-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
 .sheet-search > .material-icons {
   flex: 0 0 auto;
   font-size: var(--icon-md);
@@ -4630,39 +4693,72 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
 /* Everything under the head lines up with the name, past the check glyph. */
 .setup-saved-indent { padding-left: var(--space-7); display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
 
-.setup-stepper {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-05);
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  border: 1px solid var(--glass-border);
-}
-.setup-stepper button {
+/* Tension as a field (design 2a screen 03): steppers either side of a real
+   numeric input drawn in its focused state, so it reads as something to type
+   into rather than a value. The field is the one place green edges a control
+   before it is touched: the keypad is already open on it. */
+/* `nowrap`: the base indent wraps, and a wrapping column sizes its line to the
+   widest child, so the field shrank to its content instead of the panel. */
+.setup-saved-indent.setup-saved-indent--stack { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: var(--space-3); }
+/* Doubled class: `.setup-action` is declared below this block and would otherwise win. */
+.setup-action.setup-action--stack { flex-direction: column; align-items: stretch; gap: var(--space-3); }
+.tension-field-label { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.tension-field { display: flex; flex-direction: column; gap: var(--space-2); width: 100%; }
+.tension-field-row { display: flex; align-items: stretch; gap: var(--space-3); }
+.tension-field-step {
+  flex: 0 0 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
+  min-height: 44px;
   border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--accent);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+  color: var(--text-secondary);
   cursor: pointer;
+  transition: transform 100ms var(--ease-glass);
 }
-.setup-stepper button:disabled { color: var(--text-muted); opacity: 0.5; pointer-events: none; }
-.setup-stepper-value {
-  min-width: 2ch;
-  text-align: center;
+.tension-field-step--up { background: var(--highlight-green); border-color: var(--inner-card-green-border); color: var(--accent); }
+.tension-field-step:active { transform: scale(0.97); }
+.tension-field-step:disabled { opacity: 0.5; pointer-events: none; }
+.tension-field-box {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+  border: 1px solid var(--input-focus-border);
+  box-shadow: 0 0 0 3px var(--input-focus-ring);
+  cursor: text;
+}
+.tension-field-box input,
+.tension-field-box input:focus {
+  width: 3ch;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  text-align: right;
   font-family: var(--font-mono);
-  font-size: var(--fs-md);
-  font-weight: 600;
+  font-size: var(--fs-stat-lg);
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
+  caret-color: var(--accent);
 }
-/* A suggested number nobody has chosen yet: shown so the stepper has somewhere
-   to start, muted so it cannot be mistaken for what the member said. */
-.setup-stepper-value--suggested { color: var(--text-muted); font-weight: 400; }
+.tension-field-box input::placeholder { color: var(--text-muted); font-weight: 400; }
+.tension-field-unit { font-size: var(--fs-base); color: var(--text-secondary); }
+.tension-field-hint { margin: 0; font-size: var(--fs-xs); line-height: var(--lh-normal); color: var(--text-muted); }
+.tension-field-warn { color: var(--sev-warn); }
 
 /* One management action per row in a line sheet. */
 .setup-actions { display: flex; flex-direction: column; gap: var(--space-2); }
@@ -4715,11 +4811,11 @@ button.setup-action:disabled { opacity: 0.5; pointer-events: none; }
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 360 / 196;
   border-radius: var(--radius-xl);
-  box-shadow: 0 8px 24px rgba(22, 163, 74, 0.28);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
 }
-.setup-share-preview--pending { background: linear-gradient(160deg, #16a34a 0%, #0f7a37 100%); }
+/* Before the canvas lands: the card's night ground at its usual proportions. */
+.setup-share-preview--pending { aspect-ratio: 360 / 300; background: var(--bpm-night); }
 
 /* "Where you'd go next": the whole frame, large, beside the pick. */
 button.setup-next { display: flex; flex-direction: column; gap: var(--space-4); width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }

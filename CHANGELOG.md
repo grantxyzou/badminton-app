@@ -48,6 +48,13 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Equipment — search filters, tension as a field, a share card worth sending (2026-09-14)
+
+- **Add a racket**: the brand tabs are gone. Search leads and chips narrow it (Brand, Weight, Balance, Shaft), with a live "7 of 151 rackets" and group headers that count what is shown.
+- **Strung at** is a real number field now, with steppers that stop at the frame's rated range, a warning (not a block) outside it, and the club's range for that frame once three members have logged one.
+- **Share card**: "Answer 'what are you playing?'". It is dark and shows how long you have been at the club, restrings on this frame, tension against the club average, and how many of you play it. It leaves out any line it cannot say honestly.
+- **Recording starts today**: every restring and tension change is kept, which is what those numbers read.
+
 ### Equipment — one Set-up card (2026-09-14, #419)
 
 - **The Gear register is one card now.** Two lines to fill, Racket and Strings, replace five empty fields, the pick rail and the kit rows. A filled line shows its spec and how many others in the club play it; a spare racket sits on its own line with "Swap in". Shoes and Shuttles are gone from the register.

@@ -155,14 +155,36 @@ each owns different hooks and a hook cannot be conditional.
   must not read as an empty one. The "Your fit" link sits outside the error fork
   (the always-there door rule above).
 - **`SetupAddSheet`**: a tap saves; the row expands in place with the one
-  follow-up (in play / strung at). The stepper is local until Done (bag limiter).
+  follow-up (in play / strung at). The tension is local until Done (bag limiter).
   The suggestion confirms before saving and is offered only on a blank line.
-  Mounted with a fresh `key` per opening — its state is one visit.
+  Mounted with a fresh `key` per opening — its state is one visit. **Search
+  leads, chips narrow** (Turn 3): `lib/catalogFilters.ts` is the pure rule —
+  one value per facet, a dual weight class counts as both — and the result
+  line, group headers ("Yonex · 4 match") and rows all read the same filtered
+  list. The suggestion is never filtered.
+- **`TensionField`** is tension as a field: a numeric input with steppers
+  bounded by the frame's rated range (`ratedRange`, a ceiling-only frame uses
+  the app floor), a warning that still saves, and the club hint from
+  `useClubTension`. Its classes are `tension-field-*` — `.setup-tension` is the
+  CARD's figure, and reusing that name restyled it.
 - **`SetupLineSheet`**: one filled line's management. Remove asks once. No Retire.
 - **`NextRacketCard`** renders only once a racket is in play; its tap carries the
   `rec_card_tap` beacon the rail card carries on the other branch.
-- **`SetupShareSheet`**: preview is the exported PNG (`lib/setupShareCanvas.ts`,
-  callback-ref draw); `SetupShare` is gear-only by type.
+- **`SetupShareSheet`** answers "what are you playing?": preview is the exported
+  PNG (`lib/setupShareCanvas.ts`, callback-ref draw, dark `--bpm-night`). Its
+  facts come from `GET /api/equipment/share-card`, built by `lib/shareCard.ts`
+  — every club-relative number is server-side, and a fact that cannot honestly
+  be stated is null so its line drops. `ShareCard` has no field for level,
+  results, kudos or arm history. A failed read falls back to the local gear
+  lines only.
+- **The restring log is `lib/stringLog.ts`** (`PlayerGear.stringLog`): written by
+  the gear route when a string goes in (POST) or its tension changes (PUT; the
+  same value again is not an event). Nothing kept this history before
+  2026-09-14, so every restring count starts there.
+- **The club tension band is `lib/clubTension.ts`** (`GET /api/stats/club/tension`):
+  `{ sampleSize, low, high, mean }` per frame, null below
+  `CLUB_GEAR_MIN_COHORT`. Club readers go through `lib/clubGearDocs.ts`, whose
+  projection never selects the fit answers.
 - **A catalog row can be withdrawn without deleting it**: `attributes.unlisted` (a reason string) makes `isOffered()` (`lib/catalogOffer.ts`) false, and both recommenders plus both add sheets skip it, while a bag pointing at it still resolves. Deleting a row from the seed JSON would not remove it from Cosmos, since seeding never deletes. See `docs/catalog-check-2026-09-14.md`.
 - **A racket the catalog lacks can be logged by name** (Grant, 2026-09-14): the racket add sheet offers "Add “…”" for any typed name that is not already in the bag or an exact catalog model, via `useGear.addCustom`. Its saved panel asks "How does it feel?" (balance, shaft, weight, each with "Don't know"), written once on Done through PATCH `itemFeel` into `GearItem.feel`; `SetupLineSheet` edits it later. `lib/racketFeel.ts` turns an in-play typed racket with balance AND shaft answered into the fit engine's anchor (tier from the member's level), and `useGearPicks` keys a refetch on those answers. PUT carries `feel` over from the matched item, because it rebuilds items from the wire.
 - **Racket drawings are `lib/racketLook.ts`**: one SVG drawing painted per

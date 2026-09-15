@@ -9,6 +9,7 @@ import { FIT_GOALS, FIT_SWINGS, FIT_ARM_COMFORTS, FIT_GRIPS, type PlayerGear, ty
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { resolveGroupId } from '@/lib/groupContext';
 import { parseFeel, hasFeel } from '@/lib/racketFeel';
+import { logStringAdded, logTension } from '@/lib/stringLog';
 
 export const dynamic = 'force-dynamic';
 
@@ -109,7 +110,7 @@ async function writeGearDoc(memberId: string, prior: StoredGear | undefined, nex
     fitGrip: 'fitGrip' in next ? next.fitGrip : prior?.fitGrip,
     stringBudgetMaxCad: 'stringBudgetMaxCad' in next ? next.stringBudgetMaxCad : prior?.stringBudgetMaxCad,
     fitUpdatedAt: 'fitUpdatedAt' in next ? next.fitUpdatedAt : prior?.fitUpdatedAt,
-    stringLog: prior?.stringLog,
+    stringLog: 'stringLog' in next ? next.stringLog : prior?.stringLog,
     shoesMileageSessions: prior?.shoesMileageSessions,
     updatedAt: new Date().toISOString(),
   };
@@ -392,7 +393,13 @@ export async function POST(req: NextRequest) {
         : (prior?.activeRacketId
           ?? (priorRackets.length === 0 && incoming.category === 'racket' ? incoming.id : undefined));
 
-      return { ok: true, next: { items, activeRacketId } };
+      // A string going into the bag is a restring: log it against the racket
+      // in play. Its tension, when chosen, follows in a PUT (see logTension).
+      const stringLog = incoming.category === 'string'
+        ? logStringAdded(prior ?? null, incoming, new Date().toISOString())
+        : undefined;
+
+      return { ok: true, next: { items, activeRacketId, ...(stringLog ? { stringLog } : null) } };
     });
   } catch (error) {
     console.error('POST equipment/gear error:', error);
@@ -630,6 +637,12 @@ export async function PUT(req: NextRequest) {
         ...(matchIndex >= 0 && existing[matchIndex].feel ? { feel: existing[matchIndex].feel } : null),
       };
 
+      // A string's tension moving is the one history this doc keeps: the item
+      // itself only ever holds the latest value.
+      const stringLog = incoming.category === 'string' && typeof incoming.tensionLbs === 'number'
+        ? logTension(prior ?? null, incoming, matchIndex >= 0 ? existing[matchIndex].tensionLbs : undefined, incoming.tensionLbs, new Date().toISOString())
+        : undefined;
+
       let items: GearItem[];
       if (matchIndex >= 0) {
         items = existing.map((i, idx) => (idx === matchIndex ? incoming : i));
@@ -652,7 +665,7 @@ export async function PUT(req: NextRequest) {
       // leaves items[0] as the old racket, so even the fallback returned it.
       const activeRacketId = incoming.category === 'racket' ? incoming.id : prior?.activeRacketId;
 
-      return { ok: true, next: { items, activeRacketId } };
+      return { ok: true, next: { items, activeRacketId, ...(stringLog ? { stringLog } : null) } };
     });
   } catch (error) {
     console.error('PUT equipment/gear error:', error);

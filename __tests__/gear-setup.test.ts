@@ -6,7 +6,6 @@ import {
   racketSpecLine,
   setupLines,
   setupShare,
-  setupShareText,
   stringSpecLine,
   tensionOnScreen,
 } from '../lib/gearSetup';
@@ -173,18 +172,4 @@ describe('setupShare — gear only, by construction', () => {
     expect(share).toEqual({ name: 'Lin', racket: 'Li-Ning Air Force 79', string: 'Yonex BG65 Ti', tensionLbs: 26 });
   });
 
-  it('the text is the title, the two lines and the footer — a spare is not the set-up', () => {
-    const text = setupShareText(setupShare('Lin', setupLines(doc([R1, R2, S2], 'r1'))), {
-      title: "Lin's set-up", racket: 'Racket', string: 'Strings', lb: 'lb', footer: 'via BPM Badminton',
-    });
-    expect(text).toBe("Lin's set-up\nRacket: Li-Ning Air Force 79\nStrings: Yonex BG65 Ti · 26 lb\nvia BPM Badminton");
-    expect(text).not.toContain('Nanoflare');
-  });
-
-  it('a string with no tension shares no number', () => {
-    const text = setupShareText(setupShare('Lin', setupLines(doc([R1, S1], 'r1'))), {
-      title: 't', racket: 'Racket', string: 'Strings', lb: 'lb', footer: 'f',
-    });
-    expect(text).toContain('Strings: Yonex BG65\n');
-  });
 });

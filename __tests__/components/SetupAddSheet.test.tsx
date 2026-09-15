@@ -128,8 +128,10 @@ describe('SetupAddSheet — a tap saves, and the row expands with the one follow
     render(<Harness category="string" initial={doc([])} picks={picksWith({ string: stringPick })} spies={{ setTension }} onClose={onClose} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Yonex BG65 Ti' }));
     await screen.findByText('Saved');
-    // The pairing's 26 is shown as a starting point only.
-    expect(screen.getByText('26').className).toContain('suggested');
+    // The pairing's 26 is shown as a starting point only: a placeholder, not a value.
+    const field = screen.getByRole('textbox', { name: 'Strung at' }) as HTMLInputElement;
+    expect(field.value).toBe('');
+    expect(field.placeholder).toBe('26');
     fireEvent.click(screen.getByRole('button', { name: 'Raise tension' }));
     fireEvent.click(screen.getByRole('button', { name: 'Raise tension' }));
     expect(setTension).not.toHaveBeenCalled();
@@ -145,8 +147,9 @@ describe('SetupAddSheet — a tap saves, and the row expands with the one follow
     render(<Harness category="string" initial={doc([])} picks={picksWith({ string: stringPick })} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Yonex BG65 Ti' }));
     await screen.findByText('Saved');
-    expect(screen.queryByText('23')).toBeNull();
-    expect(screen.getByText('–')).toBeTruthy();
+    const field = screen.getByRole('textbox', { name: 'Strung at' }) as HTMLInputElement;
+    expect(field.placeholder).toBe('–');
+    expect(field.value).toBe('');
   });
 
   it('a racket added as a spare can be made the one in play from its saved row', async () => {
@@ -280,5 +283,34 @@ describe('SetupAddSheet — a racket the catalog does not have', () => {
     render(<Harness category="string" initial={doc([])} picks={noPicks()} />);
     await search('Exbolt 99');
     expect(screen.queryByRole('button', { name: /Add “/ })).toBeNull();
+  });
+});
+
+describe('SetupAddSheet — search leads, filters narrow', () => {
+  it('an applied chip narrows the rows, the header counts matches, and removing it restores them', async () => {
+    render(<Harness category="racket" initial={doc([])} picks={picksWith({})} />);
+    await screen.findByRole('button', { name: 'Yonex Nanoflare 800' });
+    fireEvent.click(screen.getByRole('button', { name: /^Balance/ }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Balance' })).getByRole('button', { name: 'Even balance' }));
+    // Only the even-balance frame survives; the header counts what is shown.
+    expect(screen.queryByRole('button', { name: 'Yonex Nanoflare 800' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Li-Ning Air Force 79' })).toBeTruthy();
+    expect(screen.getByText('Li-Ning · 1 match')).toBeTruthy();
+    expect(screen.getByText('1 of 2 rackets')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove filter: Even balance' }));
+    expect(await screen.findByRole('button', { name: 'Yonex Nanoflare 800' })).toBeTruthy();
+    expect(screen.queryByText(/of 2 rackets/)).toBeNull();
+  });
+
+  it('filters that match nothing say so, and Clear filters brings the list back', async () => {
+    render(<Harness category="racket" initial={doc([])} picks={picksWith({})} />);
+    await screen.findByRole('button', { name: 'Yonex Nanoflare 800' });
+    fireEvent.click(screen.getByRole('button', { name: /^Brand/ }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Brand' })).getByRole('button', { name: 'Yonex' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Balance/ }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Balance' })).getByRole('button', { name: 'Even balance' }));
+    expect(screen.getByText('Nothing matches those filters.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    expect(await screen.findByRole('button', { name: 'Li-Ning Air Force 79' })).toBeTruthy();
   });
 });

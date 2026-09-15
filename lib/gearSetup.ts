@@ -227,18 +227,3 @@ export function setupShare(name: string, lines: SetupLines): SetupShare {
     tensionLbs: typeof lines.string?.tensionLbs === 'number' ? lines.string.tensionLbs : null,
   };
 }
-
-/** The "Copy as text" body. Labels come from the caller so the text is in the
- *  member's language. */
-export function setupShareText(
-  share: SetupShare,
-  words: { title: string; racket: string; string: string; lb: string; footer: string },
-): string {
-  const rows = [words.title];
-  if (share.racket) rows.push(`${words.racket}: ${share.racket}`);
-  if (share.string) {
-    rows.push(`${words.string}: ${share.string}${share.tensionLbs !== null ? ` · ${share.tensionLbs} ${words.lb}` : ''}`);
-  }
-  rows.push(words.footer);
-  return rows.join('\n');
-}

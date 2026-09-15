@@ -4,7 +4,7 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, unauthorized } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { PICK_KINDS, isCheckInSource } from '@/lib/events';
+import { PICK_KINDS, GEAR_SURFACE_KINDS, isCheckInSource } from '@/lib/events';
 import { SKILLS } from '@/lib/assessment';
 import { rosterMembers } from '@/lib/roster';
 
@@ -171,6 +171,9 @@ export async function GET(req: NextRequest) {
       return byName && rosterNames.has(byName) ? byName : null;
     };
 
+    /** Equipment surface beacons: events per kind, and distinct members. */
+    const gearSurfaces: Record<string, { events: number; members: number }> = {};
+    const gearSurfaceMembers = new Map<string, Set<string>>();
     const statsOpeners = new Set<string>();
     const checkInOpeners = new Set<string>();
     const openBySource: Record<string, number> = { strip: 0, trend: 0, learn: 0, unknown: 0 };
@@ -194,6 +197,17 @@ export async function GET(req: NextRequest) {
         if (!key) continue;
         if (e.kind === 'rec_card_tap') taps.set(key, (taps.get(key) ?? 0) + 1);
         if ((PICK_KINDS as readonly string[]).includes(e.kind)) tallyPick(e as PickEvent, key);
+        if ((GEAR_SURFACE_KINDS as readonly string[]).includes(e.kind)) {
+          const rk = rosterKey(e.memberId, e.name);
+          if (rk) {
+            const row = (gearSurfaces[e.kind] ??= { events: 0, members: 0 });
+            row.events += 1;
+            const seen = gearSurfaceMembers.get(e.kind) ?? new Set<string>();
+            seen.add(rk);
+            gearSurfaceMembers.set(e.kind, seen);
+            row.members = seen.size;
+          }
+        }
 
         // --- Skill funnel. Denominated on the ROSTER, so an event from someone
         // who is not on it is dropped rather than counted against a
@@ -385,6 +399,9 @@ export async function GET(req: NextRequest) {
       },
       racketSavers,
       picks,
+      /** Equipment surface beacons — see GEAR_SURFACE_KINDS in lib/events.ts.
+       *  Roster-narrowed like everything above; a kind nobody used is absent. */
+      gearSurfaces,
       verdict,
     });
   } catch (error) {

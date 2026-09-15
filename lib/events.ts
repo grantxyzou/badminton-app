@@ -31,7 +31,17 @@ export const CLIENT_KINDS = [
   'pick_rated',
   'stats_open',
   'checkin_open',
+  'catalog_filter_applied',
+  'tension_skipped',
+  'share_card_exported',
 ] as const;
+/**
+ * The Equipment surfaces' own beacons (design "Equipment redesign", Turn 3 §9).
+ * Each answers one question about whether a surface earns its place: are the
+ * filters used, is "Don't know" the usual tension answer, does anyone share.
+ * Slice-0 reports them per kind as events and distinct members.
+ */
+export const GEAR_SURFACE_KINDS = ['catalog_filter_applied', 'tension_skipped', 'share_card_exported'] as const;
 /** Written by the server only; `POST /api/events` refuses them. */
 export const SERVER_KINDS = ['pick_served'] as const;
 export const PICK_KINDS = ['pick_served', 'pick_added', 'pick_tried', 'pick_rated'] as const;
@@ -80,6 +90,9 @@ export const CLIENT_PAYLOAD: Record<
   pick_rated: ['catalogId', 'engineVersion', 'rating', 'category'],
   stats_open: [],
   checkin_open: ['source'],
+  catalog_filter_applied: ['category'],
+  tension_skipped: ['catalogId'],
+  share_card_exported: [],
 };
 
 export function isClientKind(v: unknown): v is ClientKind {
