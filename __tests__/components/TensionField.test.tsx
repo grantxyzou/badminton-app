@@ -79,6 +79,27 @@ describe('TensionField', () => {
     expect(screen.getByTestId('ruler-you').style.left).toBe('60%');
   });
 
+  it('goes past 30: with no rated range the steppers do not stop there', () => {
+    render(<Harness initial={30} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Raise tension' }));
+    expect(field().value).toBe('31');
+  });
+
+  it('a figure above the rated range walks back a pound at a time, not a jump to the edge', () => {
+    render(<Harness initial={32} rated={[20, 30]} />);
+    expect((screen.getByRole('button', { name: 'Raise tension' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Lower tension' }));
+    expect(field().value).toBe('31');
+  });
+
+  it('the ruler widens to hold a figure past 30 instead of pinning it to the end', () => {
+    render(<Harness initial={32} rated={[20, 30]} clubStatus="ready" />);
+    expect(screen.getByRole('img', { name: /Tension from 20 to 32 lb/ })).toBeTruthy();
+    expect(screen.getByTestId('ruler-you').style.left).toBe('100%');
+    fireEvent.click(screen.getByRole('button', { name: 'Lower tension' }));
+    expect(screen.getByTestId('ruler-you').style.left).not.toBe('100%');
+  });
+
   it('draws a suggestion dashed and an out-of-range figure amber', () => {
     render(<Harness suggested={24} rated={[22, 26]} clubStatus="ready" />);
     expect(screen.getByTestId('ruler-you').className).toContain('tension-ruler-you--suggested');

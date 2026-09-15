@@ -166,8 +166,8 @@ each owns different hooks and a hook cannot be conditional.
   bounded by the frame's rated range (`ratedRange` in `lib/tension.ts`, a
   missing bound is the app scale's own), a warning that still saves, and the club hint from
   `useClubTension`. **Pass `clubStatus` only when there is a frame to ask about**:
-  then it draws the live ruler (`scalePosition`, the same fixed 20–30 lb scale
-  as the frame page's chart) and its club line distinguishes loading, a failed
+  then it draws the live ruler (`rulerScale` + `scalePosition`: the frame page's
+  20–30 lb scale, widened to hold a figure past either end — members string past 30) and its club line distinguishes loading, a failed
   read and "not enough of the club yet" — passing `.band` alone made all three
   the same silence. Its classes are `tension-field-*` — `.setup-tension` is the
   CARD's figure, and reusing that name restyled it.

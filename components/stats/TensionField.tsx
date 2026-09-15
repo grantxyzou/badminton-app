@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { MIN_LB, MAX_LB, scalePosition } from '@/lib/tension';
+import { MIN_LB, MAX_LB, rulerScale, scalePosition } from '@/lib/tension';
 // The rated window lives beside the scale it defaults to; re-exported for the sheets.
 export { ratedRange } from '@/lib/tension';
 import type { ClubTensionBand } from '@/lib/clubTension';
@@ -38,7 +38,9 @@ export interface TensionFieldProps {
  * Tension as a FIELD, not a display (design "Equipment redesign" 2a, screen 03).
  * The old `− 26 +` read as a value nobody could type into. The numeric keypad
  * opens on focus; the steppers nudge a pound within the frame's rated range and
- * stop at its edges; a typed figure outside the range warns and still saves.
+ * stop at its edges; a typed figure outside the range warns and still saves,
+ * and from there the steppers walk it back a pound at a time. With no rated
+ * range they are bounded only by what the field holds — people string past 30.
  */
 export default function TensionField({ value, suggested = null, onChange, rated = null, club = null, clubStatus, autoFocus = false, disabled = false, label }: TensionFieldProps) {
   const t = useTranslations('stats.gear.setup');
@@ -54,8 +56,8 @@ export default function TensionField({ value, suggested = null, onChange, rated 
     if (autoFocus) inputRef.current?.focus({ preventScroll: true });
   }, [autoFocus]);
 
-  const [lo, hi] = rated ?? [MIN_LB, MAX_LB];
-  const base = value ?? suggested ?? Math.round((lo + hi) / 2);
+  const [lo, hi] = rated ?? [FIELD_MIN_LB, FIELD_MAX_LB];
+  const base = value ?? suggested ?? Math.round(rated ? (lo + hi) / 2 : (MIN_LB + MAX_LB) / 2);
 
   function commit(raw: string) {
     const digits = raw.replace(/[^0-9]/g, '').slice(0, 2);
@@ -66,12 +68,15 @@ export default function TensionField({ value, suggested = null, onChange, rated 
   function step(delta: number) {
     // The first tap on an empty field CHOOSES the shown figure ±1, so the
     // member's first action moves from what they can see.
-    const next = Math.min(hi, Math.max(lo, base + delta));
+    // Toward the range always moves one pound; away from it stops at the edge.
+    const next = delta > 0 ? Math.min(Math.max(hi, base), base + delta) : Math.max(Math.min(lo, base), base + delta);
     setText(String(next));
     onChange(next);
   }
 
   const outOfRange = rated !== null && value !== null && (value < rated[0] || value > rated[1]);
+  const shown = value ?? suggested;
+  const scale = rulerScale([shown, rated?.[0], rated?.[1], clubStatus === 'ready' ? club?.low : null, clubStatus === 'ready' ? club?.high : null]);
   const clubLine = clubStatus === undefined
     ? null
     : clubStatus === 'loading'
@@ -111,7 +116,7 @@ export default function TensionField({ value, suggested = null, onChange, rated 
         </button>
       </div>
       {clubStatus !== undefined && (
-        <TensionRuler value={value ?? suggested} chosen={value !== null} rated={rated} club={clubStatus === 'ready' ? club : null} outOfRange={outOfRange} label={t('tensionRulerLabel')} />
+        <TensionRuler value={shown} chosen={value !== null} rated={rated} club={clubStatus === 'ready' ? club : null} outOfRange={outOfRange} scale={scale} label={t('tensionRulerLabel', { low: scale[0], high: scale[1] })} />
       )}
       {(outOfRange || clubLine) && (
         <p id={hintId} className="tension-field-hint">
@@ -124,20 +129,20 @@ export default function TensionField({ value, suggested = null, onChange, rated 
   );
 }
 
-const pct = (lbs: number) => `${(scalePosition(lbs) * 100).toFixed(2)}%`;
-const RULER_TICKS = [MIN_LB, (MIN_LB + MAX_LB) / 2, MAX_LB];
-
 /**
- * The field's figure on the app's fixed 20–30 lb ruler, live as it changes:
+ * The field's figure on a 20–30 lb ruler (wider when a figure needs it), live as it changes:
  * the frame's rated window as a faint track, the club's band when three members
  * have logged one, and the member's line moving as they type or step. A figure
  * nobody chose (the suggestion) draws dashed; one outside the rated window
  * turns amber, the same cue as the warning under it.
  */
-function TensionRuler({ value, chosen, rated, club, outOfRange, label }: {
-  value: number | null; chosen: boolean; rated: [number, number] | null; club: ClubTensionBand | null; outOfRange: boolean; label: string;
+function TensionRuler({ value, chosen, rated, club, outOfRange, scale, label }: {
+  value: number | null; chosen: boolean; rated: [number, number] | null; club: ClubTensionBand | null; outOfRange: boolean; scale: [number, number]; label: string;
 }) {
-  const span = (lo: number, hi: number) => ({ left: pct(lo), width: `${((scalePosition(hi) - scalePosition(lo)) * 100).toFixed(2)}%` });
+  const at = (lbs: number) => scalePosition(lbs, scale[0], scale[1]);
+  const pct = (lbs: number) => `${(at(lbs) * 100).toFixed(2)}%`;
+  const span = (lo: number, hi: number) => ({ left: pct(lo), width: `${((at(hi) - at(lo)) * 100).toFixed(2)}%` });
+  const ticks = [scale[0], (scale[0] + scale[1]) / 2, scale[1]];
   return (
     <div className="tension-ruler" role="img" aria-label={label}>
       <div className="tension-ruler-track">
@@ -152,7 +157,7 @@ function TensionRuler({ value, chosen, rated, club, outOfRange, label }: {
         )}
       </div>
       <div className="tension-ruler-axis" aria-hidden="true">
-        {RULER_TICKS.map((lb) => <span key={lb}>{lb}</span>)}
+        {ticks.map((lb) => <span key={lb}>{lb}</span>)}
       </div>
     </div>
   );

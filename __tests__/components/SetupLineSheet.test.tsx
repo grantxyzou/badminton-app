@@ -88,4 +88,18 @@ describe('SetupLineSheet — one sheet about one line', () => {
     fireEvent.click(save);
     await waitFor(() => expect(gear.setTension).toHaveBeenCalledWith(STRING, 26));
   });
+
+  it('a saved tension can be retyped: clearing the field does not snap the saved figure back', async () => {
+    const gear = fakeGear([RACKET, { ...STRING, tensionLbs: 32 }]);
+    renderSheet('string', gear);
+    const input = await screen.findByRole('textbox', { name: 'Tension' }) as HTMLInputElement;
+    expect(input.value).toBe('32');
+    fireEvent.change(input, { target: { value: '' } });
+    expect(input.value).toBe('');
+    fireEvent.change(input, { target: { value: '2' } });
+    expect(input.value).toBe('2');
+    fireEvent.change(input, { target: { value: '28' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(gear.setTension).toHaveBeenCalledWith(expect.objectContaining({ id: 's1' }), 28));
+  });
 });

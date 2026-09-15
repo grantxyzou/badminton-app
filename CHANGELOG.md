@@ -48,6 +48,12 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Equipment — tension past 30 lb (2026-09-15)
+
+- **A saved tension can be retyped.** Clearing the field in the string's sheet used to snap the saved figure straight back, so a string saved at 32 lb could not be changed by typing.
+- **The steppers go past 30** when the frame prints no rated range, and a figure above a frame's range steps back a pound at a time instead of jumping to the edge.
+- **The ruler widens** to hold a figure past 30 (or below 20) rather than pinning the line to the end.
+
 ### Equipment — a tension ruler, and club rows that open the racket (2026-09-14)
 
 - **Strung at** has a live ruler under it: the frame's rated window, the club's range once three members have logged one, and your figure as a line that moves as you type or tap. A suggested figure draws dashed; one outside the rated window turns amber.
