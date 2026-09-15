@@ -1767,7 +1767,7 @@
         {
           "h": "How long we keep it",
           "p": [
-            "Session and payment records are kept for 24 months after the session date, then deleted or reduced to the anonymized line described under \"Deleting your account.\" Push tokens are removed when you turn off notifications or when the device stops accepting them."
+            "Session and payment records are kept so the group's books add up. If you delete your account, yours are reduced to the anonymized line described under \"Deleting your account.\" Push tokens are removed when you turn off notifications or when the device stops accepting them."
           ]
         },
         {
