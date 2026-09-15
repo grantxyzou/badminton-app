@@ -34,7 +34,31 @@ function extractSubset(): Set<string> {
 // an exotic one.
 const GLYPH_RE_SOURCE = '<span[^>]*class(?:Name)?="[^"]*\\bmaterial-icons\\b[^"]*"[^>]*>\\s*([a-z0-9_]+)\\s*</span>';
 
+// Glyphs handed to a component as a prop (`<CardHeader icon="link">`) or a row
+// object (`{ icon: 'campaign', … }`) never appear inside a literal span, so the
+// span scan above cannot see them. The admin Invite card rendered the word
+// "LINK" for exactly that reason (2026-09-14).
+const ICON_PROP_RES = [
+  /\bicon="([a-z0-9_]+)"/g,
+  /\bicon=\{'([a-z0-9_]+)'\}/g,
+  /\bicon:\s*'([a-z0-9_]+)'/g,
+];
+
 describe('Material Symbols icon subset', () => {
+  it('every icon named in an icon prop or row object is in the subset URL', () => {
+    const subset = extractSubset();
+    const missing: string[] = [];
+    for (const file of SCAN_DIRS.flatMap(walk)) {
+      const src = readFileSync(file, 'utf8');
+      for (const re of ICON_PROP_RES) {
+        for (const m of src.matchAll(re)) {
+          if (!subset.has(m[1])) missing.push(`"${m[1]}" in ${file.replace(ROOT + '/', '')}`);
+        }
+      }
+    }
+    expect(missing, 'Add these glyphs to the icon_names URL in app/layout.tsx').toEqual([]);
+  });
+
   it('every literal material-icons span usage is in the subset URL', () => {
     const subset = extractSubset();
     const files = SCAN_DIRS.flatMap(walk);
