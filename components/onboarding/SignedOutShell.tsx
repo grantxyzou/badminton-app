@@ -202,6 +202,7 @@ export default function SignedOutShell({ authProviders = [] }: Props) {
                   icon: banner.icon,
                   title: tAuth(banner.titleKey),
                   body: tAuth(banner.bodyKey),
+                  durationMs: noticeTimeoutMs(notice),
                 }
               : null
           }

@@ -670,6 +670,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
                       icon: noticeBanner(authNotice).icon,
                       title: tAuth(noticeBanner(authNotice).titleKey),
                       body: tAuth(noticeBanner(authNotice).bodyKey),
+                      durationMs: noticeTimeoutMs(authNotice),
                     }
                   : null
             }
