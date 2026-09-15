@@ -70,6 +70,15 @@ export async function GET(req: NextRequest) {
   // lib/authHandoff.ts, guarantee 3.
   const popup = !native && search.get('popup') === '1';
   const openerOrigin = popup ? ownOriginOrNull(search.get('po')) : null;
+  // A refused origin FAILS SILENTLY — that pop-up can only show its typed code,
+  // and every sign-in still "works". Say so, or a wrong WEBSITE_HOSTNAME
+  // quietly puts every member on the typed path.
+  if (popup && !openerOrigin) {
+    console.error('[oauth-diag] pop-up opener origin is not one of ours', {
+      provider: 'apple',
+      po: (search.get('po') ?? '').slice(0, 100),
+    });
+  }
   if (handoff) {
     try {
       await beginHandoff(handoff, { state, codeVerifier: '', native, popup, openerOrigin, groupId: resolveGroupId(req) });

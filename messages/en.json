@@ -319,6 +319,7 @@
       "handoffEnterSubmit": "Finish signing in",
       "handoffEnterWrong": "That code didn't match. Check the digits and try again.",
       "handoffEnterRetry": "We couldn't check that just now. Give it another go in a moment.",
+      "handoffEnterThrottled": "That's a lot of tries. Wait a few minutes, then try the code again.",
       "handoffEnterExpired": "That sign-in has run out. Start again from Google or Apple.",
       "handoffEnterClose": "OK",
       "handoffEnterCancel": "Cancel this sign-in",

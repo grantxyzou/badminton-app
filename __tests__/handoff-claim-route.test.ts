@@ -87,6 +87,27 @@ describe('POST /api/auth/handoff/claim', () => {
     expect(parsed?.handoff ?? null).toBeNull();
   });
 
+  /* One gym, one wifi, one IP: the typed-code limit must not be shared by a
+     whole club. */
+  it('does not share the typed-code limit between people on the same network', async () => {
+    const { POST } = await import('../app/api/auth/handoff/claim/route');
+    const sameIp = (body: unknown) =>
+      POST(
+        new NextRequest('https://bpm.grantzou.com/bpm/api/auth/handoff/claim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Client-IP': '10.45.0.1' },
+          body: JSON.stringify(body),
+        }),
+      );
+    for (let person = 0; person < 12; person++) {
+      const m = seedMember(`Player ${person}`);
+      const { id, typedCode } = await webStash(m.id);
+      const res = await sameIp({ handoffId: id, typedCode });
+      expect(res.status).toBe(200);
+      expect((await res.json()).status).toBe('ready');
+    }
+  });
+
   it('refuses a malformed typed code rather than dropping it', async () => {
     const { id } = await webStash('member-x');
     expect((await claim({ handoffId: id, typedCode: '12345' })).status).toBe(400);

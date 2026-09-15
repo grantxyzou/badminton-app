@@ -74,6 +74,7 @@ export default function HandoffCodeSheet({ prompt, submitCode, dismiss }: Handof
             </button>
             {prompt?.wrong && <p role="alert" className="field-error">{t('handoffEnterWrong')}</p>}
             {prompt?.retry && <p role="alert" className="field-error">{t('handoffEnterRetry')}</p>}
+            {prompt?.throttled && <p role="alert" className="field-error">{t('handoffEnterThrottled')}</p>}
             {!online && <p className="fs-sm" style={{ color: 'var(--text-muted)', margin: '0' }}>{t('offline')}</p>}
             <button type="button" onClick={dismiss} className="cc-btn cc-btn-ghost">
               {t('handoffEnterCancel')}

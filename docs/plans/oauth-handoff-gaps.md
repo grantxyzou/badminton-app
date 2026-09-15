@@ -142,6 +142,15 @@ This failed if either:
     members still add Google — they just type the PIN in the app.
   - The pop-up posts only to an origin of ours, recorded at `/start`, because
     Grant's home-screen app runs on the Azure host, not `bpm.grantzou.com`.
+- **Legacy paths kept for one cookie lifetime, then delete:** the `handedOff`
+  notice and `PendingSignup.parked`. Nothing mints either any more; a
+  pending-signup cookie minted before this change (30-minute TTL) can still
+  reach `complete-signup`'s `parked` branch, which refuses to sign in and
+  sends the browser to `?handedOff=1`. Safe to remove from 2026-09-16.
+- **The typed-code rate limit is per HAND-OFF, not per IP** (advisor, before
+  merge). The club signs in from one gym's wifi; a per-IP cap would have
+  locked the venue out after ten typed sign-ins, and shown it as a cold
+  start. The stash's own 5-attempt cap is what bounds guessing.
 - **Left on purpose:** the device-code phishing every such flow has — someone
   talking a member into reading out their code. The code page says nobody from
   the club will ask for it. Cancelling in a pop-up lands on the app's own error

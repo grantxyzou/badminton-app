@@ -58,9 +58,12 @@ export async function POST(req: NextRequest) {
   if (!absent(typedCode) && (typeof typedCode !== 'string' || !/^[0-9]{6}$/.test(typedCode))) {
     return NextResponse.json({ error: 'bad_request' }, { status: 400 });
   }
-  // A typed guess is the one input here with little entropy. The stash caps
-  // its own attempts; this caps a device working through many stashes.
-  if (typeof typedCode === 'string' && !checkRateLimit(`handoff-code:${ip}`, 10, 60 * 60 * 1000)) {
+  // A typed guess is the one input here with little entropy, but the stash's
+  // own cap (5, counted under an etag) is what bounds guessing. This only
+  // stops one stash being hammered. Keyed per HAND-OFF, never per IP: a whole
+  // club signs in from one gym's wifi, and a per-IP cap would lock the venue
+  // out after a handful of people.
+  if (typeof typedCode === 'string' && !checkRateLimit(`handoff-code:${handoffId}`, 20, 60 * 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 

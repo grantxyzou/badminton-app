@@ -230,6 +230,8 @@ export type ClaimOutcome =
   /** A new Google/Apple identity; the app's pending-signup cookie is now set. */
   | { status: 'needs_name' }
   | { status: 'code_required'; wrong: boolean }
+  /** Too many tries on this sign-in for now — not a cold start, and worth saying so. */
+  | { status: 'rate_limited' }
   | { status: 'pending' }
   | { status: 'none' };
 
@@ -255,6 +257,7 @@ export async function claimPendingHandoff(typedCode?: string): Promise<ClaimOutc
       }),
       cache: 'no-store',
     });
+    if (res.status === 429) return { status: 'rate_limited' };
     if (!res.ok) {
       // A 4xx/5xx is not proof the handoff is dead (it could be a rate limit or
       // a cold start), so KEEP the id and let the next attempt decide.

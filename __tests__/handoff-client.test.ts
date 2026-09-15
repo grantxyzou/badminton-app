@@ -190,9 +190,9 @@ describe('claimPendingHandoff', () => {
     expect(pendingHandoffId()).not.toBeNull();
   });
 
-  it('treats a 5xx / rate limit as pending and keeps the id', async () => {
+  it('treats a 5xx as pending and keeps the id', async () => {
     await beginHandoff();
-    mockFetch(() => json({ error: 'rate_limited' }, 429));
+    mockFetch(() => json({ error: 'service_unavailable' }, 503));
 
     expect(await claimPendingHandoff()).toEqual({ status: 'pending' });
     expect(pendingHandoffId()).not.toBeNull();
@@ -321,6 +321,13 @@ describe('claimPendingHandoff — the answers that need the person', () => {
     const spy = mockFetch(() => json({ status: 'code_required', wrong: true }));
     expect(await claimPendingHandoff('482913')).toEqual({ status: 'code_required', wrong: true });
     expect(JSON.parse(String(spy.mock.calls[0][1]?.body))).toMatchObject({ typedCode: '482913' });
+    expect(pendingHandoffId()).toBe('a'.repeat(64));
+  });
+
+  it('a 429 is its own answer, not "try again later" in disguise', async () => {
+    stageHandoff('a'.repeat(64));
+    mockFetch(() => json({ error: 'rate_limited' }, 429));
+    expect(await claimPendingHandoff('482913')).toEqual({ status: 'rate_limited' });
     expect(pendingHandoffId()).toBe('a'.repeat(64));
   });
 

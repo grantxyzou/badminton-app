@@ -11,9 +11,13 @@ export interface HandoffCodePrompt {
   wrong: boolean;
   /** The sign-in is gone (expired, or too many wrong codes). */
   expired: boolean;
-  /** The server could not be asked (offline, throttled, cold start). */
+  /** The server could not be asked (offline, cold start). */
   retry: boolean;
+  /** Too many tries on this sign-in; wait before the next. */
+  throttled: boolean;
 }
+
+const CLEAR: HandoffCodePrompt = { wrong: false, expired: false, retry: false, throttled: false };
 
 export interface HandoffCollect {
   prompt: HandoffCodePrompt | null;
@@ -76,13 +80,16 @@ export function useHandoffCollect(onReady: (name: string) => void): HandoffColle
         return;
       case 'code_required':
         // A background poll must not wipe a "that didn't match" the person is reading.
-        setPrompt((p) => (submitted ? { wrong: out.wrong, expired: false, retry: false } : (p ?? { wrong: false, expired: false, retry: false })));
+        setPrompt((p) => (submitted ? { ...CLEAR, wrong: out.wrong } : (p ?? CLEAR)));
         return;
       case 'none':
-        setPrompt((p) => (p ? { wrong: false, expired: true, retry: false } : null));
+        setPrompt((p) => (p ? { ...CLEAR, expired: true } : null));
+        return;
+      case 'rate_limited':
+        if (submitted) setPrompt({ ...CLEAR, throttled: true });
         return;
       case 'pending':
-        if (submitted) setPrompt({ wrong: false, expired: false, retry: true });
+        if (submitted) setPrompt({ ...CLEAR, retry: true });
     }
   }, []);
 

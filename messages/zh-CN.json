@@ -319,6 +319,7 @@
       "handoffEnterSubmit": "完成登录",
       "handoffEnterWrong": "验证码不对。请核对数字后再试。",
       "handoffEnterRetry": "暂时无法验证，请稍后再试。",
+      "handoffEnterThrottled": "尝试次数太多了。请等几分钟再输入验证码。",
       "handoffEnterExpired": "这次登录已过期。请重新用 Google 或 Apple 登录。",
       "handoffEnterClose": "好的",
       "handoffEnterCancel": "取消这次登录",
