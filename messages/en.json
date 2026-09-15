@@ -69,6 +69,10 @@
         "noStringsYet": "Grant hasn't listed what he stocks yet, so tell him what you'd like.",
         "unusualPair": "Unusual pair — most rackets go {suggested} on the crosses.",
         "openBadge": "Open",
+        "restring": {
+          "last": "{weeks, plural, =0 {Last strung this week} one {Last strung # week ago} other {Last strung # weeks ago}}",
+          "due": "{weeks, plural, one {Strung # week ago — time for a restring?} other {Strung # weeks ago — time for a restring?}}"
+        },
         "requestCta": "Submit a request",
         "needName": "Add your name above first, so Grant knows whose racket it is.",
         "stage": {
@@ -1334,6 +1338,8 @@
     "waitlistHeader": "WAITLIST",
     "youSuffix": "(you)",
     "kudosAction": "Give kudos to {name}",
+    "kudosHint": "Tap the heart next to someone to thank them for a good game.",
+    "kudosHintDismiss": "Hide this tip",
     "cancelAction": "Cancel",
     "leaveAction": "Leave",
     "cancelConfirm": "Cancel your spot?",

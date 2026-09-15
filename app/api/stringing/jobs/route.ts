@@ -19,6 +19,7 @@ import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { verifyMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
+import { lastStrungFromJobs } from '@/lib/restring';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import {
@@ -327,10 +328,13 @@ export async function GET(req: NextRequest) {
     if (!memberId) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
-    const resources = await scope.query<StringingJob>('stringingJobs', {
-      where: `c.memberId = @memberId AND ${LIVE_SQL}`,
+    // Every job of theirs, archived included — still one partition. The list
+    // drops archived rows below; `lastStrungAt` keeps them, because archiving
+    // takes a racket off the bench, it does not un-string it.
+    const resources = (await scope.query<StringingJob>('stringingJobs', {
+      where: 'c.memberId = @memberId',
       params: [{ name: '@memberId', value: memberId }],
-    });
+    })).filter((j) => j.memberId === memberId);
     // A player never sees an archived job. Archiving is how a stringer says
     // "this is done with"; leaving it on someone's Home card afterwards would
     // make the two screens disagree about the same racket.
@@ -338,7 +342,9 @@ export async function GET(req: NextRequest) {
       .filter((j) => !isArchived(j))
       .sort(benchOrder)
       .map(toPlayerJob);
-    return NextResponse.json({ jobs, view: 'player' });
+    // A date and nothing else — no price, no stringer — so the price wall is
+    // not touched by it.
+    return NextResponse.json({ jobs, view: 'player', lastStrungAt: lastStrungFromJobs(resources) });
   } catch (err) {
     // Never `catch { return [] }` — a load failure must not render as "no
     // jobs", which is the lying-empty-state rule this codebase already carries.

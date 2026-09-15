@@ -674,3 +674,33 @@ describe('deleting is reachable only from the archive', () => {
     expect(getStore()['stringingJobs']).toHaveLength(1);
   });
 });
+
+describe('lastStrungAt on the player view', () => {
+  const strung = (at: string) => [
+    { status: 'received' as const, at: '2026-01-01T10:00:00Z', by: null },
+    { status: 'ready' as const, at, by: null },
+  ];
+
+  it('is null when nothing of theirs has been strung', async () => {
+    await seedJob({ status: 'received' });
+    const res = await GET(memberReq('GET', 'http://x/api/stringing/jobs', 'wei'));
+    expect((await res.json()).lastStrungAt).toBeNull();
+  });
+
+  it('counts an ARCHIVED job, which the list itself hides', async () => {
+    // Archiving takes a racket off the bench; it does not un-string it. Losing
+    // the date there would reset every member's clock the day the stringer
+    // tidied up.
+    await seedJob({ status: 'picked_up', archivedAt: '2026-07-01T00:00:00Z', history: strung('2026-06-20T18:00:00Z') });
+    const res = await GET(memberReq('GET', 'http://x/api/stringing/jobs', 'wei'));
+    const body = await res.json();
+    expect(body.jobs).toHaveLength(0);
+    expect(body.lastStrungAt).toBe('2026-06-20T18:00:00Z');
+  });
+
+  it('never reads another member’s racket', async () => {
+    await seedJob({ memberId: 'member-priya', memberName: 'Priya', history: strung('2026-09-01T18:00:00Z') });
+    const res = await GET(memberReq('GET', 'http://x/api/stringing/jobs', 'wei'));
+    expect((await res.json()).lastStrungAt).toBeNull();
+  });
+});

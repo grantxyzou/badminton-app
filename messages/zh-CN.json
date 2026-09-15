@@ -69,6 +69,10 @@
         "noStringsYet": "Grant 还没列出有哪些线，直接告诉他你想要什么吧。",
         "unusualPair": "这个组合不常见 — 横线一般是 {suggested} 磅。",
         "openBadge": "开放中",
+        "restring": {
+          "last": "{weeks, plural, =0 {本周刚穿过线} other {上次穿线是 # 周前}}",
+          "due": "{weeks, plural, other {上次穿线是 # 周前 — 该重新穿线了？}}"
+        },
         "requestCta": "提交申请",
         "needName": "先在上面填你的名字，Grant 才知道是谁的拍。",
         "stage": {
@@ -1334,6 +1338,8 @@
     "waitlistHeader": "候补名单",
     "youSuffix": "（您）",
     "kudosAction": "给 {name} 点赞",
+    "kudosHint": "点名字旁边的爱心，谢谢一起打得好的球友。",
+    "kudosHintDismiss": "隐藏这条提示",
     "cancelAction": "取消",
     "leaveAction": "离开",
     "cancelConfirm": "取消您的名额？",
