@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import type { StatusTone } from './StatusBanner';
 
@@ -37,6 +37,14 @@ export interface TopToastContent {
   icon: string;
   title: ReactNode;
   body?: ReactNode;
+  /**
+   * How long until the caller clears it, in ms. Draws the countdown: a ring
+   * around the ✕ whose stroke fills in over this time and is complete the
+   * moment the message leaves. The CALLER still owns the timer — this only
+   * shows it — so pass the same number the caller's timeout uses, or the ring
+   * finishes before or after the message does.
+   */
+  durationMs?: number;
 }
 
 export interface TopToastProps {
@@ -72,8 +80,23 @@ export default function TopToast({ content, onClose }: TopToastProps) {
           </div>
           {onClose && (
             <button type="button" className="top-toast-close" onClick={onClose} aria-label={t('close')}>
-              <span className="material-icons icon-sm" aria-hidden="true">
-                close
+              {view.durationMs && open ? (
+                /* Keyed by id so a new message restarts the ring from empty. */
+                <svg
+                  key={view.id}
+                  className="top-toast-ring"
+                  viewBox="0 0 36 36"
+                  aria-hidden="true"
+                  style={{ '--toast-duration': `${view.durationMs}ms` } as CSSProperties}
+                >
+                  <circle className="top-toast-ring-track" cx="18" cy="18" r="16" pathLength={100} />
+                  <circle className="top-toast-ring-fill" cx="18" cy="18" r="16" pathLength={100} />
+                </svg>
+              ) : null}
+              <span className="top-toast-close-dot">
+                <span className="material-icons icon-sm" aria-hidden="true">
+                  close
+                </span>
               </span>
             </button>
           )}

@@ -57,4 +57,19 @@ describe('TopToast', () => {
     rerender(wrap(<TopToast content={{ ...signedIn, id: 'c', tone: 'danger', title: 'Sign-in failed' }} />));
     expect(screen.getByRole('alert')).toBeDefined();
   });
+
+  it('draws a countdown ring around the ✕ for exactly the message\u2019s lifetime', () => {
+    const { container } = render(wrap(<TopToast content={{ ...signedIn, durationMs: 6000 }} onClose={() => {}} />));
+    const ring = container.querySelector('.top-toast-ring') as SVGElement | null;
+    expect(ring).not.toBeNull();
+    expect(ring!.style.getPropertyValue('--toast-duration')).toBe('6000ms');
+    expect(container.querySelector('.top-toast-ring-fill')).not.toBeNull();
+  });
+
+  it('has no ring without a duration, and none on a message with no ✕', () => {
+    const { container, rerender } = render(wrap(<TopToast content={signedIn} onClose={() => {}} />));
+    expect(container.querySelector('.top-toast-ring')).toBeNull();
+    rerender(wrap(<TopToast content={{ ...signedIn, id: 'offline', durationMs: 6000 }} />));
+    expect(container.querySelector('.top-toast-ring')).toBeNull();
+  });
 });

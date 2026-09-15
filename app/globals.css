@@ -4598,17 +4598,61 @@ html:root[data-theme="light"] {
 }
 
 .top-toast-close {
+  position: relative;
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
   border: none;
+  background: transparent;
+  color: var(--toast-fg);
+  cursor: pointer;
+}
+
+.top-toast-close-dot {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-pill);
   background: var(--toast-fg);
   color: var(--toast-bg);
-  cursor: pointer;
+}
+
+/* THE COUNTDOWN. A ring around the ✕ whose stroke fills in over the message's
+   lifetime, starting at 12 o'clock, and closes the moment the message leaves.
+   `pathLength=100` makes the dash maths independent of the radius. Kept under
+   reduced motion on purpose: it is information (how long you have to read),
+   not decoration, and a slow linear stroke is not vestibular motion. */
+.top-toast-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+.top-toast-ring circle {
+  fill: none;
+  stroke-width: 2.5;
+}
+.top-toast-ring-track {
+  stroke: var(--toast-muted);
+  opacity: 0.35;
+}
+.top-toast-ring-fill {
+  stroke: var(--toast-fg);
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: toast-ring var(--toast-duration, 6000ms) linear forwards;
+}
+@keyframes toast-ring {
+  to { stroke-dashoffset: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
