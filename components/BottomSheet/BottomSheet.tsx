@@ -29,8 +29,8 @@ export interface BottomSheetProps {
    * the whole design and a dismissal would mean asking again next week.
    *
    * There is nothing else to switch off: this component never renders a close
-   * button (call sites supply their own, so one can simply be omitted) and its
-   * backdrop is already non-interactive by spec. The focus trap and scroll
+   * button (call sites supply their own — `SheetCloseButton` — so one can be
+   * omitted) and a tap on the backdrop never dismisses. The focus trap and scroll
    * lock keep working, so a non-dismissible sheet MUST give the user a real
    * way out in its own content — otherwise focus is trapped with no exit.
    */
@@ -134,9 +134,14 @@ export default function BottomSheet({
 
   return createPortal(
     <>
-      {/* Backdrop — visual dim only. No onClick (per spec: dismiss via close
-          icon or Escape only). Provides contrast against the page so glass
-          sheets stay readable, especially in dark mode. */}
+      {/* Backdrop — dims the page AND BLOCKS IT. It used to be dim only
+          (`pointer-events: none`), so a tap on the dimmed page still reached
+          the button underneath: the list behind an open sheet stayed live.
+          It now takes the pointer while the sheet is up and does nothing with
+          it — still no tap-to-dismiss (per spec: the ✕ or Escape), because a
+          stray tap should not throw away a half-filled form. It lets go the
+          moment the sheet starts closing (see globals.css), so a tap right
+          after closing is never swallowed. */}
       <div
         data-state={state}
         className="bottom-sheet-backdrop fixed inset-0"

@@ -3290,8 +3290,29 @@ html[data-hydrated="true"] .splash {
   transition: opacity 180ms var(--ease-sheet);
   pointer-events: none;
 }
+/* While a sheet is opening or open, the page behind it is not clickable: the
+   backdrop takes the tap (and does nothing with it). `closing` falls back to
+   `none` above, so the page is live again the instant a sheet starts to leave. */
+.bottom-sheet-backdrop[data-state="opening"],
+.bottom-sheet-backdrop[data-state="open"] {
+  pointer-events: auto;
+}
 .bottom-sheet-backdrop[data-state="open"] {
   opacity: 1;
+}
+
+/* The sheet header's ✕ (components/BottomSheet/SheetCloseButton.tsx). */
+.sheet-close-btn {
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
 }
 /* Solid sheet surface so page content doesn't bleed through. */
 .bottom-sheet {

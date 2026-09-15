@@ -47,6 +47,8 @@ export default function ResetPasswordSheet({
   onNeedNewLink,
 }: Props) {
   const t = useTranslations('profile.auth');
+  // `close` lives in the recovery namespace; every sheet reuses it.
+  const tClose = useTranslations('recovery');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
@@ -94,7 +96,7 @@ export default function ResetPasswordSheet({
 
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={t('resetTitle')}>
-      <BottomSheetHeader>{t('resetTitle')}</BottomSheetHeader>
+      <BottomSheetHeader onClose={onClose} closeLabel={tClose('close')}>{t('resetTitle')}</BottomSheetHeader>
       <BottomSheetBody>
         {expired ? (
           <div style={{ display: 'grid', gap: 'var(--space-4)' }}>

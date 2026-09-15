@@ -58,6 +58,8 @@ interface Props {
  */
 export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken, inviteCode, onReturnCode }: Props) {
   const t = useTranslations('profile.auth');
+  // `close` lives in the recovery namespace; every sheet reuses it.
+  const tClose = useTranslations('recovery');
   const [mode, setMode] = useState<'name' | 'claim' | 'expired'>('name');
   const [name, setName] = useState('');
   const [secret, setSecret] = useState('');
@@ -201,7 +203,7 @@ export default function ChooseNameSheet({ open, onClose, sessionId, inviteToken,
       onClose={onClose}
       ariaLabel={expired ? t('pendingExpiredTitle') : claiming ? t('claimTitle') : t('chooseNameTitle')}
     >
-      <BottomSheetHeader>
+      <BottomSheetHeader onClose={onClose} closeLabel={tClose('close')}>
         {expired ? t('pendingExpiredTitle') : claiming ? t('claimTitle') : t('chooseNameTitle')}
       </BottomSheetHeader>
       <BottomSheetBody>

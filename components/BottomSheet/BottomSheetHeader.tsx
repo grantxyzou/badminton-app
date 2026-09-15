@@ -1,5 +1,7 @@
 'use client';
 
+import SheetCloseButton from './SheetCloseButton';
+
 interface BottomSheetHeaderProps {
   children?: React.ReactNode;
   className?: string;
@@ -24,6 +26,13 @@ interface BottomSheetHeaderProps {
    * exists to stop.
    */
   bare?: boolean;
+  /**
+   * Renders the standard ✕ (`SheetCloseButton`) after the title. Pass it with
+   * `closeLabel` on any sheet that has no close of its own — the default row
+   * layout already puts it on the right.
+   */
+  onClose?: () => void;
+  closeLabel?: string;
 }
 
 /**
@@ -42,8 +51,13 @@ interface BottomSheetHeaderProps {
  * `p-4` vs `px-5` collision by stylesheet order, not by argument order, so the
  * winner would not be predictable. Use `bare` for a real variant instead.
  */
-export default function BottomSheetHeader({ children, className, bare }: BottomSheetHeaderProps) {
+export default function BottomSheetHeader({ children, className, bare, onClose, closeLabel }: BottomSheetHeaderProps) {
   const base = bare ? '' : 'flex items-center justify-between px-5 pt-4 pb-3';
   const cls = [base, className].filter(Boolean).join(' ');
-  return <div className={cls || undefined}>{children}</div>;
+  return (
+    <div className={cls || undefined}>
+      {children}
+      {onClose && <SheetCloseButton onClose={onClose} label={closeLabel ?? 'Close'} />}
+    </div>
+  );
 }

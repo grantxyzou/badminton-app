@@ -29,6 +29,8 @@ interface Props {
  */
 export default function ForgotPasswordSheet({ open, onClose }: Props) {
   const t = useTranslations('profile.auth');
+  // `close` lives in the recovery namespace; every sheet reuses it.
+  const tClose = useTranslations('recovery');
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -66,7 +68,7 @@ export default function ForgotPasswordSheet({ open, onClose }: Props) {
 
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={t('forgotTitle')}>
-      <BottomSheetHeader>{t('forgotTitle')}</BottomSheetHeader>
+      <BottomSheetHeader onClose={onClose} closeLabel={tClose('close')}>{t('forgotTitle')}</BottomSheetHeader>
       <BottomSheetBody>
         {sent ? (
           <p

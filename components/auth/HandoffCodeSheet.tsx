@@ -22,6 +22,8 @@ import type { HandoffCollect } from '@/lib/useHandoffCollect';
  */
 export default function HandoffCodeSheet({ prompt, submitCode, dismiss }: HandoffCollect) {
   const t = useTranslations('profile.auth');
+  // `close` lives in the recovery namespace; every sheet reuses it.
+  const tClose = useTranslations('recovery');
   const online = useOnline();
   const [code, setCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -38,7 +40,7 @@ export default function HandoffCodeSheet({ prompt, submitCode, dismiss }: Handof
 
   return (
     <BottomSheet open={!!prompt} onClose={dismiss} ariaLabel={t('handoffEnterTitle')}>
-      <BottomSheetHeader>
+      <BottomSheetHeader onClose={dismiss} closeLabel={tClose('close')}>
         <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('handoffEnterTitle')}</span>
       </BottomSheetHeader>
       <BottomSheetBody>

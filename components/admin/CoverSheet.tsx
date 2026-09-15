@@ -140,9 +140,13 @@ export default function CoverSheet({
       onClose={onClose}
       ariaLabel="Cover confirmation"
     >
-      <BottomSheetHeader bare className="p-4">
-        <h2 className="bpm-h3" style={{ margin: '0' }}>{title}</h2>
-        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0' }}>{subtitle}</p>
+      {/* Bare, because title and subtitle stack; the row that puts the ✕ beside
+          them is this className, with the pair wrapped so they stay stacked. */}
+      <BottomSheetHeader bare className="p-4 flex items-start justify-between" onClose={onClose} closeLabel="Close">
+        <div>
+          <h2 className="bpm-h3" style={{ margin: '0' }}>{title}</h2>
+          <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 'var(--space-1) 0 0' }}>{subtitle}</p>
+        </div>
       </BottomSheetHeader>
       <BottomSheetBody bare className="p-4 pb-8" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         {error && (

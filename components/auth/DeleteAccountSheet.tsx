@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { BottomSheet, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { useOnline } from '@/lib/useOnline';
 import { clearIdentity } from '@/lib/identity';
 
@@ -40,6 +40,8 @@ export default function DeleteAccountSheet({
   onDeleted: () => void;
 }) {
   const t = useTranslations('profile.deleteAccount');
+  // `close` lives in the recovery namespace; every sheet reuses it.
+  const tClose = useTranslations('recovery');
   const online = useOnline();
   const [working, setWorking] = useState(false);
   const [error, setError] = useState(false);
@@ -76,11 +78,13 @@ export default function DeleteAccountSheet({
 
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={t('title')}>
+      <BottomSheetHeader onClose={onClose} closeLabel={tClose('close')}>
+        <h2 className="bpm-h3 m-0">{t('title')}</h2>
+      </BottomSheetHeader>
       <BottomSheetBody>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           <div>
-            <h2 className="bpm-h3 m-0">{t('title')}</h2>
-            <p className="fs-base m-0" style={{ marginTop: 'var(--space-2)', color: 'var(--text-secondary)' }}>
+            <p className="fs-base m-0" style={{ color: 'var(--text-secondary)' }}>
               {t('body')}
             </p>
             <p className="fs-sm m-0" style={{ marginTop: 'var(--space-3)', color: 'var(--text-muted)' }}>

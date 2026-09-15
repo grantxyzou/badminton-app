@@ -11,7 +11,7 @@ import ShuttleIcon from '@/components/ShuttleIcon';
 import EmptyState from '@/components/primitives/EmptyState';
 import ErrorState from '@/components/primitives/ErrorState';
 import PageHeader from '@/components/primitives/PageHeader';
-import { BottomSheet, BottomSheetBody } from '@/components/BottomSheet';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
 import GiveKudosSheet from '@/components/stats/GiveKudosSheet';
 
@@ -21,6 +21,8 @@ const DAY_LONG = { weekday: 'long', month: 'long', day: 'numeric' } as const;
 export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) => void } = {}) {
   const pageT = useTranslations('pages.signup');
   const t = useTranslations('players');
+  // `close` lives in the recovery namespace; every sheet reuses it.
+  const tClose = useTranslations('recovery');
   const online = useOnline();
   const format = useFormatter();
   const [players, setPlayers] = useState<Player[]>([]);
@@ -330,13 +332,15 @@ export default function PlayersTab({ onTabChange }: { onTabChange?: (tab: Tab) =
         onClose={() => setConfirmingCancel(false)}
         ariaLabel={imWaitlisted ? t('leaveSheetTitle') : t('cancelConfirm')}
       >
+        <BottomSheetHeader onClose={() => setConfirmingCancel(false)} closeLabel={tClose('close')}>
+          <h2 className="bpm-h3 m-0">
+            {imWaitlisted ? t('leaveSheetTitle') : t('cancelConfirm')}
+          </h2>
+        </BottomSheetHeader>
         <BottomSheetBody>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <div>
-              <h2 className="bpm-h3 m-0">
-                {imWaitlisted ? t('leaveSheetTitle') : t('cancelConfirm')}
-              </h2>
-              <p className="fs-base m-0" style={{ marginTop: 'var(--space-2)', color: 'var(--text-secondary)' }}>
+              <p className="fs-base m-0" style={{ color: 'var(--text-secondary)' }}>
                 {imWaitlisted ? t('leaveSheetBody') : t('cancelSheetBody')}
               </p>
             </div>
