@@ -48,6 +48,11 @@ All infrastructure items above are behavioral no-ops on stable (PreviewBanner re
 
 ## Unreleased
 
+### Equipment — the racket in 3D (2026-09-14)
+
+- Every racket picture is now rendered from one 3D model, painted in each model's colours.
+- **See it in 3D** on your racket shows it live: drag to turn it. Pick your string colour and overgrip, and your share card shows them. A racket you typed in by name can take a frame colour, paint pattern and head shape too.
+
 ### Equipment — search filters, tension as a field, a share card worth sending (2026-09-14)
 
 - **Add a racket**: the brand tabs are gone. Search leads and chips narrow it (Brand, Weight, Balance, Shaft), with a live "7 of 151 rackets" and group headers that count what is shown.

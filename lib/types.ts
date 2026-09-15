@@ -441,6 +441,20 @@ export interface GearItem {
    *  (`catalogId: null`): how the member says it feels. Each answer is
    *  optional ("Don't know" stores nothing). See `lib/racketFeel.ts`. */
   feel?: RacketFeel;
+  /** Racket-specific: the member's string and overgrip colours, and for a
+   *  typed-in racket its frame paint and head shape. See `lib/racketCustom.ts`. */
+  look?: ItemLook;
+}
+
+/** How a member dresses their racket (`lib/racketCustom.ts` owns the palettes).
+ *  Every field optional; absent means "as the model comes". */
+export interface ItemLook {
+  string?: string;
+  wrap?: string;
+  /** Typed-in rackets only: the maker decides a catalog racket's paint. */
+  frame?: string;
+  pattern?: 'shoulder' | 'tips' | 'chevron' | 'crown' | 'plain';
+  shape?: 'isometric' | 'oval' | 'boxy';
 }
 
 /** The member's own description of a typed-in racket, in the catalog's words

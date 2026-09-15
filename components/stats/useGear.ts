@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOnline } from '@/lib/useOnline';
 import { rackets as racketsOf, activeRacket } from '@/lib/activeRacket';
-import type { PlayerGear, GearItem, CatalogItem, FitGoal, FitSwing, FitArmComfort, FitGrip, RacketFeel } from '@/lib/types';
+import type { PlayerGear, GearItem, CatalogItem, FitGoal, FitSwing, FitArmComfort, FitGrip, RacketFeel, ItemLook } from '@/lib/types';
 
 /**
  * Every preference `PATCH /api/equipment/gear` accepts. `null` clears a field
@@ -95,6 +95,9 @@ export interface UseGear {
   /** Replace what the member said about how a typed-in racket feels. An
    *  answer left out is "don't know"; `{}` clears them all. */
   setFeel: (itemId: string, feel: RacketFeel) => Promise<GearResult>;
+  /** Replace how a racket is dressed — string and wrap colours, and for a
+   *  typed-in racket its paint. `{}` puts it back as the model comes. */
+  setLook: (itemId: string, look: ItemLook) => Promise<GearResult>;
 }
 
 /**
@@ -406,6 +409,13 @@ export function useGear(name: string | null): UseGear {
       body: JSON.stringify({ name, itemFeel: { itemId, ...feel } }),
     })), [mutate, name]);
 
+  const setLook = useCallback((itemId: string, look: ItemLook) =>
+    mutate(() => fetch(`${BASE}/api/equipment/gear`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, itemLook: { itemId, ...look } }),
+    })), [mutate, name]);
+
   const setPrefs = useCallback((prefs: GearPrefs) =>
     mutate(() => fetch(`${BASE}/api/equipment/gear`, {
       method: 'PATCH',
@@ -430,6 +440,7 @@ export function useGear(name: string | null): UseGear {
     setPrefs,
     setTension,
     setFeel,
+    setLook,
   };
 }
 

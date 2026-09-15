@@ -4760,6 +4760,46 @@ button.setup-suggest:disabled { opacity: 0.5; pointer-events: none; }
 .tension-field-hint { margin: 0; font-size: var(--fs-xs); line-height: var(--lh-normal); color: var(--text-muted); }
 .tension-field-warn { color: var(--sev-warn); }
 
+/* The live 3D racket (components/stats/Racket3D). A tall stage on the
+   thumb tile's ground so a white frame still reads; the pre-render sits in the
+   same box until three.js is up, so nothing jumps when it swaps. */
+.racket-3d {
+  position: relative;
+  width: 100%;
+  height: min(52dvh, 420px);
+  border-radius: var(--radius-lg);
+  background: var(--thumb-tile);
+  overflow: hidden;
+  touch-action: none;
+}
+.racket-3d-canvas { display: block; width: 100%; height: 100%; }
+.racket-3d-fallback {
+  position: absolute;
+  inset: var(--space-5) 0;
+  width: 100%;
+  height: calc(100% - 2 * var(--space-5));
+  object-fit: contain;
+  pointer-events: none;
+}
+.look-row { display: flex; flex-direction: column; gap: var(--space-2); }
+.look-label { font-size: var(--fs-sm); color: var(--text-secondary); }
+.look-swatches { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+/* 32px dots inside a 44px hit area: the margin is the touch target, the dot the choice. */
+.look-swatch {
+  width: 32px;
+  height: 32px;
+  margin: var(--space-2);
+  padding: 0;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  transition: box-shadow var(--duration-fast) var(--ease-glass);
+}
+.look-swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--page-bg), 0 0 0 4px var(--accent); }
+.look-swatch--auto {
+  background: linear-gradient(135deg, transparent 44%, var(--text-muted) 44%, var(--text-muted) 56%, transparent 56%);
+}
+
 /* One management action per row in a line sheet. */
 .setup-actions { display: flex; flex-direction: column; gap: var(--space-2); }
 .setup-action {

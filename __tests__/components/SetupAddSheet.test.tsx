@@ -48,6 +48,7 @@ function useFakeGear(initial: PlayerGear, spies: Partial<UseGear> = {}): UseGear
     setPrefs: vi.fn(async () => ({ ok: true as const })),
     setTension: spies.setTension ?? vi.fn(async () => ({ ok: true as const })),
     setFeel: spies.setFeel ?? vi.fn(async () => ({ ok: true as const })),
+    setLook: spies.setLook ?? vi.fn(async () => ({ ok: true as const })),
   };
 }
 

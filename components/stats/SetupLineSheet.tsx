@@ -12,7 +12,7 @@ import type { GearResult, UseGear } from './useGear';
 import { gearFailureMessage } from '@/lib/gearFailureMessage';
 import { catalogSpecRows } from '@/lib/catalogSpecs';
 import { racketFeelLine, racketRowSpec, setupLines, stringSpecLine, type SetupCategory } from '@/lib/gearSetup';
-import type { RacketFeel } from '@/lib/types';
+import type { GearItem, RacketFeel } from '@/lib/types';
 
 export interface SetupLineSheetProps {
   open: boolean;
@@ -23,6 +23,8 @@ export interface SetupLineSheetProps {
   onChange: () => void;
   /** "Add another racket as a spare" — the add sheet, NOT as the one in play. */
   onAddSpare: () => void;
+  /** "See it in 3D" — the racket's own look sheet (swaps with this one). */
+  onViewLook?: (item: GearItem, title: string) => void;
 }
 
 /**
@@ -36,7 +38,7 @@ export interface SetupLineSheetProps {
  *
  * Mount with a fresh `key` per opening; its state describes one visit.
  */
-export default function SetupLineSheet({ open, onClose, category, gear, onChange, onAddSpare }: SetupLineSheetProps) {
+export default function SetupLineSheet({ open, onClose, category, gear, onChange, onAddSpare, onViewLook }: SetupLineSheetProps) {
   const t = useTranslations('stats.gear.setup');
   const tGear = useTranslations('stats.gear');
   const tHub = useTranslations('valueHub');
@@ -116,6 +118,7 @@ export default function SetupLineSheet({ open, onClose, category, gear, onChange
                     <span className="setup-action-label">{t('theOneYouPlay')}</span>
                   </div>
                   <ActionRow icon="swap_horiz" label={t('changeModel')} onClick={onChange} disabled={!gear.online} />
+                  {onViewLook && <ActionRow icon="sports_tennis" label={t('viewIn3d')} onClick={() => onViewLook(item, title)} />}
                   <ActionRow icon="add" label={t('addSpare')} onClick={onAddSpare} disabled={!gear.online} />
                 </>
               ) : (
