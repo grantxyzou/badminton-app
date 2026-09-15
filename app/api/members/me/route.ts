@@ -22,6 +22,7 @@ import {
   anonymizeGameResults,
   anonymizeFeedback,
 } from '@/lib/memberPurge';
+import { normalizeAvatar, parseAvatar } from '@/lib/memberAvatar';
 import {
   normalizeStatsPrivacy,
   parseStatsPrivacyPatch,
@@ -79,13 +80,13 @@ export async function GET(req: NextRequest) {
     const probe = groupsOn
       ? groupMemberId
         ? {
-            query: 'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy FROM c WHERE c.id = @id AND c.active = true',
+            query: 'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar FROM c WHERE c.id = @id AND c.active = true',
             parameters: [{ name: '@id', value: groupMemberId }],
           }
         : null // not on this group's roster: nobody, without a read
       : {
           query:
-            'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
+            'SELECT c.role, c.pinHash, c.createdAt, c.statsPrivacy, c.avatar FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
           parameters: [{ name: '@name', value: name }],
         };
     const resources = probe ? (await container.items.query(probe).fetchAll()).resources : [];
@@ -149,10 +150,12 @@ export async function GET(req: NextRequest) {
           : 'admin'
         : (me?.role ?? 'member');
     const statsPrivacy = privileged ? normalizeStatsPrivacy(me?.statsPrivacy) : null;
-    return NextResponse.json({ role, hasPin, createdAt, authed, statsPrivacy });
+    // Not privileged: the roster already shows it beside the same name.
+    const avatar = normalizeAvatar(me?.avatar);
+    return NextResponse.json({ role, hasPin, createdAt, authed, statsPrivacy, avatar });
   } catch (error) {
     console.error('GET members/me error:', error);
-    return NextResponse.json({ role: 'member', hasPin: false, createdAt: null, statsPrivacy: null });
+    return NextResponse.json({ role: 'member', hasPin: false, createdAt: null, statsPrivacy: null, avatar: null });
   }
 }
 
@@ -249,6 +252,41 @@ async function handleStatsPrivacyPatch(req: NextRequest, name: string, raw: unkn
   return NextResponse.json({ success: true, statsPrivacy });
 }
 
+/**
+ * Write the member's picture (lib/memberAvatar.ts). Same gate as the privacy
+ * write: the member cookie for THIS person, or an admin — never a name alone,
+ * since names are enumerable (rule 12).
+ */
+async function handleAvatarPatch(req: NextRequest, name: string, raw: unknown) {
+  const ip = getClientIp(req);
+  if (!checkRateLimit(`avatar:${name.toLowerCase()}:${ip}`, 30, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+  const avatar = parseAvatar(raw);
+  if (avatar === undefined) {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  }
+
+  const membersContainer = getContainer('members');
+  const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
+  if (!memberId) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+  const caller = verifyMemberAuth(req);
+  const isSelf = !!caller && caller.memberId === memberId;
+  if (!isSelf && !(await isAdminAuthedWithMember(req)).authed) {
+    return NextResponse.json({ error: 'auth_required' }, { status: 401 });
+  }
+
+  const member = (await membersContainer.item(memberId, memberId).read()).resource;
+  if (!member) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+  const { avatar: _previous, ...rest } = member;
+  await membersContainer.items.upsert(avatar ? { ...rest, avatar } : rest);
+  return NextResponse.json({ success: true, avatar });
+}
+
 export async function PATCH(req: NextRequest) {
   try {
     return await handlePatch(req);
@@ -264,6 +302,7 @@ async function handlePatch(req: NextRequest) {
     currentPin?: unknown;
     newPin?: unknown;
     statsPrivacy?: unknown;
+    avatar?: unknown;
   };
   try {
     body = await req.json();
@@ -284,6 +323,10 @@ async function handlePatch(req: NextRequest) {
   // write their own privacy setting at all.
   if (body.statsPrivacy !== undefined) {
     return handleStatsPrivacyPatch(req, name, body.statsPrivacy);
+  }
+  // The picture: same reason, same place.
+  if (body.avatar !== undefined) {
+    return handleAvatarPatch(req, name, body.avatar);
   }
 
   /**

@@ -30,7 +30,7 @@ describe('GET /api/members', () => {
     seedMember('Bob', { role: 'member', sessionCount: 3 });
   });
 
-  it('non-admin returns only [{name, active}] — no role, id, or stats', async () => {
+  it('non-admin returns only [{name, active, avatar}] — no role, id, or stats', async () => {
     // ARRANGE: request without admin cookie
     const req = makeGetRequest('http://localhost:3000/api/members');
 
@@ -38,11 +38,11 @@ describe('GET /api/members', () => {
     const res = await GET(req);
     const data = await res.json();
 
-    // ASSERT: each item has name + active, nothing else
+    // ASSERT: each item has name + active + the picture its owner chose, nothing else
     expect(res.status).toBe(200);
     expect(data).toHaveLength(2);
     for (const item of data) {
-      expect(Object.keys(item)).toEqual(['name', 'active']);
+      expect(Object.keys(item)).toEqual(['name', 'active', 'avatar']);
     }
   });
 

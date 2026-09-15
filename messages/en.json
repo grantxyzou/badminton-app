@@ -249,6 +249,17 @@
     "profile": "Profile"
   },
   "profile": {
+    "avatar": {
+      "title": "Your picture",
+      "myRacket": "My racket",
+      "shuffle": "Shuffle",
+      "initial": "My initial",
+      "noRacket": "Add your racket under Stats → Gear to use it here.",
+      "save": "Save",
+      "signIn": "Sign in again to change your picture.",
+      "failed": "Couldn't save that. Give it another go.",
+      "change": "Change your picture"
+    },
     "auth": {
       "retry": "Try again",
       "pendingExpiredTitle": "Let's start that again",

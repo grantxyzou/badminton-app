@@ -8,6 +8,7 @@ import { rosterMembers, adminAddToRoster } from '@/lib/roster';
 import { rosterNameHolder, renameRosterMember, removeFromRoster, RosterNameTakenError } from '@/lib/groups';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { randomBytes } from 'crypto';
+import { normalizeAvatar } from '@/lib/memberAvatar';
 
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 
@@ -24,9 +25,17 @@ export async function GET(req: NextRequest) {
     const resources = entries.map((e) =>
       e.membership ? { ...e.member, active: e.membership.status === 'active' } : e.member,
     );
-    // Non-admin: only return names (no stats or IDs)
+    // Non-admin: only names and the picture a member chose to show beside
+    // theirs (no stats or IDs). The avatar is picked by its owner, never set
+    // for them (lib/memberAvatar.ts).
     if (!isAdmin) {
-      return NextResponse.json(resources.map((m: { name: string; active: boolean }) => ({ name: m.name, active: m.active })));
+      return NextResponse.json(
+        resources.map((m: { name: string; active: boolean; avatar?: unknown }) => ({
+          name: m.name,
+          active: m.active,
+          avatar: normalizeAvatar(m.avatar),
+        })),
+      );
     }
     // Strip pinHash even for admins — it's a strip-canary per CLAUDE.md.
     // Admin clients have no use for the scrypt hash; if they need to verify

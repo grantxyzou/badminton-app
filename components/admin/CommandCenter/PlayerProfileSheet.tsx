@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import { fmtFullDate as fmtDate } from '@/lib/fmt';
+import MemberAvatar from '@/components/primitives/MemberAvatar';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -190,7 +191,10 @@ export default function PlayerProfileSheet({ open, onClose, memberId, initialNam
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel="Player profile">
       <BottomSheetHeader>
-        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>
+        <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+          {(history?.member.name ?? initialName) && (
+            <MemberAvatar name={(history?.member.name ?? initialName)!} size={32} />
+          )}
           {history?.member.name ?? initialName ?? 'Player'}
         </span>
         <button

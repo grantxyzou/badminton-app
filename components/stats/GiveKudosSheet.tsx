@@ -7,6 +7,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import { KUDOS_TAGS, TAG_ICON, KUDOS_NOTE_MAX, type KudosTag } from '@/lib/kudos';
 import { SKILLS } from '@/lib/assessment';
 import { useOnline } from '@/lib/useOnline';
+import MemberAvatar from '@/components/primitives/MemberAvatar';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -150,11 +151,15 @@ export default function GiveKudosSheet({
                         style={{
                           fontSize: 'var(--fs-sm)',
                           padding: 'var(--space-2) var(--space-4)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 'var(--space-2)',
                           ...(who === name
                             ? { borderColor: 'var(--accent)', color: 'var(--accent)' }
                             : null),
                         }}
                       >
+                        <MemberAvatar name={name} size={20} />
                         {name}
                       </button>
                     ))}

@@ -1,5 +1,6 @@
 import type { StringingStatus, PlayerStage } from './stringing';
 import type { StatsPrivacy } from './statsPrivacy';
+import type { MemberAvatar } from './memberAvatar';
 import type { StoredAccessRequest } from './accessRequest';
 
 export interface PrevSessionSnapshot {
@@ -274,6 +275,11 @@ export interface Member {
    * reads their own setting back via `GET /api/members/me`.
    */
   statsPrivacy?: StatsPrivacy;
+  /**
+   * The member's picture (lib/memberAvatar.ts). Additive: absent = the initial.
+   * Returned by the roster and `members/me`, like the name beside it.
+   */
+  avatar?: MemberAvatar;
   /**
    * Account email for the email+password provider, normalized lowercase.
    * NARROW strip-canary: removed from every list and cross-member response,

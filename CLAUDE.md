@@ -111,6 +111,13 @@ Bottom-nav "Stats" (formerly "Skills"; `nav.skills` i18n key kept for backcompat
 - **Active-name chain** — real identity (`badminton_identity`) → `badminton_stats_preview_name` → signed-out state. **`lib/useActiveName.ts` is the single owner**; every consumer calls `useActiveName()` and `__tests__/active-name-canary.test.ts` fails the build if the chain is re-derived anywhere else (it had been copy-pasted into five modules, four of which had stopped subscribing to identity changes). **The preview-name step is DORMANT: nothing in the app writes that key** — the picker that did left in Stage 8, so today the chain is effectively identity → signed-out. The mechanism and its tests are kept for the day admin-browses-someone-else's-stats returns; don't document it as a live path, and don't assume a preview name can occur.
 - **Club comparison is consent-gated.** `useStatsPrivacy` + `ClubConsentSheet` ask once on first run; `isComparisonRevealed()` requires BOTH a stored `clubComparison` preference AND a non-null `promptedAt` — the stored preference alone is not consent. Both comparison-dependent cards are keyed on the answer so saying yes remounts them and they re-read the bands endpoint without a reload.
 
+### Avatars
+
+A member's picture is a RACKET, never an upload: `Member.avatar = { kind: 'racket', racketId }` (`lib/memberAvatar.ts`), drawn as the head of that racket's pre-rendered catalog image (`public/rackets/<id>.webp`, `racketSrc`). Absent = the initial. Chosen in Profile's `AvatarSheet` (my racket / shuffle / initial) and written by `PATCH /api/members/me { avatar }` with the member's own cookie or an admin.
+- **`components/primitives/MemberAvatar.tsx` is the one avatar**, everywhere a name appears; `lib/useMemberAvatars.ts` is the one read (`GET /api/members`, module-cached, looked up only where an avatar renders). Don't hand-roll an initial circle or fetch avatars per card.
+- **"My racket" is copied at save, not followed**, so a roster costs one `members` read and no gear read per name — and a racket becomes a public picture only when its owner picks it, because club gear is otherwise cohort-gated (`CLUB_GEAR_MIN_COHORT`).
+- A racket avatar always sits on the per-name colour, even on Profile: the renders are pale and vanish on the neutral circle in light theme.
+
 ### Kudos
 
 Positive-only peer recognition (`NEXT_PUBLIC_FLAG_KUDOS`, live in prod). Two
