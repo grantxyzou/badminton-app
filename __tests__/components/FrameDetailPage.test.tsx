@@ -70,6 +70,20 @@ describe('FrameDetailPage', () => {
     expect(screen.queryByRole('button', { name: /Strings/ })).toBeNull();
   });
 
+  it('a spare you own reads "Suits you", never "Would suit you"', async () => {
+    const spare: PlayerGear = { ...OWNED, activeRacketId: 'r0', items: [{ id: 'r0', catalogId: OTHER.id, category: 'racket', label: 'Other' }, ...OWNED.items] };
+    vi.stubGlobal('fetch', vi.fn((url: string) => {
+      const body = url.includes('/catalog') ? { items: [AF79, OTHER] }
+        : url.includes('/club/tension') ? { band: null }
+        : url.includes('/fit-verdict') ? { facts: { state: 'suits', answered: 5, frame: { name: 'Air Force 79', balance: 'Even', flex: 'Medium', weightClass: '4U' }, currentTensionLbs: null, tensionRange: [24, 25], sorenessMovedRange: false, goal: null, prospective: true, reasons: [] }, copy: null, checkInLevel: null }
+        : {};
+      return Promise.resolve({ ok: true, status: 200, json: async () => body } as Response);
+    }) as unknown as typeof fetch);
+    renderPage(spare);
+    await screen.findByText('Suits you · 24–25 lb');
+    expect(screen.queryByText(/Would suit you/)).toBeNull();
+  });
+
   it('says the club band is not there yet rather than drawing one', async () => {
     renderPage(OWNED);
     await waitFor(() => expect(screen.getByText(/You're at 25 · not enough of the club plays it yet/)).toBeTruthy());

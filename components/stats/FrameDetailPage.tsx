@@ -108,7 +108,7 @@ export default function FrameDetailPage({ activeName, gear, frameId, onBack, onO
 
       <div className="glass-card frame-rows">
         <Disclosure section="verdict" open={open} onToggle={toggle} title={t('row_verdict')}
-          summary={<VerdictSummary facts={verdict.data?.facts ?? null} error={verdict.error} known={known} />}
+          summary={<VerdictSummary facts={verdict.data?.facts ?? null} error={verdict.error} known={known} owned={!!owned} />}
           tone={verdict.data && (verdict.data.facts.state === 'fighting' || verdict.data.facts.state === 'fighting_slightly') ? 'warn' : undefined}>
           <VerdictDetail facts={verdict.data?.facts ?? null} onOpenFit={onOpenFit} />
         </Disclosure>
@@ -205,7 +205,7 @@ function range(facts: FitFacts, t: (k: string, v?: Record<string, string | numbe
   return facts.tensionRange ? t('ratedRange', { low: facts.tensionRange[0], high: facts.tensionRange[1] }) : '';
 }
 
-function VerdictSummary({ facts, error, known }: { facts: FitFacts | null; error: boolean; known: boolean }) {
+function VerdictSummary({ facts, error, known, owned }: { facts: FitFacts | null; error: boolean; known: boolean; owned: boolean }) {
   const t = useTranslations('stats.gear.framePage');
   if (!facts) {
     if (error) return <>{t('verdictError')}</>;
@@ -213,7 +213,10 @@ function VerdictSummary({ facts, error, known }: { facts: FitFacts | null; error
     return <span className="shimmer-line frame-summary-skeleton" />;
   }
   if (facts.state === 'insufficient') return <>{t('verdict_insufficient')}</>;
-  const key = facts.prospective ? `verdictProspective_${facts.state}` : `verdict_${facts.state}`;
+  // "Would suit you" is for a racket you don't have. A spare in your bag is
+  // judged the same way (it isn't strung in play, so no current tension), but
+  // it is yours, and "would" under an "In your bag" pill reads as a mistake.
+  const key = facts.prospective && !owned ? `verdictProspective_${facts.state}` : `verdict_${facts.state}`;
   return <>{t(key, { range: range(facts, t) })}</>;
 }
 
