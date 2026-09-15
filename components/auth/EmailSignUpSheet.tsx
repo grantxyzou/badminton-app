@@ -24,9 +24,11 @@ interface Props {
  */
 export default function EmailSignUpSheet({ open, onClose, onSuccess, inviteToken }: Props) {
   const t = useTranslations('profile.auth');
+  // `close` lives in the recovery namespace; every sheet reuses it.
+  const tClose = useTranslations('recovery');
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={t('emailSignUpTitle')}>
-      <BottomSheetHeader>{t('emailSignUpTitle')}</BottomSheetHeader>
+      <BottomSheetHeader onClose={onClose} closeLabel={tClose('close')}>{t('emailSignUpTitle')}</BottomSheetHeader>
       <BottomSheetBody>
         <EmailSignUpForm inviteToken={inviteToken} onSuccess={onSuccess} onDismiss={onClose} />
       </BottomSheetBody>
