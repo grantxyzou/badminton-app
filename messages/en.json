@@ -897,7 +897,7 @@
        "fitArm_fine": "Fine",
        "fitArm_sometimes_sore": "Sometimes sore",
        "fitArm_often_sore": "Often sore",
-       "fitArmNote": "Optional. Only softens the pick — a sore arm steers you to lighter, head-light frames and a slightly lower string tension. Only you and the organiser can see it; clear it any time.",
+       "fitArmNote": "Optional. Only softens the pick — a sore arm steers you to lighter, head-light frames and a slightly lower string tension. Only you can see it; clear it any time.",
        "fitClear": "Clear",
        "fitGripLabel": "Grip size",
        "fitGrip_G3": "G3",
@@ -1733,7 +1733,7 @@
             "• **Things you add yourself**: skill self-assessments, kudos you give or receive (including notes), games you log, and rackets or strings you save.",
             "• **A push token**, if you turn on notifications, for that device. It identifies the device to Apple, Google, or your browser — not you.",
             "• **A short technical note** when something breaks (the page you were on and the error), sent only when you tap \"Report a problem.\"",
-            "• **Racket-fit answers**, if you answer the questions on the Stats tab — your level, what you mostly play, what you'd change about your racket, your swing, your grip size, and an optional note on whether your arm or shoulder is sore. This is health-related information and we handle it with extra care: the sore-arm-or-shoulder answer is visible only to you and the organiser, it's used only to shape a racket suggestion and string-tension verdict, and you can clear any of it at any time from that sheet — it's also deleted with your account."
+            "• **Racket-fit answers**, if you answer the questions on the Stats tab — your level, what you mostly play, what you'd change about your racket, your swing, your grip size, and an optional note on whether your arm or shoulder is sore. This is health-related information and we handle it with extra care: the sore-arm-or-shoulder answer is visible only to you, it's used only to shape a racket suggestion and string-tension verdict, and you can clear any of it at any time from that sheet — it's also deleted with your account."
           ]
         },
         {

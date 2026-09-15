@@ -419,10 +419,10 @@ racket and never excluded what they owned).
     (since 2026-09-14 — it was public by name, so a device that merely
     remembered a name showed that person's bag; a refused read renders
     `YourKitCard`'s locked state via `useGear().forbidden`), and the route
-    still strips this field for anyone but the owner or a FRESHLY re-checked
-    admin — with the FRESH
-    role re-check on that cold path, so a demoted admin's live cookie does not
-    read it for 30 days (same shape as the pinHash strip-canary, tested by
+    still strips this field (and `fitSoreness`) for anyone but the OWNER —
+    admins included, since 2026-09-14: the policy says only the member sees
+    it. An admin cookie counts as the owner only when it re-checks FRESH as
+    that same member (same shape as the pinHash strip-canary, tested by
     VALUE not by key — the mock keeps an explicit `undefined`, production JSON
     drops it); it is disclosed in
     `legal.privacy` in both locales (pinned by the `'arm or shoulder'` needle
