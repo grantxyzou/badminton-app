@@ -485,6 +485,20 @@ body {
   touch-action: manipulation;
 }
 
+/* iOS 26 HOME-SCREEN APP: THE SCREEN IS REPORTED SHORT BY THE STATUS BAR.
+   With viewport-fit=cover and a black-translucent status bar, standalone
+   WebKit subtracts the top safe-area inset from 100%, 100svh and 100dvh (WebKit
+   bug 301108), so the fixed bottom nav floated a status bar's height above the
+   screen edge. Seen on Grant's iPhone 2026-09-15, surviving a relaunch. 100lvh
+   is reported as the full screen. Scoped to standalone so browser tabs keep
+   their dynamic toolbar behaviour; one team reports this is enough, another
+   that nothing is, so it is confirmed on the device, not assumed. */
+@media (display-mode: standalone) {
+  html {
+    height: 100lvh;
+  }
+}
+
 body {
   background: var(--page-bg);
   color: var(--text-primary);

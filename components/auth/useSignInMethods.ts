@@ -80,6 +80,8 @@ export function methodsSummary(
   if (methods.hasPin) parts.push(labels.pin);
   if (methods.hasPassword) parts.push(labels.email);
   // Brand names, deliberately not translated.
-  for (const p of methods.linked ?? []) parts.push(p === 'google' ? 'Google' : 'Apple');
+  // One entry per PROVIDER: a member with two Google accounts linked read
+  // "PIN · Google · Google". The sheet still lists each account.
+  for (const p of new Set(methods.linked ?? [])) parts.push(p === 'google' ? 'Google' : 'Apple');
   return parts.length ? parts.join(' · ') : undefined;
 }
