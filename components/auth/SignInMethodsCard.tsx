@@ -106,6 +106,13 @@ export default function SignInMethodsCard({ state, embedded = false }: SignInMet
 
   const linked = methods.linked ?? [];
   const showNudge = methods.nudge === true && !dismissed;
+  /* SAID ONCE. "PIN is your only way in" used to be a checklist row reading
+     "PIN", then a sentence under it repeating that a PIN was the only way in —
+     and, on the standalone card, the nudge subtitle saying it a third time. It
+     is now a note on the PIN row itself, and only where no subtitle already
+     says it (the sheet drops the card's header). */
+  const pinOnly = methods.hasPin && !methods.hasPassword && linked.length === 0;
+  const pinNote = pinOnly && (embedded || !showNudge) ? t('methodPinOnly') : undefined;
 
   return (
     <div
@@ -123,7 +130,7 @@ export default function SignInMethodsCard({ state, embedded = false }: SignInMet
       {/* What they already have. Rendered as facts, not actions — the PIN and
           password are managed elsewhere on Profile. */}
       <ul style={{ display: 'grid', gap: 'var(--space-2)', margin: '0', padding: '0', listStyle: 'none' }}>
-        {methods.hasPin && <MethodRow label={t('methodPin')} />}
+        {methods.hasPin && <MethodRow label={t('methodPin')} note={pinNote} />}
         {methods.hasPassword && <MethodRow label={methods.email || t('methodPassword')} />}
         {linked.map((p) => (
           <li key={p} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
@@ -158,12 +165,6 @@ export default function SignInMethodsCard({ state, embedded = false }: SignInMet
         ))}
       </ul>
 
-      {showNudge && methods.hasPin && !methods.hasPassword && linked.length === 0 && (
-        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '0' }}>
-          {t('methodPinOnly')}
-        </p>
-      )}
-
       {actionError && <p className="field-error">{actionError}</p>}
 
       {/* Anything not yet connected. ProviderButtons renders nothing when the
@@ -179,13 +180,14 @@ export default function SignInMethodsCard({ state, embedded = false }: SignInMet
   );
 }
 
-function MethodRow({ label }: { label: string }) {
+function MethodRow({ label, note }: { label: string; note?: string }) {
   return (
-    <li style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-      <span className="material-icons icon-sm" style={{ color: 'var(--accent)' }}>
+    <li style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)' }}>
+      <span className="material-icons icon-sm" style={{ color: 'var(--accent)', alignSelf: 'center' }}>
         check_circle
       </span>
       <span style={{ fontSize: 'var(--fs-md)', color: 'var(--text-primary)' }}>{label}</span>
+      {note && <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{note}</span>}
     </li>
   );
 }

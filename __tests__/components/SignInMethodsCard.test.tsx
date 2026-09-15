@@ -14,10 +14,10 @@ import enMessages from '../../messages/en.json';
  * a second provider or disconnect anything, because the nudge was correctly
  * suppressed for them and there was nowhere else to go.
  */
-function renderCard() {
+function renderCard(props: { embedded?: boolean } = {}) {
   return render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <SignInMethodsCard />
+      <SignInMethodsCard {...props} />
     </NextIntlClientProvider>,
   );
 }
@@ -148,5 +148,30 @@ describe('SignInMethodsCard', () => {
     await waitFor(() =>
       expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/api/auth/nudge'))).toBe(true),
     );
+  });
+});
+
+describe('says "PIN is your only way in" once', () => {
+  // It used to read "PIN", then a sentence saying a PIN was the only way in,
+  // and on the standalone card a subtitle saying it a third time.
+  it('in the sheet, as a note on the PIN row and nowhere else', async () => {
+    mockApi({ available: ['google'], linked: [], hasPin: true, hasPassword: false, nudge: true });
+    renderCard({ embedded: true });
+    await screen.findByText('PIN');
+    expect(screen.getAllByText(/only way in/i)).toHaveLength(1);
+  });
+
+  it('on the standalone nudge card, only in its subtitle', async () => {
+    mockApi({ available: ['google'], linked: [], hasPin: true, hasPassword: false, nudge: true });
+    renderCard();
+    await screen.findByText('PIN');
+    expect(screen.getAllByText(/only way (in|into)/i)).toHaveLength(1);
+  });
+
+  it('not at all once there is a second way in', async () => {
+    mockApi({ available: [], linked: ['google'], hasPin: true, hasPassword: false, nudge: false });
+    renderCard({ embedded: true });
+    await screen.findByText('PIN');
+    expect(screen.queryByText(/only way in/i)).toBeNull();
   });
 });
