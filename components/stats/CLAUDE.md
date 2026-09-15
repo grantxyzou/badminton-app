@@ -240,6 +240,19 @@ each owns different hooks and a hook cannot be conditional.
   - The page keeps the previous verdict while re-asking (`useFitVerdict`), and
     re-asks the racket pick once answers have been still for 2.5 s — the
     register holds fit refetches while the page is open.
+- **A racket's page is `FrameDetailPage`** (same flag, Turn 3 `3d`). The
+  register keeps a PAGE STACK (`GearPage[]`): a frame opens another frame, back
+  pops, and opening Your fit returns to one already underneath rather than
+  stacking a second. Its rules are `lib/frameDetail.ts`, pure: `specCells`
+  (a cell the row cannot fill is absent; `rated` carries only the bounds the
+  maker printed — never `ratedRange`'s scale fill), `cadRange` (USD × 1.38,
+  captioned as typical, never live), `closeToFrame` (the fit engine's own
+  distance to this frame's axes, so "close" means what the pick means) and
+  `frameHistory` (restrings keyed by model, last four tensions). Rows expand
+  one at a time through CSS grid rows (reduced-motion covered), closed rows
+  `inert`. The Strings row is not drawn for a racket you don't own; the club
+  band draws only from `useClubTension`'s cohort. The tension chart is on a
+  FIXED 20–30 lb scale so every band is measured on the same ruler.
 
 ### Racket FIT engine (`NEXT_PUBLIC_FLAG_RACKET_FIT`, Phase 2, 2026-09-09)
 

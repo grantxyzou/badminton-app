@@ -37,6 +37,8 @@ export const CLIENT_KINDS = [
   'fit_profile_opened',
   'fit_answer_set',
   'verdict_shown',
+  'frame_page_opened',
+  'frame_section_expanded',
 ] as const;
 /**
  * The Equipment surfaces' own beacons (design "Equipment redesign", Turn 3 §9).
@@ -50,6 +52,8 @@ export const GEAR_SURFACE_KINDS = [
   // screen? Deliberately no payload naming WHICH answer — an arm-history
   // answer does not belong in an engagement log.
   'fit_profile_opened', 'fit_answer_set', 'verdict_shown',
+  // The frame page: is it opened, and is anything below the fold read?
+  'frame_page_opened', 'frame_section_expanded',
 ] as const;
 /** Written by the server only; `POST /api/events` refuses them. */
 export const SERVER_KINDS = ['pick_served'] as const;
@@ -105,6 +109,8 @@ export const CLIENT_PAYLOAD: Record<
   fit_profile_opened: [],
   fit_answer_set: [],
   verdict_shown: ['catalogId'],
+  frame_page_opened: ['catalogId'],
+  frame_section_expanded: ['catalogId'],
 };
 
 export function isClientKind(v: unknown): v is ClientKind {

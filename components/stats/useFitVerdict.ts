@@ -46,7 +46,7 @@ function signature(gear: PlayerGear | null): string {
  * in flight shows the last answer, not a skeleton. Only the very first read
  * has nothing to show.
  */
-export function useFitVerdict(name: string | null, gear: PlayerGear | null, ready: boolean): UseFitVerdict {
+export function useFitVerdict(name: string | null, gear: PlayerGear | null, ready: boolean, frame?: string | null): UseFitVerdict {
   const [data, setData] = useState<FitVerdictData | null>(null);
   const [error, setError] = useState(false);
   const [forbidden, setForbidden] = useState(false);
@@ -59,7 +59,8 @@ export function useFitVerdict(name: string | null, gear: PlayerGear | null, read
     const id = ++seq.current;
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`${BASE}/api/equipment/fit-verdict?name=${encodeURIComponent(name)}`, { cache: 'no-store' });
+        const frameQuery = frame ? `&frame=${encodeURIComponent(frame)}` : '';
+        const res = await fetch(`${BASE}/api/equipment/fit-verdict?name=${encodeURIComponent(name)}${frameQuery}`, { cache: 'no-store' });
         if (res.status === 401 || res.status === 403) {
           if (id === seq.current) { setForbidden(true); setError(true); }
           return;
@@ -75,7 +76,7 @@ export function useFitVerdict(name: string | null, gear: PlayerGear | null, read
       }
     }, nonce === 0 && seq.current === 1 ? 0 : VERDICT_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [name, ready, sig, nonce]);
+  }, [name, ready, sig, nonce, frame]);
 
   const retry = useCallback(() => setNonce((n) => n + 1), []);
   return { data, error, forbidden, retry };

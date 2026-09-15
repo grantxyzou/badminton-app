@@ -5089,3 +5089,142 @@ button.setup-next-row { cursor: pointer; }
 .fit-rank-n { font-family: var(--font-mono); font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted); }
 .fit-rank-n--first { color: var(--accent); }
 .fit-footnote { margin: 0; padding: 0 var(--space-05); font-size: var(--fs-xs); color: var(--text-muted); }
+
+/* ── A racket's page (design "Equipment redesign", Turn 3, 3d) ──────────── */
+
+.frame-identity-card { display: flex; flex-direction: column; gap: var(--space-5); }
+.frame-identity { display: flex; gap: var(--space-4); align-items: flex-start; }
+.frame-tile {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 88px;
+  padding: 0;
+  border: 1px solid var(--inner-card-border);
+  border-radius: var(--radius-md);
+  background: var(--inner-card-bg);
+  cursor: pointer;
+  transition: transform 100ms var(--ease-out-quart);
+}
+.frame-tile:active { transform: scale(0.97); }
+.frame-tile img { width: 36px; height: 78px; object-fit: contain; }
+.frame-identity-text { min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.frame-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-stat-lg);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.frame-brand { margin: 0; font-size: var(--fs-base); color: var(--text-secondary); }
+.frame-identity-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-1); }
+.frame-pill {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--segment-active-bg);
+  color: var(--accent);
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+[data-theme="light"] .frame-pill { color: var(--accent-dark); }
+
+/* The 1px gap IS the hairline: the grid's background shows through it. */
+.frame-specs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--divider);
+  border: 1px solid var(--divider);
+}
+.frame-spec { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4); background: var(--page-bg); }
+.frame-spec--wide { grid-column: 1 / -1; }
+.frame-spec dt { font-size: var(--fs-2xs); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.frame-spec dd { margin: 0; font-family: var(--font-mono); font-size: var(--fs-md); color: var(--text-primary); }
+
+.frame-rows { padding: var(--space-3); display: flex; flex-direction: column; }
+.frame-row + .frame-row { border-top: 1px solid var(--divider); }
+.frame-row-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-4) var(--space-4);
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 100ms var(--ease-out-quart);
+}
+.frame-row-head:active { transform: scale(0.97); }
+.frame-row-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--space-05); }
+.frame-row-title { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); }
+.frame-row-summary { font-size: var(--fs-base); color: var(--text-secondary); }
+.frame-row-summary--warn { color: var(--sev-warn); }
+.frame-row-chevron { font-size: var(--icon-lg); color: var(--text-muted); }
+.frame-summary-skeleton { display: block; width: 60%; height: 13px; margin-top: var(--space-1); border-radius: var(--radius-sm); }
+.frame-row-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 180ms var(--ease-sheet), opacity 180ms var(--ease-sheet);
+}
+.frame-row--open .frame-row-body { grid-template-rows: 1fr; opacity: 1; }
+.frame-row-inner { min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-4); padding: 0 var(--space-4); }
+.frame-row--open .frame-row-inner { padding-bottom: var(--space-4); }
+.frame-close-row { width: 100%; font: inherit; text-align: left; cursor: pointer; }
+
+/* Tension on a fixed 20–30 lb scale, so every band is drawn to the same ruler. */
+.frame-chart { display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-6); }
+.frame-chart-track {
+  position: relative;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: var(--inner-card-bg);
+  border: 1px solid var(--inner-card-border);
+}
+.frame-chart-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--highlight-green);
+  border-left: 1px solid var(--accent);
+  border-right: 1px solid var(--accent);
+}
+.frame-chart-you { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--accent); }
+.frame-chart-you-label {
+  position: absolute;
+  bottom: calc(100% + var(--space-1));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-hair) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--page-bg);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.frame-chart-axis { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: var(--fs-2xs); color: var(--text-muted); }
+.frame-last-four {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--divider);
+  font-size: var(--fs-base);
+  color: var(--text-secondary);
+}
+.frame-last-four .fit-mono { color: var(--text-primary); }
+.frame-log { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-2); font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-secondary); }
