@@ -20,7 +20,7 @@ import {
 } from '@/lib/authIdentity';
 import { setPendingSignup } from '@/lib/pendingSignup';
 import { clearOAuthCookies } from '@/lib/oauthState';
-import { completeHandoff, readHandoff } from '@/lib/authHandoff';
+import { completeHandoff, readHandoff, type CompletedHandoff, type HandoffDoc } from '@/lib/authHandoff';
 import type { Member } from '@/lib/types';
 import { resolveGroupId } from '@/lib/groupContext';
 
@@ -93,6 +93,43 @@ function seeOther(url: string): NextResponse {
   return NextResponse.redirect(url, { status: 303 });
 }
 
+/**
+ * Where a completed hand-off sends the browser that completed it.
+ *
+ * NATIVE keeps the app landing it has always had: `?native=1`, whose card and
+ * auto-return carry the return code home through `bpm://auth/return`.
+ *
+ * Everything else — a pop-up, or the full-page Safari trip — goes to
+ * `/bpm/auth/done`, a page that exists only to get the code back to the app:
+ * it posts the return code to the pop-up's opener, and shows the typed code
+ * when there is no opener to hear it. Inside the manifest scope, like
+ * `landing()`.
+ *
+ * The codes ride in the FRAGMENT, which never reaches a server log.
+ */
+function handoffLanding(
+  origin: string,
+  provider: string,
+  stash: HandoffDoc,
+  completed: CompletedHandoff,
+  signedIn: boolean,
+): NextResponse {
+  if (stash.native) {
+    const params: Record<string, string> = { provider, native: '1' };
+    if (signedIn) params.signedIn = '1';
+    return seeOther(landing(origin, params, completed.returnCode ? `hc=${completed.returnCode}` : undefined));
+  }
+  const fragment = new URLSearchParams();
+  if (completed.returnCode && completed.openerOrigin) {
+    fragment.set('hc', completed.returnCode);
+    fragment.set('ho', completed.openerOrigin);
+  }
+  if (completed.typedCode) fragment.set('tc', completed.typedCode);
+  return seeOther(`${origin}/bpm/auth/done?${new URLSearchParams({ provider })}#${fragment}`);
+}
+
+
+
 /** Redirect home with a machine-readable reason the UI can render. */
 export function oauthFailure(origin: string, reason: string): NextResponse {
   const res = seeOther(landing(origin, { authError: reason }));
@@ -136,7 +173,14 @@ export async function finishOAuthCallback(
      cases genuinely need it: the jar split (the parked state stood in), and the
      native shell, whose sheet keeps the cookie but is not the app. The native
      case is protected by the return code `completeHandoff` mints instead. */
-  const handoff = stash && (claims.viaParkedState || stash.native) ? claims.handoff! : null;
+  const handoff = stash && (claims.viaParkedState || stash.native || stash.popup) ? claims.handoff! : null;
+  /* THE APP FINISHES THIS SIGN-IN, not the browser that completed it: a
+     parked-state callback (nothing ties this browser to the flow) or a pop-up
+     (a window the app opened, whose jar may not be the app's). Such a browser
+     is never signed in and never names a new account — guarantee 4 in
+     lib/authHandoff.ts. The native sheet ran `/start` itself and holds the
+     state cookie, so its own sign-in and name step are unchanged. */
+  const inApp = !!handoff && (claims.viaParkedState || !!stash?.popup);
 
   const existing = await lookupIdentity(claims.provider, claims.sub);
 
@@ -158,30 +202,43 @@ export async function finishOAuthCallback(
 
   const action = resolveOAuthIdentity({
     existingIdentityMemberId: existing?.memberId ?? null,
-    // Never on a parked-state callback: this browser did not start the flow,
-    // so its session is not a request to link anything to it (F3).
-    sessionMemberId: claims.viaParkedState ? null : (verifyMemberAuth(req)?.memberId ?? null),
+    // Never when the app finishes: this browser's session is not a request to
+    // link anything to it (F3), and a pop-up's may be some other person's.
+    sessionMemberId: inApp ? null : (verifyMemberAuth(req)?.memberId ?? null),
     providerEmail: email,
     providerEmailVerified: claims.emailVerified,
     memberIdByVerifiedEmail,
   });
 
   if (action.kind === 'new-account') {
-    // Needs a display name from the user, and must refuse names already taken —
-    // so it cannot finish here. Park the verified facts in a SIGNED cookie and
-    // let /api/auth/complete-signup finish once a name is chosen.
-    const res = seeOther(landing(origin, { authFlow: 'name', ...nativeParam }));
-    setPendingSignup(res, {
+    const facts = {
       provider: claims.provider,
       sub: claims.sub,
       email,
       emailVerified: claims.emailVerified,
       suggestedName: claims.suggestedName,
-      // A NEW account has no member to park yet, so the ref rides along to
-      // complete-signup, which is where one first exists — under the same
-      // condition as the sign-in path below, or the name step reopens F4.
+    };
+    /* Named IN THE APP: the facts are parked on the stash, and the claim puts
+       them in the app's own pending-signup cookie. A cookie set here would let
+       whoever opened this callback pick the name — or type a PIN that links
+       this provider identity to their own account (Gap 1). */
+    if (inApp) {
+      const completed = await completeHandoff(handoff!, { pending: facts });
+      if (!completed) return oauthFailure(origin, 'state_mismatch');
+      const res = handoffLanding(origin, claims.provider, stash!, completed, false);
+      clearOAuthCookies(res);
+      return res;
+    }
+    // Needs a display name from the user, and must refuse names already taken —
+    // so it cannot finish here. Park the verified facts in a SIGNED cookie and
+    // let /api/auth/complete-signup finish once a name is chosen.
+    const res = seeOther(landing(origin, { authFlow: 'name', ...nativeParam }));
+    setPendingSignup(res, {
+      ...facts,
+      // Only the native sheet reaches here with a ref: its new account first
+      // exists in complete-signup, which completes the stash and hands the
+      // return code home.
       handoff,
-      ...(claims.viaParkedState ? { parked: true } : {}),
     });
     clearOAuthCookies(res);
     return res;
@@ -210,37 +267,26 @@ export async function finishOAuthCallback(
   }
 
   /* THE JAR SPLIT. A session cookie on this response lands in the browser that
-     COMPLETED the flow — Safari for a PWA, the system sheet for the native
-     shell — not in the app. So the resolved member is parked for the app to
-     collect.
+     COMPLETED the flow — Safari, a pop-up, the system sheet — not in the app.
+     So the resolved member is parked for the app to collect, behind the code
+     `completeHandoff` mints (guarantee 3).
 
-     A parked-state callback gets NO cookie of its own: it is non-authenticating
-     (see `viaParkedState`), so the landing says "go back to the app" instead of
-     "you're in". The native sheet still passed its own state cookie, so it is
-     signed in as before, and it carries the return code home in the fragment —
-     never the query, which reaches our logs. */
+     When the app finishes (`inApp`) this browser gets no cookie of its own. The
+     native sheet still passed its own state cookie, so it is signed in as
+     before. */
   if (handoff) {
     const completed = await completeHandoff(handoff, member.id);
     if (completed) {
-      /* ONE message per path. A native landing's card already says "back to
-         the app", so it never gets `handedOff` (whose copy points at the Home
-         Screen), and a parked native sheet holds no session, so it does not
-         get `signedIn` either. */
-      const params: Record<string, string> = { provider: claims.provider, ...nativeParam };
-      if (!claims.viaParkedState) params.signedIn = '1';
-      else if (!stash?.native) params.handedOff = '1';
-      const res = seeOther(
-        landing(origin, params, completed.returnCode ? `hc=${completed.returnCode}` : undefined),
-      );
+      const res = handoffLanding(origin, claims.provider, stash!, completed, !inApp);
       clearOAuthCookies(res);
-      if (!claims.viaParkedState) await completeSignIn(res, member, resolveGroupId(req));
+      if (!inApp) await completeSignIn(res, member, resolveGroupId(req));
       return res;
     }
     // Parking failed (expired or swept). A native sheet passed its own cookie,
-    // so signing that sheet in is still honest. A parked-state callback may not.
+    // so signing that sheet in is still honest. Nothing else may.
   }
 
-  if (claims.viaParkedState) return oauthFailure(origin, 'state_mismatch');
+  if (inApp || claims.viaParkedState) return oauthFailure(origin, 'state_mismatch');
 
   const res = seeOther(landing(origin, { signedIn: '1', provider: claims.provider }));
   // ORDER: every `cookies.set` must happen BEFORE completeSignIn. Its

@@ -17,6 +17,7 @@ import { isFlagOn } from '@/lib/flags';
 import { getContainer } from '@/lib/cosmos';
 import { claimHandoff } from '@/lib/authHandoff';
 import { completeSignIn } from '@/lib/authSession';
+import { setPendingSignup } from '@/lib/pendingSignup';
 import type { Member } from '@/lib/types';
 import { resolveGroupId, explicitGroupId } from '@/lib/groupContext';
 
@@ -37,22 +38,36 @@ export async function POST(req: NextRequest) {
 
   let handoffId: unknown;
   let returnCode: unknown;
+  let typedCode: unknown;
   try {
-    ({ handoffId, returnCode } = await req.json());
+    ({ handoffId, returnCode, typedCode } = await req.json());
   } catch {
     return NextResponse.json({ error: 'bad_request' }, { status: 400 });
   }
   if (typeof handoffId !== 'string' || !/^[0-9a-f]{64}$/.test(handoffId)) {
     return NextResponse.json({ error: 'bad_request' }, { status: 400 });
   }
-  // Optional: only a stash the native shell started asks for one (see
-  // lib/authHandoff.ts). Malformed is refused rather than silently dropped, so
-  // a client bug reads as a 400 and not as a sign-in that never finishes.
-  if (returnCode !== undefined && returnCode !== null && (typeof returnCode !== 'string' || !/^[0-9a-f]{64}$/.test(returnCode))) {
+  // The code a completed stash demands (lib/authHandoff.ts, guarantee 3): 64
+  // hex carried home by a machine, or 6 digits a person typed. Malformed is
+  // refused rather than silently dropped, so a client bug reads as a 400 and
+  // not as a sign-in that never finishes.
+  const absent = (v: unknown) => v === undefined || v === null;
+  if (!absent(returnCode) && (typeof returnCode !== 'string' || !/^[0-9a-f]{64}$/.test(returnCode))) {
     return NextResponse.json({ error: 'bad_request' }, { status: 400 });
   }
+  if (!absent(typedCode) && (typeof typedCode !== 'string' || !/^[0-9]{6}$/.test(typedCode))) {
+    return NextResponse.json({ error: 'bad_request' }, { status: 400 });
+  }
+  // A typed guess is the one input here with little entropy. The stash caps
+  // its own attempts; this caps a device working through many stashes.
+  if (typeof typedCode === 'string' && !checkRateLimit(`handoff-code:${ip}`, 10, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
 
-  const claim = await claimHandoff(handoffId, Date.now(), typeof returnCode === 'string' ? returnCode : null);
+  const claim = await claimHandoff(handoffId, Date.now(), {
+    returnCode: typeof returnCode === 'string' ? returnCode : null,
+    typedCode: typeof typedCode === 'string' ? typedCode : null,
+  });
 
   /* `pending` is reported so the app can keep polling. It is the COMMON state,
      not a rare one: the person is still on Google's consent screen. Collapsing
@@ -63,6 +78,20 @@ export async function POST(req: NextRequest) {
   if (claim.status === 'none') {
     // Absent, expired and already-claimed are one answer on purpose.
     return NextResponse.json({ status: 'none' }, { status: 200 });
+  }
+  if (claim.status === 'code_required') {
+    return NextResponse.json({ status: 'code_required', wrong: claim.wrong }, { status: 200 });
+  }
+  if (claim.status === 'needs_name') {
+    /* A NEW provider identity, named HERE (guarantee 4). This response lands in
+       the app's own jar, which has just proved it started the flow (preimage)
+       and that the completing browser handed it back (code) — the same two
+       things a cookie-path callback proves with its state cookie. So the
+       pending-signup cookie it gets is an ordinary one, and the app's name
+       step, `complete-signup` and `claim-name`, run as they do on the web. */
+    const res = NextResponse.json({ status: 'needs_name' }, { status: 200 });
+    setPendingSignup(res, { ...claim.pending, handoff: null });
+    return res;
   }
 
   const { resource: member } = await getContainer('members')

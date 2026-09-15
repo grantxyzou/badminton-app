@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import ChooseNameSheet from './auth/ChooseNameSheet';
+import HandoffCodeSheet from './auth/HandoffCodeSheet';
 import WelcomeDoors from './onboarding/WelcomeDoors';
 import CreateGroupPage from './onboarding/CreateGroupPage';
 import JoinGroupPage from './onboarding/JoinGroupPage';
@@ -413,7 +414,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
    * — measured, see lib/authHandoff.ts. The listeners live in
    * `lib/useHandoffCollect.ts`, shared with the members-only signed-out screen.
    */
-  useHandoffCollect((name) => {
+  const handoffCollect = useHandoffCollect((name) => {
     setIdentity({ name, sessionId: sessionIdRef.current });
     setAuthNotice({ kind: 'signedIn', provider: 'google' });
   });
@@ -811,6 +812,10 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
           window.location.assign(nativeReturnHref(code));
         }}
       />
+      {/* The typed-code fallback for a Google/Apple sign-in that finished
+          somewhere that could not report back. Shell level: it can be needed
+          on whatever tab the app restores. */}
+      <HandoffCodeSheet {...handoffCollect} />
       {/* Shell level for the same reason as ChooseNameSheet: a reset link lands
           on /bpm at whatever tab the app restores. Keyed so the fields reset on
           each open rather than via setState-in-effect. */}

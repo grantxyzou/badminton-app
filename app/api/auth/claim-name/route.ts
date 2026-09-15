@@ -91,15 +91,15 @@ export async function POST(req: NextRequest) {
   // with its own rate limit and its own audit gaps.
   const pending = readPendingSignup(req);
   if (!pending) return NextResponse.json({ error: 'no_pending_signup' }, { status: 400 });
-  /* KNOWN GAP, kept open on purpose (Grant, 2026-09-14). A `pending.parked`
-     flow is one nothing ties to this browser, and this route LINKS the pending
-     provider identity to whoever proves a name — so a victim who opens an
-     attacker's captured callback and types their own name and PIN attaches the
-     attacker's Google account to themselves. Refusing here was tried and
-     reverted before merge: on the installed iOS PWA every PIN-only member's
-     first Google sign-in comes through exactly this path, so the refusal
-     locked nearly the whole roster out of adding Google. The planned fix moves
-     the PIN proof into the app that holds the handoff preimage. */
+  /* WHO CAN HOLD THIS COOKIE. This route links the pending provider identity to
+     whoever proves a name, so it must only ever run in the browser that
+     started the sign-in. A pending-signup cookie is minted in exactly two
+     places, and both prove that: a callback that passed its OWN state cookie,
+     and the hand-off claim, which needs the preimage AND the code the
+     completing browser handed back (lib/authHandoff.ts, guarantee 4). A
+     parked-state callback no longer mints one — which is what closed the
+     captured-callback takeover, where a victim typed their own name and PIN
+     into an attacker's sign-in. */
 
   try {
     const container = getContainer('members');

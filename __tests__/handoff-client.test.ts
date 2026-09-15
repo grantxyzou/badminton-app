@@ -9,6 +9,11 @@ import {
   rememberReturnCode,
   nativeReturnHref,
   readReturnCodeFromHash,
+  openSignInPopup,
+  onPopupMessage,
+  readHandoffLanding,
+  HANDOFF_MESSAGE,
+  HANDOFF_ACK,
 } from '@/lib/handoffClient';
 
 /** Mint AND commit, which is what a tap does. */
@@ -249,5 +254,80 @@ describe('the native return code', () => {
     expect(readReturnCodeFromHash('')).toBeNull();
     expect(readReturnCodeFromHash('#hc=short')).toBeNull();
     expect(readReturnCodeFromHash(`#hc=${CODE}ff`)).toBeNull();
+  });
+});
+
+describe('the sign-in pop-up (installed iOS web app)', () => {
+  const CODE = 'c'.repeat(64);
+  const RETURN_KEY = 'badminton_auth_handoff_return';
+
+  function fakePopup() {
+    return { postMessage: vi.fn() } as unknown as Window & { postMessage: ReturnType<typeof vi.fn> };
+  }
+
+  it('reports a blocked pop-up, so the caller can fall back to the full page', () => {
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    expect(openSignInPopup('/bpm/api/auth/google/start?hr=x&popup=1')).toBe(false);
+  });
+
+  it('keeps the opener — the channel home — rather than opening with noopener', () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(fakePopup());
+    openSignInPopup('/start');
+    expect(open.mock.calls[0]).toHaveLength(2);
+  });
+
+  it('believes a return code only from the window it opened, acknowledges it, and nudges collection', () => {
+    const popup = fakePopup();
+    vi.spyOn(window, 'open').mockReturnValue(popup);
+    openSignInPopup('/start');
+    const resume = vi.fn();
+    window.addEventListener('bpm:resume', resume);
+    try {
+      // Some other window — ignored outright.
+      onPopupMessage({ source: fakePopup(), origin: 'https://bpm.grantzou.com', data: { type: HANDOFF_MESSAGE, returnCode: CODE } });
+      expect(localStorage.getItem(RETURN_KEY)).toBeNull();
+
+      // A malformed code from the right window — ignored.
+      onPopupMessage({ source: popup, origin: 'https://bpm.grantzou.com', data: { type: HANDOFF_MESSAGE, returnCode: 'nope' } });
+      expect(localStorage.getItem(RETURN_KEY)).toBeNull();
+
+      onPopupMessage({ source: popup, origin: 'https://bpm.grantzou.com', data: { type: HANDOFF_MESSAGE, returnCode: CODE } });
+      expect(localStorage.getItem(RETURN_KEY)).toBe(CODE);
+      expect(popup.postMessage).toHaveBeenCalledWith({ type: HANDOFF_ACK }, 'https://bpm.grantzou.com');
+      expect(resume).toHaveBeenCalledTimes(1);
+    } finally {
+      window.removeEventListener('bpm:resume', resume);
+    }
+  });
+
+  it('reads the landing fragment, refusing anything that is not an origin or a code', () => {
+    expect(readHandoffLanding(`#hc=${CODE}&ho=${encodeURIComponent('https://bpm.grantzou.com')}&tc=482913`)).toEqual({
+      returnCode: CODE,
+      openerOrigin: 'https://bpm.grantzou.com',
+      typedCode: '482913',
+    });
+    expect(readHandoffLanding(`#hc=short&ho=${encodeURIComponent('https://bpm.grantzou.com/path')}&tc=12`)).toEqual({
+      returnCode: null,
+      openerOrigin: null,
+      typedCode: null,
+    });
+    expect(readHandoffLanding('#ho=javascript%3Aalert(1)').openerOrigin).toBeNull();
+  });
+});
+
+describe('claimPendingHandoff — the answers that need the person', () => {
+  it('sends a typed code, and reports code_required without dropping the handoff', async () => {
+    stageHandoff('a'.repeat(64));
+    const spy = mockFetch(() => json({ status: 'code_required', wrong: true }));
+    expect(await claimPendingHandoff('482913')).toEqual({ status: 'code_required', wrong: true });
+    expect(JSON.parse(String(spy.mock.calls[0][1]?.body))).toMatchObject({ typedCode: '482913' });
+    expect(pendingHandoffId()).toBe('a'.repeat(64));
+  });
+
+  it('needs_name is terminal for the handoff — the name step takes it from here', async () => {
+    stageHandoff('a'.repeat(64));
+    mockFetch(() => json({ status: 'needs_name' }));
+    expect(await claimPendingHandoff()).toEqual({ status: 'needs_name' });
+    expect(pendingHandoffId()).toBeNull();
   });
 });

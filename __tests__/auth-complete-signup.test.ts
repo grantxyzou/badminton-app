@@ -151,10 +151,13 @@ describe('POST /api/auth/complete-signup — handoff return code', () => {
     expect(data.returnCode).toMatch(/^[0-9a-f]{64}$/);
 
     expect(await claimHandoff(id)).toEqual({ status: 'pending' });
-    expect((await claimHandoff(id, Date.now(), data.returnCode)).status).toBe('ready');
+    expect((await claimHandoff(id, Date.now(), { returnCode: data.returnCode })).status).toBe('ready');
   });
 
-  it('returns no code for a PWA stash', async () => {
+  /* The callback no longer puts a web ref in this cookie (a parked flow is named
+     in the app), so only a cookie minted before that change reaches here. Its
+     stash must NOT become claimable by the preimage alone. */
+  it('a web stash is not claimable without a code this route never hands out', async () => {
     const id = createHandoffId();
     const ref = handoffRef(id);
     await beginHandoff(ref, { state: 's', codeVerifier: 'v' });
@@ -162,7 +165,7 @@ describe('POST /api/auth/complete-signup — handoff return code', () => {
     const res = await POST(req({ name: 'Carolina' }, pendingCookie({ handoff: ref })));
     expect(res.status).toBe(201);
     expect((await res.json()).returnCode).toBeUndefined();
-    expect((await claimHandoff(id)).status).toBe('ready');
+    expect((await claimHandoff(id)).status).toBe('code_required');
   });
 });
 
@@ -177,7 +180,7 @@ describe('POST /api/auth/complete-signup — parked flows', () => {
     expect(res.status).toBe(201);
     expect((await res.json()).handedOff).toBe(true);
     expect(res.headers.getSetCookie().some((c) => /^member_session=[^;]+;/.test(c))).toBe(false);
-    expect((await claimHandoff(id)).status).toBe('ready');
+    expect((await claimHandoff(id)).status).toBe('code_required');
   });
 
   it('an ordinary flow still signs in and says nothing about a handoff', async () => {

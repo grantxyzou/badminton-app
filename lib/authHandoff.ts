@@ -51,31 +51,60 @@
  * What the code now guarantees, and where:
  *   1. A stash is COMPLETED only when the callback actually needed it — the
  *      state cookie was absent and the parked state stood in for it — or the
- *      stash says the native shell started the flow. A single-jar browser that
+ *      stash says the native shell or a pop-up started the flow, whose windows
+ *      are not the app's even when they hold the cookie. A single-jar browser that
  *      merely carries `?hr=` (every web flow does) parks nothing, so a crafted
  *      link opened in an ordinary browser yields nothing claimable (F4).
  *   2. A callback validated through the PARKED state is NON-AUTHENTICATING.
  *      Nothing about that browser proves it started the flow, so it gets no
  *      `member_session`, and its own session is never read as "link this
  *      provider to me" (F3, and F13 — the Apple callback shares the helper).
- *   3. A NATIVE stash needs a RETURN CODE to claim. The code is minted at
- *      completion and handed only to the browser that completed it — in the
- *      landing URL's fragment, which the landing forwards through
- *      `bpm://auth/return?c=`. Whoever holds the preimage still cannot claim
- *      without it, so a `&native=1` link sent to a victim is dead too.
+ *   3. EVERY COMPLETED STASH NEEDS A CODE TO CLAIM. The code is minted at
+ *      completion and handed only to the browser that completed it, so the
+ *      preimage alone — which the attacker has, because they chose it — claims
+ *      nothing. Two kinds, by the channel home:
+ *        - a RETURN CODE (256 bits) where a machine carries it: the native
+ *          shell's `bpm://auth/return?c=`, and a POP-UP's `postMessage` to the
+ *          app that opened it (`/start?popup=1`, the installed iOS web app);
+ *        - a TYPED CODE (6 digits) where only a person can: the full-page
+ *          Safari trip, and a pop-up that could not report back. Short enough
+ *          to type, so it is capped at TYPED_CODE_MAX_ATTEMPTS and every
+ *          attempt is counted under an etag BEFORE it is compared — a flood of
+ *          parallel guesses cannot all read the same count. A fresh stash
+ *          means a fresh victim completion, so guessing does not scale.
+ *      The native shell never gets a typed code: it always has its channel.
+ *   4. A NEW provider identity on a hand-off is never named in the browser
+ *      that completed it. Its verified facts are parked HERE (`pending`), and
+ *      the claim — preimage plus code — sets the pending-signup cookie in the
+ *      APP's jar, where the name step (and `claim-name`'s PIN) then runs.
+ *      Before this, a victim who opened an attacker's captured callback could
+ *      type their own name and PIN into it and link the attacker's Google
+ *      account to themselves. The native shell's own cookie-bound name step
+ *      (its sheet ran `/start`) is unchanged.
  *
- * WHAT IS STILL OPEN, deliberately (Grant, 2026-09-14): the installed iOS PWA
- * path in (1). Its completing browser is Safari and iOS gives Safari no way
- * back into a home-screen app, so there is no channel for a return code short
- * of the person typing one. An attacker who runs `/start?hr=` themselves and
- * sends a victim the PROVIDER's authorization URL still gets the victim's
- * memberId parked under the attacker's ref. Closing it is a product decision:
- * a typed code on that path, or no Google/Apple inside the installed PWA.
+ * The remaining exposure is a person reading a code off their own screen to
+ * someone who asks for it — the device-code phishing every such flow has. The
+ * page that shows it says not to.
  *
  * The cookie path is UNCHANGED and still preferred — see the callback.
  */
-import { createHash, randomBytes, timingSafeEqual } from 'crypto';
+import { createHash, randomBytes, randomInt, timingSafeEqual } from 'crypto';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
+
+/** Wrong typed codes a stash survives before it is burned. See guarantee 3. */
+export const TYPED_CODE_MAX_ATTEMPTS = 5;
+
+/**
+ * A provider identity with no member yet, parked for the app to name
+ * (guarantee 4). The same verified facts `lib/pendingSignup.ts` carries.
+ */
+export interface PendingProviderIdentity {
+  provider: 'google' | 'apple';
+  sub: string;
+  email: string | null;
+  emailVerified: boolean;
+  suggestedName: string | null;
+}
 
 const CONTAINER = 'authhandoff';
 /** Long enough to finish a consent screen and walk back to the app; short
@@ -139,15 +168,34 @@ export interface HandoffDoc {
    * in it. Additive: absent means BPM, which is what every pre-claim stash is.
    */
   groupId?: string;
+  /**
+   * The flow runs in a POP-UP the installed iOS web app opened
+   * (`/start?popup=1`). Its completion reports home by `postMessage`, so it
+   * gets a return code as well as a typed one. Additive: absent means not.
+   */
+  popup?: boolean;
+  /**
+   * Where the pop-up posts its return code: the ORIGIN of the app that opened
+   * it, checked against our own origins at `/start`. The app can run on more
+   * than one (the Azure host as well as APP_ORIGIN), and a `postMessage`
+   * aimed at the wrong one is silently dropped.
+   */
+  openerOrigin?: string;
   /** Set by `completeHandoff` once the provider handshake resolves a member. */
   memberId?: string;
+  /** Set instead of `memberId` when the identity has no member yet (guarantee 4). */
+  pending?: PendingProviderIdentity;
   /**
-   * sha256 of the RETURN CODE a native completion minted. Present means the
-   * claim must present the code as well as the preimage — see guarantee 3 in
-   * the docblock. The code itself is never stored. Additive: absent means no
-   * code is required, which is every PWA stash.
+   * sha256 of the RETURN CODE a native or pop-up completion minted. The code
+   * itself is never stored. See guarantee 3.
    */
   returnCodeHash?: string;
+  /** sha256 of the ref and the TYPED CODE a web completion minted. */
+  typedCodeHash?: string;
+  /** Typed codes tried so far. Counted before comparing, under an etag. */
+  typedAttempts?: number;
+  /** Cosmos's concurrency token, present on every read. */
+  _etag?: string;
   createdAt: string;
   expiresAt: string;
 }
@@ -175,7 +223,14 @@ async function readDoc(ref: string): Promise<HandoffDoc | null> {
  */
 export async function beginHandoff(
   ref: string,
-  values: { state: string; codeVerifier: string; native?: boolean; groupId?: string },
+  values: {
+    state: string;
+    codeVerifier: string;
+    native?: boolean;
+    popup?: boolean;
+    openerOrigin?: string | null;
+    groupId?: string;
+  },
   now: number = Date.now(),
 ): Promise<boolean> {
   if (!isHandoffRef(ref)) return false;
@@ -189,6 +244,9 @@ export async function beginHandoff(
     state: values.state,
     codeVerifier: values.codeVerifier,
     ...(values.native ? { native: true } : {}),
+    // The native shell has its own channel home; a pop-up flag on it means nothing.
+    ...(values.popup && !values.native ? { popup: true } : {}),
+    ...(values.popup && !values.native && values.openerOrigin ? { openerOrigin: values.openerOrigin } : {}),
     ...(values.groupId ? { groupId: values.groupId } : {}),
     createdAt: new Date(now).toISOString(),
     expiresAt: new Date(now + HANDOFF_TTL_MS).toISOString(),
@@ -223,57 +281,103 @@ export function handoffStateMatches(parked: string, callbackState: string | null
 /** What a completion hands back to the browser that performed it. */
 export interface CompletedHandoff {
   /**
-   * The code the claim must present, for a stash the NATIVE shell started;
-   * `null` for every other stash. It goes to the completing browser only —
-   * never into a log, a query string or the store.
+   * 64 hex, for a stash with a machine channel home — the native shell or a
+   * pop-up; `null` otherwise. Goes to the completing browser only, in a URL
+   * FRAGMENT — never a log, a query string or the store.
    */
   returnCode: string | null;
+  /** 6 digits for the person to type, for every web completion; `null` for native. */
+  typedCode: string | null;
+  /** The pop-up's opener origin, when it posts its return code home. */
+  openerOrigin: string | null;
 }
 
-function hashReturnCode(code: string): string {
-  return createHash('sha256').update(code, 'utf8').digest('hex');
+function sha256(value: string): string {
+  return createHash('sha256').update(value, 'utf8').digest('hex');
+}
+
+/** Salted with the ref: six digits alone hash to a table anyone can build. */
+function hashTypedCode(ref: string, code: string): string {
+  return sha256(`${ref}:${code}`);
+}
+
+function sameHash(stored: string, candidate: string): boolean {
+  const a = Buffer.from(stored, 'utf8');
+  const b = Buffer.from(candidate, 'utf8');
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 /**
- * Attach the resolved member so the app can collect it. `null` when the stash
- * is absent or expired.
+ * Attach the outcome so the app can collect it: the resolved member's id, or a
+ * provider identity still to be named (`{ pending }`, guarantee 4). `null`
+ * when the stash is absent or expired.
+ *
+ * Every completion mints the code(s) the claim will require (guarantee 3), and
+ * restarts the TTL — the person still has to walk back to the app and may
+ * have to type a code there.
  */
 export async function completeHandoff(
   ref: string,
-  memberId: string,
+  outcome: string | { pending: PendingProviderIdentity },
   now: number = Date.now(),
 ): Promise<CompletedHandoff | null> {
   if (!isHandoffRef(ref)) return null;
   await containerReady();
   const doc = await readDoc(ref);
   if (!live(doc, now)) return null;
-  const returnCode = doc.native ? randomBytes(32).toString('hex') : null;
-  await getContainer(CONTAINER).items.upsert({
-    ...doc,
-    memberId,
-    ...(returnCode ? { returnCodeHash: hashReturnCode(returnCode) } : {}),
-  });
-  return { returnCode };
+
+  const returnCode = doc.native || doc.popup ? randomBytes(32).toString('hex') : null;
+  const typedCode = doc.native ? null : String(randomInt(0, 1_000_000)).padStart(6, '0');
+  const { _etag: _e, memberId: _m, pending: _p, ...rest } = doc;
+  const next: HandoffDoc = {
+    ...rest,
+    ...(typeof outcome === 'string' ? { memberId: outcome } : { pending: outcome.pending }),
+    ...(returnCode ? { returnCodeHash: sha256(returnCode) } : {}),
+    ...(typedCode ? { typedCodeHash: hashTypedCode(ref, typedCode), typedAttempts: 0 } : {}),
+    expiresAt: new Date(now + HANDOFF_TTL_MS).toISOString(),
+  };
+  await getContainer(CONTAINER).items.upsert(next);
+  return { returnCode, typedCode, openerOrigin: doc.popup ? (doc.openerOrigin ?? null) : null };
 }
 
 /**
  * Redeem a completed stash. SINGLE USE: the document is deleted before the
- * memberId is returned, so a replay finds nothing.
+ * outcome is returned, so a replay finds nothing.
  *
- * Returns null for absent, expired, already-claimed AND not-yet-complete
- * alike — deliberately indistinguishable, so a probe cannot learn whether a ref
- * was ever real. The one exception is `pending`, which the route needs in order
- * to keep polling rather than give up; it is reported as a status, not as data.
+ * Absent, expired, already-claimed and burned are ONE answer, `none`, so a
+ * probe cannot learn whether a ref was ever real. The rest are statuses the
+ * app needs in order to act, and only a preimage holder ever sees them:
+ *   `pending`        the excursion has not finished, or a native return code
+ *                    is still on its way home — keep polling;
+ *   `code_required`  finished, and waiting for the person to type the code —
+ *                    `wrong` when the last one did not match;
+ *   `needs_name`     a new provider identity, now parked in the app's jar;
+ *   `ready`          a member.
  */
 export type HandoffClaim =
   | { status: 'ready'; memberId: string; groupId?: string }
+  | { status: 'needs_name'; pending: PendingProviderIdentity; groupId?: string }
   | { status: 'pending' }
+  | { status: 'code_required'; wrong: boolean }
   | { status: 'none' };
+
+export interface HandoffCodes {
+  returnCode?: string | null;
+  typedCode?: string | null;
+}
+
+async function burn(ref: string): Promise<void> {
+  try {
+    await getContainer(CONTAINER).item(ref, ref).delete();
+  } catch {
+    /* expires on its own */
+  }
+}
 
 export async function claimHandoff(
   handoffId: string,
   now: number = Date.now(),
-  returnCode: string | null = null,
+  codes: HandoffCodes = {},
 ): Promise<HandoffClaim> {
   const ref = handoffRef(handoffId);
   await containerReady();
@@ -283,26 +387,49 @@ export async function claimHandoff(
   // The excursion has not finished yet. Leave the stash alone so the next poll
   // can find it — deleting here would strand a sign-in that was still in
   // flight, which on a slow phone is the common case, not the rare one.
-  if (!doc.memberId) return { status: 'pending' };
+  if (!doc.memberId && !doc.pending) return { status: 'pending' };
 
-  /* A native stash wants its return code. ABSENT is `pending`, not a failure:
-     the app polls on every foreground, and on a real phone that poll routinely
-     beats the `bpm://auth/return` that carries the code — burning the stash
-     then would strand the very sign-in the code was on its way to finish.
-     WRONG is terminal: only a preimage holder can send one, and a legitimate
-     app never has a code for a different stash. */
-  if (doc.returnCodeHash) {
-    if (!returnCode) return { status: 'pending' };
-    const a = Buffer.from(doc.returnCodeHash, 'utf8');
-    const b = Buffer.from(hashReturnCode(returnCode), 'utf8');
-    if (a.length !== b.length || !timingSafeEqual(a, b)) {
-      try {
-        await getContainer(CONTAINER).item(ref, ref).delete();
-      } catch {
-        /* expires on its own */
-      }
+  const returnCode = codes.returnCode ?? null;
+  const typedCode = codes.typedCode ?? null;
+
+  if (returnCode && doc.returnCodeHash) {
+    /* WRONG is terminal: only a preimage holder can send one, and a legitimate
+       app never has a code for a different stash. */
+    if (!sameHash(doc.returnCodeHash, sha256(returnCode))) {
+      await burn(ref);
       return { status: 'none' };
     }
+  } else if (typedCode && doc.typedCodeHash) {
+    /* COUNT, THEN COMPARE. The increment is conditioned on the etag this read
+       returned, so of any number of parallel guesses exactly one per version
+       gets to compare; the rest are told to try again and compared nothing. */
+    const attempts = (doc.typedAttempts ?? 0) + 1;
+    if (attempts > TYPED_CODE_MAX_ATTEMPTS) {
+      await burn(ref);
+      return { status: 'none' };
+    }
+    const { _etag, ...rest } = doc;
+    try {
+      await getContainer(CONTAINER).items.upsert(
+        { ...rest, typedAttempts: attempts },
+        _etag ? { accessCondition: { type: 'IfMatch', condition: _etag } } : undefined,
+      );
+    } catch {
+      return { status: 'code_required', wrong: false };
+    }
+    if (!sameHash(doc.typedCodeHash, hashTypedCode(ref, typedCode))) {
+      if (attempts >= TYPED_CODE_MAX_ATTEMPTS) {
+        await burn(ref);
+        return { status: 'none' };
+      }
+      return { status: 'code_required', wrong: true };
+    }
+  } else if (doc.returnCodeHash || doc.typedCodeHash) {
+    /* No usable code yet. A stash a person can finish asks for one. A native
+       stash stays `pending`: the app polls on every foreground, and on a real
+       phone that poll routinely beats the `bpm://auth/return` carrying its
+       code — burning or prompting then would strand the sign-in. */
+    return doc.typedCodeHash ? { status: 'code_required', wrong: false } : { status: 'pending' };
   }
 
   // Delete FIRST. If the delete fails we must not hand out the session, or a
@@ -312,5 +439,7 @@ export async function claimHandoff(
   } catch {
     return { status: 'none' };
   }
-  return { status: 'ready', memberId: doc.memberId, ...(doc.groupId ? { groupId: doc.groupId } : {}) };
+  const group = doc.groupId ? { groupId: doc.groupId } : {};
+  if (doc.pending) return { status: 'needs_name', pending: doc.pending, ...group };
+  return { status: 'ready', memberId: doc.memberId!, ...group };
 }

@@ -76,6 +76,9 @@ const errorOf = (res: Response) => locOf(res).searchParams.get('authError');
  * recovered, the code was exchanged and the claims were decoded.
  */
 const reachedResolution = (res: Response) => locOf(res).searchParams.get('authFlow') === 'name';
+/** The app finishes it: the browser lands on the hand-off page, with the code in the fragment. */
+const handedToApp = (res: Response) => locOf(res).pathname === '/bpm/auth/done';
+const fragmentOf = (res: Response) => new URLSearchParams(locOf(res).hash.replace(/^#/, ''));
 
 beforeEach(() => {
   resetMockStore();
@@ -104,7 +107,10 @@ describe('google callback — the iOS PWA jar split', () => {
     const res = await callback({ code: 'abc', state: `${state}~${ref}` });
 
     expect(errorOf(res)).toBeNull();
-    expect(reachedResolution(res)).toBe(true);
+    // A new identity: parked for the app to name, which proves the state and
+    // verifier were recovered and the code exchanged.
+    expect(handedToApp(res)).toBe(true);
+    expect((await readHandoff(ref))?.pending?.sub).toBe('google-sub-1');
   });
 
   it('still refuses a cookie-less callback with NO handoff — the guard is intact', async () => {
@@ -231,8 +237,87 @@ describe('google callback — the handoff cannot be turned against the person wh
     const res = await callback({ code: 'abc', state: `${state}~${ref}` });
 
     expect(sessionCookie(res)).toBeUndefined();
-    expect(locOf(res).searchParams.get('handedOff')).toBe('1');
-    expect(await claimHandoff(id)).toEqual({ status: 'ready', memberId: m.id });
+    expect(handedToApp(res)).toBe(true);
+    // In the FRAGMENT — a query string would reach the server's logs.
+    expect(locOf(res).search).not.toContain('tc=');
+    const typedCode = fragmentOf(res).get('tc');
+    expect(typedCode).toMatch(/^[0-9]{6}$/);
+    expect(await claimHandoff(id, Date.now(), { typedCode })).toEqual({ status: 'ready', memberId: m.id });
+  });
+
+  /**
+   * GAP 2, closed. The attacker ran `/start` and sent the victim Google's own
+   * link; the victim's browser completes. The attacker holds the preimage and
+   * is asked for a code only the victim's screen shows.
+   */
+  it('Gap 2: the preimage alone gets a code prompt, never the session', async () => {
+    const victim = seedMember('Viktor');
+    await reserveIdentity('google', 'google-sub-1', victim.id);
+    const attackerId = createHandoffId();
+    const ref = handoffRef(attackerId);
+    const state = createState();
+    await beginHandoff(ref, { state, codeVerifier: 'v' });
+
+    await callback({ code: 'abc', state: `${state}~${ref}` });
+
+    expect(await claimHandoff(attackerId)).toEqual({ status: 'code_required', wrong: false });
+  });
+
+  /**
+   * GAP 1, closed. The attacker starts a sign-in with THEIR Google account and
+   * sends the victim the callback. The victim's browser used to get a
+   * pending-signup cookie and a name prompt, where typing their own name and
+   * PIN linked the attacker's Google to them. Now it gets nothing to type into.
+   */
+  it('Gap 1: a cookie-less callback for a new identity gives this browser no name step', async () => {
+    const id = createHandoffId();
+    const ref = handoffRef(id);
+    const state = createState();
+    await beginHandoff(ref, { state, codeVerifier: 'v' });
+
+    const res = await callback({ code: 'abc', state: `${state}~${ref}` });
+
+    expect(res.headers.getSetCookie().find((c) => c.startsWith(`${PENDING_COOKIE}=`))).toBeUndefined();
+    expect(reachedResolution(res)).toBe(false);
+    const typedCode = fragmentOf(res).get('tc');
+    expect(await claimHandoff(id, Date.now(), { typedCode })).toMatchObject({ status: 'needs_name' });
+  });
+
+  /**
+   * THE POP-UP. Its window ran `/start`, so it holds the state cookie — but it
+   * is not the app, and on iOS its jar may not be the app's. So it is handled
+   * like the jar split: completed, not signed in, and handed back by message.
+   */
+  it('pop-up: completes even on the cookie path, signs the pop-up in as nobody, and posts home', async () => {
+    const m = seedMember('Lin');
+    await reserveIdentity('google', 'google-sub-1', m.id);
+    const id = createHandoffId();
+    const ref = handoffRef(id);
+    const state = createState();
+    await beginHandoff(ref, { state, codeVerifier: 'v', popup: true, openerOrigin: 'https://bpm.grantzou.com' });
+
+    const res = await callback({ code: 'abc', state: `${state}~${ref}` }, oauthCookies(state, 'cookie-verifier'));
+
+    expect(sessionCookie(res)).toBeUndefined();
+    expect(handedToApp(res)).toBe(true);
+    const fragment = fragmentOf(res);
+    expect(fragment.get('ho')).toBe('https://bpm.grantzou.com');
+    expect(fragment.get('tc')).toMatch(/^[0-9]{6}$/);
+    expect(await claimHandoff(id, Date.now(), { returnCode: fragment.get('hc') })).toEqual({ status: 'ready', memberId: m.id });
+  });
+
+  it('pop-up: never links to a session the pop-up window holds', async () => {
+    const other = seedMember('Kento', { pinHash: 'x' });
+    const ref = handoffRef(createHandoffId());
+    const state = createState();
+    await beginHandoff(ref, { state, codeVerifier: 'v', popup: true });
+
+    await callback(
+      { code: 'abc', state: `${state}~${ref}` },
+      `${oauthCookies(state, 'cookie-verifier')}; member_session=${memberCookieValue('Kento', other.id)}`,
+    );
+
+    expect(await lookupIdentity('google', 'google-sub-1')).toBeNull();
   });
 
   it('F3: a cookie-less callback never links the provider to a session this browser holds', async () => {
@@ -269,6 +354,6 @@ describe('google callback — the handoff cannot be turned against the person wh
     expect(code).toBeTruthy();
 
     expect(await claimHandoff(id)).toEqual({ status: 'pending' });
-    expect(await claimHandoff(id, Date.now(), code!)).toEqual({ status: 'ready', memberId: m.id });
+    expect(await claimHandoff(id, Date.now(), { returnCode: code! })).toEqual({ status: 'ready', memberId: m.id });
   });
 });

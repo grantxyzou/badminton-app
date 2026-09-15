@@ -10,7 +10,7 @@ import {
 import { finishOAuthCallback } from '../lib/oauthCallback';
 import { lookupIdentity, reserveIdentity } from '../lib/authIdentity';
 import { PENDING_COOKIE } from '../lib/pendingSignup';
-import { createHandoffId, handoffRef, beginHandoff, claimHandoff } from '../lib/authHandoff';
+import { createHandoffId, handoffRef, beginHandoff, claimHandoff, readHandoff } from '../lib/authHandoff';
 
 /**
  * Exercises everything a provider callback does AFTER the code exchange, which
@@ -193,10 +193,12 @@ describe('finishOAuthCallback — a parked-state callback is non-authenticating'
     const res = await finishOAuthCallback(req(), ORIGIN, claims({ handoff: ref, viaParkedState: true }));
 
     expect(sessionCookie(res)).toBeUndefined();
-    expect(res.headers.get('location')).toContain('handedOff=1');
-    expect(res.headers.get('location')).not.toContain('signedIn=1');
-    // The app that holds the preimage is unaffected.
-    expect(await claimHandoff(id)).toEqual({ status: 'ready', memberId: m.id });
+    const loc = new URL(res.headers.get('location')!);
+    expect(loc.pathname).toBe('/bpm/auth/done');
+    expect(loc.search).not.toContain('signedIn=1');
+    // The app that holds the preimage collects — with the code this page shows.
+    const typedCode = new URLSearchParams(loc.hash.slice(1)).get('tc');
+    expect(await claimHandoff(id, Date.now(), { typedCode })).toEqual({ status: 'ready', memberId: m.id });
   });
 
   it("never links the provider to this browser's signed-in member (the F3 takeover)", async () => {
@@ -211,7 +213,8 @@ describe('finishOAuthCallback — a parked-state callback is non-authenticating'
 
     expect(stored(victim.id).linkedProviders).toBeUndefined();
     expect(await lookupIdentity('google', 'attacker-sub')).toBeNull();
-    expect(res.headers.get('location')).toContain('authFlow=name');
+    // A new identity, handed to the app — not a name step in this browser.
+    expect(new URL(res.headers.get('location')!).pathname).toBe('/bpm/auth/done');
   });
 
   it('fails rather than signing this browser in when the stash is gone', async () => {
@@ -225,19 +228,14 @@ describe('finishOAuthCallback — a parked-state callback is non-authenticating'
   });
 });
 
-describe('finishOAuthCallback — the name step inherits a parked flow', () => {
-  it('marks the pending cookie parked, so complete-signup and claim-name can refuse to authenticate', async () => {
-    const { readPendingSignup } = await import('../lib/pendingSignup');
+describe('finishOAuthCallback — a parked flow is named in the app', () => {
+  it('parks the new identity on the stash and gives this browser no pending-signup cookie', async () => {
     const ref = handoffRef(createHandoffId());
     await beginHandoff(ref, { state: 's'.repeat(64), codeVerifier: 'v' });
 
     const res = await finishOAuthCallback(req(), ORIGIN, claims({ sub: 'fresh', handoff: ref, viaParkedState: true }));
-    const header = res.headers.getSetCookie().find((c) => c.startsWith(`${PENDING_COOKIE}=`))!;
-    const parsed = readPendingSignup(
-      new NextRequest(`${ORIGIN}/bpm/api/auth/complete-signup`, { headers: { Cookie: header.split(';')[0] } }),
-    );
-    expect(parsed?.parked).toBe(true);
-    expect(parsed?.handoff).toBe(ref);
+    expect(res.headers.getSetCookie().find((c) => c.startsWith(`${PENDING_COOKIE}=`))).toBeUndefined();
+    expect((await readHandoff(ref))?.pending?.sub).toBe('fresh');
   });
 
   it('an ordinary new-account flow is not marked', async () => {

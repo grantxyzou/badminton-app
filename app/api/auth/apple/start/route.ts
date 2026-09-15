@@ -27,6 +27,7 @@ import { appOrigin, appleClient } from '@/lib/oauthProviders';
 import { createState, setOAuthCookies } from '@/lib/oauthState';
 import { beginHandoff, isHandoffRef } from '@/lib/authHandoff';
 import { resolveGroupId } from '@/lib/groupContext';
+import { ownOriginOrNull } from '@/lib/appOrigin';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,9 +65,14 @@ export async function GET(req: NextRequest) {
   const hr = search.get('hr');
   const handoff = isHandoffRef(hr) ? hr : null;
   const native = search.get('native') === '1';
+  // `popup=1` marks a pop-up the installed iOS web app opened; `po` is the
+  // origin it posts home to, believed only when it is one of ours. See
+  // lib/authHandoff.ts, guarantee 3.
+  const popup = !native && search.get('popup') === '1';
+  const openerOrigin = popup ? ownOriginOrNull(search.get('po')) : null;
   if (handoff) {
     try {
-      await beginHandoff(handoff, { state, codeVerifier: '', native, groupId: resolveGroupId(req) });
+      await beginHandoff(handoff, { state, codeVerifier: '', native, popup, openerOrigin, groupId: resolveGroupId(req) });
     } catch (err) {
       console.error('handoff begin failed:', err);
     }
